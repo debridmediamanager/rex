@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **270/270 checks against the new
+`tests/test_ui_surface.py` covers all of it: **275/275 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -607,6 +607,34 @@ now come off the same notification bus, each formatting for itself.
 | A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
 | `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
 | ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
+
+#### A season is not a lesser show, and an episode is not a small one
+
+Diffing plexsim's rows against the reference's, type by type:
+
+- A **season** detail carries `OnDeck`, `Extras` and `Preferences` exactly as a
+  show does. plexsim answered all three for shows only, so a season page had no
+  episode to offer and an empty settings tab.
+- The **Preferences lists differ**: eleven settings on a show (`episodeSort`,
+  `flattenSeasons`, `showOrdering`, `languageOverride`, the auto-deletion pair,
+  `useOriginalTitle`, `enableCreditsMarkerGeneration` and the three language ones)
+  against **three** on a season (audio language, subtitle language, subtitle
+  mode). plexsim invented a single `episodeSort` row. Both lists are now captured
+  in `item_prefs.json`, and a setting written through
+  `PUT /library/metadata/{id}/prefs` comes back both inside `Preferences` and as
+  a field on the row, the way `episodeSort` does on a real show.
+- An **episode** carries `Extras` but no `Preferences` and no `OnDeck`.
+- An episode row carries **no `Genre`, `studio`, `tagline` or `Country`** --
+  measured on the 1.43.4 reference *and* on production fun. plexsim's episodes
+  inherited all of them from the enriched file row, so an episode page advertised
+  its show's genres where a real one shows none.
+
+Not copied, for want of anything to derive them from: `CommonSenseMedia` and
+`contentRatingAge` on a show (a Plex-only rating provider and an age plexsim
+would have to guess from a rating string), and the external `Guid` array on a
+season (the reference's has real tmdb/tvdb season ids; plexsim mints only its own
+`plex://` season guid, and fun's episodes carry no Guid at all, so the field is
+agent-dependent rather than universal).
 
 #### Artwork: composites, and the size the client asked for
 

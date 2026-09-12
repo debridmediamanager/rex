@@ -105,6 +105,16 @@ for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show
     except (OSError, ValueError):
         pass
 
+# Per-item Preferences: the Setting list an item's own settings tab reads,
+# captured from a real PMS. A show has eleven and a season has three, and they
+# are not the same three -- plexsim invented a single `episodeSort` row.
+_ITEM_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "item_prefs.json")
+try:
+    with open(_ITEM_PREFS_PATH) as _handle:
+        ITEM_PREFS = json.load(_handle)
+except (OSError, ValueError):
+    ITEM_PREFS = {}
+
 _OWNER_FEATURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "owner_features.txt")
 try:
     with open(_OWNER_FEATURES_PATH) as _handle:
@@ -270,6 +280,7 @@ class Catalog:
 
         self._number_tags()
         self._retitle_streams()
+        self._strip_show_fields()
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
@@ -286,6 +297,21 @@ class Catalog:
     def _number_tags(self):
         for row in self.items.values():
             self.number_tags(row)
+
+    # Fields that belong to a SHOW and not to its episodes. Measured on both the
+    # 1.43.4 reference and production fun: a real episode row carries no Genre,
+    # no studio, no tagline and no Country. plexsim's episodes inherited all of
+    # them from the enriched file row, so an episode page advertised its show's
+    # genres where a real one shows none.
+    SHOW_ONLY_FIELDS = ("Genre", "Country", "studio", "tagline", "originalTitle",
+                        "rating", "Label")
+
+    def _strip_show_fields(self):
+        for row in self.items.values():
+            if row.get("type") != "episode":
+                continue
+            for field in self.SHOW_ONLY_FIELDS:
+                row.pop(field, None)
 
     def _retitle_streams(self):
         """Recompute every Stream's display titles from the row's own fields.
@@ -710,6 +736,20 @@ class PlexSim:
         if row.get("guid") and "Guid" not in detail:
             detail["Guid"] = [{"id": row["guid"]}]
 
+        return self.parent_detail(row, detail, query)
+
+    def parent_detail(self, row, detail, query):
+        """The blocks a show OR a season carries when the client asks for them.
+
+        Measured: a SEASON detail carries `OnDeck`, `Extras` and `Preferences`
+        just as a show does -- plexsim answered them for shows only, so a season
+        page had no episode to offer and an empty settings tab. And the
+        Preferences lists differ: eleven settings on a show, three on a season
+        (audio language, subtitle language, subtitle mode), against the one
+        `episodeSort` row plexsim used to invent.
+        """
+        leaves = self.catalog.leaves(row["ratingKey"])
+
         if query.get("includeExtras") == "1":
             detail["Extras"] = {"size": 0}
 
@@ -721,22 +761,16 @@ class PlexSim:
                 detail["OnDeck"] = {"Metadata": _full(pick)}
 
         if query.get("includePreferences") == "1":
-            detail["Preferences"] = {
-                "Setting": [
-                    {
-                        "id": "episodeSort",
-                        "label": "Episode sorting",
-                        "summary": "How to sort the episodes for this show.",
-                        "type": "text",
-                        "default": "-1",
-                        "value": "-1",
-                        "hidden": False,
-                        "advanced": False,
-                        "group": "",
-                        "enumValues": "-1:Library default|0:Oldest first|1:Newest first",
-                    }
-                ]
-            }
+            settings = ITEM_PREFS.get(row.get("type")) or []
+            stored = row.get("_prefs") or {}
+            detail["Preferences"] = {"Setting": [
+                dict(s, value=stored[s["id"]]) if s.get("id") in stored else s
+                for s in settings
+            ]}
+        # A setting the client has written shows up on the row itself as well,
+        # the way `episodeSort` does on a real show.
+        for name, value in (row.get("_prefs") or {}).items():
+            detail[name] = value
         return detail
 
     def child_container(self, parent, rows, leaf, query=None):
@@ -2061,8 +2095,13 @@ class PlexSim:
                 return ("empty", 200)
             section = self.catalog.section(row["librarySectionID"]) or {}
             detail = _full(row)
-            if row.get("type") == "show":
-                detail = self.show_detail(row, detail, query)
+            if row.get("type") in ("show", "season"):
+                detail = (self.show_detail(row, detail, query)
+                          if row["type"] == "show"
+                          else self.parent_detail(row, detail, query))
+            elif query.get("includeExtras") == "1":
+                # Measured: an episode and a movie carry the Extras block too.
+                detail["Extras"] = {"size": 0}
             # Re-measured 2026-09-12 against BOTH fun and the 1.43.4 reference,
             # with the client's own includeX param set: the detail container
             # DOES carry identifier and the media-tag pair. An earlier note here

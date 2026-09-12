@@ -361,6 +361,61 @@ def main():
         status, _, _ = get(base, path)
         check("a missing %s is a 404" % label, status == 404, "HTTP %s" % status)
 
+    print("\n=== what a show, a season and an episode each carry ===")
+    detail_params = ("includeExtras=1&includeOnDeck=1&includePreferences=1"
+                     "&includeChapters=1&includeReviews=1")
+    if show:
+        _, show_row, _ = get(base, "/library/metadata/%s?%s" % (show, detail_params))
+        row = (show_row.get("Metadata") or [{}])[0]
+        show_prefs = [s.get("id") for s in (row.get("Preferences") or {}).get("Setting") or []]
+        # Measured: eleven settings on a show and three on a season, and they are
+        # not the same three. plexsim used to invent a single `episodeSort` row.
+        check("a show's own settings tab gets the measured list",
+              "episodeSort" in show_prefs and "flattenSeasons" in show_prefs
+              and len(show_prefs) > 5, "%d setting(s)" % len(show_prefs))
+        _, children, _ = get(base, "/library/metadata/%s/children" % show)
+        season_key = ((children.get("Metadata") or [{}])[0]).get("ratingKey")
+        if season_key:
+            _, season_row, _ = get(base, "/library/metadata/%s?%s"
+                                         % (season_key, detail_params))
+            srow = (season_row.get("Metadata") or [{}])[0]
+            season_prefs = [s.get("id")
+                            for s in (srow.get("Preferences") or {}).get("Setting") or []]
+            # A season page had no episode to offer and an empty settings tab,
+            # because plexsim answered these for shows only.
+            check("a season carries OnDeck, Extras and its own settings",
+                  bool(srow.get("OnDeck")) and srow.get("Extras") is not None
+                  and season_prefs == ["audioLanguage", "subtitleLanguage",
+                                       "subtitleMode"],
+                  "OnDeck=%s prefs=%s" % (bool(srow.get("OnDeck")), season_prefs))
+            _, leaves, _ = get(base, "/library/metadata/%s/children" % season_key)
+            episode_key = ((leaves.get("Metadata") or [{}])[0]).get("ratingKey")
+            if episode_key:
+                _, ep, _ = get(base, "/library/metadata/%s?%s"
+                                     % (episode_key, detail_params))
+                erow = (ep.get("Metadata") or [{}])[0]
+                check("an episode carries Extras but no settings of its own",
+                      erow.get("Extras") is not None and not erow.get("Preferences"))
+                # Measured on the reference AND on production: a real episode row
+                # carries no Genre, studio, tagline or Country. plexsim's
+                # inherited all of them from the show.
+                strays = [k for k in ("Genre", "studio", "tagline", "Country")
+                          if erow.get(k)]
+                check("an episode does not carry its show's tags", not strays,
+                      ",".join(strays) or "none")
+        status, body, _ = request(base, "PUT",
+                                  "/library/metadata/%s/prefs?episodeSort=1" % show)
+        _, show_row, _ = get(base, "/library/metadata/%s?%s" % (show, detail_params))
+        row = (show_row.get("Metadata") or [{}])[0]
+        written = next((s for s in (row.get("Preferences") or {}).get("Setting") or []
+                        if s.get("id") == "episodeSort"), {})
+        check("a written item setting comes back on the row and in its settings",
+              is_empty_200(status, body) and str(written.get("value")) == "1"
+              and str(row.get("episodeSort")) == "1",
+              "value=%s row=%s" % (written.get("value"), row.get("episodeSort")))
+    else:
+        skip("a season carries OnDeck, Extras and its own settings", "no show section")
+
     # ------------------------------------------------------------------
     # 2. Mark as Played / Mark as Unplayed / rating
     # ------------------------------------------------------------------
