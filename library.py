@@ -67,8 +67,12 @@ def _now():
 class Library:
     """Watch state, edits, playlists, collections and play history."""
 
-    def __init__(self, catalog):
+    def __init__(self, catalog, notify=None):
         self.catalog = catalog
+        # Called with (event, activity) when an activity starts or ends, so the
+        # server can push it down the notification socket. A client watches that
+        # channel for the Activity indicator rather than polling /activities.
+        self._notify = notify
         self._playlists = {}
         self._collections = {}
         self._next_playlist = PLAYLIST_BASE
@@ -219,15 +223,20 @@ class Library:
             "progress": progress,
         }
         self._activities.append(activity)
+        if self._notify:
+            self._notify("started", activity)
         return activity
 
     def activities(self):
         return list(self._activities)
 
     def cancel_activity(self, activity_uuid):
-        before = len(self._activities)
+        ending = [a for a in self._activities if a["uuid"] == activity_uuid]
         self._activities = [a for a in self._activities if a["uuid"] != activity_uuid]
-        return len(self._activities) != before
+        for activity in ending:
+            if self._notify:
+                self._notify("ended", activity)
+        return bool(ending)
 
     def clear_activities(self):
         self._activities = []

@@ -314,6 +314,13 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.
+- **The notification socket has to carry frames, not just pings.** A real PMS
+  pushes `activity`, `timeline`, `status` and `progress`; a client that gets none
+  of them polls instead and never sees a change made elsewhere. Server frames are
+  **unmasked**, and a malformed one puts the client back in fix 4's failure mode.
+- **The Console's live log stream is not fed by that socket.** 75 seconds against
+  a busy reference pushed zero log frames, and the client opens no second socket
+  and passes no filter — the page renders empty on a real server too.
 - **An empty child list is omitted, never sent as `[]`.** These responses are XML
   underneath; `Metadata: []` is a shape no real PMS returns.
 - **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that

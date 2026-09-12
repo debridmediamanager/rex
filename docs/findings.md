@@ -409,9 +409,8 @@ playlists and collections in full.
 
 Deliberately still refused, each because the honest answer is no: Optimize and
 Sync & Download (no encoder), Live TV and tuners (no tuner), Download Database
-(no database, and `diagnostics` no longer advertises one), and the Console's log
-stream -- the notification shape a real PMS pushes for it was not measured, and
-inventing one is exactly what this file exists to prevent.
+(no database, and `diagnostics` no longer advertises one), and the channel
+appstore (no plug-in host -- a real PMS 404s those paths too).
 
 #### Verified in the official client, not only against the API
 
@@ -443,8 +442,8 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **222/222 checks against the new
-server, 62/196 against the spike it started from** on the same fixture catalog
+`tests/test_ui_surface.py` covers all of it: **230/230 checks against the new
+server, 63/202 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
 between the two runs because a check that depends on a playlist the old server
@@ -501,6 +500,44 @@ life of the project. With `/library` implemented, plexapi is back to 29/38 (the
 nine failures are byte reads against placeholder links) with **zero** unrouted
 paths for a full drive, and the web client still renders the item page and the
 full context menu.
+
+#### The Console's live log stream does not exist to emulate
+
+The one item left on the "not measured" list. The Console page has a parser for
+PMS log lines (`^([^[]+)\[([^\]]+)]\s+([^\s]+)\s+-\s+(.*)`) and a filter UI,
+and the page is drawn whenever the server's `diagnostics` string contains
+`streaminglogs`. What feeds it was the open question.
+
+Measured, in this order:
+
+1. Instrumenting `window.WebSocket` in the client showed it opens **exactly one**
+   socket, `/:/websockets/notifications`, **with no filter parameter** -- so
+   there is no second channel and no subscription to imitate.
+2. Subscribing to the reference PMS's own socket for **75 seconds while it was
+   busy** (two forced section scans, two item refreshes, an analyze and a butler
+   run) produced **zero** log frames.
+
+So on a current PMS the Console renders empty too. There is nothing to push, and
+nothing was invented.
+
+#### What that measurement did find: four notification types plexsim never pushed
+
+The same 75 seconds produced these, and plexsim's socket had been silent since
+the day it was built -- it completed the upgrade and then only pinged:
+
+| Type | Element | When | plexsim now |
+|---|---|---|---|
+| `activity` | `ActivityNotification` `{event, uuid, Activity}` | a task starts or ends | every activity it records |
+| `timeline` | `TimelineEntry` `{identifier, sectionID, itemID (both **strings**), type (Plex's **numeric** code), title, state, metadataState, updatedAt}` | a row changes | after a refresh |
+| `status` | `StatusNotification` `{title, description, notificationName}` | `Scanning the "Movies" section` | on a section scan |
+| `progress` | `ProgressNotification` `{message}` | `The butler refreshed all libraries.` | when that task finishes |
+
+A client that receives none of these falls back to polling and never sees a
+change made from another device. Verified in the official client: the socket
+reports `{"activity":4,"timeline":1,"progress":1}` received, stays open, and the
+page keeps rendering -- which also proves the hand-rolled frames are well formed,
+the failure mode of getting that wrong being the one from fix 4 (the client
+decides the server is broken and draws nothing).
 
 `harness/scripts/replay.py` was run against the same server with the recorded
 `reference-walk` corpus. What is left after this work is content (a different

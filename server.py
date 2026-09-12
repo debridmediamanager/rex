@@ -523,7 +523,7 @@ class PlexSim:
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
         # collections, play history. In memory only -- catalog.json is input.
-        self.library = library_module.Library(catalog)
+        self.library = library_module.Library(catalog, notify=self.notify_activity_event)
         # Preferences the client has written back through PUT /:/prefs. A real
         # PMS persists these; plexsim keeps them for the life of the process so
         # a settings page round-trips instead of silently reverting.
@@ -545,6 +545,73 @@ class PlexSim:
         # guid -> (kind, tmdb id) for candidates handed out by /matches, so the
         # match the user picks resolves back to the record it came from.
         self.match_candidates = {}
+        # Open notification sockets. A real PMS pushes library and task events
+        # down this channel and clients redraw from them instead of polling; the
+        # four types it actually sends were measured on the reference (see
+        # docs/findings.md), and plexsim pushed none of them.
+        self.sockets = []
+
+    # -- notifications ---------------------------------------------------
+
+    def add_socket(self, sink):
+        with self.lock:
+            self.sockets.append(sink)
+
+    def drop_socket(self, sink):
+        with self.lock:
+            if sink in self.sockets:
+                self.sockets.remove(sink)
+
+    def notify(self, kind, element, rows):
+        """Push one NotificationContainer to every open socket.
+
+        Shape measured on the reference: `{"NotificationContainer": {"type": …,
+        "size": n, "<Element>": [ … ]}}`. A client that receives none of these
+        falls back to polling, and anything changed from another device never
+        appears until the page is reloaded.
+        """
+        payload = json.dumps({"NotificationContainer": {
+            "type": kind, "size": len(rows), element: rows}}).encode()
+        with self.lock:
+            sinks = list(self.sockets)
+        for sink in sinks:
+            try:
+                sink(payload)
+            except Exception:
+                self.drop_socket(sink)
+
+    def notify_activity_event(self, event, activity):
+        """Called by the library when an activity starts or ends."""
+        self.notify_activity(activity, event=event)
+
+    def notify_activity(self, activity, event="started"):
+        self.notify("activity", "ActivityNotification",
+                    [{"event": event, "uuid": activity["uuid"], "Activity": activity}])
+
+    def notify_status(self, title, name="LIBRARY_UPDATE"):
+        self.notify("status", "StatusNotification",
+                    [{"title": title, "description": "", "notificationName": name}])
+
+    def notify_progress(self, message):
+        self.notify("progress", "ProgressNotification", [{"message": message}])
+
+    # Plex's numeric type codes, as a TimelineEntry carries them.
+    TIMELINE_TYPES = {"movie": 1, "show": 2, "season": 3, "episode": 4}
+
+    def notify_timeline(self, row, state=3, metadata_state="queued"):
+        """A TimelineEntry for one row, with the field set measured off a real
+        refresh: identifier, sectionID and itemID as STRINGS, the numeric type,
+        the title, `state` and `metadataState`."""
+        self.notify("timeline", "TimelineEntry", [{
+            "identifier": "com.plexapp.plugins.library",
+            "sectionID": str(row.get("librarySectionID", "")),
+            "itemID": str(row.get("ratingKey", "")),
+            "type": self.TIMELINE_TYPES.get(row.get("type"), 1),
+            "title": row.get("title") or "",
+            "state": state,
+            "metadataState": metadata_state,
+            "updatedAt": int(time.time()),
+        }])
 
     # -- helpers ---------------------------------------------------------
 
@@ -861,10 +928,14 @@ class PlexSim:
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
             return self.system_scanners(segments[2] if len(segments) > 2 else None)
-        if route.startswith("/system/appstore") or route.startswith("/:/plugins"):
-            # The Plugins page. plexsim hosts none; an empty list is what a PMS
-            # with no channels installed returns.
-            return self.bare_container(size=0)
+        if route.startswith("/system/appstore"):
+            # Measured: a real PMS 404s the appstore paths -- the channel store
+            # is gone, and the client's Plugins page copes with that.
+            return ("error", 404, "plexsim: not found")
+        if route.startswith("/:/plugins"):
+            # The Plugins page. A real PMS lists its built-in agents here;
+            # plexsim has no plug-in host, so the honest answer is none.
+            return self.bare_container(size=0, Plugin=[])
         if route == "/system/services/url/lookup":
             return self.bare_container(size=0)
 
@@ -1470,6 +1541,9 @@ class PlexSim:
                 logger.info("SECTION refresh cancelled %s", section_id)
                 return ("empty", 200)
             self.refreshing.add(str(section_id))
+            # Measured title, verbatim: it is what the header's activity spinner
+            # shows while a scan runs.
+            self.notify_status('Scanning the "%s" section' % (section.get("title") or ""))
             rows = self.catalog.section_items(section_id)
             for row in rows:
                 if query.get("force") == "1":
@@ -2434,6 +2508,9 @@ class PlexSim:
 
         if action == "refresh":
             self.library.refresh(row)
+            # A real PMS pushes a TimelineEntry for the row it just refreshed;
+            # without it the client keeps its stale poster until a reload.
+            self.notify_timeline(row)
             logger.info("REFRESH %s (%s)", row["ratingKey"], row.get("title"))
         elif action == "analyze":
             # The catalog rows already carry ffprobe-derived Media attributes;
@@ -2930,6 +3007,8 @@ class PlexSim:
             for section in self.catalog.sections:
                 for row in self.catalog.section_items(section["key"]):
                     self.library.add_activity(row.get("title") or "")
+            # The message a real PMS pushes when this task finishes, verbatim.
+            self.notify_progress("The butler refreshed all libraries.")
         logger.info("BUTLER ran %s", name)
         return ("empty", 200)
 
@@ -3270,12 +3349,29 @@ class Handler(BaseHTTPRequestHandler):
     # RFC6455's fixed handshake GUID.
     WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-    def _serve_websocket(self):
-        """Complete the RFC6455 handshake and hold the event channel open.
+    @staticmethod
+    def _ws_frame(payload):
+        """One unmasked text frame. Server frames are never masked (RFC6455)."""
+        header = bytearray([0x81])
+        length = len(payload)
+        if length < 126:
+            header.append(length)
+        elif length < 65536:
+            header.append(126)
+            header += struct.pack("!H", length)
+        else:
+            header.append(127)
+            header += struct.pack("!Q", length)
+        return bytes(header) + payload
 
-        plexsim has no events to push, so the socket only needs to exist and
-        stay healthy -- but it does need a genuine 101 upgrade, because the web
-        client reads a failed upgrade as a broken server.
+    def _serve_websocket(self):
+        """Complete the RFC6455 handshake and push events down it.
+
+        It needs a genuine 101 upgrade, because the web client reads a failed
+        upgrade as a broken server. And it needs to carry real frames: a real
+        PMS pushes `timeline`, `activity`, `status` and `progress` down this
+        channel, and a client that receives none of them falls back to polling
+        and never sees a change made anywhere else.
         """
         key = self.headers.get("Sec-WebSocket-Key")
         if not key:
@@ -3301,20 +3397,31 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.flush()
         logger.info("websocket event channel opened")
 
+        sim = self.server.sim
+        lock = threading.Lock()
+
+        def sink(payload):
+            # One writer at a time: two notifications interleaving mid-frame
+            # would corrupt the stream for the life of the connection.
+            with lock:
+                self.wfile.write(self._ws_frame(payload))
+                self.wfile.flush()
+
+        sim.add_socket(sink)
         # Keep it alive with server-side pings. A silent socket is eventually
         # reaped by proxies, and Cloudflare sits in front of this one.
-        import struct as _struct
-        import time as _time
-
-        deadline = _time.time() + 3600
+        deadline = time.time() + 3600
         try:
-            while _time.time() < deadline:
-                _time.sleep(20)
-                # opcode 0x9 = ping, FIN set, no payload.
-                self.wfile.write(_struct.pack("!BB", 0x89, 0x00))
-                self.wfile.flush()
+            while time.time() < deadline:
+                time.sleep(20)
+                with lock:
+                    # opcode 0x9 = ping, FIN set, no payload.
+                    self.wfile.write(struct.pack("!BB", 0x89, 0x00))
+                    self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             logger.debug("websocket event channel closed by client")
+        finally:
+            sim.drop_socket(sink)
 
     def _serve_eventsource(self):
         """Server-Sent Events channel the web app subscribes to on connect.
