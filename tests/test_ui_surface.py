@@ -1005,8 +1005,12 @@ def main():
                                                % (movie, quote(entries[-1]["key"])))
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
         row = (detail.get("Metadata") or [{}])[0]
+        # Decoded defensively: a server that answers image BYTES here (what plexsim
+        # did before this was measured) must FAIL this check, not raise a
+        # UnicodeDecodeError that kills the run before the rest of the suite speaks.
         check("selecting a poster answers the new artwork path as its body",
-              status == 200 and body.decode() == str(row.get("thumb")),
+              status == 200
+              and body.decode("utf-8", "replace") == str(row.get("thumb")),
               "HTTP %s body=%r thumb=%r" % (status, body[:48], row.get("thumb")))
         status_plural, _, _ = request(base, "PUT", "/library/metadata/%s/posters?url=%s"
                                                   % (movie, quote(entries[-1]["key"])))
