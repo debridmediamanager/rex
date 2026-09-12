@@ -1796,6 +1796,157 @@ range is not an error (`Range: cheese=0-9` answers `206 Content-Range: bytes 0-9
 -- the unit is discarded and the numbers still parsed); and the version and filename
 segments of a part URL are decorative (a wrong version or extension still serves).
 
+#### The default listing order is `titleSort`, and every tie falls back to it
+
+plexsim answered a listing in CATALOG order and left ties in whatever order the rows
+arrived in. Measured on both servers: the default is **`titleSort` ascending** (the
+title where no sort title is stored) -- fun's show grid opens on
+`【OSHI NO KO】, 13 Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100`, because The 100's
+titleSort is `100` -- and the SECONDARY key is always titleSort, whatever the primary
+is and whichever direction it runs. So an edited Sort Title never moved a row on
+plexsim, and the grid's own default disagreed with its sort control.
+
+(Collation is the one part not reproduced: the reference uses ICU, so `'Burbs`
+sorts before `#Jowable` and plexsim's byte order puts them the other way. Recorded
+rather than faked -- there is no ICU on the stdlib server path.)
+
+#### `includeAdvanced=1` was ignored, and the Sort menu lost most of its entries
+
+The client sends it on the grid listing and on its FilterCollection, and reads the
+`Sort` list straight into the sort menu. plexsim's Meta was identical with and
+without it. Measured, the flag adds:
+
+| Type | Added |
+|---|---|
+| movie | `year`, `userRating`, `contentRating`, `viewOffset`, `viewCount`, `mediaBitrate` + the `Duplicates` filter (`advanced: true`) |
+| show | `year`, `userRating`, `contentRating`, `addedAt` |
+| season | `season.index,season.titleSort`, `userRating`, `addedAt` |
+| episode | `titleSort` (with a `firstCharacterKey`), `year`, `userRating`, `duration`, `viewOffset`, `viewCount`, `mediaHeight`, `mediaBitrate` + `Duplicates` |
+
+So a movie library went 9 → 15 sorts and 28 → 29 filters, an episode view 7 → 15 and
+17 → 18. And three of the keys it was about to advertise -- `userRating`,
+`contentRating`, `mediaBitrate` -- answered **500** on plexsim's own listing, which is
+an advertised control that breaks the grid the moment it is used.
+
+#### The in-library search box is a SUBSTRING matcher
+
+`/library/sections/{id}/search` is not the same matcher as `/hubs/search`. Measured:
+`?query=ear` finds "Tears of Steel", `?query=a` finds three of five rows, and ONE
+character is enough -- corroborated on fun's 3856-movie library (`?query=ngers` → 11
+rows including `Challengers` and `Passengers`). It is title-only and
+case-insensitive. plexsim routed it through the hub's word-prefix matcher, including
+its two-character floor, so the in-library search box found nothing that did not
+start a word.
+
+#### The "All episodes" row is first, and a paged request drops it
+
+Measured: a show's `/children` puts the `Directory` row **first**, before the seasons,
+and a PAGED request omits it entirely (`size 1, totalSize 2` for one season).
+plexsim appended it to EVERY page and counted it there, so a virtualised list
+mis-measured and every page grew a spurious tile.
+
+#### `nocache` tracks the library TYPE on a listing too — correcting an earlier finding
+
+This file recorded the rule as paged-versus-unpaged. Re-measured on four libraries
+across both servers: a **show** library's `/all` carries `nocache` paged AND unpaged,
+a movie library's never does -- the same rule the secondary containers follow. Since
+the client always pages, plexsim's version meant a show grid never carried it and a
+movie grid carried it when unpaged.
+
+#### Change Poster wrote to a path that served an image
+
+The client's own Change Poster / Change Background builds
+`/library/metadata/{id}/` + (`poster`|`art`) with **type PUT** -- singular -- and then
+does `model.set("thumb", response)`. So the response BODY is the new artwork path.
+Measured: `PUT …/poster?url=…` → `200`, body `/library/metadata/1/thumb/1789241428`;
+the plural `…/posters` is a **404** for a write.
+
+plexsim had it exactly inverted: the plural path took the write (answering an empty
+200) and the singular one served image BYTES. So in the real client Change Poster did
+nothing **and** set the tile's `img src` to a blob of PNG. Its `selected` flag was
+wrong too -- keyed on "is there any artwork at all" rather than on which candidate the
+row points at, so after picking the local placeholder nothing came back selected.
+
+#### Sequence and state: nine things a one-request probe cannot see
+
+- **Removing a collection member did nothing.** The client builds
+  `DELETE /library/collections/{id}/items/{ratingKey}` and assigns the response onto
+  its model; plexsim had no DELETE branch, so it fell through to an empty container --
+  the tile vanished optimistically and came back on the next fetch. Measured: 200 with
+  the collection ROW (new `childCount`, year span), and idempotent. A collection ADD
+  answers the same row, not the `leafCountAdded`/`leafCountRequested` pair a PLAYLIST
+  add answers -- plexsim sent the playlist shape.
+- **`/library/onDeck` was the first twelve catalog rows**, with no view state at all.
+  It is the server-wide Continue Watching list -- every row carries a `viewOffset` --
+  and it is EMPTY on a server with nothing in progress. That endpoint is what every
+  non-web client's On Deck reads.
+- **A resume point under a minute is not stored.** The reference leaves the row
+  untouched at 3 000, 20 000 and 59 000 ms and starts recording at 61 000; plexsim
+  answered `playbackState: ignore` and wrote the offset anyway, so a title glanced at
+  for two seconds appeared in Continue Watching.
+- **"Remove from Continue Watching" HIDES the row and KEEPS the offset.** The
+  reference's `viewOffset` was still 91 000 afterwards; the row simply stops appearing
+  until the next timeline brings it back. plexsim deleted the offset, so the entry
+  also threw away the resume position and the next Play started over. An unknown
+  ratingKey there is a 404.
+- **A scrobble writes NO history row.** The reference's history stayed at one row
+  through three scrobbles -- rows come only from a timeline that reaches the end.
+  plexsim recorded one per mark-as-played, so History and the Top shelf counted things
+  nobody had watched. And a show or season keeps its OWN `viewCount`/`lastViewedAt`,
+  independent of its leaves: it INCREMENTS rather than recomputing (unscrobbling one
+  episode left the show at 2), and unscrobbling the show removes the field. plexsim
+  emitted neither on a parent, so a TV grid's "Last Played" sort had nothing to read.
+- **`historyKey` is monotonic and never reused.** The reference went 34, 35, delete
+  35, then 36; plexsim derived it from the list length, so a delete made the next play
+  reuse the deleted key. And a removed item's history row SURVIVES with its
+  `ratingKey` and `key` stripped -- plexsim kept both, so the History page linked a 404.
+- **Deleting a season's last episode removes the season.** plexsim left it listed with
+  `leafCount 0`, so the show page drew a season tile with nothing behind it.
+- **A playlist does not take a row it already has.** Re-adding answers
+  `leafCountAdded: 0` and leaves the count alone, and a uri naming the same key twice
+  adds it once. plexsim appended every time, so Add to Playlist silently duplicated.
+- **A removed row leaves the play queues.** The queue shrinks, `playQueueTotalCount`
+  drops and the VERSION steps, and the selection moves to a row that still exists.
+  plexsim left the removed row's id as `playQueueSelectedItemID` and never moved the
+  version -- which, by this file's own earlier finding, is exactly the response the
+  client discards.
+
+#### An unknown section id answered a complete, valid library
+
+`GET /library/sections/999/all` was a 200 with `librarySectionID="999"`, and
+`/999/filters` answered 28 filter rows for a library that does not exist, `/999/prefs`
+19 settings. All of them are 404s on a real PMS. A deleted library, a stale bookmark
+or a renumbered section therefore rendered as an empty-but-working one. Fix 4's trap
+from the inside, and neither the replay nor the probe ever asks for a section that is
+not there.
+
+#### The verb gate, leaf by leaf
+
+Measured across 21 section leaves: a real PMS 404s every verb a leaf does not
+implement, and it **never answers 405** -- that status does not appear anywhere on its
+surface. plexsim answered the GET body to any verb, so `DELETE
+/library/sections/1/all` came back 200 with the grid, which tells a client the delete
+was accepted. The verbs each leaf takes: `refresh` GET/POST/DELETE, `emptyTrash` and
+`analyze` PUT, `indexes` DELETE, `prefs` and `all` GET/PUT, everything else GET only;
+and a POST to the section itself is a 404.
+
+Three smaller ones from the same sweep: `/:/timeline` requires **`state`** and is a
+400 without it (it is the only required parameter); a bare `GET /playQueues` is an
+empty 200 while `?type=` is a 400; and `/livetv/epg/lineup`, `/channelmap` and
+`/lineupchannels` are **400** on a server with no tuner rather than the blanket empty
+container plexsim answered for the whole tree.
+
+#### `/:/prefs` was missing eight rows, one of them the server's name
+
+174 on the reference, 169 on plexsim. The one that matters is **`FriendlyName`**:
+`hidden: false, group: "general"`, and the client looks it up BY ID to draw Settings >
+General's server-name field and to set its own `friendlyName`. Without it the field
+did not render, and a write to it was refused as an unknown preference. The other
+seven (`AllowLegacyAgents`, `MachineIdentifier`, `PlexOnlineMail`,
+`ManualPortMappingPort`, `LastAutomaticMappedPort`, `CLDriver`, `CertificateUUID`) are
+now in the sidecar in the reference's own order, with the identity-bearing values
+filled from this server rather than copied.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

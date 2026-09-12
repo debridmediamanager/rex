@@ -453,6 +453,24 @@ precisely how the Seasons bug survived a fix attempt.
 - **Container paging needs BOTH parameters, and the client sends them as HTTP
   HEADERS.** One alone is ignored by a real PMS; a negative size drops paging
   rather than slicing.
+- **The DEFAULT listing order is `titleSort`, and every tie falls back to it** —
+  catalog order is not the default, so an edited Sort Title has to move the row.
+- **`includeAdvanced=1` adds six Sorts to a movie library and eight to an episode
+  view**, plus the Duplicates filter — the client reads that list straight into its
+  sort menu, and every key it advertises has to work on the listing.
+- **`/library/sections/{id}/search` is a SUBSTRING matcher**, one character is enough
+  — NOT the word-prefix matcher `/hubs/search` uses.
+- **Change Poster writes to the SINGULAR path** (`PUT /library/metadata/{id}/poster`)
+  and the response BODY is the new artwork path, which the client assigns onto the
+  row. The plural path is a 404 for a write, and serving image bytes from the
+  singular one sets the tile's img src to a blob of PNG.
+- **A resume point under a minute is not stored**, "Remove from Continue Watching"
+  HIDES the row and KEEPS the offset, a scrobble writes NO history row (only a
+  completed timeline does), and a show keeps its own `viewCount` that increments
+  rather than recomputing.
+- **An unknown section id is a 404 on every leaf** — answering a valid empty library
+  with a working filter bar is fix 4's trap from the inside. And a real PMS never
+  answers 405: every verb a leaf does not implement is a 404.
 - **A `sort=` spec is a comma-separated LIST, and so is each term.**
   `random:<seed>` differs per seed, and `titleSort:desc:nocollate` is descending —
   splitting the spec on its first colon drops the secondary key and reading the
