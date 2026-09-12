@@ -443,13 +443,64 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **184/184 checks against the new
-server, 59/164 against the old one** on the same fixture catalog
+`tests/test_ui_surface.py` covers all of it: **222/222 checks against the new
+server, 62/196 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
 between the two runs because a check that depends on a playlist the old server
 never created does not run at all. Without a TMDB key it is 182/182, with the two
 Fix Match checks skipping rather than passing quietly.
+
+#### The second sweep: what "everything" still did not include
+
+Asked whether anything was left, the answer came from firing every remaining
+path the client bundle holds -- including the ones built dynamically -- at
+plexsim and reading its own `UNKNOWN` log, then measuring each against the
+reference. 28 routes were still landing in the catch-all, and another dozen were
+being answered with an empty container where a real PMS refuses.
+
+Real endpoints that were missing:
+
+| Endpoint | What it is | Measured shape |
+|---|---|---|
+| `/butler`, `POST\|DELETE /butler/{task}` | Scheduled Tasks, and its Run button | root element **`ButlerTasks`** with `ButlerTask` rows — the one response on the whole surface that is not a MediaContainer |
+| `/system` | the system provider's directories | `identifier=com.plexapp.system`, two Directory rows |
+| `/servers` | the legacy server list | `Server` row: name, host, address, port, machineIdentifier, version |
+| `/logs` | the Console's log read | `{size, content}` — **not** the zip; that is `/diagnostics/logs` |
+| `POST /log` | the web client posting its OWN errors | empty 200 |
+| `/library` | the library root | three directories: sections, recentlyAdded, onDeck |
+| `/library/all/top` | most played | a listing |
+| `/hubs?identifier=a,b` | Home asking for named shelves | the filtered subset — plexsim returned all of them, so Home drew rows it had not asked for |
+| `/library/metadata/{id}/subtitles` | the Search Subtitles dialog | `Stream` rows from a subtitle agent; plexsim has none, so the shape with nothing in it |
+| `PUT /library/metadata/{id}/prefs` | a show's episode sorting, a collection's sort mode | empty 200; the **GET is a 404** |
+| `PUT /playlists/{id}/items/{itemID}/move[?after=]` | drag-to-reorder a playlist | no `after` means the FRONT; answers with the playlist row |
+| `PUT /library/collections/{id}/items/{ratingKey}/move[?after=]` | reorder a collection | same, but keyed by the member's **ratingKey**, not a playlistItemID |
+| `/library/sections/{id}/unwatched`, `/resolution` | a listing and an axis the hub shelves link to | `resolution` is read off the Media, not off a tag |
+
+And a class of endpoints where the honest answer is a refusal, because that is
+what a real PMS answers: **every `/player/*` command is a 400** (they belong to a
+player, not to a server — plexsim was telling companion clients their commands
+had been accepted), `/system/proxy` 400, `/library/sections/{id}/search` 400,
+`/library/platforms/*` `/hubs/sections/home*` `/hubs/metadata` and an item's
+`markers` `banner` `chapterImages` `indexes` all 404, `/library/streams/{id}`
+**501**, and `/livetv/*` an empty container.
+
+#### The catch-all now 404s, and that found the last missing endpoint
+
+A real PMS answers an unrouted path with 404 (measured). plexsim's catch-all
+answered 200 with an empty MediaContainer, which is the trap of fix 4 from the
+other side: a client reads that as "this endpoint exists and there is nothing in
+it". The rule that made the empty container look safe — refusing an endpoint
+cleanly is worse than not having it — is about endpoints the client *needs*, and
+the fix for those is to route them.
+
+Flipping it proved its own worth immediately: `conformance.py` broke on
+`GET /library`, an endpoint python-plexapi asks for before anything else and
+which plexsim had never routed. The old catch-all had been hiding it for the
+life of the project. With `/library` implemented, plexapi is back to 29/38 (the
+nine failures are byte reads against placeholder links) with **zero** unrouted
+paths for a full drive, and the web client still renders the item page and the
+full context menu.
 
 `harness/scripts/replay.py` was run against the same server with the recorded
 `reference-walk` corpus. What is left after this work is content (a different
