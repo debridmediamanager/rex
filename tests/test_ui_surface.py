@@ -552,8 +552,31 @@ def main():
     check("unmatch answers an empty 200", is_empty_200(status, body), "HTTP %s" % status)
     # The client shows "Match..." instead of "Fix Match..." precisely when the
     # guid is a local:// one, and neither entry when there is no guid at all.
-    check("unmatch leaves a local:// guid, not an absent one",
-          str(row.get("guid") or "").startswith("local://"), row.get("guid"))
+    # Measured: the guid becomes `tv.plex.agents.none://<ratingKey>`. Either
+    # prefix flips the menu from "Fix Match..." to "Match...", because both
+    # predicates test the guid for `local://` or `none://` -- but an ABSENT guid
+    # offers neither entry, which is the failure this guards.
+    check("unmatch leaves a none:// guid, not an absent one",
+          "none://" in str(row.get("guid") or "")
+          or str(row.get("guid") or "").startswith("local://"), row.get("guid"))
+    check("unmatch keeps the artwork the tile needs",
+          bool(row.get("thumb")) and bool(row.get("Image")),
+          "thumb=%s" % row.get("thumb"))
+    check("unmatch keeps the external Guid array and empties the summary",
+          row.get("summary") == "" and (row.get("Guid") is not None
+                                        or not original.get("Guid")),
+          "summary=%r Guid=%s" % (row.get("summary"), bool(row.get("Guid"))))
+    check("unmatch drops what the agent supplied",
+          not any(row.get(k) for k in ("Genre", "Role", "Director", "studio",
+                                       "contentRating", "audienceRating")),
+          ",".join(k for k in ("Genre", "Role", "Director", "studio",
+                               "contentRating", "audienceRating") if row.get(k))
+          or "all gone")
+    _, still, _ = get(base, "/library/sections/%s/all?unmatched=1" % movie_section)
+    check("an unmatched row is found by the unmatched filter",
+          any(str(r.get("ratingKey")) == str(movie)
+              for r in still.get("Metadata") or []),
+          "%d unmatched row(s)" % len(still.get("Metadata") or []))
     filename = None
     for media in original.get("Media") or []:
         for part in media.get("Part") or []:
