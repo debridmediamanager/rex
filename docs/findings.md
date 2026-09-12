@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **250/250 checks against the new
+`tests/test_ui_surface.py` covers all of it: **252/252 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -607,6 +607,25 @@ now come off the same notification bus, each formatting for itself.
 | A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
 | `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
 | ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
+
+#### A negative result worth keeping: no lock was needed
+
+plexsim is a `ThreadingHTTPServer`, and everything the UI writes -- playlists,
+collections, activities, catalog rows -- is mutable state with nothing guarding
+it. That looks like a defect waiting to happen, so it was measured before being
+"fixed":
+
+- 400 rows, three threads churning the items dict through `merge`/`split` while
+  four threads iterated it through `/library/all`, `/hubs`, a section listing and
+  a genre axis: **33,300 requests, zero tracebacks, zero 5xx.**
+- 320 concurrent playlist creates across eight threads: **320 unique
+  ratingKeys**, and the server's own count agreed.
+
+So no lock was added. Under CPython each of these iterations completes inside one
+bytecode loop and the dict mutations are atomic, which closes the window for the
+access patterns plexsim actually has. The check stays in the suite at a smaller
+size, because the failure mode it guards against -- two clients handed the same
+ratingKey -- would be silent rather than loud.
 
 `harness/scripts/replay.py` was run against the same server with the recorded
 `reference-walk` corpus. What is left after this work is content (a different
