@@ -1722,6 +1722,80 @@ activity frames and never a log line -- and the pane was empty.
 | the 101 upgrade | carries `X-Plex-Protocol`, `Cache-Control` and the CORS pair | the three handshake headers alone |
 | SSE CORS | no CORS headers without an Origin, the echoed origin with one | **`Access-Control-Allow-Origin: *`** unconditionally — the exact bug already fixed once for `_send` |
 
+#### `/photo/:/transcode` refused nothing, and `/:/resources/<anything>` drew a tile
+
+| Request | Reference | plexsim before |
+|---|---|---|
+| no `url` | **400** | 200, a generated grey tile |
+| `width` alone, `height` alone, or neither | **400** | 200 |
+| `width=abc` | **400** | 200 |
+| `url` naming a row the server does not have | **404** | 200, a generated tile |
+| `/:/resources/<unknown>.png` | **404** | 200, a generated tile for any name |
+
+Both dimensions are mandatory -- one alone is not a best-effort resize. And the
+404s matter more than they look: a client that gets a 404 draws its own title-card
+placeholder, while a 200 grey tile is an image it will happily cache.
+
+Two transforms plexsim cannot do and now records rather than ignores silently:
+`format=png` is honoured by a real PMS (real PNG bytes, which the client asks for
+when it composites an overlay that needs alpha), and `blur`/`opacity`/`background`
+are real transforms (a 200x200 poster went from 6727 bytes to 1366 under
+`blur=30`). plexsim has no image codec on its stdlib-only server path, so it passes
+the fetched bytes through unchanged. The client gates those filters on a VERSION
+comparison (`imageFilters: "0.9.9.13"` in its feature table) and plexsim advertises
+1.42.2, so it does send them -- background art renders sharp and fully opaque where
+it should be blurred and dimmed. Recorded as a limitation, not a gap to be papered
+over.
+
+#### An unknown SINGLE-segment path is a 200, not a 404
+
+Measured on both reference servers: `/zzzznope`, `/foo`, `/music`, `/photos`,
+`/video`, `/plugins`, `/prefs`, `/settings`, `/login`, `/logout` all answer
+
+```xml
+<MediaContainer size="0" content="plugins"></MediaContainer>
+```
+
+-- the legacy plug-in dispatcher -- while a MULTI-segment unknown path (`/foo/bar`,
+`/a/b/c`) is a 404. plexsim 404'd all of them, so the four the client bundle names
+were 404s where a real server answers. And bare **`/channels`** is real too (two
+`Directory` rows, `all` and `recentlyViewed`), which slightly corrects the note
+saying the channel paths 404 on a real PMS -- the channel APPSTORE ones do, `/channels`
+does not.
+
+#### Verb routing is per (method, path), and not uniformly
+
+```
+                     POST    PUT    DELETE
+/identity            200     200    200      <- verb-agnostic
+/hubs                200     200    200      <- verb-agnostic
+/library/sections    400     404    404
+/status/sessions     404     404    404
+/media/providers     400     404    404
+```
+
+plexsim answered the GET body -- 200 -- to all nine refusals. Worse, `POST
+/library/sections` **with no parameters at all** answered 201 and really created a
+section called "New Library", which then sat in the sidebar.
+
+#### Part reads carry both validators
+
+Every byte response from a real PMS carries `ETag` (the part's own file hash) and
+`Last-Modified`, on the 200 and on every 206. plexsim sent neither, so a client had
+nothing to revalidate against. plexsim owns no file to hash, so its ETag is a digest
+of what identifies those bytes -- part id, version, size -- which is exactly what an
+opaque validator is for.
+
+Everything else in that area was measured and needs nothing, which is worth
+recording so it is not re-measured: **conditional requests are ignored outright** on
+a real PMS (`If-None-Match` matching and stale, `If-Modified-Since` equal and
+future, `If-Range` matching and stale all return the full 200/206 -- it never
+answers 304); **416** carries no `Content-Range: bytes */size`; a **multi-range**
+collapses to the whole file rather than `multipart/byteranges`; a **malformed**
+range is not an error (`Range: cheese=0-9` answers `206 Content-Range: bytes 0-9`
+-- the unit is discarded and the numbers still parsed); and the version and filename
+segments of a part URL are decorative (a wrong version or extension still serves).
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

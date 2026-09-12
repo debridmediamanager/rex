@@ -2291,6 +2291,69 @@ def main():
           and len(_gzip.decompress(payload)) == int(original),
           "%s -> %s bytes" % (original, compressed))
 
+    print("\n=== artwork refusals, resources, and the paths a real PMS answers ===")
+    # Measured: both dimensions are MANDATORY on /photo/:/transcode, a non-numeric one
+    # is a 400, and a `url` naming a row the server does not have is a 404. plexsim
+    # answered a 200 grey tile to all four, so a client that would have drawn its own
+    # title-card placeholder drew -- and could cache -- plexsim's instead.
+    art_url = quote("/library/metadata/%s/thumb/1" % movie)
+    for spec, want, why in (
+            ("?width=100&height=100", 400, "no url"),
+            ("?url=%s" % art_url, 400, "neither dimension"),
+            ("?url=%s&width=100" % art_url, 400, "width alone"),
+            ("?url=%s&height=100" % art_url, 400, "height alone"),
+            ("?url=%s&width=abc&height=100" % art_url, 400, "a non-numeric width"),
+            ("?url=%s&width=200&height=300"
+             % quote("/library/metadata/9999999/thumb/1"), 404, "an unknown row")):
+        status, _, _ = container(base, "GET", "/photo/:/transcode%s" % spec)
+        check("photo transcode refuses %s" % why, status == want, "HTTP %s" % status)
+    status, _, headers_ = request(base, "GET", "/photo/:/transcode?url=%s"
+                                              "&width=200&height=300" % art_url,
+                                 want_json=False)
+    check("a real transcode still answers",
+          status == 200 and str(headers_.get("Content-Type", "")).startswith("image/"),
+          "HTTP %s %s" % (status, headers_.get("Content-Type")))
+    # A resource name a real PMS does not have is a 404; plexsim drew a tile for any.
+    status_known, _, _ = request(base, "GET", "/:/resources/movie.png", want_json=False)
+    status_unknown, _, _ = request(base, "GET", "/:/resources/nope.png", want_json=False)
+    check("an unknown /:/resources name is a 404",
+          status_known == 200 and status_unknown == 404,
+          "%s / %s" % (status_known, status_unknown))
+    # Measured on both reference servers: an unknown SINGLE-segment path falls into
+    # the legacy plug-in dispatcher and answers 200 with `content="plugins"`, where a
+    # multi-segment one 404s. `/prefs`, `/settings`, `/login` and `/logout` are all
+    # named in the client bundle and were all 404 here.
+    for path_ in ("/zzzznope", "/prefs", "/settings", "/login", "/logout"):
+        status, body_, _ = get(base, path_)
+        check("%s is the plug-in dispatcher's 200, not a 404" % path_,
+              status == 200 and body_.get("content") == "plugins",
+              "HTTP %s content=%r" % (status, body_.get("content")))
+    for path_ in ("/foo/bar", "/a/b/c"):
+        status, _, _ = container(base, "GET", path_)
+        check("%s is still a 404" % path_, status == 404, "HTTP %s" % status)
+    status, channels, _ = get(base, "/channels")
+    check("/channels answers its two rows rather than 404ing",
+          status == 200
+          and [d.get("key") for d in channels.get("Directory") or []]
+              == ["all", "recentlyViewed"],
+          "HTTP %s %s" % (status, [d.get("key") for d in channels.get("Directory") or []]))
+    # A real PMS routes per (method, path) and NOT uniformly: /identity and /hubs
+    # answer any verb, these three refuse with their own statuses. plexsim answered
+    # the GET body to every verb.
+    for method, path_, want in (("POST", "/library/sections", 400),
+                                ("PUT", "/library/sections", 404),
+                                ("DELETE", "/library/sections", 404),
+                                ("POST", "/status/sessions", 404),
+                                ("PUT", "/status/sessions", 404),
+                                ("DELETE", "/status/sessions", 404),
+                                ("POST", "/media/providers", 400),
+                                ("PUT", "/media/providers", 404),
+                                ("DELETE", "/media/providers", 404),
+                                ("POST", "/identity", 200),
+                                ("PUT", "/hubs", 200)):
+        status, _, _ = container(base, method, path_)
+        check("%s %s is a %d" % (method, path_, want), status == want, "HTTP %s" % status)
+
     print("\n=== CORS, which a browser enforces before the server sees anything ===")
     # Measured either side of an Origin header: a real PMS ECHOES the origin and
     # echoes the requested header list on a preflight, and sends no CORS headers

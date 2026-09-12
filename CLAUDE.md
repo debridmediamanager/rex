@@ -505,6 +505,16 @@ precisely how the Seasons bug survived a fix attempt.
   one's metadata, so measuring it costs a re-match. It cost one here.
 - **`viewMode`: a season list is 65593, an episode list 65592.** Inverted, the
   client is handed the episode layout for a season list and draws no seasons.
+- **An unknown SINGLE-segment path is a 200** (`content="plugins"`, the legacy
+  plug-in dispatcher) where a multi-segment one 404s — so `/prefs`, `/settings`,
+  `/login` and `/logout` all answer. Bare `/channels` is real too.
+- **Verb routing is per (method, path) and not uniform**: `/identity` and `/hubs`
+  answer any verb; `POST /library/sections` and `POST /media/providers` are 400 and
+  their PUT/DELETE are 404; every verb on `/status/sessions` but GET is a 404.
+- **`/photo/:/transcode` needs BOTH dimensions** (one alone is a 400, not a
+  best-effort resize), 400s a non-numeric one and 404s a `url` naming a row it does
+  not have — a 404 lets the client draw its own placeholder where a grey 200 tile
+  gets cached. `/:/resources/<unknown>` is a 404 too.
 - **Artwork URLs must be versioned.** Unversioned `/thumb/1` plus ratingKey
   reuse serves a stale poster — one show wore another's art for a day.
 - **Never write to plex.tv's device registry to fake a server.**
