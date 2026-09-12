@@ -1,0 +1,18 @@
+# Runtime state and anything carrying a live credential.
+catalog.json
+claim_state.json
+run.sh
+*.log
+*.err
+*.key
+*.csr
+*.pem
+tmdb_cache.json
+cloudflared.yml
+.live_token
+server_token.txt
+shots/
+webclient/
+webclient_fun/
+__pycache__/
+*.pyc
