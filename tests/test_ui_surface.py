@@ -38,6 +38,7 @@ reason rather than passing quietly.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -328,6 +329,10 @@ def main():
     _, leaves, _ = get(base, "/library/sections/%s/all?type=4" % show_section) \
         if show_section else (None, {}, {})
     for candidate in (leaves.get("Metadata") or []) + movies:
+        # A grid row carries no Stream list (measured), so the track is looked for
+        # on the DETAIL row.
+        _, candidate_detail, _ = get(base, "/library/metadata/%s" % candidate["ratingKey"])
+        candidate = (candidate_detail.get("Metadata") or [candidate])[0]
         for media in candidate.get("Media") or []:
             for part in media.get("Part") or []:
                 if any(s.get("streamType") == 3 for s in part.get("Stream") or []):
@@ -2270,7 +2275,9 @@ def main():
     check("the subtitle search dialog gets its shape back",
           status == 200 and subtitles.get("identifier") == "com.plexapp.plugins.library",
           ",".join(sorted(subtitles)))
-    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=0" % movie)
+    # A MOVIE's own setting. `episodeSort` belongs to a show, and writing a setting
+    # the item's type does not have is a 400 (measured).
+    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
     check("an item preference write is accepted", is_empty_200(status, body),
           "HTTP %s" % status)
     status, unwatched, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
@@ -2624,8 +2631,10 @@ def main():
         _, prefs, _ = get(base, "/:/prefs")
         now = next((s for s in prefs.get("Setting") or []
                     if s.get("id") == writable["id"]), {})
+        # The stored value keeps its TYPE: a bool reads back as a boolean, not as
+        # the "0"/"1" that was written.
         check("a preference write round-trips",
-              is_empty_200(status, body) and str(now.get("value")) == flipped,
+              is_empty_200(status, body) and now.get("value") is (flipped == "1"),
               "%s=%s" % (writable["id"], now.get("value")))
     status, section_prefs, _ = get(base, "/library/sections/%s/prefs" % movie_section)
     section_settings = section_prefs.get("Setting") or []
@@ -2644,8 +2653,10 @@ def main():
                     if s.get("id") == flippable["id"]), {})
         # Section settings have their own id space, so the server-prefs writer
         # would drop every one of them.
+        # A library's bool is stored as the STRING "true" or "false" (measured).
         check("a section preference write round-trips",
-              is_empty_200(status, body) and str(now.get("value")) == flipped,
+              is_empty_200(status, body)
+              and now.get("value") == ("true" if flipped == "1" else "false"),
               "%s=%s" % (flippable["id"], now.get("value")))
 
     status, agents, _ = get(base, "/system/agents")
@@ -2656,10 +2667,10 @@ def main():
     # the plain agent list to every /system/agents* path.
     status, chain, _ = get(base, "/system/agents/tv.plex.agents.movie/config/1")
     rows = chain.get("Agent") or []
+    # Re-measured on both real servers: for a modern agent the chain is EMPTY.
     check("the agent chain for a media type is its own container",
           status == 200 and chain.get("identifier") == "com.plexapp.system"
-          and rows and all(set(a) == {"name", "enabled", "hasPrefs", "identifier"}
-                           for a in rows),
+          and chain.get("size") == 0 and not rows,
           "%d agent(s): %s" % (len(rows), [a.get("identifier") for a in rows]))
     # Measured: the element is `Scanner` with nothing but a `name`, and the
     # container's identifier is com.plexapp.system rather than the library's.
@@ -3023,6 +3034,9 @@ def main():
     # unknown id untitled.
     genre_id = genre_name = None
     for row in rows:
+        # A grid row's tags are text only (measured); the ids are on the detail row.
+        row = (get(base, "/library/metadata/%s" % row.get("ratingKey"))[1]
+               .get("Metadata") or [row])[0]
         for tag in row.get("Genre") or []:
             if tag.get("id") and tag.get("tag"):
                 genre_id, genre_name = tag["id"], tag["tag"]
@@ -4136,6 +4150,440 @@ def main():
               is_empty_200(status, body) and len(row.get("Media") or []) == 1
               and len(listing.get("Metadata") or []) == len(movies),
               "%d row(s) in the section" % len(listing.get("Metadata") or []))
+
+    # ------------------------------------------------------------------
+    # Cycle 5: the settings forms, agents, devices, the wire format, the hubs
+    # and the row shapes -- every check here was measured against the reference
+    # and fails against the server as it stood before.
+    # ------------------------------------------------------------------
+    print("\n=== Settings forms, agents, wire format and row shapes ===")
+
+    def raw(path, method="GET", headers=None):
+        wanted = {"User-Agent": UA}
+        wanted.update(headers or {})
+        req = urllib.request.Request(base.rstrip("/") + path, method=method, headers=wanted)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return response.status, response.read(), dict(response.headers)
+        except urllib.error.HTTPError as error:
+            return error.code, error.read(), dict(error.headers)
+
+    def empties(node, where=""):
+        found = []
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if value is None or value == []:
+                    found.append(where + "." + key)
+                else:
+                    found += empties(value, where + "." + key)
+        elif isinstance(node, list):
+            for value in node:
+                found += empties(value, where)
+        return found
+
+    libraries = get(base, "/library/sections")[1].get("Directory") or []
+    movie_lib = next((d["key"] for d in libraries if d.get("type") == "movie"), None)
+    show_lib = next((d["key"] for d in libraries if d.get("type") == "show"), None)
+    grid = get(base, "/library/sections/%s/all" % movie_lib)[1].get("Metadata") or []
+    c5_movie = grid[0]["ratingKey"] if grid else None
+    c5_show = c5_season = c5_episode = None
+    if show_lib:
+        shows = get(base, "/library/sections/%s/all" % show_lib)[1].get("Metadata") or []
+        c5_show = shows[0]["ratingKey"] if shows else None
+    if c5_show:
+        seasons = get(base, "/library/metadata/%s/children" % c5_show)[1].get("Metadata") or []
+        c5_season = seasons[0]["ratingKey"] if seasons else None
+    if c5_season:
+        episodes = get(base, "/library/metadata/%s/children" % c5_season)[1].get("Metadata") or []
+        c5_episode = episodes[0]["ratingKey"] if episodes else None
+    # Read afresh: `identity` is reused for another value further up `main`.
+    machine_id = get(base, "/identity")[1].get("machineIdentifier")
+
+    # -- the Add Library and Edit Library forms --------------------------
+    status, form, _ = get(base, "/library/sections/prefs?type=1")
+    ids = [s.get("id") for s in form.get("Setting") or []]
+    check("the Add Library form answers for a movie library",
+          status == 200 and len(ids) == 7 and "enableCinemaTrailers" in ids,
+          "HTTP %s, %d setting(s)" % (status, len(ids)))
+    status, form, _ = get(base, "/library/sections/prefs?type=2&agent=tv.plex.agents.series")
+    check("the Add Library form is shaped by the agent",
+          status == 200 and len(form.get("Setting") or []) == 21
+          and "showOrdering" in [s.get("id") for s in form.get("Setting") or []],
+          "HTTP %s, %d setting(s)" % (status, len(form.get("Setting") or [])))
+    status, _, _ = get(base, "/library/sections/prefs")
+    check("the Add Library form needs a type", status == 400, "HTTP %s" % status)
+    status, form, _ = get(base, "/library/sections/%s/prefs?agent=tv.plex.agents.none"
+                          % movie_lib)
+    check("an existing library's form is reshaped by ?agent=",
+          status == 200 and len(form.get("Setting") or []) == 12,
+          "%d setting(s)" % len(form.get("Setting") or []))
+
+    # -- writes to the three kinds of settings ---------------------------
+    prefs_now = {s.get("id"): s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []}
+    original_deck = prefs_now.get("OnDeckLimit")
+    request(base, "PUT", "/:/prefs?OnDeckLimit=41")
+    after = {s.get("id"): s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []}
+    check("an int server setting keeps its type after a write",
+          after.get("OnDeckLimit") == 41 and not isinstance(after.get("OnDeckLimit"), bool),
+          repr(after.get("OnDeckLimit")))
+    status, _, _ = request(base, "PUT", "/:/prefs?OnDeckLimit=abc")
+    after = {s.get("id"): s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []}
+    check("a non-numeric int setting is a 500 and changes nothing",
+          status == 500 and after.get("OnDeckLimit") == 41,
+          "HTTP %s, now %r" % (status, after.get("OnDeckLimit")))
+    status, _, _ = request(base, "PUT", "/:/prefs?OnDeckLimit=42&NoSuchPref=1")
+    after = {s.get("id"): s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []}
+    check("an unknown server setting refuses the whole write",
+          status == 400 and after.get("OnDeckLimit") == 41,
+          "HTTP %s, now %r" % (status, after.get("OnDeckLimit")))
+    request(base, "PUT", "/:/prefs?OnDeckLimit=%s" % original_deck)
+    original_low = prefs_now.get("ScannerLowPriority")
+    request(base, "PUT", "/:/prefs?ScannerLowPriority=abc")
+    after = {s.get("id"): s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []}
+    check("a bool server setting is false for anything but 1 or true",
+          after.get("ScannerLowPriority") is False, repr(after.get("ScannerLowPriority")))
+    request(base, "PUT", "/:/prefs?ScannerLowPriority=%s"
+            % ("1" if original_low in (True, "1", "true") else "0"))
+    check("the server settings carry no GPU the server does not have",
+          "TranscoderHEVCOptimize" not in prefs_now and "TranscoderHEVCEncodingMode" not in prefs_now,
+          "%d setting(s)" % len(prefs_now))
+
+    library_prefs = {s.get("id"): s.get("value") for s in
+                     get(base, "/library/sections/%s/prefs" % movie_lib)[1].get("Setting") or []}
+    status, _, _ = request(base, "PUT", "/library/sections/%s/prefs?hidden=1&NoSuchPref=1"
+                           % movie_lib)
+    now = {s.get("id"): s.get("value") for s in
+           get(base, "/library/sections/%s/prefs" % movie_lib)[1].get("Setting") or []}
+    check("an unknown library setting refuses the whole write",
+          status == 400 and now.get("hidden") == library_prefs.get("hidden"),
+          "HTTP %s, hidden=%r" % (status, now.get("hidden")))
+    status, _, _ = request(base, "PUT", "/library/sections/%s/prefs?hidden=abc" % movie_lib)
+    now = {s.get("id"): s.get("value") for s in
+           get(base, "/library/sections/%s/prefs" % movie_lib)[1].get("Setting") or []}
+    check("a non-integer library setting is ignored",
+          status == 200 and now.get("hidden") == library_prefs.get("hidden"),
+          "HTTP %s, hidden=%r" % (status, now.get("hidden")))
+    request(base, "PUT", "/library/sections/%s/prefs?enableCinemaTrailers=yes" % movie_lib)
+    now = {s.get("id"): s.get("value") for s in
+           get(base, "/library/sections/%s/prefs" % movie_lib)[1].get("Setting") or []}
+    check("a bool library setting stores \"false\" for anything but 1 or true",
+          now.get("enableCinemaTrailers") == "false", repr(now.get("enableCinemaTrailers")))
+    request(base, "PUT", "/library/sections/%s/prefs?enableCinemaTrailers=%s"
+            % (movie_lib, library_prefs.get("enableCinemaTrailers")))
+
+    if c5_show:
+        status, _, _ = request(base, "PUT", "/library/metadata/%s/prefs?NoSuchPref=1" % c5_show)
+        row = (get(base, "/library/metadata/%s" % c5_show)[1].get("Metadata") or [{}])[0]
+        check("an item setting its type does not have is a 400 and stores nothing",
+              status == 400 and "NoSuchPref" not in row and "_pairs" not in row,
+              "HTTP %s" % status)
+        request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=abc" % c5_show)
+        row = (get(base, "/library/metadata/%s?includePreferences=1" % c5_show)[1]
+               .get("Metadata") or [{}])[0]
+        setting = next((s for s in (row.get("Preferences") or {}).get("Setting") or []
+                        if s.get("id") == "flattenSeasons"), {})
+        check("an item setting that does not parse shows on the row, not in the setting",
+              row.get("flattenSeasons") == "abc" and setting.get("value") == "-1",
+              "row=%r setting=%r" % (row.get("flattenSeasons"), setting.get("value")))
+        request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=" % c5_show)
+        row = (get(base, "/library/metadata/%s" % c5_show)[1].get("Metadata") or [{}])[0]
+        check("an empty item setting clears it", "flattenSeasons" not in row,
+              repr(row.get("flattenSeasons")))
+    if c5_episode:
+        status, _, _ = request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=1"
+                               % c5_episode)
+        check("an episode has no settings to write", status == 400, "HTTP %s" % status)
+
+    # -- refusals and small endpoints ------------------------------------
+    status, _, _ = get(base, "/library/metadata/%s/refresh" % c5_movie)
+    check("a wrong verb on an item action is a 404, never a 405", status == 404,
+          "HTTP %s" % status)
+    status, agents, _ = get(base, "/system/agents?mediaType=1")
+    agent_rows = agents.get("Agent") or []
+    movie_agent = next((a for a in agent_rows if a.get("identifier") == "tv.plex.agents.movie"), {})
+    check("a movie library is offered its three modern agents",
+          [a.get("identifier") for a in agent_rows]
+          == ["tv.plex.agents.movie", "tv.plex.agents.none", "tv.plex.agents.nfo.movie"],
+          ",".join(str(a.get("identifier")) for a in agent_rows))
+    check("an agent's languages carry the default the dialog preselects",
+          len(movie_agent.get("Language") or []) > 20
+          and [l.get("code") for l in movie_agent.get("Language") or [] if l.get("default")]
+          == ["en-US"], "%d language(s)" % len(movie_agent.get("Language") or []))
+    status, _, _ = get(base, "/system/agents?mediaType=abc")
+    check("a non-numeric agent media type is a 400", status == 400, "HTTP %s" % status)
+    statuses = [get(base, path)[0] for path in (
+        "/system/agents/tv.plex.agents.movie/config/99",
+        "/system/agents/attribution?identifier=tv.plex.agents.movie",
+        "/system/agents/attribution/image?identifier=tv.plex.agents.movie",
+        "/system/agents/contributors",
+        "/:/plugins/tv.plex.agents.movie/prefs")]
+    check("agent config, attribution and plug-in prefs refuse like a real PMS",
+          statuses == [404, 404, 404, 500, 404], str(statuses))
+    status, chain, _ = get(base, "/system/agents/tv.plex.agents.movie/config/1")
+    check("a modern agent's contributor chain is an empty container",
+          status == 200 and chain.get("size") == 0 and not chain.get("Agent"),
+          "HTTP %s size=%s" % (status, chain.get("size")))
+    status, scanners, _ = get(base, "/system/scanners/13")
+    status_bad, _, _ = get(base, "/system/scanners/99")
+    check("scanners are listed per library TYPE",
+          status == 200 and [s.get("name") for s in scanners.get("Scanner") or []]
+          == ["Plex Photo Scanner"] and status_bad == 500,
+          "HTTP %s / %s" % (status, status_bad))
+    status, near, _ = get(base, "/library/metadata/%s/nearest" % c5_movie)
+    check("nearest answers an empty library container", status == 200 and near.get("size") == 0,
+          "HTTP %s" % status)
+    status, channels, _ = get(base, "/channels/all")
+    check("/channels/all answers the plug-in container",
+          status == 200 and channels.get("content") == "plugins", "HTTP %s" % status)
+    status, _, _ = request(base, "GET", "/log")
+    check("a log line with no level or message is a 400", status == 400, "HTTP %s" % status)
+    status, paths, _ = get(base, "/services/browse")
+    status_plain, _, _ = get(base, "/services/browse/%s" % quote("L3BsZXhzaW0="))
+    status_files, children, _ = get(base, "/services/browse/L3BsZXhzaW0=?includeFiles=1")
+    check("the folder picker walks a filesystem",
+          status == 200 and (paths.get("Path") or [{}])[0].get("path") == "/"
+          and status_plain == 400 and status_files == 200 and children.get("Path"),
+          "HTTP %s / %s / %s" % (status, status_plain, status_files))
+    status, tags, _ = get(base, "/library/tags?type=1")
+    status_bare, _, _ = get(base, "/library/tags")
+    check("the tag table lists a type's tags with their filters",
+          status == 200 and tags.get("Directory")
+          and all(str(t.get("filter", "")).startswith("genre=") and t.get("tagType") == 1
+                  for t in tags.get("Directory") or [])
+          and status_bare == 400,
+          "HTTP %s, %d tag(s), bare %s" % (status, len(tags.get("Directory") or []), status_bare))
+
+    # -- devices, play attribution and view counts -----------------------
+    player = {"X-Plex-Client-Identifier": "plexsim-c5-player", "X-Plex-Device-Name": "C5 Player",
+              "X-Plex-Platform": "c5platform", "Accept": "application/json"}
+    duration = int((get(base, "/library/metadata/%s" % c5_movie)[1].get("Metadata") or [{}])[0]
+                   .get("duration") or 600000)
+    for state, offset in (("playing", duration - 5000), ("stopped", duration)):
+        raw("/:/timeline?ratingKey=%s&key=%s&state=%s&time=%d&duration=%d"
+            % (c5_movie, quote("/library/metadata/%s" % c5_movie), state, offset, duration),
+            headers=player)
+    devices = get(base, "/devices")[1].get("Device") or []
+    seen = next((d for d in devices if d.get("clientIdentifier") == "plexsim-c5-player"), {})
+    check("/devices lists every client with its name and platform",
+          seen.get("name") == "C5 Player" and seen.get("platform") == "c5platform",
+          "%d device(s)" % len(devices))
+    status_one, one, _ = get(base, "/devices/%s" % seen.get("id"))
+    status_bad, _, _ = get(base, "/devices/abc")
+    check("one device reads by id, and an unknown id is a 404",
+          status_one == 200 and (one.get("Device") or [{}])[0].get("id") == seen.get("id")
+          and status_bad == 404, "HTTP %s / %s" % (status_one, status_bad))
+    history = get(base, "/status/sessions/history/all?sort=viewedAt:desc")[1].get("Metadata") or []
+    # The NEWEST row by historyKey: the suite played this movie earlier, and two
+    # plays in the same second tie on viewedAt.
+    played = sorted((h for h in history if str(h.get("ratingKey")) == str(c5_movie)),
+                    key=lambda h: int(str(h.get("historyKey") or "0").rsplit("/", 1)[-1]))
+    check("a completed play is attributed to the device that played it",
+          played and played[-1].get("deviceID") == seen.get("id"),
+          "deviceID=%s device=%s" % (played[-1].get("deviceID") if played else None,
+                                     seen.get("id")))
+    status, top, _ = get(base, "/library/metadata/%s/users/top" % c5_movie)
+    check("an item's top users count its completed views",
+          status == 200 and (top.get("Account") or [{}])[0].get("globalViewCount", 0) >= 1,
+          "HTTP %s %s" % (status, top.get("Account")))
+    if c5_season:
+        status, _, _ = get(base, "/library/metadata/%s/users/top" % c5_season)
+        check("a season has no top users: a 500", status == 500, "HTTP %s" % status)
+    stats = get(base, "/statistics/bandwidth")[1].get("StatisticsBandwidth") or []
+    check("statistics with no timespan answer every rollup",
+          {row.get("timespan") for row in stats} == {0, 1, 2, 3, 4},
+          str(sorted({row.get("timespan") for row in stats})))
+
+    # -- the wire format -------------------------------------------------
+    formats = []
+    for accept in ("application/xml, application/json", "application/json; charset=utf-8",
+                   "Application/JSON", "application/json, text/plain, */*"):
+        _, body, _ = raw("/library/sections", headers={"Accept": accept})
+        formats.append("json" if body[:1] == b"{" else "xml")
+    check("Accept is read the way a real PMS reads it",
+          formats == ["xml", "xml", "xml", "json"], ",".join(formats))
+    _, detail, _ = get(base, "/library/metadata/%s" % c5_movie)
+    _, hubs_doc, _ = get(base, "/hubs")
+    check("JSON carries no null and no empty list",
+          not empties(detail) and not empties(hubs_doc),
+          ",".join((empties(detail) + empties(hubs_doc))[:4]))
+    _, xml_body, _ = request(base, "GET", "/library/metadata/%s" % c5_movie, want_json=False)
+    rates = re.findall(r'frameRate="([^"]*)"', xml_body.decode("utf-8", "replace"))
+    check("a stream's frameRate is written with three decimals",
+          rates and all(re.match(r"^\d+\.\d{3}$", r) for r in rates), str(rates[:2]))
+    media = ((detail.get("Metadata") or [{}])[0].get("Media") or [{}])[0]
+    part = (media.get("Part") or [{}])[0]
+    video = next((s for s in part.get("Stream") or [] if s.get("streamType") == 1), {})
+    check("a non-mp4 Media carries no streaming flags but does carry hasVoiceActivity",
+          (media.get("container") in ("mp4", "mov", "m4v")
+           or ("optimizedForStreaming" not in media and "has64bitOffsets" not in media))
+          and media.get("hasVoiceActivity") is False and "hasThumbnail" not in part
+          and isinstance(video.get("bitDepth", 8), int),
+          "container=%s" % media.get("container"))
+
+    # -- row shapes ------------------------------------------------------
+    row = (detail.get("Metadata") or [{}])[0]
+    check("a movie row has no filename originalTitle, no default lock and no Location",
+          not str(row.get("originalTitle", "")).lower().endswith((".mkv", ".mp4", ".webm", ".avi"))
+          and row.get("Field") != [{"locked": True, "name": "thumb"}]
+          and "Location" not in row and "rating" not in row,
+          ",".join(k for k in ("originalTitle", "Field", "Location", "rating") if k in row))
+    everything = []
+    for library in (movie_lib, show_lib):
+        if library:
+            everything += get(base, "/library/sections/%s/all" % library)[1].get("Metadata") or []
+    wrong = [r.get("title") for r in everything
+             if ("titleSort" in r and r["titleSort"] == r.get("title"))
+             or (str(r.get("title", "")).startswith("The ") and r.get("titleSort") != r["title"][4:])]
+    check("titleSort is the article-stripped title, sent only when it differs",
+          not wrong, ",".join(str(w) for w in wrong[:3]))
+    if c5_season:
+        season_row = (get(base, "/library/metadata/%s" % c5_season)[1].get("Metadata") or [{}])[0]
+        check("a season row carries no year, skipCount, theme or titleSort",
+              not any(k in season_row for k in ("year", "skipCount", "theme", "titleSort")),
+              ",".join(k for k in ("year", "skipCount", "theme", "titleSort") if k in season_row))
+        _, episodes_doc, _ = get(base, "/library/metadata/%s/children" % c5_season)
+        show_title = (get(base, "/library/metadata/%s" % c5_show)[1].get("Metadata") or [{}])[0].get("title")
+        check("an episode list's container is presented as the show's",
+              episodes_doc.get("title1") == show_title and episodes_doc.get("parentTitle") == ""
+              and isinstance(episodes_doc.get("grandparentRatingKey"), int)
+              and not any(k in episodes_doc for k in ("summary", "parentYear", "grandparentYear")),
+              "title1=%r parentTitle=%r" % (episodes_doc.get("title1"), episodes_doc.get("parentTitle")))
+    if c5_episode:
+        episode_row = (get(base, "/library/metadata/%s" % c5_episode)[1].get("Metadata") or [{}])[0]
+        check("an episode row carries no theme of its own", "theme" not in episode_row
+              and episode_row.get("grandparentTheme"), str(episode_row.get("theme")))
+    grid = get(base, "/library/sections/%s/all" % movie_lib)[1].get("Metadata") or []
+    heavy = [r.get("title") for r in grid
+             if any(set(t) != {"tag"} for key in ("Genre", "Country", "Director", "Writer", "Role")
+                    for t in r.get(key) or [])
+             or any("Stream" in p for m in r.get("Media") or [] for p in m.get("Part") or [])
+             or any(k in r for k in ("Location", "Rating", "Field", "librarySectionID"))]
+    check("a grid row is the light projection: text tags, no streams, no section fields",
+          grid and not heavy, ",".join(str(h) for h in heavy[:3]))
+    _, tree, _ = get(base, "/library/metadata/%s/tree" % c5_movie)
+    tree_part = (((tree.get("MetadataItem") or [{}])[0].get("MediaItem") or [{}])[0]
+                 .get("MediaPart") or [{}])[0]
+    tree_video = next((s for s in tree_part.get("MediaStream") or [] if s.get("type") == 1), {})
+    check("the tree's MediaStream numbers are strings and its part has no container",
+          isinstance(tree_video.get("bitDepth"), str) and "container" not in tree_part
+          and "bitrate" not in tree_video, repr(tree_video.get("bitDepth")))
+    check("a library row carries no composite",
+          libraries and not any("composite" in d for d in libraries),
+          ",".join(str(d.get("key")) for d in libraries if "composite" in d))
+    _, deck, _ = get(base, "/library/onDeck")
+    _, recent, _ = get(base, "/library/recentlyAdded")
+    check("the server-wide onDeck and recentlyAdded lists are mixedParents",
+          deck.get("mixedParents") is True and recent.get("mixedParents") is True,
+          "%s/%s" % (deck.get("mixedParents"), recent.get("mixedParents")))
+    _, root, _ = get(base, "/")
+    check("GET / carries the five capability flags /media/providers does not",
+          all(root.get(flag) is True for flag in
+              ("hubSearch", "itemClusters", "mediaProviders", "multiuser", "transcoderPhoto")),
+          ",".join(f for f in ("hubSearch", "itemClusters", "mediaProviders", "multiuser",
+                               "transcoderPhoto") if root.get(f) is not True))
+
+    # -- hubs, related, common, sorts ------------------------------------
+    global_hubs = hubs_doc.get("Hub") or []
+    check("the global hubs are the eight measured shelves, in order",
+          [h.get("hubIdentifier") for h in global_hubs]
+          == ["home.continue", "home.ondeck", "home.movies.recent", "home.television.recent",
+              "home.music.recent", "home.photos.recent", "home.videos.recent", "home.playlists"]
+          and all(h.get("key") and h.get("context") and h.get("style") and h.get("promoted")
+                  for h in global_hubs),
+          ",".join(str(h.get("hubIdentifier")) for h in global_hubs))
+    _, library_hubs, _ = get(base, "/hubs/sections/%s" % movie_lib)
+    shelves = library_hubs.get("Hub") or []
+    released = next((h for h in shelves if str(h.get("hubIdentifier", "")).startswith(
+        "movie.recentlyreleased")), {})
+    check("a library shelf names its own rows in hubKey and carries no section fields",
+          shelves and all(("hubKey" in h) == bool(h.get("size")) for h in shelves)
+          and all(str(h.get("hubKey", "/library/metadata/")).startswith("/library/metadata/")
+                  for h in shelves)
+          and not any("librarySectionID" in h for h in shelves),
+          ",".join("%s:%s" % (h.get("hubIdentifier"), h.get("hubKey")) for h in shelves[:3]))
+    stale = [r for r in released.get("Metadata") or []
+             if str(r.get("originallyAvailableAt") or "") <
+             time.strftime("%Y-%m-%d", time.gmtime(time.time() - 366 * 86400))]
+    check("Recently Released honours its own one-year window", not stale,
+          "%d row(s) older than a year" % len(stale))
+    # An item that HAS related titles: earlier edits in this run replace genres, so
+    # the first movie may have lost every neighbour it shared one with. Two movies
+    # are given one shared genre first, so this cannot pass by comparing nothing.
+    for candidate in grid[:2]:
+        request(base, "PUT", "/library/metadata/%s?%s=%s"
+                % (candidate["ratingKey"], quote("genre[0].tag.tag"), quote("Cycle5 Related")))
+    related_item = wanted_hubs = None
+    for candidate in grid:
+        _, hub_related, _ = get(base, "/hubs/metadata/%s/related" % candidate["ratingKey"])
+        if hub_related.get("Hub"):
+            related_item = candidate["ratingKey"]
+            wanted_hubs = [h.get("hubIdentifier") for h in hub_related["Hub"]]
+            break
+    if related_item is None:
+        skip("the library form of Related carries the hubs form's shelves",
+             "no movie shares a genre with another at this point in the run")
+    else:
+        _, library_related, _ = get(base, "/library/metadata/%s/related" % related_item)
+        _, with_related, _ = get(base, "/library/metadata/%s?includeRelated=1" % related_item)
+        check("the library form of Related carries the hubs form's shelves",
+              [h.get("hubIdentifier") for h in library_related.get("Hub") or []]
+              == wanted_hubs, "%s vs %s" % (wanted_hubs, library_related.get("size")))
+        related_block = (with_related.get("Metadata") or [{}])[0].get("Related") or {}
+        check("includeRelated=1 carries the same shelves",
+              [h.get("hubIdentifier") for h in related_block.get("Hub") or []] == wanted_hubs,
+              str(related_block)[:80])
+    _, common_all, _ = get(base, "/library/sections/%s/common?type=1" % movie_lib)
+    shared = (common_all.get("Metadata") or [{}])[0]
+    check("the select-all Common is computed over the whole filtered set",
+          "ratingKey" in str(shared.get("mixedFields", "")).split(",")
+          and shared.get("guid") == "" and "key" not in shared,
+          "mixedFields=%r" % shared.get("mixedFields"))
+    _, common_one, _ = get(base, "/library/sections/%s/common?type=1&id=%s" % (movie_lib, c5_movie))
+    single = (common_one.get("Metadata") or [{}])[0]
+    check("a single item's Common has its key and an empty guid",
+          single.get("key") == "/library/metadata/%s/children" % c5_movie
+          and single.get("guid") == "" and single.get("mixedFields") == "",
+          "key=%r guid=%r" % (single.get("key"), single.get("guid")))
+    _, sorts, _ = get(base, "/library/sections/%s/sorts?includeAdvanced=1" % movie_lib)
+    sort_keys = [s.get("key") for s in sorts.get("Directory") or []]
+    check("the advanced sorts are interleaved, Year second",
+          sort_keys[:3] == ["titleSort", "year", "originallyAvailableAt"] and len(sort_keys) == 15,
+          ",".join(str(k) for k in sort_keys[:4]))
+    if show_lib:
+        _, season_sorts, _ = get(base, "/library/sections/%s/sorts?type=3" % show_lib)
+        check("a library's sorts are per type",
+              [s.get("key") for s in season_sorts.get("Directory") or []]
+              == ["show.titleSort,index", "random"],
+              ",".join(str(s.get("key")) for s in season_sorts.get("Directory") or []))
+
+    # -- an emptied playlist, and a collection read as an item ----------
+    uri = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine_id, c5_movie))
+    _, made, _ = container(base, "POST", "/playlists?type=video&title=Cycle5&smart=0&uri=%s" % uri)
+    playlist_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if playlist_key:
+        members = get(base, "/playlists/%s/items" % playlist_key)[1].get("Metadata") or []
+        if members:
+            request(base, "DELETE", "/playlists/%s/items/%s"
+                    % (playlist_key, members[0].get("playlistItemID")))
+        emptied = (get(base, "/playlists/%s" % playlist_key)[1].get("Metadata") or [{}])[0]
+        _, emptied_items, _ = get(base, "/playlists/%s/items" % playlist_key)
+        check("an emptied playlist carries no composite and no duration",
+              "composite" not in emptied and "duration" not in emptied
+              and "duration" not in emptied_items,
+              ",".join(k for k in ("composite", "duration") if k in emptied))
+        request(base, "DELETE", "/playlists/%s" % playlist_key)
+    _, made, _ = container(base, "POST", "/library/collections?type=1&title=Cycle5&smart=0"
+                           "&sectionId=%s&uri=%s" % (movie_lib, uri))
+    collection_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if collection_key:
+        _, as_item, _ = get(base, "/library/metadata/%s" % collection_key)
+        collection_row = (as_item.get("Metadata") or [{}])[0]
+        check("a collection read as an item carries the library container",
+              as_item.get("identifier") == "com.plexapp.plugins.library"
+              and as_item.get("librarySectionID") is not None
+              and collection_row.get("librarySectionTitle"),
+              ",".join(sorted(k for k in as_item if not isinstance(as_item[k], list))))
+        request(base, "DELETE", "/library/collections/%s" % collection_key)
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

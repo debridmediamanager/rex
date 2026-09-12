@@ -38,6 +38,24 @@ def _attr(value):
     return str(value)
 
 
+def _format(key, value, row):
+    """One attribute, where the few number formats that are per FIELD apply.
+
+    Measured: a real PMS writes most floats the way Python does (`audienceRating`
+    is `"5.0"`, never `"5"`), but a stream's `frameRate` always carries three
+    decimals (`"24.000"`, `"29.970"`), and a `double` Setting's whole value drops
+    its fraction (`requestLimitsScale` is `value="1"`). plexsim wrote `"24.0"` and
+    `"1.0"`.
+    """
+    if isinstance(value, float) and not isinstance(value, bool):
+        if key == "frameRate":
+            return "%.3f" % value
+        if (key in ("value", "default") and row.get("type") == "double"
+                and value == int(value)):
+            return str(int(value))
+    return _attr(value)
+
+
 def _element_name(key, row, overrides=None):
     """The element a container key renders as.
 
@@ -71,7 +89,7 @@ def _render(name, row, out, overrides=None):
             elif value:
                 attrs.append((key, ",".join(_attr(v) for v in value)))
         else:
-            attrs.append((key, _attr(value)))
+            attrs.append((key, _format(key, value, row)))
 
     out.append("<" + name)
     for key, value in attrs:

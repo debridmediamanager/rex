@@ -182,7 +182,9 @@ def _video_stream(stream, stream_id):
         "profile": (stream.get("profile") or "").lower() or None,
         "level": stream.get("level"),
         "refFrames": stream.get("refs"),
-        "bitDepth": stream.get("bits_per_raw_sample") or 8,
+        # ffprobe reports this as a STRING; a real PMS sends an integer, and a
+        # typed client decoding `"8"` into an int field fails the whole row.
+        "bitDepth": _int_or(stream.get("bits_per_raw_sample"), 8),
         "chromaSubsampling": stream.get("pix_fmt") and _chroma(stream["pix_fmt"]),
         # ffprobe has all three of these and a real PMS carries them; Get Info
         # prints them. `hasScalingMatrix` is NOT here on purpose: a real PMS
@@ -206,6 +208,13 @@ def _video_stream(stream, stream_id):
     if bitrate:
         row["bitrate"] = int(int(bitrate) / 1000)
     return stream_titles(row)
+
+
+def _int_or(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _chroma(pix_fmt):
@@ -331,7 +340,6 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "container": container,
         "videoProfile": video_profile,
         "audioProfile": (first_audio.get("profile") or "").lower() or None,
-        "hasThumbnail": False,
         # A real PMS reports these only under `?checkFiles=1` -- measured: a plain
         # detail read carries neither. plexsim sends them ALWAYS on purpose,
         # because plezy re-fetches metadata in a loop until every part carries all
@@ -358,9 +366,53 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "videoFrameRate": _frame_rate_token(video.get("r_frame_rate")) if video else None,
         "videoProfile": video_profile,
         "audioProfile": (first_audio.get("profile") or "").lower() or None,
-        # plexsim never repackages, so the stream is exactly what the source is.
-        "optimizedForStreaming": False,
-        "has64bitOffsets": False,
         "Part": [part],
     }
+    return normalize_media(media)
+
+
+# Containers that HAVE a moov atom, which is what the two streaming flags describe.
+MP4_FAMILY = ("mp4", "m4v", "mov")
+
+
+def normalize_media(media):
+    """The per-container flag rules a real PMS applies, on a built Media element.
+
+    Applied at build time and again when a catalog loads, because catalogs built
+    before these were measured carry the old flags baked in.
+
+    Measured on fun across 2,558 rows:
+    * `optimizedForStreaming` and `has64bitOffsets` exist ONLY for an mp4/mov --
+      absent on every mkv, mpegts and avi. On an mp4 the Media's
+      `optimizedForStreaming` is an INTEGER and the Part's a boolean, and both
+      flags appear on both. plexsim sent `false` on every Media of every container.
+    * `hasVoiceActivity: false` is on EVERY Media row of both real servers; the
+      player's Auto-Sync Subtitles control reads it.
+    * `Part.hasThumbnail` appears only as the string `"1"`, and only when a
+      thumbnail exists. plexsim sent `false` everywhere.
+
+    `optimizedForStreaming` cannot be read from ffprobe (it is where the moov atom
+    sits), so it stays 0. `has64bitOffsets` can be: an mp4 larger than 4 GiB cannot
+    address its data with 32-bit chunk offsets, so it uses co64.
+    """
+    container = str(media.get("container") or "").lower()
+    parts = media.get("Part") or []
+    media.pop("optimizedForStreaming", None)
+    media.pop("has64bitOffsets", None)
+    if container in MP4_FAMILY:
+        large = any(int(p.get("size") or 0) > 2 ** 32 for p in parts)
+        media["optimizedForStreaming"] = 0
+        media["has64bitOffsets"] = large
+    media["hasVoiceActivity"] = bool(media.get("hasVoiceActivity"))
+    for part in parts:
+        part.pop("optimizedForStreaming", None)
+        part.pop("has64bitOffsets", None)
+        if container in MP4_FAMILY:
+            part["optimizedForStreaming"] = False
+            part["has64bitOffsets"] = int(part.get("size") or 0) > 2 ** 32
+        if part.get("hasThumbnail") not in ("1", 1, True):
+            part.pop("hasThumbnail", None)
+        for stream in part.get("Stream") or []:
+            if "bitDepth" in stream:
+                stream["bitDepth"] = _int_or(stream["bitDepth"], stream["bitDepth"])
     return media

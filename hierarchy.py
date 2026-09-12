@@ -65,25 +65,25 @@ def _fill_real_pms_fields(rows):
         kind = row.get("type")
         rating_key = row["ratingKey"]
 
-        if kind in ("show", "movie"):
-            # The library folder a real item lives in. plexsim owns no files,
-            # so this is the synthetic path already used for Part.file.
+        if kind == "show":
+            # The library folder a real show lives in. plexsim owns no files, so
+            # this is the synthetic path already used for Part.file. Measured: a
+            # MOVIE carries no Location on either real server, and a show carries it
+            # on its detail row only.
             row.setdefault("Location", [{"id": int(rating_key), "path":
                                          "/plexsim/%s/%s" % (row.get("librarySectionID"), rating_key)}])
+        if kind in ("show", "movie"):
             row.setdefault("slug", _slug(row.get("title") or ""))
             if row.get("rating") is not None:
                 row.setdefault("Rating", [
                     {"image": "themoviedb://image.rating", "value": row["rating"], "type": "audience"},
                 ])
                 row.setdefault("audienceRatingImage", "themoviedb://image.rating")
-            row.setdefault("Field", [{"locked": True, "name": "thumb"}])
-            row.setdefault("Label", [])
 
-        if kind in ("show", "season", "episode"):
-            show_key = (rating_key if kind == "show"
-                        else row.get("grandparentRatingKey") or row.get("parentRatingKey"))
-            if show_key:
-                row.setdefault("theme", "/library/metadata/%s/theme/1" % show_key)
+        if kind == "show":
+            # Measured: only the SHOW carries `theme`. A season carries
+            # `parentTheme` and an episode `grandparentTheme`, both set below.
+            row.setdefault("theme", "/library/metadata/%s/theme/1" % rating_key)
 
         if kind in ("show", "season", "movie", "episode"):
             # Plex derives this palette from the artwork; the values are only
@@ -101,7 +101,80 @@ def _fill_real_pms_fields(rows):
             row.setdefault("grandparentSlug", _slug(row.get("grandparentTitle") or ""))
             row.setdefault("grandparentTheme",
                            "/library/metadata/%s/theme/1" % row.get("grandparentRatingKey"))
-            row.setdefault("chapterSource", "media")
+
+
+_ARTICLE = re.compile(r"(?i)^(the|a|an)\s+")
+_MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m2ts",
+                     ".wmv", ".flv", ".mpg", ".mpeg")
+
+
+def sort_title(title):
+    """The title a real PMS sorts by: the leading English article stripped.
+
+    Measured on fun: all 850 "The", 79 "A" and 6 "An" titles lose it (`The 'Burbs`
+    sorts as `'Burbs`), an episode strips its OWN title (`The Train Job` is
+    `Train Job`), and nothing else changes.
+    """
+    return _ARTICLE.sub("", title or "")
+
+
+def normalize_rows(rows):
+    """The row rules a real PMS follows, applied to rows however they were built.
+
+    Run at the end of a build and again when a catalog LOADS, because catalogs
+    built before these were measured carry the old fields baked in.
+
+    * `titleSort` is emitted only when it differs from `title` -- 0 of 3,856 movies
+      and 0 of 599 shows on fun carry an equal one -- and it is the stripped title.
+      plexsim sent the unstripped title on every movie, so "The Simpsons" filed
+      under T, and every episode carried its SHOW's name.
+    * `originalTitle` is the original-language title, present only when it differs
+      (`Twelve Monkeys` for `12 Monkeys`). plexsim put the media FILENAME there, and
+      the client prints it on the preplay page, in the window title and as the
+      OS media-session artist line.
+    * No `Field` lock and no empty `Label` by default: a real row lists a locked
+      field only when one is locked, and a `Field locked thumb` on every row told
+      the Edit dialog every poster was pinned.
+    * A movie has no `Location`; neither real server sends one.
+    * `rating` is the CRITIC rating (Rotten Tomatoes on fun), absent when there is
+      none -- the lab's own TMDB-matched movies carry only `audienceRating`.
+      plexsim copied the TMDB vote into both.
+    * A season has no `year`, `skipCount`, `theme` or `titleSort`; an episode has
+      no `theme` and, with no chapters, no `chapterSource`. A show has `index: 1`.
+    """
+    for row in rows:
+        kind = row.get("type")
+        title = row.get("title") or ""
+        derived = sort_title(title)
+        if derived and derived != title:
+            row["titleSort"] = derived
+        else:
+            row.pop("titleSort", None)
+        original = row.get("originalTitle")
+        if original is not None:
+            files = {str(part.get("file") or "").rsplit("/", 1)[-1]
+                     for media in row.get("Media") or [] for part in media.get("Part") or []}
+            if (original in files or original == title
+                    or str(original).lower().endswith(_MEDIA_EXTENSIONS)):
+                row.pop("originalTitle", None)
+        if row.get("Field") == [{"locked": True, "name": "thumb"}]:
+            row.pop("Field")
+        if row.get("Label") == []:
+            row.pop("Label")
+        if kind == "movie":
+            row.pop("Location", None)
+        if kind in ("movie", "show"):
+            row.pop("rating", None)
+        if kind == "show":
+            row.setdefault("index", 1)
+        if kind == "season":
+            for key in ("year", "skipCount", "theme"):
+                row.pop(key, None)
+        if kind == "episode":
+            row.pop("theme", None)
+            if not row.get("Chapter"):
+                row.pop("chapterSource", None)
+    return rows
 
 
 def _slug(title):
@@ -194,7 +267,6 @@ def build(leaves):
                 "guid": leaf.get("_show_guid") or leaf.get("guid"),
                 "type": "show",
                 "title": leaf.get("_show_title") or leaf.get("title"),
-                "titleSort": leaf.get("_show_title") or leaf.get("title"),
                 "summary": leaf.get("_show_summary") or "",
                 "year": leaf.get("_show_year"),
                 "thumb": "/library/metadata/%d/thumb/1" % next_show,
@@ -213,8 +285,10 @@ def build(leaves):
             # Show-level tags and ratings belong to the show, not the episode.
             _carry(leaf, show, ("contentRating", "studio", "Genre", "Country",
                                 "Role", "rating", "audienceRating", "tagline"))
-            # External ids live on the SHOW's Guid[] only; a real PMS leaves
-            # the season and episode arrays empty.
+            # External ids for the SHOW. A real season and episode carry their own
+            # too (tmdb/tvdb, and imdb for an episode, measured on both servers);
+            # the catalog records none for them, so theirs stay absent rather than
+            # borrowed from the show.
             if leaf.get("_show_external_guids"):
                 show["Guid"] = leaf["_show_external_guids"]
             shows[tmdb_id] = show
@@ -232,12 +306,11 @@ def build(leaves):
                 # otherwise complete.
                 "guid": leaf.get("_season_guid"),
                 "title": "Season %d" % season_number,
-                "titleSort": "Season %d" % season_number,
                 "index": season_number,
-                # A real season carries parentIndex and year; without them the
-                # desktop client renders the season list empty.
+                # Measured on both servers: a season row carries NO year, no
+                # titleSort and no skipCount. An older note here said the season
+                # list rendered empty without `year`; that was the paging bug.
                 "parentIndex": 1,
-                "year": leaf.get("_season_year") or leaf.get("_show_year"),
                 "summary": leaf.get("_season_summary") or "",
                 "parentRatingKey": show["ratingKey"],
                 "parentKey": "/library/metadata/%s" % show["ratingKey"],
@@ -253,7 +326,6 @@ def build(leaves):
                 "updatedAt": leaf.get("updatedAt"),
                 "leafCount": 0,
                 "viewedLeafCount": 0,
-                "skipCount": 0,
                 "parentStudio": show.get("studio"),
                 "parentYear": show.get("year"),
                 # A season's own poster when TMDB has one, else the show's.
@@ -298,6 +370,7 @@ def build(leaves):
 
     _fill_real_pms_fields(rows)
     _stamp_artwork(rows)
+    normalize_rows(rows)
 
     # Internal hints are consumed now; the server strips `_` keys anyway, but
     # leaving stale ones in the catalog file invites confusion.

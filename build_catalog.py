@@ -186,8 +186,10 @@ def main():
                 "guid": "plexsim://movie/%d" % rating_key,
                 "type": "movie",
                 "title": title,
-                "titleSort": title,
-                "originalTitle": filename,
+                # No titleSort and no originalTitle here: a real PMS sends the first
+                # only when it differs from the title, and the second is the
+                # original-language title, never the file name. The normalizer in
+                # hierarchy.py derives titleSort once the title is final.
                 "year": year,
                 "summary": "Served by plexsim from a debrid link. Source file: %s" % filename,
                 "duration": media["duration"],

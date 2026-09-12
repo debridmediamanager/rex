@@ -907,11 +907,11 @@
     "summary": "The GPU or other hardware device that will be used for transcoding",
     "type": "text",
     "default": "",
-    "value": "8086%3a3185%3a1734%3a1240@0000%3a00%3a02.0",
+    "value": "",
     "hidden": false,
     "advanced": true,
     "group": "transcoder",
-    "enumValues": ":Auto|8086%3a3185%3a1734%3a1240@0000%3a00%3a02.0:Intel GeminiLake [UHD Graphics 600]"
+    "enumValues": ":Auto"
   },
   {
     "id": "VaapiDriver",
@@ -1942,40 +1942,5 @@
     "hidden": true,
     "advanced": false,
     "group": ""
-  },
-  {
-    "id": "TranscoderHEVCEncodingMode",
-    "label": "Enable HEVC video Encoding (experimental)",
-    "summary": "Enable transcoding using the HEVC codec if it is supported by the client.",
-    "type": "text",
-    "default": "never",
-    "value": "hevc-sources",
-    "hidden": false,
-    "advanced": true,
-    "group": "transcoder",
-    "enumValues": "never:Never|hevc-sources:HEVC Sources Only|always:Always"
-  },
-  {
-    "id": "TranscoderHEVCOptimize",
-    "label": "Enable HEVC Optimization (experimental)",
-    "summary": "If available, enable use of HEVC while optimizing your media.",
-    "type": "bool",
-    "default": false,
-    "value": true,
-    "hidden": false,
-    "advanced": true,
-    "group": "transcoder"
-  },
-  {
-    "id": "_808631851734124000000002.0-TranscodeCountLimit",
-    "label": "Maximum simultaneous GPU transcodes",
-    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your selected GPU",
-    "type": "int",
-    "default": 0,
-    "value": 0,
-    "hidden": false,
-    "advanced": false,
-    "group": "transcoder",
-    "enumValues": "0:Unlimited|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
   }
 ]

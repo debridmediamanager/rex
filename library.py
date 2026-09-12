@@ -133,6 +133,11 @@ class Library:
         # returns (measured on fun: the newest rows are at the highest offset).
         self._history = []
         self._next_history = 0
+        # Completed views per ratingKey, for /users/top. Measured: the reference's
+        # `globalViewCount` survives a history delete and an unscrobble (movie 1
+        # reports 2 with no history rows and no viewCount), so it is its own count
+        # and not something to derive from either.
+        self._views = {}
         self._activities = []
 
     # -- watch state -----------------------------------------------------
@@ -191,8 +196,12 @@ class Library:
             row["lastRatedAt"] = _now()
         return row
 
-    def progress(self, rating_key, offset, state=None, duration=None):
-        """A timeline update. `stopped` past 90% counts as a view, as PMS does."""
+    def progress(self, rating_key, offset, state=None, duration=None, device_id=1):
+        """A timeline update. `stopped` past 90% counts as a view, as PMS does.
+
+        `device_id` is the client that played: the history row names it, and a
+        real PMS lists every such id in the Dashboard's Device block.
+        """
         row = self.catalog.items.get(rating_key)
         if row is None:
             return None
@@ -217,7 +226,7 @@ class Library:
             if total and row.get("viewOffset", 0) >= total * 0.9:
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 row.pop("viewOffset", None)
-                self.record_view(row)
+                self.record_view(row, device_id=device_id)
                 # A completed play bumps the parents' own counters too.
                 for key in ("parentRatingKey", "grandparentRatingKey"):
                     parent = self.catalog.items.get(int(row[key])) \
@@ -279,6 +288,8 @@ class Library:
         # delete made the next play reuse the deleted key and a client keyed on
         # historyKey got two different plays under one key.
         self._next_history += 1
+        key = str(row["ratingKey"])
+        self._views[key] = self._views.get(key, 0) + 1
         entry = {
             "historyKey": "/status/sessions/history/%d" % self._next_history,
             "key": "/library/metadata/%s" % row["ratingKey"],
@@ -992,6 +1003,10 @@ class Library:
             return []
         return self._resolve(uri)
 
+    def global_views(self, row):
+        """How many completed views of this row the server has ever recorded."""
+        return self._views.get(str(row.get("ratingKey")), 0)
+
     def _playlist_row(self, playlist, content=False):
         """Field set measured on a real PMS's POST /playlists response.
 
@@ -1016,12 +1031,16 @@ class Library:
             "summary": playlist["summary"],
             "smart": playlist["smart"],
             "playlistType": playlist["playlistType"],
-            "composite": "/playlists/%s/composite/%d" % (playlist["ratingKey"], stamp),
-            "duration": duration,
             "leafCount": len(rows),
             "addedAt": playlist["addedAt"],
             "updatedAt": stamp,
         }
+        if rows:
+            # Measured: an EMPTY playlist -- never filled, or emptied -- carries
+            # neither a composite nor a duration. plexsim kept both, with the
+            # duration at 0 and a composite of nothing.
+            row["composite"] = "/playlists/%s/composite/%d" % (playlist["ratingKey"], stamp)
+            row["duration"] = duration
         if playlist.get("smart"):
             # Measured, and the only thing that marks a smart playlist in the
             # list: the client draws its own icon from this value.
@@ -1176,6 +1195,13 @@ class Library:
             "childCount": len(rows),
             "librarySectionID": collection["librarySectionID"],
         }
+        section = self.catalog.section(collection["librarySectionID"]) \
+            if hasattr(self.catalog, "section") else None
+        if section:
+            # Measured on fun's collection rows: the section's title and key ride on
+            # the row itself, as they do on every library row.
+            row["librarySectionTitle"] = section.get("title")
+            row["librarySectionKey"] = "/library/sections/%s" % collection["librarySectionID"]
         if collection.get("smart"):
             # Measured twice over: a collection's `smart` is the STRING "1", not
             # the playlist's boolean, and a NON-smart collection omits the field
