@@ -318,6 +318,14 @@ precisely how the Seasons bug survived a fix attempt.
   pushes `activity`, `timeline`, `status` and `progress`; a client that gets none
   of them polls instead and never sees a change made elsewhere. Server frames are
   **unmasked**, and a malformed one puts the client back in fix 4's failure mode.
+- **A `sort=` spec is a comma-separated LIST, and `random:<seed>` differs per
+  seed.** Splitting the whole spec on its first colon drops the secondary key and
+  reads the direction off the wrong end. An unknown key is a 500 on a real PMS,
+  not a silently unsorted 200.
+- **CORS: echo the Origin and echo the requested header list.** A fixed
+  allow-list blocks whatever it forgot, and the browser refuses the request with
+  no server-side trace. `*` is invalid on a credentialed request. Plex Web hides
+  this by passing identity in the query string rather than in headers.
 - **XML is the DEFAULT response format**, not JSON — `_wants_xml()` returns true
   unless a client asks for JSON. A JSON-only test proves nothing about the path a
   TV or mobile client takes: three endpoints were rendering `<Video>` where a real

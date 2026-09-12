@@ -1148,6 +1148,50 @@ def main():
               bool(rows.get("Metadata")),
               "%d row(s)" % len(rows.get("Metadata") or []))
 
+    print("\n=== CORS, which a browser enforces before the server sees anything ===")
+    # Measured either side of an Origin header: a real PMS ECHOES the origin and
+    # echoes the requested header list on a preflight, and sends no CORS headers
+    # at all without an Origin. plexsim answered `*` unconditionally and
+    # published a FIXED header list that omitted `X-Plex-Session-Id`,
+    # `X-Plex-Language` and others the client sends -- a preflight that omits one
+    # makes the browser refuse the request with no server-side trace.
+    wanted = "x-plex-token,x-plex-session-id,x-plex-language,accept"
+    status, _, headers = request(base, "OPTIONS",
+                                 "/library/metadata/%s/refresh" % movie, want_json=False)
+    check("a preflight is answered", status == 200, "HTTP %s" % status)
+    request_headers = {"Origin": "https://app.plex.tv",
+                       "Access-Control-Request-Method": "PUT",
+                       "Access-Control-Request-Headers": wanted}
+    preflight = urllib.request.Request(base.rstrip("/") + "/library/metadata/%s/refresh" % movie,
+                                       method="OPTIONS", headers=request_headers)
+    try:
+        with urllib.request.urlopen(preflight, timeout=20) as response:
+            cors = dict(response.headers)
+    except Exception as error:
+        cors = {"error": str(error)}
+    check("a preflight echoes the requested headers",
+          cors.get("Access-Control-Allow-Headers") == wanted,
+          cors.get("Access-Control-Allow-Headers"))
+    check("a preflight echoes the origin rather than a wildcard",
+          cors.get("Access-Control-Allow-Origin") == "https://app.plex.tv",
+          cors.get("Access-Control-Allow-Origin"))
+    check("a preflight allows every verb the UI uses",
+          all(verb in (cors.get("Access-Control-Allow-Methods") or "")
+              for verb in ("GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS")),
+          cors.get("Access-Control-Allow-Methods"))
+    with_origin = urllib.request.Request(base.rstrip("/") + "/identity",
+                                         headers={"Origin": "https://app.plex.tv"})
+    with urllib.request.urlopen(with_origin, timeout=20) as response:
+        plain = dict(response.headers)
+    check("a normal response echoes the origin and varies on it",
+          plain.get("Access-Control-Allow-Origin") == "https://app.plex.tv"
+          and "Origin" in (plain.get("Vary") or ""),
+          "%s | %s" % (plain.get("Access-Control-Allow-Origin"), plain.get("Vary")))
+    status, _, bare = request(base, "GET", "/identity")
+    check("no Origin means no CORS headers at all",
+          "Access-Control-Allow-Origin" not in bare,
+          ",".join(k for k in bare if k.lower().startswith("access-control")) or "none")
+
     print("\n=== the XML surface, which is plexsim's DEFAULT ===")
     # The playlist checks above deleted theirs; the XML element name for a
     # playlist row can only be checked against a list that has one.
@@ -1525,6 +1569,42 @@ def main():
     check("the random sort is stable across requests",
           [r.get("ratingKey") for r in first.get("Metadata") or []]
           == [r.get("ratingKey") for r in second.get("Metadata") or []])
+    # A `sort=` spec is a COMMA-SEPARATED list, and plexsim used to split the
+    # whole thing on the first colon: the secondary key was dropped and
+    # `titleSort:asc,year:desc` even came out descending, because the spec as a
+    # whole ended in `:desc`. These two differ only in the SECOND key.
+    _, secondary_up, _ = get(base, "/library/sections/%s/all?sort=year:desc,titleSort:asc"
+                                   % movie_section)
+    _, secondary_down, _ = get(base, "/library/sections/%s/all?sort=year:desc,titleSort:desc"
+                                     % movie_section)
+    up_keys = [r.get("ratingKey") for r in secondary_up.get("Metadata") or []]
+    down_keys = [r.get("ratingKey") for r in secondary_down.get("Metadata") or []]
+    if len(up_keys) > 1:
+        check("a secondary sort key is honoured", up_keys == list(reversed(down_keys)),
+              "%s vs %s" % (up_keys, down_keys))
+    else:
+        skip("a secondary sort key is honoured", "need two rows")
+    # Measured: `random:<seed>` differs per seed and is stable for one seed --
+    # which is what lets a client page through a shuffled library without
+    # repeating or skipping rows.
+    _, seed_a, _ = get(base, "/library/sections/%s/all?sort=random:12345" % movie_section)
+    _, seed_a2, _ = get(base, "/library/sections/%s/all?sort=random:12345" % movie_section)
+    _, seed_b, _ = get(base, "/library/sections/%s/all?sort=random:99" % movie_section)
+    order_a = [r.get("ratingKey") for r in seed_a.get("Metadata") or []]
+    order_b = [r.get("ratingKey") for r in seed_b.get("Metadata") or []]
+    check("a seeded random sort is stable for one seed",
+          order_a == [r.get("ratingKey") for r in seed_a2.get("Metadata") or []],
+          str(order_a))
+    if len(order_a) > 1:
+        check("two seeds give two orders", order_a != order_b,
+              "%s vs %s" % (order_a, order_b))
+    else:
+        skip("two seeds give two orders", "need two rows")
+    status, _, _ = container(base, "GET", "/library/sections/%s/all?sort=bogus" % movie_section)
+    # Measured on the reference: an unknown sort key is a 500 there, not a
+    # silently unsorted 200. A caller cannot tell the difference otherwise.
+    check("an unknown sort key is refused, not ignored", status == 500,
+          "HTTP %s" % status)
     for spec in ("addedAt:desc", "mediaHeight:desc", "originallyAvailableAt:desc",
                  "lastViewedAt:desc", "audienceRating:desc", "duration:desc"):
         status, sorted_rows, _ = get(base, "/library/sections/%s/all?sort=%s"
