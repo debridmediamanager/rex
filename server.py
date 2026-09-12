@@ -107,6 +107,34 @@ for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show
     except (OSError, ValueError):
         pass
 
+# Plex's numeric type codes, and the field-name PREFIX each one uses. A show
+# library advertises `show.genre` and `episode.title`; a movie library advertises
+# the bare name. /query/parse echoes the prefix back as the rule's own `type`,
+# and an unprefixed field is read against the prefix the requested `type` implies
+# -- measured: `?type=2&title=x` answers `fieldTitle: "Show Title"`.
+TYPE_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4,
+                "artist": 8, "album": 9, "track": 10, "photo": 13,
+                "collection": 18}
+IMPLICIT_SCOPE = {1: "", 2: "show", 3: "season", 4: "episode"}
+
+# Every field any library advertises, keyed by its BARE name, plus the title each
+# (scope, field) pair carries. Two measurements force both shapes: the filter
+# lookup is NOT scoped to the section (`show.title` parses and filters against a
+# movie library too), and a show library's advertised keys arrive back prefixed,
+# so a map keyed by the prefixed name can never match -- which is why no filter
+# on a show grid ever did anything.
+FILTER_FIELD_TYPES = {}
+FIELD_TITLES = {}
+for _meta in SECTION_META.values():
+    for _type in _meta.get("Type") or []:
+        for _field in _type.get("Field") or []:
+            _key = _field.get("key")
+            if not _key:
+                continue
+            _scope, _, _bare = _key.rpartition(".")
+            FILTER_FIELD_TYPES.setdefault(_bare, _field.get("type") or "string")
+            FIELD_TITLES.setdefault((_scope, _bare), _field.get("title") or "")
+
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
 # are not the same three -- plexsim invented a single `episodeSort` row.
@@ -937,7 +965,11 @@ class PlexSim:
             "directory": True,
             "hidden": 0,
         }
-        row["Location"] = [{"id": 1, "path": "/plexsim/%s" % key}]
+        # The id is the section's own key, because "Folder Location" filters by
+        # this id (`?location=1`) and a shared id would make every section's
+        # folder filter answer for section 1.
+        row["Location"] = [{"id": int(key) if str(key).isdigit() else 1,
+                            "path": "/plexsim/%s" % key}]
         if shared:
             # Measured: the shared view carries empty art/thumb and no composite.
             row["art"] = ""
@@ -1784,6 +1816,16 @@ class PlexSim:
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"))
 
+        if leaf == "query":
+            # Measured: only the `parse` child exists -- `/query` alone is a 404,
+            # a POST to `/query/parse` is a 404, and so is any section id the
+            # server does not have.
+            if len(segments) != 5 or segments[4] != "parse" or method != "GET":
+                return ("error", 404, "plexsim: not found")
+            if not section:
+                return ("error", 404, "plexsim: not found")
+            return self.query_parse(section, query)
+
         # -- the filter and sort descriptors the legacy UI reads -----------
         if leaf == "sorts":
             sorts = [dict(s) for s in SECTION_SORTS]
@@ -1968,27 +2010,40 @@ class PlexSim:
         dropped and `titleSort:asc,year:desc` even came out descending, because
         the spec as a whole ended in `:desc`.
 
+        A term's tail is a LIST too: `titleSort:desc:nocollate` is descending,
+        and reading the direction off the first colon made it ascending. The
+        modifiers and the direction may come in either order.
+
         Returns (rows, unsupported_key). A real PMS answers an unknown sort key
-        with a 500; the caller decides what to do with that.
+        with a 500 -- but an unknown MODIFIER (`titleSort:bogus`) it ignores.
         """
-        terms = [term for term in (spec or "").split(",") if term.strip()]
+        terms = filters_module.sort_terms(spec)
         if not terms:
             return rows, None
         ordered = list(rows)
         # Right to left, relying on the sort being stable: the leftmost key ends
         # up dominant, which is the order a real PMS applies them in.
-        for term in reversed(terms):
-            key, _, direction = term.strip().partition(":")
+        for key, descending, seed in reversed(terms):
             if key == "random":
-                seed = direction or "0"
                 ordered = sorted(ordered, key=lambda r: zlib.crc32(
-                    ("%s/%s" % (seed, r.get("ratingKey"))).encode()))
+                    ("%s/%s" % (seed or "0", r.get("ratingKey"))).encode()))
+                if descending:
+                    ordered.reverse()
                 continue
             getter = self._sort_key(key)
             if getter is None:
                 return rows, key
-            ordered = sorted(ordered, key=getter, reverse=direction == "desc")
+            ordered = sorted(ordered, key=getter, reverse=descending)
         return ordered, None
+
+    def _sortable(self, key):
+        """Whether a `sort=` key is one this server can order by.
+
+        `random` is not in the key tables because it is not read off a row, but
+        it IS a sort a real PMS accepts -- and /query/parse validates the key
+        before it echoes the Order block, answering 500 for one it does not know.
+        """
+        return key == "random" or self._sort_key(key) is not None
 
     # How each advertised filter field is read off a row. The keys here are the
     # `Field` entries of the captured Meta, so plexsim filters on exactly what it
@@ -2036,7 +2091,11 @@ class PlexSim:
         if field == "mediaSize":
             return parts[0].get("size")
         if field == "location":
-            return parts[0].get("file")
+            # "Folder Location" compares a section LOCATION ID, not a path:
+            # measured, `?location=1` returns the whole of section 1 and
+            # `?location=/data/movies` is a 500. Every plexsim section has one
+            # location whose id is the section's own key.
+            return row.get("librarySectionID")
         if field in ("subtitleCodec",):
             return [s.get("codec") for part in (media.get("Part") or [])
                     for s in part.get("Stream") or [] if s.get("streamType") == 3]
@@ -2052,31 +2111,79 @@ class PlexSim:
             return 0
         return row.get(field)
 
-    def filter_fields(self, section):
-        """field name -> advertised type, from this section's own Meta."""
-        meta = SECTION_META.get("show" if section.get("type") == "show" else "movie") or {}
-        types = {}
-        for entry in meta.get("Type") or []:
-            for field in entry.get("Field") or []:
-                if field.get("key"):
-                    types.setdefault(field["key"], field.get("type") or "string")
-        return types
+    def apply_filters(self, rows, query, section=None):
+        """Filter rows by the query, or raise the status a real PMS answers with.
 
-    def apply_filters(self, rows, query, section):
-        """Filter rows by the query, or raise the status a real PMS answers with."""
-        advertised = self.filter_fields(section)
-
-        def field_type(name):
-            # `episode.unwatched` is scoped to a type; the field is the tail.
-            bare = name.split(".", 1)[1] if "." in name else name
-            return advertised.get(bare)
-
-        tree = filters_module.parse(query.get("_pairs") or [], field_type)
+        The advertised field map is global rather than per-section: measured, a
+        real PMS parses `show.title` against a MOVIE library, and it is the show
+        library's own prefixed keys (`show.genre`) that the client sends back --
+        which plexsim looked up after stripping the prefix, in a map keyed by the
+        prefixed names, so no filter on a show grid ever constrained anything.
+        """
+        tree = filters_module.parse(query.get("_pairs") or [],
+                                    FILTER_FIELD_TYPES.get)
         if tree is None:
             return rows, None
         kept = [r for r in rows
                 if filters_module.evaluate(tree, r, self.filter_value)]
         return kept, tree
+
+    def tag_title(self, field, value):
+        """A tag id's name, for /query/parse's `valueTitle`.
+
+        Measured: the lookup is by ID in the server's own tag table and is NOT
+        scoped to the field that asked -- `?label=5` came back titled "Art", the
+        name of tag 5 whichever field names it. A non-numeric value and an id
+        that does not resolve both get no title at all rather than an empty one.
+        """
+        if not str(value).isdigit():
+            return None
+        for row in self.catalog.items.values():
+            for key in ("Genre", "Collection", "Director", "Writer", "Producer",
+                        "Role", "Country", "Label", "Similar", "Network"):
+                for tag in row.get(key) or []:
+                    if str(tag.get("id")) == str(value):
+                        return tag.get("tag")
+        return None
+
+    def query_parse(self, section, query):
+        """`/library/sections/{id}/query/parse` -- the grammar, read back.
+
+        This is how the Edit Filters dialog reopens a filter that was saved: it
+        hands the server the query string it stored and reads the `Rule` tree out
+        of the answer. Without it the dialog can only ever draw an empty filter,
+        whatever the smart playlist behind it actually holds -- and the failure is
+        silent, because an unrouted path is a 404 the dialog treats as "no rules".
+
+        The root is `Query`, not a MediaContainer. Errors are REPORTED rather than
+        raised: an unknown field comes back as an `Error` entry beside whatever
+        did parse, where the same field on a listing is simply ignored.
+        """
+        raw = query.get("type")
+        if raw in (None, ""):
+            # Measured: the default is the SECTION's own type, not movie.
+            type_number = TYPE_NUMBERS.get(section.get("type") or "movie", 1)
+        elif str(raw).lstrip("-").isdigit():
+            # Measured: an unknown NUMBER is echoed back untouched (`type=99`).
+            type_number = int(raw)
+        else:
+            return ("error", 400, "plexsim: bad request")
+        implicit = IMPLICIT_SCOPE.get(type_number, "")
+
+        errors = []
+        tree = filters_module.parse(query.get("_pairs") or [],
+                                    FILTER_FIELD_TYPES.get, errors=errors)
+        order = filters_module.orders(query.get("sort") or "", self._sortable)
+        limit = None
+        if query.get("limit"):
+            # Measured: `?limit=abc` is a 500, the same refusal a bad filter
+            # value gets, and the block carries the value as a NUMBER.
+            limit = int(filters_module.as_number(query["limit"]))
+        group = [{"field": query["group"]}] if query.get("group") else None
+        return filters_module.document(
+            type_number, tree, order, limit, group, errors,
+            lambda field, scope: FIELD_TITLES.get((scope or implicit, field), ""),
+            self.tag_title)
 
     def listing_container(self, section_id, section, rows, view_group=None,
                           query=None, **extra):

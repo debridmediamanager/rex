@@ -799,6 +799,129 @@ the library unfiltered for all of them.
 The engine lives in `filters.py` and is driven by the `FieldType` block of the
 captured `Meta`, so plexsim can only honour the operators it advertises.
 
+#### The same language, six passes later: the field's TYPE decides
+
+The operator table above is correct about what each operator *means* and wrong
+about which fields it applies to. Re-measured field by field against the
+reference, four of the types do not behave like the string they were implemented
+as, and the corrections each turn a silently-wrong result set into the right one:
+
+| Request | Reference | plexsim after the first pass |
+|---|---|---|
+| `?contentRating=G` | the row rated `G`, **not** the one rated `PG` | both, because a bare `=` was a substring match |
+| `?contentRating=` | the rows with **no** rating (2 of 5) | all 5 -- everything contains the empty string |
+| `?genre=` | **0** rows, because every row has a genre | all 5 |
+| `?unwatched=2` | the same rows as `?unwatched=0` | 0 rows |
+| `?resolution=2160` | **500** -- the value is not in the set | 200, empty |
+| `?resolution=1080` | all 5 | all 5, but `?resolution=108` matched too |
+| `?location=1` | all of section 1 | 0 -- it compared a path |
+| `?location=/data/movies` | **500** | 200, empty |
+
+So: a **tag** field (and `audioLanguage`, `subtitleLanguage`, `resolution`) is an
+exact set membership, where an **empty value means "has no value at all"**; a
+**boolean** is true only for the literal value `1`, and every other value
+including an empty one means false; **`resolution`** is validated against
+`{4k, 1080, 720, 576, 480, sd}`, case-sensitively, and anything else is a 500 --
+`360` and `240` included, though the Meta implies a continuum; and
+**`location`** is a section `Location` id, not a path, which is why plexsim's
+sections now carry their own key as that id instead of all sharing `1`.
+
+An empty value is therefore **not** uniformly a 500, which is what plexsim's
+engine did: it is a 500 only where the value has to parse as a number or a date
+(`?year=`, `?addedAt>>=`, `?resolution=`), and a perfectly good rule everywhere
+else. The 500 now comes out of the comparison rather than out of the parse, which
+is also where a real PMS raises it -- `/query/parse` accepts `?viewCount=` and
+answers a `Rule`.
+
+**Which operator KEYS a field takes is a third, separate question**, and it is not
+the advertised operator list. Measured: `?resolution>>=720` parses fine although
+`resolution` advertises only `=` (it then matches nothing), and `?addedAt=2020`
+parses although `date` advertises only `<<=`/`>>=`. What *is* closed is two sets:
+
+- the **tag-table** fields -- `genre`, `collection`, `director`, `writer`,
+  `producer`, `actor`, `country`, `label`, `network` -- take only `=` and `!=`;
+- **string** fields take the six they advertise, so `<<` and `>>` are out.
+
+Anything else on one of those is an unknown **field**: `?genre>>=6` is ignored by
+a listing and reported as `{"type":"field","value":"genre>>"}` by `/query/parse`.
+`contentRating`, `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout` and
+`location` are declared `tag` in the Meta and are *not* in the closed set -- they
+are enum columns, they take every key, and they get no `valueTitle`.
+
+#### A show library advertises its fields PREFIXED, and nothing matched
+
+The one that made every filter on a show grid a no-op. A movie section's `Meta`
+advertises `genre`, `year`, `title`; a **show** section's advertises
+`show.genre`, `show.year`, `episode.title` -- 21 fields under type 2 and 26 under
+type 4, every one prefixed. The client sends the advertised key back verbatim, so
+the server reads `show.genre`.
+
+plexsim built its advertised-field map keyed by those prefixed names and then
+looked the incoming name up with the prefix *stripped*, so the lookup could never
+hit, `field_type()` returned None for everything, and the filter was dropped. A
+movie library filtered correctly and a show library returned its whole contents
+for every filter -- the same class of silent success this whole file is about,
+and invisible to any check written against a movie section.
+
+The prefix is a **scope**, not part of the name: the field is the tail, and the
+lookup is global rather than per-section. Measured: `?show.title=x` parses
+against a MOVIE library too, and `/query/parse` echoes the scope back as the
+rule's own `type`.
+
+#### `/library/sections/{id}/query/parse`: the grammar, read back
+
+How the Edit Filters dialog reopens a filter that was saved -- it hands the query
+string back and reads the rule tree out of the answer. plexsim 404'd it, and a
+404 is exactly what the dialog reads as "this filter has no rules", so the dialog
+drew empty whatever the smart playlist behind it held.
+
+The root is **`Query`**, not a MediaContainer -- the second response on the whole
+surface that is not one (the other is `/butler`'s `ButlerTasks`):
+
+```
+GET /library/sections/1/query/parse?type=1&genre=6&sort=titleSort
+{"Query":{"type":1,
+          "Rule":{"field":"genre","operator":"=","fieldTitle":"Genre",
+                  "valueTitle":"Animation","value":"6"},
+          "Order":[{"field":"titleSort","ascending":true}]}}
+```
+
+Measured, shape by shape:
+
+| Request | Answer |
+|---|---|
+| no `type` | the **section's own** type (`1` for a movie library, `2` for a show one), as an integer |
+| `type=99` | echoed untouched; `type=abc` is a **400** |
+| `genre=6&year>>=2000` | `Rule` is `{"type":"composite","operator":"and","Rule":[…]}` |
+| `push=1&genre=6&pop=1` | the group **collapses** to the bare leaf |
+| `sort=random:12345` | `{"field":"random","ascending":true}` -- the **seed is dropped** |
+| `sort=titleSort:desc:nocollate` | `ascending:false` -- the modifier does not eat the direction |
+| `sort=bogusKey` | **500**, the same refusal a listing gives |
+| `limit=7` | `"Limit":[{"limit":7}]`, as a number; `limit=abc` is a **500** |
+| `group=year` | `"Group":[{"field":"year"}]` |
+| `bogus=1` | `"Error":[{"type":"field","value":"bogus"}]`, beside whatever did parse |
+| `push=1&genre=6` (unclosed) | `"Error":[{"type":"mismatch","value":"eof","expected":"pop"}]` |
+| `and=1&genre=6` (leading) | the error alone -- **every rule is abandoned** |
+| `genre=6&and=1` (trailing) | the last clause is placed **twice**, plus `{"type":"field","value":"eof"}` |
+| `episode.unwatched=1` | `{"type":"episode","field":"unwatched","fieldTitle":"Episode Unwatched",…}` |
+| `type=3&title=x` | `"fieldTitle":""` -- present and empty, because the season type has no fields |
+| `includeGuids=1`, `excludeFields=…`, `X-Plex-*` | ignored silently |
+| `checkFiles=1`, `asyncCheckFiles=1`, `nocache=1`, `having=x` | reported as unknown **fields** |
+
+`valueTitle` appears only for a tag-table field whose value is an id that
+resolves, and the lookup is **not scoped to the field**: `?label=5` came back
+titled "Art", the name of tag 5 whoever asks. A tag NAME (`?genre=Animation`) and
+an unresolvable id both get no title at all.
+
+Block order is `type, Rule, Order, Limit, Group, Error`, and in XML the root is
+`<Query type="1">` with `ascending="1"`/`"0"`. Only `parse` exists under
+`/query`: the parent is a 404 and so is a POST.
+
+The two odd rows above -- a leading separator abandoning the rules, a trailing one
+duplicating the last clause -- are parser artifacts of the real server that no
+client can reach. They are reproduced anyway, because the harness diffs plexsim's
+answer against the reference's and a "corrected" answer is a difference to chase.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
@@ -825,12 +948,17 @@ Measured on the reference, and plexsim honoured none of it:
 |---|---|---|
 | `sort=year:desc,titleSort:asc` | orders by year, breaks ties on title | dropped the second key -- and `titleSort:asc,year:desc` came out **descending**, because the spec as a whole ends in `:desc` |
 | `sort=random:12345` vs `random:99` | two different stable orders | one order regardless of seed |
+| `sort=titleSort:desc:nocollate` | descending | **ascending** -- the direction was read off the first colon, so it saw `desc:nocollate` |
+| `sort=titleSort:bogus` | ignored, ascending | ascending (accidentally right) |
 | `sort=bogus` | **500** | 200 with the list silently unsorted |
 
 The seed is not decoration: it is how a client pages through a shuffled library
 without repeating or skipping rows. The spec is now parsed as the comma-separated
 list it is and applied right to left on a stable sort, so the leftmost key
-dominates. An unknown key returns the reference's 500 rather than a silently
+dominates -- and a term's TAIL is a list too: `asc`, `desc`, `nocollate` and a
+`random` seed arrive in any order, so the direction is whichever element is
+`desc` rather than whatever follows the first colon. An unknown MODIFIER is
+ignored where an unknown KEY is a 500. An unknown key returns the reference's 500 rather than a silently
 unsorted 200 -- a caller cannot tell the difference otherwise, and a silent
 no-op is the failure this whole file is about. (That a real PMS answers 500
 rather than 400 for what is a client error looks like a defect in it; it is the

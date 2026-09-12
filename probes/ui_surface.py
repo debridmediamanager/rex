@@ -217,6 +217,16 @@ def steps(ids, machine, mutate):
         ("browse", "GET", "/library/sections/%s/firstCharacter" % movie_section),
         ("browse", "GET", "/library/sections/%s/sorts" % movie_section),
         ("browse", "GET", "/library/sections/%s/filters" % movie_section),
+        # The Edit Filters dialog reading a saved filter back. Every shape the
+        # grammar has is exercised here, because the root is `Query` rather than a
+        # MediaContainer and the error blocks are reported, not raised.
+        ("browse", "GET", "/library/sections/%s/query/parse?type=1&genre=6"
+                          "&sort=titleSort" % movie_section),
+        ("browse", "GET", "/library/sections/%s/query/parse?type=1&push=1&genre=6"
+                          "&or=1&genre=27&pop=1&and=1&year%%3E%%3E=2000"
+                          "&sort=year:desc,titleSort&group=decade&limit=7"
+                          "&bogus=1" % movie_section),
+        ("browse", "GET", "/library/sections/%s/query/parse" % movie_section),
         ("browse", "GET", "/library/sections/%s/genre" % movie_section),
         ("browse", "GET", "/library/sections/%s/year" % movie_section),
         ("browse", "GET", "/library/sections/%s/decade" % movie_section),
@@ -237,6 +247,12 @@ def steps(ids, machine, mutate):
         plan += [
             ("browse", "GET", "/library/sections/%s/all?type=2&includeMeta=1" % show_section),
             ("browse", "GET", "/library/sections/%s/prefs" % show_section),
+            # A show library advertises its filter fields PREFIXED, so this is
+            # the only place the scope echo and the per-type titles show up.
+            ("browse", "GET", "/library/sections/%s/query/parse?type=4"
+                              "&episode.unwatched=1&unwatched=1" % show_section),
+            ("browse", "GET", "/library/sections/%s/all?type=2&show.title=x"
+                              % show_section),
         ]
 
     # -- the item pages, each with the params the client actually sends ---
