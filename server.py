@@ -690,7 +690,9 @@ class PlexSim:
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
         # collections, play history. In memory only -- catalog.json is input.
-        self.library = library_module.Library(catalog, notify=self.notify_activity_event)
+        self.library = library_module.Library(catalog,
+                                             notify=self.notify_activity_event,
+                                             resolve=self._items_for_uri)
         # Preferences the client has written back through PUT /:/prefs. A real
         # PMS persists these; plexsim keeps them for the life of the process so
         # a settings page round-trips instead of silently reverting.
@@ -2837,10 +2839,24 @@ class PlexSim:
         items to play" without ever calling this endpoint again.
         """
         path = urllib.parse.unquote(uri or "")
-        # A library section: enqueue the whole section, in listing order.
+        # A library section, with whatever filter and sort the URI carries. A
+        # smart playlist or collection IS that query -- dropping it would make
+        # every smart list the whole section, which looks like a working list.
         match = re.search(r"/library/sections/([^/]+)/all", path)
         if match:
-            return self.catalog.section_items(match.group(1))
+            section_id = match.group(1)
+            section = self.catalog.section(section_id) or {}
+            pairs = urllib.parse.parse_qsl(path.partition("?")[2],
+                                           keep_blank_values=True)
+            inner = {k: v for k, v in pairs}
+            inner["_pairs"] = pairs
+            rows = self.typed_rows(section_id, inner)
+            rows, _ = self.apply_filters(rows, inner, section)
+            rows, unsupported = self._sorted(rows, inner.get("sort") or "")
+            if unsupported:
+                raise filters_module.FilterError(
+                    500, "unsupported sort key %s" % unsupported)
+            return rows
         # A single item.
         match = re.search(r"/library/metadata/(\d+)", path)
         if match:
@@ -3381,9 +3397,9 @@ class PlexSim:
                 subtype = rows[0].get("type") if rows else "movie"
                 collection = self.library.create_collection(
                     query.get("title") or "", section, rows, subtype=subtype,
-                    smart=query.get("smart") == "1")
-                logger.info("COLLECTION create %s (%d item(s))",
-                            collection["title"], len(collection["items"]))
+                    smart=query.get("smart") == "1", uri=query.get("uri"))
+                logger.info("COLLECTION create %s smart=%s (%d item(s))",
+                            collection["title"], collection["smart"], len(rows))
                 return self.bare_container(
                     size=1, Metadata=[self.library._collection_row(collection)])
             # A real PMS 404s the bare GET: collections are listed per section.
@@ -3456,9 +3472,11 @@ class PlexSim:
                 rows = self._items_for_uri(query.get("uri", ""))
                 playlist = self.library.create_playlist(
                     query.get("title") or "", query.get("type") or "video", rows,
-                    smart=query.get("smart") == "1")
-                logger.info("PLAYLIST create %s (%d item(s))",
-                            playlist["title"], len(playlist["items"]))
+                    smart=query.get("smart") == "1", uri=query.get("uri"))
+                logger.info("PLAYLIST create %s smart=%s (%d item(s))",
+                            playlist["title"], playlist["smart"], len(rows))
+                # Measured: the CREATE response omits `content` the same way the
+                # list does; only /playlists/{id} carries it.
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
             rows = self.library.playlists(query.get("playlistType"))
@@ -3485,7 +3503,8 @@ class PlexSim:
                     summary=query.get("summary.value") or query.get("summary"))
                 return ("empty", 200)
             return self.bare_container(
-                size=1, Metadata=[self.library._playlist_row(playlist)])
+                size=1,
+                Metadata=[self.library._playlist_row(playlist, content=True)])
 
         leaf = segments[2]
         if leaf == "items":

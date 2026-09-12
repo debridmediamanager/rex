@@ -227,6 +227,10 @@ def steps(ids, machine, mutate):
                           "&sort=year:desc,titleSort&group=decade&limit=7"
                           "&bogus=1" % movie_section),
         ("browse", "GET", "/library/sections/%s/query/parse" % movie_section),
+        # A filtered "Play all": the URI carries the grid's own query, which a
+        # server that resolves only the section path silently widens to everything.
+        ("browse", "GET", "/library/sections/%s/all?type=1&unwatched=1&sort=titleSort"
+                          % movie_section),
         ("browse", "GET", "/library/sections/%s/genre" % movie_section),
         ("browse", "GET", "/library/sections/%s/year" % movie_section),
         ("browse", "GET", "/library/sections/%s/decade" % movie_section),

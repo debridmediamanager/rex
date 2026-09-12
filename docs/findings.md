@@ -982,6 +982,46 @@ difference is kept on purpose. It is the only remaining shape difference in the
 whole `/library/sections/*` surface apart from rows plexsim's catalog has no data
 for.
 
+#### A smart list is a stored QUERY, and plexsim stored a snapshot
+
+plexsim accepted `smart=1` on both create endpoints, set a flag, and then stored
+the rows the query happened to match at that moment. The list looked right the
+instant it was made and went stale from then on, silently -- the one failure mode
+this file keeps coming back to.
+
+Proven live on the reference, which is the measurement that settles it. A smart
+playlist built on `?type=1&unwatched=1` held four movies; scrobbling one dropped
+it to three; unscrobbling put it back:
+
+```
+before:                      4  Big Buck Bunny, Elephants Dream, Sintel, Tears of Steel
+after scrobble of key 1:     3  Elephants Dream, Sintel, Tears of Steel
+after unscrobble:            4  Big Buck Bunny, Elephants Dream, Sintel, Tears of Steel
+```
+
+So membership is the query, re-run on every read. What each endpoint stores and
+reports differs in four ways that are not guessable:
+
+| | smart playlist | smart collection |
+|---|---|---|
+| `smart` | `true` — a **boolean**, always present | the **string `"1"`**, and a non-smart collection **omits the field** rather than sending a false |
+| stored `content` | **rewritten**: `server://<machine>/com.plexapp.plugins.library/library/sections/1/all?type=1&genre=6` becomes `library://x/directory/%2Flibrary%2Fsections%2F1%2Fall%3Ftype%3D1%26genre%3D6` | the `server://` URI **verbatim** |
+| where `content` appears | the single read **only** — `/playlists` and the create response both omit it | the list **and** the single read |
+| marker | `icon: "playlist://image.smart"` | none |
+| members | — | **not tagged**: a member's `Collection` stays absent, so a smart collection does not show on its items' pages |
+
+The last row matters for more than tidiness: plexsim tagged the members, which
+made a smart collection appear as a `Collection` tag on rows that the query might
+no longer select.
+
+`/playlists/{id}/items` also reports the container's `duration` in **seconds**
+(40) while the playlist row's is in **milliseconds** (40000) -- the same number,
+two units, one endpoint apart.
+
+Resolving the stored URI turned out to fix a second thing: `_items_for_uri` was
+dropping the query string entirely, so "Play all" from a filtered grid enqueued
+the **whole section** rather than what was on screen.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
