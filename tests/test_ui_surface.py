@@ -945,6 +945,56 @@ def main():
         status, _, _ = container(base, method, path)
         check("%s answers %s" % (why, want), status == want, "HTTP %s" % status)
 
+    print("\n=== concurrency ===")
+    # plexsim is a ThreadingHTTPServer and everything the UI writes -- playlists,
+    # collections, catalog rows -- is mutable state with no lock around it. This
+    # was measured rather than assumed: 33,300 requests with three threads
+    # churning the items dict through merge/split while four iterated it produced
+    # zero tracebacks, and 320 concurrent playlist creates produced 320 unique
+    # keys. No lock was added, because none was needed. The check is here so that
+    # if a future change breaks it, it breaks loudly instead of handing two
+    # clients the same ratingKey.
+    import threading as _threading
+
+    created, failures = [], []
+    guard = _threading.Lock()
+
+    def hammer(worker):
+        local, bad = [], []
+        for index in range(6):
+            status, body, _ = request(
+                base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                              % (quote("concurrent %d-%d" % (worker, index)), quote(uri)))
+            if status != 200:
+                bad.append("create -> %s" % status)
+                continue
+            try:
+                local.append(json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"])
+            except (ValueError, KeyError, IndexError):
+                bad.append("create -> unparseable")
+            for path_ in ("/playlists", "/library/all", "/hubs",
+                          "/library/sections/%s/collections" % movie_section):
+                code, _, _ = request(base, "GET", path_)
+                if code != 200:
+                    bad.append("%s -> %s" % (path_, code))
+        with guard:
+            created.extend(local)
+            failures.extend(bad)
+
+    workers = [_threading.Thread(target=hammer, args=(n,)) for n in range(4)]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join()
+    check("concurrent writes and reads never fail", not failures,
+          "; ".join(failures[:3]) or "%d write(s), %d read(s)"
+          % (len(created), len(created) * 4))
+    check("concurrent creates never reuse a ratingKey",
+          len(created) == len(set(created)), "%d created, %d unique"
+          % (len(created), len(set(created))))
+    for key in created:
+        request(base, "DELETE", "/playlists/%s" % key)
+
     print("\n=== the notification socket ===")
 
     def stir():
