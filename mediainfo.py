@@ -107,6 +107,67 @@ def _language_fields(tags):
     }
 
 
+# Codec names as Plex labels them in a track title.
+_CODEC_LABELS = {"h264": "H.264", "hevc": "HEVC", "mpeg4": "MPEG-4", "vp8": "VP8",
+                 "vp9": "VP9", "av1": "AV1", "eac3": "EAC3", "ac3": "AC3",
+                 "aac": "AAC", "dts": "DTS", "opus": "OPUS", "flac": "FLAC",
+                 "truehd": "TRUEHD", "mp3": "MP3", "vorbis": "VORBIS",
+                 "srt": "SRT", "ass": "ASS", "subrip": "SRT", "pgs": "PGS"}
+
+
+def stream_titles(row):
+    """Set `displayTitle` and `extendedDisplayTitle` on one built Stream row.
+
+    These two are what the client's quality and track pickers print, and the
+    split between them is not the obvious one. Measured on two real servers:
+
+      video     displayTitle `1080p`              extended `1080p (H.264)`
+      audio     displayTitle `日本語 (OPUS 5.1)`   extended the same
+      subtitle  displayTitle `English`            extended `English (ASS)`
+      subtitle  displayTitle `English (Weeb)`     extended `Honorifics (English (Weeb) ASS)`
+                with a track title
+
+    So the codec belongs in the EXTENDED title, not the plain one -- plexsim had
+    it the other way round for video -- and a subtitle with a track title shows
+    its LANGUAGE as the plain title, with the track name only in the extended
+    one. plexsim showed the track name, which is a different string in the
+    picker from what every real client shows.
+
+    One measured difference is deliberately not reproduced: a 10-bit HEVC track
+    on fun extends to `1080p (HEVC Main 10)` while an 8-bit H.264 one on the
+    reference extends to `1080p (H.264)` with no profile at all. Two samples do
+    not give the rule for when the profile is appended, so it is left off.
+    """
+    codec = str(row.get("codec") or "")
+    label = _CODEC_LABELS.get(codec.lower(), codec.upper())
+    kind = row.get("streamType")
+    language = row.get("language")
+    title = row.get("title")
+    if kind == 1:
+        resolution = row.get("displayTitle")
+        # A previously built row may already carry the codec; take the plain
+        # resolution back off it so this stays idempotent.
+        if resolution and " (" in resolution:
+            resolution = resolution.split(" (")[0]
+        if not resolution:
+            return row
+        row["displayTitle"] = resolution
+        row["extendedDisplayTitle"] = ("%s (%s)" % (resolution, label) if label
+                                       else resolution)
+    elif kind == 2:
+        if row.get("displayTitle"):
+            row["extendedDisplayTitle"] = row["displayTitle"]
+    elif kind == 3:
+        plain = language or title or "Unknown"
+        row["displayTitle"] = plain
+        if title and title != plain:
+            row["extendedDisplayTitle"] = "%s (%s %s)" % (title, plain, label)
+        else:
+            row["extendedDisplayTitle"] = ("%s (%s)" % (plain, label) if label
+                                           else plain)
+    return row
+
+
 def _video_stream(stream, stream_id):
     width = stream.get("width")
     height = stream.get("height")
@@ -123,6 +184,13 @@ def _video_stream(stream, stream_id):
         "refFrames": stream.get("refs"),
         "bitDepth": stream.get("bits_per_raw_sample") or 8,
         "chromaSubsampling": stream.get("pix_fmt") and _chroma(stream["pix_fmt"]),
+        # ffprobe has all three of these and a real PMS carries them; Get Info
+        # prints them. `hasScalingMatrix` is NOT here on purpose: a real PMS
+        # reads it out of the H.264 bitstream and ffprobe does not report it, so
+        # there is nothing to derive it from.
+        "chromaLocation": stream.get("chroma_location"),
+        "codedHeight": stream.get("coded_height"),
+        "codedWidth": stream.get("coded_width"),
         "colorPrimaries": stream.get("color_primaries"),
         "colorTrc": stream.get("color_transfer"),
         "colorSpace": stream.get("color_space"),
@@ -137,7 +205,7 @@ def _video_stream(stream, stream_id):
     bitrate = stream.get("bit_rate")
     if bitrate:
         row["bitrate"] = int(int(bitrate) / 1000)
-    return row
+    return stream_titles(row)
 
 
 def _chroma(pix_fmt):
@@ -184,7 +252,7 @@ def _audio_stream(stream, stream_id, selected):
     )
     if tags.get("title"):
         row["title"] = tags["title"]
-    return row
+    return stream_titles(row)
 
 
 def _subtitle_stream(stream, stream_id):
@@ -206,8 +274,7 @@ def _subtitle_stream(stream, stream_id):
     row.update(_language_fields(tags))
     if tags.get("title"):
         row["title"] = tags["title"]
-    row["displayTitle"] = tags.get("title") or row.get("language", "Unknown")
-    return row
+    return stream_titles(row)
 
 
 def build_media(probe, *, media_id, part_id, part_key, file_path, size, container_hint=None):

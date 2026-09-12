@@ -318,6 +318,18 @@ precisely how the Seasons bug survived a fix attempt.
   pushes `activity`, `timeline`, `status` and `progress`; a client that gets none
   of them polls instead and never sees a change made elsewhere. Server frames are
   **unmasked**, and a malformed one puts the client back in fix 4's failure mode.
+- **XML is the DEFAULT response format**, not JSON — `_wants_xml()` returns true
+  unless a client asks for JSON. A JSON-only test proves nothing about the path a
+  TV or mobile client takes: three endpoints were rendering `<Video>` where a real
+  PMS renders `<Photo>` or `<Directory>`, because `xmlout` names a `Metadata`
+  row's element from the row's `type` and those rows have none.
+- **The eventsource channel is a DIFFERENT wire format from the websocket**, for
+  the same events: `event: <type>` plus a `data:` line holding one bare row, with
+  no NotificationContainer and no size.
+- **`displayTitle` is the plain label and `extendedDisplayTitle` carries the
+  codec** — not the other way round — and a subtitle with a track title shows its
+  LANGUAGE plainly, the track name only in the extended title. These two strings
+  are what the quality and track pickers print.
 - **The Console's live log stream is not fed by that socket.** 75 seconds against
   a busy reference pushed zero log frames, and the client opens no second socket
   and passes no filter — the page renders empty on a real server too.

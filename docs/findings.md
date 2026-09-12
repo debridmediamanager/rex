@@ -442,8 +442,8 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **230/230 checks against the new
-server, 63/202 against the spike it started from** on the same fixture catalog
+`tests/test_ui_surface.py` covers all of it: **250/250 checks against the new
+server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
 between the two runs because a check that depends on a playlist the old server
@@ -538,6 +538,75 @@ reports `{"activity":4,"timeline":1,"progress":1}` received, stays open, and the
 page keeps rendering -- which also proves the hand-rolled frames are well formed,
 the failure mode of getting that wrong being the one from fix 4 (the client
 decides the server is broken and draws nothing).
+
+#### A fourth pass, from the one angle nothing had used: XML
+
+Every check so far asked for JSON, because that is what Plex Web sends. **XML is
+plexsim's default** -- `_wants_xml()` returns true unless a client explicitly
+asks for JSON -- so the default response path of ~60 new endpoints had never been
+exercised. All 67 render parseable XML. Three rendered the **wrong element**:
+
+| Endpoint | plexsim rendered | a real PMS renders |
+|---|---|---|
+| `/library/metadata/{id}/posters`, `/arts` | `<Video>` | **`<Photo>`** |
+| `/library/sections/{id}/folder` | `<Video>` | **`<Directory>`** |
+| `/library/shared/all` | `<Video>` | **`<Directory>`**, under identifier `com.plexapp.plugins.library.shared` |
+
+The cause is structural: `xmlout` names a `Metadata` row's element from the row's
+own `type`, and these rows have no type -- so all three defaulted to `<Video>`.
+The container now carries an internal `_xml` hint for the endpoints that know
+their element, stripped before the JSON body. A JSON-only harness cannot see any
+of this, which is why the suite now checks element names too.
+
+#### The stream title split was backwards, and it is what the picker prints
+
+Measured on two real servers, and the distinction is not the intuitive one:
+
+```
+video     displayTitle  1080p                 extended  1080p (H.264)
+audio     displayTitle  日本語 (OPUS 5.1)      extended  日本語 (OPUS 5.1)
+subtitle  displayTitle  English               extended  English (ASS)
+subtitle  displayTitle  English (Weeb)        extended  Honorifics (English (Weeb) ASS)
+  with a track title
+```
+
+So the codec belongs in the **extended** title, and a subtitle with a track title
+shows its **language** plainly with the track name only in the extended one.
+plexsim had the codec in a video's `displayTitle` and the track name in a
+subtitle's -- both of which are the string the client's quality and track pickers
+print, so every label was subtly wrong. `mediainfo.stream_titles()` now derives
+both, and the catalog recomputes them at load so a catalog built before the fix is
+corrected rather than needing a rebuild. `extendedDisplayTitle` did not exist at
+all before.
+
+One measured difference is deliberately not reproduced: 10-bit HEVC on fun
+extends to `1080p (HEVC Main 10)` while 8-bit H.264 on the reference extends to
+`1080p (H.264)` with no profile. Two samples do not give the rule for when the
+profile is appended, so it is left off.
+
+#### The eventsource channel is a different wire format
+
+It carries the same events as the websocket -- confirmed by reading it on the
+reference while it was busy -- but not in the same shape:
+
+```
+websocket    {"NotificationContainer": {"type": "timeline", "size": 1, "TimelineEntry": [ … ]}}
+eventsource  event: timeline
+             data: {"TimelineEntry": { … one row, no container, no size … }}
+```
+
+plexsim's SSE channel had been a keep-alive since it was written. Both transports
+now come off the same notification bus, each formatting for itself.
+
+#### The rest of the fourth pass
+
+| Found | Fixed |
+|---|---|
+| A section `Directory` row was missing `filters` (which is what tells a client the section HAS a filter bar), `metadataAgentProviderGroupId` and all four timestamps | one `section_directory()` builds the measured row for both `/library/sections` and `/library/shared/all` |
+| The tree's `MediaPart` carries its streams as `MediaStream`, with `type` rather than `streamType` | added; `hash` and `openSubtitleHash` stay absent, both being hashes OF THE FILE |
+| A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
+| `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
+| ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
 
 `harness/scripts/replay.py` was run against the same server with the recorded
 `reference-walk` corpus. What is left after this work is content (a different

@@ -42,6 +42,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -141,6 +142,43 @@ def notifications(base, trigger, seconds=8):
     finally:
         sock.close()
     return "101", frames
+
+
+def eventsource(base, trigger, seconds=8):
+    """Read the SSE channel while `trigger` runs. Returns (status, [(event, data)])."""
+    import threading
+
+    request_ = urllib.request.Request(base.rstrip("/") + "/:/eventsource/notifications",
+                                      headers={"Accept": "text/event-stream",
+                                               "User-Agent": UA})
+    try:
+        response = urllib.request.urlopen(request_, timeout=seconds + 5)
+    except Exception as error:
+        return None, [("error", str(error))]
+    threading.Timer(0.5, trigger).start()
+    events, name = [], None
+    deadline = time.time() + seconds
+    try:
+        while time.time() < deadline:
+            try:
+                line = response.readline()
+            except Exception:
+                # A channel that sends nothing at all blocks until the socket
+                # times out; that is a result, not a reason to stop the run.
+                break
+            if not line:
+                break
+            text = line.decode("utf-8", "replace").strip()
+            if text.startswith("event:"):
+                name = text.split(":", 1)[1].strip()
+            elif text.startswith("data:") and name:
+                events.append((name, text.split(":", 1)[1].strip()))
+                name = None
+            if len(events) >= 4:
+                break
+    finally:
+        response.close()
+    return 200, events
 
 
 def request(base, method, path, want_json=True):
@@ -770,6 +808,38 @@ def main():
               "HTTP %s" % status)
         status, _, _ = get(base, "/playlists/%s" % playlist_key)
         check("the deleted playlist is gone", status == 404, "HTTP %s" % status)
+    _, listing, _ = get(base, "/playlists?X-Plex-Container-Start=0&X-Plex-Container-Size=1")
+    check("a paged playlist list carries totalSize and offset",
+          listing.get("offset") == 0 and listing.get("totalSize") is not None,
+          "totalSize=%s offset=%s" % (listing.get("totalSize"), listing.get("offset")))
+    _, unpaged_list, _ = get(base, "/playlists")
+    check("an unpaged playlist list carries neither",
+          "totalSize" not in unpaged_list and "offset" not in unpaged_list,
+          ",".join(sorted(k for k in unpaged_list if not isinstance(unpaged_list[k], list))))
+    # Two of them, because a direction can only be observed across two rows --
+    # and the playlist the checks above built has been deleted by now.
+    sort_keys = []
+    for name in ("aaa plexsim sort probe", "zzz plexsim sort probe"):
+        _, made_sort, _ = container(base, "POST",
+                                    "/playlists?type=video&title=%s&smart=0&uri=%s"
+                                    % (quote(name), quote(uri)))
+        key = ((made_sort.get("Metadata") or [{}])[0]).get("ratingKey")
+        if key:
+            sort_keys.append(key)
+    _, up, _ = get(base, "/playlists/all?type=15&sort=titleSort:asc")
+    _, down, _ = get(base, "/playlists/all?type=15&sort=titleSort:desc")
+    up_titles = [r.get("title") for r in up.get("Metadata") or []]
+    down_titles = [r.get("title") for r in down.get("Metadata") or []]
+    if len(up_titles) > 1:
+        # A playlist row has no titleSort of its own, so keying the sort on that
+        # alone made every row compare equal and the direction do nothing.
+        check("a playlist sort direction is honoured",
+              up_titles == list(reversed(down_titles)),
+              "%s vs %s" % (up_titles, down_titles))
+    else:
+        skip("a playlist sort direction is honoured", "need two playlists")
+    for key in sort_keys:
+        request(base, "DELETE", "/playlists/%s" % key)
     status, sorts, _ = get(base, "/playlists/sorts")
     check("playlist sorts are offered",
           status == 200 and len(sorts.get("Directory") or []) >= 6,
@@ -937,6 +1007,21 @@ def main():
               "%s -> HTTP %s" % (name, status))
         status, _, _ = request(base, "POST", "/butler/NoSuchTask")
         check("an unknown scheduled task is a 404", status == 404, "HTTP %s" % status)
+    _, sections, _ = get(base, "/library/sections")
+    directory = (sections.get("Directory") or [{}])[0]
+    # `filters` is what tells a client the section HAS a filter bar, and the four
+    # timestamps were all absent.
+    check("a section row carries filters and its timestamps",
+          all(k in directory for k in ("filters", "createdAt", "updatedAt",
+                                       "scannedAt", "contentChangedAt",
+                                       "metadataAgentProviderGroupId")),
+          ",".join(sorted(directory)))
+    _, tree, _ = get(base, "/library/metadata/%s/tree" % movie)
+    part = (((tree.get("MetadataItem") or [{}])[0].get("MediaItem")
+             or [{}])[0].get("MediaPart") or [{}])[0]
+    check("the tree carries a part's streams as MediaStream",
+          part.get("MediaStream") and part["MediaStream"][0].get("type") is not None,
+          ",".join(sorted(part)))
     status, library, _ = get(base, "/library")
     # python-plexapi asks for this before anything else; the old catch-all's
     # empty container is what hid the fact that it was never routed.
@@ -989,6 +1074,111 @@ def main():
         check("a resolution entry filters the listing",
               bool(rows.get("Metadata")),
               "%d row(s)" % len(rows.get("Metadata") or []))
+
+    print("\n=== the XML surface, which is plexsim's DEFAULT ===")
+    # The playlist checks above deleted theirs; the XML element name for a
+    # playlist row can only be checked against a list that has one.
+    _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                                         % (quote("plexsim xml probe"), quote(uri)))
+    xml_playlist = ((made.get("Metadata") or [{}])[0]).get("ratingKey")
+    # Every check above asks for JSON. A TV or mobile client sends no Accept
+    # header at all and gets XML, and the mapping is not a generic json2xml:
+    # the element name for a row comes from the row's `type`, and the endpoints
+    # whose rows have no type need the endpoint to say. Three of them were
+    # rendering <Video>.
+    def xml_root(path):
+        status, body, headers = request(base, "GET", path, want_json=False)
+        if status != 200 or "xml" not in headers.get("Content-Type", ""):
+            return status, None
+        try:
+            return status, ET.fromstring(body)
+        except ET.ParseError:
+            return status, None
+
+    for path, wanted, why in (
+            ("/library/metadata/%s/posters" % movie, "Photo", "an artwork list"),
+            ("/library/metadata/%s/arts" % movie, "Photo", "a background list"),
+            ("/library/sections/%s/folder" % movie_section, "Directory", "a folder list"),
+            ("/library/shared/all", "Directory", "the shared library list"),
+            ("/library/sections/%s/all" % movie_section, "Video", "a movie listing"),
+            ("/playlists", "Playlist", "a playlist list")):
+        status, root = xml_root(path)
+        kids = {child.tag for child in (root or [])}
+        check("%s renders as <%s>" % (why, wanted),
+              root is not None and wanted in kids,
+              "HTTP %s, got %s" % (status, ",".join(sorted(kids)) or "nothing"))
+    if show:
+        status, root = xml_root("/library/metadata/%s/children" % show)
+        kids = {child.tag for child in (root or [])}
+        check("a season list renders as <Directory>", "Directory" in kids,
+              ",".join(sorted(kids)))
+    status, root = xml_root("/butler")
+    # The one root element on the surface that is not a MediaContainer.
+    check("the scheduled task list keeps its ButlerTasks root in XML",
+          root is not None and root.tag == "ButlerTasks",
+          root.tag if root is not None else "unparseable")
+    broken = []
+    for path in ("/", "/identity", "/media/providers", "/:/prefs", "/library",
+                 "/library/sections", "/system", "/servers", "/activities",
+                 "/statistics/bandwidth", "/devices", "/accounts", "/updater/status",
+                 "/hubs", "/hubs/sections/%s" % movie_section,
+                 "/library/sections/%s/all?includeMeta=1" % movie_section,
+                 "/library/sections/%s/filters" % movie_section,
+                 "/library/sections/%s/categories" % movie_section,
+                 "/library/metadata/%s" % movie, "/library/metadata/%s/tree" % movie,
+                 "/library/metadata/%s/subtitles?language=en" % movie,
+                 "/playlists/sorts", "/status/sessions/history/all"):
+        status, root = xml_root(path)
+        if root is None:
+            broken.append("%s -> %s" % (path, status))
+    check("every container endpoint renders parseable XML", not broken,
+          "; ".join(broken) or "checked 23")
+    status, root = xml_root("/library/metadata/%s" % movie)
+    streams = root.findall(".//Stream") if root is not None else []
+    video = [s for s in streams if s.get("streamType") == "1"]
+    if video:
+        # Measured on two real servers: the codec belongs in the EXTENDED title.
+        # plexsim had `1080p (H.264)` in displayTitle, which is the string the
+        # quality picker prints.
+        check("a video stream's displayTitle is the resolution alone",
+              "(" not in (video[0].get("displayTitle") or ""),
+              video[0].get("displayTitle"))
+        check("a video stream carries an extendedDisplayTitle with the codec",
+              "(" in (video[0].get("extendedDisplayTitle") or ""),
+              video[0].get("extendedDisplayTitle"))
+    if subtitle_row:
+        _, detail, _ = get(base, "/library/metadata/%s" % subtitle_row)
+        subs = [s for media in (detail.get("Metadata") or [{}])[0].get("Media") or []
+                for part in media.get("Part") or []
+                for s in part.get("Stream") or [] if s.get("streamType") == 3]
+        if subs:
+            # A subtitle with a track title shows its LANGUAGE plainly and the
+            # track name only in the extended title.
+            check("a subtitle stream has both titles",
+                  all(s.get("displayTitle") and s.get("extendedDisplayTitle")
+                      for s in subs),
+                  "%s | %s" % (subs[0].get("displayTitle"),
+                               subs[0].get("extendedDisplayTitle")))
+
+    if xml_playlist:
+        request(base, "DELETE", "/playlists/%s" % xml_playlist)
+
+    print("\n=== the eventsource channel, which carries the same events ===")
+    sse_status, sse_events = eventsource(base, stir, seconds=8)
+    check("the eventsource channel opens", sse_status == 200, str(sse_status))
+    check("it carries the same events as the socket",
+          {"activity", "timeline"} <= {name for name, _ in sse_events},
+          ",".join(sorted({name for name, _ in sse_events})) or "nothing")
+    # Measured: SSE sends ONE row under its element name, with no
+    # NotificationContainer and no size around it -- a different wire format
+    # from the websocket's, carrying the same events.
+    payloads = [payload for name, payload in sse_events if name == "timeline"]
+    if payloads:
+        check("an eventsource frame is one bare row, not a container",
+              "NotificationContainer" not in payloads[0]
+              and "TimelineEntry" in payloads[0]
+              and isinstance(json.loads(payloads[0]).get("TimelineEntry"), dict),
+              payloads[0][:90])
 
     # ------------------------------------------------------------------
     # 15. Server settings pages

@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import claim as claim_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
 import library as library_module  # noqa: E402
+import mediainfo as mediainfo_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
 from xmlout import to_xml  # noqa: E402
@@ -268,6 +269,7 @@ class Catalog:
                 self._children.setdefault(str(parent), []).append(rating_key)
 
         self._number_tags()
+        self._retitle_streams()
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
@@ -284,6 +286,21 @@ class Catalog:
     def _number_tags(self):
         for row in self.items.values():
             self.number_tags(row)
+
+    def _retitle_streams(self):
+        """Recompute every Stream's display titles from the row's own fields.
+
+        A catalog built before mediainfo.py's split was corrected carries the
+        codec in `displayTitle` and no `extendedDisplayTitle` at all, and those
+        two strings are exactly what the client's quality and track pickers
+        print. Derived from what the row already holds, so it is a correction
+        rather than an invention.
+        """
+        for row in self.items.values():
+            for media in row.get("Media") or []:
+                for part in media.get("Part") or []:
+                    for stream in part.get("Stream") or []:
+                        mediainfo_module.stream_titles(stream)
 
     def number_tags(self, row):
         """Give every tag on one row an id and a filter string.
@@ -563,20 +580,23 @@ class PlexSim:
                 self.sockets.remove(sink)
 
     def notify(self, kind, element, rows):
-        """Push one NotificationContainer to every open socket.
+        """Fan one event out to every open channel, in that channel's own format.
 
-        Shape measured on the reference: `{"NotificationContainer": {"type": …,
-        "size": n, "<Element>": [ … ]}}`. A client that receives none of these
-        falls back to polling, and anything changed from another device never
-        appears until the page is reloaded.
+        The two transports are NOT the same wire format, which is easy to miss
+        because they carry the same events. Measured on the reference:
+
+          websocket  {"NotificationContainer": {"type": k, "size": n, "El": [rows]}}
+          eventsource  `event: k` then `data: {"El": {one row}}`
+
+        -- no container, no size, and one object rather than a list. A client
+        that receives nothing here falls back to polling and never sees a change
+        made from another device.
         """
-        payload = json.dumps({"NotificationContainer": {
-            "type": kind, "size": len(rows), element: rows}}).encode()
         with self.lock:
             sinks = list(self.sockets)
         for sink in sinks:
             try:
-                sink(payload)
+                sink(kind, element, rows)
             except Exception:
                 self.drop_socket(sink)
 
@@ -817,6 +837,49 @@ class PlexSim:
 
         return self.container(**{k: v for k, v in fields.items() if v is not None})
 
+    def section_directory(self, section, shared=False):
+        """One section as a Directory row.
+
+        The attribute set is the reference's: `filters`, the agent/scanner pair,
+        `metadataAgentProviderGroupId` and the four timestamps were all absent,
+        and `filters` is what tells a client the section HAS a filter bar. The
+        timestamps come from the catalog's own rows rather than being invented --
+        the newest `addedAt` in the section is when it last changed.
+        """
+        key = section["key"]
+        is_show = section.get("type") == "show"
+        rows = self.catalog.section_items(key)
+        newest = max([r.get("addedAt") or 0 for r in rows] or [0])
+        row = {
+            "key": ("/library/sections/%s/all?type=%d" % (key, 2 if is_show else 1))
+                   if shared else key,
+            "type": section.get("type"),
+            "title": section.get("title"),
+            "agent": "tv.plex.agents.series" if is_show else "tv.plex.agents.movie",
+            "scanner": "Plex TV Series" if is_show else "Plex Movie",
+            "language": "en-US",
+            "metadataAgentProviderGroupId": 2 if is_show else 1,
+            "uuid": section.get("uuid"),
+            "updatedAt": newest,
+            "createdAt": newest,
+            "scannedAt": newest,
+            "contentChangedAt": len(rows),
+            "filters": True,
+            "refreshing": str(key) in self.refreshing,
+            "allowSync": False,
+            "content": True,
+            "directory": True,
+            "hidden": 0,
+        }
+        row["Location"] = [{"id": 1, "path": "/plexsim/%s" % key}]
+        if shared:
+            # Measured: the shared view carries empty art/thumb and no composite.
+            row["art"] = ""
+            row["thumb"] = ""
+        else:
+            row["composite"] = "/library/sections/%s/composite/1" % key
+        return row
+
     def section_meta(self, section_id, section_type):
         """Per-section filter/sort descriptors, retargeted from the template.
 
@@ -1046,32 +1109,12 @@ class PlexSim:
         if route == "/library/sections":
             if method == "POST":
                 return self.create_section(query)
+            rows = [self.section_directory(s) for s in catalog.sections]
             # Measured on fun and on the 1.43.4 reference: this container carries
             # `title1` and allowSync only -- no identifier and no media-tag pair,
             # which the generic library container was adding.
-            return self.bare_container(
-                size=len(catalog.sections),
-                allowSync=False,
-                title1="Plex Library",
-                Directory=[
-                    dict(
-                        section,
-                        agent=("tv.plex.agents.series" if section.get("type") == "show"
-                               else "tv.plex.agents.movie"),
-                        scanner=("Plex TV Series" if section.get("type") == "show"
-                                 else "Plex Movie"),
-                        language="en-US",
-                        refreshing=str(section["key"]) in self.refreshing,
-                        allowSync=False,
-                        content=True,
-                        directory=True,
-                        hidden=0,
-                        composite="/library/sections/%s/composite/1" % section["key"],
-                        Location=[{"id": 1, "path": "/plexsim/%s" % section["key"]}],
-                    )
-                    for section in catalog.sections
-                ]
-            )
+            return self.bare_container(size=len(rows), allowSync=False,
+                                       title1="Plex Library", Directory=rows)
 
         if route in ("/library", "/library/"):
             # The library root, measured: three directories and the secondary
@@ -1088,12 +1131,15 @@ class PlexSim:
                            {"key": "onDeck", "title": "On Deck Content"}])
 
         if route == "/library/shared/all":
-            # The sections again, as Metadata rather than Directory: what the
-            # client reads to decide which libraries a share covers.
-            rows = [dict(s, key="/library/sections/%s" % s["key"]) for s in catalog.sections]
-            return self.bare_container(size=len(rows), allowSync=False,
-                                       identifier="com.plexapp.plugins.library",
-                                       Metadata=rows)
+            # What the client reads to decide which libraries a share covers.
+            # Measured: its own identifier (`...library.shared`, not the library
+            # one), rows that render as <Directory>, and a `key` pointing at the
+            # section's LISTING rather than at the section.
+            rows = [self.section_directory(s, shared=True) for s in catalog.sections]
+            return self.bare_container(
+                size=len(rows), allowSync=False,
+                identifier="com.plexapp.plugins.library.shared",
+                Metadata=rows, _xml={"Metadata": "Directory"})
 
         if route == "/library/optimize":
             # "Optimize Database". GET is a 404 on a real PMS: PUT only.
@@ -1603,9 +1649,11 @@ class PlexSim:
             return self.listing_container(
                 section_id, section, [_listing_row(r) for r in rows])
         if leaf == "collections":
+            # Measured: this listing keeps the SECTION's viewGroup and title2
+            # ("movie" / "All Movies"), not "collection" -- the rows are
+            # collections but the view is still the library's.
             rows = self.library.collections(section_id)
-            return self.listing_container(section_id, section, rows,
-                                          view_group="collection")
+            return self.listing_container(section_id, section, rows, query=query)
         if leaf == "folder":
             # By Folder. plexsim's rows have one Part each, so the folder tree
             # is one level: the release directory each Part sits in.
@@ -1616,6 +1664,7 @@ class PlexSim:
                                     % (section_id, index), "title": title})
             return self.secondary_container(
                 section_id, section, "By Folder", Metadata=rows,
+                _xml={"Metadata": "Directory"},
                 librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"))
@@ -1737,8 +1786,7 @@ class PlexSim:
             # Plex's collection type. The Collections pivot asks for it here
             # rather than at /library/sections/{id}/collections.
             rows = self.library.collections(section_id)
-            return self.listing_container(section_id, section, rows,
-                                          view_group="collection", query=query)
+            return self.listing_container(section_id, section, rows, query=query)
         else:
             source = self.catalog.section_items(section_id)
 
@@ -1776,11 +1824,18 @@ class PlexSim:
         if key in ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
                    "duration", "viewCount", "viewOffset", "index",
                    "leafCount", "unviewedLeafCount") + self.TEXT_SORTS:
-            return sorted(rows,
-                          key=lambda r: (r.get(key) is None,
-                                         str(r.get(key) or "") if key in self.TEXT_SORTS
-                                         else (r.get(key) or 0)),
-                          reverse=reverse)
+            def value(row):
+                if key not in self.TEXT_SORTS:
+                    return (row.get(key) is None, row.get(key) or 0)
+                # `titleSort` is the sort key the client sends, and a row that
+                # has no titleSort of its own sorts by its title -- a playlist
+                # row has only the latter, so keying on titleSort alone made
+                # every playlist compare equal and the direction do nothing.
+                text = row.get(key)
+                if key == "titleSort" and not text:
+                    text = row.get("title")
+                return (text is None, str(text or "").lower())
+            return sorted(rows, key=value, reverse=reverse)
         return rows
 
     def _matches_filters(self, row, query):
@@ -2065,6 +2120,26 @@ class PlexSim:
         # through the collection or playlist that holds it, not through the item.
         logger.warning("UNKNOWN item leaf %s on %s", leaf, rating_key)
         return ("error", 404, "plexsim: not found")
+
+    def paged_container(self, rows, query, **fields):
+        """A bare container that pages when the client asks, and not otherwise.
+
+        Measured on /playlists/all and /playlists/{id}/items: a paged request
+        gets `totalSize` and `offset` beside `size`, an unpaged one gets neither.
+        The same rule as every other listing here -- the client pages playlists
+        as soon as there are more than a screenful.
+        """
+        query = query or {}
+        start = int(query.get("X-Plex-Container-Start", 0) or 0)
+        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
+        page = rows[start:start + size]
+        body = dict(fields)
+        body["size"] = len(page)
+        if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
+            body["totalSize"] = len(rows)
+            body["offset"] = start
+        body["Metadata"] = page
+        return self.bare_container(**body)
 
     def hub_container(self, **fields):
         """A hub response. Measured on a real PMS: `size`, `allowSync` and
@@ -2628,7 +2703,10 @@ class PlexSim:
             "selected": not current,
             "provider": "local",
         })
-        return self.tag_container(size=len(entries), Metadata=entries)
+        # Measured: an artwork list renders as <Photo> in XML while its JSON
+        # still says `Metadata`.
+        return self.tag_container(size=len(entries), Metadata=entries,
+                                  _xml={"Metadata": "Photo"})
 
     def set_artwork(self, row, kind, query):
         """`PUT /library/metadata/{id}/{posters,arts}?url=` -- pick one."""
@@ -2656,16 +2734,28 @@ class PlexSim:
         """
         media_items = []
         for media in row.get("Media", []):
-            parts = [
-                {
+            parts = []
+            for part in media.get("Part", []):
+                entry = {
                     "id": part.get("id"),
                     "file": part.get("file"),
                     "size": part.get("size"),
                     "duration": part.get("duration"),
                     "container": part.get("container"),
                 }
-                for part in media.get("Part", [])
-            ]
+                # A real MediaPart carries its streams here as MediaStream, with
+                # `type` rather than `streamType`. Get Info reads this tree for
+                # an item whose Media the client has not already loaded.
+                streams = []
+                for stream in part.get("Stream", []):
+                    copy = {k: v for k, v in stream.items()
+                            if k not in ("streamType", "selected", "default",
+                                         "displayTitle", "extendedDisplayTitle")}
+                    copy["type"] = stream.get("streamType")
+                    streams.append(copy)
+                if streams:
+                    entry["MediaStream"] = streams
+                parts.append(entry)
             media_items.append({
                 "id": media.get("id"),
                 "width": media.get("width"),
@@ -2676,6 +2766,9 @@ class PlexSim:
                 "bitrate": media.get("bitrate"),
                 "MediaPart": parts,
             })
+        # `hash` and `openSubtitleHash` are on a real MediaPart here and are
+        # deliberately absent: both are hashes OF THE FILE, and plexsim has no
+        # file to hash.
         item = {
             "id": int(row["ratingKey"]),
             "title": row.get("title") or "",
@@ -2787,7 +2880,10 @@ class PlexSim:
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
             rows = self.library.playlists(query.get("playlistType"))
-            return self.bare_container(size=len(rows), Metadata=rows)
+            if query.get("smart") == "0":
+                rows = [r for r in rows if not r.get("smart")]
+            rows = self._sorted(rows, query.get("sort") or "")
+            return self.paged_container(rows, query)
 
         playlist = self.library.playlist(segments[1])
         if playlist is None:
@@ -2835,8 +2931,8 @@ class PlexSim:
                 entry["playlistItemID"] = item_id
                 rows.append(entry)
             summary = self.library._playlist_row(playlist)
-            return self.bare_container(
-                size=len(rows),
+            return self.paged_container(
+                rows, query,
                 composite=summary["composite"],
                 duration=summary["duration"],
                 leafCount=summary["leafCount"],
@@ -2844,7 +2940,6 @@ class PlexSim:
                 ratingKey=summary["ratingKey"],
                 smart=summary["smart"],
                 title=summary["title"],
-                Metadata=rows,
             )
         if leaf == "composite":
             return ("png", query)
@@ -3157,11 +3252,15 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
 
     def _send_container(self, container):
+        # `_xml` names the element a container's rows render as where the rows
+        # cannot name it themselves (an artwork list is <Photo>, a folder list
+        # <Directory>). It is internal: it must never reach the JSON body.
+        body_dict = next(iter(container.values()))
+        elements = body_dict.pop("_xml", None) if isinstance(body_dict, dict) else None
         if self._wants_xml():
-            self._send(200, "text/xml;charset=utf-8", to_xml(container))
+            self._send(200, "text/xml;charset=utf-8", to_xml(container, elements))
         else:
-            body = json.dumps(container).encode()
-            self._send(200, "application/json", body)
+            self._send(200, "application/json", json.dumps(container).encode())
 
     # -- verbs -----------------------------------------------------------
 
@@ -3400,7 +3499,9 @@ class Handler(BaseHTTPRequestHandler):
         sim = self.server.sim
         lock = threading.Lock()
 
-        def sink(payload):
+        def sink(kind, element, rows):
+            payload = json.dumps({"NotificationContainer": {
+                "type": kind, "size": len(rows), element: rows}}).encode()
             # One writer at a time: two notifications interleaving mid-frame
             # would corrupt the stream for the life of the connection.
             with lock:
@@ -3427,8 +3528,10 @@ class Handler(BaseHTTPRequestHandler):
         """Server-Sent Events channel the web app subscribes to on connect.
 
         Held open with periodic comment frames: closing it immediately makes the
-        client reconnect in a tight loop. plexsim emits no real events, so this
-        is a keep-alive only.
+        client reconnect in a tight loop. It carries the same events as the
+        websocket, in the SSE shape measured on the reference -- `event: <type>`
+        and a `data:` line holding ONE row under its element name, with no
+        NotificationContainer and no size around it.
         """
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
@@ -3437,16 +3540,30 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.close_connection = True
         self.end_headers()
-        import time as _time
 
-        deadline = _time.time() + 300
-        try:
-            while _time.time() < deadline:
-                self.wfile.write(b": ping\n\n")
+        sim = self.server.sim
+        lock = threading.Lock()
+
+        def sink(kind, element, rows):
+            frames = "".join(
+                "event: %s\ndata: %s\n\n" % (kind, json.dumps({element: row}))
+                for row in rows)
+            with lock:
+                self.wfile.write(frames.encode())
                 self.wfile.flush()
-                _time.sleep(15)
-        except (BrokenPipeError, ConnectionResetError):
+
+        sim.add_socket(sink)
+        deadline = time.time() + 300
+        try:
+            while time.time() < deadline:
+                with lock:
+                    self.wfile.write(b": ping\n\n")
+                    self.wfile.flush()
+                time.sleep(15)
+        except (BrokenPipeError, ConnectionResetError, OSError):
             pass
+        finally:
+            sim.drop_socket(sink)
 
     # -- part streaming --------------------------------------------------
 
