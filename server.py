@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import re
+import resource
 import socket
 import struct
 import sys
@@ -697,6 +698,10 @@ class PlexSim:
         # PMS persists these; plexsim keeps them for the life of the process so
         # a settings page round-trips instead of silently reverting.
         self.pref_overrides = {}
+        # The resource graph's series, and the last (wall clock, cpu seconds) pair
+        # a process-CPU percentage is measured against.
+        self._resource_series = []
+        self._resource_sample = None
         # Per-section settings, keyed (section id, setting id): `flattenSeasons`
         # and the rest of the library-type set live in their own id space.
         self.section_pref_overrides = {}
@@ -1627,7 +1632,10 @@ class PlexSim:
         claimed = self._claimed()
         return {
             "MyPlex": {
-                "authToken": (self.claim.token if claimed else None),
+                # No `authToken` here: measured against the reference, a real PMS
+                # does NOT put its account token in this response, and plexsim did.
+                # A page that reads /myplex/account is a page that could log the
+                # token, and the field buys nothing -- the client already holds one.
                 # fun and zen both report the owner's EMAIL here.
                 "username": self._owner() if claimed else None,
                 "mappingState": "mapped",
@@ -3785,13 +3793,28 @@ class PlexSim:
         agents = [{k: v for k, v in a.items() if k != "mediaType"} for a in agents]
         return self.bare_container(size=len(agents), Agent=agents)
 
+    # The scanner names a real PMS offers per library type, captured verbatim.
+    # The element is `Scanner` with nothing but a `name`, and the container's
+    # identifier is `com.plexapp.system` rather than the library's -- plexsim
+    # answered `Directory` rows with a key and a title, which the Edit Library
+    # dialog's scanner dropdown does not read.
+    SCANNERS = {
+        "movie": ["Plex Movie", "Plex Movie Scanner",
+                  "Plex Video Files Scanner", "Plex Video Files"],
+        "show": ["Plex TV Series", "Plex Series Scanner"],
+    }
+
     def system_scanners(self, section_id):
         """`/system/scanners/{sectionID}` -- what the Edit Library dialog lists."""
         section = self.catalog.section(section_id) or {}
-        scanner = "Plex TV Series" if section.get("type") == "show" else "Plex Movie"
-        return self.bare_container(
-            size=1, noHistory=0, replaceParent=0,
-            Directory=[{"key": scanner, "title": scanner}])
+        names = self.SCANNERS.get(section.get("type")) or self.SCANNERS["movie"]
+        return {"MediaContainer": {
+            "size": len(names),
+            "identifier": "com.plexapp.system",
+            "noHistory": 0,
+            "replaceParent": 0,
+            "Scanner": [{"name": name} for name in names],
+        }}
 
     def accounts(self, account_id):
         """`/accounts` -- the server's own user rows.
@@ -3835,11 +3858,7 @@ class PlexSim:
         if which not in ("bandwidth", "media", "resources"):
             return ("error", 404, "plexsim: not found")
         if which == "resources":
-            # Host CPU and memory sampling. plexsim will not invent a graph, and
-            # the client treats a refusal as "unsupported" and hides it -- which
-            # is the honest answer, and better than the empty graph forever that
-            # a `{size:0}` draws.
-            return ("error", 404, "plexsim: no resource statistics")
+            return self.resource_statistics(query or {})
 
         query = query or {}
         timespan = query.get("timespan") or (6 if which == "bandwidth" else 4)
@@ -3879,6 +3898,60 @@ class PlexSim:
          "enabled": True, "title": "Remove old bundles",
          "description": "Remove bundles no longer in use"},
     ]
+
+    def resource_statistics(self, query):
+        """`/statistics/resources` -- the Dashboard's CPU and memory graph.
+
+        plexsim used to 404 this, reasoning that a refusal reads as "unsupported"
+        and hides the graph. The measurement says otherwise: BOTH reference
+        servers answer 200 with a `StatisticsResources` series, and only
+        `timespan=6` has samples -- every coarser bucket is an empty 200.
+
+        The samples are taken when the endpoint is ASKED, which is the only time
+        they are wanted: the Dashboard polls while it is open, so the graph fills
+        in the way it does on a real server, and plexsim runs no sampler thread
+        for a page nobody is looking at. Two of the four numbers are real -- host
+        CPU from the load average over the core count, process CPU from rusage
+        over wall time -- and the two memory ones are honestly 0.0, because the
+        stdlib cannot see host memory and inventing a percentage would draw a
+        plausible graph of nothing.
+        """
+        if not query.get("timespan"):
+            # Measured: no timespan is an empty 200, not an error.
+            return self.bare_container(size=0)
+        timespan = str(query["timespan"])
+        if timespan != "6":
+            # Measured on both servers: only the finest bucket carries samples.
+            return self.bare_container(size=0)
+        now = int(time.time())
+        with self.lock:
+            previous = self._resource_sample
+            usage = resource.getrusage(resource.RUSAGE_SELF)
+            cpu_seconds = usage.ru_utime + usage.ru_stime
+            process = 0.0
+            if previous and now > previous[0]:
+                process = max(0.0, (cpu_seconds - previous[1]) / (now - previous[0]) * 100)
+            self._resource_sample = (now, cpu_seconds)
+            try:
+                host = min(100.0, os.getloadavg()[0] / (os.cpu_count() or 1) * 100)
+            except OSError:
+                host = 0.0
+            if not self._resource_series or self._resource_series[-1]["at"] < now:
+                self._resource_series.append({
+                    "timespan": 6,
+                    "at": now,
+                    "hostCpuUtilization": round(host, 3),
+                    "processCpuUtilization": round(process, 3),
+                    "hostMemoryUtilization": 0.0,
+                    "processMemoryUtilization": 0.0,
+                })
+                # The reference kept about two and a half minutes at this bucket.
+                del self._resource_series[:-180]
+            series = list(self._resource_series)
+        since = query.get("at>") or query.get("at>=")
+        if str(since).isdigit():
+            series = [s for s in series if s["at"] > int(since)]
+        return self.bare_container(size=len(series), StatisticsResources=series)
 
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
