@@ -29,6 +29,18 @@ _METADATA_ELEMENT = {
 }
 
 
+# The order a row's child elements come in, measured on both servers across movie,
+# show and episode reads with every include option: media first, then artwork, then
+# the tags, then the blocks an option adds. plexsim wrote them in whatever order the
+# row dict held them -- Genre before Image, Guid after the people, Preferences after
+# Extras -- 41 pairs inverted. A child not listed keeps its place after these.
+_CHILD_ORDER = {name: index for index, name in enumerate((
+    "Media", "Image", "UltraBlurColors", "Genre", "Country", "Guid", "Rating",
+    "Collection", "Director", "Writer", "Role", "Producer", "Label", "CommonSenseMedia",
+    "Chapter", "Marker", "Review", "Field", "Location", "Preferences", "OnDeck",
+    "Extras", "Related", "Children"))}
+
+
 def _attr(value):
     """Render one scalar the way PMS does: bools as 1/0, everything else str."""
     if value is True:
@@ -72,7 +84,7 @@ def _element_name(key, row, overrides=None):
     return key
 
 
-def _render(name, row, out, overrides=None):
+def _render(name, row, out, overrides=None, container=False):
     attrs = []
     children = []
 
@@ -90,6 +102,12 @@ def _render(name, row, out, overrides=None):
                 attrs.append((key, ",".join(_attr(v) for v in value)))
         else:
             attrs.append((key, _format(key, value, row)))
+
+    if container:
+        # Measured: a listing's `Meta` comes BEFORE its rows; the rest keep their order.
+        children.sort(key=lambda child: 0 if child[0] == "Meta" else 1)
+    else:
+        children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
 
     out.append("<" + name)
     for key, value in attrs:
@@ -116,5 +134,5 @@ def to_xml(container, elements=None):
     """
     root, body = next(iter(container.items()))
     out = ['<?xml version="1.0" encoding="UTF-8"?>\n']
-    _render(root, body, out, elements)
+    _render(root, body, out, elements, container=True)
     return "".join(out).encode("utf-8")

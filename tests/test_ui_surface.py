@@ -4474,10 +4474,14 @@ def main():
                        if k in season_row))
         _, episodes_doc, _ = get(base, "/library/metadata/%s/children" % c5_season)
         show_title = (get(base, "/library/metadata/%s" % c5_show)[1].get("Metadata") or [{}])[0].get("title")
+        # Re-measured in cycle 8 on both servers: the container DOES carry `parentYear`
+        # when the season has a year of its own, and it is that year. This check wanted
+        # it absent, which had been measured on seasons without a year.
         check("an episode list's container is presented as the show's",
               episodes_doc.get("title1") == show_title and episodes_doc.get("parentTitle") == ""
               and isinstance(episodes_doc.get("grandparentRatingKey"), int)
-              and not any(k in episodes_doc for k in ("summary", "parentYear", "grandparentYear")),
+              and not any(k in episodes_doc for k in ("summary", "grandparentYear"))
+              and episodes_doc.get("parentYear") == season_row.get("year"),
               "title1=%r parentTitle=%r" % (episodes_doc.get("title1"), episodes_doc.get("parentTitle")))
     if c5_episode:
         episode_row = (get(base, "/library/metadata/%s" % c5_episode)[1].get("Metadata") or [{}])[0]
@@ -5411,6 +5415,194 @@ def main():
           and small8[2] == "plugins" and small8[3] == 400 and small8[4] == 400
           and small8[5] == "plugins",
           str([s if not isinstance(s, tuple) else s[0] for s in small8]))
+
+    # -- cycle 8, second batch: the XML path and the clients that are not Plex Web -----
+    def fetch_as(path, headers, want_json=True):
+        """A read with extra request headers, in JSON or (no Accept) in XML."""
+        sent = {"User-Agent": UA, "X-Plex-Client-Identifier": "plexsim-ui-test",
+                "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"}
+        if want_json:
+            sent["Accept"] = "application/json"
+        sent.update(headers)
+        req = urllib.request.Request(base.rstrip("/") + path, headers=sent)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                status, body = response.status, response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, ({} if want_json else b"")
+        if not want_json:
+            return status, body
+        try:
+            return status, json.loads(body).get("MediaContainer") or {}
+        except ValueError:
+            return status, {}
+
+    movie_path8 = quote("/library/metadata/%s" % c5_movie)
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=5000&duration=600000"
+            % (c5_movie, movie_path8))
+    sessions8 = get(base, "/status/sessions")[1].get("Metadata") or []
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=5000&duration=600000"
+            % (c5_movie, movie_path8))
+    leaked8 = set()
+    for media in detail_of(c5_movie).get("Media") or []:
+        leaked8.update(k for k in ("selected",) if k in media)
+        for part in media.get("Part") or []:
+            leaked8.update(k for k in ("selected", "decision") if k in part)
+            for stream in part.get("Stream") or []:
+                leaked8.update(k for k in ("location",) if k in stream)
+    check("a session's playback flags stay on the session row, not in the catalog",
+          sessions8 and not leaked8, "%d session(s), leaked %s" % (len(sessions8), sorted(leaked8)))
+
+    related8 = [r for hub in get(base, "/hubs/metadata/%s/related" % c5_movie)[1].get("Hub") or []
+                for r in hub.get("Metadata") or []]
+    first_related = related8[0] if related8 else {}
+    check("a Related shelf carries the full row: tag ids, streams and its library",
+          first_related and "librarySectionID" in first_related
+          and any("id" in tag for tag in first_related.get("Genre") or [])
+          and any(part.get("Stream") for media in first_related.get("Media") or []
+                  for part in media.get("Part") or []),
+          "%d related row(s), keys %s" % (len(related8), sorted(k for k in first_related
+                                                             if k.startswith("librarySection"))))
+
+    word8 = str(detail_of(c5_movie).get("title") or "").split()[0]
+    found8 = [hit.get("Metadata") for hit in get(base, "/library/search?query=%s" % quote(word8))[1]
+              .get("SearchResult") or [] if isinstance(hit.get("Metadata"), dict)]
+    movies8 = [r for r in found8 if r.get("type") == "movie"]
+    check("a /library/search hit is light and names its library by title only",
+          movies8 and all(r.get("librarySectionTitle") and "librarySectionID" not in r
+                          and "librarySectionKey" not in r and "Guid" not in r
+                          and not any("id" in tag for tag in r.get("Genre") or [])
+                          for r in movies8),
+          "%d movie hit(s) for %r" % (len(movies8), word8))
+
+    recent8 = get(base, "/library/recentlyAdded")[1].get("Metadata") or []
+    _, recent_page8 = fetch_as("/library/recentlyAdded",
+                               {"X-Plex-Container-Start": "0", "X-Plex-Container-Size": "1"})
+    recent_seasons = [r for r in recent8 if r.get("type") == "season"]
+    earliest8 = None
+    if recent_seasons:
+        earliest8 = min([e.get("addedAt") or 0 for e in get(
+            base, "/library/metadata/%s/children" % recent_seasons[0]["ratingKey"])[1]
+            .get("Metadata") or []] or [0])
+    check("Recently Added lists new episodes as their season, dated by the first, and pages",
+          recent8 and not any(r.get("type") == "episode" for r in recent8)
+          and recent_page8.get("size") == 1 and recent_page8.get("totalSize") == len(recent8)
+          and recent_page8.get("offset") == 0
+          and (not show_lib or (recent_seasons and recent_seasons[0].get("addedAt") == earliest8)),
+          "types %s, page %s/%s" % (sorted({str(r.get("type")) for r in recent8}),
+                                    recent_page8.get("size"), recent_page8.get("totalSize")))
+
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=120000&duration=600000"
+            % (c5_movie, movie_path8))
+    deck8 = get(base, "/library/onDeck")[1].get("Metadata") or []
+    home_deck8 = get(base, "/hubs/home/continueWatching")[1].get("Metadata") or []
+    heavy8 = [r.get("title") for r in deck8 + home_deck8
+              if "Guid" in r or any("id" in tag for tag in r.get("Genre") or [])
+              or any(part.get("Stream") for media in r.get("Media") or []
+                     for part in media.get("Part") or [])]
+    check("On Deck and Continue Watching rows are light, On Deck's named by UUID",
+          deck8 and home_deck8 and not heavy8
+          and all("librarySectionKey" not in r and r.get("librarySectionUUID") for r in deck8),
+          "%d on deck, %d continue, heavy %s" % (len(deck8), len(home_deck8), heavy8[:2]))
+
+    if c5_show and c5_season:
+        season8 = detail_of(c5_season)
+        _, season_page8 = fetch_as("/library/metadata/%s/children" % c5_season,
+                                   {"X-Plex-Container-Start": "0", "X-Plex-Container-Size": "20"})
+        if season8.get("year") is not None:
+            check("a season's episode list carries the season's own year as parentYear",
+                  season_page8.get("parentYear") == season8.get("year"),
+                  "parentYear %s, season year %s" % (season_page8.get("parentYear"),
+                                                     season8.get("year")))
+        else:
+            skip("a season's episode list carries the season's own year as parentYear",
+                 "the first season has no year of its own")
+        check("a show library's collection list carries nocache",
+              get(base, "/library/sections/%s/collections" % show_lib)[1].get("nocache") is True,
+              "")
+
+        _, tree8, _ = get(base, "/library/metadata/%s/tree" % c5_show)
+        show_node = (tree8.get("MetadataItem") or [{}])[0]
+        season_node = (show_node.get("MetadataItem") or [{}])[0]
+        episode_node = (season_node.get("MetadataItem") or [{}])[0]
+        part_node = ((episode_node.get("MediaItem") or [{}])[0].get("MediaPart") or [{}])[0]
+        season_root = (get(base, "/library/metadata/%s/tree" % c5_season)[1]
+                       .get("MetadataItem") or [{}])[0]
+        show_title8 = detail_of(c5_show).get("title")
+        check("the tree blanks season titles, types episode parts, lists the show's settings",
+              season_node.get("title") == "" and season_node.get("parentTitle") == ""
+              and part_node.get("metadataType") == 4
+              and [s.get("id") for s in show_node.get("Setting") or []]
+              == ["episodeSort", "autoDeletionItemPolicyUnwatchedLibrary",
+                  "autoDeletionItemPolicyWatchedLibrary", "flattenSeasons", "showOrdering",
+                  "audioLanguage", "subtitleLanguage", "subtitleMode"]
+              and all(isinstance(s.get("value"), str) for s in show_node.get("Setting") or [])
+              and season_root.get("title") == "" and season_root.get("parentTitle") == show_title8
+              and all(e.get("parentTitle") == show_title8
+                      for e in season_root.get("MetadataItem") or []),
+              "season %r/%r, part type %s, %d setting(s)" % (
+                  season_node.get("title"), season_node.get("parentTitle"),
+                  part_node.get("metadataType"), len(show_node.get("Setting") or [])))
+
+        _, ios8 = fetch_as("/library/metadata/%s/children" % c5_show, {"X-Plex-Platform": "iOS"})
+        _, android8 = fetch_as("/library/metadata/%s/children" % c5_show,
+                               {"X-Plex-Platform": "Android"})
+        check("the iOS platform types All episodes as a season, and no other does",
+              (ios8.get("Directory") or [{}])[0].get("type") == "season"
+              and (android8.get("Directory") or [{}])[0].get("title") == "All episodes"
+              and "type" not in (android8.get("Directory") or [{}])[0],
+              "iOS %s, Android %s" % ((ios8.get("Directory") or [{}])[0].get("type"),
+                                      (android8.get("Directory") or [{}])[0].get("type")))
+    else:
+        skip("the tree blanks season titles, types episode parts, lists the show's settings",
+             "no show and season in this catalog")
+
+    random8 = [get(base, "/library/sections/%s/all?type=1&sort=%s" % (movie_lib, spec))[0]
+               for spec in ("movie.random", "movie.random:desc", "movie.random:42")]
+    check("a type-prefixed random sort sorts, as python-plexapi sends it",
+          random8 == [200, 200, 200], str(random8))
+
+    # The fixture's rows carry no studio, so give one a studio through the Edit
+    # dialog's own write first; a check that skips on an empty table proves nothing.
+    studio8 = "Cycle8 Studio"
+    request(base, "PUT", "/library/metadata/%s?type=1&studio.value=%s&studio.locked=1"
+            % (c5_movie, quote(studio8)))
+    studios8 = get(base, "/library/tags?type=318")[1].get("Directory") or []
+    studio_row = next((t for t in studios8 if t.get("tag") == studio8), {})
+    check("studios are a tag table: tagType 318 with a bare =id filter",
+          detail_of(c5_movie).get("studio") == studio8
+          and studio_row.get("tagType") == 318
+          and studio_row.get("filter") == "=%s" % studio_row.get("id"),
+          "%d studio(s), %s" % (len(studios8), studio_row))
+
+    stream8 = next((s.get("id") for media in detail_of(c5_movie).get("Media") or []
+                    for part in media.get("Part") or [] for s in part.get("Stream") or []), None)
+    check("a stream's levels are a 404 where the bare stream is a 501",
+          stream8 and get(base, "/library/streams/%s/levels" % stream8)[0] == 404
+          and get(base, "/library/streams/%s" % stream8)[0] == 501,
+          "stream %s" % stream8)
+
+    order8 = ["Media", "Image", "UltraBlurColors", "Genre", "Country", "Guid", "Rating",
+              "Collection", "Director", "Writer", "Role", "Producer", "Label",
+              "CommonSenseMedia", "Field", "Location", "Preferences", "OnDeck", "Extras",
+              "Related", "Children"]
+    _, detail_xml8 = fetch_as("/library/metadata/%s?includeExtras=1&includePreferences=1"
+                              % c5_movie, {}, want_json=False)
+    _, listing_xml8 = fetch_as("/library/sections/%s/all?includeMeta=1" % movie_lib, {},
+                               want_json=False)
+    try:
+        tags8 = []
+        for child in list(ET.fromstring(detail_xml8))[0]:
+            if not tags8 or tags8[-1] != child.tag:
+                tags8.append(child.tag)
+        first_child8 = list(ET.fromstring(listing_xml8))[0].tag
+    except (ET.ParseError, IndexError):
+        tags8, first_child8 = [], None
+    ranked8 = [t for t in tags8 if t in order8]
+    check("XML children come in a real PMS's order, and a listing's Meta first",
+          ranked8 and ranked8 == sorted(ranked8, key=order8.index)
+          and len(set(ranked8)) == len(ranked8) and first_child8 == "Meta",
+          "%s; listing starts %s" % (",".join(tags8), first_child8))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

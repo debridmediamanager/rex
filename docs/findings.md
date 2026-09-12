@@ -2423,7 +2423,8 @@ Six were new.
   with style `shelf` and no `promoted`. plexsim ignored the parameter. Only the
   empty shelf was measurable, because neither server has a playlist.
 - **Hub and search rows by type.** A movie or episode on any shelf or in search has
-  no `Guid` and text-only tags. This includes `/hubs/home/recentlyAdded?type=1` and
+  no `Guid` and text-only tags. (Overturned for Related and postplay shelves in the
+  eighth pass: those carry the full row.) This includes `/hubs/home/recentlyAdded?type=1` and
   `/hubs/search`, which bypassed the projection. A SHOW on a `mixed` Recently Added
   TV shelf, whether on home, the library tab or `/hubs/promoted`, is the FULL row:
   `Guid`, `Location`, `Rating` and tag ids. A show in search keeps its `Location`.
@@ -2676,6 +2677,88 @@ Measured and not acted on:
   framework's Python traceback.
 - A folder level holding both subdirectories and files was not measured. No
   plexsim catalog has one, and its directory rows would render as `<Video>`.
+
+#### The eighth pass, second batch: the XML path and the clients that are not Plex Web
+
+Cycle 8's second agent replayed the recorded corpus with no Accept header, the way a
+TV or mobile client asks. It swept 75 read paths three ways in XML, re-issued 20
+paths under the Android TV, iOS, Roku and LG header profiles, and extended the
+python-plexapi corpus to 616 calls. No Accept and `Accept: application/xml` answer
+identically on all three servers. It reported 14 differences; every one was
+re-measured, and one detail of the tenth was already covered by cycle 7.
+
+- **Reading `/status/sessions` rewrote the catalog.** `session_rows()` set
+  `selected`, `decision="directplay"` and `location="direct"` on Media, Part and
+  Stream dicts shared with the catalog. `_full` copies only a row's top level. After
+  one play every detail, listing and search row of the item carried them, and
+  python-plexapi read `part.decision == "directplay"` on an idle server. Neither
+  real server carries those attributes on a read outside a session. The flags now go
+  on copies.
+- **Related and postplay shelves carry the FULL row.** This holds on
+  `/hubs/metadata/{id}/related`, `/postplay`, `/library/metadata/{id}/related` and
+  `includeRelated=1`, on both servers: Guid, Rating, Field, tag ids and roles, the
+  Part's Streams, and the librarySection id, key and title. This overturns cycle 7's
+  "light on every shelf" for these shelves.
+- **A `/library/search` hit is light** (text tags, no Guid, Rating or Streams) and
+  names its library by TITLE only. A show keeps the id and key beside the title, and
+  its Location.
+- **The server-wide On Deck and Recently Added page**, by header or query parameter.
+  plexsim answered every row with no `totalSize`.
+  - On Deck rows are light and name their library by id, title and UUID. This was
+    measured on fun, since the reference has nothing in progress.
+  - Continue Watching rows under `/hubs/home` are light too.
+- **Recently Added lists a new episode as its SEASON**, never on its own. The season
+  row's `addedAt` is its earliest episode's: the reference's Season 1 says
+  1789187076, its first episode's, where its own row says 1789187257. The list stops
+  at 50, fun's totalSize.
+- **A season's episode list carries the season's own year as `parentYear`.** The
+  first reading, "no parentYear", was taken on seasons without a year.
+- **A show library's `/collections` carries `nocache`**, paged or not.
+- **The tree**, identically on both servers:
+  - a season's `title` is always empty;
+  - every node's `parentTitle` is the ROOT's: the show's title throughout a
+    season's tree, and empty throughout a show's;
+  - an episode's `MediaPart` leads with `metadataType` 4, where a movie's has none;
+  - a show's node ends with eight of its eleven settings, after its seasons, with
+    every value and default a string.
+- **The iOS platform types a show's "All episodes" row as a season.** It is the one
+  client-profile rule the sweep found. Neither the product alone nor tvOS does it, and
+  Android TV, Roku and LG change nothing anywhere.
+  - plexsim read only the paging headers, so the platform is now normalised from a
+    header as well.
+  - The same row carries the show's `thumb`, which batch 1 added.
+- **`sort=movie.random`** (with a direction or a seed) sorts like `random`.
+  python-plexapi always sends the prefixed form, and plexsim answered 500.
+- **Studios and networks are tag tables.** `/library/tags?type=318` lists studios
+  with a bare `=<id>` filter, ordered by id, and `319` lists networks.
+  - plexsim's studios are text on the row, so it mints their ids from the name, as it
+    does every other tag's.
+- **A stream's `/levels` is a 404**, where the stream itself is the 501.
+- **XML child order.** Both servers write a row's children in one order:
+  - Media, Image, UltraBlurColors;
+  - then Genre, Country, Guid, Rating, Collection, Director, Writer, Role, Producer,
+    Label, CommonSenseMedia, Chapter, Marker, Review, Field and Location;
+  - then Preferences, OnDeck, Extras, Related and Children.
+
+  A listing's `Meta` comes before its rows. plexsim had 41 pairs inverted. No
+  client was found that depends on it, and the order is cheap to keep.
+
+Thirteen new checks cover these, and all thirteen fail against the batch-1 commit
+(754/768 there). The studio check sets a studio through the Edit dialog's write first,
+because an earlier check leaves the fixture movie without one. The cycle-5 check that
+wanted no `parentYear` on a season's episode list was re-measured and updated.
+
+Measured and not acted on:
+
+- fun's postplay for a movie also carries `movie.extras` (clip rows), and for an
+  episode a `tv.ondeck` shelf. Its related list adds `movie.same.actor.N` shelves.
+  plexsim has no extras and builds only the similar shelf.
+- A child element outside the measured list (Similar, Mood, Style) keeps its place
+  after those in the list. Neither server showed one to place.
+- plexsim's studio tag ids are minted, not a database's.
+- The agent's reading that a yearless season in Recently Added lacks `year`,
+  `titleSort` and `updatedAt` is cycle 7's season-year rule. A season with a year of
+  its own carries all three.
 
 ### Emulation calibrated against the account's own claimed servers
 
