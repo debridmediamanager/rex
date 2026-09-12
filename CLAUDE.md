@@ -324,6 +324,22 @@ precisely how the Seasons bug survived a fix attempt.
 - **Two responses on the surface have a root that is not a MediaContainer** —
   `/butler` answers `ButlerTasks` and `/library/sections/{id}/query/parse`
   answers `Query`. Neither is guessable; both were measured.
+- **The `include*`/`exclude*` options each DO something**, and ignoring one answers
+  a valid document with a block missing. `includeChildren` inlines a show's
+  seasons, `excludeElements=Media` substitutes `mediaCount`, and the `async*` pair
+  makes the CONTAINER drop `identifier` and the media-tag pair. `includePreferences`
+  is per TYPE — a movie has 3, a show 11, a season 3, an episode none, and the
+  block is omitted rather than sent empty.
+- **`group=` collapses to one row per distinct value and 500s for most fields** —
+  a tag, the media and per-user state are all refused, and so are `duration` and
+  `userRating`. `group=decade` groups on the YEAR column, so it does not collapse
+  by decade.
+- **The decision container sends ONE pair of codes.** A direct play is only
+  `mdeDecisionCode: 1000` / `"Direct play OK."`; the general/directPlay/transcode
+  triples appear only when direct play is REFUSED. Sending all of them says a
+  transcode decision was made when none was. `resourceSession` is the client
+  identifier, and `allowSync`, `librarySectionID` and `mediaTagVersion` are all
+  STRINGS here.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.

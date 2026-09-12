@@ -889,17 +889,61 @@ class PlexSim:
             if pick is not None:
                 detail["OnDeck"] = {"Metadata": _full(pick)}
 
-        if query.get("includePreferences") == "1":
-            settings = ITEM_PREFS.get(row.get("type")) or []
-            stored = row.get("_prefs") or {}
-            detail["Preferences"] = {"Setting": [
-                dict(s, value=stored[s["id"]]) if s.get("id") in stored else s
-                for s in settings
-            ]}
         # A setting the client has written shows up on the row itself as well,
         # the way `episodeSort` does on a real show.
         for name, value in (row.get("_prefs") or {}).items():
             detail[name] = value
+        return detail
+
+    def apply_detail_options(self, row, detail, query):
+        """The `include*` / `exclude*` / `checkFiles` effects, measured one by one.
+
+        Each of these is a parameter the official client actually sends, and each
+        was silently ignored -- which is the quiet kind of wrong: the response is
+        a valid detail document that simply lacks the block the client asked for,
+        so the page renders with a section missing rather than with an error.
+        """
+        if query.get("includeChildren") == "1":
+            # A show gains its seasons INLINE, as a `Children` block with its own
+            # size -- not a second request to /children.
+            children = self.catalog.children(row["ratingKey"])
+            if children:
+                detail["Children"] = {"size": len(children),
+                                      "Metadata": [_full(c) for c in children]}
+        if query.get("includeRelated") == "1":
+            # Measured on the reference: an empty object, because the related
+            # hubs are empty there. plexsim has no related hubs either, so the
+            # honest answer is the same empty block rather than no block.
+            detail.setdefault("Related", {})
+        for field in (query.get("excludeFields") or "").split(","):
+            if field and field in detail:
+                detail.pop(field)
+        excluded = [e for e in (query.get("excludeElements") or "").split(",") if e]
+        for element in excluded:
+            detail.pop(element, None)
+        if "Media" in excluded:
+            # Measured: dropping Media substitutes two COUNTS, which is what a
+            # grid needs to decide whether to draw the version picker at all.
+            detail["mediaCount"] = len(row.get("Media") or [])
+            detail["mediaCountOptimized"] = 0
+        # `checkFiles=1` is the one option here with nothing to do: measured, it
+        # adds `accessible` and `exists` to every Part, and plexsim already sends
+        # both on every Part unconditionally -- deliberately, because plezy
+        # re-fetches metadata in a loop until it sees them. See mediainfo.py.
+        if query.get("includePreferences") == "1":
+            # The item's own settings tab. A movie has three, a show eleven and a
+            # season three, all captured -- and the list is per TYPE, so serving
+            # the show list for a movie offers settings the item does not have.
+            settings = ITEM_PREFS.get(row.get("type")) or []
+            stored = row.get("_prefs") or {}
+            if settings:
+                # An EPISODE has no settings of its own, and the reference omits
+                # the block entirely rather than sending an empty one -- an empty
+                # Preferences draws a settings tab with nothing in it.
+                detail["Preferences"] = {"Setting": [
+                    dict(s, value=stored[s["id"]]) if s.get("id") in stored else s
+                    for s in settings
+                ]}
         return detail
 
     def child_container(self, parent, rows, leaf, query=None):
@@ -1478,7 +1522,7 @@ class PlexSim:
             return self.play_queue_route(method, segments, query)
 
         if route == "/video/:/transcode/universal/decision":
-            return self.decision(query)
+            return self.decision(query, headers)
         if route.startswith("/video/:/transcode/universal/start"):
             # plexsim has no encoder. A 404 here is the honest answer and it is
             # also the signal that the client's own gate rejected direct play.
@@ -2051,6 +2095,8 @@ class PlexSim:
             # answer -- the caller cannot tell its sort did nothing.
             logger.warning("UNSUPPORTED sort key %r", unsupported)
             return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+        if "group" in query:
+            source = self.grouped(source, query.get("group"))
         rows = [_listing_row(r) for r in source]
         # Measured: only the unpaged /all listing carries `nocache`; newest,
         # recentlyAdded, onDeck and collections carry neither it nor totalSize.
@@ -2128,6 +2174,40 @@ class PlexSim:
                 return rows, key
             ordered = sorted(ordered, key=getter, reverse=descending)
         return ordered, None
+
+    # The fields `group=` accepts, probed one at a time against the reference.
+    # They are the scalar columns of the metadata row itself; everything that
+    # lives somewhere else -- a tag join (`genre`, `director`), the media
+    # (`resolution`, `audioCodec`, `mediaSize`), or per-user view state
+    # (`viewCount`, `lastViewedAt`, `unwatched`) -- is a 500. `duration` and
+    # `userRating` are 500 too, which no rule about the schema predicts, so the
+    # set is the measurement rather than a rule.
+    GROUPABLE = {"title", "titleSort", "studio", "contentRating", "year", "decade",
+                 "addedAt", "updatedAt", "originallyAvailableAt", "audienceRating",
+                 "rating", "editionTitle", "index", "summary", "tagline",
+                 "contentRatingAge"}
+
+    def grouped(self, rows, field):
+        """`group=<field>` -- one row per distinct value of that field.
+
+        Measured: `?group=studio` on five movies that share a studio answers ONE
+        row, and an empty, unknown or non-scalar field is a 500. Which row of a
+        group survives is a SQL artifact on the reference (it is not the first in
+        sort order, nor the lowest id); plexsim keeps the first in the order the
+        sort just produced, which is at least deterministic.
+        """
+        bare = field.split(".", 1)[1] if field and "." in field else field
+        if not bare or bare not in self.GROUPABLE:
+            raise filters_module.FilterError(500, "cannot group by %r" % field)
+        seen, kept = set(), []
+        for row in rows:
+            value = self.filter_value(bare, row)
+            marker = str(value)
+            if marker in seen:
+                continue
+            seen.add(marker)
+            kept.append(row)
+        return kept
 
     def _sortable(self, key):
         """Whether a `sort=` key is one this server can order by.
@@ -2521,23 +2601,33 @@ class PlexSim:
             elif query.get("includeExtras") == "1":
                 # Measured: an episode and a movie carry the Extras block too.
                 detail["Extras"] = {"size": 0}
+            detail = self.apply_detail_options(row, detail, query)
             # Re-measured 2026-09-12 against BOTH fun and the 1.43.4 reference,
             # with the client's own includeX param set: the detail container
             # DOES carry identifier and the media-tag pair. An earlier note here
             # claimed the opposite ("an item-detail container is BARE"); it did
             # not hold on either server, and the missing mediaTagPrefix is what
             # a client uses to resolve a tag into an image URL.
-            return self.bare_container(
-                size=1,
-                allowSync=True,
-                identifier="com.plexapp.plugins.library",
-                mediaTagPrefix="/system/bundle/media/flags/",
-                mediaTagVersion=1655122614,
-                librarySectionID=row["librarySectionID"],
-                librarySectionTitle=section.get("title"),
-                librarySectionUUID=section.get("uuid"),
-                Metadata=[detail],
-            )
+            fields = {
+                "size": 1,
+                "allowSync": True,
+                "identifier": "com.plexapp.plugins.library",
+                "mediaTagPrefix": "/system/bundle/media/flags/",
+                "mediaTagVersion": 1655122614,
+                "librarySectionID": row["librarySectionID"],
+                "librarySectionTitle": section.get("title"),
+                "librarySectionUUID": section.get("uuid"),
+            }
+            if query.get("asyncCheckFiles") == "1" \
+                    or query.get("asyncRefreshLocalMediaAgent") == "1":
+                # Measured, and not guessable: either `async*` flag makes the
+                # container DROP identifier and the media-tag pair. The response
+                # is the same row, described by a container that can no longer
+                # resolve a tag into an image URL -- which is presumably why the
+                # client only sends these on a refresh it does not draw from.
+                for name in ("identifier", "mediaTagPrefix", "mediaTagVersion"):
+                    fields.pop(name)
+            return self.bare_container(Metadata=[detail], **fields)
 
         leaf = segments[3]
         if leaf in ("children", "allLeaves"):
@@ -2971,7 +3061,7 @@ class PlexSim:
         }
         return self.container(**{k: v for k, v in fields.items() if v is not None})
 
-    def decision(self, query):
+    def decision(self, query, headers=None):
         """`/video/:/transcode/universal/decision` -- always direct play.
 
         The codes are what plex-for-kodi's ServerDecision reads: it treats
@@ -2979,6 +3069,19 @@ class PlexSim:
         Metadata/Media/Part carries `decision="directplay"` because the
         stricter clients (plx-native) read the verdict off `Part.decision`
         rather than the container codes.
+
+        Which codes appear is measured, and it is not all of them at once: on a
+        direct play a real PMS sends ONLY the `mde*` pair, and the general,
+        directPlay and transcode triples appear only when direct play is REFUSED
+        (`directPlay=0` answers `directPlayDecisionCode: 3000` with
+        `generalDecisionCode`/`transcodeDecisionCode: 1001`). plexsim sent all
+        three 1000s on every request, which tells a client that a transcode
+        decision was made when none was.
+
+        The container's own fields are measured too: `resourceSession` is the
+        CLIENT IDENTIFIER (not the `session` parameter), `allowSync` is the string
+        "1", and `librarySectionID` and `mediaTagVersion` are strings here where
+        every other endpoint sends them as numbers.
         """
         path = query.get("path", "")
         tail = path.rstrip("/").rsplit("/", 1)[-1]
@@ -3004,17 +3107,37 @@ class PlexSim:
 
         logger.info("DECISION direct play for path=%s (%s)", path, "hit" if rows else "miss")
 
-        return self.container(
-            Metadata=rows,
-            generalDecisionCode=1000,
-            generalDecisionText="Direct play OK",
-            directPlayDecisionCode=1000,
-            directPlayDecisionText="Direct play OK",
-            mdeDecisionCode=1000,
-            mdeDecisionText="Direct play OK",
-            allowSync=False,
-            identifier="com.plexapp.plugins.library",
-        )
+        section = self.catalog.section(row["librarySectionID"]) if row else {}
+        fields = {
+            "allowSync": "1",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": "1655122614",
+        }
+        if row is not None:
+            fields["librarySectionID"] = str(row["librarySectionID"])
+            fields["librarySectionTitle"] = (section or {}).get("title")
+            fields["librarySectionUUID"] = (section or {}).get("uuid")
+        identifier = (headers or {}).get("X-Plex-Client-Identifier") \
+            or query.get("X-Plex-Client-Identifier")
+        if identifier:
+            fields["resourceSession"] = identifier
+        if query.get("directPlay") == "0":
+            # Measured verbatim, including the punctuation: the client shows this
+            # text in its playback-info panel.
+            fields.update(
+                directPlayDecisionCode=3000,
+                directPlayDecisionText="App cannot direct play this item. "
+                                       "Direct play is disabled.",
+                generalDecisionCode=1001,
+                generalDecisionText="Direct play not available; Conversion OK.",
+                transcodeDecisionCode=1001,
+                transcodeDecisionText="Direct play not available; Conversion OK.",
+            )
+        else:
+            fields.update(mdeDecisionCode=1000,
+                          mdeDecisionText="Direct play OK.")
+        return self.container(Metadata=rows, **fields)
 
     def timeline(self, query, headers=None, address=None):
         """`/:/timeline` -- the player's progress report, and what CREATES a session.

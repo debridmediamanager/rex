@@ -2093,6 +2093,120 @@ def main():
           and root.find("Rule") is not None,
           (raw[:80].decode("utf-8", "replace")) if raw else "no body")
 
+    print("\n=== the include/exclude options the client actually sends ===")
+    # Each of these is a parameter the official client sends and plexsim ignored.
+    # An ignored option is the quiet kind of wrong: the response is a valid detail
+    # document that simply lacks the block asked for, so the page draws with a
+    # section missing rather than with an error.
+    def detail_of(spec, key=None):
+        status, body, _ = request(base, "GET", "/library/metadata/%s?%s"
+                                              % (key or movie, spec))
+        if body[:1] != b"{":
+            return status, {}, {}
+        parsed = json.loads(body).get("MediaContainer", {})
+        return status, parsed, (parsed.get("Metadata") or [{}])[0]
+    _, plain_container, plain_row = detail_of("x=1")
+    check("excludeFields drops the named field",
+          "summary" in plain_row
+          and "summary" not in detail_of("excludeFields=summary")[2],
+          "summary present plainly, absent excluded")
+    _, _, no_media = detail_of("excludeElements=Media")
+    check("excludeElements=Media substitutes two counts",
+          "Media" not in no_media
+          and no_media.get("mediaCount") == len(plain_row.get("Media") or [])
+          and no_media.get("mediaCountOptimized") == 0,
+          "mediaCount=%s mediaCountOptimized=%s" % (no_media.get("mediaCount"),
+                                                    no_media.get("mediaCountOptimized")))
+    check("includeRelated adds a Related block",
+          "Related" not in plain_row and "Related" in detail_of("includeRelated=1")[2],
+          "absent plainly, present when asked")
+    # Measured: either async flag makes the CONTAINER drop identifier and the
+    # media-tag pair, which is how a client loses the ability to resolve a tag.
+    for flag in ("asyncCheckFiles", "asyncRefreshLocalMediaAgent"):
+        _, async_container, _ = detail_of("%s=1" % flag)
+        check("%s strips identifier and the media-tag pair" % flag,
+              all(k in plain_container for k in ("identifier", "mediaTagPrefix",
+                                                "mediaTagVersion"))
+              and not any(k in async_container for k in ("identifier", "mediaTagPrefix",
+                                                        "mediaTagVersion")),
+              ",".join(sorted(k for k in async_container
+                              if not isinstance(async_container[k], list))))
+    # Per-item settings are per TYPE: a movie has three, a show eleven, a season
+    # three, and an episode NONE -- where an empty block draws an empty tab.
+    _, _, movie_prefs = detail_of("includePreferences=1")
+    names = [s.get("id") for s in (movie_prefs.get("Preferences") or {}).get("Setting") or []]
+    check("a movie's own settings are the three measured ones",
+          names == ["languageOverride", "useOriginalTitle",
+                    "enableCreditsMarkerGeneration"], ",".join(str(n) for n in names))
+    if show:
+        _, _, show_row = detail_of("includeChildren=1", show)
+        children = show_row.get("Children") or {}
+        _, seasons, _ = get(base, "/library/metadata/%s/children" % show)
+        check("includeChildren inlines the seasons with their own size",
+              children.get("size") == len(seasons.get("Metadata") or [])
+              and len(children.get("Metadata") or []) == children.get("size"),
+              "Children size=%s" % children.get("size"))
+    else:
+        skip("includeChildren inlines the seasons with their own size", "no show row")
+
+    print("\n=== group=, which collapses rather than filters ===")
+    # Measured field by field: `group=` takes the scalar columns of the metadata
+    # row and answers 500 for everything else -- a tag, the media, or per-user
+    # view state. A 200 with the list ungrouped is the trap.
+    _, ungrouped, _ = get(base, "/library/sections/%s/all" % movie_section)
+    total = len(ungrouped.get("Metadata") or [])
+    studios = {r.get("studio") for r in ungrouped.get("Metadata") or []}
+    _, by_studio, _ = get(base, "/library/sections/%s/all?group=studio" % movie_section)
+    check("group collapses to one row per distinct value",
+          len(by_studio.get("Metadata") or []) == len(studios) <= total,
+          "%d studio(s) out of %d row(s) -> %d"
+          % (len(studios), total, len(by_studio.get("Metadata") or [])))
+    for field in ("genre", "viewCount", "resolution", "duration", "bogus", ""):
+        status, _, _ = container(base, "GET", "/library/sections/%s/all?group=%s"
+                                             % (movie_section, field))
+        check("group=%s is a 500, not an ungrouped 200" % (field or "<empty>"),
+              status == 500, "HTTP %s" % status)
+
+    print("\n=== the decision container's codes ===")
+    # Measured: on a DIRECT PLAY a real PMS sends only the `mde*` pair. The
+    # general/directPlay/transcode triples appear only when direct play is
+    # refused. plexsim sent every 1000 at once, which tells a client a transcode
+    # decision was made when none was.
+    def decided(spec):
+        status, body, _ = request(
+            base, "GET", "/video/:/transcode/universal/decision?path=%s"
+                         "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest&%s"
+                         % (quote("/library/metadata/%s" % movie), spec))
+        if body[:1] != b"{":
+            return status, {}
+        return status, json.loads(body).get("MediaContainer", {})
+    _, ok_decision = decided("directPlay=1&directStream=1&hasMDE=1")
+    check("a direct play answers the mde pair and nothing else",
+          ok_decision.get("mdeDecisionCode") == 1000
+          and ok_decision.get("mdeDecisionText") == "Direct play OK."
+          and not any(k.startswith(("general", "directPlay", "transcode"))
+                      for k in ok_decision),
+          ",".join(sorted(k for k in ok_decision if k.endswith("Code"))) or "no codes")
+    check("the decision container names the session and says allowSync as a string",
+          ok_decision.get("resourceSession") == "plexsim-ui-test"
+          and ok_decision.get("allowSync") == "1"
+          and isinstance(ok_decision.get("librarySectionID"), str)
+          and isinstance(ok_decision.get("mediaTagVersion"), str),
+          "resourceSession=%s allowSync=%r librarySectionID=%r"
+          % (ok_decision.get("resourceSession"), ok_decision.get("allowSync"),
+             ok_decision.get("librarySectionID")))
+    _, refused = decided("directPlay=0&directStream=1&hasMDE=1")
+    check("a refused direct play answers 3000 with 1001 either side",
+          refused.get("directPlayDecisionCode") == 3000
+          and refused.get("generalDecisionCode") == 1001
+          and refused.get("transcodeDecisionCode") == 1001
+          and "mdeDecisionCode" not in refused
+          and refused.get("generalDecisionText")
+              == "Direct play not available; Conversion OK.",
+          "%s / %s / %s" % (refused.get("directPlayDecisionCode"),
+                            refused.get("generalDecisionCode"),
+                            refused.get("transcodeDecisionCode")))
+
     print("\n=== container paging: both parameters, either transport ===")
     # Measured: a real PMS pages only when BOTH parameters are present, and it
     # accepts them as HTTP HEADERS as well as query parameters -- the React paths
