@@ -1260,6 +1260,149 @@ than a new one: only the form with **no `type`** is a 400. With a type it is a
 real listing whose `title2` is `Search for '<query>'` and which carries no
 `content` -- the in-library search box, which plexsim refused in every form.
 
+#### A play queue is a queue, and plexsim kept a key list
+
+Six defects in one subsystem, and the first two each break playback outright.
+
+**A queue over a show, a season, or a show library's section held the PARENT row.**
+Measured: a queue over the lab's Firefly holds its **six episodes**, a queue over
+a season holds that season's three, and a queue over `/library/sections/2/all`
+holds every leaf -- never the parent, which has no `Media` at all. plexsim
+enqueued the parent, so Play, Play All and Shuffle on every show page, season page
+and TV library handed the player something unplayable and the web client said
+"An error occurred loading items to play". The client's own shuffle path
+deliberately skips its on-deck resolution, so the show uri reaches the server
+verbatim -- there is nothing upstream to save it.
+
+**A queue over a playlist or a collection was empty**, and a multi-select Play
+(`/library/metadata/1,3,4`) enqueued ONE item, because the resolver's `(\d+)`
+stopped at the first key. A playlist queue also reports
+`playQueuePlaylistID`/`playQueuePlaylistTitle` and NO `playQueueSourceURI`, and
+`playlistID=` alone with no uri at all builds the same queue.
+
+**The item ids and the version decide whether the client keeps the answer at
+all.** Its play-queue fetch DISCARDS the whole response when the returned
+`playQueueSelectedItemID` is not the one it holds, and it refreshes only when
+`playQueueVersion` changed. plexsim computed the ids from their POSITION
+(`queue_id * 1000 + index + 1`) and hardcoded the version at 1, so every id moved
+whenever anything was inserted and the version never moved at all: once playback
+was past the first item, every refresh, Add to Queue and Play Next response was
+silently thrown away. Measured, the reference's ids are globally increasing and
+stable across inserts, moves and deletes (queue 18 kept 47…51 through three adds,
+a move and a delete), and its version steps on every mutation: 1→2→3→4→5→6.
+
+The same arithmetic made `DELETE /playQueues/{id}/items/{itemID}` remove a
+different row than the one the client asked for, whenever the client's cached id
+predated an insert.
+
+**The selection follows the TIMELINE.** `/:/timeline?...&playQueueItemID=81` moves
+the queue's `playQueueSelectedItemID` to 81 and its `playQueueSelectedItemOffset`
+to that index, without touching the version. plexsim ignored the parameter and
+always reported item 0 -- which is the state the client throws away.
+
+**`playQueueLastAddedItemID`** tracks PLAIN adds only (a `next=1` add leaves it
+where it was), and the client uses it to DISABLE the Up Next shuffle button once
+the user has queued something. plexsim never sent it, so the button stayed live.
+
+**Where an add inserts** was wrong both ways: a plain add goes after the block of
+already-added items following the current one, and a `next=1` add goes immediately
+after the current item, ahead of that block. plexsim appended to the very end and
+inserted at index 1 regardless of where the player was.
+
+And the smaller ones, each measured: `playQueueSourceURI` comes back **rewritten**
+(`library://x/item/<encoded>` for one item, `library://x/directory/<encoded>` for
+anything naming a list) rather than echoed; the container carries **no**
+`allowSync`; `window=`/`center=` slice AROUND the current item while
+`playQueueTotalCount` still reports the whole queue; an empty queue omits
+`playQueueSelectedItemOffset` and `playQueueTotalCount`; `PUT
+/playQueues/{id}/items/{id}/move?after=-1` moves an item to the front (plexsim did
+not route it and answered 200 with the queue unchanged); and `PUT
+/playQueues/{id}/shuffle` and `/unshuffle` are **404** -- the client reverts its
+optimistic `playQueueShuffled` on failure, so plexsim's 200 left the shuffle
+button stuck on over a queue that was never shuffled.
+
+Refusals, all of which plexsim answered 200 to: a create with no `uri` and no
+`playlistID`, or with no `type`, is a **400**; a GET of `/playQueues` is a **400**
+(the endpoint exists, the request is wrong); an unknown queue, an unknown queue
+item, and a POST or DELETE of one queue are **404**. plexsim's DELETE really
+dropped the queue, so a client that tried one lost the queue it was playing.
+
+#### `/:/progress` is not `/:/timeline`
+
+It keys on **`key`**, not `ratingKey`, and it answers an **empty body** rather than
+a MediaContainer. plexsim routed it straight at the timeline handler, which read
+no key at all, so it recorded nothing and returned a container -- and every client
+that reports progress this way (plex_debrid, Kodi/PKC, Infuse, the older Plex
+apps) lost its resume point silently.
+
+#### The timeline, re-measured: four corrections to an earlier finding
+
+| Case | Reference | plexsim before |
+|---|---|---|
+| item HAS a resume point | `viewOffset` is that **stored offset** | `-1` always |
+| item has none | `-1` | `-1` ✓ |
+| before any `decision` for the item | no `Bandwidths` | `Bandwidths` present |
+| after a decision, including on `stopped` | `Bandwidths` present | **dropped** on `stopped` |
+| after the stopping timeline | gone again | still present |
+| `Bandwidths[].resolution` | the LABEL, `1080p` | the raw `1080` |
+| no `ratingKey` at all | `{size, playbackState}` only | all five fields |
+| `ratingKey=99999` | **404** | 200 |
+| `state=wibble` | **400** -- `state` is a closed set | 200, treated as live |
+
+So `viewOffset: -1` in the earlier finding was the *no-resume-point* case, not the
+rule, and `Bandwidths` is armed by a **decision** rather than by the state --
+inverted at both ends.
+
+#### Every malformed state write answered 200
+
+`/:/scrobble`, `/:/unscrobble`, `/:/rate` and `/:/progress` all answer **400**
+without a `key` and **404** for a key the server does not have, and `/:/rate`
+answers 400 for an unparseable rating. plexsim answered an empty 200 to all of
+them, which tells the client the write landed. (`rating=-1` clearing both
+`userRating` and `lastRatedAt`, and `rating=99` being stored unclamped, were
+already right.)
+
+`PUT /library/parts/{id}` is the same failure with a worse consequence: a stream id
+that is not a stream of the right TYPE on that item is a **400** and the selection
+is left untouched. plexsim accepted anything with a 200 and then cleared every
+selection, because nothing matched -- so a rejected request left the item with **no
+selected track at all** and the picker went blank. `0` is the client's "None"
+pseudo-stream and is valid for subtitles only; `audioStreamID=0` is a 400.
+
+Two more paths: a LEAF on a comma-joined key list is a **404**
+(`/library/metadata/a,b/userState` answered full metadata rows with no `UserState`
+in them, which the web client's per-grid probe reads as state it has), a
+non-numeric ratingKey is a **404**, and
+`/subtitles/:/transcode/universal/start` -- the URL Plex Web uses for a `<track>`
+src when it CAN direct play, which is plexsim's only path -- is a **400** on both
+reference servers rather than the catch-all 404.
+
+#### The History page filters and sorts
+
+`/status/sessions/history/all` honours `accountID`, `deviceID`,
+`librarySectionID`, `metadataItemID` and `viewedAt` comparisons, and sorts;
+plexsim ignored every one of them. So Top Users' "View Play History" link
+(`accountID=&viewedAt=`) and the per-item history link (`metadataItemID=`) both
+showed the whole server's history, in insertion order, and the Played column's
+sort did nothing.
+
+Two details worth the ink. The operator here is a plain **`>=`**, not the library
+grammar's `>>` -- two query languages on one server. And an unknown sort key is a
+**400** here where a library listing answers 500 for the same mistake.
+
+`DELETE /status/sessions/history/{historyKey}` removes one row and answers 200
+with an empty container; an unknown key is a 404. plexsim matched the history path
+on the path alone, so a DELETE was answered with the LISTING, and a numeric key
+fell through to the live-sessions handler and answered `{size: 0}` -- which is
+exactly the "it worked" signal for a delete that did nothing.
+
+#### The decision ignored `hasMDE`
+
+findings.md already recorded that a client which does not claim MDE gets the
+3000/1001 refusal naming the protocol it fell back to, but the code branched on
+`directPlay` alone. So plexsim answered the MDE pair to a client that never
+claimed MDE -- telling it a media decision was made on its behalf.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

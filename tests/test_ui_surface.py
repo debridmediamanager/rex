@@ -803,8 +803,15 @@ def main():
                                               "&own=1&uri=%s" % quote(uri))
     check("play queue created", status == 200 and queue.get("playQueueID"),
           "playQueueID=%s" % queue.get("playQueueID"))
-    check("play queue reports its source uri",
-          queue.get("playQueueSourceURI") == uri, queue.get("playQueueSourceURI"))
+    # Re-measured: the source URI comes back REWRITTEN, not echoed -- a single
+    # item as `library://x/item/<encoded path>` and anything naming a list as
+    # `library://x/directory/<the same>`. plexsim echoed the raw server:// uri, so
+    # a client that re-read the queue got a source it had not sent.
+    check("play queue rewrites its source uri to a library:// one",
+          queue.get("playQueueSourceURI")
+          == "library://x/item/%s" % quote("/library/metadata/%s" % movie)
+          and "allowSync" not in queue,
+          queue.get("playQueueSourceURI"))
     queue_id = queue.get("playQueueID")
     section_uri = "server://%s/com.plexapp.plugins.library/library/sections/%s/all" \
                   % (machine, movie_section)
@@ -840,6 +847,272 @@ def main():
               "order=%s" % order)
     else:
         skip("Play Next inserts after the current item", "need a second row")
+
+    print("\n=== the play queue as a queue, not a key list ===")
+    # A queue over a SHOW or a SEASON holds its EPISODES. plexsim enqueued the
+    # parent row, which has no Media at all, so Play, Play All and Shuffle on every
+    # show page, season page and TV library handed the player something it could
+    # not play -- "An error occurred loading items to play" for the whole TV half.
+    if show:
+        show_uri = ("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                    % (machine, show))
+        _, leaves, _ = get(base, "/library/metadata/%s/allLeaves" % show)
+        wanted = len(leaves.get("Metadata") or [])
+        status, show_queue, _ = container(base, "POST", "/playQueues?type=video&uri=%s"
+                                                       "&continuous=1" % quote(show_uri))
+        kinds = {m.get("type") for m in show_queue.get("Metadata") or []}
+        check("a queue over a show holds its episodes, not the show row",
+              status == 200 and len(show_queue.get("Metadata") or []) == wanted
+              and kinds == {"episode"},
+              "%d item(s) of type %s, wanted %d"
+              % (len(show_queue.get("Metadata") or []), kinds or "-", wanted))
+        _, children, _ = get(base, "/library/metadata/%s/children" % show)
+        season = (children.get("Metadata") or [{}])[0].get("ratingKey")
+        if season:
+            season_uri = ("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                          % (machine, season))
+            _, season_children, _ = get(base, "/library/metadata/%s/children" % season)
+            _, season_queue, _ = container(base, "POST", "/playQueues?type=video&uri=%s"
+                                                        % quote(season_uri))
+            check("a queue over a season holds that season's episodes",
+                  len(season_queue.get("Metadata") or [])
+                  == len(season_children.get("Metadata") or [])
+                  and {m.get("type") for m in season_queue.get("Metadata") or []}
+                      == {"episode"},
+                  "%d item(s)" % len(season_queue.get("Metadata") or []))
+        else:
+            skip("a queue over a season holds that season's episodes", "no season")
+    else:
+        skip("a queue over a show holds its episodes, not the show row", "no show row")
+    # A multi-select Play sends a comma-joined key list; a resolver that stops at
+    # the first key silently plays one of them.
+    if spare:
+        multi = ("server://%s/com.plexapp.plugins.library/library/metadata/%s,%s"
+                 % (machine, movie, spare))
+        _, multi_queue, _ = container(base, "POST", "/playQueues?type=video&uri=%s"
+                                                   % quote(multi))
+        check("a queue over a comma-joined key list holds every key",
+              len(multi_queue.get("Metadata") or []) == 2,
+              "%d item(s)" % len(multi_queue.get("Metadata") or []))
+    else:
+        skip("a queue over a comma-joined key list holds every key", "need a second row")
+    # Item ids are GLOBAL and stable, the version steps on every mutation, and the
+    # selection follows the timeline. The client discards any queue response whose
+    # selected id is not the one it holds, so all three decide whether the answer
+    # is kept at all.
+    play_uri = "server://%s/com.plexapp.plugins.library/library/sections/%s/all" \
+               % (machine, movie_section)
+    _, built, _ = container(base, "POST", "/playQueues?type=video&uri=%s" % quote(play_uri))
+    qid = built.get("playQueueID")
+    ids_before = [m.get("playQueueItemID") for m in built.get("Metadata") or []]
+    add_uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie)
+    _, added, _ = container(base, "PUT", "/playQueues/%s?uri=%s" % (qid, quote(add_uri)))
+    ids_after = [m.get("playQueueItemID") for m in added.get("Metadata") or []]
+    check("queue item ids are stable across an insert",
+          all(i in ids_after for i in ids_before)
+          and len(ids_after) == len(ids_before) + 1
+          and added.get("playQueueVersion") == 2,
+          "%s -> %s, version %s" % (ids_before, ids_after, added.get("playQueueVersion")))
+    check("a plain add sets playQueueLastAddedItemID",
+          added.get("playQueueLastAddedItemID") in ids_after,
+          str(added.get("playQueueLastAddedItemID")))
+    _, nexted, _ = container(base, "PUT", "/playQueues/%s?uri=%s&next=1"
+                                         % (qid, quote(add_uri)))
+    order = [m.get("playQueueItemID") for m in nexted.get("Metadata") or []]
+    current = nexted.get("playQueueSelectedItemID")
+    # The id that appeared is the one Play Next inserted, and it must sit directly
+    # after the item the player is on -- ahead of the block a plain add built up.
+    inserted = [i for i in order if i not in ids_after]
+    check("Play Next inserts immediately after the current item",
+          len(inserted) == 1 and current in order
+          and order[order.index(current) + 1] == inserted[0],
+          "order=%s current=%s inserted=%s" % (order, current, inserted))
+    check("a next=1 add leaves playQueueLastAddedItemID where it was",
+          nexted.get("playQueueLastAddedItemID") == added.get("playQueueLastAddedItemID"),
+          "%s vs %s" % (nexted.get("playQueueLastAddedItemID"),
+                        added.get("playQueueLastAddedItemID")))
+    # The timeline moves the selection.
+    second = order[1] if len(order) > 1 else None
+    if second:
+        row_key = (nexted.get("Metadata") or [{}])[1].get("ratingKey")
+        container(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=1000"
+                               "&duration=600000&playQueueItemID=%s" % (row_key, second))
+        _, refetched, _ = get(base, "/playQueues/%s" % qid)
+        check("the timeline moves the queue's selected item",
+              refetched.get("playQueueSelectedItemID") == second
+              and refetched.get("playQueueSelectedItemOffset") == 1,
+              "selected=%s offset=%s" % (refetched.get("playQueueSelectedItemID"),
+                                         refetched.get("playQueueSelectedItemOffset")))
+        container(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=1000"
+                               "&duration=600000" % row_key)
+    else:
+        skip("the timeline moves the queue's selected item", "queue too short")
+    # A move really moves, and steps the version.
+    _, current_queue, _ = get(base, "/playQueues/%s" % qid)
+    order = [m.get("playQueueItemID") for m in current_queue.get("Metadata") or []]
+    if len(order) > 1:
+        status, moved, _ = container(base, "PUT", "/playQueues/%s/items/%s/move?after=-1"
+                                                 % (qid, order[-1]))
+        new_order = [m.get("playQueueItemID") for m in moved.get("Metadata") or []]
+        check("a move puts the item at the front and steps the version",
+              status == 200 and new_order and new_order[0] == order[-1]
+              and moved.get("playQueueVersion") > current_queue.get("playQueueVersion"),
+              "%s -> %s" % (order, new_order))
+        status, deleted, _ = container(base, "DELETE", "/playQueues/%s/items/%s"
+                                                      % (qid, order[-1]))
+        check("deleting a queue item removes that item",
+              status == 200
+              and order[-1] not in [m.get("playQueueItemID")
+                                    for m in deleted.get("Metadata") or []],
+              "%d item(s) left" % len(deleted.get("Metadata") or []))
+    else:
+        skip("a move puts the item at the front and steps the version", "queue too short")
+    # `window` slices AROUND the current item and totalCount still reports the whole.
+    _, windowed, _ = get(base, "/playQueues/%s?window=1" % qid)
+    _, whole, _ = get(base, "/playQueues/%s" % qid)
+    check("window slices around the current item and keeps totalCount",
+          len(windowed.get("Metadata") or []) <= len(whole.get("Metadata") or [])
+          and windowed.get("playQueueTotalCount") == whole.get("playQueueTotalCount"),
+          "%d of %d, total %s" % (len(windowed.get("Metadata") or []),
+                                  len(whole.get("Metadata") or []),
+                                  windowed.get("playQueueTotalCount")))
+    # A queue built from a playlist names the playlist and carries NO source uri.
+    _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
+                                        % (quote("plexsim queue probe"), quote(add_uri)))
+    probe_playlist = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if probe_playlist:
+        _, from_playlist, _ = container(base, "POST", "/playQueues?type=video&playlistID=%s"
+                                                     % probe_playlist)
+        check("a playlist queue names the playlist and omits the source uri",
+              from_playlist.get("playQueuePlaylistID") == int(probe_playlist)
+              and from_playlist.get("playQueuePlaylistTitle") == "plexsim queue probe"
+              and "playQueueSourceURI" not in from_playlist
+              and len(from_playlist.get("Metadata") or []) == 1,
+              json.dumps({k: v for k, v in from_playlist.items()
+                          if not isinstance(v, list)})[:120])
+        request(base, "DELETE", "/playlists/%s" % probe_playlist)
+    else:
+        skip("a playlist queue names the playlist and omits the source uri",
+             "could not create a playlist")
+    # Every refusal measured on the reference, each of which plexsim answered 200 to.
+    for method, path_, want, why in (
+            ("POST", "/playQueues?type=video", 400, "a create with no uri"),
+            ("POST", "/playQueues?uri=%s" % quote(add_uri), 400, "a create with no type"),
+            ("GET", "/playQueues?type=1", 400, "a GET of the collection"),
+            ("GET", "/playQueues/999999", 404, "an unknown queue"),
+            ("PUT", "/playQueues/%s" % qid, 400, "a refresh PUT with no uri"),
+            ("PUT", "/playQueues/%s/shuffle" % qid, 404, "the shuffle toggle"),
+            ("PUT", "/playQueues/%s/unshuffle" % qid, 404, "the unshuffle toggle"),
+            ("DELETE", "/playQueues/%s/items/999999" % qid, 404, "an unknown queue item"),
+            ("POST", "/playQueues/%s" % qid, 404, "a POST to one queue"),
+            ("DELETE", "/playQueues/%s" % qid, 404, "a DELETE of one queue")):
+        status, _, _ = container(base, method, path_)
+        check("play queue: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
+
+    print("\n=== playback state: progress, refusals, history filters ===")
+    # /:/progress is NOT an alias of /:/timeline: it keys on `key`, not `ratingKey`,
+    # and answers an EMPTY body. Routed at the timeline it read no key at all, so
+    # every client that reports progress this way lost its resume point silently.
+    status, body, _ = request(base, "GET", "/:/progress?key=%s"
+                                          "&identifier=com.plexapp.plugins.library"
+                                          "&time=90000&state=stopped" % movie)
+    _, after, _ = get(base, "/library/metadata/%s" % movie)
+    stored = (after.get("Metadata") or [{}])[0].get("viewOffset")
+    check("progress records the offset and answers an empty body",
+          is_empty_200(status, body) and stored == 90000,
+          "HTTP %s body=%r viewOffset=%s" % (status, body[:20], stored))
+    for path_, want, why in (
+            ("/:/progress?time=1", 400, "progress with no key"),
+            ("/:/progress?key=999999&time=1", 404, "progress for an unknown key"),
+            ("/:/scrobble", 400, "scrobble with no key"),
+            ("/:/scrobble?key=999999", 404, "scrobble for an unknown key"),
+            ("/:/unscrobble?key=999999", 404, "unscrobble for an unknown key"),
+            ("/:/rate?rating=8", 400, "rate with no key"),
+            ("/:/rate?key=999999&rating=8", 404, "rate for an unknown key"),
+            ("/:/rate?key=%s&rating=abc" % movie, 400, "rate with an unparseable rating"),
+            ("/:/timeline?ratingKey=%s&state=wibble" % movie, 400, "a timeline state"
+             " outside the closed set"),
+            ("/:/timeline?ratingKey=999999&state=playing", 404,
+             "a timeline for an unknown key"),
+            ("/library/metadata/%s,%s/userState" % (movie, movie), 404,
+             "a leaf on a comma-joined key list"),
+            ("/library/metadata/notanumber", 404, "a non-numeric ratingKey"),
+            ("/subtitles/:/transcode/universal/start?path=x", 400,
+             "the subtitle sidecar endpoint")):
+        status, _, _ = container(base, "GET", path_)
+        check("refusal: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
+    # The History page filters and sorts, and plexsim ignored all of it.
+    _, whole_history, _ = get(base, "/status/sessions/history/all")
+    rows = whole_history.get("Metadata") or []
+    if rows:
+        one = rows[0]
+        _, by_item, _ = get(base, "/status/sessions/history/all?metadataItemID=%s"
+                                  % one.get("ratingKey"))
+        _, by_account, _ = get(base, "/status/sessions/history/all?accountID=999999")
+        _, since, _ = get(base, "/status/sessions/history/all?viewedAt%%3E=%d"
+                                % (int(one.get("viewedAt") or 0) + 1))
+        check("history filters by item, account and viewedAt",
+              all(str(r.get("ratingKey")) == str(one.get("ratingKey"))
+                  for r in by_item.get("Metadata") or [])
+              and by_account.get("size") == 0
+              and (since.get("size") or 0) < len(rows) + 1,
+              "item=%s account=%s since=%s" % (by_item.get("size"),
+                                               by_account.get("size"),
+                                               since.get("size")))
+        _, ascending, _ = get(base, "/status/sessions/history/all?sort=viewedAt")
+        _, descending, _ = get(base, "/status/sessions/history/all?sort=viewedAt:desc")
+        up = [r.get("viewedAt") for r in ascending.get("Metadata") or []]
+        down = [r.get("viewedAt") for r in descending.get("Metadata") or []]
+        check("history sorts by viewedAt either way",
+              up == sorted(up) and down == sorted(down, reverse=True),
+              "%s / %s" % (up, down))
+        # Measured: an unknown sort key here is a 400, where a library listing
+        # answers 500 for the same mistake.
+        status, _, _ = container(base, "GET", "/status/sessions/history/all?sort=wibble")
+        check("an unknown history sort key is a 400, not a 500", status == 400,
+              "HTTP %s" % status)
+        # And a row can be deleted, which plexsim answered 200 to without deleting.
+        key = str(one.get("historyKey") or "").rsplit("/", 1)[-1]
+        status, deleted_row, _ = container(base, "DELETE",
+                                           "/status/sessions/history/%s" % key)
+        _, left, _ = get(base, "/status/sessions/history/all")
+        check("deleting a history row removes it",
+              status == 200 and deleted_row.get("size") == 0
+              and len(left.get("Metadata") or []) == len(rows) - 1,
+              "%d row(s) left of %d" % (len(left.get("Metadata") or []), len(rows)))
+        status, _, _ = container(base, "DELETE", "/status/sessions/history/999999")
+        check("deleting an unknown history row is a 404", status == 404,
+              "HTTP %s" % status)
+    else:
+        skip("history filters by item, account and viewedAt", "no history rows yet")
+    # Stream selection validates the id, and a refusal leaves the selection alone.
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    row = (detail.get("Metadata") or [{}])[0]
+    part = ((row.get("Media") or [{}])[0].get("Part") or [{}])[0]
+    audio = [s for media in row.get("Media") or []
+             for p in media.get("Part") or []
+             for s in p.get("Stream") or [] if s.get("streamType") == 2]
+    if part.get("id") and audio:
+        before = {s.get("id"): s.get("selected") for s in audio}
+        status, _, _ = request(base, "PUT", "/library/parts/%s?audioStreamID=999999"
+                                           % part["id"])
+        _, again, _ = get(base, "/library/metadata/%s" % movie)
+        after_row = (again.get("Metadata") or [{}])[0]
+        now = {s.get("id"): s.get("selected") for media in after_row.get("Media") or []
+               for p in media.get("Part") or [] for s in p.get("Stream") or []
+               if s.get("streamType") == 2}
+        check("an unknown stream id is a 400 and leaves the selection alone",
+              status == 400 and now == before, "HTTP %s, %s -> %s" % (status, before, now))
+        status_zero, _, _ = request(base, "PUT", "/library/parts/%s?audioStreamID=0"
+                                                % part["id"])
+        status_none, _, _ = request(base, "PUT", "/library/parts/%s?subtitleStreamID=0"
+                                                % part["id"])
+        check("audioStreamID=0 is a 400 where subtitleStreamID=0 is the None track",
+              status_zero == 400 and status_none == 200,
+              "%s / %s" % (status_zero, status_none))
+    else:
+        skip("an unknown stream id is a 400 and leaves the selection alone",
+             "the row has no audio stream")
 
     # ------------------------------------------------------------------
     # 13. Add to Playlist
@@ -1287,14 +1560,46 @@ def main():
     _, early, _ = beat("playing", 5000)
     _, late, _ = beat("playing", 90000)
     check("the timeline answers playbackState=ignore under a minute",
-          early.get("playbackState") == "ignore" and early.get("viewOffset") == -1
-          and early.get("skipCount") == 0,
+          early.get("playbackState") == "ignore" and early.get("skipCount") == 0,
           "%s viewOffset=%s" % (early.get("playbackState"), early.get("viewOffset")))
     check("and playbackState=progress past a minute",
           late.get("playbackState") == "progress" and late.get("viewCount") == 1,
           str(late.get("playbackState")))
-    check("a live session's timeline carries Bandwidths",
-          bool(late.get("Bandwidths")), str(bool(late.get("Bandwidths"))))
+    # Re-measured, correcting the earlier note: `viewOffset` is the item's STORED
+    # offset and is -1 only when it has none. plexsim always sent -1, so a client
+    # reading its resume point off the timeline never found one.
+    check("the timeline echoes the item's stored offset, not -1",
+          late.get("viewOffset") == 90000,
+          "viewOffset=%s" % late.get("viewOffset"))
+    # And `Bandwidths` is armed by a DECISION, not by the state: it appears on
+    # every timeline once one has been made for the item, `stopped` included, and
+    # disappears after the stopping one. plexsim keyed it on the state alone.
+    _, no_decision, _ = beat("playing", 5000)
+    container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
+                           "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest"
+                           "&directPlay=1&directStream=1&hasMDE=1"
+                           % quote("/library/metadata/%s" % session_item))
+    _, after_decision, _ = beat("playing", 90000)
+    _, on_stop, _ = beat("stopped", 90000)
+    # The stopping beat closed the session and disarmed Bandwidths; the terminate
+    # checks below need a live one, so it is re-opened here.
+    container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
+                           "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest"
+                           "&directPlay=1&directStream=1&hasMDE=1"
+                           % quote("/library/metadata/%s" % session_item))
+    beat("playing", 90000)
+    check("Bandwidths is armed by a decision, not by the state",
+          not no_decision.get("Bandwidths") and after_decision.get("Bandwidths")
+          and on_stop.get("Bandwidths"),
+          "before=%s after=%s stopped=%s" % (bool(no_decision.get("Bandwidths")),
+                                             bool(after_decision.get("Bandwidths")),
+                                             bool(on_stop.get("Bandwidths"))))
+    # And its resolution is the LABEL, not the raw videoResolution.
+    band = ((after_decision.get("Bandwidths") or [{}])[0].get("Bandwidth")
+            or [{}])[0]
+    check("a Bandwidth's resolution is the label, not the raw value",
+          str(band.get("resolution", "")).endswith(("p", "K", "D")),
+          str(band.get("resolution")))
     # Terminate: keyed on Session.id, and the kill lands on the NEXT timeline.
     status, _, _ = container(base, "GET", "/status/sessions/terminate")
     check("terminate without a sessionId is a 400", status == 400, "HTTP %s" % status)

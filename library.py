@@ -216,6 +216,15 @@ class Library:
     def history(self):
         return list(self._history)
 
+    def delete_history(self, key):
+        """Drop one history row by its `historyKey`. True if there was one."""
+        tail = str(key).rsplit("/", 1)[-1]
+        for index, entry in enumerate(self._history):
+            if str(entry.get("historyKey") or "").rsplit("/", 1)[-1] == tail:
+                del self._history[index]
+                return True
+        return False
+
     # -- activities ------------------------------------------------------
 
     def add_activity(self, subtitle, title="Updating Metadata",
