@@ -231,6 +231,10 @@ def steps(ids, machine, mutate):
         # server that resolves only the section path silently widens to everything.
         ("browse", "GET", "/library/sections/%s/all?type=1&unwatched=1&sort=titleSort"
                           % movie_section),
+        # `group=` collapses rather than filters, and refuses anything that is not
+        # a scalar column of the metadata row.
+        ("browse", "GET", "/library/sections/%s/all?type=1&group=studio" % movie_section),
+        ("browse", "GET", "/library/sections/%s/all?type=1&group=genre" % movie_section),
         ("browse", "GET", "/library/sections/%s/genre" % movie_section),
         ("browse", "GET", "/library/sections/%s/year" % movie_section),
         ("browse", "GET", "/library/sections/%s/decade" % movie_section),
@@ -297,12 +301,20 @@ def steps(ids, machine, mutate):
         ]
 
     # -- the item pages, each with the params the client actually sends ---
+    # Each include/exclude option on its own, because their effects are separable
+    # and each one plexsim ignored showed up as a valid document with a block
+    # missing -- not as an error.
+    options = ("includeChildren=1", "includeRelated=1", "includePreferences=1",
+               "excludeFields=summary", "excludeElements=Media", "checkFiles=1",
+               "asyncCheckFiles=1", "asyncRefreshLocalMediaAgent=1")
     detail = ("?includeConcerts=1&includeExtras=1&includeOnDeck=1&includePopularLeaves=1"
               "&includePreferences=1&includeReviews=1&includeChapters=1&includeStations=1"
               "&includeExternalMedia=1")
     for label, key in (("movie", movie), ("show", show), ("season", season), ("episode", episode)):
         if not key:
             continue
+        plan += [("item:" + label, "GET", "/library/metadata/%s?%s" % (key, option))
+                 for option in options]
         plan += [
             ("item:" + label, "GET", "/library/metadata/%s%s" % (key, detail)),
             ("item:" + label, "GET", "/library/metadata/%s/related?includeAugmentations=1" % key),

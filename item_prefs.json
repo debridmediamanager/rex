@@ -1,175 +1,213 @@
 {
- "_provenance": "Per-item Preferences captured from a real PMS 1.43.4: the Setting list an item's own settings tab reads. A show has eleven, a season has three, and plexsim previously invented a single episodeSort row.",
- "show": [
-  {
-   "id": "episodeSort",
-   "label": "Episode sorting",
-   "summary": "How to sort the episodes for this show.",
-   "type": "text",
-   "default": "-1",
-   "value": "0",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Library default|0:Oldest first|1:Newest first"
-  },
-  {
-   "id": "autoDeletionItemPolicyUnwatchedLibrary",
-   "label": "Keep",
-   "summary": "Set the maximum number of unplayed episodes to keep for the show.",
-   "type": "int",
-   "default": "0",
-   "value": "0",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "0:All episodes|5:5 latest episodes|3:3 latest episodes|1:Latest episode|-3:Episodes added in the past 3 days|-7:Episodes added in the past 7 days|-30:Episodes added in the past 30 days"
-  },
-  {
-   "id": "autoDeletionItemPolicyWatchedLibrary",
-   "label": "Delete episodes after playing",
-   "summary": "Choose how quickly episodes are removed after the server admin has watched them.",
-   "type": "int",
-   "default": "0",
-   "value": "0",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "0:Never|1:After a day|7:After a week|30:After a month|100:On next refresh"
-  },
-  {
-   "id": "flattenSeasons",
-   "label": "Seasons",
-   "summary": "Choose whether to display seasons.",
-   "type": "int",
-   "default": "-1",
-   "value": "-1",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Library default|0:Show|1:Hide"
-  },
-  {
-   "id": "showOrdering",
-   "label": "Episode ordering",
-   "summary": "How the episodes are named on disk.",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Library default|tmdbAiring:The Movie Database (Aired)|tvdbAiring:TheTVDB (Aired)|tvdbDvd:TheTVDB (DVD)|tvdbAbsolute:TheTVDB (Absolute)"
-  },
-  {
-   "id": "languageOverride",
-   "label": "Metadata language",
-   "summary": "Language to use for item metadata such as synopsis and title.",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Library default|ca-ES:catal\u00e0|cs-CZ:\u010ce\u0161tina|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Espa\u00f1ol|es-MX:Espa\u00f1ol (M\u00e9xico)|fr-FR:Fran\u00e7ais|fr-CA:Fran\u00e7ais (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:\u00edslenska|it-IT:Italiano|lv-LV:latvie\u0161u|lt-LT:lietuvi\u0173|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokm\u00e5l|pl-PL:polski|pt-BR:Portugu\u00eas|pt-PT:Portugu\u00eas (Portugal)|ro-RO:rom\u00e2n\u0103|sk-SK:Sloven\u010dina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Ti\u1ebfng Vi\u1ec7t|tr-TR:T\u00fcrk\u00e7e|el-GR:\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac|bg-BG:\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438|ru-RU:\u0420\u0443\u0441\u0441\u043a\u0438\u0439|uk-UA:\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430|he-IL:\u05e2\u05d1\u05e8\u05d9\u05ea|ar-SA:\u0627\u0644\u0639\u0631\u0628\u064a\u0629 (\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629)|fa-IR:\u0641\u0627\u0631\u0633\u06cc|hi-IN:\u0939\u093f\u0928\u094d\u0926\u0940|th-TH:\u0e44\u0e17\u0e22|ko-KR:\ud55c\uad6d\uc5b4|zh-CN:\u4e2d\u6587|zh-HK:\u4e2d\u6587\uff08\u4e2d\u570b\u9999\u6e2f\uff09|zh-TW:\u4e2d\u6587\uff08\u53f0\u7063\uff09|ja-JP:\u65e5\u672c\u8a9e"
-  },
-  {
-   "id": "useOriginalTitle",
-   "label": "Use original title",
-   "summary": "Use the original title for this item regardless of the library language.",
-   "type": "int",
-   "default": "-1",
-   "value": "-1",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Library default|0:No|1:Yes"
-  },
-  {
-   "id": "enableCreditsMarkerGeneration",
-   "label": "Enable credits detection",
-   "summary": "Generate credits markers for this item.",
-   "type": "int",
-   "default": "-1",
-   "value": "-1",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Library default|0:Disabled"
-  },
-  {
-   "id": "audioLanguage",
-   "label": "Preferred audio language",
-   "summary": "",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Account default|en:English|ca-ES:catal\u00e0|cs-CZ:\u010ce\u0161tina|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Espa\u00f1ol|es-MX:Espa\u00f1ol (M\u00e9xico)|fr-FR:Fran\u00e7ais|fr-CA:Fran\u00e7ais (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:\u00edslenska|it-IT:Italiano|lv-LV:latvie\u0161u|lt-LT:lietuvi\u0173|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokm\u00e5l|pl-PL:polski|pt-BR:Portugu\u00eas|pt-PT:Portugu\u00eas (Portugal)|ro-RO:rom\u00e2n\u0103|sk-SK:Sloven\u010dina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Ti\u1ebfng Vi\u1ec7t|tr-TR:T\u00fcrk\u00e7e|el-GR:\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac|bg-BG:\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438|ru-RU:\u0420\u0443\u0441\u0441\u043a\u0438\u0439|uk-UA:\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430|he-IL:\u05e2\u05d1\u05e8\u05d9\u05ea|ar-SA:\u0627\u0644\u0639\u0631\u0628\u064a\u0629 (\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629)|fa-IR:\u0641\u0627\u0631\u0633\u06cc|hi-IN:\u0939\u093f\u0928\u094d\u0926\u0940|th-TH:\u0e44\u0e17\u0e22|ko-KR:\ud55c\uad6d\uc5b4|zh-CN:\u4e2d\u6587|zh-HK:\u4e2d\u6587\uff08\u4e2d\u570b\u9999\u6e2f\uff09|zh-TW:\u4e2d\u6587\uff08\u53f0\u7063\uff09|ja-JP:\u65e5\u672c\u8a9e"
-  },
-  {
-   "id": "subtitleLanguage",
-   "label": "Preferred subtitle language",
-   "summary": "",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Account default|en:English|ca-ES:catal\u00e0|cs-CZ:\u010ce\u0161tina|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Espa\u00f1ol|es-MX:Espa\u00f1ol (M\u00e9xico)|fr-FR:Fran\u00e7ais|fr-CA:Fran\u00e7ais (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:\u00edslenska|it-IT:Italiano|lv-LV:latvie\u0161u|lt-LT:lietuvi\u0173|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokm\u00e5l|pl-PL:polski|pt-BR:Portugu\u00eas|pt-PT:Portugu\u00eas (Portugal)|ro-RO:rom\u00e2n\u0103|sk-SK:Sloven\u010dina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Ti\u1ebfng Vi\u1ec7t|tr-TR:T\u00fcrk\u00e7e|el-GR:\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac|bg-BG:\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438|ru-RU:\u0420\u0443\u0441\u0441\u043a\u0438\u0439|uk-UA:\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430|he-IL:\u05e2\u05d1\u05e8\u05d9\u05ea|ar-SA:\u0627\u0644\u0639\u0631\u0628\u064a\u0629 (\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629)|fa-IR:\u0641\u0627\u0631\u0633\u06cc|hi-IN:\u0939\u093f\u0928\u094d\u0926\u0940|th-TH:\u0e44\u0e17\u0e22|ko-KR:\ud55c\uad6d\uc5b4|zh-CN:\u4e2d\u6587|zh-HK:\u4e2d\u6587\uff08\u4e2d\u570b\u9999\u6e2f\uff09|zh-TW:\u4e2d\u6587\uff08\u53f0\u7063\uff09|ja-JP:\u65e5\u672c\u8a9e"
-  },
-  {
-   "id": "subtitleMode",
-   "label": "Auto-select subtitle mode",
-   "summary": "",
-   "type": "int",
-   "default": "-1",
-   "value": "-1",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Account default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
-  }
- ],
- "season": [
-  {
-   "id": "audioLanguage",
-   "label": "Preferred audio language",
-   "summary": "",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Series default|en:English|ca-ES:catal\u00e0|cs-CZ:\u010ce\u0161tina|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Espa\u00f1ol|es-MX:Espa\u00f1ol (M\u00e9xico)|fr-FR:Fran\u00e7ais|fr-CA:Fran\u00e7ais (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:\u00edslenska|it-IT:Italiano|lv-LV:latvie\u0161u|lt-LT:lietuvi\u0173|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokm\u00e5l|pl-PL:polski|pt-BR:Portugu\u00eas|pt-PT:Portugu\u00eas (Portugal)|ro-RO:rom\u00e2n\u0103|sk-SK:Sloven\u010dina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Ti\u1ebfng Vi\u1ec7t|tr-TR:T\u00fcrk\u00e7e|el-GR:\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac|bg-BG:\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438|ru-RU:\u0420\u0443\u0441\u0441\u043a\u0438\u0439|uk-UA:\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430|he-IL:\u05e2\u05d1\u05e8\u05d9\u05ea|ar-SA:\u0627\u0644\u0639\u0631\u0628\u064a\u0629 (\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629)|fa-IR:\u0641\u0627\u0631\u0633\u06cc|hi-IN:\u0939\u093f\u0928\u094d\u0926\u0940|th-TH:\u0e44\u0e17\u0e22|ko-KR:\ud55c\uad6d\uc5b4|zh-CN:\u4e2d\u6587|zh-HK:\u4e2d\u6587\uff08\u4e2d\u570b\u9999\u6e2f\uff09|zh-TW:\u4e2d\u6587\uff08\u53f0\u7063\uff09|ja-JP:\u65e5\u672c\u8a9e"
-  },
-  {
-   "id": "subtitleLanguage",
-   "label": "Preferred subtitle language",
-   "summary": "",
-   "type": "text",
-   "default": "",
-   "value": "",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": ":Series default|en:English|ca-ES:catal\u00e0|cs-CZ:\u010ce\u0161tina|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Espa\u00f1ol|es-MX:Espa\u00f1ol (M\u00e9xico)|fr-FR:Fran\u00e7ais|fr-CA:Fran\u00e7ais (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:\u00edslenska|it-IT:Italiano|lv-LV:latvie\u0161u|lt-LT:lietuvi\u0173|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokm\u00e5l|pl-PL:polski|pt-BR:Portugu\u00eas|pt-PT:Portugu\u00eas (Portugal)|ro-RO:rom\u00e2n\u0103|sk-SK:Sloven\u010dina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Ti\u1ebfng Vi\u1ec7t|tr-TR:T\u00fcrk\u00e7e|el-GR:\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac|bg-BG:\u0431\u044a\u043b\u0433\u0430\u0440\u0441\u043a\u0438|ru-RU:\u0420\u0443\u0441\u0441\u043a\u0438\u0439|uk-UA:\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430|he-IL:\u05e2\u05d1\u05e8\u05d9\u05ea|ar-SA:\u0627\u0644\u0639\u0631\u0628\u064a\u0629 (\u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064a\u0629 \u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629)|fa-IR:\u0641\u0627\u0631\u0633\u06cc|hi-IN:\u0939\u093f\u0928\u094d\u0926\u0940|th-TH:\u0e44\u0e17\u0e22|ko-KR:\ud55c\uad6d\uc5b4|zh-CN:\u4e2d\u6587|zh-HK:\u4e2d\u6587\uff08\u4e2d\u570b\u9999\u6e2f\uff09|zh-TW:\u4e2d\u6587\uff08\u53f0\u7063\uff09|ja-JP:\u65e5\u672c\u8a9e"
-  },
-  {
-   "id": "subtitleMode",
-   "label": "Auto-select subtitle mode",
-   "summary": "",
-   "type": "int",
-   "default": "-1",
-   "value": "-1",
-   "hidden": false,
-   "advanced": false,
-   "group": "",
-   "enumValues": "-1:Series default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
-  }
- ]
+  "_provenance": "Per-item Preferences captured from a real PMS 1.43.4: the Setting list an item's own settings tab reads. A show has eleven, a season has three, and plexsim previously invented a single episodeSort row. The movie list (3 settings) was captured the same way on 2026-09-12: GET /library/metadata/{id}?includePreferences=1 against plexlab 1.43.4.",
+  "show": [
+    {
+      "id": "episodeSort",
+      "label": "Episode sorting",
+      "summary": "How to sort the episodes for this show.",
+      "type": "text",
+      "default": "-1",
+      "value": "0",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:Oldest first|1:Newest first"
+    },
+    {
+      "id": "autoDeletionItemPolicyUnwatchedLibrary",
+      "label": "Keep",
+      "summary": "Set the maximum number of unplayed episodes to keep for the show.",
+      "type": "int",
+      "default": "0",
+      "value": "0",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "0:All episodes|5:5 latest episodes|3:3 latest episodes|1:Latest episode|-3:Episodes added in the past 3 days|-7:Episodes added in the past 7 days|-30:Episodes added in the past 30 days"
+    },
+    {
+      "id": "autoDeletionItemPolicyWatchedLibrary",
+      "label": "Delete episodes after playing",
+      "summary": "Choose how quickly episodes are removed after the server admin has watched them.",
+      "type": "int",
+      "default": "0",
+      "value": "0",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "0:Never|1:After a day|7:After a week|30:After a month|100:On next refresh"
+    },
+    {
+      "id": "flattenSeasons",
+      "label": "Seasons",
+      "summary": "Choose whether to display seasons.",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:Show|1:Hide"
+    },
+    {
+      "id": "showOrdering",
+      "label": "Episode ordering",
+      "summary": "How the episodes are named on disk.",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Library default|tmdbAiring:The Movie Database (Aired)|tvdbAiring:TheTVDB (Aired)|tvdbDvd:TheTVDB (DVD)|tvdbAbsolute:TheTVDB (Absolute)"
+    },
+    {
+      "id": "languageOverride",
+      "label": "Metadata language",
+      "summary": "Language to use for item metadata such as synopsis and title.",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Library default|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "useOriginalTitle",
+      "label": "Use original title",
+      "summary": "Use the original title for this item regardless of the library language.",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:No|1:Yes"
+    },
+    {
+      "id": "enableCreditsMarkerGeneration",
+      "label": "Enable credits detection",
+      "summary": "Generate credits markers for this item.",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:Disabled"
+    },
+    {
+      "id": "audioLanguage",
+      "label": "Preferred audio language",
+      "summary": "",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Account default|en:English|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "subtitleLanguage",
+      "label": "Preferred subtitle language",
+      "summary": "",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Account default|en:English|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "subtitleMode",
+      "label": "Auto-select subtitle mode",
+      "summary": "",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Account default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
+    }
+  ],
+  "season": [
+    {
+      "id": "audioLanguage",
+      "label": "Preferred audio language",
+      "summary": "",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Series default|en:English|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "subtitleLanguage",
+      "label": "Preferred subtitle language",
+      "summary": "",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Series default|en:English|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "subtitleMode",
+      "label": "Auto-select subtitle mode",
+      "summary": "",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Series default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
+    }
+  ],
+  "movie": [
+    {
+      "id": "languageOverride",
+      "label": "Metadata language",
+      "summary": "Language to use for item metadata such as synopsis and title.",
+      "type": "text",
+      "default": "",
+      "value": "",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": ":Library default|ca-ES:català|cs-CZ:Čeština|da-DK:Dansk|de-DE:Deutsch|et-EE:eesti|en-US:English|en-AU:English (Australia)|en-CA:English (Canada)|en-GB:English (UK)|es-ES:Español|es-MX:Español (México)|fr-FR:Français|fr-CA:Français (Canada)|hr-HR:Hrvatski|id-ID:Indonesia|is-IS:íslenska|it-IT:Italiano|lv-LV:latviešu|lt-LT:lietuvių|hu-HU:magyar|nl-NL:Nederlands|nb-NO:norsk bokmål|pl-PL:polski|pt-BR:Português|pt-PT:Português (Portugal)|ro-RO:română|sk-SK:Slovenčina|fi-FI:Suomi|sv-SE:Svenska|vi-VN:Tiếng Việt|tr-TR:Türkçe|el-GR:Ελληνικά|bg-BG:български|ru-RU:Русский|uk-UA:Українська|he-IL:עברית|ar-SA:العربية (المملكة العربية السعودية)|fa-IR:فارسی|hi-IN:हिन्दी|th-TH:ไทย|ko-KR:한국어|zh-CN:中文|zh-HK:中文（中國香港）|zh-TW:中文（台灣）|ja-JP:日本語"
+    },
+    {
+      "id": "useOriginalTitle",
+      "label": "Use original title",
+      "summary": "Use the original title for this item regardless of the library language.",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:No|1:Yes"
+    },
+    {
+      "id": "enableCreditsMarkerGeneration",
+      "label": "Enable credits detection",
+      "summary": "Generate credits markers for this item.",
+      "type": "int",
+      "default": "-1",
+      "value": "-1",
+      "hidden": false,
+      "advanced": false,
+      "group": "",
+      "enumValues": "-1:Library default|0:Disabled"
+    }
+  ]
 }

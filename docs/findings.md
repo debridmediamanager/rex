@@ -1054,6 +1054,78 @@ this shelf is the history, and `userCount` is how many distinct accounts appear 
 it. plexsim sorted by `viewCount` off the row, so anything watched and then marked
 unplayed vanished from the Top shelf that is supposed to remember it.
 
+#### The `include*` / `exclude*` options, one measurement each
+
+Eight parameters the official client sends and plexsim accepted and ignored. An
+ignored option is the quiet failure again: the answer is a valid detail document
+that simply lacks the block asked for, so a page draws with a section missing
+rather than with an error.
+
+| Parameter | Effect, measured |
+|---|---|
+| `includeChildren=1` | a show gains `Children: {size, Metadata: […seasons…]}` **inline** |
+| `includeRelated=1` | adds a `Related` block (empty on the reference, whose related hubs are empty) |
+| `includePreferences=1` | adds `Preferences.Setting` — three for a MOVIE (`languageOverride`, `useOriginalTitle`, `enableCreditsMarkerGeneration`), eleven for a show, three different ones for a season, and **none at all for an episode**, where the block is omitted rather than sent empty |
+| `excludeFields=summary` | drops that field from the row |
+| `excludeElements=Media` | drops `Media` and substitutes `mediaCount` and `mediaCountOptimized` |
+| `checkFiles=1` | each `Part` gains `accessible` and `exists` |
+| `asyncCheckFiles=1` | the **container** drops `identifier`, `mediaTagPrefix` and `mediaTagVersion` |
+| `asyncRefreshLocalMediaAgent=1` | the same three |
+
+The `async*` pair is the one nothing predicts: the response is the same row,
+described by a container that can no longer resolve a tag into an image URL.
+
+`checkFiles` is also the one option plexsim has nothing to do for, and
+deliberately: `mediainfo.py` puts `exists` and `accessible` on every Part
+unconditionally, because plezy re-fetches metadata in a loop until it sees them
+and never passes `checkFiles`. Two extra attributes cost a client nothing; a
+client that loops forever is the worse failure. Recorded here as a known
+deviation rather than left as a surprise.
+
+#### `group=` collapses, and refuses most of what it is offered
+
+`group=<field>` answers one row per distinct value: five movies sharing a studio
+and `?group=studio` is **one** row. Which field it accepts was probed one at a
+time, and the set is not derivable from anything else the API says:
+
+- **accepted**: `title`, `titleSort`, `studio`, `contentRating`, `year`, `decade`,
+  `addedAt`, `updatedAt`, `originallyAvailableAt`, `audienceRating`, `rating`,
+  `editionTitle`, `index`, `summary`, `tagline`, `contentRatingAge`;
+- **500**: `genre`, `collection`, `director`, `actor`, `country`, `label` (tag
+  joins), `resolution`, `audioCodec`, `mediaSize`, `mediaBitrate`, `location`
+  (the media), `viewCount`, `lastViewedAt`, `unwatched`, `inProgress` (per-user
+  state) -- and `duration`, `userRating` and `hdr`, which no rule about the schema
+  predicts. An empty or unknown field is a 500 too.
+
+`group=decade` does NOT collapse by decade: five movies across two decades stayed
+five rows, because the grouping happens on the underlying `year` column.
+
+Which row of a group survives is a SQL artifact on the reference -- it is not the
+first in sort order and not the lowest id, and it does not move when the sort
+changes. plexsim keeps the first in the order the sort just produced, which is at
+least deterministic; the count, which is what the UI reads, matches.
+
+#### The decision container sends ONE pair of codes, not all of them
+
+plexsim answered every decision with `generalDecisionCode`,
+`directPlayDecisionCode` and `mdeDecisionCode` all at 1000. Measured, a real PMS
+sends exactly one set, and which one says what happened:
+
+| Request | Codes |
+|---|---|
+| `directPlay=1&hasMDE=1` | `mdeDecisionCode: 1000`, `mdeDecisionText: "Direct play OK."` — **and nothing else** |
+| `directPlay=0` | `directPlayDecisionCode: 3000` ("App cannot direct play this item. Direct play is disabled."), `generalDecisionCode`/`transcodeDecisionCode: 1001` ("Direct play not available; Conversion OK.") — and **no** `mde*` pair |
+| `directPlay=1` with no `hasMDE` | the same 3000/1001 set, the text naming the protocol: "No direct play video profile exists for protocol http, with container mkv, and video codec h264." |
+
+Sending all three at once tells a client a transcode decision was made when none
+was. The period in "Direct play OK." is part of the string the client prints.
+
+The container's own fields are measured too, and three of them are typed unlike
+anywhere else on the surface: `resourceSession` is the **client identifier**, not
+the `session` parameter; `allowSync` is the **string** `"1"`; and
+`librarySectionID` and `mediaTagVersion` are strings here where every other
+endpoint sends numbers.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
