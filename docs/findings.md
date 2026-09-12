@@ -1160,6 +1160,106 @@ count, process CPU from `getrusage` over wall time -- and the two memory ones ar
 0.0, because the stdlib cannot see host memory and a plausible percentage would
 draw a graph of nothing.
 
+#### The Home screen: `/hubs/promoted` is called once per library, not once
+
+The client calls `/hubs/promoted?contentDirectoryID=<section>` **per pinned
+library**. plexsim ignored the parameter and answered every library's shelf on
+every call, so Home drew each library's rows under every library's heading.
+
+Its hubs were also missing the five fields the client lays the page out from.
+Measured, a promoted shelf carries:
+
+| Field | Value |
+|---|---|
+| `key` | where "see all" goes — `/library/sections/1/all?sort=addedAt:desc` for a movie library, **`/hubs/home/recentlyAdded?type=2&sectionID=2`** for a show one |
+| `context` | `hub.<identifier with any trailing section id stripped>` — `movie.recentlyadded.1` has context `hub.movie.recentlyadded`, because the context names the KIND of shelf |
+| `style` | `hero` for Continue Watching, `shelf` for everything else |
+| `promoted` | `true` on every shelf of this endpoint |
+| `hubKey` | **not a listing path**: `/library/metadata/<comma-joined ratingKeys>` naming this shelf's own rows, omitted when there are none |
+
+plexsim sent a `hubKey` of `/library/all` for everything, so every shelf expanded
+to the whole library, and no shelf had a `context` to lay out by.
+
+Three more shapes: a SHOW library's Recently Added shelf is typed **`mixed`**
+where a movie library's is `movie`; `excludeContinueWatching=1` drops that shelf;
+and the bare call (no `contentDirectoryID`) adds `home.playlists`
+(key `/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio`).
+
+`/hubs/continueWatching`'s hub is identified **`continueWatching`**, not
+`home.continue`, is styled `hero`, and its `key` is its own
+`/hubs/continueWatching/items` — which plexsim did not route, so the shelf had
+nowhere to expand to. `/hubs/home/continueWatching` and `/hubs/home/onDeck` answer
+plain `{size, allowSync, identifier}` row lists, and **`/hubs/home/recentlyAdded`
+keys on `type`, not on `sectionID`** -- plexsim had it exactly the other way
+round, so the TV shelf's "see all" opened an empty page. An unknown home hub is a
+404, where plexsim answered an empty shelf.
+
+#### The preplay page's Related shelf lives at a path plexsim did not route
+
+The client rewrites `/library/metadata/{id}` to `/hubs/metadata/{id}` and appends
+the leaf, so `/hubs/metadata/{id}/related` is a DIFFERENT endpoint from
+`/library/metadata/{id}/related` -- and only the hubs form carries the shelves.
+plexsim routed neither, and a 404 is exactly what the preplay page reads as "no
+related items".
+
+Measured: `related` carries `allowSync` and the librarySection triple, `postplay`
+carries **neither**, and the hub inside both is `movie.similar` / "Related
+Movies", keyed on the item's own `/library/metadata/{id}/similar`.
+
+The reference fills `similar` from its metadata agent, and its own list is EMPTY
+for one of the lab's five movies while the others answer two to four rows -- so an
+empty answer is a correct answer. plexsim has no agent similarity data, so it
+computes its own (other rows in the library sharing a genre) and says so in the
+code: the shape is measured, the source is plexsim's.
+
+#### Search: seventeen hubs every time, a word-prefix match, and a score
+
+Four endpoints, and plexsim had all four wrong.
+
+`/hubs/search` answers **seventeen typed hubs on every query, empty ones
+included** -- movie, show, artist, album, episode, track, collection, photoalbum,
+autotag, photo, tag, actor, director, genre, playlist, shared, place -- because
+the client lays the results page out from that list. plexsim answered only the
+hubs that had rows, so the page's layout changed per query. The second hub is
+titled **"Shows"**, not "TV Shows". Each hub carries an EMPTY `context`, a `shelf`
+style and no `hubKey`.
+
+Every row carries a **`score`**, which is what the client sorts by: a string with
+five decimals at `/hubs/search` and the same number as a FLOAT at
+`/library/search`. A row that matched through a TAG rather than its own title
+names it -- `reason: "director"`, `reasonID: 45`, `reasonTitle: "Ian Hubert"` --
+and the actor/director/genre hubs carry `Directory` rows with `tagType`, `filter`,
+`count` and a `reason` of `"section"`.
+
+And the matching rule is a **word PREFIX**, not a substring. Measured query by
+query against the reference: `te`, `tea`, `tear`, `tears`, `of` and `steel` all
+find "Tears of Steel"; `uck` does NOT find "Big Buck Bunny"; and a single
+character matches nothing at all. plexsim used `needle in title`, so `uck`
+matched and `t` returned the whole library. (The reference is additionally fuzzy
+-- `eel` finds "Firefly" and an actor called "Halina Reijn" -- which is a trigram
+score plexsim does not approximate.)
+
+The other three, all previously wrong:
+
+- **`/library/search`** -- advertised by plexsim's own `/media/providers` as
+  `universalsearch` and answered with an empty container, on a code comment
+  claiming "a real PMS answers the bare query with an empty container". It does
+  not: a bare query is a **400** and a real one answers `SearchResult` rows.
+- **`/search`** -- the legacy endpoint, 404 on plexsim. It answers results PLUS
+  four `Provider` rows (`m_title`/`m_type`, the prefix is the reference's), each
+  result carrying `personal` and `sourceTitle`; its `size` counts the providers
+  too (1 result + 4 providers = 5). A MISSING `query` is a 400 and an EMPTY one is
+  a **404** -- two different refusals on one endpoint.
+- **`/hubs/search/voice`** -- 404 on plexsim. One hub per type, titled with the
+  bare type name, identified `results.search.<n>` with the shared context
+  `hub.results.search`, `hubKey` and no `key`, and a `distance` on the hub and on
+  every row.
+
+`/library/sections/{id}/search` is the correction of an earlier finding rather
+than a new one: only the form with **no `type`** is a 400. With a type it is a
+real listing whose `title2` is `Search for '<query>'` and which carries no
+`content` -- the in-library search box, which plexsim refused in every form.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

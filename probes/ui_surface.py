@@ -276,6 +276,22 @@ def steps(ids, machine, mutate):
         ("browse", "GET", "/library/all/top?type=1&limit=5"),
         ("browse", "GET", "/library/all/top"),
         ("browse", "GET", "/hubs/search?query=a"),
+        # The Home screen is one call per pinned library, and each shelf carries
+        # key/context/style/promoted plus a hubKey naming its own rows.
+        ("browse", "GET", "/hubs/promoted?contentDirectoryID=%s"
+                          "&pinnedContentDirectoryID=%s" % (movie_section, movie_section)),
+        ("browse", "GET", "/hubs/promoted"),
+        ("browse", "GET", "/hubs/continueWatching?contentDirectoryID=%s" % movie_section),
+        ("browse", "GET", "/hubs/continueWatching/items"),
+        ("browse", "GET", "/hubs/home/continueWatching"),
+        ("browse", "GET", "/hubs/home/onDeck"),
+        ("browse", "GET", "/hubs/home/recentlyAdded?type=1"),
+        ("browse", "GET", "/hubs/home/nosuchhub"),
+        # The other three search surfaces, and the in-library search box.
+        ("browse", "GET", "/library/search?query=a&limit=30"),
+        ("browse", "GET", "/search?query=a"),
+        ("browse", "GET", "/hubs/search/voice?query=a"),
+        ("browse", "GET", "/library/sections/%s/search?type=1&query=a" % movie_section),
         ("browse", "GET", "/library/search?query=a"),
     ]
 
@@ -319,6 +335,12 @@ def steps(ids, machine, mutate):
             ("item:" + label, "GET", "/library/metadata/%s%s" % (key, detail)),
             ("item:" + label, "GET", "/library/metadata/%s/related?includeAugmentations=1" % key),
             ("item:" + label, "GET", "/library/metadata/%s/similar" % key),
+            # The preplay page's Related shelf: a DIFFERENT path from
+            # /library/metadata/{id}/related, and only this one has the hubs.
+            ("item:" + label, "GET", "/hubs/metadata/%s/related?includeExternalMedia=1"
+                                     "&includeExternalMetadata=1"
+                                     "&asyncAugmentMetadata=1" % key),
+            ("item:" + label, "GET", "/hubs/metadata/%s/postplay" % key),
             ("item:" + label, "GET", "/library/metadata/%s/extras" % key),
             ("item:" + label, "GET", "/library/metadata/%s/userState" % key),
             ("item:" + label, "GET", "/library/metadata/%s/tree" % key),
