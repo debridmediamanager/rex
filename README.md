@@ -28,6 +28,13 @@ Jellyfin.
   Delete, Get Info, Add to Playlist, Add to Collection, Play Next — and every
   server page: Status, all ten Settings pages (writable), and Manage with
   library add/rename/delete, scans, playlists and collections.
+- **The filter bar, for real.** Plex's filter query language, where the operator
+  is part of the parameter NAME (`year%3E%3E=2000` reads as a field called
+  `year>>`) and what a bare `=` means depends on the field's type; the 28 filters
+  a movie library advertises and the different 15 a show library does, with every
+  axis behind them; `/query/parse` so a saved filter can be read back; `group=`;
+  and smart playlists and collections that are the query they store rather than a
+  snapshot of it.
 - **Claimed-server emulation**, calibrated field by field against the account's
   own real servers at `/identity`, `/media/providers`, `/:/prefs` and
   `/library/sections`.
@@ -51,6 +58,7 @@ client bundle with `--web-root`, or point any Plex client at the host.
 python3 tests/test_navigation.py   # replays a client's request sequence, checks shape
 python3 tests/test_ui_surface.py   # the context menu and every server page, end to end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
+python3 tests/conformance.py       # drives plexsim with python-plexapi
 ```
 
 ## Documentation
