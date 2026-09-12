@@ -304,6 +304,16 @@ precisely how the Seasons bug survived a fix attempt.
   bundle (`main-*.js` module 92273).
 - **A mutating endpoint answers 200 with an EMPTY body**, not a MediaContainer —
   and a playlist delete is 204 while a collection delete is 200.
+- **An unrouted path answers 404**, the way a real PMS does. The catch-all used to
+  return an empty container, which is fix 4's trap from the other side: a client
+  reads a 200 as "this endpoint exists and is empty". Flipping it is what finally
+  surfaced `GET /library`, which python-plexapi asks for first and which had
+  never been routed. If something breaks after adding an endpoint, look here.
+- **`/butler` is the one response on the surface whose root is not a
+  MediaContainer** — it is `ButlerTasks`. Not guessable; it was measured.
+- **`/player/*` is not a server surface.** A real PMS answers 400 for every
+  playback command: they go to a player. Answering 200 tells a companion client
+  the command was accepted.
 - **An empty child list is omitted, never sent as `[]`.** These responses are XML
   underneath; `Metadata: []` is a shape no real PMS returns.
 - **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that

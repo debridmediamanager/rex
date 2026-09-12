@@ -917,6 +917,52 @@ class PlexSim:
         if route == "/security/resources":
             return ("error", 400, "plexsim: bad request")
 
+        if route == "/logs":
+            # Not the zip -- measured: a container with a `content` string. The
+            # Console page reads this; /diagnostics/logs is the download.
+            return self.bare_container(size=0, content="plugins")
+        if route == "/log":
+            # The web client posts its OWN errors here. Answering with a
+            # container is wrong (a real PMS answers empty), and dropping them
+            # means the client's logging silently goes nowhere -- so they land in
+            # plexsim's log, where Download Logs will hand them back.
+            level = query.get("level") or "?"
+            logger.info("CLIENT LOG [%s] %s: %s", level, query.get("source") or "client",
+                        (query.get("message") or "")[:400])
+            return ("empty", 200)
+        if route == "/system":
+            # Measured: the system provider's two directories, nothing else.
+            return self.bare_container(
+                size=2, noHistory=0, replaceParent=0, identifier="com.plexapp.system",
+                Directory=[{"key": "library", "title": "Library Sections",
+                            "name": "Library Sections"},
+                           {"key": "plugins", "title": "Plug-ins", "name": "Plug-ins"}])
+        if route == "/system/proxy":
+            # A real PMS refuses this without the headers its own clients send.
+            return ("error", 400, "plexsim: bad request")
+        if route == "/servers":
+            return self.bare_container(size=1, Server=[{
+                "name": catalog.friendly,
+                "host": self.private_address or "127.0.0.1",
+                "address": self.private_address or "127.0.0.1",
+                "port": 32400,
+                "machineIdentifier": catalog.machine,
+                "version": SERVER_VERSION,
+            }])
+        if segments[:1] == ["butler"]:
+            return self.butler(method, segments)
+        if segments[:1] == ["player"]:
+            # Player commands go to a PLAYER, not to a server: a real PMS answers
+            # 400 for every one of them. plexsim answered 200 with a container,
+            # which tells a companion client the command was accepted.
+            return ("error", 400, "plexsim: bad request")
+        if segments[:1] == ["livetv"]:
+            # No tuner. `livetv: 0` on /media/providers already hides the UI;
+            # this is the shape a real PMS uses when it has no DVR configured.
+            return self.bare_container(size=0)
+        if route.startswith("/library/platforms") or route.startswith("/hubs/sections/home"):
+            return ("error", 404, "plexsim: not found")
+
         if route == "/diagnostics/logs":
             return ("zip", self.log_archive())
         if route == "/diagnostics/databases":
@@ -955,6 +1001,20 @@ class PlexSim:
                     for section in catalog.sections
                 ]
             )
+
+        if route in ("/library", "/library/"):
+            # The library root, measured: three directories and the secondary
+            # container's art/title pair. python-plexapi asks for this first, and
+            # it was never routed -- the old catch-all's empty container is what
+            # hid that, which is the same trap from the other side.
+            return self.bare_container(
+                size=3, allowSync=False, art="/:/resources/library-art.png",
+                content="", identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614, title1="Plex Library", title2="",
+                Directory=[{"key": "sections", "title": "Library Sections"},
+                           {"key": "recentlyAdded", "title": "Recently Added Content"},
+                           {"key": "onDeck", "title": "On Deck Content"}])
 
         if route == "/library/shared/all":
             # The sections again, as Metadata rather than Directory: what the
@@ -1008,10 +1068,21 @@ class PlexSim:
             rows = [_listing_row(r) for r in catalog.items.values()]
             return self.container(Metadata=rows)
 
+        if route == "/library/all/top":
+            # Most played first -- what the Home screen's "Top" shelf reads.
+            wanted = {"1": "movie", "2": "show", "4": "episode"}.get(query.get("type"))
+            rows = [r for r in catalog.items.values()
+                    if (not wanted or r.get("type") == wanted) and r.get("viewCount")]
+            rows.sort(key=lambda r: -(r.get("viewCount") or 0))
+            limit = int(query.get("limit", 12) or 12)
+            return self.container(Metadata=[_listing_row(r) for r in rows[:limit]])
+
         if segments[:2] == ["library", "streams"]:
             # Sidecar subtitle extraction. plexsim never repackages, so every
             # subtitle stays embedded in the part and there is nothing to serve.
-            return self.container()
+            # Measured: a real PMS answers 501 here for a stream it cannot
+            # extract, which is what "not implemented" honestly means.
+            return ("error", 501, "plexsim: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method == "PUT":
             # Audio/subtitle track selection from the player or the Get Info
@@ -1026,6 +1097,8 @@ class PlexSim:
         # -- hubs --------------------------------------------------------
         if route == "/hubs":
             return self.hubs(query)
+        if route == "/hubs/metadata":
+            return ("error", 404, "plexsim: not found")
         if route == "/hubs/continueWatching":
             return self.hub_container(
                 Hub=[self.hub("home.continue", "Continue Watching",
@@ -1052,8 +1125,7 @@ class PlexSim:
             return self.container(Metadata=rows)
         if route == "/hubs/search":
             return self.search(query)
-        if segments[:2] == ["hubs", "metadata"]:
-            return self.hub_container(Hub=[])
+
 
         # -- playback ----------------------------------------------------
         if route == "/playQueues" and method == "POST":
@@ -1069,7 +1141,9 @@ class PlexSim:
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
         if route.startswith("/video/:/transcode/universal/"):
-            return self.container()
+            # Includes /subtitles and /session: all of it belongs to a transcode
+            # session, and plexsim never opens one.
+            return ("error", 404, "plexsim: no transcoder")
         if route == "/photo/:/transcode":
             # The client asks for artwork through the transcoder, passing the
             # real path in `url`. Resolve that to the row's TMDB image when
@@ -1123,8 +1197,16 @@ class PlexSim:
 
         with self.lock:
             self.unknown.append("%s %s" % (method, route))
+        # A real PMS answers an unrouted path with 404 (measured), and an empty
+        # MediaContainer in its place is the trap this project already learnt
+        # once from the other side: a client reads a 200 as "this endpoint
+        # exists and there is nothing in it". The rule that made the empty
+        # container look safe -- refusing an endpoint cleanly is worse than not
+        # having it -- is about endpoints the client NEEDS, and the fix for those
+        # is to route them, which is what tests/test_ui_surface.py holds the line
+        # on. So: log it loudly, and answer honestly.
         logger.warning("UNKNOWN %s %s", method, route)
-        return self.container()
+        return ("error", 404, "plexsim: not found")
 
     # -- endpoint bodies -------------------------------------------------
 
@@ -1527,10 +1609,40 @@ class PlexSim:
         if leaf in SECONDARY_TAGS or leaf in SECONDARY_FIELDS:
             return self.secondary_directory(section_id, section, leaf)
 
+        if leaf in ("unwatched", "recentlyReleased"):
+            # Listing shortcuts the hub shelves link to.
+            rows = self.catalog.section_items(section_id)
+            if leaf == "unwatched":
+                rows = [r for r in rows if not r.get("viewCount")]
+            else:
+                rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
+                              reverse=True)
+            return self.listing_container(
+                section_id, section, [_listing_row(r) for r in rows])
+        if leaf == "resolution":
+            # A real axis, read off the Media rather than off a tag.
+            seen = {}
+            for row in self.catalog.section_items(section_id):
+                for media in row.get("Media") or []:
+                    value = media.get("videoResolution")
+                    if value:
+                        seen[str(value)] = True
+            entries = [
+                {"fastKey": "/library/sections/%s/all?resolution=%s" % (section_id, v),
+                 "key": v, "title": v}
+                for v in sorted(seen, key=lambda x: (not x.isdigit(), x))
+            ]
+            return self.secondary_container(section_id, section, "By Resolution",
+                                            Directory=entries)
+        if leaf == "search":
+            # Measured: a real PMS answers 400 here; search is /hubs/search.
+            return ("error", 400, "plexsim: bad request")
         if leaf == "composite":
             return ("png", query)
 
-        return self.container()
+        # A leaf a real PMS does not have is a 404 there, not an empty container.
+        logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
+        return ("error", 404, "plexsim: not found")
 
     def section_listing(self, section_id, section, query):
         """`/library/sections/{id}/all` -- the grid, with the client's filters.
@@ -1614,6 +1726,10 @@ class PlexSim:
                 if not year or not str(value).isdigit():
                     return False
                 if int(year) // 10 * 10 != int(value):
+                    return False
+            elif name == "resolution":
+                if not any(str(m.get("videoResolution")) == value
+                           for m in row.get("Media") or []):
                     return False
             elif name == "unwatched" and value == "1":
                 if row.get("viewCount"):
@@ -1820,6 +1936,27 @@ class PlexSim:
                 return ("error", 404, "plexsim: no such media")
             return ("empty", 200)
 
+        if leaf == "prefs":
+            # Per-item settings: a show's episode sorting, from its Edit dialog.
+            # Measured: the GET is a 404 and only the PUT exists.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            for name, value in query.items():
+                if name.startswith("X-Plex-"):
+                    continue
+                row.setdefault("_prefs", {})[name] = value
+                logger.info("ITEM PREF %s %s = %s", rating_key, name, value)
+            return ("empty", 200)
+        if leaf == "subtitles":
+            # The Search Subtitles dialog. A real PMS answers with `Stream` rows
+            # from its subtitle agent; plexsim has no subtitle source, so the
+            # honest answer is that shape with nothing in it rather than a
+            # different shape or a refusal the dialog reads as an error.
+            return self.tag_container(size=0, Stream=[])
+        if leaf in ("markers", "banner", "chapterImages", "indexes"):
+            # All 404 on a real PMS for a row like plexsim's: no intro markers,
+            # no banner artwork, no chapter thumbnails, no preview index.
+            return ("error", 404, "plexsim: not found")
         if leaf == "extras":
             return self.tag_container(size=0)
         if leaf == "related":
@@ -1850,7 +1987,10 @@ class PlexSim:
             if resolved:
                 return ("image", resolved)
             return ("png", query)
-        return self.container()
+        # Includes `/move`, which a real PMS 404s on an item: ordering is done
+        # through the collection or playlist that holds it, not through the item.
+        logger.warning("UNKNOWN item leaf %s on %s", leaf, rating_key)
+        return ("error", 404, "plexsim: not found")
 
     def hub_container(self, **fields):
         """A hub response. Measured on a real PMS: `size`, `allowSync` and
@@ -1889,6 +2029,12 @@ class PlexSim:
         return body
 
     def hubs(self, query):
+        """`/hubs` -- the Home screen's shelves.
+
+        `identifier=` names the shelves the client wants; returning all of them
+        regardless means Home draws rows it did not ask for, in the wrong places.
+        """
+        wanted = [i for i in (query.get("identifier") or "").split(",") if i]
         hubs = [self.hub("home.continue", "Continue Watching",
                          [_listing_row(r) for r in self.continue_watching()])]
         for section in self.catalog.sections:
@@ -1905,6 +2051,9 @@ class PlexSim:
                     librarySectionTitle=section["title"],
                 )
             )
+        if wanted:
+            hubs = [h for h in hubs if h["hubIdentifier"] in wanted
+                    or h["hubIdentifier"].split(".")[0] in wanted]
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id):
@@ -2518,6 +2667,13 @@ class PlexSim:
         if leaf == "children":
             rows = [_listing_row(r) for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
+        if leaf == "items" and len(segments) == 6 and segments[5] == "move":
+            if method != "PUT":
+                return ("error", 405, "plexsim: method not allowed")
+            if not self.library.move_collection_item(collection, segments[4],
+                                                     query.get("after")):
+                return ("error", 404, "plexsim: not in this collection")
+            return ("empty", 200)
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""))
             added = self.library.add_collection_items(collection, rows)
@@ -2576,6 +2732,12 @@ class PlexSim:
 
         leaf = segments[2]
         if leaf == "items":
+            if len(segments) == 5 and segments[4] == "move" and method == "PUT":
+                if not self.library.move_playlist_item(playlist, segments[3],
+                                                       query.get("after")):
+                    return ("error", 404, "plexsim: no such playlist item")
+                return self.bare_container(
+                    size=1, Metadata=[self.library._playlist_row(playlist)])
             if len(segments) == 4 and method == "DELETE":
                 self.library.remove_playlist_item(playlist, segments[3])
                 return self.bare_container(
@@ -2736,6 +2898,40 @@ class PlexSim:
         # blocks only appear alongside an actual series, so emitting them with
         # an empty series would be a shape no real server sends.
         return self.bare_container(size=0)
+
+    # Scheduled tasks. A real PMS lists 23; plexsim lists the ones it can
+    # actually perform, because the page's Run button is a promise. The root
+    # element is `ButlerTasks`, not MediaContainer -- one of the few endpoints
+    # on the whole surface that is not a MediaContainer, which is exactly the
+    # kind of thing that cannot be guessed.
+    BUTLER_TASKS = [
+        {"name": "RefreshLibraries", "interval": 3, "scheduleRandomized": False,
+         "enabled": True, "title": "Update all libraries during maintenance",
+         "description": "Re-read every row in every library"},
+        {"name": "CleanOldBundles", "interval": 7, "scheduleRandomized": False,
+         "enabled": True, "title": "Remove old bundles",
+         "description": "Remove bundles no longer in use"},
+    ]
+
+    def butler(self, method, segments):
+        """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
+        if len(segments) == 1:
+            return {"ButlerTasks": {"size": len(self.BUTLER_TASKS),
+                                    "ButlerTask": self.BUTLER_TASKS}}
+        name = segments[1]
+        if name not in {task["name"] for task in self.BUTLER_TASKS}:
+            return ("error", 404, "plexsim: no such task")
+        if method == "DELETE":
+            # Cancelling a queued task.
+            return ("empty", 200)
+        if method != "POST":
+            return ("error", 405, "plexsim: method not allowed")
+        if name == "RefreshLibraries":
+            for section in self.catalog.sections:
+                for row in self.catalog.section_items(section["key"]):
+                    self.library.add_activity(row.get("title") or "")
+        logger.info("BUTLER ran %s", name)
+        return ("empty", 200)
 
     def updater_status(self):
         """`/updater/status` -- plexsim never has an update to install."""

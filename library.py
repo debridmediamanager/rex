@@ -524,6 +524,48 @@ class Library:
             playlist["updatedAt"] = _now()
         return added
 
+    def move_playlist_item(self, playlist, item_id, after=None):
+        """`PUT /playlists/{id}/items/{itemID}/move[?after=]`.
+
+        Measured on a real PMS: with no `after` the item goes to the FRONT, and
+        with one it goes directly after that item. Drag-to-reorder is the only
+        way a playlist's order can be changed, so without this the handle moves
+        and the order snaps back on the next read.
+        """
+        items = playlist["items"]
+        moving = next((i for i in items if str(i["playlistItemID"]) == str(item_id)), None)
+        if moving is None:
+            return False
+        items.remove(moving)
+        if after is None:
+            items.insert(0, moving)
+        else:
+            index = next((n for n, i in enumerate(items)
+                          if str(i["playlistItemID"]) == str(after)), None)
+            items.insert(len(items) if index is None else index + 1, moving)
+        playlist["updatedAt"] = _now()
+        return True
+
+    def move_collection_item(self, collection, rating_key, after=None):
+        """`PUT /library/collections/{id}/items/{ratingKey}/move[?after=]`.
+
+        Keyed by the member's own ratingKey here, not by a playlistItemID --
+        the two endpoints look alike and their ids are not the same thing.
+        """
+        items = collection["items"]
+        try:
+            moving = next(k for k in items if int(k) == int(rating_key))
+        except (StopIteration, TypeError, ValueError):
+            return False
+        items.remove(moving)
+        if after is None:
+            items.insert(0, moving)
+        else:
+            index = next((n for n, k in enumerate(items) if str(k) == str(after)), None)
+            items.insert(len(items) if index is None else index + 1, moving)
+        collection["updatedAt"] = _now()
+        return True
+
     def remove_playlist_item(self, playlist, item_id):
         before = len(playlist["items"])
         playlist["items"] = [i for i in playlist["items"]

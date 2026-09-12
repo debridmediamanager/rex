@@ -649,6 +649,35 @@ def main():
                   and all(r.get("playlistItemID") != item_id
                           for r in items.get("Metadata") or []),
                   "%d item(s) left" % len(items.get("Metadata") or []))
+        # The removal above left one item; put another back so the reorder has
+        # something to reorder.
+        if spare:
+            container(base, "PUT", "/playlists/%s/items?uri=%s"
+                                   % (playlist_key,
+                                      quote("server://%s/com.plexapp.plugins.library"
+                                            "/library/metadata/%s" % (machine, spare))))
+        _, items, _ = get(base, "/playlists/%s/items" % playlist_key)
+        order = [r.get("playlistItemID") for r in items.get("Metadata") or []]
+        if len(order) < 2:
+            skip("a playlist item can be dragged to the front",
+                 "need two items in the playlist")
+        else:
+            status, moved, _ = container(base, "PUT", "/playlists/%s/items/%s/move"
+                                                     % (playlist_key, order[-1]))
+            _, items, _ = get(base, "/playlists/%s/items" % playlist_key)
+            now = [r.get("playlistItemID") for r in items.get("Metadata") or []]
+            # Measured: no `after` means the front, and the response is the
+            # playlist row. Drag-to-reorder is the only way the order changes.
+            check("a playlist item can be dragged to the front",
+                  status == 200 and now and now[0] == order[-1],
+                  "%s -> %s" % (order, now))
+            status, _, _ = container(base, "PUT", "/playlists/%s/items/%s/move?after=%s"
+                                                 % (playlist_key, now[0], now[-1]))
+            _, items, _ = get(base, "/playlists/%s/items" % playlist_key)
+            after = [r.get("playlistItemID") for r in items.get("Metadata") or []]
+            check("a playlist item can be dragged after another",
+                  status == 200 and after and after[-1] == now[0],
+                  "%s -> %s" % (now, after))
         status, body, _ = request(base, "PUT", "/playlists/%s?title=%s"
                                               % (playlist_key, quote("plexsim renamed")))
         _, one, _ = get(base, "/playlists/%s" % playlist_key)
@@ -693,6 +722,29 @@ def main():
         tags = [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []]
         check("a member row carries the collection as a tag",
               "plexsim collection" in tags, ",".join(tags))
+        if spare:
+            add_uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" \
+                      % (machine, spare)
+            container(base, "PUT", "/library/collections/%s/items?uri=%s"
+                                   % (collection_key, quote(add_uri)))
+            _, children, _ = get(base, "/library/collections/%s/children" % collection_key)
+            order = [r.get("ratingKey") for r in children.get("Metadata") or []]
+            if len(order) > 1:
+                status, body, _ = request(base, "PUT",
+                                          "/library/collections/%s/items/%s/move"
+                                          % (collection_key, order[-1]))
+                _, children, _ = get(base,
+                                     "/library/collections/%s/children" % collection_key)
+                now = [r.get("ratingKey") for r in children.get("Metadata") or []]
+                # Keyed by the member's own ratingKey here, unlike a playlist's
+                # move, which uses the playlistItemID.
+                check("a collection member can be reordered",
+                      is_empty_200(status, body) and now and now[0] == order[-1],
+                      "%s -> %s" % (order, now))
+            else:
+                skip("a collection member can be reordered", "need two members")
+        else:
+            skip("a collection member can be reordered", "need a second row")
         status, body, _ = request(base, "PUT", "/library/collections/%s?title=%s"
                                               % (collection_key, quote("plexsim renamed")))
         _, one, _ = get(base, "/library/collections/%s" % collection_key)
@@ -710,6 +762,109 @@ def main():
     status, _, _ = get(base, "/library/collections")
     check("the bare collections endpoint 404s, as a real PMS does", status == 404,
           "HTTP %s" % status)
+
+    # ------------------------------------------------------------------
+    # 14b. what a real PMS refuses -- answering 200 here tells the client the
+    #      endpoint exists and is empty, which is the same trap as answering a
+    #      needed endpoint with a clean refusal, from the other side.
+    # ------------------------------------------------------------------
+    print("\n=== refusals, measured against a real PMS ===")
+    for method, path, want, why in (
+            ("GET", "/plexsim/nonsense/path", 404, "an unrouted path"),
+            ("POST", "/player/playback/play?commandID=1", 400, "player commands"),
+            ("GET", "/player/timeline/poll?wait=0", 400, "player timeline"),
+            ("GET", "/system/proxy?url=https%3A%2F%2Fplex.tv", 400, "the plex.tv proxy"),
+            ("GET", "/library/platforms/plex", 404, "platforms"),
+            ("GET", "/hubs/sections/home", 404, "the home hub path"),
+            ("GET", "/hubs/metadata", 404, "hub metadata"),
+            ("GET", "/library/metadata/%s/markers" % movie, 404, "markers"),
+            ("GET", "/library/metadata/%s/banner/1" % movie, 404, "banner artwork"),
+            ("GET", "/library/metadata/%s/chapterImages/1" % movie, 404, "chapter images"),
+            ("GET", "/library/metadata/%s/indexes/sd" % movie, 404, "preview indexes"),
+            ("GET", "/library/metadata/%s/prefs" % movie, 404, "reading item prefs"),
+            ("PUT", "/library/metadata/%s/move?after=1" % movie, 404, "moving an item"),
+            ("GET", "/library/sections/%s/search?query=a" % movie_section, 400,
+             "section search"),
+            ("GET", "/library/sections/%s/albums" % movie_section, 404, "a music leaf"),
+            ("GET", "/library/streams/1", 501, "sidecar stream extraction"),
+            ("GET", "/video/:/transcode/universal/subtitles?session=x", 404,
+             "a transcode session"),
+            ("GET", "/library/optimize", 404, "optimize via GET"),
+            ("GET", "/library/collections", 404, "the bare collections path"),
+            ("GET", "/playlists/generators?type=42", 404, "version generators")):
+        status, _, _ = container(base, method, path)
+        check("%s answers %s" % (why, want), status == want, "HTTP %s" % status)
+
+    print("\n=== endpoints that are not the UI's but are a server's ===")
+    # The one root element on the whole surface that is NOT a MediaContainer, so
+    # it has to be read without the container helper.
+    status, body, _ = request(base, "GET", "/butler")
+    try:
+        tasks = json.loads(body).get("ButlerTasks", {}).get("ButlerTask") or []
+    except ValueError:
+        tasks = []
+    check("scheduled tasks are listed under a ButlerTasks root",
+          status == 200 and b'"ButlerTasks"' in body and tasks,
+          "%d task(s)" % len(tasks))
+    if tasks:
+        name = tasks[0].get("name")
+        status, body, _ = request(base, "POST", "/butler/%s" % name)
+        check("a scheduled task can be run now", is_empty_200(status, body),
+              "%s -> HTTP %s" % (name, status))
+        status, _, _ = request(base, "POST", "/butler/NoSuchTask")
+        check("an unknown scheduled task is a 404", status == 404, "HTTP %s" % status)
+    status, library, _ = get(base, "/library")
+    # python-plexapi asks for this before anything else; the old catch-all's
+    # empty container is what hid the fact that it was never routed.
+    check("the library root lists its three directories",
+          status == 200
+          and [d.get("key") for d in library.get("Directory") or []]
+          == ["sections", "recentlyAdded", "onDeck"],
+          ",".join(d.get("key") for d in library.get("Directory") or []))
+    status, system, _ = get(base, "/system")
+    check("the system provider lists its directories",
+          status == 200 and len(system.get("Directory") or []) == 2
+          and system.get("identifier") == "com.plexapp.system",
+          ",".join(d.get("key") for d in system.get("Directory") or []))
+    status, servers, _ = get(base, "/servers")
+    check("the legacy server list names this server",
+          status == 200
+          and (servers.get("Server") or [{}])[0].get("machineIdentifier") == machine,
+          str((servers.get("Server") or [{}])[0].get("name")))
+    status, logs, _ = get(base, "/logs")
+    check("the log endpoint answers with content, not a zip",
+          status == 200 and "content" in logs, ",".join(sorted(logs)))
+    status, body, _ = request(base, "POST",
+                              "/log?level=4&message=plexsim+test&source=Plex+Web")
+    check("the client's own log lines are accepted", is_empty_200(status, body),
+          "HTTP %s" % status)
+    status, top, _ = get(base, "/library/all/top?type=1")
+    check("the most-played list answers", status == 200, "HTTP %s" % status)
+    status, filtered, _ = get(base, "/hubs?identifier=home.continue")
+    identifiers = [h.get("hubIdentifier") for h in filtered.get("Hub") or []]
+    # Ignoring `identifier` makes Home draw rows it did not ask for.
+    check("the home hubs honour the identifier filter",
+          status == 200 and identifiers == ["home.continue"],
+          ",".join(str(i) for i in identifiers))
+    status, subtitles, _ = get(base, "/library/metadata/%s/subtitles?language=en" % movie)
+    check("the subtitle search dialog gets its shape back",
+          status == 200 and subtitles.get("identifier") == "com.plexapp.plugins.library",
+          ",".join(sorted(subtitles)))
+    status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=0" % movie)
+    check("an item preference write is accepted", is_empty_200(status, body),
+          "HTTP %s" % status)
+    status, unwatched, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
+    check("the unwatched listing answers", status == 200,
+          "%d row(s)" % len(unwatched.get("Metadata") or []))
+    status, resolution, _ = get(base, "/library/sections/%s/resolution" % movie_section)
+    check("the resolution axis is built from the Media",
+          status == 200 and resolution.get("Directory"),
+          ",".join(d.get("title") for d in resolution.get("Directory") or []))
+    if resolution.get("Directory"):
+        _, rows, _ = get(base, resolution["Directory"][0]["fastKey"])
+        check("a resolution entry filters the listing",
+              bool(rows.get("Metadata")),
+              "%d row(s)" % len(rows.get("Metadata") or []))
 
     # ------------------------------------------------------------------
     # 15. Server settings pages
