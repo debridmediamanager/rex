@@ -2623,13 +2623,19 @@ class PlexSim:
         return None
 
     def resolve_part(self, part_id):
-        """part id -> (restricted debrid link, container) for a catalog row."""
+        """part id -> (restricted debrid link, container, file name).
+
+        The file name is for the Download entry's `Content-Disposition`: a real
+        PMS names the saved file after the media file, not after the URL's last
+        segment (measured: `filename="Firefly (2002) - s01e01 - 1080p.mkv"`).
+        """
         for row in self.catalog.items.values():
             for media in row.get("Media", []):
                 for part in media.get("Part", []):
                     if str(part.get("id")) == str(part_id):
-                        return row.get("_debrid"), part.get("container")
-        return None, None
+                        name = str(part.get("file") or "").rsplit("/", 1)[-1]
+                        return row.get("_debrid"), part.get("container"), name
+        return None, None, None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -2944,7 +2950,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         sim = self.server.sim
         part_id = segments[2] if len(segments) > 2 else ""
-        link, container = sim.resolve_part(part_id)
+        link, container, part_name = sim.resolve_part(part_id)
         if not link:
             self._send(404, "text/plain", b"plexsim: no such part")
             return
@@ -2952,7 +2958,7 @@ class Handler(BaseHTTPRequestHandler):
         # The Download context-menu entry is the same Part read with
         # `download=1`; the only difference a real PMS makes is the disposition
         # header, which is what turns a play into a save.
-        filename = segments[-1] if len(segments) > 3 else ("part-%s" % part_id)
+        filename = part_name or (segments[-1] if len(segments) > 3 else "part-%s" % part_id)
         download = query.get("download") in ("1", "true")
 
         try:
@@ -3010,8 +3016,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", CONTENT_TYPES.get(container, "video/mp4"))
             self.send_header("Accept-Ranges", "bytes")
             if download:
-                self.send_header("Content-Disposition",
-                                 'attachment; filename="%s"' % download)
+                # Both forms, the way a real PMS sends them: the plain one for
+                # old clients and the RFC 5987 one for names that are not ASCII.
+                self.send_header(
+                    "Content-Disposition",
+                    'attachment; filename="%s"; filename*=UTF-8\'\'%s'
+                    % (download.replace('"', ""), urllib.parse.quote(download)))
             if content_length:
                 self.send_header("Content-Length", content_length)
             if content_range:

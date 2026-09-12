@@ -413,7 +413,9 @@ class Library:
             clone = dict(row)
             clone["Media"] = [source]
             clone.pop("Field", None)
-            new_key = self.catalog.next_key(row.get("type"))
+            # A real PMS sends ratingKey as a STRING at every level; an int
+            # here would be the one row in the library that differs.
+            new_key = str(self.catalog.next_key(row.get("type")))
             clone["ratingKey"] = new_key
             clone["key"] = "/library/metadata/%s" % new_key
             clone["guid"] = "local://%s" % new_key

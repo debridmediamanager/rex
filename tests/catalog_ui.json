@@ -205,7 +205,7 @@
    }
   },
   {
-   "ratingKey": 1008,
+   "ratingKey": "1008",
    "key": "/library/metadata/1008",
    "guid": "plex://movie/520a1a3c2c634f2594808ee9-fixture1008",
    "type": "movie",
@@ -392,7 +392,7 @@
    }
   },
   {
-   "ratingKey": 1009,
+   "ratingKey": "1009",
    "key": "/library/metadata/1009",
    "guid": "plex://movie/520a1a3c2c634f2594808ee9-fixture1009",
    "type": "movie",
@@ -911,7 +911,7 @@
    "chapterSource": "media"
   },
   {
-   "ratingKey": 30002,
+   "ratingKey": "30002",
    "key": "/library/metadata/30002",
    "type": "season",
    "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30002",
@@ -951,7 +951,7 @@
    "parentTheme": "/library/metadata/20001/theme/1"
   },
   {
-   "ratingKey": 1002,
+   "ratingKey": "1002",
    "key": "/library/metadata/1002",
    "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1002",
    "type": "episode",
@@ -1111,7 +1111,7 @@
    "librarySectionID": 2,
    "librarySectionTitle": "Debrid TV",
    "librarySectionKey": "/library/sections/2",
-   "parentRatingKey": 30002,
+   "parentRatingKey": "30002",
    "parentKey": "/library/metadata/30002",
    "parentTitle": "Season 20",
    "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
@@ -1134,7 +1134,7 @@
    "chapterSource": "media"
   },
   {
-   "ratingKey": 1003,
+   "ratingKey": "1003",
    "key": "/library/metadata/1003",
    "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1003",
    "type": "episode",
@@ -1294,7 +1294,7 @@
    "librarySectionID": 2,
    "librarySectionTitle": "Debrid TV",
    "librarySectionKey": "/library/sections/2",
-   "parentRatingKey": 30002,
+   "parentRatingKey": "30002",
    "parentKey": "/library/metadata/30002",
    "parentTitle": "Season 20",
    "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
