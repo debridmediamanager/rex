@@ -1267,7 +1267,7 @@ class PlexSim:
             # there is one; only fall back to a generated tile when there is not.
             resolved = self.resolve_artwork(query.get("url", ""))
             if resolved:
-                return ("image", resolved)
+                return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)
         if route.startswith("/:/resources/"):
             return ("png", query)
@@ -1761,6 +1761,9 @@ class PlexSim:
             # Measured: a real PMS answers 400 here; search is /hubs/search.
             return ("error", 400, "plexsim: bad request")
         if leaf == "composite":
+            art = self.composite_for("section", section_id)
+            if art:
+                return ("image", self._at_width(art, query.get("width")))
             return ("png", query)
 
         # A leaf a real PMS does not have is a 404 there, not an empty container.
@@ -2153,7 +2156,7 @@ class PlexSim:
         if leaf in ("thumb", "art", "poster", "background", "composite"):
             resolved = self.artwork_for(rating_key, leaf)
             if resolved:
-                return ("image", resolved)
+                return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)
         # Includes `/move`, which a real PMS 404s on an item: ordering is done
         # through the collection or playlist that holds it, not through the item.
@@ -2889,6 +2892,9 @@ class PlexSim:
             return self.bare_container(size=1, leafCountAdded=added,
                                        leafCountRequested=len(rows))
         if leaf == "composite":
+            art = self.composite_for("collection", segments[2])
+            if art:
+                return ("image", self._at_width(art, query.get("width")))
             return ("png", query)
         return self.bare_container(size=0)
 
@@ -2983,6 +2989,9 @@ class PlexSim:
                 title=summary["title"],
             )
         if leaf == "composite":
+            art = self.composite_for("playlist", segments[1])
+            if art:
+                return ("image", self._at_width(art, query.get("width")))
             return ("png", query)
         return self.bare_container(size=0)
 
@@ -3217,6 +3226,50 @@ class PlexSim:
         )]))
 
     # -- the stream ------------------------------------------------------
+
+    # TMDB serves fixed-width variants, and the row stores one of them. Asking
+    # upstream for the variant nearest the size the client wanted is the closest
+    # plexsim can get to a real PMS's resize, having no imaging library: the
+    # served image is still a fixed width rather than exactly the one requested,
+    # which is a deliberate difference.
+    TMDB_WIDTHS = (92, 154, 185, 342, 500, 780, 1280)
+
+    def _at_width(self, url, width):
+        if not url or "image.tmdb.org" not in url or not width:
+            return url
+        try:
+            wanted = int(width)
+        except (TypeError, ValueError):
+            return url
+        variant = next((w for w in self.TMDB_WIDTHS if w >= wanted), None)
+        target = "w%d" % variant if variant else "original"
+        return re.sub(r"/t/p/(w\d+|original)/", "/t/p/%s/" % target, url)
+
+    def composite_for(self, kind, key):
+        """The poster behind a collection's, playlist's or section's tile.
+
+        A real PMS builds a MOSAIC of its members' posters, 400x600 (measured).
+        plexsim has no imaging library and will not fabricate one, so it serves
+        one member's own poster -- which is honestly one of the images that
+        mosaic would be made of, and is what the tile is for. A flat generated
+        tile was the alternative, and it is what the client showed before.
+        """
+        rows = []
+        if kind == "collection":
+            collection = self.library.collection(key)
+            if collection:
+                rows = self.library.collection_children(collection)
+        elif kind == "playlist":
+            playlist = self.library.playlist(key)
+            if playlist:
+                rows = [row for row, _ in self.library.playlist_items(playlist)]
+        else:
+            rows = self.catalog.section_items(key)
+        for row in rows:
+            art = row.get("_poster_url") or row.get("_art_url")
+            if art:
+                return art
+        return None
 
     def artwork_for(self, rating_key, kind):
         """Absolute image URL for a row's poster/background, if identified."""

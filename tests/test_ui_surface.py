@@ -626,6 +626,29 @@ def main():
     # ------------------------------------------------------------------
     # 9. Get Info
     # ------------------------------------------------------------------
+    print("\n=== artwork: composites and requested sizes ===")
+    # A real PMS builds a 400x600 mosaic of its members' posters. plexsim has no
+    # imaging library and will not fabricate one, so it serves one member's own
+    # poster -- honestly one of the images that mosaic is made of. The failure
+    # this guards is the flat generated grey tile it showed before.
+    def image_at(path_):
+        status_, body_, headers_ = request(base, "GET", path_, want_json=False)
+        return status_, headers_.get("Content-Type", ""), len(body_)
+
+    status, kind, size = image_at("/library/sections/%s/composite/1?width=400" % movie_section)
+    if kind.startswith("image/") and "png" not in kind:
+        check("a section composite serves a member's own poster", size > 5000,
+              "%s %d bytes" % (kind, size))
+        narrow = image_at("/library/sections/%s/composite/1?width=185" % movie_section)
+        wide = image_at("/library/sections/%s/composite/1?width=1280" % movie_section)
+        # plexsim cannot resize; it asks TMDB for the variant nearest the width
+        # the client wanted, so the two answers are different images.
+        check("the requested width picks a different upstream variant",
+              narrow[2] != wide[2], "%d vs %d bytes" % (narrow[2], wide[2]))
+    else:
+        skip("a section composite serves a member's own poster",
+             "no row in this catalog has artwork (%s)" % (kind or status))
+
     print("\n=== context menu: Get Info ===")
     status, tree, _ = get(base, "/library/metadata/%s/tree" % movie)
     items = tree.get("MetadataItem") or []
@@ -818,6 +841,9 @@ def main():
             check("a playlist item can be dragged after another",
                   status == 200 and after and after[-1] == now[0],
                   "%s -> %s" % (now, after))
+        status, kind, size = image_at("/playlists/%s/composite/1?width=400" % playlist_key)
+        check("a playlist composite answers an image",
+              status == 200 and kind.startswith("image/"), "%s %d bytes" % (kind, size))
         status, body, _ = request(base, "PUT", "/playlists/%s?title=%s"
                                               % (playlist_key, quote("plexsim renamed")))
         _, one, _ = get(base, "/playlists/%s" % playlist_key)
@@ -885,6 +911,10 @@ def main():
           ",".join(sorted(collection)))
     collection_key = collection.get("ratingKey")
     if collection_key:
+        status, kind, size = image_at("/library/collections/%s/composite/1?width=400"
+                                      % collection_key)
+        check("a collection composite answers an image",
+              status == 200 and kind.startswith("image/"), "%s %d bytes" % (kind, size))
         status, children, _ = get(base, "/library/collections/%s/children" % collection_key)
         check("collection children list its members",
               status == 200 and any(str(r.get("ratingKey")) == str(movie)
