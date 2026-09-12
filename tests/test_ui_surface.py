@@ -1315,6 +1315,54 @@ def main():
     status, _, _ = get(base, "/library/collections")
     check("the bare collections endpoint 404s, as a real PMS does", status == 404,
           "HTTP %s" % status)
+    # Measured: the single-collection container carries allowSync TRUE, the
+    # identifier and the media-tag pair, and its librarySectionID is a NUMBER --
+    # plexsim sent a string and omitted the other three, so a client could not
+    # resolve a tag into an image URL from a collection page. And `/items`
+    # answers the members, where plexsim answered an empty container.
+    _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
+                                        "&title=%s&uri=%s"
+                                        % (movie_section, quote("plexsim shape probe"),
+                                           quote("server://%s/com.plexapp.plugins.library"
+                                                 "/library/metadata/%s" % (machine, movie))))
+    probe_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if probe_key:
+        _, one_collection, _ = get(base, "/library/collections/%s" % probe_key)
+        _, by_items, _ = get(base, "/library/collections/%s/items" % probe_key)
+        _, by_children, _ = get(base, "/library/collections/%s/children" % probe_key)
+        check("a collection container carries the identifier triple and a numeric id",
+              one_collection.get("allowSync") is True
+              and one_collection.get("identifier") == "com.plexapp.plugins.library"
+              and one_collection.get("mediaTagPrefix")
+              and isinstance(one_collection.get("librarySectionID"), int),
+              ",".join(sorted(k for k in one_collection
+                              if not isinstance(one_collection[k], list))))
+        check("/items answers the same members as /children",
+              (by_items.get("size") or 0) == (by_children.get("size") or 0) > 0,
+              "%s vs %s" % (by_items.get("size"), by_children.get("size")))
+        request(base, "DELETE", "/library/collections/%s" % probe_key)
+    else:
+        skip("a collection container carries the identifier triple and a numeric id",
+             "could not create a collection")
+
+    # Measured: the playlist ITEMS container reports its duration in SECONDS where
+    # the playlist ROW reports the same number in milliseconds -- one endpoint apart.
+    _, built_playlist, _ = container(
+        base, "POST", "/playlists?type=video&title=%s&uri=%s"
+                      % (quote("plexsim duration probe"),
+                         quote("server://%s/com.plexapp.plugins.library"
+                               "/library/metadata/%s" % (machine, movie))))
+    row = (built_playlist.get("Metadata") or [{}])[0]
+    if row.get("ratingKey") and (row.get("duration") or 0) > 0:
+        _, its_items, _ = get(base, "/playlists/%s/items" % row["ratingKey"])
+        check("the playlist items container's duration is in seconds",
+              its_items.get("duration") == int(round(row["duration"] / 1000.0))
+              and its_items.get("duration") != row["duration"],
+              "row=%sms container=%ss" % (row.get("duration"), its_items.get("duration")))
+        request(base, "DELETE", "/playlists/%s" % row["ratingKey"])
+    else:
+        skip("the playlist items container's duration is in seconds",
+             "the probe row has no duration")
 
     print("\n=== smart playlists and smart collections ===")
     # A smart list is a stored QUERY, re-run on every read. plexsim stored the
@@ -2062,6 +2110,88 @@ def main():
     status, _, _ = get(base, "/diagnostics/databases")
     check("Download Database is refused, matching the advertised diagnostics",
           status == 404, "HTTP %s" % status)
+
+    print("\n=== the server-info document, and the refusals a real PMS makes ===")
+    # `GET /` is NOT `/identity`: plexsim answered the five-field identity document
+    # to both. A real PMS answers the whole capability blob plus 25 Directory rows
+    # naming its top-level endpoints, and python-plexapi reads every attribute it
+    # has from here.
+    _, root, _ = get(base, "/")
+    _, ident, _ = get(base, "/identity")
+    dirs = [d.get("key") for d in root.get("Directory") or []]
+    check("/ answers the server-info document, not /identity",
+          len(dirs) == 25 and "library" in dirs and "butler" in dirs
+          and root.get("machineIdentifier") and root.get("ownerFeatures")
+          and len(ident) == 5 and "ownerFeatures" not in ident,
+          "%d directory(ies), %d scalar(s) on / vs %d on /identity"
+          % (len(dirs), len([k for k in root if not isinstance(root[k], list)]),
+             len(ident)))
+    check("every / Directory row is {count, key, title}",
+          all(set(d) == {"count", "key", "title"} for d in root.get("Directory") or []),
+          str((root.get("Directory") or [{}])[0]))
+    # 23 scheduled tasks, and only BackupDatabase is titled -- plexsim listed two
+    # with invented titles, so the page showed tasks that do not exist.
+    status, body, _ = request(base, "GET", "/butler")
+    butler = json.loads(body).get("ButlerTasks", {}) if body[:1] == b"{" else {}
+    tasks = butler.get("ButlerTask") or []
+    titled = [t.get("name") for t in tasks if t.get("title")]
+    check("the butler lists the reference's 23 tasks",
+          len(tasks) == 23 and titled == ["BackupDatabase"] and "size" not in butler,
+          "%d task(s), titled: %s" % (len(tasks), titled))
+    # The tree NESTS, and never sends an empty MediaItem list.
+    if show:
+        status, body, _ = request(base, "GET", "/library/metadata/%s/tree" % show)
+        tree = json.loads(body).get("MediaContainer", {}) if body[:1] == b"{" else {}
+        top = (tree.get("MetadataItem") or [{}])[0]
+        seasons = top.get("MetadataItem") or []
+        episodes = (seasons[0].get("MetadataItem") or []) if seasons else []
+        check("a show's tree nests seasons and episodes and omits MediaItem",
+              status == 200 and "MediaItem" not in top and seasons
+              and episodes and (episodes[0].get("MediaItem") or [{}])[0].get("MediaPart"),
+              "%d season(s), %d episode(s) under the first" % (len(seasons), len(episodes)))
+        # A MediaItem carries only its id here.
+        item = (episodes[0].get("MediaItem") or [{}])[0] if episodes else {}
+        check("a tree MediaItem carries only its id",
+              set(item) <= {"id", "MediaPart"}, ",".join(sorted(item)))
+    else:
+        skip("a show's tree nests seasons and episodes and omits MediaItem", "no show row")
+    # Every refusal below was an empty 200 or an empty container on plexsim, each of
+    # which a client reads as "that worked" or "that exists and is empty".
+    for method, path_, want, why in (
+            ("GET", "/updater/check?download=0", 404, "a GET of updater/check"),
+            ("GET", "/updater/apply", 404, "a GET of updater/apply"),
+            ("PUT", "/updater/apply", 400, "applying an update with nothing downloaded"),
+            ("DELETE", "/activities/not-a-real-uuid", 404, "cancelling an unknown activity"),
+            ("PUT", "/:/prefs?NoSuchPrefXyz=1", 400, "writing an unknown preference"),
+            ("POST", "/:/prefs", 404, "a POST to the preferences"),
+            ("GET", "/accounts/999", 404, "an unknown account"),
+            ("GET", "/media/subscriptions/1", 404, "an unknown subscription"),
+            ("GET", "/media/grabbers/foo", 404, "an unknown grabber"),
+            ("GET", "/system/scanners", 404, "the bare scanners collection"),
+            ("GET", "/security/token", 400, "a token request with no type or scope"),
+            ("PUT", "/butler/CleanOldBundles", 404, "a PUT to a butler task")):
+        status, _, _ = container(base, method, path_)
+        check("refusal: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
+    # And the endpoints plexsim refused that a real PMS answers.
+    for path_, why, test in (
+            ("/log/networked", "networked logging", lambda s, b: s == 200),
+            ("/diagnostics", "the diagnostics root",
+             lambda s, b: s == 200 and b.get("content") == "plugins"),
+            ("/resources", "the resource list", lambda s, b: s == 200 and b.get("size") == 0),
+            ("/media/grabbers", "the grabber list",
+             lambda s, b: s == 200 and len(b.get("MediaGrabber") or []) == 4),
+            ("/system/library/sections", "the system library view",
+             lambda s, b: s == 200 and b.get("identifier") == "com.plexapp.system")):
+        status, body_, _ = get(base, path_)
+        check("%s answers rather than 404s" % why, test(status, body_),
+              "HTTP %s %s" % (status, sorted(k for k in body_
+                                             if not isinstance(body_[k], list))))
+    # A delegation token is per call, not a constant two devices would share.
+    _, first_token, _ = get(base, "/security/token?type=delegation&scope=all")
+    _, second_token, _ = get(base, "/security/token?type=delegation&scope=all")
+    check("each delegation token is different",
+          first_token.get("token") and first_token.get("token") != second_token.get("token"),
+          "%s vs %s" % (first_token.get("token"), second_token.get("token")))
 
     print("\n=== Status pages ===")
     for path, label in (("/status/sessions", "Now Playing"),

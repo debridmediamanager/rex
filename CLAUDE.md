@@ -321,6 +321,15 @@ precisely how the Seasons bug survived a fix attempt.
   reads a 200 as "this endpoint exists and is empty". Flipping it is what finally
   surfaced `GET /library`, which python-plexapi asks for first and which had
   never been routed. If something breaks after adding an endpoint, look here.
+- **`GET /` is NOT `/identity`.** It answers the whole capability blob plus 25
+  `Directory` rows naming the server's top-level endpoints — which is where
+  python-plexapi reads every attribute it has. `/identity` stays five fields.
+- **`/library/metadata/{id}/tree` NESTS** — a show holds its seasons, each season
+  its episodes — and an EPISODE's tree is rooted at the show. A `MediaItem` there
+  carries only its `id`.
+- **A show's `/children` carries an "All episodes" `Directory` row** and the
+  container's `size` counts it; `excludeAllLeaves=1` removes both. `Guid` is on a
+  detail row always and on a LISTING row only under `includeGuids=1`.
 - **Two responses on the surface have a root that is not a MediaContainer** —
   `/butler` answers `ButlerTasks` and `/library/sections/{id}/query/parse`
   answers `Query`. Neither is guessable; both were measured.
