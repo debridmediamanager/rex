@@ -41,6 +41,10 @@ Jellyfin.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
 
+plexsim serves **anyone who can reach the port** unless you give it a token:
+`--token <value>` (or `PLEXSIM_TOKEN`) makes it 401 everything but `/identity` and
+`/web/*`, which is what a real PMS does. The startup line says which mode it is in.
+
 ## Quick start
 
 ```bash

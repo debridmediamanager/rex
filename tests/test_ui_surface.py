@@ -37,6 +37,7 @@ reason rather than passing quietly.
 
 import argparse
 import json
+import os
 import sys
 import time
 import urllib.error
@@ -2109,6 +2110,104 @@ def main():
               and entry.get("title") != entry.get("key"),
               "%s -> %d row(s)" % (entry.get("title"), len(rows.get("Metadata") or [])))
 
+    print("\n=== the token gate, and the headers every response carries ===")
+    # A real PMS 401s EVERYTHING but /identity and /web/* without its token -- for a
+    # missing one and a wrong one alike, with no WWW-Authenticate and no difference
+    # between them. plexsim had no token check at all, so any peer that could reach
+    # the port read the whole library, the preferences, the sessions and the bytes.
+    # The gate is opt-in (`--token`) because the suites and probes talk to plexsim
+    # without one; this check starts its OWN gated instance to prove it works.
+    import subprocess
+    import sys as _sys
+    gated_port = 32599
+    gated = subprocess.Popen(
+        [_sys.executable, "server.py", "--port", str(gated_port),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--token", "suite-gate-token"],
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        env=dict(os.environ, RD_TOKEN="dummy"),
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    gated_base = "http://127.0.0.1:%d" % gated_port
+    try:
+        for _attempt in range(40):
+            try:
+                urllib.request.urlopen(gated_base + "/identity", timeout=2).read()
+                break
+            except Exception:
+                time.sleep(0.25)
+
+        def gated_status(path, token=None):
+            req = urllib.request.Request(gated_base + path, headers={"User-Agent": UA})
+            if token:
+                req.add_header("X-Plex-Token", token)
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return response.status, response.headers, response.read()
+            except urllib.error.HTTPError as error:
+                return error.code, error.headers, error.read()
+
+        open_status, _, _ = gated_status("/identity")
+        web_status, _, _ = gated_status("/web/index.html")
+        check("a gated server leaves /identity and /web open",
+              open_status == 200 and web_status in (200, 404),
+              "identity=%s web=%s" % (open_status, web_status))
+        for path_ in ("/", "/library/sections", "/:/prefs", "/status/sessions",
+                      "/media/providers", "/hubs"):
+            missing, headers_, body_ = gated_status(path_)
+            wrong, _, _ = gated_status(path_, "definitelynotatoken")
+            good, _, _ = gated_status(path_, "suite-gate-token")
+            check("gate: %s is 401 without a token and 200 with one" % path_,
+                  missing == 401 and wrong == 401 and good == 200,
+                  "none=%s bad=%s good=%s" % (missing, wrong, good))
+        missing, headers_, body_ = gated_status("/library/sections")
+        check("the 401 is the reference's HTML shell, no-cache, no challenge",
+              b"401 Unauthorized" in body_
+              and headers_.get("Content-Type") == "text/html"
+              and headers_.get("Cache-Control") == "no-cache"
+              and headers_.get("WWW-Authenticate") is None,
+              "%s %s" % (headers_.get("Content-Type"), headers_.get("Cache-Control")))
+        query_status, _, _ = gated_status("/library/sections?X-Plex-Token=suite-gate-token")
+        check("the token is accepted in the query as well as the header",
+              query_status == 200, "HTTP %s" % query_status)
+        # /security/token is the one exception: its own 400 and 403, not a 401.
+        bare, _, _ = gated_status("/security/token")
+        forbidden, _, _ = gated_status("/security/token?type=delegation&scope=all", "nope")
+        allowed, _, _ = gated_status("/security/token?type=delegation&scope=all",
+                                     "suite-gate-token")
+        check("a delegation token request answers 400, 403 and 200, not 401",
+              bare == 400 and forbidden == 403 and allowed == 200,
+              "%s / %s / %s" % (bare, forbidden, allowed))
+    finally:
+        gated.terminate()
+        gated.wait(timeout=10)
+
+    # Measured across eight endpoints on both reference servers: `Cache-Control:
+    # no-cache` on EVERYTHING. plexsim sent none -- except on artwork, where it sent
+    # a day of caching the reference does not, so a Change Artwork or a re-match
+    # stayed invisible to the browser even though the version in the URL changed.
+    for path_ in ("/library/sections", "/library/sections/%s/all" % movie_section,
+                  "/identity", "/media/providers", "/:/prefs", "/status/sessions"):
+        _, headers_, _ = request(base, "GET", path_)[:2] + ({},)
+        with urllib.request.urlopen(urllib.request.Request(
+                base.rstrip("/") + path_, headers={"User-Agent": UA}), timeout=10) as r:
+            cache = r.headers.get("Cache-Control")
+        check("%s says no-cache" % path_, cache == "no-cache", str(cache))
+    # And a real PMS gzips its containers, naming both sizes in two Plex headers.
+    squeezed = urllib.request.Request(
+        base.rstrip("/") + "/library/sections/%s/all" % movie_section,
+        headers={"User-Agent": UA, "Accept-Encoding": "gzip, deflate"})
+    with urllib.request.urlopen(squeezed, timeout=10) as r:
+        encoding = r.headers.get("Content-Encoding")
+        original = r.headers.get("X-Plex-Content-Original-Length")
+        compressed = r.headers.get("X-Plex-Content-Compressed-Length")
+        payload = r.read()
+    import gzip as _gzip
+    check("a container is gzipped, with both sizes named",
+          encoding == "gzip" and original and compressed
+          and int(compressed) < int(original)
+          and len(_gzip.decompress(payload)) == int(original),
+          "%s -> %s bytes" % (original, compressed))
+
     print("\n=== CORS, which a browser enforces before the server sees anything ===")
     # Measured either side of an Origin header: a real PMS ECHOES the origin and
     # echoes the requested header list on a preflight, and sends no CORS headers
@@ -3227,8 +3326,18 @@ def main():
     # related rows to offer -- which is itself what the reference answers for one
     # of its own five movies.
     _, current, _ = get(base, "/library/sections/%s/all" % movie_section)
-    genred = next((r.get("ratingKey") for r in current.get("Metadata") or []
-                   if r.get("Genre")), None)
+    # A row is only useful here if it SHARES a genre with another row -- an earlier
+    # check in this suite rewrites one row's genres, so "has a genre" is not enough.
+    genred = None
+    for candidate in current.get("Metadata") or []:
+        tags = {t.get("id") for t in candidate.get("Genre") or []}
+        if not tags:
+            continue
+        if any(tags & {t.get("id") for t in other.get("Genre") or []}
+               for other in current.get("Metadata") or []
+               if other.get("ratingKey") != candidate.get("ratingKey")):
+            genred = candidate.get("ratingKey")
+            break
     subject = genred or movie
     status, related, _ = get(base, "/hubs/metadata/%s/related?includeExternalMedia=1"
                                    "&includeExternalMetadata=1&asyncAugmentMetadata=1"

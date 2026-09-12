@@ -458,6 +458,18 @@ precisely how the Seasons bug survived a fix attempt.
   splitting the spec on its first colon drops the secondary key and reading the
   direction off the first colon of a term loses it entirely. An unknown key is a
   500 on a real PMS, not a silently unsorted 200; an unknown MODIFIER is ignored.
+- **A real PMS 401s EVERYTHING but `/identity` and `/web/*`** — artwork, media bytes
+  and both notification channels included — for a missing token and a wrong one
+  alike, with no `WWW-Authenticate`. plexsim had no token check at all, so any peer
+  that could reach the port read the whole library. The gate is `--token` /
+  `PLEXSIM_TOKEN` and defaults OFF (the suites and probes carry no token); the
+  startup line says which. `/security/token` is the one exception: its own 400 with
+  no parameters and 403 with a bad token, never a 401.
+- **`Cache-Control: no-cache` goes on EVERY response**, and a versioned artwork
+  asset is `no-cache` too — caching it for a day makes a Change Artwork invisible to
+  the browser. Only transcoder output caches (`max-age=259200`). A real PMS also
+  GZIPS containers and names both sizes in `X-Plex-Content-Original-Length` /
+  `X-Plex-Content-Compressed-Length`.
 - **CORS: echo the Origin and echo the requested header list.** A fixed
   allow-list blocks whatever it forgot, and the browser refuses the request with
   no server-side trace. `*` is invalid on a credentialed request. Plex Web hides

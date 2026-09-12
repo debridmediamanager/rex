@@ -703,7 +703,7 @@ def _png(width, height, rgb):
 class PlexSim:
     def __init__(self, catalog, resolver, *, part_mode="proxy", public_url=None,
                  owner_username="plexsim", claim=None, web_root=None,
-                 assert_claimed=False, owner_email=None, tmdb=None):
+                 assert_claimed=False, owner_email=None, tmdb=None, token=None):
         self.catalog = catalog
         self.resolver = resolver
         self.part_mode = part_mode
@@ -718,6 +718,10 @@ class PlexSim:
         # Directory holding the extracted Plex Web client, served at /web.
         self.web_root = web_root
         self.assert_claimed = assert_claimed
+        # The token every request must carry, or None to serve anyone. A real PMS
+        # always has one and 401s everything but /identity and /web/* without it --
+        # measured on both reference servers, for a missing AND a wrong token alike.
+        self.token = token
         # Verified against fun and zen: both report the owner's email here.
         self.owner_email = owner_email or owner_username
         # Reported on /myplex/account the way fun and zen do.
@@ -1420,6 +1424,11 @@ class PlexSim:
             # plexsim answered a constant, so two devices shared one credential.
             if not query.get("type") or not query.get("scope"):
                 return ("error", 400, "plexsim: bad request")
+            if self.token:
+                given = (headers or {}).get("X-Plex-Token") or query.get("X-Plex-Token")
+                if given != self.token:
+                    # Measured: 403 here, not the 401 every other path answers.
+                    return ("error", 403, "plexsim: forbidden")
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
         if route == "/media/grabbers":
             # Measured: four grabbers, verbatim. plexsim answered an empty
@@ -5624,6 +5633,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, status, content_type, payload, extra_headers=()):
         self.send_response(status)
+        names = {name.lower() for name, _ in extra_headers}
+        # Measured across eight endpoints on both reference servers: a real PMS
+        # sends `Cache-Control: no-cache` on EVERYTHING. plexsim sent none at all,
+        # except on artwork where it sent a day of caching that the reference does
+        # not -- so a re-match or a Change Artwork stayed invisible to the browser.
+        if "cache-control" not in names:
+            self.send_header("Cache-Control", "no-cache")
+        payload = self._maybe_gzip(content_type, payload, names)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Plex-Protocol", "1.0")
@@ -5635,6 +5652,30 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != "HEAD":
             self.wfile.write(payload)
         self._count_bytes(len(payload))
+
+    # Compressible types. Measured: a real PMS gzips its XML and JSON (3.4x on a
+    # five-row grid) and names both sizes in two Plex-specific headers, which
+    # plexsim never sent -- so every container went out uncompressed.
+    GZIP_TYPES = ("text/xml", "application/json", "text/html", "text/plain")
+
+    def _maybe_gzip(self, content_type, payload, names):
+        if "content-encoding" in names or len(payload) < 860:
+            # The reference leaves very small bodies alone; 860 is the smallest
+            # compressed answer measured off it.
+            return payload
+        accepted = (self.headers.get("Accept-Encoding") or "").lower()
+        if "gzip" not in accepted:
+            return payload
+        if not any(content_type.startswith(kind) for kind in self.GZIP_TYPES):
+            return payload
+        import gzip as gzip_module
+        squeezed = gzip_module.compress(payload, 6)
+        if len(squeezed) >= len(payload):
+            return payload
+        self.send_header("Content-Encoding", "gzip")
+        self.send_header("X-Plex-Content-Original-Length", str(len(payload)))
+        self.send_header("X-Plex-Content-Compressed-Length", str(len(squeezed)))
+        return squeezed
 
     def _send_container(self, container):
         # `_xml` names the element a container's rows render as where the rows
@@ -5694,10 +5735,44 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    # The only two paths a real PMS serves WITHOUT a token: `/identity`, so a client
+    # can discover the server at all, and the web client itself. Measured on both
+    # reference servers -- everything else, artwork and media bytes included, is a
+    # 401 with no token AND with a bad one; there is no distinction and no
+    # WWW-Authenticate header.
+    OPEN_PATHS = ("/identity", "/web")
+
+    def _authorised(self, path):
+        """Whether this request carries the server's token, if one is required."""
+        wanted = self.server.sim.token
+        if not wanted:
+            return True
+        route = urllib.parse.urlparse(path)
+        if route.path == "/identity" or route.path.startswith("/web"):
+            return True
+        if route.path == "/security/token":
+            # Measured: this one is NOT a 401 -- it answers its own 400 with no
+            # parameters and 403 with a token that is not good enough, which is how
+            # a client tells "you did not ask properly" from "you may not have one".
+            return True
+        given = self.headers.get("X-Plex-Token") or urllib.parse.parse_qs(
+            route.query).get("X-Plex-Token", [""])[0]
+        return given == wanted
+
     def _dispatch(self, method):
         sim = self.server.sim
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else b""
+
+        if not self._authorised(self.path):
+            # Byte-for-byte the reference's refusal: the HTML shell, text/html,
+            # no-cache, and `Connection: close`.
+            logger.warning("401 %s %s -- no valid token", method, self.path.split("?")[0])
+            self._send(401, "text/html",
+                       b"<html><head><title>Unauthorized</title></head><body>"
+                       b"<h1>401 Unauthorized</h1></body></html>",
+                       extra_headers=[("Connection", "close")])
+            return
 
         try:
             result = sim.handle(method, self.path, body, self.headers,
@@ -5725,7 +5800,11 @@ class Handler(BaseHTTPRequestHandler):
                     int(query.get("height", 513) or 513),
                     (32, 34, 38),
                 )
-                self._send(200, "image/png", payload, [("Cache-Control", "max-age=86400")])
+                self._send(200, "image/png", payload,
+                           [("Cache-Control", "max-age=259200"
+                             if self.path.startswith("/photo/:/transcode")
+                             else "no-cache"),
+                            ("Accept-Ranges", "bytes")])
                 return
             if kind == "websocket":
                 self._serve_websocket()
@@ -5817,7 +5896,17 @@ class Handler(BaseHTTPRequestHandler):
                     self._image_cache.clear()
                 self._image_cache[url] = hit
         payload, content_type = hit
-        self._send(200, content_type, payload, [("Cache-Control", "max-age=86400")])
+        # Measured: a real PMS sends `no-cache` on a VERSIONED direct asset and
+        # `max-age=259200` only on transcoder output, plus `X-Plex-Local-Asset: 1`
+        # and `Accept-Ranges: bytes`. plexsim cached the direct asset for a day, so
+        # a Change Artwork or a re-match stayed invisible to the browser even though
+        # the version in the URL had changed.
+        transcoded = self.path.startswith("/photo/:/transcode")
+        headers = [("Cache-Control", "max-age=259200" if transcoded else "no-cache"),
+                   ("Accept-Ranges", "bytes")]
+        if not transcoded:
+            headers.append(("X-Plex-Local-Asset", "1"))
+        self._send(200, content_type, payload, headers)
 
     def _serve_static(self, relative):
         """Serve the bundled web client from --web-root."""
@@ -6120,6 +6209,12 @@ def main():
         help="proxy streams bytes through plexsim; redirect 302s to the debrid CDN",
     )
     parser.add_argument("--public-url", default=None)
+    parser.add_argument(
+        "--token", default=os.environ.get("PLEXSIM_TOKEN"),
+        help="require this X-Plex-Token on every request except /identity and "
+             "/web/* -- which is what a real PMS does. Default OFF, because the "
+             "test suites and probes talk to plexsim without one; a real server "
+             "always has a token, so leaving it off is a deliberate deviation.")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument(
         "--assert-claimed",
@@ -6192,6 +6287,7 @@ def main():
         claim=claim,
         web_root=args.web_root if os.path.isdir(args.web_root) else None,
         assert_claimed=args.assert_claimed,
+        token=args.token,
         owner_email=args.owner_email,
         tmdb=tmdb,
     )
@@ -6221,6 +6317,11 @@ def main():
 
     server = Server((args.host, args.port), sim, args.verbose)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")
+    # Said out loud either way: a real PMS 401s everything but /identity and /web/*
+    # without its token, and a plexsim with no token is readable by any peer that
+    # can reach the port -- library, preferences, sessions and media bytes alike.
+    logger.info("token gate: %s", "ENFORCED" if args.token else
+                "OFF -- every peer that can reach this port can read the library")
     logger.info(
         "plexsim on http://%s:%d  machine=%s  items=%d  parts=%s",
         socket.gethostname(),
