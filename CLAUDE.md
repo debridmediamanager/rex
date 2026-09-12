@@ -38,6 +38,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites |
+| `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client |
+| `harness/` | plexlab — the reference PMS and the recorder. See below. |
 | `probes/` | One-off measurement scripts that produced findings |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 
@@ -65,6 +67,176 @@ launchctl remove com.plexsim.dev
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
 
+## The reference harness
+
+`harness/` is **plexlab**: a real Plex Media Server, the official web client,
+and a recording of everything that passes between them and plex.tv. It is the
+instrument for the rule above — it is how you find out what a real PMS answers
+for the client's exact request, instead of guessing.
+
+It runs on **kids** at `/home/ben/plexlab`. The repo holds the source; that
+directory holds the live instance, its captures and its `.venv`.
+
+Two capture axes, deliberately separate. Both write one JSON object per
+exchange with method, path, **every query param in order**, every header and
+both bodies. Media bodies are recorded by length only — a 1.8 GB part read is a
+fact about status and headers, not something to keep on disk.
+
+| Axis | File | What it holds |
+|---|---|---|
+| client → server | `capture/sessions/<label>.jsonl` | what the official client asks for and what a real PMS answers. The corpus plexsim must match. |
+| server → plex.tv | `capture/outbound.jsonl` | how a real PMS registers and re-announces itself — the traffic that makes a server *detected* rather than merely reachable. |
+
+| Endpoint | What |
+|---|---|
+| `http://kids:32400` | the reference PMS |
+| `http://kids:9081` | mitmweb, client axis (password `plexlab`) |
+| `http://kids:7902` | the browser's desktop, for watching a session run |
+| `http://kids:9224` | CDP, for driving it |
+
+### Setting it up from scratch
+
+Needs Docker with the compose plugin, `ffmpeg`, and `python3-venv` on the host.
+
+```bash
+./scripts/make-media.sh                     # the reference library
+python3 -m venv .venv && .venv/bin/pip install websocket-client requests
+cp .env.example .env                        # identifiers filled in after the claim
+./lab.sh up
+```
+
+The library is ten ten-second synthetic clips named as real titles — four
+Blender open movies and two Firefly seasons. Plex matches on the **filename**,
+so its real metadata pipeline engages: the reference server ends up holding
+genuine `plex://movie|show|season|episode/<24hex>` guids and real TMDB episode
+titles, with no real media on disk and nothing downloaded.
+
+Then create the libraries and claim the server:
+
+```bash
+P=http://127.0.0.1:32400
+curl -s -X POST "$P/library/sections?name=Movies&type=movie\
+&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US&location=%2Fdata%2Fmovies"
+curl -s -X POST "$P/library/sections?name=TV%20Shows&type=show\
+&agent=tv.plex.agents.series&scanner=Plex%20TV%20Series&language=en-US&location=%2Fdata%2Fshows"
+curl -s "$P/library/sections/1/refresh"; curl -s "$P/library/sections/2/refresh"
+
+CLAIM=$(curl -s https://plex.tv/api/claim/token.json -H "Accept: application/json" \
+        -H "X-Plex-Token: $ACCOUNT_TOKEN" -H "X-Plex-Client-Identifier: plexlab-probe-1" \
+        | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+curl -s -X POST "$P/myplex/claim?token=$CLAIM"      # expect claimed="1" at /identity
+```
+
+Section creation answers **400 while `/identity` still reports
+`startState="startingPlugins"`**. Wait for that to clear rather than concluding
+the parameters are wrong.
+
+Collect the four values the harness needs afterwards:
+
+```bash
+curl -s $P/identity                                        # machineIdentifier -> .env
+docker exec plexlab-plex sh -c \
+  "grep -o 'PlexOnlineToken=\"[^\"]*\"' \
+   '/config/Library/Application Support/Plex Media Server/Preferences.xml'"   # server token
+# certificate hash: the <hash> in the server's own
+# https://<ip-with-dashes>.<hash>.plex.direct:32400 connection URI -> .env
+```
+
+`FriendlyName` is set through `/:/prefs`, not `hostname:` in compose — see the
+traps below.
+
+### Running the harness
+
+```bash
+./lab.sh up | status | restart | down
+./lab.sh tail                       # follow both capture files live
+```
+
+Capture a client session. The walk goes home → each section → grid → a movie →
+show → season → episode, which is the path whose `/children` requests carry the
+paging params that matter:
+
+```bash
+.venv/bin/python scripts/session-web.py --label reference-walk \
+    --token "$ACCOUNT_TOKEN" --server-token "$SERVER_TOKEN" --machine "$MACHINE_ID"
+```
+
+Diff a server against a captured corpus. `--reference` re-fetches the reference
+live at the same moment, which removes the state drift you otherwise see between
+capture time and replay time:
+
+```bash
+.venv/bin/python scripts/replay.py --corpus capture/sessions/reference-walk.jsonl \
+    --target http://127.0.0.1:32500 --target-token "$PLEXSIM_TOKEN" \
+    --reference http://127.0.0.1:32400 --reference-token "$SERVER_TOKEN" \
+    --out capture/diffs/plexsim.md
+```
+
+`replay.py` reissues each request byte-for-byte — same path, same query params
+in the same order, same `X-Plex-*` headers — and compares element structure,
+attribute presence **and attribute values**. Values are not optional: a
+key-level comparison alone would have missed `viewMode`, where both sides carry
+the field and only the values are swapped. Fields that differ per server by
+construction are listed explicitly in `VOLATILE` rather than guessed at, and
+fields whose value has been load-bearing in a past rendering bug are flagged in
+the report.
+
+Turn a capture into a checked-in fixture. This keeps only the server-directed
+exchanges and strips credentials from the query, the headers **and the bodies** —
+a token also rides inside the nested `url=` parameter of `/photo/:/transcode`:
+
+```bash
+python3 scripts/redact.py --corpus capture/sessions/reference-walk.jsonl \
+    --out ../tests/fixtures/reference-walk.jsonl
+```
+
+Sanity-check the tooling by replaying a corpus at the reference server itself.
+23 of 27 came back clean when this was built, and all four differences were
+genuine state drift — a rename, geoip resolving, the Recently Added hub
+settling. A larger number than that means the harness, not the target.
+
+### Harness traps
+
+- **Start order is load-bearing.** `plex` shares `gw`'s network namespace and
+  `cdp-relay` shares `browser`'s. A sharer that starts before its host, or
+  survives its host being recreated, lands in a namespace that no longer exists:
+  it reports `Up`, listens on nothing, and refuses every connection, which reads
+  exactly like a firewall problem. `lab.sh up` encodes the order — use it rather
+  than `docker compose up`.
+- **Never flush `nat/OUTPUT` in the gateway.** Docker's embedded DNS
+  (`127.0.0.11`) is implemented as DNAT rules in that chain inside the container
+  namespace. Flushing it leaves every hostname unresolvable while TCP to a
+  literal IP still works. That asymmetry — `https://1.1.1.1/` answers,
+  `https://plex.tv/` does not — is the tell.
+- **mitmproxy must not share PMS's uid.** The owner match that stops the proxy
+  intercepting its own upstream connections is a uid exclusion, and the image
+  default is 1000, the same as `PLEX_UID`. The obvious setup exempts PMS too and
+  captures zero flows while looking correct. The gateway image creates uid 8888
+  for that reason alone.
+- **Blocking the other servers' hostnames is not enough.** plex.tv still
+  *lists* them, so a signed-in client picks one as the active server and the
+  session never reaches the lab at all — measured, 46 requests to a production
+  server for every 8 to the lab. `isolate.py` filters the `/api/v2/resources`
+  response itself so the client sees exactly one owned server. Without it the
+  first baseline sent 50 flows at production.
+- **The PMS container's CA trust does not survive a recreate.** It lives in the
+  image filesystem, not a volume. Without it every plex.tv call fails TLS, the
+  server signs itself out, and `/identity` drops to `claimed="0"` — which looks
+  like a claim problem and is a certificate problem. `lab.sh up` re-applies it.
+- **`hostname:` conflicts with `network_mode: service:`.** Removing it makes PMS
+  name itself after the container id. Set `FriendlyName` through `/:/prefs`; it
+  persists in `Preferences.xml`.
+- **Chrome ignores `--remote-debugging-address`** and binds `127.0.0.1:9222`
+  inside the container, which no port mapping can reach; hence `cdp-relay`.
+- **`app.plex.tv` is a public origin and the server is a private IP.** Chrome
+  blocks that pairing in a way that looks like a dead network and is *not* CORS.
+  The browser launches with `LocalNetworkAccessChecks` and friends disabled.
+- **Do not `chown -R` the capture directory.** The gateway runs as 8888 and
+  everything else as 1000; a recursive chown takes the tree from every other
+  writer and the next session dies on `PermissionError`.
+
+`harness/README.md` carries the same list with the measurements behind it.
+
 ## Testing
 
 Run both against a live server. Neither needs network beyond RD and TMDB.
@@ -84,6 +256,11 @@ swapped.
 
 `test_all.py` decodes real frames rather than trusting a 200, because a 200
 that returns an error page still has a status a naive check accepts.
+
+New fixtures come from the harness, never from hand. `tests/fixtures/` holds
+corpora recorded from a real PMS *through a real client*, so they carry the
+client's own paging params; a payload transcribed by hand cannot, and that is
+precisely how the Seasons bug survived a fix attempt.
 
 ## Traps that cost real time
 
@@ -105,10 +282,14 @@ that returns an error page still has a status a naive check accepts.
 - **Artwork URLs must be versioned.** Unversioned `/thumb/1` plus ratingKey
   reuse serves a stale poster — one show wore another's art for a day.
 - **Never write to plex.tv's device registry to fake a server.**
-  `PUT /devices/{id}` resolves a numeric id and will silently overwrite an
-  existing dormant device. Repeated claim exchanges with fabricated identities
-  reset account-wide tokens and signed real servers out. Read the claim section
-  of `docs/findings.md` before touching anything under plex.tv.
+  `PUT /devices/{id}` with a **numeric** id resolves to a pre-existing row and
+  will silently overwrite it. Repeated claim exchanges with fabricated
+  identities reset account-wide tokens and signed real servers out. Read the
+  claim section of `docs/findings.md` before touching anything under plex.tv.
+  Measured 2026-09-12 in the harness, and correcting that section: a real PMS
+  announces with `PUT /devices/{machineIdentifier}` — the **identifier** form —
+  carrying its full `<Device>` element and its `plex.direct` connection, and
+  repeating on a timer. The numeric form is not what a real server uses.
 
 ## Conventions
 
