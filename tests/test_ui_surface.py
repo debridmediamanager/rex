@@ -1037,6 +1037,104 @@ def main():
     check("the bare collections endpoint 404s, as a real PMS does", status == 404,
           "HTTP %s" % status)
 
+    print("\n=== smart playlists and smart collections ===")
+    # A smart list is a stored QUERY, re-run on every read. plexsim stored the
+    # rows the query matched at creation time, so the list was a snapshot: it
+    # looked right the moment it was made and then went quietly stale.
+    smart_query = "type=1&unwatched=1&sort=titleSort"
+    smart_uri = quote("server://%s/com.plexapp.plugins.library"
+                      "/library/sections/%s/all?%s" % (machine, movie_section, smart_query))
+    _, expected, _ = get(base, "/library/sections/%s/all?%s" % (movie_section, smart_query))
+    wanted = [r.get("title") for r in expected.get("Metadata") or []]
+    status, created, _ = container(base, "POST",
+                                  "/playlists?type=video&title=%s&smart=1&uri=%s"
+                                  % (quote("plexsim smart list"), smart_uri))
+    smart_playlist = (created.get("Metadata") or [{}])[0]
+    check("a smart playlist reports leafCount from its query and a smart icon",
+          status == 200 and smart_playlist.get("smart") is True
+          and smart_playlist.get("icon") == "playlist://image.smart"
+          and smart_playlist.get("leafCount") == len(wanted),
+          "leafCount=%s icon=%s" % (smart_playlist.get("leafCount"),
+                                    smart_playlist.get("icon")))
+    smart_key = smart_playlist.get("ratingKey")
+    if smart_key:
+        # Measured: the LIST omits `content` and the single read carries it, and
+        # a playlist REWRITES the server:// URI into a library:// one.
+        _, listed, _ = get(base, "/playlists")
+        row = next((r for r in listed.get("Metadata") or []
+                    if str(r.get("ratingKey")) == str(smart_key)), {})
+        _, single, _ = get(base, "/playlists/%s" % smart_key)
+        stored = (single.get("Metadata") or [{}])[0].get("content") or ""
+        check("a playlist's content is rewritten, and only the single read has it",
+              "content" not in row
+              and stored.startswith("library://x/directory/")
+              and "genre" not in stored and "unwatched" in urllib.parse.unquote(stored),
+              stored[:70])
+        _, items, _ = get(base, "/playlists/%s/items" % smart_key)
+        check("a smart playlist's items are its query, not a stored list",
+              [r.get("title") for r in items.get("Metadata") or []] == wanted,
+              ", ".join(str(t) for t in wanted))
+        # The decisive one: change a row the query tests and the membership moves.
+        moving = (expected.get("Metadata") or [{}])[0].get("ratingKey")
+        if moving:
+            request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                                 % moving)
+            _, after, _ = get(base, "/playlists/%s/items" % smart_key)
+            request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                                 % moving)
+            _, back, _ = get(base, "/playlists/%s/items" % smart_key)
+            check("a smart playlist re-evaluates live",
+                  len(after.get("Metadata") or []) == len(wanted) - 1
+                  and len(back.get("Metadata") or []) == len(wanted),
+                  "%d -> %d -> %d" % (len(wanted), len(after.get("Metadata") or []),
+                                      len(back.get("Metadata") or [])))
+        else:
+            skip("a smart playlist re-evaluates live", "the query matches nothing")
+        request(base, "DELETE", "/playlists/%s" % smart_key)
+    status, created, _ = container(
+        base, "POST", "/library/collections?type=1&smart=1&sectionId=%s&title=%s&uri=%s"
+                      % (movie_section, quote("plexsim smart collection"), smart_uri))
+    smart_collection = (created.get("Metadata") or [{}])[0]
+    # Measured: a collection's `smart` is the STRING "1", it keeps the server://
+    # URI verbatim, and its `content` is in the LIST as well as the single read.
+    check("a smart collection says smart=\"1\" and keeps the uri verbatim",
+          status == 200 and smart_collection.get("smart") == "1"
+          and (smart_collection.get("content") or "").startswith("server://")
+          and smart_collection.get("childCount") == len(wanted),
+          "smart=%r childCount=%s" % (smart_collection.get("smart"),
+                                      smart_collection.get("childCount")))
+    smart_collection_key = smart_collection.get("ratingKey")
+    if smart_collection_key:
+        _, listed, _ = get(base, "/library/sections/%s/collections" % movie_section)
+        row = next((r for r in listed.get("Metadata") or []
+                    if str(r.get("ratingKey")) == str(smart_collection_key)), {})
+        _, children, _ = get(base, "/library/collections/%s/children"
+                                   % smart_collection_key)
+        # And a smart collection does NOT tag its members -- measured on the
+        # reference, where a member's Collection stayed absent.
+        _, member, _ = get(base, "/library/metadata/%s"
+                                 % (expected.get("Metadata") or [{}])[0].get("ratingKey"))
+        tags = (member.get("Metadata") or [{}])[0].get("Collection") or []
+        check("a smart collection lists content and leaves its members untagged",
+              (row.get("content") or "").startswith("server://")
+              and [r.get("title") for r in children.get("Metadata") or []] == wanted
+              and not any(t.get("tag") == "plexsim smart collection" for t in tags),
+              "%d child(ren), %d tag(s) on the member" % (
+                  len(children.get("Metadata") or []), len(tags)))
+        request(base, "DELETE", "/library/collections/%s" % smart_collection_key)
+    # A PLAIN collection omits `smart` altogether rather than sending a false.
+    plain_uri = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                      % (machine, movie))
+    status, created, _ = container(
+        base, "POST", "/library/collections?type=1&sectionId=%s&title=%s&uri=%s"
+                      % (movie_section, quote("plexsim plain collection"), plain_uri))
+    plain = (created.get("Metadata") or [{}])[0]
+    check("a plain collection omits smart, where a plain playlist sends false",
+          "smart" not in plain and "content" not in plain,
+          ",".join(sorted(k for k in plain if k in ("smart", "content"))) or "neither")
+    if plain.get("ratingKey"):
+        request(base, "DELETE", "/library/collections/%s" % plain["ratingKey"])
+
     # ------------------------------------------------------------------
     # 14b. what a real PMS refuses -- answering 200 here tells the client the
     #      endpoint exists and is empty, which is the same trap as answering a

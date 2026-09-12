@@ -307,6 +307,15 @@ precisely how the Seasons bug survived a fix attempt.
   bundle (`main-*.js` module 92273).
 - **A mutating endpoint answers 200 with an EMPTY body**, not a MediaContainer —
   and a playlist delete is 204 while a collection delete is 200.
+- **A smart playlist or collection is a stored QUERY, evaluated on every read** —
+  proved by scrobbling one movie and watching it leave an `?unwatched=1` smart
+  playlist. Storing the matching rows makes a list that is right once and stale
+  after. The two endpoints disagree on everything else: a playlist's `smart` is a
+  boolean and carries `icon: "playlist://image.smart"`, a collection's is the
+  string `"1"` and is OMITTED when not smart; a playlist rewrites the `server://`
+  URI into `library://x/directory/<encoded>` and shows `content` only on the
+  single read, a collection keeps the URI verbatim and shows it in the list too;
+  and a smart collection does **not** tag its members.
 - **An unrouted path answers 404**, the way a real PMS does. The catch-all used to
   return an empty container, which is fix 4's trap from the other side: a client
   reads a 200 as "this endpoint exists and is empty". Flipping it is what finally

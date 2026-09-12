@@ -32,6 +32,7 @@ playlists 40000+, collections 50000+.
 """
 
 import time
+import urllib.parse
 import uuid
 import zlib
 
@@ -67,8 +68,16 @@ def _now():
 class Library:
     """Watch state, edits, playlists, collections and play history."""
 
-    def __init__(self, catalog, notify=None):
+    def __init__(self, catalog, notify=None, resolve=None):
         self.catalog = catalog
+        # Called with a stored `server://` URI to re-evaluate a SMART playlist or
+        # collection. It has to be a callback rather than a method here because
+        # the filter engine lives on the server, and a smart list is evaluated
+        # LIVE: measured on the reference, scrobbling one movie drops it out of a
+        # smart playlist built on `?unwatched=1` and unscrobbling puts it back.
+        # A stored row list would be a snapshot, and the list would go stale in a
+        # way nothing on the surface reveals.
+        self._resolve = resolve
         # Called with (event, activity) when an activity starts or ends, so the
         # server can push it down the notification socket. A client watches that
         # channel for the Activity indicator rather than polling /activities.
@@ -511,7 +520,7 @@ class Library:
             rows = [r for r in rows if r.get("playlistType") == playlist_type]
         return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or ""))
 
-    def create_playlist(self, title, playlist_type, rows, smart=False):
+    def create_playlist(self, title, playlist_type, rows, smart=False, uri=None):
         self._next_playlist += 1
         key = self._next_playlist
         stamp = _now()
@@ -525,10 +534,32 @@ class Library:
             "updatedAt": stamp,
             "items": [],
             "next_item_id": 1,
+            # The query a smart playlist re-evaluates, kept verbatim so the
+            # engine sees exactly what the client sent.
+            "uri": uri if smart else None,
         }
         self._playlists[key] = playlist
-        self.add_playlist_items(playlist, rows)
+        if not playlist["smart"]:
+            self.add_playlist_items(playlist, rows)
         return playlist
+
+    @staticmethod
+    def playlist_content(uri):
+        """The `content` a smart PLAYLIST reports, which is not the URI it was given.
+
+        Measured: a playlist REWRITES
+        `server://<machine>/com.plexapp.plugins.library/library/sections/1/all?type=1&genre=6`
+        into
+        `library://x/directory/%2Flibrary%2Fsections%2F1%2Fall%3Ftype%3D1%26genre%3D6`
+        -- the provider prefix becomes `library://x/directory/` and the rest is
+        URI-encoded whole. A smart COLLECTION keeps the `server://` URI exactly as
+        it arrived. Two endpoints, two encodings of the same query.
+        """
+        path = urllib.parse.unquote(uri or "")
+        marker = "/com.plexapp.plugins.library"
+        if marker in path:
+            path = path.split(marker, 1)[1]
+        return "library://x/directory/" + urllib.parse.quote(path, safe="")
 
     def add_playlist_items(self, playlist, rows):
         """`PUT /playlists/{id}/items?uri=` -- returns how many were added.
@@ -613,7 +644,15 @@ class Library:
         return self._playlists.pop(int(key), None) is not None
 
     def playlist_items(self, playlist):
-        """The playlist's rows, each carrying its playlistItemID."""
+        """The playlist's rows, each carrying its playlistItemID.
+
+        A smart playlist has no stored items: it is its query, re-run now. The
+        item ids are positional, which is what a real PMS's are too -- there is
+        nothing to reorder in a list the server rebuilds.
+        """
+        if playlist.get("smart"):
+            return [(row, index) for index, row
+                    in enumerate(self.smart_rows(playlist.get("uri")), 1)]
         out = []
         for entry in playlist["items"]:
             row = self.catalog.items.get(entry["ratingKey"])
@@ -622,9 +661,24 @@ class Library:
             out.append((row, entry["playlistItemID"]))
         return out
 
-    def _playlist_row(self, playlist):
-        """Field set measured on a real PMS's POST /playlists response."""
-        rows = [self.catalog.items.get(i["ratingKey"]) for i in playlist["items"]]
+    def smart_rows(self, uri):
+        """The rows a stored smart query resolves to right now."""
+        if not uri or self._resolve is None:
+            return []
+        return self._resolve(uri)
+
+    def _playlist_row(self, playlist, content=False):
+        """Field set measured on a real PMS's POST /playlists response.
+
+        `content` is measured to be conditional: the LIST at /playlists omits it
+        and the single read at /playlists/{id} carries it. A client that reads the
+        list alone therefore cannot tell what a smart playlist selects, which is
+        why the Edit Filters dialog opens the item rather than the list.
+        """
+        if playlist.get("smart"):
+            rows = self.smart_rows(playlist.get("uri"))
+        else:
+            rows = [self.catalog.items.get(i["ratingKey"]) for i in playlist["items"]]
         rows = [r for r in rows if r]
         duration = sum(int(r.get("duration") or 0) for r in rows)
         stamp = playlist["updatedAt"]
@@ -643,6 +697,12 @@ class Library:
             "addedAt": playlist["addedAt"],
             "updatedAt": stamp,
         }
+        if playlist.get("smart"):
+            # Measured, and the only thing that marks a smart playlist in the
+            # list: the client draws its own icon from this value.
+            row["icon"] = "playlist://image.smart"
+            if content and playlist.get("uri"):
+                row["content"] = self.playlist_content(playlist["uri"])
         return row
 
     # -- collections -----------------------------------------------------
@@ -652,7 +712,8 @@ class Library:
                 if section_id is None or str(c["librarySectionID"]) == str(section_id)]
         return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or ""))
 
-    def create_collection(self, title, section_id, rows, subtype="movie", smart=False):
+    def create_collection(self, title, section_id, rows, subtype="movie", smart=False,
+                          uri=None):
         self._next_collection += 1
         key = self._next_collection
         stamp = _now()
@@ -666,9 +727,15 @@ class Library:
             "addedAt": stamp,
             "updatedAt": stamp,
             "items": [],
+            # A smart collection keeps the `server://` URI VERBATIM, where a
+            # smart playlist rewrites it -- see playlist_content().
+            "uri": uri if smart else None,
         }
         self._collections[key] = collection
-        self.add_collection_items(collection, rows)
+        if not collection["smart"]:
+            # A smart collection has no members to tag: its membership is its
+            # query, re-run on every read.
+            self.add_collection_items(collection, rows)
         return collection
 
     def add_collection_items(self, collection, rows):
@@ -757,6 +824,8 @@ class Library:
         return True
 
     def collection_children(self, collection):
+        if collection.get("smart"):
+            return self.smart_rows(collection.get("uri"))
         rows = [self.catalog.items.get(int(k)) for k in collection["items"]]
         return [r for r in rows if r]
 
@@ -780,9 +849,18 @@ class Library:
             "addedAt": collection["addedAt"],
             "updatedAt": stamp,
             "childCount": len(rows),
-            "smart": collection["smart"],
             "librarySectionID": collection["librarySectionID"],
         }
+        if collection.get("smart"):
+            # Measured twice over: a collection's `smart` is the STRING "1", not
+            # the playlist's boolean, and a NON-smart collection omits the field
+            # entirely rather than sending a false. A playlist always sends it.
+            row["smart"] = "1"
+        if collection.get("smart") and collection.get("uri"):
+            # Unlike a playlist, a collection carries `content` in the LIST as
+            # well as the single read -- measured at both
+            # /library/sections/{id}/collections and /library/collections/{id}.
+            row["content"] = urllib.parse.unquote(collection["uri"])
         if years:
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]
