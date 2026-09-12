@@ -550,6 +550,17 @@ def main():
     check("clearing an edited field removes it and its lock",
           "titleSort" not in row
           and "titleSort" not in {f.get("name") for f in row.get("Field") or []})
+    # Measured field by field: only `title` and `summary` are STORED as the empty
+    # string -- everything else is removed so the agent can supply it again, and an
+    # empty INTEGER is a 500. plexsim removed every field and accepted every value.
+    request(base, "PUT", "/library/metadata/%s?summary.value=" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    row = (detail.get("Metadata") or [{}])[0]
+    check("an empty summary is stored as the empty string, not removed",
+          row.get("summary") == "", repr(row.get("summary")))
+    status, _, _ = container(base, "PUT", "/library/metadata/%s?year.value=" % movie)
+    check("an empty year is a 500, as an empty integer filter is", status == 500,
+          "HTTP %s" % status)
 
     status, body, _ = request(
         base, "PUT", "/library/metadata/%s?collection%%5B0%%5D.tag.tag=%s&collection.locked=1"
@@ -569,6 +580,230 @@ def main():
     check("removing the tag clears it from the row",
           "plexsim probe tag" not in
           [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []])
+
+    print("\n=== the Edit dialog's own paths ===")
+    # THE save path: MultiMetadataModel.saveUrl is `PUT /library/sections/{id}/all`,
+    # and plexsim answered the LISTING to it with a 200 -- so every Edit dialog Save
+    # applied nothing and the dialog reported success. The quietest failure on the
+    # whole surface.
+    status, body, _ = request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                                          "&includeExternalMedia=1&tagline.value=%s"
+                                          "&tagline.locked=1"
+                                          % (movie_section, movie, quote("edited here")))
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    row = (detail.get("Metadata") or [{}])[0]
+    check("the section-wide save path applies the edit and answers an empty 200",
+          is_empty_200(status, body) and row.get("tagline") == "edited here"
+          and "tagline" in {f.get("name") for f in row.get("Field") or []},
+          "tagline=%r" % row.get("tagline"))
+    status, _, _ = container(base, "PUT", "/library/sections/%s/all?tagline.value=x"
+                                         % movie_section)
+    check("that path needs a type, as a real PMS does", status == 400, "HTTP %s" % status)
+    # With no `id` it edits the whole FILTERED set -- which is how "Edit all" works.
+    _, before, _ = get(base, "/library/sections/%s/all" % movie_section)
+    everything = [r.get("ratingKey") for r in before.get("Metadata") or []]
+    request(base, "PUT", "/library/sections/%s/all?type=1&studio.value=%s"
+                         % (movie_section, quote("Edited Studio")))
+    _, after, _ = get(base, "/library/sections/%s/all" % movie_section)
+    check("with no id it edits every row the filter selects",
+          all(r.get("studio") == "Edited Studio" for r in after.get("Metadata") or [])
+          and len(everything) > 1,
+          "%d row(s)" % len(after.get("Metadata") or []))
+    # A bare `field=value` on the SECTION path is a FILTER that scopes the edit, not
+    # a field to write -- where on the ITEM path the same shape IS an edit.
+    target = (after.get("Metadata") or [{}])[0]
+    # `title%3D=` is the EXACT operator: a bare `title=` CONTAINS, and the fixture's
+    # rows share a title prefix, so a contains-filter would scope to all of them.
+    request(base, "PUT", "/library/sections/%s/all?type=1&title%%3D=%s"
+                         "&contentRating.value=%s"
+                         % (movie_section, quote(str(target.get("title"))),
+                            quote("SCOPED")))
+    _, scoped, _ = get(base, "/library/sections/%s/all" % movie_section)
+    hits = [r for r in scoped.get("Metadata") or [] if r.get("contentRating") == "SCOPED"]
+    check("a bare parameter scopes the edit rather than being written",
+          len(hits) == 1 and hits[0].get("ratingKey") == target.get("ratingKey"),
+          "%d of %d row(s) edited" % (len(hits), len(scoped.get("Metadata") or [])))
+    # The dialog's PRE-read. plexsim 404'd it, and populate() rejects on that, so
+    # Edit said "There was an error editing this item" before the user could type.
+    status, common, _ = get(base, "/library/sections/%s/common?type=1&id=%s"
+                                 "&includeExternalMedia=1" % (movie_section, movie))
+    one = (common.get("Metadata") or [{}])[0]
+    check("the Edit dialog's /common pre-read answers a Common row",
+          status == 200 and one.get("type") == "common"
+          and one.get("mixedFields") == "" and common.get("title2") == "Common",
+          "type=%r mixedFields=%r" % (one.get("type"), one.get("mixedFields")))
+    if spare:
+        _, mixed, _ = get(base, "/library/sections/%s/common?type=1&id=%s,%s"
+                                % (movie_section, movie, spare))
+        row_mixed = (mixed.get("Metadata") or [{}])[0]
+        # Measured: the fields that DIFFER are dropped and named in `mixedFields`,
+        # which is how the dialog knows to show "(mixed)" rather than overwrite.
+        check("several ids name their differing fields in mixedFields",
+              "title" in (row_mixed.get("mixedFields") or "")
+              and "title" not in row_mixed,
+              row_mixed.get("mixedFields"))
+    else:
+        skip("several ids name their differing fields in mixedFields", "need a second row")
+    status, _, _ = container(base, "GET", "/library/sections/%s/common" % movie_section)
+    check("/common needs a type too", status == 400, "HTTP %s" % status)
+    # The dialog's source of EDITABLE TAG FIELDS. plexsim answered two Directory
+    # rows and no Type at all, so the Tags pane had no genre, collection or label.
+    _, plain_pivots, _ = get(base, "/library/sections/%s" % movie_section)
+    _, detailed, _ = get(base, "/library/sections/%s?includeDetails=1&includeAdvanced=1"
+                               % movie_section)
+    tag_fields = [f.get("key") for t in detailed.get("Type") or []
+                  for f in t.get("Field") or [] if f.get("type") == "tag"]
+    check("a section lists its pivots and, with includeDetails, its editable fields",
+          len(plain_pivots.get("Directory") or []) == 20
+          and not plain_pivots.get("Type")
+          and detailed.get("Type") and detailed.get("FieldType")
+          and len(tag_fields) >= 10,
+          "%d pivot(s), %d tag field(s)" % (len(plain_pivots.get("Directory") or []),
+                                            len(tag_fields)))
+    check("the pivot rows carry the titles the sidebar prints",
+          (plain_pivots.get("Directory") or [{}])[0].get("title") == "All Movies"
+          and any(p.get("secondary") for p in plain_pivots.get("Directory") or [])
+          and any(p.get("search") for p in plain_pivots.get("Directory") or []),
+          ", ".join(str(p.get("title")) for p in (plain_pivots.get("Directory") or [])[:4]))
+    # A batch edit through a comma-joined key list, which also answered the listing.
+    if spare:
+        status, body, _ = request(base, "PUT", "/library/metadata/%s,%s?summary.value=%s"
+                                              % (movie, spare, quote("batched")))
+        summaries = []
+        for key in (movie, spare):
+            _, one_row, _ = get(base, "/library/metadata/%s" % key)
+            summaries.append((one_row.get("Metadata") or [{}])[0].get("summary"))
+        check("a comma-joined key list is a batch EDIT, not a listing",
+              is_empty_200(status, body) and summaries == ["batched", "batched"],
+              str(summaries))
+    else:
+        skip("a comma-joined key list is a batch EDIT, not a listing", "need a second row")
+    # Parameter-level refusals and coercions, measured one at a time.
+    for spec, want, why in (
+            ("bogus.value=1", 400, "an unknown field"),
+            ("sortTitle.value=abc", 400, "a misspelled field"),
+            ("bogustag[0].tag.tag=x", 400, "an unknown tag field"),
+            ("year.value=abc", 500, "an unparseable year"),
+            ("", 400, "no parameters at all")):
+        status, _, _ = container(base, "PUT", "/library/metadata/%s%s"
+                                             % (movie, ("?" + spec) if spec else ""))
+        check("edit refuses %s" % why, status == want, "HTTP %s" % status)
+    # These two REMOVE fields the filter and sort checks further down count on, so
+    # whatever was there is put back afterwards.
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    was = (detail.get("Metadata") or [{}])[0]
+    kept_year, kept_date = was.get("year"), was.get("originallyAvailableAt")
+    request(base, "PUT", "/library/metadata/%s?year.value=-5" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    check("a negative year removes the field",
+          "year" not in (detail.get("Metadata") or [{}])[0],
+          str((detail.get("Metadata") or [{}])[0].get("year")))
+    request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=notadate" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    check("an unparseable date removes the field rather than storing the text",
+          "originallyAvailableAt" not in (detail.get("Metadata") or [{}])[0],
+          str((detail.get("Metadata") or [{}])[0].get("originallyAvailableAt")))
+    if kept_year is not None:
+        request(base, "PUT", "/library/metadata/%s?year.value=%s" % (movie, kept_year))
+    if kept_date is not None:
+        request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s"
+                             % (movie, quote(str(kept_date))))
+    # Only `.locked=1` locks: `true`, `false` and an empty value all UNLOCK.
+    request(base, "PUT", "/library/metadata/%s?studio.locked=1" % movie)
+    request(base, "PUT", "/library/metadata/%s?studio.locked=true" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    locks = {f.get("name") for f in (detail.get("Metadata") or [{}])[0].get("Field") or []}
+    check("only .locked=1 locks a field", "studio" not in locks, ",".join(sorted(locks)))
+    # An indexed tag write REPLACES the list, and any `tag-` removal clears it.
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=Alpha"
+                         "&genre[1].tag.tag=Beta" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    genres = [g.get("tag") for g in (detail.get("Metadata") or [{}])[0].get("Genre") or []]
+    check("an indexed tag write REPLACES the whole list",
+          genres == ["Alpha", "Beta"], ", ".join(genres))
+    first_ids = {g.get("tag"): g.get("id")
+                 for g in (detail.get("Metadata") or [{}])[0].get("Genre") or []}
+    request(base, "PUT", "/library/metadata/%s?genre[].tag.tag-=NotThere" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    check("any tag- removal clears the whole list",
+          not (detail.get("Metadata") or [{}])[0].get("Genre"),
+          str((detail.get("Metadata") or [{}])[0].get("Genre")))
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=alpha" % movie)
+    _, detail, _ = get(base, "/library/metadata/%s" % movie)
+    back = ((detail.get("Metadata") or [{}])[0].get("Genre") or [{}])[0]
+    # A tag matches case-insensitively and keeps its canonical spelling AND its id,
+    # even after being removed from every row -- a real PMS keeps a tag TABLE.
+    check("a re-added tag keeps its canonical spelling and its id",
+          back.get("tag") == "Alpha" and back.get("id") == first_ids.get("Alpha"),
+          "%s/%s vs %s" % (back.get("tag"), back.get("id"), first_ids.get("Alpha")))
+
+    print("\n=== collections and playlists as metadata items ===")
+    # Both are metadata items in their own right, and the client edits them through
+    # /library/metadata/{key} -- its saveUrl falls back to that path for a playlist.
+    # plexsim kept them outside the catalog, so both answered 404 and neither could
+    # be renamed from its own page.
+    _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
+                                        "&title=%s&uri=%s"
+                                        % (movie_section, quote("plexsim item probe"),
+                                           quote("server://%s/com.plexapp.plugins.library"
+                                                 "/library/metadata/%s" % (machine, movie))))
+    ckey = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if ckey:
+        status, body, _ = request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                                              "&titleSort.value=zz&contentRating.value=PG"
+                                              % (ckey, quote("renamed here")))
+        _, one, _ = get(base, "/library/metadata/%s" % ckey)
+        crow = (one.get("Metadata") or [{}])[0]
+        check("a collection is editable through /library/metadata/{key}",
+              is_empty_200(status, body) and crow.get("title") == "renamed here"
+              and crow.get("titleSort") == "zz" and crow.get("contentRating") == "PG",
+              json.dumps({k: crow.get(k) for k in ("title", "titleSort",
+                                                   "contentRating")}))
+        status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs"
+                                              "?collectionSort=1&collectionMode=2" % ckey)
+        _, one, _ = get(base, "/library/metadata/%s" % ckey)
+        crow = (one.get("Metadata") or [{}])[0]
+        # Measured: they come back as STRING attributes, which is what the dialog
+        # reads to show the current selection.
+        check("collection prefs land on the row as strings",
+              is_empty_200(status, body) and crow.get("collectionSort") == "1"
+              and crow.get("collectionMode") == "2",
+              "%r/%r" % (crow.get("collectionSort"), crow.get("collectionMode")))
+        for spec, want, why in (("/library/metadata/%s/prefs" % ckey, 404,
+                                 "reading the prefs"),
+                                ("/library/metadata/%s/prefs?bogus=1" % ckey, 400,
+                                 "an unknown pref")):
+            status, _, _ = container(base, "GET" if want == 404 else "PUT", spec)
+            check("collection prefs: %s is a %d" % (why, want), status == want,
+                  "HTTP %s" % status)
+        request(base, "DELETE", "/library/collections/%s" % ckey)
+    else:
+        skip("a collection is editable through /library/metadata/{key}",
+             "could not create a collection")
+    _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
+                                        % (quote("plexsim item playlist"),
+                                           quote("server://%s/com.plexapp.plugins.library"
+                                                 "/library/metadata/%s" % (machine, movie))))
+    pkey = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if pkey:
+        status, body, _ = request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                                              % (pkey, quote("playlist renamed")))
+        _, one, _ = get(base, "/playlists/%s" % pkey)
+        check("a playlist is editable through /library/metadata/{key} too",
+              is_empty_200(status, body)
+              and (one.get("Metadata") or [{}])[0].get("title") == "playlist renamed",
+              (one.get("Metadata") or [{}])[0].get("title"))
+        for spec, want, why in ((("?bogus=1"), 400, "an unknown parameter"),
+                                ("", 400, "no parameters"),
+                                ("?smart=1", 400, "a smart flag it cannot honour"),
+                                ("?title=fine", 200, "a title")):
+            status, _, _ = container(base, "PUT", "/playlists/%s%s" % (pkey, spec))
+            check("playlist PUT: %s is a %d" % (why, want), status == want,
+                  "HTTP %s" % status)
+        request(base, "DELETE", "/playlists/%s" % pkey)
+    else:
+        skip("a playlist is editable through /library/metadata/{key} too",
+             "could not create a playlist")
 
     # ------------------------------------------------------------------
     # 6. Refresh Metadata, Analyze
@@ -3332,18 +3567,51 @@ def main():
     check("Add Library answers 201 with the created library",
           status == 201 and directory.get("key"), "HTTP %s key=%s"
           % (status, directory.get("key")))
+    # Measured: a real PMS validates the create form and answers a PLAIN-TEXT 400
+    # naming what is wrong. plexsim answered 201 to every malformed form and really
+    # created the library -- a POST with NO parameters at all made one called
+    # "New Library", which then sat in the sidebar.
+    for spec, why in (
+            ("", "no parameters at all"),
+            ("?name=x&type=movie&agent=tv.plex.agents.movie&scanner=Plex%20Movie",
+             "no location"),
+            ("?name=x&type=bogus&location=%2Fx&agent=tv.plex.agents.movie"
+             "&scanner=Plex%20Movie", "an unknown type"),
+            ("?type=movie&location=%2Fx&agent=tv.plex.agents.movie"
+             "&scanner=Plex%20Movie", "no name"),
+            ("?name=x&type=movie&location=%2Fx&scanner=Plex%20Movie", "no agent"),
+            ("?name=x&type=movie&location=%2Fx&agent=tv.plex.agents.movie",
+             "no scanner")):
+        status_bad, _, _ = container(base, "POST", "/library/sections%s" % spec)
+        check("Add Library refuses %s" % why, status_bad == 400, "HTTP %s" % status_bad)
     new_section = directory.get("key")
     if new_section:
-        status, body, _ = request(base, "PUT", "/library/sections/%s?name=%s"
-                                               % (new_section, quote("plexsim renamed")))
+        # The dialog sends the WHOLE form, and a real PMS validates it: a `name`
+        # on its own is a 400, and so are a missing or unknown agent, scanner or
+        # language. plexsim accepted every one with a 200, so a typo looked saved.
+        form = ("&agent=tv.plex.agents.movie&scanner=Plex%%20Movie&language=en-US"
+                "&location=%s" % quote("/plexsim"))
+        status, body, _ = request(base, "PUT", "/library/sections/%s?name=%s%s"
+                                               % (new_section, quote("plexsim renamed"),
+                                                  form))
         _, sections, _ = get(base, "/library/sections")
         titles = [d.get("title") for d in sections.get("Directory") or []]
         check("Edit Library renames it",
               is_empty_200(status, body) and "plexsim renamed" in titles,
               ",".join(titles))
-        status, _, _ = request(base, "PUT", "/library/sections/%s" % new_section)
-        check("a rename with no name is a 400, as a real PMS answers", status == 400,
-              "HTTP %s" % status)
+        for spec, why in (
+                ("", "no name at all"),
+                ("?name=x", "a name with no agent or scanner"),
+                ("?name=x&agent=bogus&scanner=Plex%20Movie", "an unknown agent"),
+                ("?name=x&agent=tv.plex.agents.movie&scanner=Nope", "an unknown scanner"),
+                ("?name=x&agent=tv.plex.agents.movie&scanner=Plex%20Movie"
+                 "&language=xx-XX", "an unknown language")):
+            status, _, _ = container(base, "PUT",
+                                     "/library/sections/%s%s" % (new_section, spec))
+            check("Edit Library refuses %s" % why, status == 400, "HTTP %s" % status)
+        # And the scan is a GET or a POST -- a PUT to it is a 404.
+        status, _, _ = container(base, "PUT", "/library/sections/%s/refresh" % new_section)
+        check("a PUT to a section refresh is a 404", status == 404, "HTTP %s" % status)
         status, body, _ = request(base, "DELETE", "/library/sections/%s" % new_section)
         _, sections, _ = get(base, "/library/sections")
         check("Delete Library removes it",

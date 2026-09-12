@@ -157,6 +157,21 @@ except OSError:
 # `/media/grabbers`, verbatim off the reference. plexsim answered an empty
 # container, which tells the Live TV setup page the server supports no tuner
 # protocols at all rather than that it has no tuners.
+# What the Edit Library dialog is allowed to name. Measured: a real PMS answers
+# 400 for an agent, scanner or language it does not have, where plexsim accepted
+# anything with a 200 -- so a typo in the dialog looked saved and silently was not.
+KNOWN_AGENTS = {"tv.plex.agents.movie", "tv.plex.agents.series", "tv.plex.agents.none",
+                "com.plexapp.agents.none"}
+KNOWN_SCANNERS = {"Plex Movie", "Plex Movie Scanner", "Plex Video Files Scanner",
+                  "Plex Video Files", "Plex TV Series", "Plex Series Scanner"}
+KNOWN_LANGUAGES = {"en-US", "en-GB", "en-AU", "en-CA", "de-DE", "fr-FR", "es-ES",
+                   "es-MX", "it-IT", "nl-NL", "pt-BR", "pt-PT", "sv-SE", "da-DK",
+                   "nb-NO", "fi-FI", "pl-PL", "cs-CZ", "hu-HU", "ro-RO", "tr-TR",
+                   "el-GR", "ru-RU", "he-IL", "ar-SA", "ja-JP", "ko-KR", "zh-CN",
+                   "zh-TW", "zh-HK", "hi-IN", "id-ID", "vi-VN", "th-TH", "uk-UA",
+                   "ca-ES", "et-EE", "lv-LV", "lt-LT", "sk-SK", "hr-HR", "is-IS",
+                   "fr-CA"}
+
 MEDIA_GRABBERS = [
     {"title": "HDHomerun", "identifier": "tv.plex.grabbers.hdhomerun",
      "protocol": "livetv"},
@@ -2065,25 +2080,34 @@ class PlexSim:
                 logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
                 return ("empty", 200)
             if method == "PUT":
-                # The Edit Library dialog. A real PMS refuses a partial edit
-                # (measured: 400 for `?name=` alone), and the client always
-                # sends the whole form, so a missing name is a client error.
+                # The Edit Library dialog sends the WHOLE form, and a real PMS
+                # validates it: measured 400 for a `name` alone, for a form with no
+                # `agent` or no `scanner`, and for an unknown agent, scanner or
+                # language. plexsim accepted every one of those with a 200, so a
+                # typo in the dialog looked like it had been saved.
                 if not query.get("name"):
+                    return ("error", 400, "plexsim: bad request")
+                if not query.get("agent") or not query.get("scanner"):
+                    return ("error", 400, "plexsim: bad request")
+                if query["agent"] not in KNOWN_AGENTS:
+                    return ("error", 400, "plexsim: bad request")
+                if query["scanner"] not in KNOWN_SCANNERS:
+                    return ("error", 400, "plexsim: bad request")
+                if query.get("language") and query["language"] not in KNOWN_LANGUAGES:
                     return ("error", 400, "plexsim: bad request")
                 section["title"] = query["name"]
                 logger.info("SECTION edit %s -> %s", section_id, query["name"])
                 return ("empty", 200)
-            return self.container(
-                Directory=[
-                    {"key": "all", "title": "All"},
-                    {"key": "recentlyAdded", "title": "Recently Added"},
-                ]
-            )
+            return self.section_pivots(section_id, section, query)
 
         leaf = segments[3]
 
         # -- the write half of Manage > Libraries -------------------------
         if leaf == "refresh":
+            if method == "PUT":
+                # Measured: a PUT here is a 404 -- the scan is a GET (or a POST),
+                # and the cancel is a DELETE.
+                return ("error", 404, "plexsim: not found")
             # "Scan Library Files" / "Refresh All Metadata"; DELETE is the
             # Cancel Scan button. plexsim's rows come from the catalog, so a
             # scan re-versions artwork and reports an activity per item, which
@@ -2146,7 +2170,29 @@ class PlexSim:
 
         # -- listings ------------------------------------------------------
         if leaf == "all":
+            if method == "PUT":
+                # THE Edit dialog's save path (`MultiMetadataModel.saveUrl`), and
+                # plexsim answered the listing to it -- so every Save applied
+                # nothing and the dialog reported success, because the status was
+                # 200. Measured: `id=` scopes it to those rows, and with no `id`
+                # the whole FILTERED set is edited; no `type` is a 400, and the
+                # container paging parameters are ignored on a write.
+                if not query.get("type"):
+                    return ("error", 400, "plexsim: bad request")
+                keys = [int(k) for k in (query.get("id") or "").split(",")
+                        if k.strip().isdigit()]
+                if keys:
+                    rows = [self.catalog.items[k] for k in keys
+                            if k in self.catalog.items]
+                else:
+                    rows = self.typed_rows(section_id, query)
+                    rows, _ = self.apply_filters(rows, query, section)
+                return self.apply_edit(rows, query, bare_fields=False)
             return self.section_listing(section_id, section, query)
+        if leaf == "common":
+            if method != "GET":
+                return ("error", 404, "plexsim: not found")
+            return self.common_fields(section_id, section, query)
         if leaf in ("recentlyAdded", "newest", "recentlyViewed", "onDeck"):
             rows = self.catalog.section_items(section_id)
             if leaf == "onDeck":
@@ -2322,6 +2368,87 @@ class PlexSim:
             rows.sort(key=lambda r: (r.get("grandparentTitle") or r.get("parentTitle") or "",
                                      r.get("parentIndex") or 0, r.get("index") or 0))
         return rows
+
+    # `GET /library/sections/{id}` -- the PIVOT list, captured per library type.
+    # plexsim answered two rows ("All", "Recently Added"); a real PMS answers 20 for
+    # a movie library and 16 for a show one, each with the title the sidebar prints,
+    # `secondary` on the axes and `search`/`prompt` on the search entries.
+    SECTION_PIVOTS = {
+        "movie": [
+            {"key": "all", "title": "All Movies"},
+            {"key": "unwatched", "title": "Unwatched"},
+            {"key": "newest", "title": "Recently Released"},
+            {"key": "recentlyAdded", "title": "Recently Added"},
+            {"key": "recentlyViewed", "title": "Recently Viewed"},
+            {"key": "onDeck", "title": "Continue Watching"},
+            {"secondary": True, "key": "collection", "title": "By Collection"},
+            {"secondary": True, "key": "edition", "title": "By Edition"},
+            {"secondary": True, "key": "genre", "title": "By Genre"},
+            {"secondary": True, "key": "year", "title": "By Year"},
+            {"secondary": True, "key": "decade", "title": "By Decade"},
+            {"secondary": True, "key": "director", "title": "By Director"},
+            {"secondary": True, "key": "actor", "title": "By Starring Actor"},
+            {"secondary": True, "key": "country", "title": "By Country"},
+            {"secondary": True, "key": "contentRating", "title": "By Content Rating"},
+            {"secondary": True, "key": "rating", "title": "By Rating"},
+            {"secondary": True, "key": "resolution", "title": "By Resolution"},
+            {"secondary": True, "key": "firstCharacter", "title": "By First Letter"},
+            {"key": "folder", "title": "By Folder"},
+            {"prompt": "Search Movies", "search": True, "key": "search?type=1",
+             "title": "Search..."},
+        ],
+        "show": [
+            {"key": "all", "title": "All Shows"},
+            {"key": "unwatched", "title": "Unwatched"},
+            {"key": "newest", "title": "Recently Released"},
+            {"key": "recentlyAdded", "title": "Recently Added"},
+            {"key": "recentlyViewed", "title": "Recently Viewed Episodes"},
+            {"key": "recentlyViewedShows", "title": "Recently Viewed Shows"},
+            {"key": "onDeck", "title": "Continue Watching"},
+            {"secondary": True, "key": "collection", "title": "By Collection"},
+            {"secondary": True, "key": "edition", "title": "By Edition"},
+            {"secondary": True, "key": "firstCharacter", "title": "By First Letter"},
+            {"secondary": True, "key": "genre", "title": "By Genre"},
+            {"secondary": True, "key": "year", "title": "By Year"},
+            {"secondary": True, "key": "contentRating", "title": "By Content Rating"},
+            {"key": "folder", "title": "By Folder"},
+            {"prompt": "Search for Shows", "search": True, "key": "search?type=2",
+             "title": "Search Shows..."},
+            {"prompt": "Search for Episodes", "search": True, "key": "search?type=4",
+             "title": "Search Episodes..."},
+        ],
+    }
+
+    def section_pivots(self, section_id, section, query):
+        """`GET /library/sections/{id}` -- the sidebar's pivot list, and the
+        Edit dialog's source of EDITABLE TAG FIELDS.
+
+        `includeDetails=1` adds the `Type` blocks and the `FieldType` operator
+        lists, and the client reads `Type[].Field[type=="tag"]` out of it to decide
+        which tag fields the Edit dialog offers. plexsim answered two Directory rows
+        and no Type at all, so the dialog's Tags pane was empty -- no genre, no
+        collection, no label, no people.
+        """
+        pivots = (self.SECTION_PIVOTS.get(section.get("type"))
+                  or self.SECTION_PIVOTS["movie"])
+        fields = {"librarySectionID": int(section_id) if str(section_id).isdigit()
+                  else section_id,
+                  "Directory": [dict(p) for p in pivots]}
+        size = len(pivots)
+        if query.get("includeDetails") == "1":
+            meta = self.section_meta(section_id, section.get("type") or "movie") or {}
+            if meta.get("Type"):
+                fields["Type"] = meta["Type"]
+                size += len(meta["Type"])
+            if meta.get("FieldType"):
+                fields["FieldType"] = meta["FieldType"]
+                size += len(meta["FieldType"])
+        # Measured: `size` counts the Directory rows AND the Type and FieldType
+        # blocks -- 20 + 1 + 8 = 29 on the reference's movie library.
+        body = self.secondary_container(section_id, section, None, **fields)
+        body["MediaContainer"]["size"] = size
+        body["MediaContainer"].pop("title2", None)
+        return body
 
     def section_listing(self, section_id, section, query):
         """`/library/sections/{id}/all` -- the grid, with the client's filters.
@@ -2820,6 +2947,131 @@ class PlexSim:
                                    "Directory": entries}}
 
 
+    def library_list_item(self, rating_key, segments, query, method):
+        """`/library/metadata/{key}` where the key is a COLLECTION or a PLAYLIST."""
+        collection = self.library.collection(rating_key)
+        playlist = self.library.playlist(rating_key)
+        if collection is None and playlist is None:
+            return ("error", 404, "plexsim: no such item")
+        if len(segments) == 4 and segments[3] == "prefs":
+            # Measured: the per-item prefs are WRITE-only here (the GET is a 404),
+            # and `collectionSort`/`collectionMode` land on the collection row as
+            # STRING attributes. `collectionSort.value=` on this path is a 400 --
+            # prefs are not fields.
+            if method != "PUT" or collection is None:
+                return ("error", 404, "plexsim: not found")
+            for name, value in query.items():
+                if name.startswith("X-Plex-") or name == "_pairs":
+                    continue
+                if name not in ("collectionSort", "collectionMode"):
+                    return ("error", 400, "plexsim: bad request")
+                if value == "":
+                    collection.pop(name, None)
+                else:
+                    collection[name] = str(value)
+            logger.info("COLLECTION PREF %s %s", rating_key,
+                        ",".join(k for k in query if not k.startswith("X-Plex-")))
+            return ("empty", 200)
+        if len(segments) != 3:
+            return ("error", 404, "plexsim: not found")
+        if method == "PUT":
+            target = collection if collection is not None else playlist
+            title = query.get("title.value")
+            if title is None:
+                title = query.get("title")
+            summary = query.get("summary.value")
+            if summary is None:
+                summary = query.get("summary")
+            if collection is not None:
+                self.library.edit_collection(collection, title=title, summary=summary)
+                for name in ("titleSort", "contentRating"):
+                    if query.get("%s.value" % name) is not None:
+                        collection[name] = query["%s.value" % name]
+            else:
+                self.library.edit_playlist(playlist, title=title, summary=summary)
+            logger.info("EDIT list %s <- %s", rating_key,
+                        ",".join(k for k in query if not k.startswith("X-Plex-")
+                                 and k != "_pairs"))
+            return ("empty", 200)
+        row = (self.library._collection_row(collection) if collection is not None
+               else self.library._playlist_row(playlist, content=True))
+        return self.bare_container(size=1, Metadata=[row])
+
+    def apply_edit(self, rows, query, bare_fields=True):
+        """One edit against one or more rows, with the refusals a real PMS makes.
+
+        The client's Edit dialog saves through `PUT /library/sections/{id}/all`,
+        and a batch edit through a comma-joined key list, so the same parameter
+        handling has to serve three paths. Every one of them answered the LISTING
+        on plexsim, with a 200 -- so the dialog reported success and applied
+        nothing, which is the quietest failure on the whole surface.
+        """
+        try:
+            for row in rows:
+                self.library.edit(row, query, pairs=query.get("_pairs"),
+                                  bare_fields=bare_fields)
+                self.notify_timeline(row, state=5, metadata_state="edited")
+        except library_module.EditError as refused:
+            logger.warning("EDIT REFUSED: %s", refused.detail)
+            return ("error", refused.status, "plexsim: %s" % refused.detail)
+        logger.info("EDIT %s <- %s",
+                    ",".join(str(r.get("ratingKey")) for r in rows),
+                    ",".join(k for k in query if not k.startswith("X-Plex-")
+                             and k != "_pairs"))
+        return ("empty", 200)
+
+    def common_fields(self, section_id, section, query):
+        """`GET /library/sections/{id}/common` -- what the Edit dialog READS.
+
+        plexsim 404'd it, and the dialog's populate() rejects on that, so Edit
+        answered "There was an error editing this item" before the user could type.
+
+        Measured: a `Common` row (JSON `Metadata` with `type: "common"`) holding the
+        fields the selected items SHARE, in a secondary container titled "Common".
+        With several ids, the fields that differ are dropped and named in
+        `mixedFields` instead -- which is how the dialog knows to show a field as
+        "(mixed)" rather than overwrite it.
+        """
+        if not query.get("type"):
+            return ("error", 400, "plexsim: bad request")
+        keys = [int(k) for k in (query.get("id") or "").split(",")
+                if k.strip().isdigit()]
+        rows = [self.catalog.items[k] for k in keys if k in self.catalog.items]
+        scalars = ["ratingKey", "guid", "studio", "title", "titleSort",
+                   "summary", "index", "year", "tagline", "originallyAvailableAt",
+                   "contentRating", "userRating", "originalTitle", "editionTitle",
+                   "parentRatingKey", "parentTitle", "grandparentRatingKey",
+                   "grandparentTitle"]
+        common = {"mixedFields": ""}
+        mixed = []
+        for field in scalars:
+            values = {str(row.get(field)) for row in rows if row.get(field) is not None}
+            if len(values) == 1 and len(rows) == len(
+                    [r for r in rows if r.get(field) is not None]):
+                common[field] = rows[0].get(field)
+            elif values:
+                mixed.append(field)
+        if rows:
+            common["key"] = "/library/metadata/%s/children" % rows[0]["ratingKey"]
+        common["type"] = "common"
+        common["guid"] = common.get("guid", "")
+        # Measured: `mixedFields` is a comma-joined list and is the EMPTY string
+        # when one item is selected, not absent.
+        common["mixedFields"] = ",".join(mixed)
+        for key in ("Genre", "Country", "Director", "Writer", "Producer", "Role",
+                    "Collection", "Label", "Guid", "Rating"):
+            shared = None
+            for row in rows:
+                names = {str(t.get("tag") or t.get("id")) for t in row.get(key) or []}
+                shared = names if shared is None else (shared & names)
+            if shared:
+                common[key] = [t for t in (rows[0].get(key) or [])
+                               if str(t.get("tag") or t.get("id")) in shared]
+        found = self.secondary_container(section_id, section, "Common",
+                                         Metadata=[common],
+                                         _xml={"Metadata": "Common"})
+        return found
+
     def library_metadata(self, segments, query, method="GET"):
         raw_key = segments[2]
 
@@ -2831,11 +3083,14 @@ class PlexSim:
         if "," in raw_key:
             if len(segments) > 3:
                 return ("error", 404, "plexsim: not found")
-            rows = []
-            for piece in raw_key.split(","):
-                if piece.isdigit() and int(piece) in self.catalog.items:
-                    rows.append(_full(self.catalog.items[int(piece)]))
-            return self.container(Metadata=rows)
+            keys = [int(p) for p in raw_key.split(",")
+                    if p.isdigit() and int(p) in self.catalog.items]
+            if method == "PUT":
+                # Measured: a batch EDIT. plexsim answered the listing here, so a
+                # multi-select edit applied to nothing and reported success.
+                return self.apply_edit([self.catalog.items[k] for k in keys], query)
+            return self.container(Metadata=[_full(self.catalog.items[k])
+                                            for k in keys])
         if not raw_key.isdigit():
             # Measured: a non-numeric ratingKey is a 404, not an empty container.
             return ("error", 404, "plexsim: not found")
@@ -2846,17 +3101,19 @@ class PlexSim:
         rating_key = int(raw_key)
         row = self.catalog.items.get(rating_key)
         if row is None:
-            return ("error", 404, "plexsim: no such item")
+            # A collection and a playlist are metadata items in their own right, and
+            # the client edits both through this path -- its own saveUrl falls back
+            # to `/library/metadata/{key}` for a playlist on a server without the
+            # true-playlists feature. plexsim kept them outside the catalog, so both
+            # answered 404 and neither could be renamed from its own page.
+            return self.library_list_item(rating_key, segments, query, method)
 
         if len(segments) == 3:
             if method == "PUT":
                 # The Edit dialog, and "Add to Collection": the client PUTs
                 # `<field>.value`, `<field>.locked` and `<tag>[N].tag.tag` to
                 # the item's own key.
-                self.library.edit(row, query)
-                logger.info("EDIT %s %s", rating_key,
-                            ",".join(k for k in query if not k.startswith("X-Plex-")))
-                return ("empty", 200)
+                return self.apply_edit([row], query)
             if method == "DELETE":
                 if query.get("proxy") == "1":
                     # Delete Version. plexsim has no optimized versions, and a
@@ -4624,9 +4881,22 @@ class PlexSim:
                 # not the 200 it uses for a collection delete.
                 return ("empty", 204)
             if method == "PUT":
-                self.library.edit_playlist(
-                    playlist, title=query.get("title.value") or query.get("title"),
-                    summary=query.get("summary.value") or query.get("summary"))
+                # Measured: a PUT that names nothing it can write is a 400 -- an
+                # unknown parameter, `smart=1`, or no parameters at all. plexsim
+                # answered 200 to all three.
+                writable = {"title", "summary", "titleSort", "title.value",
+                            "summary.value", "titleSort.value", "type"}
+                named = [k for k in query
+                         if not k.startswith("X-Plex-") and k != "_pairs"]
+                if not named or any(k not in writable for k in named):
+                    return ("error", 400, "plexsim: bad request")
+                title = query.get("title.value")
+                if title is None:
+                    title = query.get("title")
+                summary = query.get("summary.value")
+                if summary is None:
+                    summary = query.get("summary")
+                self.library.edit_playlist(playlist, title=title, summary=summary)
                 return ("empty", 200)
             return self.bare_container(
                 size=1,
@@ -5168,8 +5438,28 @@ class PlexSim:
         which is also what a real PMS gives you for an empty folder, rather than
         an error. 201 with the created Directory is the measured answer.
         """
+        # Measured: a real PMS validates this form and answers a PLAIN-TEXT 400
+        # naming what is wrong -- with no Content-Type header at all. plexsim
+        # accepted every malformed form with a 201 and created a library with
+        # `type="bogus"` or titled "New Library", which then sat in the sidebar.
+        # A nonexistent location and a duplicate name ARE both accepted (201).
+        if "location" not in query or not query.get("location"):
+            return ("error", 400, "'location' is missing or invalid. ")
+        if query.get("type") not in ("movie", "show", "photo", "artist"):
+            return ("error", 400,
+                    "'type' is missing or invalid (must be one of 'movie', 'show', "
+                    "'photo' or 'artist') 'agent' is invalid for the selected "
+                    "library type ")
+        if not query.get("agent") or query["agent"] not in KNOWN_AGENTS:
+            return ("error", 400,
+                    "'agent' is missing or invalid new scanner needs to be paired "
+                    "with new agent ")
+        if not query.get("scanner") or query["scanner"] not in KNOWN_SCANNERS:
+            return ("error", 400, "new scanner needs to be paired with new agent ")
+        if not query.get("name"):
+            return ("error", 400, "'name' is missing or invalid ")
         title = query.get("name") or query.get("title") or "New Library"
-        section_type = query.get("type") or "movie"
+        section_type = query["type"]
         seed = "%s-%s" % (title, section_type)
         section = self.catalog.add_section(
             title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))

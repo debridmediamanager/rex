@@ -1469,6 +1469,108 @@ there is no fixed span to report; and the playlist ITEMS container reports its
 milliseconds -- one endpoint apart, recorded in this file before it was
 implemented.
 
+#### The Edit dialog saved to a path that answered the listing
+
+The single quietest failure found in this project. The web client's Edit dialog is
+`MultiMetadataModel`, and its `saveUrl()` is
+
+```
+PUT /library/sections/{id}/all?type=1&id=4&includeExternalMedia=1&title.value=…
+```
+
+plexsim's section handler dispatched `all` on the path alone, so a PUT there
+answered the ordinary grid LISTING with a 200. The dialog reads the status, reports
+success, and nothing was written. **Every Save, for the life of the project.**
+
+Its pre-read is a second endpoint plexsim never had:
+`GET /library/sections/{id}/common?type=1&id=…` answers a `Common` row (JSON
+`Metadata` with `type: "common"`, XML `<Common>`) in a secondary container titled
+"Common", holding the fields the selected items SHARE. With several ids the fields
+that DIFFER are dropped and named in `mixedFields` instead -- which is how the
+dialog knows to show "(mixed)" rather than overwrite. plexsim 404'd it, and the
+dialog's `populate()` rejects on that: "There was an error editing this item",
+before the user could type.
+
+And its source of editable TAG fields is a third:
+`GET /library/sections/{id}?includeDetails=1&includeAdvanced=1`, from which the
+client reads `Type[].Field[type=="tag"]`. plexsim answered two Directory rows
+(`All`, `Recently Added`) and no `Type` at all, so the Tags pane offered no genre,
+no collection, no label and no people. A real PMS answers **20 pivot rows** for a
+movie library and 16 for a show one -- each with the title the sidebar prints,
+`secondary` on the axes and `search`/`prompt` on the search entries -- plus, under
+`includeDetails`, the `Type` blocks and the `FieldType` operator lists. `size`
+counts all three lists (20 + 1 + 8 = 29).
+
+Two scoping rules on the save path, both measured: `id=` limits it to those rows,
+and with **no `id`** the whole FILTERED set is edited, which is how "Edit all"
+works. A bare `title=Sintel` there is a FILTER that scopes the edit -- where the
+same shape on the ITEM path IS an edit. So which it means depends on the path.
+`X-Plex-Container-*` is ignored on a write.
+
+#### Every edit parameter, one measurement at a time
+
+plexsim stored whatever it was sent and answered 200. A real PMS:
+
+| Request | Reference | plexsim before |
+|---|---|---|
+| `bogus.value=1`, `sortTitle.value=abc` | **400** | 200, and `Field` gained a lock for a field that does not exist |
+| `bogustag[0].tag.tag=x` | **400** | 200 |
+| no parameters at all | **400** | 200 |
+| `year.value=abc` | **500** | 200, stored `"abc"` |
+| `year.value=` | **500** | removed the field |
+| `year.value=-5` | 200, year **removed** | stored `-5` |
+| `originallyAvailableAt.value=notadate` | 200, field **removed** | stored the text |
+| `title.value=`, `summary.value=` | stored as **`""`** | removed |
+| `studio.value=`, `contentRating.value=`, `titleSort.value=`, `originalTitle.value=`, `editionTitle.value=` | **removed** | removed ✓ |
+| `userRating.value=7` | accepted, **discarded** (the star rating is `/:/rate`) | stored as the string `"7"` |
+| `tagline.locked=true` / `false` / empty | all three **UNLOCK** — only `1` locks | `true` locked |
+| bare `studio=X` on the ITEM path | applied | ignored |
+| the `Field` lock list | a fixed COLUMN order | insertion order, so re-locking moved the entry |
+
+**Tag edits are a replace, not an append.** `genre[0].tag.tag=A&genre[1].tag.tag=B`
+leaves EXACTLY `[A, B]`: the originals are gone. plexsim appended, so the Edit
+dialog could only ever add tags and the list grew on every Save. A `tag-` removal
+CLEARS the whole list whatever value it names -- even one the row does not have --
+and the indexed list in the same request rebuilds it, which is how "remove one tag"
+actually works on the wire. plexsim matched removals by exact name, so a tag
+containing a space could never be removed (the client percent-encodes the value
+before the query encoding, so it arrives double-encoded).
+
+A tag also matches **case-insensitively and keeps its canonical spelling and id**,
+and it does so after being removed from every row -- a real PMS keeps a tag TABLE.
+plexsim looked only at the rows, so clearing a tag lost its identity and the next
+add minted a new id; there is now a tag table for exactly this.
+
+#### A collection and a playlist are metadata items
+
+Both have ratingKeys and the client edits both through `/library/metadata/{key}` --
+its own `saveUrl` falls back to that path for a playlist on a server without the
+true-playlists feature. plexsim kept them outside the catalog, so both answered 404
+and neither could be renamed from its own page.
+
+`PUT /library/metadata/{collection}/prefs?collectionSort=1` is how the collection's
+sort and mode are set, and they come back as **string** attributes on the row.
+Reading those prefs is a 404 (write-only), and an unknown pref is a 400.
+
+#### Library management validated nothing
+
+`PUT /library/sections/{id}`: a `name` alone is a **400**, and so is a form with no
+`agent` or no `scanner`, or an unknown agent, scanner or `language`. plexsim
+accepted all of them with a 200, so a typo in the Edit Library dialog looked saved.
+
+`POST /library/sections` answers a **plain-text 400 naming what is wrong** -- with
+no Content-Type header at all: `'location' is missing or invalid. `, `'type' is
+missing or invalid (must be one of 'movie', 'show', 'photo' or 'artist') …`,
+`'agent' is missing or invalid …`, `new scanner needs to be paired with new agent `,
+`'name' is missing or invalid `. A nonexistent location and a duplicate name ARE
+both accepted (201). plexsim answered **201 to every malformed form** and really
+created the library -- a POST with no parameters at all made one called
+"New Library", which then sat in the sidebar.
+
+`PUT /library/sections/{id}/refresh` is a **404**: the scan is a GET or a POST and
+the cancel is a DELETE. And `PUT /playlists/{id}` with an unknown parameter,
+`smart=1`, or nothing at all is a **400**.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
