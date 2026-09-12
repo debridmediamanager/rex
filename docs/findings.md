@@ -1571,6 +1571,73 @@ created the library -- a POST with no parameters at all made one called
 the cancel is a DELETE. And `PUT /playlists/{id}` with an unknown parameter,
 `smart=1`, or nothing at all is a **400**.
 
+#### plexsim had no token gate at all
+
+A real PMS **401s everything** except `/identity` (so a client can discover the
+server) and `/web/*` (the client itself). Measured on both reference servers, for a
+MISSING token and a WRONG one alike -- there is no distinction between them, no
+`WWW-Authenticate` header, and the answer does not change with
+`Accept: application/json`:
+
+```
+GET /library/sections            (no X-Plex-Token)
+HTTP/1.1 401 Unauthorized
+X-Plex-Protocol: 1.0
+Content-Type: text/html
+Cache-Control: no-cache
+Connection: close
+
+<html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>
+```
+
+`/`, `/library/sections`, every listing, every item, **artwork**, `/photo/:/transcode`,
+`/:/resources/*`, **media bytes**, both notification channels (the 101 upgrade is
+refused with a 401 body), `/:/prefs`, `/status/sessions`, `/myplex/account`,
+`/media/providers`, `/hubs`, `/clients`, `/accounts`, `/devices`, `/activities`,
+`/butler` -- all of it. The token is accepted as the `X-Plex-Token` **header** as
+well as the query parameter.
+
+The one exception is `/security/token`, which answers its own **400** with no
+parameters and **403** with a token that is not good enough -- never a 401. That
+split is how a client tells "you did not ask properly" from "you may not have one".
+
+plexsim answered 200 to all of it, with no token check anywhere: the string
+`X-Plex-Token` appeared in the code only in the CORS `Vary` header. Any peer that
+could reach the port read the whole library, the preferences, the sessions and the
+media bytes -- and plexsim is published over a named Cloudflare tunnel.
+
+The gate is now implemented and is **opt-in** (`--token` / `PLEXSIM_TOKEN`), which
+is the deviation: a real PMS always has a token, and plexsim defaults to none
+because its four test suites and its probes talk to it without one. The startup log
+says which it is, in as many words -- `token gate: OFF -- every peer that can reach
+this port can read the library`. The harness starts its own gated instance to prove
+the gate works, so the behaviour is tested rather than merely available.
+
+#### `Cache-Control` on everything, and gzip
+
+A real PMS sends **`Cache-Control: no-cache` on every response** -- measured across
+eight endpoints on both servers. plexsim sent none at all, except on artwork, where
+it sent `max-age=86400`: a day of browser caching that the reference does not do,
+so a Change Artwork or a re-match stayed invisible even though the version in the
+URL had changed. The reference's policy is the opposite of what plexsim had:
+
+| Path | Reference | plexsim before |
+|---|---|---|
+| every container | `no-cache` | (none) |
+| a VERSIONED direct asset (`/library/metadata/{id}/thumb/{ver}`) | `no-cache`, plus `X-Plex-Local-Asset: 1` and `Accept-Ranges: bytes` | `max-age=86400`, neither header |
+| transcoder output (`/photo/:/transcode`) | `max-age=259200` | `max-age=86400` |
+
+And it **gzips** its XML and JSON, naming both sizes in two Plex-specific headers:
+
+```
+Content-Encoding: gzip
+X-Plex-Content-Original-Length: 10381
+X-Plex-Content-Compressed-Length: 3069
+```
+
+3.4x on a five-row grid, 5.4x on plexsim's own. Both servers always use
+`Content-Length` and never chunk, even at 4.9 MB -- which plexsim already matched.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
