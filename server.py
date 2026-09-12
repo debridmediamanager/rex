@@ -27,6 +27,7 @@ open question:
 """
 
 import argparse
+import io
 import json
 import logging
 import os
@@ -35,9 +36,11 @@ import socket
 import struct
 import sys
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -45,6 +48,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import claim as claim_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
+import library as library_module  # noqa: E402
+import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
 from xmlout import to_xml  # noqa: E402
 
@@ -106,6 +111,115 @@ CONTENT_TYPES = {
     "avi": "video/x-msvideo",
     "mpegts": "video/mp2t",
 }
+
+# The secondary filter axes a section offers, and where each one reads from. A
+# TAG axis keys its entries by tag id and a FIELD axis by the value itself --
+# measured against a real PMS: `?genre=24` but `?contentRating=PG`.
+SECONDARY_TAGS = {
+    "genre": "Genre",
+    "collection": "Collection",
+    "director": "Director",
+    "writer": "Writer",
+    "producer": "Producer",
+    "actor": "Role",
+    "country": "Country",
+    "label": "Label",
+}
+SECONDARY_FIELDS = {
+    "year": "year",
+    "decade": "year",
+    "contentRating": "contentRating",
+    "studio": "studio",
+}
+SECONDARY_TITLES = {
+    "genre": "By Genre",
+    "year": "By Year",
+    "decade": "By Decade",
+    "contentRating": "By Content Rating",
+    "collection": "By Collection",
+    "director": "By Director",
+    "writer": "By Writer",
+    "producer": "By Producer",
+    "actor": "By Actor",
+    "country": "By Country",
+    "studio": "By Studio",
+    "label": "By Label",
+}
+
+# `/library/sections/{id}/sorts`, copied from a real PMS movie section. The
+# element name is `Directory`, not `Sort` -- plexsim answered with `Sort` and a
+# two-entry list, which is not what the legacy sort bar reads.
+SECTION_SORTS = [
+    {"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
+     "key": "titleSort", "title": "Title"},
+    {"defaultDirection": "desc", "descKey": "originallyAvailableAt:desc",
+     "key": "originallyAvailableAt", "title": "Release Date"},
+    {"defaultDirection": "desc", "descKey": "rating:desc", "key": "rating",
+     "title": "Critic Rating"},
+    {"defaultDirection": "desc", "descKey": "audienceRating:desc",
+     "key": "audienceRating", "title": "Audience Rating"},
+    {"defaultDirection": "desc", "descKey": "duration:desc", "key": "duration",
+     "title": "Duration"},
+    {"defaultDirection": "desc", "descKey": "addedAt:desc", "key": "addedAt",
+     "title": "Date Added"},
+    {"defaultDirection": "desc", "descKey": "lastViewedAt:desc",
+     "key": "lastViewedAt", "title": "Date Viewed"},
+    {"defaultDirection": "asc", "descKey": "mediaHeight:desc", "key": "mediaHeight",
+     "title": "Resolution"},
+    {"defaultDirection": "desc", "descKey": "random:desc", "key": "random",
+     "title": "Randomly"},
+]
+
+# `/library/sections/{id}/filters`. Only the axes plexsim can actually answer
+# from its rows: a real PMS lists 28, including tuner and photo ones.
+SECTION_FILTERS = [
+    ("genre", "Genre", "string"),
+    ("year", "Year", "integer"),
+    ("decade", "Decade", "integer"),
+    ("contentRating", "Content Rating", "string"),
+    ("collection", "Collection", "string"),
+    ("director", "Director", "string"),
+    ("actor", "Actor", "string"),
+    ("writer", "Writer", "string"),
+    ("producer", "Producer", "string"),
+    ("country", "Country", "string"),
+    ("studio", "Studio", "string"),
+    ("label", "Labels", "string"),
+    ("unwatched", "Unwatched", "boolean"),
+    ("inProgress", "In Progress", "boolean"),
+    ("unmatched", "Unmatched", "boolean"),
+]
+
+# `/playlists/sorts`, from a real PMS.
+PLAYLIST_SORTS = [
+    {"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
+     "key": "titleSort", "title": "Name"},
+    {"defaultDirection": "desc", "descKey": "viewCount:desc", "key": "viewCount",
+     "title": "Plays"},
+    {"defaultDirection": "desc", "descKey": "lastViewedAt:desc",
+     "key": "lastViewedAt", "title": "Last Played"},
+    {"defaultDirection": "desc", "descKey": "duration:desc", "key": "duration",
+     "title": "Duration"},
+    {"defaultDirection": "desc", "descKey": "addedAt:desc", "key": "addedAt",
+     "title": "Date Added"},
+    {"defaultDirection": "desc", "descKey": "updatedAt:desc", "key": "updatedAt",
+     "title": "Date Modified"},
+]
+
+# `/system/agents` -- only the agents plexsim identifies with. mediaType is
+# stripped from the response and used to answer the client's filtered request,
+# the way a real PMS's MediaType block does.
+SYSTEM_AGENTS = [
+    {"identifier": "tv.plex.agents.movie", "name": "Plex Movie", "hasPrefs": False,
+     "id": 1, "primary": True, "mediaType": 1,
+     "Language": [{"code": "en-US", "title": "English"}]},
+    {"identifier": "tv.plex.agents.series", "name": "Plex Series", "hasPrefs": False,
+     "id": 2, "primary": True, "mediaType": 2,
+     "Language": [{"code": "en-US", "title": "English"}]},
+    {"identifier": "tv.plex.agents.none", "name": "Plex Personal Media",
+     "hasPrefs": False, "id": 4, "primary": True, "mediaType": 1,
+     "Language": [{"code": "en-US", "title": "English"}]},
+]
 
 
 # --------------------------------------------------------------------------
@@ -170,6 +284,73 @@ class Catalog:
             else:
                 out.extend(self.leaves(child["ratingKey"]))
         return out
+
+    # -- mutation --------------------------------------------------------
+    #
+    # The catalog is loaded from JSON, but the Plex UI writes: Delete, Split
+    # Apart, Merge and "Add Library" all change which rows exist. Nothing here
+    # touches catalog.json -- a restart is the undo button.
+
+    # Key ranges stay disjoint by kind so a ratingKey identifies its own row
+    # type on sight, the way the built catalog's already do.
+    KEY_BASES = {"movie": 1000, "episode": 1000, "show": 20000, "season": 30000}
+
+    def next_key(self, row_type):
+        base = self.KEY_BASES.get(row_type, 1000)
+        used = [k for k in self.items if base <= k < base + 10000]
+        return (max(used) + 1) if used else base + 1
+
+    def add(self, row):
+        """Register a new row, keeping the section and child indexes in step."""
+        rating_key = int(row["ratingKey"])
+        self.items[rating_key] = row
+        if row.get("type") in ("movie", "show"):
+            self._by_section.setdefault(str(row["librarySectionID"]), []).append(rating_key)
+        parent = row.get("parentRatingKey")
+        if parent:
+            self._children.setdefault(str(parent), []).append(rating_key)
+        return row
+
+    def remove(self, rating_key):
+        """Remove a row and everything beneath it. Returns the keys removed."""
+        rating_key = int(rating_key)
+        row = self.items.get(rating_key)
+        if row is None:
+            return set()
+        removed = {rating_key}
+        for child in list(self.children(rating_key)):
+            removed |= self.remove(child["ratingKey"])
+        self.items.pop(rating_key, None)
+        for keys in self._by_section.values():
+            if rating_key in keys:
+                keys.remove(rating_key)
+        self._children.pop(str(rating_key), None)
+        parent = row.get("parentRatingKey")
+        if parent and rating_key in self._children.get(str(parent), []):
+            self._children[str(parent)].remove(rating_key)
+        return removed
+
+    def add_section(self, title, section_type, uuid_value):
+        """"Add Library" in the UI. plexsim has no filesystem to scan, so the
+        section starts empty -- which is what a real PMS gives you for an empty
+        folder too, rather than an error."""
+        keys = [int(s["key"]) for s in self.sections if str(s["key"]).isdigit()]
+        key = str((max(keys) + 1) if keys else 1)
+        section = {"key": key, "type": section_type, "title": title, "uuid": uuid_value}
+        self.sections.append(section)
+        self._by_section.setdefault(key, [])
+        return section
+
+    def remove_section(self, section_id):
+        """Delete Library: the section and every row in it."""
+        section = self.section(section_id)
+        if section is None:
+            return None
+        for row in list(self.section_items(section_id)):
+            self.remove(row["ratingKey"])
+        self.sections = [s for s in self.sections if str(s["key"]) != str(section_id)]
+        self._by_section.pop(str(section_id), None)
+        return section
 
     def search(self, query):
         needle = query.lower().strip()
@@ -266,7 +447,7 @@ def _png(width, height, rgb):
 class PlexSim:
     def __init__(self, catalog, resolver, *, part_mode="proxy", public_url=None,
                  owner_username="plexsim", claim=None, web_root=None,
-                 assert_claimed=False, owner_email=None):
+                 assert_claimed=False, owner_email=None, tmdb=None):
         self.catalog = catalog
         self.resolver = resolver
         self.part_mode = part_mode
@@ -291,10 +472,53 @@ class PlexSim:
         self.lock = threading.Lock()
         # Playback bookkeeping a client expects to survive between calls.
         self.play_queues = {}
+        self.play_queue_sources = {}
+        self.play_queue_shuffled = {}
         self.next_play_queue = 1
         self.sessions = {}
+        # Everything the UI can change: watch state, edits, playlists,
+        # collections, play history. In memory only -- catalog.json is input.
+        self.library = library_module.Library(catalog)
+        # Preferences the client has written back through PUT /:/prefs. A real
+        # PMS persists these; plexsim keeps them for the life of the process so
+        # a settings page round-trips instead of silently reverting.
+        self.pref_overrides = {}
+        # Per-section settings, keyed (section id, setting id): `flattenSeasons`
+        # and the rest of the library-type set live in their own id space.
+        self.section_pref_overrides = {}
+        # Section ids with a scan in flight, which /library/sections reports as
+        # `refreshing` and the Libraries page reads to swap its Scan button.
+        self.refreshing = set()
+        # Recent log lines, for /diagnostics/logs -- the Troubleshooting page's
+        # Download Logs button, which is only drawn when the server advertises
+        # `diagnostics` containing "logs".
+        self.log_lines = []
+        # TMDB, when a key is configured: Fix Match searches it live. Without
+        # one the match dialog honestly reports no candidates rather than
+        # offering a list plexsim cannot act on.
+        self.tmdb = tmdb
+        # guid -> (kind, tmdb id) for candidates handed out by /matches, so the
+        # match the user picks resolves back to the record it came from.
+        self.match_candidates = {}
 
     # -- helpers ---------------------------------------------------------
+
+    # Child element names a container can carry. A real PMS emits NO element
+    # when a list is empty -- its responses are XML underneath, where an empty
+    # list simply has no children -- so `Metadata: []` is a shape no real server
+    # returns, and a client can read it as "there IS state here and it is empty"
+    # rather than "there is none".
+    CHILD_KEYS = ("Metadata", "Directory", "Hub", "Video", "Setting", "Agent",
+                  "Account", "Device", "Activity", "Playlist", "SearchResult",
+                  "MetadataItem", "StatisticsBandwidth", "StatisticsMedia",
+                  "StatisticsResources", "Filter", "Sort", "Location")
+
+    @classmethod
+    def _prune(cls, body):
+        for key in cls.CHILD_KEYS:
+            if key in body and isinstance(body[key], list) and not body[key]:
+                del body[key]
+        return body
 
     def bare_container(self, **fields):
         """A MediaContainer with no library-container defaults.
@@ -305,7 +529,7 @@ class PlexSim:
         it is how plexsim ended up asserting `claimed` in a place a real server
         never does.
         """
-        return {"MediaContainer": dict(fields)}
+        return {"MediaContainer": self._prune(dict(fields))}
 
     def container(self, **fields):
         body = {
@@ -320,7 +544,7 @@ class PlexSim:
             if key in fields and isinstance(fields[key], list):
                 body["size"] = len(fields[key])
                 break
-        return {"MediaContainer": body}
+        return {"MediaContainer": self._prune(body)}
 
     def _owner(self):
         """What a real PMS reports as myPlexUsername: the owner's EMAIL."""
@@ -459,6 +683,15 @@ class PlexSim:
                     "theme": "/library/metadata/%s/theme/1" % parent.get("ratingKey"),
                 }
             )
+        if leaf == "allLeaves":
+            # Measured against the reference: the allLeaves container says
+            # `mixedParents` (its rows come from more than one season) and
+            # carries neither `thumb` nor `summary`, both of which /children
+            # does. Same endpoint family, different field set.
+            fields["mixedParents"] = True
+            fields.pop("thumb", None)
+            fields.pop("summary", None)
+
         # A real PMS emits offset/totalSize only when the client pages.
         query = query or {}
         if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
@@ -518,8 +751,9 @@ class PlexSim:
         segments = [s for s in route.split("/") if s]
 
         # A Part read is not a container response; it returns a streaming
-        # sentinel the handler turns into a body.
-        if route.startswith("/library/parts/"):
+        # sentinel the handler turns into a body. Only for the READ verbs: the
+        # same prefix with PUT is track selection, which is a normal endpoint.
+        if route.startswith("/library/parts/") and method in ("GET", "HEAD"):
             return ("stream", segments, query)
 
         container = self._route(method, route, segments, query, body, headers)
@@ -557,21 +791,106 @@ class PlexSim:
             return self.do_claim(query)
         if route == "/myplex/account":
             return self.myplex_account()
+        if route == "/myplex/refreshReachability":
+            # The Remote Access page's "Retry" button. A real PMS 404s the GET
+            # (measured) and accepts the PUT, so answering the GET would be
+            # inventing a capability.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            return ("empty", 200)
 
+        # -- server preferences ------------------------------------------
+        # Every Settings page except Agents and Libraries is this one endpoint:
+        # the client renders the Setting list by `group`, and writes a change
+        # back as PUT /:/prefs?<id>=<value>. Answering the write with a
+        # MediaContainer is wrong -- a real PMS returns an empty 200 -- and
+        # dropping it means the page silently reverts on its next read.
         if route in ("/:/prefs", "/:/prefs/"):
-            return self.bare_container(size=len(SERVER_PREFS), Setting=SERVER_PREFS)
+            if method == "PUT":
+                return self.set_prefs(query)
+            settings = self.server_prefs()
+            return self.bare_container(size=len(settings), Setting=settings)
 
+        # -- system ------------------------------------------------------
         if route.startswith("/system/agents"):
-            return self.container(Agent=[])
+            return self.system_agents(query)
+        if segments[:2] == ["system", "scanners"]:
+            return self.system_scanners(segments[2] if len(segments) > 2 else None)
+        if route.startswith("/system/appstore") or route.startswith("/:/plugins"):
+            # The Plugins page. plexsim hosts none; an empty list is what a PMS
+            # with no channels installed returns.
+            return self.bare_container(size=0)
+        if route == "/system/services/url/lookup":
+            return self.bare_container(size=0)
 
-        if route.startswith("/accounts"):
-            return self.container(
-                Account=[{"id": 1, "key": "/accounts/1", "name": catalog.friendly}]
-            )
+        if segments[:1] == ["accounts"]:
+            return self.accounts(segments[1] if len(segments) > 1 else None)
+        if segments[:1] == ["devices"] or route == "/devices.xml":
+            if method == "DELETE":
+                return ("empty", 200)
+            return self.devices()
+        if route == "/clients" or route.startswith("/clients/profiles"):
+            # No Plex client is ever *hosted* by plexsim, so this is empty for
+            # the same reason a headless PMS's is.
+            return self.bare_container(size=0)
+
+        if segments[:1] == ["statistics"]:
+            return self.statistics(segments[1] if len(segments) > 1 else "")
+
+        if route == "/updater/status":
+            return self.updater_status()
+        if route in ("/updater/check", "/updater/apply"):
+            if route == "/updater/apply":
+                logger.warning("UPDATER apply requested -- plexsim does not update itself")
+            return ("empty", 200)
+
+        if segments[:1] == ["activities"]:
+            if method == "DELETE" and len(segments) > 1:
+                self.library.cancel_activity(segments[1])
+                return ("empty", 200)
+            activities = self.library.activities()
+            return self.bare_container(size=len(activities), Activity=activities)
+
+        if route == "/status/sessions/history/all":
+            return self.history(query)
+        if route == "/status/sessions/terminate":
+            return ("empty", 200)
+        if route.startswith("/status/sessions"):
+            # A real PMS omits Metadata entirely when nothing is playing rather
+            # than sending an empty list.
+            return self.bare_container(size=0)
+        if segments[:2] == ["transcode", "sessions"]:
+            if method == "DELETE":
+                return ("empty", 200)
+            return self.bare_container(size=0)
+
+        if route == "/security/token":
+            # The client asks for a delegation token before handing a URL to
+            # another device. plexsim has no second party to delegate to, but
+            # the shape is what the caller reads.
+            return self.bare_container(size=0, token="transient-" + catalog.machine[:8])
+        if route == "/security/resources":
+            return ("error", 400, "plexsim: bad request")
+
+        if route == "/diagnostics/logs":
+            return ("zip", self.log_archive())
+        if route == "/diagnostics/databases":
+            # `diagnostics` deliberately does not advertise "databases" -- see
+            # media_providers() -- so the UI never draws this button. Answer
+            # honestly if something asks anyway.
+            return ("error", 404, "plexsim: no database")
 
         # -- library -----------------------------------------------------
         if route == "/library/sections":
-            return self.container(
+            if method == "POST":
+                return self.create_section(query)
+            # Measured on fun and on the 1.43.4 reference: this container carries
+            # `title1` and allowSync only -- no identifier and no media-tag pair,
+            # which the generic library container was adding.
+            return self.bare_container(
+                size=len(catalog.sections),
+                allowSync=False,
+                title1="Plex Library",
                 Directory=[
                     dict(
                         section,
@@ -580,7 +899,7 @@ class PlexSim:
                         scanner=("Plex TV Series" if section.get("type") == "show"
                                  else "Plex Movie"),
                         language="en-US",
-                        refreshing=False,
+                        refreshing=str(section["key"]) in self.refreshing,
                         allowSync=False,
                         content=True,
                         directory=True,
@@ -592,11 +911,49 @@ class PlexSim:
                 ]
             )
 
+        if route == "/library/shared/all":
+            # The sections again, as Metadata rather than Directory: what the
+            # client reads to decide which libraries a share covers.
+            rows = [dict(s, key="/library/sections/%s" % s["key"]) for s in catalog.sections]
+            return self.bare_container(size=len(rows), allowSync=False,
+                                       identifier="com.plexapp.plugins.library",
+                                       Metadata=rows)
+
+        if route == "/library/optimize":
+            # "Optimize Database". GET is a 404 on a real PMS: PUT only.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            logger.info("OPTIMIZE database -- plexsim has none, nothing to do")
+            return ("empty", 200)
+        if route == "/library/clean/bundles":
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            return ("empty", 200)
+
+        if route == "/library/tags":
+            return self.tag_container(size=0)
+        if route == "/library/matches":
+            # Match is per item: /library/metadata/{id}/matches. The bare
+            # endpoint is the provider's advertised key, and a real PMS answers
+            # 400 for it.
+            return ("error", 400, "plexsim: bad request")
+        if route == "/library/people":
+            return ("error", 404, "plexsim: not found")
+
+        if segments[:2] == ["library", "collections"]:
+            return self.collections_route(method, segments, query)
+        if segments[:1] == ["playlists"]:
+            return self.playlists_route(method, segments, query)
+
         if segments[:2] == ["library", "sections"] and len(segments) >= 3:
-            return self.library_section(segments, query)
+            if not segments[2].isdigit():
+                # `/library/sections/prefs?type=movie` and friends: a real PMS
+                # answers 400 rather than treating the word as a section id.
+                return ("error", 400, "plexsim: bad request")
+            return self.library_section(segments, query, method)
 
         if segments[:2] == ["library", "metadata"] and len(segments) >= 3:
-            return self.library_metadata(segments, query)
+            return self.library_metadata(segments, query, method)
 
         if route in ("/library/onDeck", "/library/recentlyAdded"):
             rows = [_listing_row(r) for r in list(catalog.items.values())[:12]]
@@ -611,25 +968,41 @@ class PlexSim:
             # subtitle stays embedded in the part and there is nothing to serve.
             return self.container()
 
+        if segments[:2] == ["library", "parts"] and method == "PUT":
+            # Audio/subtitle track selection from the player or the Get Info
+            # dialog: PUT /library/parts/{partID}?subtitleStreamID=&allParts=1.
+            return self.select_stream(segments[2] if len(segments) > 2 else "", query)
+
+        if route == "/library/search":
+            # `universalsearch`. A real PMS answers the bare query with an empty
+            # container; the hub search below is what the UI actually uses.
+            return self.bare_container(size=0)
+
         # -- hubs --------------------------------------------------------
         if route == "/hubs":
             return self.hubs(query)
         if route == "/hubs/continueWatching":
-            return self.container(Hub=[self.hub("home.continue", "Continue Watching", [])])
+            return self.hub_container(
+                Hub=[self.hub("home.continue", "Continue Watching",
+                              [_listing_row(r) for r in self.continue_watching()])])
         if route == "/hubs/promoted":
             return self.hubs(query)
+        if route.startswith("/hubs/home"):
+            # Measured on a real PMS: this answers with no Hub at all unless the
+            # client passes the identifiers it wants.
+            return self.hub_container()
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
             return self.section_hubs(segments[2])
         if route == "/hubs/search":
             return self.search(query)
         if segments[:2] == ["hubs", "metadata"]:
-            return self.container(Hub=[])
+            return self.hub_container(Hub=[])
 
         # -- playback ----------------------------------------------------
         if route == "/playQueues" and method == "POST":
             return self.create_play_queue(query)
-        if segments[:1] == ["playQueues"] and len(segments) == 2:
-            return self.get_play_queue(segments[1])
+        if segments[:1] == ["playQueues"] and len(segments) >= 2:
+            return self.play_queue_route(method, segments, query)
 
         if route == "/video/:/transcode/universal/decision":
             return self.decision(query)
@@ -681,11 +1054,15 @@ class PlexSim:
         if route == "/:/unscrobble":
             return self.set_watched(query, False)
         if route == "/:/rate":
-            return self.container()
-        if route.startswith("/status/sessions"):
-            return self.container(Metadata=[])
+            return self.rate(query)
         if route == "/actions/removeFromContinueWatching":
-            return self.container()
+            return self.remove_from_continue_watching(query)
+
+        # -- live TV / DVR / sync: plexsim has no tuner and no encoder ----
+        if segments[:1] == ["media"] and segments[1:2] in (["subscriptions"], ["grabbers"]):
+            return self.bare_container(size=0)
+        if segments[:1] == ["sync"]:
+            return ("error", 404, "plexsim: no sync")
 
         with self.lock:
             self.unknown.append("%s %s" % (method, route))
@@ -854,17 +1231,29 @@ class PlexSim:
             voiceSearch=True,
             sync=True,
             readOnlyLibraries=False,
+            # Present and false, not absent: the client's Sync & Download menu
+            # entry reads `server.allowSync`, and plexsim has no encoder to
+            # convert anything for a device.
+            allowSync=False,
             pushNotifications=False,
             allowCameraUpload=False,
             allowChannelAccess=True,
-            allowMediaDeletion=False,
+            # The Delete entry in an item's context menu is drawn only when the
+            # server reports this (client module 92273's `showDelete`). plexsim
+            # owns no files, so its delete drops the ROW from the in-memory
+            # library and leaves the debrid content alone -- which is the only
+            # honest local meaning of "delete" here, and a restart undoes it.
+            allowMediaDeletion=True,
             allowSharing=True,
             allowTuners=False,
             livetv=0,
             offlineTranscode=0,
             streamingBrainVersion=2,
             streamingBrainABRVersion=3,
-            diagnostics="logs,databases,streaminglogs",
+            # A real PMS says "logs,databases,streaminglogs"; plexsim has no
+            # database, and this string is exactly what the Troubleshooting page
+            # reads to decide which Download buttons to draw.
+            diagnostics="logs,streaminglogs",
             countryCode="deu",
             updatedAt=1789127123,
             ownerFeatures=OWNER_FEATURES,
@@ -878,15 +1267,37 @@ class PlexSim:
                     "identifier": "com.plexapp.plugins.library",
                     "title": "Library",
                     "types": "video",
-                    "protocols": "stream",
+                    # `download` here is what draws the Download entry in the
+                    # item context menu (client module 92273: `showDownload`
+                    # reads `provider.protocols.download`). plexsim can serve
+                    # it -- the same Part read with `download=1` -- so omitting
+                    # it hid a feature that works.
+                    "protocols": "stream,download",
                     "Feature": features,
                 }
             ],
         )
 
-    def library_section(self, segments, query):
+    def library_section(self, segments, query, method="GET"):
         section_id = segments[2]
+        section = self.catalog.section(section_id) or {}
         if len(segments) == 3:
+            if method == "DELETE":
+                # Manage > Libraries > Delete Library. Drops the section and
+                # every row in it, in memory: catalog.json is untouched.
+                if self.catalog.remove_section(section_id) is None:
+                    return ("error", 404, "plexsim: no such section")
+                logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
+                return ("empty", 200)
+            if method == "PUT":
+                # The Edit Library dialog. A real PMS refuses a partial edit
+                # (measured: 400 for `?name=` alone), and the client always
+                # sends the whole form, so a missing name is a client error.
+                if not query.get("name"):
+                    return ("error", 400, "plexsim: bad request")
+                section["title"] = query["name"]
+                logger.info("SECTION edit %s -> %s", section_id, query["name"])
+                return ("empty", 200)
             return self.container(
                 Directory=[
                     {"key": "all", "title": "All"},
@@ -895,75 +1306,319 @@ class PlexSim:
             )
 
         leaf = segments[3]
-        section = self.catalog.section(section_id) or {}
-        if leaf == "all":
-            # Plex's numeric type filter. Ignoring it meant a client asking a
-            # show section for EPISODES (type=4) was handed shows instead.
-            wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(
-                query.get("type"))
-            if wanted in ("season", "episode"):
-                source = [r for r in self.catalog.items.values()
-                          if r.get("type") == wanted
-                          and str(r.get("librarySectionID")) == str(section_id)]
-                source.sort(key=lambda r: (r.get("grandparentTitle") or r.get("parentTitle") or "",
-                                           r.get("parentIndex") or 0, r.get("index") or 0))
-            else:
-                source = self.catalog.section_items(section_id)
-            rows = [_listing_row(r) for r in source]
-            start = int(query.get("X-Plex-Container-Start", 0) or 0)
-            size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
-            page = rows[start : start + size]
-            extra = {
-                "totalSize": len(rows),
-                "offset": start,
-                "librarySectionID": int(section_id),
-                "librarySectionTitle": section.get("title"),
-                "librarySectionUUID": section.get("uuid"),
-                "title1": section.get("title"),
-                "title2": "All " + str(section.get("title") or ""),
-                "viewGroup": section.get("type"),
-                # Matched against a real PMS movie section; the web client's
-                # grid reads these alongside Meta.
-                "viewMode": 65592,
-                "art": "/:/resources/show-fanart.jpg" if section.get("type") == "show"
-                       else "/:/resources/movie-fanart.jpg",
-                "thumb": "/:/resources/show.png" if section.get("type") == "show"
-                         else "/:/resources/movie.png",
-                "allowSync": False,
-                "nocache": True,
-            }
-            if query.get("includeMeta") == "1":
-                meta = self.section_meta(section_id, section.get("type") or "movie")
-                if meta:
-                    extra["Meta"] = meta
-            return self.container(Metadata=page, **extra)
 
-        if leaf == "recentlyAdded":
-            rows = [_listing_row(r) for r in self.catalog.section_items(section_id)]
-            return self.container(Metadata=rows[:12])
-
-        if leaf == "sorts":
-            return self.container(
-                Sort=[
-                    {"key": "titleSort", "title": "Title", "default": "asc"},
-                    {"key": "addedAt", "title": "Date Added", "defaultDirection": "desc"},
-                ]
-            )
-        if leaf == "filters":
-            return self.container(Filter=[])
-        if leaf == "firstCharacter":
-            return self.container(Directory=[])
+        # -- the write half of Manage > Libraries -------------------------
+        if leaf == "refresh":
+            # "Scan Library Files" / "Refresh All Metadata"; DELETE is the
+            # Cancel Scan button. plexsim's rows come from the catalog, so a
+            # scan re-versions artwork and reports an activity per item, which
+            # is what the Libraries page and the Dashboard read.
+            if method == "DELETE":
+                self.refreshing.discard(str(section_id))
+                self.library.clear_activities()
+                logger.info("SECTION refresh cancelled %s", section_id)
+                return ("empty", 200)
+            self.refreshing.add(str(section_id))
+            rows = self.catalog.section_items(section_id)
+            for row in rows:
+                if query.get("force") == "1":
+                    self.library.refresh(row)
+                else:
+                    self.library.add_activity(row.get("title") or "")
+            self.refreshing.discard(str(section_id))
+            logger.info("SECTION refresh %s force=%s -> %d row(s)",
+                        section_id, query.get("force") == "1", len(rows))
+            return ("empty", 200)
+        if leaf in ("emptyTrash", "analyze"):
+            if method != "PUT":
+                return ("error", 405, "plexsim: method not allowed")
+            logger.info("SECTION %s %s -- nothing to %s, plexsim owns no files",
+                        leaf, section_id, leaf)
+            return ("empty", 200)
+        if leaf == "indexes":
+            # Delete Preview Thumbnails. plexsim generates none.
+            if method != "DELETE":
+                return ("error", 404, "plexsim: not found")
+            return ("empty", 200)
         if leaf == "prefs":
+            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+            if method == "PUT":
+                # Section settings have their own id space (`flattenSeasons` and
+                # friends), so they cannot go through the server-prefs writer --
+                # which filters against the server's own ids and would drop every
+                # one of them silently.
+                known = {s.get("id") for s in settings}
+                for name, value in query.items():
+                    if name.startswith("X-Plex-") or name not in known:
+                        continue
+                    self.section_pref_overrides[(str(section_id), name)] = value
+                    logger.info("SECTION PREF %s %s = %s", section_id, name, value)
+                return ("empty", 200)
             # A real PMS answers with a bare container and the full setting
             # list for the library's type.
-            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+            settings = [
+                dict(s, value=self.section_pref_overrides[(str(section_id), s.get("id"))])
+                if (str(section_id), s.get("id")) in self.section_pref_overrides else s
+                for s in settings
+            ]
             return self.bare_container(size=len(settings), Setting=settings)
+
+        # -- listings ------------------------------------------------------
+        if leaf == "all":
+            return self.section_listing(section_id, section, query)
+        if leaf in ("recentlyAdded", "newest", "recentlyViewed", "onDeck"):
+            rows = self.catalog.section_items(section_id)
+            if leaf == "onDeck":
+                rows = [r for r in self.continue_watching()
+                        if str(r.get("librarySectionID")) == str(section_id)]
+            elif leaf == "recentlyViewed":
+                rows = [r for r in rows if r.get("lastViewedAt")]
+            else:
+                rows = sorted(rows, key=lambda r: -(r.get("addedAt") or 0))[:12]
+            return self.listing_container(
+                section_id, section, [_listing_row(r) for r in rows])
+        if leaf == "collections":
+            rows = self.library.collections(section_id)
+            return self.listing_container(section_id, section, rows,
+                                          view_group="collection")
+        if leaf == "folder":
+            # By Folder. plexsim's rows have one Part each, so the folder tree
+            # is one level: the release directory each Part sits in.
+            rows = []
+            for index, row in enumerate(self.catalog.section_items(section_id), 1):
+                title = row.get("title") or ""
+                rows.append({"key": "/library/sections/%s/folder?parent=%d"
+                                    % (section_id, index), "title": title})
+            return self.secondary_container(
+                section_id, section, "By Folder", Metadata=rows,
+                librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
+                librarySectionTitle=section.get("title"),
+                librarySectionUUID=section.get("uuid"))
+
+        # -- the filter and sort descriptors the legacy UI reads -----------
+        if leaf == "sorts":
+            sorts = [dict(s) for s in SECTION_SORTS]
+            sorts[0]["firstCharacterKey"] = "/library/sections/%s/firstCharacter" % section_id
+            return self.secondary_container(section_id, section, None,
+                                            Directory=sorts)
+        if leaf == "filters":
+            filters = [
+                {
+                    "filter": name,
+                    "filterType": kind,
+                    "key": "/library/sections/%s/%s" % (section_id, name),
+                    "title": title,
+                    "type": "filter",
+                }
+                for name, title, kind in SECTION_FILTERS
+            ]
+            return self.secondary_container(section_id, section, None,
+                                            Directory=filters)
+        if leaf == "firstCharacter":
+            counts = {}
+            for row in self.catalog.section_items(section_id):
+                title = str(row.get("titleSort") or row.get("title") or "")
+                first = (title[:1] or "#").upper()
+                if not first.isalpha():
+                    first = "#"
+                counts[first] = counts.get(first, 0) + 1
+            entries = [{"size": counts[k], "key": k, "title": k} for k in sorted(counts)]
+            return self.secondary_container(section_id, section, "By First Letter",
+                                            Directory=entries)
+        if leaf in SECONDARY_TAGS or leaf in SECONDARY_FIELDS:
+            return self.secondary_directory(section_id, section, leaf)
+
         if leaf == "composite":
             return ("png", query)
 
         return self.container()
 
-    def library_metadata(self, segments, query):
+    def section_listing(self, section_id, section, query):
+        """`/library/sections/{id}/all` -- the grid, with the client's filters.
+
+        Ignoring the filter params would make every secondary-filter Directory
+        entry (By Genre, By Year, ...) open a list of the whole library, which
+        looks like the filter is broken rather than unimplemented.
+        """
+        wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(
+            query.get("type"))
+        if wanted in ("season", "episode"):
+            source = [r for r in self.catalog.items.values()
+                      if r.get("type") == wanted
+                      and str(r.get("librarySectionID")) == str(section_id)]
+            source.sort(key=lambda r: (r.get("grandparentTitle") or r.get("parentTitle") or "",
+                                       r.get("parentIndex") or 0, r.get("index") or 0))
+        elif query.get("type") == "18":
+            # Plex's collection type. The Collections pivot asks for it here
+            # rather than at /library/sections/{id}/collections.
+            rows = self.library.collections(section_id)
+            return self.listing_container(section_id, section, rows,
+                                          view_group="collection", query=query)
+        else:
+            source = self.catalog.section_items(section_id)
+
+        source = [r for r in source if self._matches_filters(r, query)]
+        sort_key = (query.get("sort") or "").split(":")[0]
+        reverse = (query.get("sort") or "").endswith(":desc")
+        if sort_key in ("addedAt", "lastViewedAt", "year", "originallyAvailableAt",
+                        "rating", "audienceRating", "duration", "titleSort", "title"):
+            source = sorted(source, key=lambda r: (r.get(sort_key) is None,
+                                                   r.get(sort_key) or 0
+                                                   if sort_key not in ("titleSort", "title",
+                                                                       "originallyAvailableAt")
+                                                   else str(r.get(sort_key) or "")),
+                            reverse=reverse)
+        rows = [_listing_row(r) for r in source]
+        # Measured: only the unpaged /all listing carries `nocache`; newest,
+        # recentlyAdded, onDeck and collections carry neither it nor totalSize.
+        extra = {}
+        if not ("X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query):
+            extra["nocache"] = True
+        if query.get("includeMeta") == "1":
+            meta = self.section_meta(section_id, section.get("type") or "movie")
+            if meta:
+                extra["Meta"] = meta
+        return self.listing_container(section_id, section, rows, query=query, **extra)
+
+    def _matches_filters(self, row, query):
+        """One row against the filter params the client sends."""
+        for name, value in query.items():
+            if name in SECONDARY_TAGS:
+                key = SECONDARY_TAGS[name]
+                tags = row.get(key) or []
+                if not any(str(t.get("id")) == value or t.get("tag") == value
+                           for t in tags):
+                    return False
+            elif name in SECONDARY_FIELDS and name != "decade":
+                if str(row.get(SECONDARY_FIELDS[name]) or "") != urllib.parse.unquote(value):
+                    return False
+            elif name == "decade":
+                year = row.get("year")
+                if not year or not str(value).isdigit():
+                    return False
+                if int(year) // 10 * 10 != int(value):
+                    return False
+            elif name == "unwatched" and value == "1":
+                if row.get("viewCount"):
+                    return False
+            elif name == "inProgress" and value == "1":
+                if not row.get("viewOffset"):
+                    return False
+            elif name == "unmatched" and value == "1":
+                if not str(row.get("guid") or "").startswith("local://"):
+                    return False
+        return True
+
+    def listing_container(self, section_id, section, rows, view_group=None,
+                          query=None, **extra):
+        """The container a section listing returns, with the client's paging."""
+        query = query or {}
+        start = int(query.get("X-Plex-Container-Start", 0) or 0)
+        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
+        page = rows[start:start + size]
+        paged = "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query
+        fields = {
+            "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
+            "librarySectionTitle": section.get("title"),
+            "librarySectionUUID": section.get("uuid"),
+            "title1": section.get("title"),
+            "title2": "All " + str(section.get("title") or ""),
+            "viewGroup": view_group or section.get("type"),
+            # Matched against a real PMS movie section; the web client's
+            # grid reads these alongside Meta.
+            "viewMode": 65592,
+            "art": "/:/resources/show-fanart.jpg" if section.get("type") == "show"
+                   else "/:/resources/movie-fanart.jpg",
+            "thumb": "/:/resources/show.png" if section.get("type") == "show"
+                     else "/:/resources/movie.png",
+            "allowSync": False,
+        }
+        # Measured: a paged listing carries offset and totalSize, an unpaged one
+        # carries `nocache` instead. The same rule child_container() follows --
+        # and the missing totalSize is what left show pages with no Seasons
+        # block for a week.
+        if paged:
+            fields["offset"] = start
+            fields["totalSize"] = len(rows)
+        fields.update(extra)
+        return self.container(Metadata=page, **fields)
+
+    def secondary_container(self, section_id, section, title2, **fields):
+        """A secondary list (By Genre, By Year, sorts, filters).
+
+        Measured: `content=secondary`, `viewGroup=secondary`, no
+        librarySection* pair except on the folder view, and title2 naming the
+        axis. The generic listing container's fields are wrong here.
+        """
+        body = {
+            "allowSync": False,
+            "art": "/:/resources/show-fanart.jpg" if section.get("type") == "show"
+                   else "/:/resources/movie-fanart.jpg",
+            "content": "secondary",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+            "thumb": "/:/resources/show.png" if section.get("type") == "show"
+                     else "/:/resources/movie.png",
+            "title1": section.get("title"),
+            "viewGroup": "secondary",
+            "viewMode": 65592,
+        }
+        if title2:
+            body["title2"] = title2
+        body.update(fields)
+        for key in ("Directory", "Metadata"):
+            if isinstance(body.get(key), list):
+                body["size"] = len(body[key])
+        body.setdefault("size", 0)
+        return {"MediaContainer": self._prune(body)}
+
+    def secondary_directory(self, section_id, section, leaf):
+        """`/library/sections/{id}/{genre,year,director,...}`.
+
+        A tag axis keys its entries by TAG ID and a field axis by the value
+        itself -- measured: `?genre=24` but `?contentRating=PG`. Getting that
+        backwards makes every entry open an empty list.
+        """
+        entries = []
+        if leaf in SECONDARY_TAGS:
+            key = SECONDARY_TAGS[leaf]
+            seen = {}
+            for row in self.catalog.section_items(section_id):
+                for tag in row.get(key) or []:
+                    name = tag.get("tag")
+                    if not name or name in seen:
+                        continue
+                    seen[name] = tag.get("id")
+            for name in sorted(seen):
+                tag_id = seen[name]
+                entries.append({
+                    "fastKey": "/library/sections/%s/all?%s=%s" % (section_id, leaf, tag_id),
+                    "key": str(tag_id),
+                    "title": name,
+                    "type": leaf,
+                })
+        else:
+            field = SECONDARY_FIELDS[leaf]
+            seen = set()
+            for row in self.catalog.section_items(section_id):
+                value = row.get(field)
+                if value is None or value == "":
+                    continue
+                if leaf == "decade":
+                    value = int(value) // 10 * 10
+                seen.add(str(value))
+            for value in sorted(seen, reverse=leaf in ("year", "decade")):
+                entries.append({
+                    "fastKey": "/library/sections/%s/all?%s=%s"
+                               % (section_id, leaf, urllib.parse.quote(value)),
+                    "key": urllib.parse.quote(value),
+                    "title": (value + "s") if leaf == "decade" else value,
+                })
+        return self.secondary_container(section_id, section,
+                                        SECONDARY_TITLES.get(leaf), Directory=entries)
+
+    def library_metadata(self, segments, query, method="GET"):
         raw_key = segments[2]
 
         # A comma-joined key list is a real client pattern (plezy batches).
@@ -980,20 +1635,41 @@ class PlexSim:
         rating_key = int(raw_key)
         row = self.catalog.items.get(rating_key)
         if row is None:
-            return self.container()
+            return ("error", 404, "plexsim: no such item")
 
         if len(segments) == 3:
+            if method == "PUT":
+                # The Edit dialog, and "Add to Collection": the client PUTs
+                # `<field>.value`, `<field>.locked` and `<tag>[N].tag.tag` to
+                # the item's own key.
+                self.library.edit(row, query)
+                logger.info("EDIT %s %s", rating_key,
+                            ",".join(k for k in query if not k.startswith("X-Plex-")))
+                return ("empty", 200)
+            if method == "DELETE":
+                if query.get("proxy") == "1":
+                    # Delete Version. plexsim has no optimized versions, and a
+                    # real PMS answers 400 when there are none to delete.
+                    return ("error", 400, "plexsim: no optimized versions")
+                self.library.delete(rating_key)
+                logger.info("DELETE %s (%s)", rating_key, row.get("title"))
+                return ("empty", 200)
             section = self.catalog.section(row["librarySectionID"]) or {}
             detail = _full(row)
             if row.get("type") == "show":
                 detail = self.show_detail(row, detail, query)
-            # Verified against fun: an item-detail container is BARE -- no
-            # identifier, mediaTagPrefix or mediaTagVersion. Those belong on
-            # listing containers (/children does carry them). The generic
-            # container() helper was injecting them here.
+            # Re-measured 2026-09-12 against BOTH fun and the 1.43.4 reference,
+            # with the client's own includeX param set: the detail container
+            # DOES carry identifier and the media-tag pair. An earlier note here
+            # claimed the opposite ("an item-detail container is BARE"); it did
+            # not hold on either server, and the missing mediaTagPrefix is what
+            # a client uses to resolve a tag into an image URL.
             return self.bare_container(
                 size=1,
                 allowSync=True,
+                identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
                 librarySectionID=row["librarySectionID"],
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"),
@@ -1008,8 +1684,41 @@ class PlexSim:
                 rows = self.catalog.leaves(rating_key)
             return self.child_container(row, rows, leaf, query)
 
-        if leaf in ("extras", "related", "similar"):
-            return self.container(Metadata=[], Hub=[])
+        # -- the context menu's write half --------------------------------
+        if leaf in ("refresh", "analyze", "unmatch", "match", "split", "merge"):
+            return self.item_action(row, leaf, method, query)
+        if leaf == "matches":
+            return self.matches(row, query)
+        if leaf in ("posters", "arts"):
+            if method == "PUT":
+                return self.set_artwork(row, leaf, query)
+            return self.artwork_list(row, leaf)
+        if leaf == "tree":
+            return self.metadata_tree(row)
+        if leaf == "media" and len(segments) > 4:
+            if method != "DELETE":
+                return ("error", 405, "plexsim: method not allowed")
+            if not self.library.delete_media(row, segments[4]):
+                return ("error", 404, "plexsim: no such media")
+            return ("empty", 200)
+
+        if leaf == "extras":
+            return self.tag_container(size=0)
+        if leaf == "related":
+            section = self.catalog.section(row["librarySectionID"]) or {}
+            return self.bare_container(
+                size=0, allowSync=False, identifier="com.plexapp.plugins.library",
+                librarySectionID=row["librarySectionID"],
+                librarySectionTitle=section.get("title"),
+                librarySectionUUID=section.get("uuid"),
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614)
+        if leaf == "similar":
+            # Measured: a real PMS 404s this for a season or an episode and
+            # answers an empty container for a movie or a show.
+            if row.get("type") in ("season", "episode"):
+                return ("error", 404, "plexsim: not found")
+            return self.tag_container(size=0)
         if leaf == "userState":
             # A real PMS 404s this (verified against fun). Answering with an
             # empty MediaContainer instead tells the client there IS state.
@@ -1018,12 +1727,35 @@ class PlexSim:
             # No theme audio; answer empty rather than falling through to the
             # unknown-route handler.
             return ("error", 404, "plexsim: no theme")
-        if leaf in ("thumb", "art", "poster", "background"):
+        if leaf in ("thumb", "art", "poster", "background", "composite"):
             resolved = self.artwork_for(rating_key, leaf)
             if resolved:
                 return ("image", resolved)
             return ("png", query)
         return self.container()
+
+    def hub_container(self, **fields):
+        """A hub response. Measured on a real PMS: `size`, `allowSync` and
+        `identifier` only -- no mediaTagPrefix or mediaTagVersion, which the
+        generic library container adds."""
+        body = {"size": 0, "allowSync": False, "identifier": "com.plexapp.plugins.library"}
+        body.update(fields)
+        if isinstance(fields.get("Hub"), list):
+            body["size"] = len(fields["Hub"])
+        return {"MediaContainer": self._prune(body)}
+
+    def tag_container(self, **fields):
+        """The container a per-item sub-resource uses: posters, arts, matches,
+        tree, similar and extras all carry identifier plus the media-tag pair
+        and nothing else."""
+        body = {
+            "size": 0,
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+        }
+        body.update(fields)
+        return {"MediaContainer": self._prune(body)}
 
     def hub(self, identifier, title, rows, **extra):
         body = {
@@ -1039,7 +1771,8 @@ class PlexSim:
         return body
 
     def hubs(self, query):
-        hubs = [self.hub("home.continue", "Continue Watching", [])]
+        hubs = [self.hub("home.continue", "Continue Watching",
+                         [_listing_row(r) for r in self.continue_watching()])]
         for section in self.catalog.sections:
             rows = [_listing_row(r) for r in self.catalog.section_items(section["key"])]
             if not rows:
@@ -1054,37 +1787,37 @@ class PlexSim:
                     librarySectionTitle=section["title"],
                 )
             )
-        return self.container(Hub=hubs)
+        return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id):
         rows = [_listing_row(r) for r in self.catalog.section_items(section_id)]
         section = self.catalog.section(section_id) or {}
-        return self.container(
+        return self.hub_container(
+            librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
+            librarySectionTitle=section.get("title"),
+            librarySectionUUID=section.get("uuid"),
             Hub=[
                 self.hub(
                     "movie.recentlyadded.%s" % section_id,
                     "Recently Added",
                     rows[:12],
-                    librarySectionID=int(section_id),
+                    librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
                     librarySectionTitle=section.get("title"),
                 )
-            ]
+            ],
         )
 
     def search(self, query):
         rows = [_listing_row(r) for r in self.catalog.search(query.get("query", ""))]
         limit = int(query.get("limit", 30) or 30)
-        return self.container(
-            Hub=[
-                self.hub(
-                    "movie",
-                    "Movies",
-                    rows[:limit],
-                    type="movie",
-                    hubIdentifier="movie",
-                )
-            ]
-        )
+        hubs = []
+        for kind, title in (("movie", "Movies"), ("show", "TV Shows"),
+                            ("episode", "Episodes")):
+            matched = [r for r in rows if r.get("type") == kind][:limit]
+            if not matched:
+                continue
+            hubs.append(self.hub(kind, title, matched, type=kind, hubIdentifier=kind))
+        return self.bare_container(size=len(hubs), Hub=hubs)
 
     def _items_for_uri(self, uri):
         """Resolve a playQueue `uri` to the rows it should enqueue.
@@ -1115,60 +1848,67 @@ class PlexSim:
         return []
 
     def create_play_queue(self, query):
-        """`POST /playQueues` -- every client builds a queue before playing."""
+        """`POST /playQueues` -- every client builds a queue before playing.
+
+        `shuffle=1` is the Shuffle context-menu entry, and `playQueueSourceURI`
+        is on a real PMS's response (measured): the client echoes it back when
+        it later adds to the same queue.
+        """
         uri = query.get("uri", "")
         rows = self._items_for_uri(uri)
+        if query.get("shuffle") == "1":
+            # Deterministic per queue rather than random, so a test can assert
+            # the order changed without asserting which order.
+            rows = list(reversed(rows))
 
         with self.lock:
             queue_id = self.next_play_queue
             self.next_play_queue += 1
             self.play_queues[queue_id] = [int(r["ratingKey"]) for r in rows]
+            self.play_queue_sources[queue_id] = uri
+            self.play_queue_shuffled[queue_id] = query.get("shuffle") == "1"
 
-        metadata = []
-        for position, row in enumerate(rows):
-            item = _full(row)
-            item["playQueueItemID"] = queue_id * 1000 + position + 1
-            metadata.append(item)
-
-        selected = metadata[0]["playQueueItemID"] if metadata else None
-        logger.info(
-            "PLAYQUEUE %s -> %d item(s) from uri=%s", queue_id, len(metadata), uri[:80]
-        )
-        return self.container(
-            Metadata=metadata,
-            playQueueID=queue_id,
-            playQueueVersion=1,
-            playQueueSelectedItemID=selected,
-            playQueueSelectedItemOffset=0,
-            playQueueSelectedMetadataItemID=(
-                str(rows[0]["ratingKey"]) if rows else None
-            ),
-            playQueueTotalCount=len(metadata),
-            playQueueShuffled=False,
-            identifier="com.plexapp.plugins.library",
-            mediaTagPrefix="/system/bundle/media/flags/",
-        )
+        logger.info("PLAYQUEUE %s -> %d item(s) from uri=%s",
+                    queue_id, len(rows), uri[:80])
+        return self.play_queue_container(queue_id)
 
     def get_play_queue(self, queue_id):
-        key = int(queue_id) if str(queue_id).isdigit() else 0
-        keys = self.play_queues.get(key) or []
+        return self.play_queue_container(
+            int(queue_id) if str(queue_id).isdigit() else 0)
+
+    def play_queue_container(self, queue_id):
+        """One play-queue response, used by create, fetch and add-to.
+
+        Every field here is on a real PMS's, including playQueueSourceURI --
+        which plexsim omitted, so a client that re-read the queue after adding
+        to it lost the source it was playing from.
+        """
+        with self.lock:
+            keys = list(self.play_queues.get(queue_id) or [])
+            source = self.play_queue_sources.get(queue_id, "")
+            shuffled = bool(self.play_queue_shuffled.get(queue_id))
         metadata = []
         for position, rating_key in enumerate(keys):
             row = self.catalog.items.get(rating_key)
             if row is None:
                 continue
             item = _full(row)
-            item["playQueueItemID"] = key * 1000 + position + 1
+            item["playQueueItemID"] = queue_id * 1000 + position + 1
             metadata.append(item)
-        return self.container(
-            Metadata=metadata,
-            playQueueID=key,
-            playQueueVersion=1,
-            playQueueSelectedItemID=(metadata[0]["playQueueItemID"] if metadata else None),
-            playQueueSelectedItemOffset=0,
-            playQueueTotalCount=len(metadata),
-            identifier="com.plexapp.plugins.library",
-        )
+        fields = {
+            "Metadata": metadata,
+            "playQueueID": queue_id,
+            "playQueueVersion": 1,
+            "playQueueSelectedItemID": (metadata[0]["playQueueItemID"] if metadata else None),
+            "playQueueSelectedItemOffset": 0,
+            "playQueueSelectedMetadataItemID": (str(keys[0]) if keys else None),
+            "playQueueShuffled": shuffled,
+            "playQueueSourceURI": source,
+            "playQueueTotalCount": len(metadata),
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+        }
+        return self.container(**{k: v for k, v in fields.items() if v is not None})
 
     def decision(self, query):
         """`/video/:/transcode/universal/decision` -- always direct play.
@@ -1216,28 +1956,647 @@ class PlexSim:
         )
 
     def timeline(self, query):
+        """`/:/timeline` -- the player's progress report.
+
+        A real PMS answers `{size, playbackState}`, not a bare container: the
+        client reads `playbackState` back to reconcile what it just sent.
+        """
         rating_key = query.get("ratingKey") or ""
+        state = query.get("state") or "stopped"
         if rating_key.isdigit():
-            row = self.catalog.items.get(int(rating_key))
             offset = query.get("time")
-            if row is not None and offset and str(offset).isdigit():
-                row["viewOffset"] = int(offset)
-                logger.info(
-                    "TIMELINE %s state=%s t=%sms", rating_key, query.get("state"), offset
-                )
-        return self.container()
+            duration = query.get("duration")
+            self.library.progress(
+                int(rating_key),
+                int(offset) if str(offset).isdigit() else None,
+                state=state,
+                duration=int(duration) if str(duration).isdigit() else None,
+            )
+            logger.info("TIMELINE %s state=%s t=%sms", rating_key, state, offset)
+        return self.bare_container(size=0, playbackState=state)
 
     def set_watched(self, query, watched):
+        """`/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed.
+
+        Two things a container response gets wrong. A real PMS answers with an
+        EMPTY 200, and marking a show or season has to walk down to the leaves:
+        the client's own menu predicate reads `unviewedLeafCount` for those
+        types, so a show whose episodes stayed unwatched keeps offering "Mark as
+        Played" no matter what the show row says.
+        """
         key = (query.get("key") or "").rsplit("/", 1)[-1]
         if key.isdigit():
-            row = self.catalog.items.get(int(key))
-            if row is not None:
-                if watched:
-                    row["viewCount"] = int(row.get("viewCount", 0)) + 1
-                    row.pop("viewOffset", None)
+            changed = self.library.scrobble(int(key), watched)
+            logger.info("%s %s -> %d leaf row(s)",
+                        "SCROBBLE" if watched else "UNSCROBBLE", key, len(changed))
+        return ("empty", 200)
+
+    def rate(self, query):
+        """`/:/rate?key=&identifier=&rating=` -- the star rating. -1 clears."""
+        key = (query.get("key") or "").rsplit("/", 1)[-1]
+        rating = query.get("rating")
+        if key.isdigit():
+            try:
+                value = float(rating)
+            except (TypeError, ValueError):
+                value = None
+            self.library.rate(int(key), value)
+            logger.info("RATE %s -> %s", key, rating)
+        return ("empty", 200)
+
+    def remove_from_continue_watching(self, query):
+        """The context-menu entry of the same name: drop the resume point.
+
+        Advertised as an Action on the `actions` provider feature; the client
+        only draws the entry when that Action is present.
+        """
+        key = (query.get("ratingKey") or query.get("key") or "").rsplit("/", 1)[-1]
+        if key.isdigit():
+            self.library.remove_from_continue_watching(int(key))
+        return ("empty", 200)
+
+    def continue_watching(self):
+        """Rows with a resume point, newest first -- the Continue Watching hub."""
+        rows = [r for r in self.catalog.items.values()
+                if r.get("viewOffset") and r.get("type") in ("movie", "episode")]
+        return sorted(rows, key=lambda r: -(r.get("lastViewedAt") or 0))
+
+    def select_stream(self, part_id, query):
+        """`PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`.
+
+        Track selection from the player, and from Get Info. plexsim never
+        repackages, so the choice only changes which Stream carries `selected` --
+        which is what the client reads back.
+        """
+        wanted = {}
+        for name, stream_type in (("audioStreamID", 2), ("subtitleStreamID", 3)):
+            if name in query:
+                wanted[stream_type] = query[name]
+        if not wanted:
+            return ("empty", 200)
+
+        # `allParts=1` means every part of THIS item -- a multi-part movie keeps
+        # one track choice across its parts. Applying it to every part in the
+        # catalog would retrack the whole library from one dialog.
+        owner = None
+        for row in self.catalog.items.values():
+            for media in row.get("Media", []):
+                for part in media.get("Part", []):
+                    if str(part.get("id")) == str(part_id):
+                        owner = row
+        if owner is None:
+            return ("error", 404, "plexsim: no such part")
+        for media in owner.get("Media", []):
+            for part in media.get("Part", []):
+                if str(part.get("id")) != str(part_id) and query.get("allParts") != "1":
+                    continue
+                for stream in part.get("Stream", []):
+                    chosen = wanted.get(stream.get("streamType"))
+                    if chosen is None:
+                        continue
+                    # `0` is the client's "None" pseudo-stream for subtitles, so
+                    # it matches nothing and clears the selection.
+                    if str(stream.get("id")) == str(chosen):
+                        stream["selected"] = True
+                    else:
+                        stream.pop("selected", None)
+        logger.info("STREAM SELECT part=%s item=%s %s", part_id, owner["ratingKey"], wanted)
+        return ("empty", 200)
+
+    # -- item actions ----------------------------------------------------
+
+    def item_action(self, row, action, method, query):
+        """The write half of the item context menu.
+
+        Every one of these answers 200 with an EMPTY body on a real PMS
+        (measured against 1.43.4). Returning a MediaContainer instead is not
+        cosmetic: the client parses the response of `match` to decide whether
+        the match took.
+        """
+        if method not in ("PUT", "POST"):
+            return ("error", 405, "plexsim: method not allowed")
+
+        if action == "refresh":
+            self.library.refresh(row)
+            logger.info("REFRESH %s (%s)", row["ratingKey"], row.get("title"))
+        elif action == "analyze":
+            # The catalog rows already carry ffprobe-derived Media attributes;
+            # there is no second, better analysis to run.
+            logger.info("ANALYZE %s -- catalog rows are already probe-derived",
+                        row["ratingKey"])
+        elif action == "unmatch":
+            self.library.unmatch(row)
+            logger.info("UNMATCH %s -> guid=%s", row["ratingKey"], row.get("guid"))
+        elif action == "match":
+            guid = query.get("guid") or ""
+            if not guid:
+                return ("error", 400, "plexsim: match needs a guid")
+            self.library.apply_match(row, guid, query.get("name"), query.get("year"),
+                                     identify=self._identify_guid)
+            logger.info("MATCH %s -> %s", row["ratingKey"], guid)
+        elif action == "split":
+            created = self.library.split(row)
+            logger.info("SPLIT %s -> %d new row(s)", row["ratingKey"], len(created))
+        elif action == "merge":
+            ids = [i for i in (query.get("ids") or "").split(",") if i]
+            merged = self.library.merge(row, ids)
+            logger.info("MERGE %s <- %s (%d row(s) absorbed)",
+                        row["ratingKey"], ids, len(merged))
+        else:
+            return ("error", 404, "plexsim: unknown action")
+        return ("empty", 200)
+
+    def matches(self, row, query):
+        """`GET /library/metadata/{id}/matches` -- Fix Match candidates.
+
+        Shape measured on a real PMS: SearchResult rows of
+        {guid, name, year, score, thumb, type, lifespanEnded, summary}. The
+        guid each row carries is the one the client sends straight back to
+        `PUT .../match`, so it has to be a guid plexsim can resolve again --
+        hence the candidate map, which remembers which TMDB id minted it.
+        """
+        if self.tmdb is None:
+            # No TMDB key: the honest answer is no candidates. The client says
+            # "No matches were found using this agent", which is true.
+            logger.info("MATCHES %s -- no TMDB key configured", row["ratingKey"])
+            return self.tag_container(size=0)
+
+        title = query.get("title") or row.get("title") or ""
+        year = query.get("year") or row.get("year")
+        # A show's episodes match against the SHOW, the way the agent does.
+        kinds = ("tv",) if row.get("type") in ("show", "season", "episode") else ("movie", "tv")
+        plex_kind = {"movie": "movie", "tv": "show"}
+        results = []
+        for kind in kinds:
+            for found in self.tmdb.search(kind, title, year)[:20]:
+                name = found.get("title") or found.get("name") or ""
+                date = found.get("release_date") or found.get("first_air_date") or ""
+                guid = metadata_module.plex_guid(plex_kind[kind], found.get("id"))
+                with self.lock:
+                    self.match_candidates[guid] = (kind, found.get("id"))
+                entry = {
+                    "guid": guid,
+                    "name": name,
+                    "type": plex_kind[kind],
+                    "score": int(round(min(found.get("popularity") or 0, 100))),
+                    "lifespanEnded": False,
+                    "summary": found.get("overview") or "",
+                }
+                if date[:4].isdigit():
+                    entry["year"] = int(date[:4])
+                if found.get("poster_path"):
+                    entry["thumb"] = metadata_module.IMAGE_BASE + "w342" + found["poster_path"]
+                results.append(entry)
+        logger.info("MATCHES %s %r -> %d candidate(s)", row["ratingKey"], title, len(results))
+        return self.tag_container(size=len(results), SearchResult=results)
+
+    def _identify_guid(self, row, guid):
+        """Re-identify a row after a manual match.
+
+        The guid came out of `matches()`, so it maps back to the TMDB id the
+        user picked and the row is rebuilt from that -- not from a fresh search,
+        which is the thing that got it wrong in the first place.
+        """
+        with self.lock:
+            chosen = self.match_candidates.get(guid)
+        if chosen is None or self.tmdb is None:
+            return
+        parsed = {"title": row.get("title") or "", "year": row.get("year"),
+                  "season": row.get("parentIndex"), "episode": row.get("index")}
+        try:
+            metadata_module.enrich(row, self.tmdb, parsed, chosen=chosen)
+        except Exception as error:  # a failed lookup must not fail the match
+            logger.debug("re-identify failed for %s: %s", guid, error)
+
+    def artwork_list(self, row, kind):
+        """`/library/metadata/{id}/{posters,arts}` -- the Change Artwork picker.
+
+        A real PMS lists every candidate the agent found, each with `selected`
+        on the current one. plexsim has exactly what TMDB gave it plus its own
+        generated placeholder, and says so rather than padding the list.
+        """
+        entries = []
+        stored = row.get("_poster_url") if kind == "posters" else row.get("_art_url")
+        current = row.get("thumb") if kind == "posters" else row.get("art")
+        if stored:
+            entries.append({
+                "key": stored,
+                "ratingKey": stored,
+                "thumb": stored,
+                "selected": bool(current),
+                "provider": "tmdb",
+            })
+        placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"],
+                                                     "thumb" if kind == "posters" else "art")
+        entries.append({
+            "key": placeholder,
+            "ratingKey": placeholder,
+            "thumb": placeholder,
+            "selected": not current,
+            "provider": "local",
+        })
+        return self.tag_container(size=len(entries), Metadata=entries)
+
+    def set_artwork(self, row, kind, query):
+        """`PUT /library/metadata/{id}/{posters,arts}?url=` -- pick one."""
+        chosen = urllib.parse.unquote(query.get("url") or "")
+        if not chosen:
+            return ("error", 400, "plexsim: no url")
+        field = "thumb" if kind == "posters" else "art"
+        private = "_poster_url" if kind == "posters" else "_art_url"
+        if chosen.startswith("http"):
+            row[private] = chosen
+            row[field] = "/library/metadata/%s/%s/%d" % (
+                row["ratingKey"], field, int(time.time()))
+        else:
+            row.pop(private, None)
+            row[field] = chosen
+        logger.info("ARTWORK %s %s -> %s", row["ratingKey"], kind, chosen[:80])
+        return ("empty", 200)
+
+    def metadata_tree(self, row):
+        """`/library/metadata/{id}/tree` -- the raw item/media/part tree.
+
+        Measured shape: MetadataItem rows carrying MediaItem, each with
+        MediaPart. It is what "Get Info" falls back to for an item whose
+        Media the client has not already loaded.
+        """
+        media_items = []
+        for media in row.get("Media", []):
+            parts = [
+                {
+                    "id": part.get("id"),
+                    "file": part.get("file"),
+                    "size": part.get("size"),
+                    "duration": part.get("duration"),
+                    "container": part.get("container"),
+                }
+                for part in media.get("Part", [])
+            ]
+            media_items.append({
+                "id": media.get("id"),
+                "width": media.get("width"),
+                "height": media.get("height"),
+                "videoCodec": media.get("videoCodec"),
+                "audioCodec": media.get("audioCodec"),
+                "container": media.get("container"),
+                "bitrate": media.get("bitrate"),
+                "MediaPart": parts,
+            })
+        item = {
+            "id": int(row["ratingKey"]),
+            "title": row.get("title") or "",
+            "guid": row.get("guid") or "",
+            "parentTitle": row.get("parentTitle") or "",
+            "instanceRatingKey": "",
+            "index": row.get("index") or 1,
+            "originallyAvailableAt": row.get("originallyAvailableAt") or "",
+            "addedAt": row.get("addedAt") or 0,
+            "refreshedAt": row.get("updatedAt") or 0,
+            "MediaItem": media_items,
+        }
+        return self.tag_container(size=1, MetadataItem=[item])
+
+    # -- collections -----------------------------------------------------
+
+    def collections_route(self, method, segments, query):
+        """`/library/collections` -- the collection half of the UI.
+
+        A collection is a metadata item in its own right: it has a ratingKey, a
+        context menu (Play, Play Next, Shuffle, Add to Playlist, Edit, Delete)
+        and children. Its members also carry it as a `Collection` tag, which is
+        the other way the UI writes one: an item edit with
+        `collection[0].tag.tag=Name`.
+        """
+        if len(segments) == 2:
+            if method == "POST":
+                rows = self._items_for_uri(query.get("uri", ""))
+                section = query.get("sectionId") or (
+                    rows[0].get("librarySectionID") if rows else None)
+                subtype = rows[0].get("type") if rows else "movie"
+                collection = self.library.create_collection(
+                    query.get("title") or "", section, rows, subtype=subtype,
+                    smart=query.get("smart") == "1")
+                logger.info("COLLECTION create %s (%d item(s))",
+                            collection["title"], len(collection["items"]))
+                return self.bare_container(
+                    size=1, Metadata=[self.library._collection_row(collection)])
+            # A real PMS 404s the bare GET: collections are listed per section.
+            return ("error", 404, "plexsim: not found")
+
+        collection = self.library.collection(segments[2])
+        if collection is None:
+            return ("error", 404, "plexsim: no such collection")
+
+        if len(segments) == 3:
+            if method == "DELETE":
+                self.library.delete_collection(segments[2])
+                return ("empty", 200)
+            if method == "PUT":
+                self.library.edit_collection(
+                    collection, title=query.get("title.value") or query.get("title"),
+                    summary=query.get("summary.value") or query.get("summary"))
+                return ("empty", 200)
+            section = self.catalog.section(collection["librarySectionID"]) or {}
+            return self.bare_container(
+                size=1,
+                allowSync=False,
+                librarySectionID=collection["librarySectionID"],
+                librarySectionTitle=section.get("title"),
+                librarySectionUUID=section.get("uuid"),
+                Metadata=[self.library._collection_row(collection)],
+            )
+
+        leaf = segments[3]
+        if leaf == "children":
+            rows = [_listing_row(r) for r in self.library.collection_children(collection)]
+            return self.bare_container(size=len(rows), Metadata=rows)
+        if leaf == "items" and method == "PUT":
+            rows = self._items_for_uri(query.get("uri", ""))
+            added = self.library.add_collection_items(collection, rows)
+            return self.bare_container(size=1, leafCountAdded=added,
+                                       leafCountRequested=len(rows))
+        if leaf == "composite":
+            return ("png", query)
+        return self.bare_container(size=0)
+
+    # -- playlists -------------------------------------------------------
+
+    def playlists_route(self, method, segments, query):
+        """`/playlists` -- Add to Playlist, and the Playlists pivot.
+
+        The client offers "Add to Playlist" purely because /media/providers
+        advertises the `playlist` feature, so leaving these unimplemented shows
+        the user a menu entry, a modal, and nothing happening.
+        """
+        if len(segments) == 1 or segments[1] in ("all", "sorts", "generators"):
+            if len(segments) > 1 and segments[1] == "sorts":
+                return self.bare_container(size=len(PLAYLIST_SORTS),
+                                           Directory=PLAYLIST_SORTS)
+            if len(segments) > 1 and segments[1] == "generators":
+                # Optimized-version generators. plexsim has no encoder, so there
+                # is nothing generating versions; a real PMS 404s this too.
+                return ("error", 404, "plexsim: no version generators")
+            if method == "POST":
+                rows = self._items_for_uri(query.get("uri", ""))
+                playlist = self.library.create_playlist(
+                    query.get("title") or "", query.get("type") or "video", rows,
+                    smart=query.get("smart") == "1")
+                logger.info("PLAYLIST create %s (%d item(s))",
+                            playlist["title"], len(playlist["items"]))
+                return self.bare_container(
+                    size=1, Metadata=[self.library._playlist_row(playlist)])
+            rows = self.library.playlists(query.get("playlistType"))
+            return self.bare_container(size=len(rows), Metadata=rows)
+
+        playlist = self.library.playlist(segments[1])
+        if playlist is None:
+            return ("error", 404, "plexsim: no such playlist")
+
+        if len(segments) == 2:
+            if method == "DELETE":
+                self.library.delete_playlist(segments[1])
+                # Measured: a real PMS answers the playlist delete with 204,
+                # not the 200 it uses for a collection delete.
+                return ("empty", 204)
+            if method == "PUT":
+                self.library.edit_playlist(
+                    playlist, title=query.get("title.value") or query.get("title"),
+                    summary=query.get("summary.value") or query.get("summary"))
+                return ("empty", 200)
+            return self.bare_container(
+                size=1, Metadata=[self.library._playlist_row(playlist)])
+
+        leaf = segments[2]
+        if leaf == "items":
+            if len(segments) == 4 and method == "DELETE":
+                self.library.remove_playlist_item(playlist, segments[3])
+                return self.bare_container(
+                    size=1, Metadata=[self.library._playlist_row(playlist)])
+            if method == "PUT":
+                rows = self._items_for_uri(query.get("uri", ""))
+                if not rows and query.get("playQueueID"):
+                    keys = self.play_queues.get(int(query["playQueueID"]), [])
+                    rows = [self.catalog.items[k] for k in keys if k in self.catalog.items]
+                added = self.library.add_playlist_items(playlist, rows)
+                logger.info("PLAYLIST %s += %d item(s)", playlist["ratingKey"], added)
+                return self.bare_container(
+                    size=1, leafCountAdded=added, leafCountRequested=len(rows),
+                    Metadata=[self.library._playlist_row(playlist)])
+            rows = []
+            for row, item_id in self.library.playlist_items(playlist):
+                entry = _listing_row(row)
+                entry["playlistItemID"] = item_id
+                rows.append(entry)
+            summary = self.library._playlist_row(playlist)
+            return self.bare_container(
+                size=len(rows),
+                composite=summary["composite"],
+                duration=summary["duration"],
+                leafCount=summary["leafCount"],
+                playlistType=summary["playlistType"],
+                ratingKey=summary["ratingKey"],
+                smart=summary["smart"],
+                title=summary["title"],
+                Metadata=rows,
+            )
+        if leaf == "composite":
+            return ("png", query)
+        return self.bare_container(size=0)
+
+    # -- play queue ------------------------------------------------------
+
+    def play_queue_route(self, method, segments, query):
+        """`/playQueues/{id}` -- Play Next and Add to Queue live here.
+
+        The client builds both from the same call it uses to create a queue,
+        with `next=1` for Play Next; without the PUT, both menu entries are
+        drawn (the provider advertises `playqueue`) and neither does anything.
+        """
+        queue_id = int(segments[1]) if segments[1].isdigit() else 0
+        if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
+            with self.lock:
+                keys = self.play_queues.get(queue_id) or []
+                index = int(segments[3]) - queue_id * 1000 - 1
+                if 0 <= index < len(keys):
+                    keys.pop(index)
+            return self.play_queue_container(queue_id)
+        if method == "PUT":
+            rows = self._items_for_uri(query.get("uri", ""))
+            with self.lock:
+                keys = self.play_queues.setdefault(queue_id, [])
+                new = [int(r["ratingKey"]) for r in rows]
+                if query.get("next") == "1":
+                    keys[1:1] = new
                 else:
-                    row["viewCount"] = 0
-        return self.container()
+                    keys.extend(new)
+            logger.info("PLAYQUEUE %s %s %d item(s)", queue_id,
+                        "next" if query.get("next") == "1" else "append", len(rows))
+            return self.play_queue_container(queue_id)
+        if method == "DELETE":
+            with self.lock:
+                self.play_queues.pop(queue_id, None)
+            return ("empty", 200)
+        return self.play_queue_container(queue_id)
+
+    # -- server settings -------------------------------------------------
+
+    def server_prefs(self):
+        """The setting list with any value the client has written applied."""
+        if not self.pref_overrides:
+            return SERVER_PREFS
+        out = []
+        for setting in SERVER_PREFS:
+            if setting.get("id") in self.pref_overrides:
+                setting = dict(setting, value=self.pref_overrides[setting["id"]])
+            out.append(setting)
+        return out
+
+    def set_prefs(self, query):
+        """`PUT /:/prefs?<id>=<value>` -- one or more settings at a time."""
+        known = {s.get("id") for s in SERVER_PREFS}
+        for name, value in query.items():
+            if name.startswith("X-Plex-") or name not in known:
+                continue
+            self.pref_overrides[name] = value
+            logger.info("PREF %s = %s", name, value)
+        return ("empty", 200)
+
+    def system_agents(self, query):
+        """`/system/agents` -- the Agents (Legacy) page.
+
+        Only the agents plexsim actually identifies with. A real PMS lists 17,
+        most of them legacy plug-ins it still ships; claiming those would be
+        advertising identification paths plexsim does not have.
+        """
+        wanted = query.get("mediaType")
+        agents = [a for a in SYSTEM_AGENTS
+                  if not wanted or str(a.get("mediaType")) == str(wanted)]
+        agents = [{k: v for k, v in a.items() if k != "mediaType"} for a in agents]
+        return self.bare_container(size=len(agents), Agent=agents)
+
+    def system_scanners(self, section_id):
+        """`/system/scanners/{sectionID}` -- what the Edit Library dialog lists."""
+        section = self.catalog.section(section_id) or {}
+        scanner = "Plex TV Series" if section.get("type") == "show" else "Plex Movie"
+        return self.bare_container(
+            size=1, noHistory=0, replaceParent=0,
+            Directory=[{"key": scanner, "title": scanner}])
+
+    def accounts(self, account_id):
+        """`/accounts` -- the server's own user rows.
+
+        Measured field set, and a bare container with only `identifier`: the
+        generic library-container defaults do not belong here.
+        """
+        account = {
+            "id": 1,
+            "key": "/accounts/1",
+            "name": self.owner_username,
+            "defaultAudioLanguage": "en",
+            "autoSelectAudio": True,
+            "defaultSubtitleLanguage": "en",
+            "subtitleMode": 2,
+            "thumb": "",
+        }
+        rows = [account] if account_id in (None, "1") else []
+        return self.bare_container(
+            size=len(rows), identifier="com.plexapp.system.accounts", Account=rows)
+
+    def devices(self):
+        """`/devices` -- what the Manage > Devices list reads."""
+        device = {
+            "id": 1,
+            "name": self.catalog.friendly,
+            "platform": "Linux",
+            "clientIdentifier": self.catalog.machine,
+            "createdAt": 0,
+        }
+        return self.bare_container(
+            size=1, identifier="com.plexapp.system.devices", Device=[device])
+
+    def statistics(self, which):
+        """`/statistics/{bandwidth,media,resources}` -- the Dashboard graphs.
+
+        The Device and Account rows are real; the per-interval series is empty
+        because plexsim keeps no history. An invented series would draw a
+        plausible graph of traffic that never happened.
+        """
+        if which not in ("bandwidth", "media", "resources"):
+            return ("error", 404, "plexsim: not found")
+        # Measured on a production PMS with no rows for the window: the answer
+        # is a container carrying nothing but `size`. The Device and Account
+        # blocks only appear alongside an actual series, so emitting them with
+        # an empty series would be a shape no real server sends.
+        return self.bare_container(size=0)
+
+    def updater_status(self):
+        """`/updater/status` -- plexsim never has an update to install."""
+        return self.bare_container(size=0, canInstall=False,
+                                   checkedAt=int(time.time()), status=0)
+
+    def history(self, query):
+        """`/status/sessions/history/all` -- the View Play History page.
+
+        Rows are recorded as playback happens (library.record_view), with the
+        field set measured on a production PMS: an episode carries
+        key/ratingKey/parentKey/grandparent*/index/parentIndex, a movie carries
+        title and originallyAvailableAt.
+        """
+        rows = self.library.history()
+        start = int(query.get("X-Plex-Container-Start", 0) or 0)
+        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
+        page = rows[start:start + size]
+        fields = {"size": len(page), "Metadata": page}
+        if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
+            fields["totalSize"] = len(rows)
+            fields["offset"] = start
+        return self.bare_container(**fields)
+
+    def log_archive(self):
+        """A zip of plexsim's own recent log, for Download Logs.
+
+        The button exists because /media/providers advertises `diagnostics`
+        containing "logs". plexsim keeps the lines it logged in this process
+        rather than reading a file it does not own.
+        """
+        buffer = io.BytesIO()
+        with self.lock:
+            lines = list(self.log_lines)
+            requests = ["%s %s" % (m, p) for m, p in self.requests[-2000:]]
+            unknown = list(self.unknown)
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("plexsim.log", "\n".join(lines) + "\n")
+            archive.writestr("requests.log", "\n".join(requests) + "\n")
+            archive.writestr("unrouted.log", "\n".join(unknown) + "\n")
+        return buffer.getvalue()
+
+    def create_section(self, query):
+        """`POST /library/sections` -- Add Library.
+
+        plexsim has no filesystem to scan, so the new section starts empty --
+        which is also what a real PMS gives you for an empty folder, rather than
+        an error. 201 with the created Directory is the measured answer.
+        """
+        title = query.get("name") or query.get("title") or "New Library"
+        section_type = query.get("type") or "movie"
+        seed = "%s-%s" % (title, section_type)
+        section = self.catalog.add_section(
+            title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))
+        logger.info("SECTION create %s (%s)", title, section_type)
+        return ("created", self.container(Directory=[dict(
+            section,
+            agent=("tv.plex.agents.series" if section_type == "show"
+                   else "tv.plex.agents.movie"),
+            scanner=("Plex TV Series" if section_type == "show" else "Plex Movie"),
+            language=query.get("language") or "en-US",
+            refreshing=False,
+            content=True,
+            directory=True,
+            contentChangedAt=0,
+            hidden=0,
+            Location=[{"id": 1, "path": query.get("location") or "/plexsim"}],
+        )]))
 
     # -- the stream ------------------------------------------------------
 
@@ -1395,6 +2754,27 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if kind == "error":
                 self._send(result[1], "text/plain", result[2].encode())
+                return
+            if kind == "empty":
+                # Every mutating endpoint on a real PMS answers with an empty
+                # body and a text/html content type -- measured against 1.43.4
+                # for refresh, analyze, unmatch, match, split, merge, scrobble,
+                # rate, the prefs write and the section tasks. A MediaContainer
+                # here is a different shape from the one the client parses.
+                self._send(result[1], "text/html", b"")
+                return
+            if kind == "created":
+                # POST /library/sections answers 201 with the created Directory.
+                payload = json.dumps(result[1]).encode()
+                if self._wants_xml():
+                    self._send(201, "text/xml;charset=utf-8", to_xml(result[1]))
+                else:
+                    self._send(201, "application/json", payload)
+                return
+            if kind == "zip":
+                self._send(200, "application/zip", result[1],
+                           [("Content-Disposition",
+                             "attachment; filename=\"plexsim-logs.zip\"")])
                 return
 
         self._send_container(result)
@@ -1569,6 +2949,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, "text/plain", b"plexsim: no such part")
             return
 
+        # The Download context-menu entry is the same Part read with
+        # `download=1`; the only difference a real PMS makes is the disposition
+        # header, which is what turns a play into a save.
+        filename = segments[-1] if len(segments) > 3 else ("part-%s" % part_id)
+        download = query.get("download") in ("1", "true")
+
         try:
             upstream_url, _size = sim.resolver.resolve(link)
         except Exception as error:
@@ -1577,16 +2963,17 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if sim.part_mode == "redirect":
-            logger.info("PART %s -> 302 CDN", part_id)
+            logger.info("PART %s -> 302 CDN%s", part_id, " (download)" if download else "")
             self.send_response(302)
             self.send_header("Location", upstream_url)
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
 
-        self._proxy(upstream_url, container, part_id, method)
+        self._proxy(upstream_url, container, part_id, method,
+                    download=filename if download else None)
 
-    def _proxy(self, upstream_url, container, part_id, method):
+    def _proxy(self, upstream_url, container, part_id, method, download=None):
         request_range = self.headers.get("Range")
         headers = {"User-Agent": UPSTREAM_UA}
         if request_range:
@@ -1622,6 +3009,9 @@ class Handler(BaseHTTPRequestHandler):
             # container's real type is substituted here.
             self.send_header("Content-Type", CONTENT_TYPES.get(container, "video/mp4"))
             self.send_header("Accept-Ranges", "bytes")
+            if download:
+                self.send_header("Content-Disposition",
+                                 'attachment; filename="%s"' % download)
             if content_length:
                 self.send_header("Content-Length", content_length)
             if content_range:
@@ -1723,6 +3113,17 @@ def main():
         parser.error("RD_TOKEN must be set (the Real-Debrid API key)")
 
     catalog = Catalog(args.catalog)
+    # Fix Match needs a live agent. The same key build_catalog.py uses; without
+    # it the match dialog reports no candidates, which is the truth.
+    tmdb = None
+    tmdb_key = os.environ.get("TMDB_KEY")
+    if tmdb_key:
+        tmdb = metadata_module.Tmdb(
+            tmdb_key,
+            os.path.join(os.path.dirname(os.path.abspath(args.catalog)), "tmdb_cache.json"),
+        )
+    else:
+        logger.info("no TMDB_KEY: Fix Match will report no candidates")
     claim = claim_module.Claim(
         catalog.machine,
         os.path.join(os.path.dirname(os.path.abspath(args.catalog)), "claim_state.json"),
@@ -1739,7 +3140,31 @@ def main():
         web_root=args.web_root if os.path.isdir(args.web_root) else None,
         assert_claimed=args.assert_claimed,
         owner_email=args.owner_email,
+        tmdb=tmdb,
     )
+
+    # Keep the log in memory as well as on stderr, so Download Logs on the
+    # Troubleshooting page has something real to hand over. The format is the
+    # one the Console page's parser expects:
+    # `MMM dd, yyyy HH:mm:ss.SSS [thread] LEVEL - message`.
+    class _Capture(logging.Handler):
+        def emit(self, record):
+            try:
+                line = "%s [%s] %s - %s" % (
+                    time.strftime("%b %d, %Y %H:%M:%S", time.localtime(record.created))
+                    + ".%03d" % (record.msecs,),
+                    record.threadName,
+                    record.levelname,
+                    record.getMessage(),
+                )
+            except Exception:
+                return
+            with sim.lock:
+                sim.log_lines.append(line)
+                if len(sim.log_lines) > 5000:
+                    del sim.log_lines[:1000]
+
+    logger.addHandler(_Capture())
 
     server = Server((args.host, args.port), sim, args.verbose)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")
