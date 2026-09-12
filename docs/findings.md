@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **256/256 checks against the new
+`tests/test_ui_surface.py` covers all of it: **266/266 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -607,6 +607,44 @@ now come off the same notification bus, each formatting for itself.
 | A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
 | `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
 | ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
+
+#### Sorting: a spec is a LIST, and the seed matters
+
+Measured on the reference, and plexsim honoured none of it:
+
+| Request | Reference | plexsim before |
+|---|---|---|
+| `sort=year:desc,titleSort:asc` | orders by year, breaks ties on title | dropped the second key -- and `titleSort:asc,year:desc` came out **descending**, because the spec as a whole ends in `:desc` |
+| `sort=random:12345` vs `random:99` | two different stable orders | one order regardless of seed |
+| `sort=bogus` | **500** | 200 with the list silently unsorted |
+
+The seed is not decoration: it is how a client pages through a shuffled library
+without repeating or skipping rows. The spec is now parsed as the comma-separated
+list it is and applied right to left on a stable sort, so the leftmost key
+dominates. An unknown key returns the reference's 500 rather than a silently
+unsorted 200 -- a caller cannot tell the difference otherwise, and a silent
+no-op is the failure this whole file is about. (That a real PMS answers 500
+rather than 400 for what is a client error looks like a defect in it; it is the
+measurement, so it is what plexsim answers.)
+
+#### CORS, which a browser enforces before the server sees anything
+
+| | Reference | plexsim before |
+|---|---|---|
+| normal response, with an `Origin` | echoes that origin, plus `Access-Control-Expose-Headers: Location, Date` and `Vary: Origin, X-Plex-Token` | `Access-Control-Allow-Origin: *`, always |
+| normal response, no `Origin` | **no CORS headers at all** | `*` anyway |
+| preflight | echoes the requested `Access-Control-Request-Headers` **verbatim**, `Max-Age: 1209600` | a FIXED list |
+
+The fixed list was the bug. It omitted `X-Plex-Session-Id` (plexsim allowed
+`X-Plex-Session-Identifier`, a different header), `X-Plex-Language`,
+`X-Plex-Features`, `X-Plex-Model` and several more the web client sends -- and a
+preflight that omits one header makes the **browser** refuse the request, with no
+server-side trace at all. Echoing is the only answer that cannot block a header a
+client legitimately sends. A wildcard is also invalid on a credentialed request,
+so `*` breaks exactly the clients that send an Authorization header or a cookie.
+
+Why it had never surfaced: Plex Web passes identity in the **query string**, not
+in headers, so its requests are not preflighted at all.
 
 #### What `unmatch` actually does, measured key by key
 

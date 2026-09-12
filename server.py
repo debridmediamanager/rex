@@ -1791,7 +1791,13 @@ class PlexSim:
             source = self.catalog.section_items(section_id)
 
         source = [r for r in source if self._matches_filters(r, query)]
-        source = self._sorted(source, query.get("sort") or "")
+        source, unsupported = self._sorted(source, query.get("sort") or "")
+        if unsupported:
+            # Measured: a real PMS answers an unknown sort key with a 500 rather
+            # than ignoring it. Silently returning the list unsorted is the worse
+            # answer -- the caller cannot tell its sort did nothing.
+            logger.warning("UNSUPPORTED sort key %r", unsupported)
+            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
         rows = [_listing_row(r) for r in source]
         # Measured: only the unpaged /all listing carries `nocache`; newest,
         # recentlyAdded, onDeck and collections carry neither it nor totalSize.
@@ -1809,34 +1815,62 @@ class PlexSim:
     # control rather than a missing one.
     TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt")
 
-    def _sorted(self, rows, spec):
-        key = spec.split(":")[0]
-        reverse = spec.endswith(":desc")
-        if key == "random":
-            # Deterministic per row so a re-request is stable, which is what a
-            # client paging through a random sort needs.
-            return sorted(rows, key=lambda r: zlib.crc32(str(r.get("ratingKey")).encode()))
+    NUMERIC_SORTS = ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
+                     "duration", "viewCount", "viewOffset", "index", "leafCount",
+                     "unviewedLeafCount", "originallyAvailableAt", "mediaHeight",
+                     "updatedAt", "lastRatedAt", "ratingCount")
+
+    def _sort_key(self, key):
+        """One row -> comparable value for a sort key, or None if unsupported."""
         if key == "mediaHeight":
-            return sorted(rows,
-                          key=lambda r: max([m.get("height") or 0
-                                             for m in r.get("Media") or []] or [0]),
-                          reverse=reverse)
-        if key in ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
-                   "duration", "viewCount", "viewOffset", "index",
-                   "leafCount", "unviewedLeafCount") + self.TEXT_SORTS:
-            def value(row):
-                if key not in self.TEXT_SORTS:
-                    return (row.get(key) is None, row.get(key) or 0)
-                # `titleSort` is the sort key the client sends, and a row that
-                # has no titleSort of its own sorts by its title -- a playlist
-                # row has only the latter, so keying on titleSort alone made
-                # every playlist compare equal and the direction do nothing.
-                text = row.get(key)
-                if key == "titleSort" and not text:
-                    text = row.get("title")
-                return (text is None, str(text or "").lower())
-            return sorted(rows, key=value, reverse=reverse)
-        return rows
+            return lambda r: max([m.get("height") or 0
+                                  for m in r.get("Media") or []] or [0])
+        if key in self.TEXT_SORTS:
+            def text(row):
+                value = row.get(key)
+                # A row with no titleSort of its own sorts by its title -- a
+                # playlist row has only the latter, so keying on titleSort alone
+                # made every playlist compare equal and the direction do nothing.
+                if key == "titleSort" and not value:
+                    value = row.get("title")
+                return (value is None, str(value or "").lower())
+            return text
+        if key in self.NUMERIC_SORTS:
+            return lambda r: (r.get(key) is None, r.get(key) or 0)
+        return None
+
+    def _sorted(self, rows, spec):
+        """Apply a `sort=` spec, which is a COMMA-SEPARATED list of keys.
+
+        Measured on the reference: `sort=year:desc,titleSort:asc` orders by year
+        and breaks ties on title, and `sort=random:<seed>` gives a stable order
+        that DIFFERS per seed -- which is how a client pages through a shuffled
+        library without repeating or skipping rows. plexsim honoured neither: it
+        split the whole spec on the first colon, so a secondary key was silently
+        dropped and `titleSort:asc,year:desc` even came out descending, because
+        the spec as a whole ended in `:desc`.
+
+        Returns (rows, unsupported_key). A real PMS answers an unknown sort key
+        with a 500; the caller decides what to do with that.
+        """
+        terms = [term for term in (spec or "").split(",") if term.strip()]
+        if not terms:
+            return rows, None
+        ordered = list(rows)
+        # Right to left, relying on the sort being stable: the leftmost key ends
+        # up dominant, which is the order a real PMS applies them in.
+        for term in reversed(terms):
+            key, _, direction = term.strip().partition(":")
+            if key == "random":
+                seed = direction or "0"
+                ordered = sorted(ordered, key=lambda r: zlib.crc32(
+                    ("%s/%s" % (seed, r.get("ratingKey"))).encode()))
+                continue
+            getter = self._sort_key(key)
+            if getter is None:
+                return rows, key
+            ordered = sorted(ordered, key=getter, reverse=direction == "desc")
+        return ordered, None
 
     def _matches_filters(self, row, query):
         """One row against the filter params the client sends."""
@@ -2887,7 +2921,9 @@ class PlexSim:
             rows = self.library.playlists(query.get("playlistType"))
             if query.get("smart") == "0":
                 rows = [r for r in rows if not r.get("smart")]
-            rows = self._sorted(rows, query.get("sort") or "")
+            rows, unsupported = self._sorted(rows, query.get("sort") or "")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             return self.paged_container(rows, query)
 
         playlist = self.library.playlist(segments[1])
@@ -3244,12 +3280,30 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return True
 
+    def _cors_headers(self):
+        """The CORS headers a real PMS sends, measured either side of an Origin.
+
+        With an Origin it ECHOES that origin, and adds `Access-Control-Expose-
+        Headers: Location, Date` and `Vary: Origin, X-Plex-Token`. With no Origin
+        it sends no CORS headers at all. plexsim answered `*` unconditionally,
+        which is not interchangeable: a wildcard is invalid on a credentialed
+        request, so a client sending cookies or an Authorization header has its
+        response rejected by the browser rather than by the server.
+        """
+        origin = self.headers.get("Origin")
+        if not origin:
+            return []
+        return [("Access-Control-Allow-Origin", origin),
+                ("Access-Control-Expose-Headers", "Location, Date"),
+                ("Vary", "Origin, X-Plex-Token")]
+
     def _send(self, status, content_type, payload, extra_headers=()):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Plex-Protocol", "1.0")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        for key, value in self._cors_headers():
+            self.send_header(key, value)
         for key, value in extra_headers:
             self.send_header(key, value)
         self.end_headers()
@@ -3284,16 +3338,33 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self._dispatch("DELETE")
 
+    # What a real PMS allows on a preflight, measured. It ECHOES the requested
+    # header list rather than publishing a fixed one, which is the only way to
+    # be sure of not blocking a header a client legitimately sends: plexsim's
+    # fixed list already omitted `X-Plex-Session-Id`, `X-Plex-Language`,
+    # `X-Plex-Features` and half a dozen others the web client uses, and a
+    # preflight that omits one makes the browser refuse the request with no
+    # server-side trace at all. Plex Web itself escapes this by passing identity
+    # in the QUERY STRING, which is why it never showed up.
+    CORS_FALLBACK_HEADERS = ("x-plex-token,x-plex-client-identifier,x-plex-product,"
+                             "x-plex-version,x-plex-platform,x-plex-device,"
+                             "x-plex-device-name,x-plex-session-id,"
+                             "x-plex-session-identifier,x-plex-language,accept,"
+                             "content-type,range")
+
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,HEAD,OPTIONS")
-        self.send_header(
-            "Access-Control-Allow-Headers",
-            "X-Plex-Token,X-Plex-Client-Identifier,X-Plex-Product,X-Plex-Version,"
-            "X-Plex-Platform,X-Plex-Device,X-Plex-Device-Name,X-Plex-Session-Identifier,"
-            "Accept,Content-Type,Range",
-        )
+        self.send_header("X-Plex-Protocol", "1.0")
+        origin = self.headers.get("Origin")
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin, X-Plex-Token")
+        self.send_header("Access-Control-Allow-Methods",
+                         "POST, GET, OPTIONS, DELETE, PUT, HEAD")
+        self.send_header("Access-Control-Allow-Headers",
+                         self.headers.get("Access-Control-Request-Headers")
+                         or self.CORS_FALLBACK_HEADERS)
+        self.send_header("Access-Control-Max-Age", "1209600")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
@@ -3658,7 +3729,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", content_length)
             if content_range:
                 self.send_header("Content-Range", content_range)
-            self.send_header("Access-Control-Allow-Origin", "*")
+            for key, value in self._cors_headers():
+                self.send_header(key, value)
             # A media read must NOT keep the connection alive.  ffmpeg (so mpv,
             # and every client that embeds it) seeks by issuing an open-ended
             # `Range: bytes=N-`, reading a little, and then sending its next
