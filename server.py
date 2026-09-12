@@ -28,6 +28,7 @@ open question:
 
 import argparse
 import base64
+import locale
 import io
 import json
 import logging
@@ -894,6 +895,40 @@ def _public_row(row):
 GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
 
 
+# The client profiles a real PMS ships -- the file names of its Resources/Profiles
+# directory, read off the reference. A decision is refused (400) unless
+# X-Plex-Client-Profile-Name, X-Plex-Platform or X-Plex-Device names one of them
+# exactly: `Chrome`, `Windows` and `Microsoft Edge` are accepted, where `Edge`,
+# `Darwin`, `Kodi`, `webOS`, `chrome` and `Chrome ` are all 400s.
+CLIENT_PROFILES = frozenset([
+    "Android", "Asus Transformer Prime TF201", "Chrome", "Chromecast", "Firefox",
+    "Generic", "HTML TV App", "Internet Explorer", "Konvergo", "Microsoft Edge",
+    "Mystery 3", "Mystery 4", "Mystery 5", "Opera TV App", "Opera",
+    "Panasonic Viera 3D TV", "PlayStation 3 App", "PlayStation 3", "PlayStation 4 App",
+    "Plex Desktop", "Plex Home Theater-RaspberryPi", "Plex Home Theater", "Plexamp",
+    "Popcorn Hour", "Roku-3.1", "Roku-5.x", "Roku-5000X-6.0", "Roku-6.x", "Roku-7.x",
+    "Roku", "RokuDLNA-3.1", "RokuDLNA-4400X-7.x", "RokuDLNA-5.1", "RokuDLNA-5000X-6.x",
+    "RokuDLNA-5000X-7.x", "RokuDLNA-6.x", "RokuDLNA-6000X-7.x", "Safari",
+    "Samsung SmartTV", "Samsung Tizen", "Samsung", "Sonos", "Sony Blu-ray 2013",
+    "Sony Blu-ray", "Sony Bravia 2010", "Sony Bravia 2011", "Sony Bravia 2012",
+    "Sony Bravia 2013", "Sony Streaming Player", "Universal Mobile",
+    "Universal Recording", "Universal TV", "Unknown Browser", "Vivaldi", "Web",
+    "Western Digital TV Live", "Wii U", "Windows 10 Desktop", "Windows 10 Mobile",
+    "Windows Phone", "Windows", "Xbox 360 App", "Xbox 360", "Xbox One", "ZP",
+    "iOS-iPad-1,1", "iOS-iPhone-1,1", "iOS-iPhone-1,2", "iOS-iPhone-2,1",
+    "iOS-iPhone-3,1", "iOS-iPhone-3,2", "iOS-iPhone-3,3", "iOS-iPod-1,1",
+    "iOS-iPod-2,1", "iOS-iPod-3,1", "iOS-iPod-4,1", "iOS", "tvOS",
+])
+
+# The two-letter languages a subtitle search accepts. The rule is measured (`en`,
+# `de`, `en-US` search; `xx`, `zz`, `eng` are refused); the table is the system's
+# own list of language codes rather than a hand-typed one.
+SUBTITLE_LANGUAGES = frozenset(
+    code for code in {alias.split("_")[0].split(".")[0].split("@")[0]
+                      for alias in locale.locale_alias}
+    if len(code) == 2 and code.isalpha())
+
+
 def _grid_row(row, keep_section=True):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
 
@@ -1028,6 +1063,9 @@ class PlexSim:
         # Per-section settings, keyed (section id, setting id): `flattenSeasons`
         # and the rest of the library-type set live in their own id space.
         self.section_pref_overrides = {}
+        # Download queues by client identifier: `POST /downloadQueue` answers the
+        # SAME queue to the same client, measured.
+        self.download_queues = {}
         # Section ids with a scan in flight, which /library/sections reports as
         # `refreshing` and the Libraries page reads to swap its Scan button.
         self.refreshing = set()
@@ -1158,7 +1196,12 @@ class PlexSim:
         self.notify("progress", "ProgressNotification", [{"message": message}])
 
     # Plex's numeric type codes, as a TimelineEntry carries them.
-    TIMELINE_TYPES = {"movie": 1, "show": 2, "season": 3, "episode": 4}
+    # A playlist is 15 and a collection 18 on the wire -- measured -- and the client
+    # builds the URL of the row it updates from this number (`/playlists/`,
+    # `/library/collections/`, else `/library/metadata/`). With 1 there, a list
+    # deleted anywhere dispatched a delete for a metadata row nobody holds.
+    TIMELINE_TYPES = {"movie": 1, "show": 2, "season": 3, "episode": 4,
+                      "playlist": 15, "collection": 18}
 
     # The `state` values /:/timeline accepts. Measured: anything else is a 400.
     TIMELINE_STATES = {"playing", "paused", "buffering", "stopped"}
@@ -1187,12 +1230,17 @@ class PlexSim:
 
         `metadata_state=None` omits the field, which is what state 5 does.
         """
+        title = row.get("title") or ""
+        if row.get("type") == "movie" and title and row.get("year"):
+            # Measured: a movie's frames title it with its year, `Elephants Dream
+            # (2006)`, which the Activity pane prints.
+            title = "%s (%s)" % (title, row["year"])
         entry = {
             "identifier": "com.plexapp.plugins.library",
             "sectionID": str(row.get("librarySectionID", "")),
             "itemID": str(row.get("ratingKey", "")),
             "type": self.TIMELINE_TYPES.get(row.get("type"), 1),
-            "title": row.get("title") or "",
+            "title": title,
             "state": state,
             "updatedAt": int(time.time()),
         }
@@ -1221,10 +1269,12 @@ class PlexSim:
         self.library.finish_activity(activity)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
 
-    def notify_edited(self, row):
-        """The two frames an EDIT pushes: loading, then done. plexsim pushed none,
-        so an edit made here was invisible to every other open client."""
-        self.notify_timeline(row, self.TIMELINE_QUEUED, "loading")
+    def notify_edited(self, row, metadata_state="loading"):
+        """The two frames an EDIT pushes: state 3, then done. plexsim pushed none,
+        so an edit made here was invisible to every other open client. Measured:
+        the first frame says `loading` for an edit to the item's own path and
+        `queued` for one saved through `/library/sections/{id}/all`."""
+        self.notify_timeline(row, self.TIMELINE_QUEUED, metadata_state)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
 
     def notify_created(self, row):
@@ -1626,8 +1676,27 @@ class PlexSim:
     # -- routing ---------------------------------------------------------
 
     def handle(self, method, path, body, headers, address=None):
+        if path.startswith("//"):
+            # A leading empty segment is a 404 like any other (`//identity`,
+            # measured) -- and it has to be caught before urlparse, which reads
+            # `//identity` as a HOST named identity with an empty path.
+            return ("error", 404, "plexsim: not found")
         parsed = urllib.parse.urlparse(path)
         route = parsed.path
+        if not route.startswith("/web"):
+            # Measured: an EMPTY interior segment (`//identity`, `/library//sections`)
+            # is a 404, where plexsim dropped it and served the page; one TRAILING
+            # slash is harmless (`/library/sections/` is the listing, which plexsim
+            # 404'd).
+            if "//" in route:
+                return ("error", 404, "plexsim: not found")
+            if len(route) > 1 and route.endswith("/"):
+                route = route[:-1]
+            # Measured: a query parameter with no `=` at all -- `?includeGuids`,
+            # `?foo`, even `?&` -- is a 400 on every path, `/identity` included.
+            # plexsim read a bare `includeGuids` as true.
+            if parsed.query and any("=" not in piece for piece in parsed.query.split("&")):
+                return ("error", 400, "plexsim: bad request")
         # Both shapes are needed. The dict is what every endpoint reads, but a
         # filter query is ORDERED and may repeat a key -- `?genre=6&genre=23` is
         # an intersection and `push`/`pop` are positional -- so the pairs are
@@ -1647,10 +1716,31 @@ class PlexSim:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
 
+        # Measured: an id of 2^31 or more is a 400 on the families that parse theirs
+        # as a 32-bit integer, where metadata and sections answer 404; and a play
+        # queue id that is not a number at all is a 400.
+        for prefix in (["playlists"], ["playQueues"], ["library", "collections"],
+                       ["devices"], ["status", "sessions", "history"],
+                       ["library", "parts"], ["library", "streams"]):
+            if segments[:len(prefix)] == prefix and len(segments) > len(prefix):
+                ident = segments[len(prefix)]
+                if ident.isdigit() and int(ident) >= 2 ** 31:
+                    return ("error", 400, "plexsim: bad request")
+        if segments[:1] == ["playQueues"] and len(segments) > 1 and not segments[1].isdigit():
+            return ("error", 400, "plexsim: bad request")
+
         # A Part read is not a container response; it returns a streaming
         # sentinel the handler turns into a body. Only for the READ verbs: the
         # same prefix with PUT is track selection, which is a normal endpoint.
         if route.startswith("/library/parts/") and method in ("GET", "HEAD"):
+            # Measured: only `/library/parts/{id}/{version}/{file}` is the media. A
+            # non-numeric version, anything deeper, and the BIF thumbnail index
+            # (`/indexes/sd/{offset}`) are 404s -- plexsim handed all of them to the
+            # part reader, so a client asking for preview thumbnails was sent the
+            # whole video. A wrong numeric version or file name still serves, and so
+            # do the bare part and a part with no file name.
+            if len(segments) > 5 or (len(segments) == 5 and not segments[3].isdigit()):
+                return ("error", 404, "plexsim: not found")
             return ("stream", segments, query)
 
         try:
@@ -1849,9 +1939,16 @@ class PlexSim:
                 if not self.library.cancel_activity(segments[1]):
                     return ("error", 404, "plexsim: no such activity")
                 return ("empty", 200)
+            if len(segments) > 1:
+                # Measured: an activity has no read of its own -- `GET /activities/{id}`
+                # is a 404, for a live uuid on fun as well. plexsim answered the list.
+                return ("error", 404, "plexsim: not found")
             activities = self.library.activities()
             return self.bare_container(size=len(activities), Activity=activities)
 
+        if segments == ["status", "sessions", "history"]:
+            # Measured: only `/all` and a historyKey exist; the bare path is a 404.
+            return ("error", 404, "plexsim: not found")
         if segments[:3] == ["status", "sessions", "history"] and len(segments) == 4:
             if method == "DELETE":
                 return self.delete_history(segments[3])
@@ -1892,8 +1989,10 @@ class PlexSim:
                 # for GET and DELETE alike. plexsim never opens one, so that is
                 # every id.
                 return ("error", 404, "plexsim: no such transcode session")
-            if method == "DELETE":
-                return ("empty", 200)
+            if method not in ("GET", "HEAD"):
+                # Measured: DELETE and POST on the bare collection are 404s. plexsim
+                # answered 200 to both.
+                return ("error", 404, "plexsim: not found")
             return self.bare_container(size=0)
 
         if route == "/security/token":
@@ -1910,6 +2009,8 @@ class PlexSim:
                     # Measured: 403 here, not the 401 every other path answers.
                     return ("error", 403, "plexsim: forbidden")
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
+        if segments[:1] == ["downloadQueue"]:
+            return self.download_queue(method, segments, query, headers)
         if route == "/channels":
             # Measured 200 on both servers with exactly these two rows. The channel
             # APPSTORE paths do 404 (which CLAUDE.md already records) -- bare
@@ -2091,9 +2192,12 @@ class PlexSim:
                 if segments[2] == "prefs" and len(segments) == 3 \
                         and method in ("GET", "HEAD"):
                     return self.new_section_prefs(query)
-                # `/library/sections/prefs?type=movie` and friends: a real PMS
-                # answers 400 rather than treating the word as a section id.
-                return ("error", 400, "plexsim: bad request")
+                if segments[2] == "prefs":
+                    # `/library/sections/prefs?type=movie` and friends: a 400.
+                    return ("error", 400, "plexsim: bad request")
+                # Measured: any other non-numeric section id -- `abc`, `-1`, `1.5` --
+                # is a 404, not the 400 plexsim answered.
+                return ("error", 404, "plexsim: not found")
             return self.library_section(segments, query, method)
 
         if segments[:2] == ["library", "metadata"] and len(segments) >= 3:
@@ -2154,7 +2258,18 @@ class PlexSim:
             # Sidecar subtitle extraction. plexsim never repackages, so every
             # subtitle stays embedded in the part and there is nothing to serve.
             # Measured: a real PMS answers 501 here for a stream it cannot
-            # extract, which is what "not implemented" honestly means.
+            # extract, which is what "not implemented" honestly means -- but only
+            # for a stream it HAS. An unknown or non-numeric id, and the bare path,
+            # are 404s, and a PUT to an unknown one is a 400. plexsim 501'd them all.
+            stream_id = segments[2] if len(segments) > 2 else ""
+            known = stream_id.isdigit() and any(
+                str(stream.get("id")) == stream_id
+                for row in catalog.items.values() for media in row.get("Media") or []
+                for part in media.get("Part") or [] for stream in part.get("Stream") or [])
+            if not known:
+                if method == "PUT" and len(segments) == 3:
+                    return ("error", 400, "plexsim: bad request")
+                return ("error", 404, "plexsim: not found")
             return ("error", 501, "plexsim: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method == "PUT":
@@ -2249,7 +2364,13 @@ class PlexSim:
             return self.decision(query, headers)
         if route.startswith("/video/:/transcode/universal/start"):
             # plexsim has no encoder. A 404 here is the honest answer and it is
-            # also the signal that the client's own gate rejected direct play.
+            # also the signal that the client's own gate rejected direct play --
+            # but only for a request that names something playable. Measured: the
+            # start family validates exactly as the decision does, and a request
+            # with no parameters, an unknown path or a bad mediaIndex is a 400.
+            _row, refusal = self._decision_target(query, headers)
+            if refusal:
+                return refusal
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
         if route == "/subtitles/:/transcode/universal/start":
@@ -2261,6 +2382,10 @@ class PlexSim:
         if route == "/video/:/transcode/universal/subtitles":
             # Measured: a real PMS answers 400 here for an unknown session, where
             # the rest of the universal/* family answers 404.
+            return ("error", 400, "plexsim: bad request")
+        if route in ("/video/:/transcode/universal/ping",
+                     "/video/:/transcode/universal/stop") and not query.get("session"):
+            # Measured: with no `session` these are 400s; an unknown one is a 404.
             return ("error", 400, "plexsim: bad request")
         if route.startswith("/video/:/transcode/universal/"):
             # /ping, /stop, /session: all of it belongs to a transcode session,
@@ -2802,7 +2927,8 @@ class PlexSim:
                 else:
                     rows = self.typed_rows(section_id, query)
                     rows, _ = self.apply_filters(rows, query, section)
-                return self.apply_edit(rows, query, bare_fields=False)
+                return self.apply_edit(rows, query, bare_fields=False,
+                                       metadata_state="queued")
             return self.section_listing(section_id, section, query)
         if leaf == "common":
             if method != "GET":
@@ -2991,6 +3117,10 @@ class PlexSim:
         library's filter keys all carry `?type=2`, so an axis that ignored it
         would list the wrong type's tags on every show grid.
         """
+        if len({value for name, value in query.get("_pairs") or [] if name == "type"}) > 1:
+            # Measured: repeated parameters AND, and a row has one type, so
+            # `?type=2&type=1` selects nothing. plexsim let the last one win.
+            return []
         wanted = {"1": "movie", "2": "show", "3": "season",
                   "4": "episode"}.get(str(query.get("type") or ""))
         if wanted is None:
@@ -3675,7 +3805,7 @@ class PlexSim:
         row = self.library._playlist_row(playlist, content=True)
         return self.bare_container(size=1, Metadata=[row])
 
-    def apply_edit(self, rows, query, bare_fields=True):
+    def apply_edit(self, rows, query, bare_fields=True, metadata_state="loading"):
         """One edit against one or more rows, with the refusals a real PMS makes.
 
         The client's Edit dialog saves through `PUT /library/sections/{id}/all`,
@@ -3688,7 +3818,7 @@ class PlexSim:
             for row in rows:
                 self.library.edit(row, query, pairs=query.get("_pairs"),
                                   bare_fields=bare_fields)
-                self.notify_edited(row)
+                self.notify_edited(row, metadata_state)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
@@ -3817,7 +3947,14 @@ class PlexSim:
         # rows with no UserState in them, which the client reads as state it has.
         if "," in raw_key:
             if len(segments) > 3:
-                return ("error", 404, "plexsim: not found")
+                # Measured: a leaf on a list with ONE numeric member is that item's
+                # leaf (`1,abc/posters` answers item 1's posters); on a list of two or
+                # more it is a 404.
+                numeric = [part for part in raw_key.split(",") if part.isdigit()]
+                if len(numeric) != 1:
+                    return ("error", 404, "plexsim: not found")
+                return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],
+                                             query, method)
             keys = [int(p) for p in raw_key.split(",")
                     if p.isdigit() and int(p) in self.catalog.items]
             if method == "PUT":
@@ -3897,6 +4034,10 @@ class PlexSim:
             return self.bare_container(Metadata=[detail], **fields)
 
         leaf = segments[3]
+        if leaf == "children" and row.get("type") in ("movie", "episode", "clip", "track"):
+            # Measured: `/children` of an item that cannot have any -- a movie, an
+            # episode -- is a 400, where its `/allLeaves` is still a 200.
+            return ("error", 400, "plexsim: bad request")
         if leaf in ("children", "allLeaves"):
             if leaf == "children":
                 rows = self.catalog.children(rating_key)
@@ -3985,6 +4126,15 @@ class PlexSim:
             # from its subtitle agent; plexsim has no subtitle source, so the
             # honest answer is that shape with nothing in it rather than a
             # different shape or a refusal the dialog reads as an error.
+            # Measured: `language` is required (400 without it) and must be a real
+            # two-letter language, any case and with or without a region -- `en`,
+            # `EN`, `en-US` and `de` search, where `xx`, `eng` and an empty value are
+            # 500s. plexsim answered the empty container to all of them.
+            language = query.get("language")
+            if language is None:
+                return ("error", 400, "plexsim: bad request")
+            if language.split("-")[0].lower() not in SUBTITLE_LANGUAGES:
+                return ("error", 500, "plexsim: internal error")
             return self.tag_container(size=0, Stream=[])
         if leaf in ("markers", "banner", "chapterImages", "indexes"):
             # All 404 on a real PMS for a row like plexsim's: no intro markers,
@@ -4067,6 +4217,9 @@ class PlexSim:
         query = query or {}
         start_raw = query.get("X-Plex-Container-Start")
         size_raw = query.get("X-Plex-Container-Size")
+        if size_raw == "":
+            # Measured: an EMPTY size is a 500 even with no start beside it.
+            raise filters_module.FilterError(500, "bad container parameter")
         if start_raw is None or size_raw is None:
             return list(rows), False, 0, len(rows)
         try:
@@ -5003,80 +5156,171 @@ class PlexSim:
         three 1000s on every request, which tells a client that a transcode
         decision was made when none was.
 
-        The container's own fields are measured too: `resourceSession` is the
-        CLIENT IDENTIFIER (not the `session` parameter), `allowSync` is the string
+        The container's own fields are measured too: `allowSync` is the string
         "1", and `librarySectionID` and `mediaTagVersion` are strings here where
-        every other endpoint sends them as numbers.
+        every other endpoint sends them as numbers. `resourceSession` is the
+        client's X-Plex-Session-Identifier, falling back to its client identifier
+        and to an EMPTY string -- re-measured with a session identifier present,
+        correcting the earlier note that it is always the client identifier.
         """
-        path = query.get("path", "")
-        tail = path.rstrip("/").rsplit("/", 1)[-1]
-        row = self.catalog.items.get(int(tail)) if tail.isdigit() else None
+        def param(name):
+            return query.get(name) or (headers or {}).get(name)
 
-        rows = []
-        if row is not None:
-            item = _full(row)
-            media = []
-            for source in item.get("Media", []):
-                copy = dict(source)
-                copy["selected"] = True
-                parts = []
-                for part in copy.get("Part", []):
-                    part_copy = dict(part)
-                    part_copy["decision"] = "directplay"
-                    part_copy["selected"] = True
-                    parts.append(part_copy)
-                copy["Part"] = parts
-                media.append(copy)
-            item["Media"] = media
-            rows.append(item)
-
-        if row is not None:
-            # The timeline's Bandwidths block appears only once a decision has been
-            # made for the item, so the decision is what arms it.
-            self.decided.add(int(row["ratingKey"]))
-        logger.info("DECISION direct play for path=%s (%s)", path, "hit" if rows else "miss")
-
-        section = self.catalog.section(row["librarySectionID"]) if row else {}
+        row, refusal = self._decision_target(query, headers)
+        if refusal:
+            return refusal
+        section = self.catalog.section(row["librarySectionID"]) or {}
         fields = {
             "allowSync": "1",
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
             "mediaTagVersion": "1655122614",
+            "librarySectionID": str(row["librarySectionID"]),
+            "librarySectionTitle": section.get("title"),
+            "librarySectionUUID": section.get("uuid"),
         }
-        if row is not None:
-            fields["librarySectionID"] = str(row["librarySectionID"])
-            fields["librarySectionTitle"] = (section or {}).get("title")
-            fields["librarySectionUUID"] = (section or {}).get("uuid")
-        identifier = (headers or {}).get("X-Plex-Client-Identifier") \
-            or query.get("X-Plex-Client-Identifier")
-        if identifier:
-            fields["resourceSession"] = identifier
-        # Measured: without `hasMDE=1` the client has not claimed it can make a
-        # media decision, and a real PMS then refuses direct play outright with the
-        # 3000/1001 set -- naming the protocol it fell back to. plexsim answered the
-        # MDE pair to a client that never claimed MDE, which tells it a decision was
-        # made on its behalf.
+        path = query.get("path", "")
         if query.get("directPlay") == "0" or query.get("hasMDE") != "1":
-            # Measured verbatim, including the punctuation: the client shows this
-            # text in its playback-info panel.
-            media = (row.get("Media") or [{}])[0] if row is not None else {}
-            refusal = ("Direct play is disabled." if query.get("directPlay") == "0"
-                       else "No direct play video profile exists for protocol %s, "
-                            "with container %s, and video codec %s."
-                            % (query.get("protocol") or "http",
-                               media.get("container") or "", media.get("videoCodec") or ""))
+            # Direct play refused -- and plexsim cannot convert, so this is the
+            # measured "neither" answer, not the "Conversion OK" a PMS with an
+            # encoder gives. A real PMS answers exactly this for a client whose
+            # profile has no conversion target (`Generic`, `Sonos`): general 2000,
+            # transcode 4005 naming the protocol, NO Metadata and no
+            # resourceSession. plexsim answered 1001 "Conversion OK.", so the client
+            # went on to request a transcode that 404'd and showed a generic error;
+            # a code of 2000 or more is what it shows its own message for.
+            # Without hasMDE the direct-play text always names protocol `http`,
+            # whatever protocol was asked for (measured).
+            media = (row.get("Media") or [{}])[0]
+            reason = ("Direct play is disabled." if query.get("directPlay") == "0"
+                      else "No direct play video profile exists for protocol http, "
+                           "with container %s, and video codec %s."
+                           % (media.get("container") or "", media.get("videoCodec") or ""))
             fields.update(
                 directPlayDecisionCode=3000,
-                directPlayDecisionText="App cannot direct play this item. " + refusal,
-                generalDecisionCode=1001,
-                generalDecisionText="Direct play not available; Conversion OK.",
-                transcodeDecisionCode=1001,
-                transcodeDecisionText="Direct play not available; Conversion OK.",
+                directPlayDecisionText="App cannot direct play this item. " + reason,
+                generalDecisionCode=2000,
+                generalDecisionText="Neither direct play nor conversion is available.",
+                transcodeDecisionCode=4005,
+                transcodeDecisionText="Cannot convert this item. No conversion profile "
+                                      "found for protocol %s."
+                                      % (query.get("protocol") or "http"),
             )
-        else:
-            fields.update(mdeDecisionCode=1000,
-                          mdeDecisionText="Direct play OK.")
-        return self.container(Metadata=rows, **fields)
+            logger.info("DECISION refused for path=%s", path)
+            return self.container(size=0, **fields)
+
+        # The timeline's Bandwidths block appears only once a decision has been
+        # made for the item, so the decision is what arms it.
+        self.decided.add(int(row["ratingKey"]))
+        fields["resourceSession"] = (param("X-Plex-Session-Identifier")
+                                     or param("X-Plex-Client-Identifier") or "")
+        fields.update(mdeDecisionCode=1000, mdeDecisionText="Direct play OK.")
+        logger.info("DECISION direct play for path=%s", path)
+        return self.container(Metadata=[self._decision_row(row, query)], **fields)
+
+    def _decision_target(self, query, headers=None):
+        """The row a decision or a transcode start is FOR, or the 400 refusing it.
+
+        Measured, every one a 400 with nothing in the body: no parameters; a path
+        that is not `/library/metadata/{id}` of a playable row (an unknown id, a
+        show, a season, `/children`, a section); a missing, non-numeric or
+        out-of-range `mediaIndex`; an out-of-range `partIndex` (a MISSING one is
+        fine); and a request whose profile, platform and device all name no client
+        profile. plexsim answered "Direct play OK." to every one of them, for things
+        it cannot play and for nothing at all.
+        """
+        def param(name):
+            return query.get(name) or (headers or {}).get(name)
+
+        if not any(param(name) in CLIENT_PROFILES for name in
+                   ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device")):
+            return None, ("error", 400, "plexsim: bad request")
+        match = re.search(r"/library/metadata/(\d+)/?$", query.get("path") or "")
+        row = self.catalog.items.get(int(match.group(1))) if match else None
+        media = (row or {}).get("Media") or []
+        if not media:
+            return None, ("error", 400, "plexsim: bad request")
+        index = query.get("mediaIndex") or ""
+        if not index.isdigit() or int(index) >= len(media):
+            return None, ("error", 400, "plexsim: bad request")
+        part = query.get("partIndex")
+        if part is not None and (not part.isdigit()
+                                 or int(part) >= len(media[int(index)].get("Part") or [])):
+            return None, ("error", 400, "plexsim: bad request")
+        return row, None
+
+    def _decision_row(self, row, query):
+        """The row a direct-play decision echoes, measured against the detail row.
+
+        It is the detail row without `Guid` and `Image` (and a movie's `summary`),
+        with `selected` on the chosen Media, `decision`/`selected` on its Parts and
+        `location: "direct"` on every Stream -- and in JSON the Media, Part and
+        Stream ids, `aspectRatio` and `hasVoiceActivity` are STRINGS here, where the
+        detail endpoint sends numbers and a boolean.
+        """
+        item = _full(row)
+        item.pop("Guid", None)
+        item.pop("Image", None)
+        if row.get("type") == "movie":
+            item.pop("summary", None)
+        chosen = int(query.get("mediaIndex") or 0)
+        media = []
+        for position, source in enumerate(item.get("Media") or []):
+            copy = {k: v for k, v in source.items() if k != "Part"}
+            copy["id"] = str(copy.get("id"))
+            if copy.get("aspectRatio") is not None:
+                copy["aspectRatio"] = str(copy["aspectRatio"])
+            copy["hasVoiceActivity"] = "1" if copy.get("hasVoiceActivity") else "0"
+            if position == chosen:
+                copy["selected"] = True
+            parts = []
+            for part in source.get("Part") or []:
+                entry = {k: v for k, v in part.items()
+                         if k not in ("Stream", "exists", "accessible")}
+                entry["id"] = str(entry.get("id"))
+                entry["decision"] = "directplay"
+                entry["selected"] = True
+                streams = [dict(stream, id=str(stream.get("id")), location="direct")
+                           for stream in part.get("Stream") or []]
+                if streams:
+                    entry["Stream"] = streams
+                parts.append(entry)
+            copy["Part"] = parts
+            media.append(copy)
+        item["Media"] = media
+        return item
+
+    def download_queue(self, method, segments, query, headers=None):
+        """`/downloadQueue` -- the mobile apps' download queue, which `GET /` names.
+
+        Measured: the bare GET is the plug-in dispatcher's `{size 0, content
+        plugins}`; `POST /downloadQueue` answers a `DownloadQueue` row for the
+        calling client -- the SAME queue on a second POST from that client -- and
+        `/downloadQueue/{id}` reads it back, with `/items` an empty container. An
+        unknown id is a 404, and so is a DELETE of a queue that exists. plexsim
+        404'd all of it while listing `downloadQueue` among its root endpoints.
+        What adding an item does was not measured, so it is not answered.
+        """
+        if len(segments) == 1:
+            if method == "POST":
+                client = (query.get("X-Plex-Client-Identifier")
+                          or (headers or {}).get("X-Plex-Client-Identifier") or "")
+                queue = self.download_queues.get(client)
+                if queue is None:
+                    queue = {"id": len(self.download_queues) + 1, "owner": 1,
+                             "clientIdentifier": client, "itemCount": 0, "status": "done"}
+                    self.download_queues[client] = queue
+                return self.bare_container(size=1, DownloadQueue=[dict(queue)])
+            return self.bare_container(size=0, content="plugins")
+        queue = next((q for q in self.download_queues.values()
+                      if str(q["id"]) == segments[1]), None)
+        if queue is None or method not in ("GET", "HEAD"):
+            return ("error", 404, "plexsim: not found")
+        if len(segments) == 2:
+            return self.bare_container(size=1, DownloadQueue=[dict(queue)])
+        if len(segments) == 3 and segments[2] == "items":
+            return self.bare_container(size=0)
+        return ("error", 404, "plexsim: not found")
 
     def timeline(self, query, headers=None, address=None):
         """`/:/timeline` -- the player's progress report, and what CREATES a session.
@@ -5134,20 +5378,26 @@ class PlexSim:
             client = (query.get("X-Plex-Client-Identifier")
                       or (headers.get("X-Plex-Client-Identifier") if headers else None))
             device = self.sessions.device_id(client)
+            playing_session = (query.get("X-Plex-Session-Identifier")
+                               or (headers.get("X-Plex-Session-Identifier") if headers else None)
+                               or client or "")
             self.library.progress(int(rating_key), offset_ms, state=state,
-                                  duration=total_ms, device_id=device)
+                                  duration=total_ms, device_id=device,
+                                  session=playing_session)
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms)
             self.notify_playing(entry, row, state, offset_ms)
-            # Measured thresholds: nothing is reported back under a minute.
+            # Measured thresholds: nothing is reported back at or under a minute, on
+            # ANY state, and past 90% the play is `complete` on any state too.
+            # `viewCount` is the item's own count -- 0 on a first play in progress,
+            # measured -- where plexsim sent 1 for anything past a minute.
+            total = total_ms or row.get("duration") or 0
             if offset_ms > 60000:
                 playback_state = "progress"
-                view_count = 1
-            if state == "stopped":
-                watched = total_ms and offset_ms >= total_ms * 0.9
-                if watched:
+                if total and offset_ms >= total * 0.9:
                     playback_state = "complete"
-                    view_count = 1
+            view_count = int(row.get("viewCount") or 0)
+            if state == "stopped":
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0,
                                           device_id=device)
             media = (row.get("Media") or [{}])[0]
@@ -5180,7 +5430,10 @@ class PlexSim:
         # STORED offset and is -1 only when it has none. plexsim always sent -1, so
         # a client reading its resume point off the timeline never found one.
         stored = row.get("viewOffset")
-        return self.bare_container(size=1, playbackState=playback_state,
+        # Measured: `size` counts the Bandwidths block and nothing else -- 0 before a
+        # decision, 1 after. plexsim sent 1 on every response.
+        return self.bare_container(size=1 if fields.get("Bandwidths") else 0,
+                                   playbackState=playback_state,
                                    skipCount=0, viewCount=view_count,
                                    viewOffset=int(stored) if stored else -1,
                                    **fields)
@@ -5323,7 +5576,10 @@ class PlexSim:
         """
         wanted = {}
         for name, stream_type in (("audioStreamID", 2), ("subtitleStreamID", 3)):
-            if name in query:
+            # Measured: a value that is not a number -- empty, or `abc` -- is
+            # IGNORED with a 200 and the selection left alone. Only a numeric id of
+            # the wrong type is refused. plexsim 400'd the malformed ones.
+            if name in query and str(query[name]).isdigit():
                 wanted[stream_type] = query[name]
         if not wanted:
             return ("empty", 200)
@@ -5633,8 +5889,16 @@ class PlexSim:
                     smart=query.get("smart") == "1", uri=query.get("uri"))
                 logger.info("COLLECTION create %s smart=%s (%d item(s))",
                             collection["title"], collection["smart"], len(rows))
-                return self.bare_container(
-                    size=1, Metadata=[self.library._collection_row(collection)])
+                # Measured: a create pushes one frame -- type 18, state 0 "created",
+                # titled -- which plexsim never sent, and the create RESPONSE carries
+                # no librarySection fields where the ADD response does.
+                self.notify_created({"ratingKey": collection["ratingKey"],
+                                     "type": "collection", "title": collection["title"],
+                                     "librarySectionID": collection["librarySectionID"]})
+                created = {k: v for k, v in self.library._collection_row(collection).items()
+                           if k not in ("librarySectionID", "librarySectionKey",
+                                        "librarySectionTitle")}
+                return self.bare_container(size=1, Metadata=[created])
             # A real PMS 404s the bare GET: collections are listed per section.
             return ("error", 404, "plexsim: not found")
 
@@ -5644,11 +5908,22 @@ class PlexSim:
 
         if len(segments) == 3:
             if method == "DELETE":
-                title = collection.get("title") or ""
+                # Measured order: every MEMBER is queued (state 3), then every member
+                # is done (state 5) -- which is what makes another client refetch the
+                # rows and drop the collection's tag from them -- and only then the
+                # collection's own state 9, whose title is EMPTY. plexsim pushed the
+                # state 9 alone. A smart collection tags nobody, so it has no members
+                # to refetch.
+                members = ([] if collection.get("smart")
+                           else list(self.library.collection_children(collection)))
                 self.library.delete_collection(segments[2])
+                for member in members:
+                    self.notify_timeline(member, self.TIMELINE_QUEUED, "queued")
+                for member in members:
+                    self.notify_timeline(member, self.TIMELINE_DONE, None)
                 self.notify_deleted({"ratingKey": segments[2], "type": "collection",
                                      "librarySectionID": collection["librarySectionID"],
-                                     "title": title})
+                                     "title": ""})
                 return ("empty", 200)
             if method == "PUT":
                 self.library.edit_collection(
@@ -5681,7 +5956,9 @@ class PlexSim:
             # member list was blank.
             rows = [_listing_row(r) for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
-        if leaf == "items" and len(segments) == 5 and method == "DELETE":
+        # Measured: `/children/{ratingKey}` removes a member exactly as `/items/` does;
+        # plexsim answered it with an empty 200 and removed nothing.
+        if leaf in ("items", "children") and len(segments) == 5 and method == "DELETE":
             # Remove-from-collection, which the client builds as
             # `collection.url + "/items/" + ratingKey` with type DELETE and then
             # assigns the RESPONSE onto its own model. plexsim had no DELETE branch
@@ -6833,6 +7110,15 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length) if length else b""
 
+        target = (self.requestline.split(" ") + ["", ""])[1]
+        if target.startswith("//"):
+            # Measured: a leading empty segment is a 404 like any other. The stdlib's
+            # request parser collapses a leading `//` to `/` before this handler ever
+            # sees `self.path` (an open-redirect guard), so it is read off the request
+            # line -- `//identity` otherwise answered the identity document.
+            self._send(404, "text/plain", b"plexsim: not found")
+            return
+
         if not self._authorised(self.path):
             # Byte-for-byte the reference's refusal: the HTML shell, text/html,
             # no-cache, and `Connection: close`.
@@ -7080,6 +7366,11 @@ class Handler(BaseHTTPRequestHandler):
         filters = [f for f in (urllib.parse.parse_qs(
             urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
         ).split(",") if f]
+        # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
+        # everything INCLUDING the log stream, which a socket with no `filters` at all
+        # does not get.
+        everything = not filters and "filters" in urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query, keep_blank_values=True)
         logger.info("websocket event channel opened filters=%s", filters or "all")
 
         sim = self.server.sim
@@ -7095,7 +7386,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
 
         sim.add_socket(sink, filters)
-        if "log" in filters:
+        if "log" in filters or everything:
             # The Console's log pane. An earlier finding recorded that this channel
             # carries no log frames on a real server either -- which was a
             # measurement taken WITHOUT the `filters=log` the client actually sends.
@@ -7185,6 +7476,11 @@ class Handler(BaseHTTPRequestHandler):
         filters = [f for f in (urllib.parse.parse_qs(
             urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
         ).split(",") if f]
+        # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
+        # everything INCLUDING the log stream, which a socket with no `filters` at all
+        # does not get.
+        everything = not filters and "filters" in urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query, keep_blank_values=True)
 
         def sink(kind, element, rows):
             frames = "".join(
@@ -7195,17 +7491,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.flush()
 
         sim.add_socket(sink, filters)
-        if "log" in filters:
+        if "log" in filters or everything:
             sim.log_sink(sink)
         deadline = time.time() + 300
         try:
             while time.time() < deadline:
+                # Measured: the FIRST ping arrives ten seconds in, not on connect.
+                time.sleep(10)
                 with lock:
                     # Measured: a real named SSE event every 10 s, not a comment
                     # every 15 -- a comment is invisible to an EventSource listener.
                     self.wfile.write(b"event: ping\ndata: {}\n\n")
                     self.wfile.flush()
-                time.sleep(10)
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
         finally:

@@ -150,7 +150,10 @@ def main():
 
         # 2. decision
         status, _, body = fetch(
-            "%s/video/:/transcode/universal/decision?path=%s&directPlay=1&hasMDE=1"
+            # The parameters a player really sends. A real PMS 400s a decision with no
+            # mediaIndex, and one whose X-Plex-Platform names no client profile.
+            "%s/video/:/transcode/universal/decision?path=%s&mediaIndex=0&partIndex=0"
+            "&protocol=http&directPlay=1&directStream=1&hasMDE=1&X-Plex-Platform=Chrome"
             % (args.local, urllib.parse.quote("/library/metadata/%s" % rating_key, safe="")),
             headers={"Accept": "application/json"})
         decision = None

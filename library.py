@@ -196,7 +196,8 @@ class Library:
             row["lastRatedAt"] = _now()
         return row
 
-    def progress(self, rating_key, offset, state=None, duration=None, device_id=1):
+    def progress(self, rating_key, offset, state=None, duration=None, device_id=1,
+                 session=""):
         """A timeline update. `stopped` past 90% counts as a view, as PMS does.
 
         `device_id` is the client that played: the history row names it, and a
@@ -215,15 +216,27 @@ class Library:
             # at 3 000, 20 000 and 59 000 ms, and only starts recording at 61 000.
             # plexsim answered `ignore` and wrote the offset anyway, so a title
             # glanced at for two seconds appeared in Continue Watching.
-            # The boundary is bracketed rather than pinned: 59 000 is measured NOT
-            # stored and 61 000 IS, so the threshold is somewhere in between and
-            # 60 000 -- Plex's own documented "ignore under a minute" -- is the
-            # reading. python-plexapi's own progress test uses exactly 60 000.
-            if int(offset) >= 60000 or state == "stopped":
+            # Pinned since: EXACTLY 60 000 is not stored, and the rule holds for
+            # EVERY state -- a `stopped` beat under a minute stores nothing either,
+            # measured at 30 000 and at 59 500 of a 60 000 ms item. plexsim exempted
+            # `stopped`, so stopping a trailer at ten seconds left a resume point on
+            # it, and stopping one near its end marked it watched.
+            # A position inside the last 10% is a completion, not a resume point:
+            # the reference answers `viewOffset: -1` from there on.
+            near_end = total and int(offset) >= total * 0.9
+            if int(offset) > 60000 and not near_end:
                 row["viewOffset"] = int(offset)
                 row["lastViewedAt"] = _now()
-        if state == "stopped":
-            if total and row.get("viewOffset", 0) >= total * 0.9:
+        # A play COMPLETES past 90% on any state -- measured: a `playing` beat at 95%
+        # answers `complete` and sets viewCount, and the `stopped` beat after it
+        # counts nothing again. Nothing under a minute ever completes. `_completed`
+        # names the playback session that completed it, so one play does not count
+        # twice while another client's play still counts; a beat back under 90% is a
+        # new play and clears it.
+        position = int(offset) if offset is not None else int(row.get("viewOffset") or 0)
+        if total and position > 60000 and position >= total * 0.9:
+            if row.get("_completed") != (session or True):
+                row["_completed"] = session or True
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 row.pop("viewOffset", None)
                 self.record_view(row, device_id=device_id)
@@ -234,7 +247,9 @@ class Library:
                     if parent is not None:
                         parent["viewCount"] = int(parent.get("viewCount", 0)) + 1
                         parent["lastViewedAt"] = _now()
-            self.recount(row)
+                self.recount(row)
+        elif offset is not None and total and int(offset) < total * 0.9:
+            row.pop("_completed", None)
         return row
 
     def remove_from_continue_watching(self, rating_key):

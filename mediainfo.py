@@ -270,16 +270,25 @@ def _subtitle_stream(stream, stream_id):
     codec = stream.get("codec_name") or ""
     # Plex names the SRT codec "srt"; ffprobe calls it subrip.
     codec = {"subrip": "srt", "mov_text": "mov_text"}.get(codec, codec)
+    # Measured on 432 embedded subtitle tracks on fun: `default` and `forced`
+    # appear only when TRUE, every track says `canAutoSync: false`, and none
+    # carries `embeddedInVideo` -- which marks captions carried INSIDE the video
+    # stream, not a subtitle track muxed beside it. plexsim sent all three on
+    # every track, false flags included.
     row = {
         "id": stream_id,
         "streamType": 3,
+        "canAutoSync": False,
         "codec": codec,
         "index": stream.get("index"),
-        "default": bool(disposition.get("default")),
-        "forced": bool(disposition.get("forced")),
-        # Embedded tracks live inside the part; a sidecar would set `key`.
-        "embeddedInVideo": True,
     }
+    if disposition.get("default"):
+        row["default"] = True
+    if disposition.get("forced"):
+        row["forced"] = True
+    bitrate = stream.get("bit_rate")
+    if bitrate:
+        row["bitrate"] = int(int(bitrate) / 1000)
     row.update(_language_fields(tags))
     if tags.get("title"):
         row["title"] = tags["title"]
@@ -415,4 +424,12 @@ def normalize_media(media):
         for stream in part.get("Stream") or []:
             if "bitDepth" in stream:
                 stream["bitDepth"] = _int_or(stream["bitDepth"], stream["bitDepth"])
+            if stream.get("streamType") == 3:
+                # The subtitle flag rules, for catalogs built before they were
+                # measured (see _subtitle_stream).
+                stream.pop("embeddedInVideo", None)
+                for flag in ("default", "forced"):
+                    if not stream.get(flag):
+                        stream.pop(flag, None)
+                stream.setdefault("canAutoSync", False)
     return media

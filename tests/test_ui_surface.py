@@ -197,6 +197,9 @@ def request(base, method, path, want_json=True):
         "X-Plex-Client-Identifier": "plexsim-ui-test",
         "X-Plex-Product": "Plex Web",
         "X-Plex-Version": "4.147.1",
+        # The web client sends its platform on every request, and a real PMS picks
+        # the playback profile by it: a decision without one is a 400.
+        "X-Plex-Platform": "Chrome",
     })
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
@@ -498,10 +501,12 @@ def main():
     # 3. Continue Watching, and its own menu entry
     # ------------------------------------------------------------------
     print("\n=== context menu: continue watching ===")
-    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=60000"
+    # Past the minute: the reference does not store EXACTLY 60 000 (measured), so a
+    # resume point at 60 000 is not one.
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=90000"
                          "&duration=600000&identifier=com.plexapp.plugins.library"
                          % (movie, quote("/library/metadata/%s" % movie)))
-    status, timeline, _ = get(base, "/:/timeline?ratingKey=%s&state=stopped&time=60000" % movie)
+    status, timeline, _ = get(base, "/:/timeline?ratingKey=%s&state=stopped&time=90000" % movie)
     check("timeline answers with playbackState",
           status == 200 and timeline.get("playbackState") is not None,
           "playbackState=%s" % timeline.get("playbackState"))
@@ -1836,7 +1841,7 @@ def main():
             ("GET", "/library/sections/%s/search?query=a" % movie_section, 400,
              "section search"),
             ("GET", "/library/sections/%s/albums" % movie_section, 404, "a music leaf"),
-            ("GET", "/library/streams/1", 501, "sidecar stream extraction"),
+            ("GET", "/library/streams/99999999", 404, "an unknown sidecar stream"),
             ("GET", "/video/:/transcode/universal/subtitles?session=x", 400,
              "a subtitle request with no transcode session"),
             ("GET", "/library/optimize", 404, "optimize via GET"),
@@ -1961,9 +1966,14 @@ def main():
     check("the timeline answers playbackState=ignore under a minute",
           early.get("playbackState") == "ignore" and early.get("skipCount") == 0,
           "%s viewOffset=%s" % (early.get("playbackState"), early.get("viewOffset")))
+    # `viewCount` on the response is the item's OWN count -- 0 on a first play in
+    # progress, measured -- not a 1 for "being watched".
+    stored_count = (get(base, "/library/metadata/%s" % session_item)[1]
+                    .get("Metadata") or [{}])[0].get("viewCount", 0)
     check("and playbackState=progress past a minute",
-          late.get("playbackState") == "progress" and late.get("viewCount") == 1,
-          str(late.get("playbackState")))
+          late.get("playbackState") == "progress" and late.get("viewCount") == stored_count,
+          "%s viewCount=%s stored=%s" % (late.get("playbackState"), late.get("viewCount"),
+                                         stored_count))
     # Re-measured, correcting the earlier note: `viewOffset` is the item's STORED
     # offset and is -1 only when it has none. plexsim always sent -1, so a client
     # reading its resume point off the timeline never found one.
@@ -3271,13 +3281,16 @@ def main():
           % (ok_decision.get("resourceSession"), ok_decision.get("allowSync"),
              ok_decision.get("librarySectionID")))
     _, refused = decided("directPlay=0&directStream=1&hasMDE=1")
-    check("a refused direct play answers 3000 with 1001 either side",
+    # plexsim cannot convert, so a refused direct play is the measured "neither"
+    # answer a real PMS gives a client with no conversion profile -- not the
+    # 1001 "Conversion OK." of a server that has an encoder.
+    check("a refused direct play answers 3000 with 2000 and 4005",
           refused.get("directPlayDecisionCode") == 3000
-          and refused.get("generalDecisionCode") == 1001
-          and refused.get("transcodeDecisionCode") == 1001
+          and refused.get("generalDecisionCode") == 2000
+          and refused.get("transcodeDecisionCode") == 4005
           and "mdeDecisionCode" not in refused
           and refused.get("generalDecisionText")
-              == "Direct play not available; Conversion OK.",
+              == "Neither direct play nor conversion is available.",
           "%s / %s / %s" % (refused.get("directPlayDecisionCode"),
                             refused.get("generalDecisionCode"),
                             refused.get("transcodeDecisionCode")))
@@ -4584,6 +4597,328 @@ def main():
               and collection_row.get("librarySectionTitle"),
               ",".join(sorted(k for k in as_item if not isinstance(as_item[k], list))))
         request(base, "DELETE", "/library/collections/%s" % collection_key)
+
+    # ------------------------------------------------------------------
+    # Cycle 6: what the PLAYER asks for -- the decision, the transcode family,
+    # streams, the part URL and the download queue. Measured against the
+    # reference; every check fails against the server as it stood before.
+    # ------------------------------------------------------------------
+    print("\n=== the player's requests: decision, streams, parts, downloads ===")
+
+    def decide(params=None, headers=None):
+        spec = {"path": "/library/metadata/%s" % c5_movie, "mediaIndex": "0", "partIndex": "0",
+                "protocol": "dash", "directPlay": "1", "directStream": "1", "hasMDE": "1"}
+        for key, value in (params or {}).items():
+            if value is None:
+                spec.pop(key, None)
+            else:
+                spec[key] = value
+        sent = {"Accept": "application/json", "X-Plex-Client-Identifier": "plexsim-ui-test",
+                "X-Plex-Platform": "Chrome"}
+        for key, value in (headers or {}).items():
+            if value is None:
+                sent.pop(key, None)
+            else:
+                sent[key] = value
+        status, body, _ = raw("/video/:/transcode/universal/decision?"
+                              + urllib.parse.urlencode(spec), headers=sent)
+        return status, (json.loads(body).get("MediaContainer", {}) if body[:1] == b"{" else {})
+
+    statuses = [decide(params)[0] for params in (
+        {"path": "/library/metadata/99999999"},
+        {"path": "/library/metadata/%s" % (c5_show or 99999999)},
+        {"path": "/library/sections/%s" % movie_lib},
+        {"mediaIndex": None}, {"mediaIndex": "1"}, {"mediaIndex": "abc"}, {"partIndex": "5"})]
+    status_no_part, _ = decide({"partIndex": None})
+    check("a decision for nothing playable, or a bad index, is a 400",
+          statuses == [400] * 7 and status_no_part == 200,
+          "%s, missing partIndex %s" % (statuses, status_no_part))
+    profiles = [decide(headers={"X-Plex-Platform": platform})[0]
+                for platform in ("Darwin", None, "chrome", "Microsoft Edge")]
+    status_named, _ = decide(headers={"X-Plex-Platform": "Darwin",
+                                      "X-Plex-Client-Profile-Name": "Generic"})
+    check("a decision must name a client profile the server has",
+          profiles == [400, 400, 400, 200] and status_named == 200,
+          "%s, with a profile name %s" % (profiles, status_named))
+    status, refused = decide({"directPlay": "0"})
+    check("a refused direct play says neither play nor conversion is available",
+          status == 200 and refused.get("generalDecisionCode") == 2000
+          and refused.get("transcodeDecisionCode") == 4005
+          and refused.get("directPlayDecisionCode") == 3000
+          and refused.get("size") == 0 and not refused.get("Metadata")
+          and "resourceSession" not in refused,
+          "%s / %s / %s" % (refused.get("directPlayDecisionCode"),
+                            refused.get("generalDecisionCode"),
+                            refused.get("transcodeDecisionCode")))
+    _, no_mde = decide({"hasMDE": None, "protocol": "dash"})
+    check("without hasMDE the refusal always names protocol http",
+          "for protocol http," in str(no_mde.get("directPlayDecisionText")),
+          str(no_mde.get("directPlayDecisionText"))[:80])
+    _, with_session = decide(headers={"X-Plex-Session-Identifier": "c6-session"})
+    _, anonymous = decide(headers={"X-Plex-Client-Identifier": None})
+    check("resourceSession is the session identifier, else the client, else empty",
+          with_session.get("resourceSession") == "c6-session"
+          and anonymous.get("resourceSession") == "",
+          "%r / %r" % (with_session.get("resourceSession"), anonymous.get("resourceSession")))
+    _, played = decide()
+    decided_row = (played.get("Metadata") or [{}])[0]
+    decided_media = (decided_row.get("Media") or [{}])[0]
+    decided_part = (decided_media.get("Part") or [{}])[0]
+    decided_streams = decided_part.get("Stream") or []
+    check("a decision's row is its own projection, ids as strings, streams located",
+          "Guid" not in decided_row and "Image" not in decided_row
+          and isinstance(decided_part.get("id"), str) and isinstance(decided_media.get("id"), str)
+          and decided_media.get("hasVoiceActivity") in ("0", "1")
+          and decided_streams and all(s.get("location") == "direct" for s in decided_streams)
+          and "exists" not in decided_part,
+          "part id %r, locations %s" % (decided_part.get("id"),
+                                         [s.get("location") for s in decided_streams]))
+
+    status_start, _, _ = request(base, "GET", "/video/:/transcode/universal/start.mpd")
+    status_ping, _, _ = request(base, "GET", "/video/:/transcode/universal/ping")
+    status_ping_unknown, _, _ = request(base, "GET", "/video/:/transcode/universal/ping?session=nope")
+    check("the transcode start family validates before it refuses",
+          status_start == 400 and status_ping == 400 and status_ping_unknown == 404,
+          "start %s, ping %s, unknown session %s"
+          % (status_start, status_ping, status_ping_unknown))
+    writes = [request(base, method, "/transcode/sessions")[0] for method in ("DELETE", "POST")]
+    check("the bare transcode sessions collection takes no writes",
+          writes == [404, 404], str(writes))
+
+    detail_row = (get(base, "/library/metadata/%s" % c5_movie)[1].get("Metadata") or [{}])[0]
+    part_row = ((detail_row.get("Media") or [{}])[0].get("Part") or [{}])[0]
+    stream_ids = [s.get("id") for s in part_row.get("Stream") or []]
+    stream_statuses = [request(base, "GET", "/library/streams/%s" % sid)[0]
+                       for sid in ("99999999", "abc")]
+    status_put, _, _ = request(base, "PUT", "/library/streams/99999999")
+    status_known = request(base, "GET", "/library/streams/%s" % stream_ids[0])[0] \
+        if stream_ids else None
+    check("an unknown stream is a 404, a PUT to one a 400, a known one 501",
+          stream_statuses == [404, 404] and status_put == 400 and status_known == 501,
+          "%s / %s / %s" % (stream_statuses, status_put, status_known))
+    subtitle_statuses = [request(base, "GET", "/library/metadata/%s/subtitles%s"
+                                 % (c5_movie, spec))[0]
+                         for spec in ("", "?language=xx", "?language=eng", "?language=en-US")]
+    check("a subtitle search needs a real two-letter language",
+          subtitle_statuses == [400, 500, 500, 200], str(subtitle_statuses))
+    if part_row.get("id"):
+        status_empty, body_empty, _ = request(base, "PUT", "/library/parts/%s?audioStreamID="
+                                              % part_row["id"])
+        status_text, body_text, _ = request(base, "PUT", "/library/parts/%s?subtitleStreamID=abc"
+                                            % part_row["id"])
+        check("a malformed stream id is ignored, not refused",
+              is_empty_200(status_empty, body_empty) and is_empty_200(status_text, body_text),
+              "%s / %s" % (status_empty, status_text))
+        stamp = str(part_row.get("key", "")).split("/")
+        version = stamp[4] if len(stamp) > 4 else "1"
+        deeper = [request(base, "HEAD", path, want_json=False)[0] for path in (
+            "/library/parts/%s/indexes/sd" % part_row["id"],
+            "/library/parts/%s/indexes/sd/1000" % part_row["id"],
+            "/library/parts/%s/x/file.mkv" % part_row["id"],
+            "/library/parts/%s/%s/file.mkv/extra" % (part_row["id"], version))]
+        check("only /library/parts/{id}/{version}/{file} is the media",
+              deeper == [404, 404, 404, 404], str(deeper))
+
+    subtitle_tracks = [s for row in get(base, "/library/sections/%s/all?type=4" % show_lib)[1]
+                       .get("Metadata") or [] if show_lib
+                       for s in ((get(base, "/library/metadata/%s" % row["ratingKey"])[1]
+                                  .get("Metadata") or [{}])[0].get("Media") or [{}])[0]
+                       .get("Part", [{}])[0].get("Stream") or []
+                       if s.get("streamType") == 3]
+    if subtitle_tracks:
+        check("a subtitle track carries only true flags and canAutoSync",
+              all("embeddedInVideo" not in s and s.get("canAutoSync") is False
+                  and s.get("default", True) is True and s.get("forced", True) is True
+                  for s in subtitle_tracks),
+              "%d track(s)" % len(subtitle_tracks))
+    else:
+        skip("a subtitle track carries only true flags and canAutoSync",
+             "no episode in this catalog carries a subtitle track")
+
+    status_q, queue_doc, _ = container(base, "POST", "/downloadQueue")
+    queue = (queue_doc.get("DownloadQueue") or [{}])[0]
+    _, again, _ = container(base, "POST", "/downloadQueue")
+    status_read, read_back, _ = get(base, "/downloadQueue/%s" % queue.get("id"))
+    status_items, items, _ = get(base, "/downloadQueue/%s/items" % queue.get("id"))
+    status_delete, _, _ = request(base, "DELETE", "/downloadQueue/%s" % queue.get("id"))
+    _, bare_queue, _ = get(base, "/downloadQueue")
+    check("the download queue is created per client and read back",
+          status_q == 200 and queue.get("clientIdentifier") == "plexsim-ui-test"
+          and queue.get("status") == "done"
+          and (again.get("DownloadQueue") or [{}])[0].get("id") == queue.get("id")
+          and status_read == 200 and (read_back.get("DownloadQueue") or [{}])[0].get("id")
+          == queue.get("id") and status_items == 200 and items.get("size") == 0
+          and status_delete == 404 and bare_queue.get("content") == "plugins",
+          "POST %s id=%s, read %s, items %s, delete %s"
+          % (status_q, queue.get("id"), status_read, status_items, status_delete))
+
+    print("\n=== what every write pushes, and malformed identifiers ===")
+
+    def timeline_entries(frames):
+        return [entry for frame in frames
+                if (frame.get("NotificationContainer") or {}).get("type") == "timeline"
+                for entry in frame["NotificationContainer"].get("TimelineEntry") or []]
+
+    def detail_of(key):
+        return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+
+    machine_now = get(base, "/identity")[1].get("machineIdentifier")
+    member_uri = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                       % (machine_now, c5_movie))
+    made = {}
+
+    def list_lifecycle():
+        _, doc, _ = container(base, "POST", "/playlists?type=video&title=Cycle6List&smart=0"
+                                            "&uri=%s" % member_uri)
+        made["playlist"] = (doc.get("Metadata") or [{}])[0].get("ratingKey")
+        time.sleep(0.3)
+        request(base, "DELETE", "/playlists/%s" % made["playlist"])
+
+    _, frames = notifications(base, list_lifecycle, seconds=4)
+    mine = [(e.get("state"), e.get("type")) for e in timeline_entries(frames)
+            if str(e.get("itemID")) == str(made.get("playlist"))]
+    check("a playlist's create and delete frames are typed 15", mine == [(0, 15), (9, 15)],
+          str(mine))
+
+    def collection_lifecycle():
+        _, doc, _ = container(base, "POST", "/library/collections?type=1&title=Cycle6Set"
+                                            "&smart=0&sectionId=%s&uri=%s" % (movie_lib, member_uri))
+        made["collection"] = (doc.get("Metadata") or [{}])[0]
+        time.sleep(0.3)
+        request(base, "DELETE", "/library/collections/%s" % made["collection"].get("ratingKey"))
+
+    _, frames = notifications(base, collection_lifecycle, seconds=4)
+    collection_key = str((made.get("collection") or {}).get("ratingKey"))
+    entries = timeline_entries(frames)
+    sequence = [(str(e.get("itemID")) == collection_key, e.get("state"), e.get("type"),
+                 e.get("metadataState")) for e in entries]
+    check("a collection's lifecycle: created, its members refetched, then deleted",
+          sequence == [(True, 0, 18, "created"), (False, 3, 1, "queued"), (False, 5, 1, None),
+                       (True, 9, 18, "deleted")], str(sequence))
+    gone = [e for e in entries if str(e.get("itemID")) == collection_key and e.get("state") == 9]
+    check("a collection create answers no section fields and its delete frame no title",
+          "librarySectionID" not in (made.get("collection") or {})
+          and gone and gone[0].get("title") == "",
+          "create keys %s" % sorted(k for k in (made.get("collection") or {})
+                                    if k.startswith("librarySection")))
+    movie_detail = detail_of(c5_movie)
+    member_titles = {e.get("title") for e in entries if str(e.get("itemID")) == str(c5_movie)}
+    wanted_title = ("%s (%s)" % (movie_detail.get("title"), movie_detail.get("year"))
+                    if movie_detail.get("year") else movie_detail.get("title"))
+    check("a movie's frames carry its year in the title", member_titles == {wanted_title},
+          str(member_titles))
+
+    _, doc, _ = container(base, "POST", "/library/collections?type=1&title=Cycle6Member&smart=0"
+                                        "&sectionId=%s&uri=%s" % (movie_lib, member_uri))
+    member_collection = (doc.get("Metadata") or [{}])[0].get("ratingKey")
+    if member_collection:
+        status, _, _ = request(base, "DELETE", "/library/collections/%s/children/%s"
+                               % (member_collection, c5_movie))
+        members = get(base, "/library/collections/%s/children" % member_collection)[1] \
+            .get("Metadata") or []
+        check("removing a member through /children removes it",
+              status == 200 and not any(str(m.get("ratingKey")) == str(c5_movie) for m in members),
+              "HTTP %s, %d member(s) left" % (status, len(members)))
+        request(base, "DELETE", "/library/collections/%s" % member_collection)
+
+    def edits():
+        request(base, "PUT", "/library/metadata/%s?summary.value=%s"
+                % (c5_movie, quote("cycle six item edit")))
+        time.sleep(0.3)
+        request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&summary.value=%s"
+                % (movie_lib, c5_movie, quote("cycle six section edit")))
+
+    _, frames = notifications(base, edits, seconds=4)
+    first_states = [e.get("metadataState") for e in timeline_entries(frames)
+                    if str(e.get("itemID")) == str(c5_movie) and e.get("state") == 3]
+    check("an item-path edit is `loading` and a section edit `queued`",
+          first_states == ["loading", "queued"], str(first_states))
+
+    subject = c5_episode or c5_movie
+    player6 = {"X-Plex-Client-Identifier": "plexsim-c6-timeline", "Accept": "application/json",
+               "X-Plex-Platform": "Chrome"}
+
+    def beat6(state, offset, duration):
+        _, body, _ = raw("/:/timeline?ratingKey=%s&key=%s&state=%s&time=%d&duration=%d"
+                         % (subject, quote("/library/metadata/%s" % subject), state, offset,
+                            duration), headers=player6)
+        return json.loads(body).get("MediaContainer", {}) if body[:1] == b"{" else {}
+
+    before = detail_of(subject)
+    short = beat6("stopped", 59500, 60000)
+    after_short = detail_of(subject)
+    check("a stopped beat under a minute is ignored and stores nothing",
+          short.get("playbackState") == "ignore"
+          and after_short.get("viewCount", 0) == before.get("viewCount", 0)
+          and after_short.get("viewOffset") == before.get("viewOffset"),
+          "%s viewCount %s->%s" % (short.get("playbackState"), before.get("viewCount", 0),
+                                   after_short.get("viewCount", 0)))
+    exact = beat6("playing", 60000, 734000)
+    check("exactly one minute is still ignored",
+          exact.get("playbackState") == "ignore"
+          and detail_of(subject).get("viewOffset") == before.get("viewOffset"),
+          str(exact.get("playbackState")))
+    if short.get("Bandwidths"):
+        skip("the timeline response's size counts only Bandwidths", "a decision is armed here")
+    else:
+        check("the timeline response's size counts only Bandwidths", short.get("size") == 0,
+              "size=%s" % short.get("size"))
+    done = beat6("playing", 700000, 734000)
+    after_done = detail_of(subject)
+    stop = beat6("stopped", 700100, 734000)
+    after_stop = detail_of(subject)
+    check("a playing beat past 90% completes the play, and stopping after counts nothing",
+          done.get("playbackState") == "complete"
+          and after_done.get("viewCount", 0) == before.get("viewCount", 0) + 1
+          and after_stop.get("viewCount", 0) == after_done.get("viewCount", 0)
+          and "viewOffset" not in after_stop and stop.get("playbackState") == "complete",
+          "viewCount %s -> %s -> %s, offset %s" % (before.get("viewCount", 0),
+                                                  after_done.get("viewCount", 0),
+                                                  after_stop.get("viewCount", 0),
+                                                  after_stop.get("viewOffset")))
+
+    refused = [request(base, "GET", path)[0] for path in (
+        "/identity?foo", "/library/sections?&", "/library/metadata/%s?includeGuids" % c5_movie)]
+    accepted = [request(base, "GET", path)[0] for path in ("/identity?", "/library/sections?foo=")]
+    check("a query parameter with no = is a 400", refused == [400, 400, 400]
+          and accepted == [200, 200], "%s / %s" % (refused, accepted))
+    slashes = [request(base, "GET", path)[0] for path in (
+        "//identity", "/library//sections", "/library/metadata/%s//children" % c5_movie)]
+    status_trailing, trailing, _ = get(base, "/library/sections/")
+    status_history, _, _ = get(base, "/status/sessions/history/")
+    check("an empty path segment is a 404, one trailing slash is not",
+          slashes == [404, 404, 404] and status_trailing == 200 and trailing.get("Directory")
+          and status_history == 404,
+          "%s, trailing %s, history %s" % (slashes, status_trailing, status_history))
+    refusals = (get(base, "/library/sections/abc")[0],
+                get(base, "/library/metadata/%s/children" % c5_movie)[0],
+                get(base, "/library/metadata/%s/allLeaves" % c5_movie)[0],
+                request(base, "GET", "/activities/abc")[0])
+    check("a word for a section id, a movie's children and an activity read refuse",
+          refusals == (404, 400, 200, 404), str(refusals))
+    one = get(base, "/library/metadata/%s,abc/tree" % c5_movie)[0]
+    many = get(base, "/library/metadata/%s,%s/tree" % (c5_movie, c5_movie))[0]
+    check("a leaf on a list with one numeric member is that item's leaf",
+          one == 200 and many == 404, "%s / %s" % (one, many))
+    sized = [request(base, "GET", path)[0] for path in (
+        "/playlists/2147483647", "/playlists/2147483648", "/playQueues/2147483648",
+        "/library/metadata/2147483648", "/playQueues/abc")]
+    check("an id past int32 is a 400 where it is parsed, and a play queue id must be a number",
+          sized == [404, 400, 400, 404, 400], str(sized))
+    _, both_types, _ = get(base, "/library/sections/%s/all?type=2&type=1" % movie_lib)
+    status_blank, _, _ = raw("/library/sections/%s/all" % movie_lib,
+                             headers={"Accept": "application/json", "X-Plex-Container-Size": ""})
+    check("a repeated type selects nothing, and an empty container size is a 500",
+          not both_types.get("Metadata") and status_blank == 500,
+          "%d row(s), blank size %s" % (len(both_types.get("Metadata") or []), status_blank))
+    status_quiet, quiet = eventsource(base, lambda: None, seconds=3)
+    check("the eventsource channel's first ping comes ten seconds in, not on connect",
+          status_quiet == 200 and not quiet, str(quiet[:2]))
+    _, logged = eventsource(base, lambda: request(base, "GET", "/log?level=3&message=cycle6"
+                                                               "&source=suite"),
+                            seconds=4, spec="?filters=")
+    check("an empty filters= delivers the log stream as well",
+          any(name == "log" for name, _ in logged), ",".join(sorted({n for n, _ in logged})))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

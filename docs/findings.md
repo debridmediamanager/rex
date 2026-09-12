@@ -2261,6 +2261,145 @@ Catalogs built before this carry the old fields, so `hierarchy.normalize_rows` a
   has no filesystem. `optimizedForStreaming` on an mp4 stays 0: where the moov atom
   sits is not something ffprobe reports.
 
+#### The sixth pass: what the player asks for, and what every write pushes
+
+Cycle 6 swept the playback surface and the notification channels. Both agents'
+before/after snapshots of the reference matched. One write could not be undone: a
+stray `POST /downloadQueue` created an empty download queue that `DELETE` refuses
+with a 404. It holds nothing and touches no library row.
+
+#### The decision refused nothing
+
+A real PMS validates a decision before it answers, and every refusal is a 400 with
+an HTML body. plexsim answered `mdeDecisionCode: 1000 "Direct play OK."` to all of
+them, including a path to nothing:
+
+- a path that is not `/library/metadata/{id}` of a playable row: an unknown id, a
+  show, a season, `/children` or a section;
+- a missing, non-numeric or out-of-range `mediaIndex`, and an out-of-range
+  `partIndex` (a MISSING `partIndex` is fine);
+- no client profile. The request is accepted exactly when
+  `X-Plex-Client-Profile-Name`, `X-Plex-Platform` or `X-Plex-Device` names a file in
+  the server's `Resources/Profiles` directory, read off the reference. `Chrome`,
+  `Windows`, `Konvergo`, `Microsoft Edge` and `Unknown Browser` pass; `Edge`,
+  `Darwin`, `Kodi`, `webOS`, `chrome` and `Chrome ` are 400s. A profile name rescues
+  a bad platform; a profile EXTRA does not.
+
+The start family (`start`, `start.m3u8`, `start.mpd`) validates the same way before
+it refuses, and `ping`/`stop` without a `session` are 400s.
+
+**A refused direct play is "neither", not "Conversion OK".** A PMS with an encoder
+answers `directPlay=0` with 3000 / 1001 / 1001. plexsim has no encoder, and the
+reference answers exactly the shape that describes that for a client whose profile
+has no conversion target (`Generic` or `Sonos` with direct play off). The shape is
+`generalDecisionCode 2000 "Neither direct play nor conversion is available."` and
+`transcodeDecisionCode 4005 "Cannot convert this item. No conversion profile found
+for protocol dash."`, with NO Metadata and no `resourceSession`. The web client
+treats any code of 2000 or more as final and shows its own text. Given 1001, it went
+on to request `start.mpd`, got the 404 and showed a generic playback error. The
+texts are verbatim; the full vocabulary is in the reference binary's strings.
+Without `hasMDE` the direct-play text always names protocol `http`, whatever
+protocol was asked for.
+
+**The decision row is its own projection.** It is the detail row without `Guid` and
+`Image`, and a movie's also without `summary`. The chosen Media carries `selected`,
+each Part carries `decision` and `selected`, and every Stream carries `location:
+"direct"`. In JSON the Media, Part and Stream ids, `aspectRatio` and
+`hasVoiceActivity` are STRINGS here, where the detail endpoint sends numbers and a
+boolean.
+
+**`resourceSession` is the X-Plex-Session-Identifier**, falling back to the client
+identifier and then to an EMPTY string. This corrects the earlier note, which was
+measured without a session identifier.
+
+#### Streams, parts and downloads
+
+| request | reference | plexsim before |
+|---|---|---|
+| `/library/streams/{unknown or word}`, bare `/library/streams` | 404 (501 only for a stream it has) | 501 |
+| `PUT /library/streams/{unknown}` | 400 | 501 |
+| `/library/metadata/{id}/subtitles` with no `language` | 400 | 200 |
+| `…?language=xx`, `eng`, empty | 500 (`en`, `EN`, `en-US`, `de` search) | 200 |
+| `PUT /library/parts/{id}?audioStreamID=` or `subtitleStreamID=abc` | 200, ignored | 400 |
+| `/library/parts/{id}/indexes/sd[/{ms}]`, `/{word}/file.mkv`, `/{v}/file.mkv/extra` | 404 | the part reader (whole video) |
+| `/library/parts/{id}`, `/{id}/file.mkv`, `/{id}/{wrong v}/{wrong name}` | 200 | 200 |
+| `DELETE` / `POST /transcode/sessions` | 404 | 200 |
+| `POST /downloadQueue` | a `DownloadQueue` row per client, the same on repeat | 404 |
+| `/downloadQueue/{id}`, `/items`; `DELETE /downloadQueue/{id}` | the row, `size 0`; 404 | 404 |
+
+On 432 embedded subtitle tracks on fun, `default` and `forced` appear only when true,
+every track says `canAutoSync: false`, and none carries `embeddedInVideo`. That
+field marks captions inside the video stream; plexsim set it on every track.
+
+#### Notifications: the type numbers and the collection lifecycle
+
+A playlist's TimelineEntry is `type 15` and a collection's `type 18`. The client
+builds the URL of the row it updates from that number, so plexsim's `1` dispatched a
+delete for a metadata row nobody holds, and a deleted list stayed on screen in every
+other client. Measured frame by frame on both channels:
+
+| write | frames |
+|---|---|
+| playlist create | `state 0 created`, type 15, sectionID `-1`, title `""` |
+| playlist delete | `state 9 deleted`, type 15, the playlist's title |
+| collection create | `state 0 created`, type 18, its title (plexsim sent nothing) |
+| collection delete | each member `state 3 queued`, then each member `state 5`, then `state 9 deleted`, type 18, title `""` |
+| edit on `/library/metadata/{id}` | `state 3 loading`, `state 5` |
+| edit through `/library/sections/{id}/all` | `state 3 queued`, `state 5` |
+| rate, scrobble, unscrobble, history delete, playlist or collection add/remove | nothing |
+
+A movie's frames title it with its year (`Elephants Dream (2006)`). The collection
+CREATE response carries no librarySection fields, where the ADD response does.
+`DELETE /library/collections/{id}/children/{ratingKey}` removes a member exactly as
+`/items/` does; plexsim answered it with an empty 200 and removed nothing.
+
+The eventsource channel's first ping comes ten seconds in, not on connect. And
+`filters=` with an EMPTY value is not "no filter": it delivers everything INCLUDING
+the log stream.
+
+#### The timeline's minute, pinned
+
+**Exactly 60 000 ms is not stored, and the rule holds on every state.** A `stopped`
+beat at 30 000, or at 59 500 of a 60 000 ms item, is `ignore` and stores nothing.
+plexsim exempted `stopped`, so stopping a trailer at ten seconds left a resume point,
+and stopping one near its end marked it watched with a history row. A play completes
+past 90% on ANY state: a `playing` beat at 95% answers `complete` and sets
+`viewCount`, and the `stopped` beat after it counts nothing again. The response's
+`viewCount` is the item's own count (0 while a first play is in progress), and its
+`size` counts the Bandwidths block and nothing else.
+
+#### Malformed identifiers and query edges
+
+Reference and fun agree on every one of these.
+
+| request | answer | plexsim before |
+|---|---|---|
+| a query pair with no `=` (`?includeGuids`, `?foo`, `?&`) on any path, `/identity` too | 400 | 200, `includeGuids` read as true |
+| an empty path segment (`//identity`, `/library//sections`) | 404 | 200 |
+| `/library/sections/` (one trailing slash) | the listing | 404 |
+| bare `/status/sessions/history` | 404 | 200 |
+| `/library/sections/abc`, `-1`, `1.5` | 404 | 400 |
+| `/library/metadata/{movie or episode}/children` | 400 (`/allLeaves` is 200) | 200 empty |
+| `GET /activities/{id}` | 404 | the list |
+| a leaf on `1,abc` (one numeric member) | that item's leaf | 404 |
+| an id ≥ 2^31 on playlists, playQueues, collections, devices, history, parts, streams | 400 (metadata and sections: 404) | 404 |
+| `/playQueues/abc` | 400 | 404 |
+| `?type=2&type=1` | nothing (repeated parameters AND) | the last one won |
+| an empty `X-Plex-Container-Size`, with or without a start | 500 | 200 |
+
+#### Measured in cycle 6 and deliberately left alone
+
+- The eventsource channel's transport. The reference streams chunked over
+  keep-alive; plexsim writes an unframed body with `Connection: close`, which an
+  EventSource reads the same way.
+- What adding an item to a download queue does, and the exact refusal text a PMS with
+  no transcoder at all would give. Neither could be measured without writes the lab's
+  safety rules forbid.
+- A valid transcode start still answers 404: the reference would transcode, and
+  plexsim cannot.
+- The effect of a subtitle selection on the play queue and the next decision. The lab
+  has no subtitle tracks and fun is read-only.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
