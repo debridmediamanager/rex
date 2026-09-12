@@ -486,10 +486,10 @@ def main():
     # 3. Continue Watching, and its own menu entry
     # ------------------------------------------------------------------
     print("\n=== context menu: continue watching ===")
-    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=60000"
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=60000"
                          "&duration=600000&identifier=com.plexapp.plugins.library"
                          % (movie, quote("/library/metadata/%s" % movie)))
-    status, timeline, _ = get(base, "/:/timeline?ratingKey=%s&state=playing&time=60000" % movie)
+    status, timeline, _ = get(base, "/:/timeline?ratingKey=%s&state=stopped&time=60000" % movie)
     check("timeline answers with playbackState",
           status == 200 and timeline.get("playbackState") is not None,
           "playbackState=%s" % timeline.get("playbackState"))
@@ -1061,8 +1061,8 @@ def main():
              "section search"),
             ("GET", "/library/sections/%s/albums" % movie_section, 404, "a music leaf"),
             ("GET", "/library/streams/1", 501, "sidecar stream extraction"),
-            ("GET", "/video/:/transcode/universal/subtitles?session=x", 404,
-             "a transcode session"),
+            ("GET", "/video/:/transcode/universal/subtitles?session=x", 400,
+             "a subtitle request with no transcode session"),
             ("GET", "/library/optimize", 404, "optimize via GET"),
             ("GET", "/system/appstore/updates", 404, "the channel appstore"),
             ("GET", "/library/collections", 404, "the bare collections path"),
@@ -1119,6 +1119,152 @@ def main():
           % (len(created), len(set(created))))
     for key in created:
         request(base, "DELETE", "/playlists/%s" % key)
+
+    print("\n=== playback sessions: Now Playing and the Dashboard ===")
+    # Measured: a session is created by /:/timeline, not by anyone reading bytes
+    # -- a bare timeline with no play queue, no decision and no part read puts a
+    # full row in /status/sessions, and `state=stopped` removes it. plexsim
+    # answered `{size:0}` for its whole life, so Now Playing was always empty and
+    # the Terminate button had nothing to act on.
+    session_item = spare or movie
+    identity = ("X-Plex-Client-Identifier=suite-probe&X-Plex-Session-Identifier=suite-sess"
+                "&X-Plex-Product=Plex+Web&X-Plex-Device=OSX&X-Plex-Device-Name=Harness"
+                "&X-Plex-Platform=Chrome&X-Plex-Version=4.147.1")
+
+    def beat(state, offset, item=None):
+        return container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&time=%d"
+                                     "&duration=600000&%s"
+                                     % (item or session_item,
+                                        quote("/library/metadata/%s" % (item or session_item)),
+                                        state, offset, identity))
+
+    # Anything an earlier check left playing is stopped first: a session is
+    # server state, and the point here is the transition, not the starting point.
+    _, existing, _ = get(base, "/status/sessions")
+    for open_row in existing.get("Metadata") or []:
+        container(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=1"
+                               "&X-Plex-Session-Identifier=%s"
+                               % (open_row.get("ratingKey"),
+                                  quote((open_row.get("Session") or {}).get("id") or "")))
+    status, idle, _ = get(base, "/status/sessions")
+    check("an idle server lists no session",
+          status == 200 and "Metadata" not in idle, ",".join(sorted(idle)))
+    beat("playing", 3000)
+    _, sessions, _ = get(base, "/status/sessions")
+    row = (sessions.get("Metadata") or [{}])[0]
+    check("a timeline alone creates a session",
+          sessions.get("size") == 1 and row.get("sessionKey"),
+          "sessionKey=%s" % row.get("sessionKey"))
+    check("the session row carries viewOffset, User, Player and Session",
+          row.get("viewOffset") == 3000 and row.get("User") and row.get("Player")
+          and row.get("Session"),
+          "viewOffset=%s" % row.get("viewOffset"))
+    player = row.get("Player") or {}
+    # Player is an echo of the client's own X-Plex values plus the peer address.
+    check("Player echoes the client and names the peer",
+          player.get("product") == "Plex Web" and player.get("title") == "Harness"
+          and player.get("machineIdentifier") == "suite-probe"
+          and player.get("address") and player.get("state") == "playing",
+          "%s / %s / %s" % (player.get("product"), player.get("address"),
+                            player.get("state")))
+    check("Session.id is the client's session identifier",
+          (row.get("Session") or {}).get("id") == "suite-sess",
+          str((row.get("Session") or {}).get("id")))
+    # The client renders "Direct Play" precisely when Session is present and
+    # TranscodeSession is not, which is the truth for a server with no encoder.
+    check("a direct-play session has no TranscodeSession",
+          "TranscodeSession" not in row and any(
+              part.get("decision") == "directplay"
+              for media in row.get("Media") or [] for part in media.get("Part") or []),
+          "decision=%s" % [p.get("decision") for m in row.get("Media") or []
+                           for p in m.get("Part") or []])
+    # The timeline RESPONSE is not an echo of the state sent: measured as
+    # `ignore` until a minute in, then `progress`, then `complete` at the end.
+    _, early, _ = beat("playing", 5000)
+    _, late, _ = beat("playing", 90000)
+    check("the timeline answers playbackState=ignore under a minute",
+          early.get("playbackState") == "ignore" and early.get("viewOffset") == -1
+          and early.get("skipCount") == 0,
+          "%s viewOffset=%s" % (early.get("playbackState"), early.get("viewOffset")))
+    check("and playbackState=progress past a minute",
+          late.get("playbackState") == "progress" and late.get("viewCount") == 1,
+          str(late.get("playbackState")))
+    check("a live session's timeline carries Bandwidths",
+          bool(late.get("Bandwidths")), str(bool(late.get("Bandwidths"))))
+    # Terminate: keyed on Session.id, and the kill lands on the NEXT timeline.
+    status, _, _ = container(base, "GET", "/status/sessions/terminate")
+    check("terminate without a sessionId is a 400", status == 400, "HTTP %s" % status)
+    status, _, _ = container(base, "GET", "/status/sessions/terminate?sessionId=nope&reason=x")
+    check("terminate on an unknown session is a 404", status == 404, "HTTP %s" % status)
+    status, body, _ = request(base, "GET", "/status/sessions/terminate"
+                                          "?sessionId=suite-sess&reason=harness")
+    check("terminate on a live session answers an empty 200",
+          is_empty_200(status, body), "HTTP %s" % status)
+    _, killed, _ = beat("playing", 95000)
+    check("the kill is delivered through the next timeline",
+          killed.get("terminationCode") == 2006 and "harness" in
+          str(killed.get("terminationText") or ""),
+          "code=%s" % killed.get("terminationCode"))
+    if part_id:
+        status, _, _ = request(base, "GET", "/library/parts/%s/1/file.mkv"
+                                           "?X-Plex-Session-Identifier=suite-sess" % part_id,
+                               want_json=False)
+        check("a terminated session's next part read is a 503", status == 503,
+              "HTTP %s" % status)
+    beat("stopped", 600000)
+    _, gone, _ = get(base, "/status/sessions")
+    check("a stopped timeline removes the session",
+          "Metadata" not in gone, ",".join(sorted(gone)))
+    # A fifth notification type, and the one Now Playing depends on.
+    playing = []
+
+    def play_once():
+        beat("playing", 4000)
+
+    _, frames = notifications(base, play_once, seconds=6)
+    playing = [r for f in frames
+               for r in ((f.get("NotificationContainer") or {})
+                         .get("PlaySessionStateNotification") or [])]
+    check("the socket pushes a playing notification", bool(playing),
+          "%d frame(s)" % len(playing))
+    if playing:
+        entry = playing[0]
+        check("the playing frame carries the measured field set",
+              all(k in entry for k in ("sessionKey", "clientIdentifier", "ratingKey",
+                                       "key", "viewOffset", "state")),
+              ",".join(sorted(entry)))
+    beat("stopped", 600000)
+
+    print("\n=== the Dashboard's own numbers ===")
+    # Measured: a real PMS counts EVERY response's bytes, not just media, into
+    # per-second rows and rolls them into hour/day/week/month/year buckets.
+    # plexsim serves every byte it reports, so these are real.
+    _, live, _ = get(base, "/statistics/bandwidth?timespan=6")
+    rows = live.get("StatisticsBandwidth") or []
+    check("bandwidth statistics carry real per-second rows",
+          bool(rows) and all(r.get("bytes") for r in rows)
+          and live.get("Device") and live.get("Account"),
+          "%d row(s)" % len(rows))
+    _, hourly, _ = get(base, "/statistics/bandwidth?timespan=4")
+    hour_rows = hourly.get("StatisticsBandwidth") or []
+    check("they roll up into a coarser bucket",
+          bool(hour_rows) and all(r.get("timespan") == 4 for r in hour_rows)
+          and len(hour_rows) <= len(rows),
+          "%d row(s) at timespan=4" % len(hour_rows))
+    _, media_stats, _ = get(base, "/statistics/media")
+    check("media statistics count a completed play",
+          bool(media_stats.get("StatisticsMedia")),
+          "%d row(s)" % len(media_stats.get("StatisticsMedia") or []))
+    status, _, _ = container(base, "GET", "/statistics/resources?timespan=6")
+    # The client treats a refusal as "unsupported" and hides the graph, which is
+    # better than the empty graph forever that a `{size:0}` draws.
+    check("resource statistics are refused rather than faked", status == 404,
+          "HTTP %s" % status)
+    for path_, want in (("/transcode/sessions/nope", 404),
+                        ("/video/:/transcode/universal/subtitles?session=nope", 400)):
+        status, _, _ = container(base, "GET", path_)
+        check("an unknown transcode session: %s" % path_.split("/")[-1][:24],
+              status == want, "HTTP %s" % status)
 
     print("\n=== the notification socket ===")
 
@@ -1470,8 +1616,7 @@ def main():
                         ("/transcode/sessions", "Transcode sessions"),
                         ("/clients", "Clients"),
                         ("/statistics/bandwidth", "Dashboard bandwidth"),
-                        ("/statistics/media", "Dashboard media"),
-                        ("/statistics/resources", "Dashboard resources")):
+                        ("/statistics/media", "Dashboard media")):
         status, body_, _ = get(base, path)
         check("%s answers 200" % label, status == 200, "HTTP %s" % status)
     status, sessions, _ = get(base, "/status/sessions")
