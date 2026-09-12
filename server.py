@@ -243,6 +243,14 @@ for _meta in SECTION_META.values():
             _scope, _, _bare = _key.rpartition(".")
             FILTER_FIELD_TYPES.setdefault(_bare, _field.get("type") or "string")
             FIELD_TITLES.setdefault((_scope, _bare), _field.get("title") or "")
+# Measured: `index` filters an episode or season listing (`type=4&index=2` is every
+# episode 2, `season.index=2` every episode of season 2) although no captured Meta
+# lists it as a field -- so plexsim ignored it and answered every row.
+FILTER_FIELD_TYPES.setdefault("index", "integer")
+# Likewise `titleSort`, `summary` and `tagline` filter on a real PMS (`titleSort=sintel`
+# is one row, `summary=e` none) without appearing in a Meta. See filters.py for how.
+for _bare in ("titleSort", "summary", "tagline"):
+    FILTER_FIELD_TYPES.setdefault(_bare, "string")
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
@@ -542,6 +550,20 @@ class Catalog:
         for row in self.items.values():
             for media in row.get("Media") or []:
                 mediainfo_module.normalize_media(media)
+        # Measured: a show's LISTING row carries `duration` (a typical episode's) and
+        # `originallyAvailableAt` (its first air date) exactly as its detail does;
+        # plexsim computed them for the detail page only.
+        for row in list(self.items.values()):
+            if row.get("type") != "show":
+                continue
+            leaves = self.leaves(row["ratingKey"])
+            durations = [leaf.get("duration") for leaf in leaves if leaf.get("duration")]
+            if durations:
+                row.setdefault("duration", int(sum(durations) / len(durations)))
+            aired = sorted(leaf.get("originallyAvailableAt") for leaf in leaves
+                           if leaf.get("originallyAvailableAt"))
+            if aired:
+                row.setdefault("originallyAvailableAt", aired[0])
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
@@ -964,6 +986,33 @@ def _exclude_fields(container, spec):
     return dict(container, MediaContainer=body)
 
 
+# `/hubs/sections/{id}/manage`, measured per library type: (identifier, title,
+# promoted to home). Every row is visible in Recommended and promoted there.
+MANAGED_HUBS = {
+    "movie": [
+        ("movie.recentlyreleased", "Recently Released Movies", False),
+        ("movie.recentlyadded", "Recently Added Movies", True),
+        ("recent.library.playlists", "Library Playlists", False),
+        ("movie.genre", "Top Movies in (Genre)", False),
+        ("movie.by.actor.or.director", "Top Movies by (Actor or Director)", False),
+        ("movie.topunwatched", "Top Unwatched Movies", False),
+        ("movie.curated", "Seasonal Movies", True),
+        ("movie.recentlyviewed", "Recently Watched Movies", False),
+    ],
+    "show": [
+        ("tv.recentlyaired", "Recently Released Episodes", False),
+        ("tv.recentlyadded", "Recently Added TV", True),
+        ("recent.library.playlists", "Library Playlists", False),
+        ("tv.startwatching", "Start Watching", False),
+        ("tv.rediscover", "Rediscover", False),
+        ("tv.morefromnetwork", "More from (Network)", False),
+        ("tv.moreingenre", "More in (Genre)", False),
+        ("tv.toprated", "Top Rated TV", False),
+        ("tv.recentlyviewed", "Recently Watched Episodes", False),
+    ],
+}
+
+
 def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
 
@@ -1107,6 +1156,8 @@ class PlexSim:
         # Download queues by client identifier: `POST /downloadQueue` answers the
         # SAME queue to the same client, measured.
         self.download_queues = {}
+        # section id -> {ratingKey: the last finished/removed timeline state}.
+        self.section_timeline = {}
         # Section ids with a scan in flight, which /library/sections reports as
         # `refreshing` and the Libraries page reads to swap its Scan button.
         self.refreshing = set()
@@ -1287,6 +1338,22 @@ class PlexSim:
         }
         if metadata_state is not None:
             entry["metadataState"] = metadata_state
+        section_key = str(row.get("librarySectionID", ""))
+        if state in (self.TIMELINE_DONE, self.TIMELINE_DELETED) and section_key.isdigit():
+            # What a library's /timeline lists: the last finished or removed state
+            # of each item, keyed by ratingKey.
+            record = {"state": state, "at": entry["updatedAt"]}
+            if state == self.TIMELINE_DELETED:
+                stub = {"ratingKey": str(row.get("ratingKey", "")),
+                        "key": "/library/metadata/%s" % row.get("ratingKey", ""),
+                        "guid": "", "type": row.get("subtype") or row.get("type"),
+                        "title": "", "summary": "", "state": state,
+                        "metadataState": "deleted"}
+                if row.get("type") == "show":
+                    for count in ("childCount", "index", "leafCount", "viewedLeafCount"):
+                        stub[count] = row.get(count) or 0
+                record["stub"] = stub
+            self.section_timeline.setdefault(section_key, {})[str(row.get("ratingKey"))] = record
         self.notify("timeline", "TimelineEntry", [entry])
 
     def notify_refreshed(self, row):
@@ -1518,7 +1585,11 @@ class PlexSim:
         is_episode_list = bool(rows) and rows[0].get("type") == "episode"
 
         fields = {
-            "Metadata": self._guid_gate([_full(r) for r in rows], query),
+            # Measured on both servers: a child row is the light projection -- text
+            # tags, no Stream list -- and leaves the librarySection fields to the
+            # container.
+            "Metadata": [_grid_row(r, keep_section=False, keep_guid=True)
+                         for r in self._guid_gate([_full(r) for r in rows], query)],
             "key": str(parent.get("ratingKey")),
             "nocache": True,
             "viewGroup": "episode" if is_episode_list else "season",
@@ -2259,12 +2330,42 @@ class PlexSim:
         if route == "/library/recentlyAdded":
             rows = sorted(catalog.items.values(), key=lambda r: -(r.get("addedAt") or 0))
             rows = [r for r in rows if r.get("type") in ("movie", "season", "episode")]
-            return self.container(
-                Metadata=[_listing_row(r) for r in rows[:self.HUB_COUNT]],
-                mixedParents=True)
+            # Measured on both servers: these rows are the light projection (text
+            # tags, no Guid, no Rating), and each names its section by ID, title and
+            # UUID -- not by key -- and carries `allowSync`.
+            page = []
+            for row in rows[:self.HUB_COUNT]:
+                entry = _grid_row(_listing_row(row))
+                entry.pop("librarySectionKey", None)
+                entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
+                                               or {}).get("uuid")
+                entry["allowSync"] = False
+                page.append(entry)
+            return self.container(Metadata=page, mixedParents=True)
 
         if route == "/library/all":
-            rows = [_listing_row(r) for r in catalog.items.values()]
+            # Measured: a real query endpoint, not a dump. `type=` selects the rows,
+            # filters and `sort=` apply as on a section, the default order is the
+            # ratingKey, and a row carries its Media only when a `type` was given.
+            # plexsim ignored every parameter and answered all its rows every time,
+            # which is what python-plexapi's `library.search(libtype=)` read.
+            source = sorted(catalog.items.values(), key=lambda r: int(r["ratingKey"]))
+            kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
+            if kinds:
+                wanted = ({"1": "movie", "2": "show", "3": "season", "4": "episode"}
+                          .get(next(iter(kinds))) if len(kinds) == 1 else None)
+                source = [r for r in source if wanted and r.get("type") == wanted]
+            source, _ = self.apply_filters(source, query)
+            if query.get("sort"):
+                source, unsupported = self._sorted(source, query["sort"])
+                if unsupported:
+                    return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            rows = []
+            for row in source:
+                entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
+                if not kinds:
+                    entry.pop("Media", None)
+                rows.append(entry)
             return self.container(Metadata=rows)
 
         if route == "/library/all/top":
@@ -2376,6 +2477,23 @@ class PlexSim:
             # empty container plexsim answered -- which a client reads as "this
             # shelf exists and is empty".
             return ("error", 404, "plexsim: not found")
+        if (segments[:2] == ["hubs", "sections"] and len(segments) == 4
+                and segments[3] == "manage"):
+            # Manage Recommendations: which of the library's hubs exist and where
+            # each is promoted. Measured: a bare container of `Hub` rows, eight for a
+            # movie library and nine for a show library, the same on both servers.
+            # plexsim 404'd it, which python-plexapi's `managedHubs()` raises on.
+            section = catalog.section(segments[2])
+            if section is None or method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            kind = "show" if section.get("type") == "show" else "movie"
+            rows = [{"identifier": identifier, "title": title,
+                     "recommendationsVisibility": "all",
+                     "homeVisibility": "all" if home else "none",
+                     "promotedToRecommended": True, "promotedToOwnHome": home,
+                     "promotedToSharedHome": home}
+                    for identifier, title, home in MANAGED_HUBS[kind]]
+            return self.bare_container(size=len(rows), Hub=rows)
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
             return self.section_hubs(segments[2], query.get("count"),
                                      query.get("includeLibraryPlaylists") == "1")
@@ -2977,6 +3095,8 @@ class PlexSim:
                 return self.apply_edit(rows, query, bare_fields=False,
                                        metadata_state="queued")
             return self.section_listing(section_id, section, query)
+        if leaf == "timeline":
+            return self.section_timeline_container(section_id, section)
         if leaf == "common":
             if method != "GET":
                 return ("error", 404, "plexsim: not found")
@@ -3293,6 +3413,11 @@ class PlexSim:
         if "group" in query:
             source = self.grouped(source, query.get("group"))
         rows = [_listing_row(r) for r in source]
+        if query.get("type") == "3":
+            # Measured on both servers: a season in a LISTING carries no leaf
+            # counts, where its /children row does.
+            rows = [{k: v for k, v in r.items() if k not in ("leafCount", "viewedLeafCount")}
+                    for r in rows]
         # Measured: only the unpaged /all listing carries `nocache`; newest,
         # recentlyAdded, onDeck and collections carry neither it nor totalSize.
         extra = {}
@@ -3347,6 +3472,51 @@ class PlexSim:
             return lambda r: (r.get(key) is None, r.get(key) or 0)
         return None
 
+    def _scoped_sort_key(self, key):
+        """A sort key with the TYPE prefix python-plexapi and the Meta both send.
+
+        Measured: `movie.titleSort:desc`, `show.titleSort`, `season.index` and
+        `episode.id` all sort, and the prefix is a scope -- on an episode list
+        `show.titleSort` orders by the SHOW's sort title and `season.index` by the
+        season's number. An unknown prefix (`bogus.titleSort`), the row's own type,
+        or a scope below the row reads the row itself; an unknown FIELD after any
+        prefix is still a 500. `id` is the ratingKey. plexsim 500'd every prefixed
+        key -- including the episode sort its own Meta advertises -- so every
+        python-plexapi `all(sort=)`, `search(sort=)` and `recentlyAdded()` raised.
+        """
+        if key == "_natural":
+            return self._natural_order
+        scope, _, bare = key.rpartition(".")
+        if bare == "id":
+            def base(row):
+                return (False, int(row.get("ratingKey") or 0))
+        else:
+            base = self._sort_key(bare)
+        if base is None:
+            return None
+        if not scope:
+            return base
+
+        def resolve(row):
+            kind = row.get("type")
+            if (scope == "show" and kind in ("season", "episode")) \
+                    or (scope == "season" and kind == "episode"):
+                found = self.scope_rows(scope, row)
+                return found[0] if found else row
+            return row
+        return lambda row: base(resolve(row))
+
+    def _natural_order(self, row):
+        """Show title, season number, episode number: a season or episode list's
+        own order, which is what its ties fall back to."""
+        show = row
+        if row.get("type") in ("season", "episode"):
+            show = (self.scope_rows("show", row) or [row])[0]
+        title = str(show.get("titleSort") or show.get("title") or "").lower()
+        if row.get("type") == "episode":
+            return (title, int(row.get("parentIndex") or 0), int(row.get("index") or 0))
+        return (title, int(row.get("index") or 0), 0)
+
     def _sorted(self, rows, spec):
         """Apply a `sort=` spec, which is a COMMA-SEPARATED list of keys.
 
@@ -3375,7 +3545,14 @@ class PlexSim:
         # order the rows arrived in, so a tied page was unstable between requests.
         if [key for key, _desc, _seed in terms] != ["titleSort"] \
                 and not any(key == "random" for key, _d, _s in terms):
-            terms = list(terms) + [("titleSort", False, "")]
+            # ...except on a season or episode list, where a tie falls back to the
+            # show, season and episode order: `sort=episode.index:desc` puts S1E3
+            # before S2E3, and `sort=show.titleSort` on one show keeps broadcast
+            # order (measured).
+            if rows and all(r.get("type") in ("season", "episode") for r in rows):
+                terms = list(terms) + [("_natural", False, "")]
+            else:
+                terms = list(terms) + [("titleSort", False, "")]
         ordered = list(rows)
         # Right to left, relying on the sort being stable: the leftmost key ends
         # up dominant, which is the order a real PMS applies them in.
@@ -3386,7 +3563,7 @@ class PlexSim:
                 if descending:
                     ordered.reverse()
                 continue
-            getter = self._sort_key(key)
+            getter = self._scoped_sort_key(key)
             if getter is None:
                 return rows, key
             ordered = sorted(ordered, key=getter, reverse=descending)
@@ -3433,7 +3610,7 @@ class PlexSim:
         it IS a sort a real PMS accepts -- and /query/parse validates the key
         before it echoes the Order block, answering 500 for one it does not know.
         """
-        return key == "random" or self._sort_key(key) is not None
+        return key == "random" or self._scoped_sort_key(key) is not None
 
     # How each advertised filter field is read off a row. The keys here are the
     # `Field` entries of the captured Meta, so plexsim filters on exactly what it
@@ -3445,6 +3622,41 @@ class PlexSim:
                          "actor": "Role", "label": "Label",
                          "contentRating": "contentRating", "studio": "studio"}
 
+    SCOPE_TYPES = ("movie", "show", "season", "episode")
+
+    def scope_rows(self, scope, row):
+        """The rows a SCOPED filter field is read from, for one listing row.
+
+        Measured: the prefix names WHOSE field is compared. `type=4&show.title=Fire`
+        is every episode of the show titled Firefly, `type=4&season.index=2` every
+        episode of season 2, and a scope BELOW the row matches when any descendant
+        does -- `type=2&episode.title=Train` is the show with that episode,
+        `type=3&episode.title=Train` its season. An unknown scope, or the row's own
+        type, is the row itself. plexsim read the row's OWN field whatever the
+        prefix said, so every Show-scoped filter on an episode grid tested the
+        episode.
+        """
+        kind = row.get("type")
+        if scope not in self.SCOPE_TYPES or scope == kind:
+            return [row]
+        items = self.catalog.items
+
+        def lookup(key):
+            found = items.get(int(key)) if str(key or "").isdigit() else None
+            return [found] if found is not None else []
+
+        if kind == "episode" and scope == "season":
+            return lookup(row.get("parentRatingKey"))
+        if kind == "episode" and scope == "show":
+            return lookup(row.get("grandparentRatingKey"))
+        if kind == "season" and scope == "show":
+            return lookup(row.get("parentRatingKey"))
+        if kind == "show" and scope == "season":
+            return list(self.catalog.children(row["ratingKey"]))
+        if kind in ("show", "season") and scope == "episode":
+            return list(self.catalog.leaves(row["ratingKey"]))
+        return [row]
+
     def filter_value(self, field, row):
         """One row's value for an advertised filter field."""
         # `episode.unwatched` and friends: the type prefix is the scope, and the
@@ -3453,6 +3665,10 @@ class PlexSim:
             field = field.split(".", 1)[1]
         if field in self.TAG_FILTER_FIELDS:
             return row.get(self.TAG_FILTER_FIELDS[field])
+        if field == "titleSort":
+            # A row omits titleSort when it equals the title; the value is still
+            # there to compare (`titleSort=sintel` finds Sintel, measured).
+            return row.get("titleSort") or row.get("title")
         if field == "decade":
             year = row.get("year")
             return (int(year) // 10 * 10) if year else None
@@ -3520,7 +3736,7 @@ class PlexSim:
         if tree is None:
             return rows, None
         kept = [r for r in rows
-                if filters_module.evaluate(tree, r, self.filter_value)]
+                if filters_module.evaluate(tree, r, self.filter_value, self.scope_rows)]
         return kept, tree
 
     def tag_title(self, field, value):
@@ -3624,6 +3840,37 @@ class PlexSim:
             fields["totalSize"] = total
         fields.update(extra)
         return self.container(Metadata=page, **fields)
+
+    def section_timeline_container(self, section_id, section):
+        """`/library/sections/{id}/timeline` -- what changed in a library lately.
+
+        Measured on the reference: a secondary container with `latestEntryTime` and
+        `updateQueueSize`, whose rows are the items the server recently finished
+        (state 5: the row without its tags, plus `state`) and removed (state 9: a
+        stub with an empty title and summary). fun, with nothing recent, answers
+        `size 0` and `latestEntryTime 0`. plexsim 404'd it, which python-plexapi's
+        `section.timeline()` raises on.
+        """
+        rows = []
+        latest = 0
+        entries = self.section_timeline.get(str(section_id), {})
+        for key, entry in sorted(entries.items(), key=lambda kv: -kv[1]["at"]):
+            latest = max(latest, entry["at"])
+            if entry["state"] == self.TIMELINE_DONE:
+                row = self.catalog.items.get(int(key)) if str(key).isdigit() else None
+                if row is None:
+                    continue
+                shown = _grid_row(_listing_row(row), keep_section=False)
+                for tag in GRID_TAGS:
+                    shown.pop(tag, None)
+                shown["state"] = entry["state"]
+            else:
+                shown = dict(entry["stub"])
+            rows.append(shown)
+        found = self.secondary_container(section_id, section, None, Metadata=rows,
+                                         latestEntryTime=latest, updateQueueSize=0)
+        found["MediaContainer"]["size"] = len(rows)
+        return found
 
     def secondary_container(self, section_id, section, title2, **fields):
         """A secondary list (By Genre, By Year, sorts, filters).
@@ -4235,6 +4482,14 @@ class PlexSim:
             # A real PMS 404s this (verified against fun). Answering with an
             # empty MediaContainer instead tells the client there IS state.
             return ("error", 404, "plexsim: no user state")
+        if leaf in ("clearLogos", "themes"):
+            # Measured: both are candidate lists in the tag container -- `Photo`
+            # rows for clear logos, `Track` rows for theme music -- and EMPTY for an
+            # item with none (every season and episode, a movie with no theme).
+            # plexsim has neither, so both are empty; it 404'd them, which
+            # python-plexapi's `logos()` and `themes()` raise on.
+            return self.tag_container(
+                size=0, _xml={"Metadata": "Photo" if leaf == "clearLogos" else "Track"})
         if leaf == "theme":
             # No theme audio; answer empty rather than falling through to the
             # unknown-route handler.
@@ -5995,6 +6250,7 @@ class PlexSim:
                 for member in members:
                     self.notify_timeline(member, self.TIMELINE_DONE, None)
                 self.notify_deleted({"ratingKey": segments[2], "type": "collection",
+                                     "subtype": collection.get("subtype"),
                                      "librarySectionID": collection["librarySectionID"],
                                      "title": ""})
                 return ("empty", 200)
@@ -6430,8 +6686,9 @@ class PlexSim:
 
         Measured: the bare path lists `/` and the server's mount points; a
         sub-path is its base64 in the URL and answers its directories, but ONLY
-        with `includeFiles=1` -- without it, and for anything that is not base64,
-        it is a 400 -- and a path that does not exist is an empty 200. plexsim
+        with `includeFiles` present (any value; `=1` adds the files) -- without it,
+        and for anything that is not base64, it is a 400 -- and a path that does
+        not exist is an empty 200. plexsim
         404'd the lot, so Add Folder opened on nothing. plexsim owns no disk: its
         filesystem is the `/plexsim` tree its sections and parts are addressed by.
         """
@@ -6452,12 +6709,26 @@ class PlexSim:
             path = base64.b64decode(encoded, validate=True).decode()
         except (ValueError, UnicodeDecodeError):
             return ("error", 400, "plexsim: bad request")
-        if query.get("includeFiles") != "1" or not path.startswith("/"):
+        # Measured: `includeFiles` must be PRESENT, whatever its value -- `=0`
+        # answers the directories and `=1` adds `File` rows. Only its absence is a
+        # 400.
+        if "includeFiles" not in query or not path.startswith("/"):
             return ("error", 400, "plexsim: bad request")
-        children = sorted(tree.get(path.rstrip("/") or "/", ()),
+        wanted = path.rstrip("/") or "/"
+        children = sorted(tree.get(wanted, ()),
                           key=lambda child: child.rsplit("/", 1)[-1].lower())
         rows = [entry(child) for child in children]
-        return self.bare_container(size=len(rows), Path=rows)
+        files = []
+        if query.get("includeFiles") == "1":
+            files = sorted({str(part.get("file")) for row in self.catalog.items.values()
+                            for media in row.get("Media") or []
+                            for part in media.get("Part") or []
+                            if part.get("file")
+                            and str(part.get("file")).rsplit("/", 1)[0] == wanted},
+                           key=lambda name: name.rsplit("/", 1)[-1].lower())
+        file_rows = [entry(name) for name in files]
+        return self.bare_container(size=len(rows) + len(file_rows), Path=rows,
+                                   File=file_rows)
 
     # `/library/tags?type=N`: the tag table for one tag type. Measured types; every
     # other number is an empty container, and no type or a non-number is a 400.

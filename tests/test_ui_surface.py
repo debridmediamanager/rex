@@ -35,6 +35,7 @@ link for the Download entry, a TMDB key for Fix Match -- report SKIP with the
 reason rather than passing quietly.
 """
 
+import base64
 import argparse
 import json
 import os
@@ -2891,8 +2892,8 @@ def main():
     first = titles[0] if titles else ""
     word = first.split(" ")[0] if first else "zzz"
     cases = [
-        ("?title=%s" % quote(word), total, "a bare = on a string CONTAINS"),
-        ("?title=zzzznope", 0, "a contains miss"),
+        ("?title=%s" % quote(word), total, "a bare = on a title matches a word's beginning"),
+        ("?title=zzzznope", 0, "a title miss"),
         ("?title%%3D=%s" % quote(word), 0, "== is exact, so a word does not match"),
         ("?title%%3D=%s" % quote(first), 1, "== matches the whole title"),
         ("?title%%3C=%s" % quote(word), total, "<= begins with"),
@@ -4451,9 +4452,14 @@ def main():
           not wrong, ",".join(str(w) for w in wrong[:3]))
     if c5_season:
         season_row = (get(base, "/library/metadata/%s" % c5_season)[1].get("Metadata") or [{}])[0]
-        check("a season row carries no year, skipCount, theme or titleSort",
-              not any(k in season_row for k in ("year", "skipCount", "theme", "titleSort")),
-              ",".join(k for k in ("year", "skipCount", "theme", "titleSort") if k in season_row))
+        # Re-measured in cycle 7: a season with a year of its OWN carries it, with its
+        # title as titleSort and no parentYear; only a season without one falls back.
+        check("a season row carries no skipCount or theme, and a year only with its titleSort",
+              not any(k in season_row for k in ("skipCount", "theme"))
+              and ("year" in season_row) == (season_row.get("titleSort") == season_row.get("title"))
+              and not ("year" in season_row and "parentYear" in season_row),
+              ",".join(k for k in ("year", "skipCount", "theme", "titleSort", "parentYear")
+                       if k in season_row))
         _, episodes_doc, _ = get(base, "/library/metadata/%s/children" % c5_season)
         show_title = (get(base, "/library/metadata/%s" % c5_show)[1].get("Metadata") or [{}])[0].get("title")
         check("an episode list's container is presented as the show's",
@@ -4991,6 +4997,209 @@ def main():
           trimmed_rows and not summary_left and "summary" not in children_trim
           and not any("summary" in r for r in children_trim.get("Metadata") or []),
           "%d row(s) kept summary" % len(summary_left))
+
+    # ------------------------------------------------------------------
+    # Cycle 7, second batch: python-plexapi as a third-party client. Scoped sort
+    # keys and filters, the title word matcher, /library/all as a query, and the
+    # reads plexapi makes that plexsim 404'd. Measured against the reference and
+    # fun; every check fails against the server as it stood before.
+    # ------------------------------------------------------------------
+    print("\n=== scoped sorts and filters, /library/all, and python-plexapi's reads ===")
+    if show_lib and c5_show and c5_season and c5_episode:
+        leaves = get(base, "/library/metadata/%s/allLeaves" % c5_show)[1].get("Metadata") or []
+        broadcast = [str(r.get("ratingKey")) for r in leaves]
+
+        def episode_keys(spec):
+            status, body, _ = get(base, "/library/sections/%s/all?type=4&%s" % (show_lib, spec))
+            return status, [str(r.get("ratingKey")) for r in body.get("Metadata") or []]
+
+        status_show, by_show = episode_keys("sort=show.titleSort:desc")
+        status_season, by_season = episode_keys("sort=season.index:desc")
+        status_id, by_id = episode_keys("sort=episode.id:desc")
+        status_bad, _ = episode_keys("sort=show.nosuch")
+        season_desc = [str(r.get("ratingKey")) for r in
+                       sorted(leaves, key=lambda r: -int(r.get("parentIndex") or 0))]
+        movies_scoped = get(base, "/library/sections/%s/all?type=1&sort=movie.titleSort:desc"
+                            % movie_lib)[1].get("Metadata") or []
+        movies_plain = get(base, "/library/sections/%s/all?type=1&sort=titleSort:desc"
+                           % movie_lib)[1].get("Metadata") or []
+        check("a type-prefixed sort key sorts by that type's field, ties in broadcast order",
+              status_show == 200 and by_show == broadcast
+              and status_season == 200 and by_season == season_desc
+              and status_id == 200 and by_id == sorted(by_id, key=int, reverse=True)
+              and status_bad == 500 and movies_scoped
+              and [r.get("ratingKey") for r in movies_scoped]
+              == [r.get("ratingKey") for r in movies_plain],
+              "HTTP %s/%s/%s/%s, %s vs %s" % (status_show, status_season, status_id, status_bad,
+                                              by_season, season_desc))
+
+        def keys_in(section, spec):
+            body = get(base, "/library/sections/%s/all?%s" % (section, spec))[1]
+            return sorted(str(r.get("ratingKey")) for r in body.get("Metadata") or [])
+
+        show_title = str(detail_of(c5_show).get("title") or "x")
+        season_row7 = detail_of(c5_season)
+        episode_row7 = detail_of(c5_episode)
+        season_leaves = get(base, "/library/metadata/%s/children" % c5_season)[1].get("Metadata") or []
+        same_index = [r for r in leaves if str(r.get("index")) == str(episode_row7.get("index"))]
+        scoped = {
+            "show": keys_in(show_lib, "type=4&show.title=%s" % quote(show_title.split()[-1][:4])),
+            "season": keys_in(show_lib, "type=4&season.index=%s" % season_row7.get("index")),
+            "up": keys_in(show_lib, "type=2&episode.title=%s"
+                          % quote(str(episode_row7.get("title") or "x").split()[0])),
+            "seasons": keys_in(show_lib, "type=3&episode.index=%s" % episode_row7.get("index")),
+            "index": keys_in(show_lib, "type=4&index=%s" % episode_row7.get("index")),
+        }
+        wanted = {
+            "show": sorted(broadcast),
+            "season": sorted(str(r.get("ratingKey")) for r in season_leaves),
+            "up": [str(c5_show)],
+            "seasons": sorted({str(r.get("parentRatingKey")) for r in same_index}),
+            "index": sorted(str(r.get("ratingKey")) for r in same_index),
+        }
+        check("a scoped filter reads the field of the row its prefix names",
+              scoped == wanted,
+              ", ".join("%s %s/%s" % (k, scoped[k], wanted[k]) for k in scoped
+                        if scoped[k] != wanted[k]))
+
+        listed_seasons = get(base, "/library/sections/%s/all?type=3" % show_lib)[1].get("Metadata") or []
+        child_seasons = get(base, "/library/metadata/%s/children" % c5_show)[1].get("Metadata") or []
+        child_episodes = get(base, "/library/metadata/%s/children" % c5_season)[1].get("Metadata") or []
+        sectioned = [r.get("title") for r in child_seasons + child_episodes
+                     if any(k in r for k in ("librarySectionID", "librarySectionKey",
+                                             "librarySectionTitle"))]
+        check("a season LISTING row has no leaf counts and a child row no section fields",
+              listed_seasons and not any("leafCount" in r or "viewedLeafCount" in r
+                                         for r in listed_seasons)
+              and any("leafCount" in r for r in child_seasons) and not sectioned,
+              "listing %s, sectioned %s" % (sorted(listed_seasons[0]) if listed_seasons else [],
+                                            sectioned[:2]))
+        check("a season with a year of its own carries it, titled for sorting, no parentYear",
+              season_row7.get("year") and season_row7.get("titleSort") == season_row7.get("title")
+              and "parentYear" not in season_row7,
+              "year=%r titleSort=%r parentYear=%r" % (season_row7.get("year"),
+                                                      season_row7.get("titleSort"),
+                                                      season_row7.get("parentYear")))
+        show_listed = next((r for r in get(base, "/library/sections/%s/all" % show_lib)[1]
+                            .get("Metadata") or [] if str(r.get("ratingKey")) == str(c5_show)), {})
+        show_locations = detail_of(c5_show).get("Location") or []
+        check("a show's listing row carries its duration and first air date, its Location no id",
+              show_listed.get("duration") and show_listed.get("originallyAvailableAt")
+              and show_locations and not any("id" in location for location in show_locations),
+              "duration=%r aired=%r Location=%s" % (show_listed.get("duration"),
+                                                    show_listed.get("originallyAvailableAt"),
+                                                    show_locations))
+    else:
+        skip("a type-prefixed sort key sorts by that type's field, ties in broadcast order",
+             "no show in this catalog")
+
+    movie_rows7 = get(base, "/library/sections/%s/all" % movie_lib)[1].get("Metadata") or []
+    subject7 = next((r for r in movie_rows7 if len(str(r.get("title", "")).split()) >= 3), None)
+    if subject7:
+        words = str(subject7["title"]).split()
+        subject_key = str(subject7["ratingKey"])
+
+        def movie_hits(spec):
+            body = get(base, "/library/sections/%s/all?%s" % (movie_lib, spec))[1]
+            return [str(r.get("ratingKey")) for r in body.get("Metadata") or []]
+
+        inner = words[0][1:] if len(words[0]) > 2 else words[0]
+        inner_begins = any(w.lower().startswith(inner.lower()) for w in words)
+        all_keys = sorted(str(r.get("ratingKey")) for r in movie_rows7)
+        two_words = sorted(str(r.get("ratingKey")) for r in movie_rows7
+                           if len(str(r.get("title", "")).split()) >= 2)
+        skipping = movie_hits("title=%s" % quote(words[0] + " " + words[-1]))
+        backwards = movie_hits("title=%s" % quote(words[-1] + " " + words[0]))
+        middle = movie_hits("title=%s" % quote(inner))
+        not_middle = movie_hits("title%%21=%s" % quote(inner))
+        check("a bare title= is each word's beginning, in order; != still reads a substring",
+              subject_key in skipping and subject_key not in backwards
+              and (subject_key in middle) == inner_begins and subject_key not in not_middle
+              and sorted(movie_hits("title=")) == all_keys
+              and sorted(movie_hits("title=%20")) == two_words,
+              "%r: skipping %s backwards %s middle %s" % (subject7["title"], subject_key in skipping,
+                                                          subject_key in backwards,
+                                                          subject_key in middle))
+        sort_value = str(subject7.get("titleSort") or subject7["title"])
+        exact = movie_hits("titleSort=%s" % quote(sort_value.lower()))
+        partial = movie_hits("titleSort=%s" % quote(sort_value[:-1]))
+        not_partial = movie_hits("titleSort%%21=%s" % quote(sort_value[:-1]))
+        equal = movie_hits("title%%3D=%s" % quote(str(subject7["title"]).lower()))
+        check("titleSort= is a case-insensitive equality, and so is title==",
+              subject_key in exact and subject_key not in partial
+              and subject_key in not_partial and subject_key in equal,
+              "exact %s partial %s not-partial %s equal %s" % (
+                  subject_key in exact, subject_key in partial, subject_key in not_partial,
+                  subject_key in equal))
+    else:
+        skip("a bare title= is each word's beginning, in order; != still reads a substring",
+             "no title of three words")
+
+    status_typed, typed_all, _ = get(base, "/library/all?type=4" if show_lib else "/library/all?type=1")
+    _, bare_all, _ = get(base, "/library/all")
+    _, missed_all, _ = get(base, "/library/all?type=1&title=zzzznope")
+    typed_rows = typed_all.get("Metadata") or []
+    bare_rows = bare_all.get("Metadata") or []
+    bare_keys = [int(r.get("ratingKey")) for r in bare_rows]
+    check("/library/all selects by type, filters, and carries Media only when typed",
+          status_typed == 200 and typed_rows
+          and all(r.get("type") == ("episode" if show_lib else "movie") and r.get("Media")
+                  for r in typed_rows)
+          and bare_rows and not any("Media" in r for r in bare_rows)
+          and bare_keys == sorted(bare_keys) and not missed_all.get("Metadata"),
+          "%d typed, %d bare, %d missed" % (len(typed_rows), len(bare_rows),
+                                            len(missed_all.get("Metadata") or [])))
+
+    status_managed, managed, _ = get(base, "/hubs/sections/%s/manage" % movie_lib)
+    managed_rows = managed.get("Hub") or []
+    managed_show = (get(base, "/hubs/sections/%s/manage" % show_lib)[1].get("Hub") or []) if show_lib else []
+    check("Manage Recommendations lists the library type's hubs and where each is promoted",
+          status_managed == 200 and len(managed_rows) == 8
+          and [h.get("identifier") for h in managed_rows][:2]
+          == ["movie.recentlyreleased", "movie.recentlyadded"]
+          and [h.get("identifier") for h in managed_rows if h.get("promotedToOwnHome")]
+          == ["movie.recentlyadded", "movie.curated"]
+          and (not show_lib or len(managed_show) == 9)
+          and get(base, "/hubs/sections/99999/manage")[0] == 404,
+          "HTTP %s, %d/%d hub(s)" % (status_managed, len(managed_rows), len(managed_show)))
+
+    request(base, "PUT", "/library/metadata/%s/refresh" % c5_movie)
+    status_timeline, section_timeline, finished = None, {}, {}
+    for _ in range(20):
+        status_timeline, section_timeline, _ = get(base, "/library/sections/%s/timeline" % movie_lib)
+        finished = next((r for r in section_timeline.get("Metadata") or []
+                         if str(r.get("ratingKey")) == str(c5_movie)), {})
+        if finished.get("state") == 5:
+            break
+        time.sleep(0.25)
+    check("a library's timeline lists what the server just finished, without its tags",
+          status_timeline == 200 and finished.get("state") == 5 and "Genre" not in finished
+          and section_timeline.get("updateQueueSize") == 0
+          and section_timeline.get("latestEntryTime"),
+          "HTTP %s, state %s" % (status_timeline, finished.get("state")))
+
+    candidate_lists = [get(base, "/library/metadata/%s/%s" % (key, leaf))[:2]
+                       for key in (c5_movie, c5_episode) if key
+                       for leaf in ("clearLogos", "themes")]
+    check("clear logos and theme music answer an empty candidate list",
+          candidate_lists and all(status == 200 and body.get("size") == 0
+                                  for status, body in candidate_lists),
+          str([status for status, _ in candidate_lists]))
+
+    folder = base64.b64encode(("/plexsim/%s" % movie_lib).encode()).decode()
+    status_off, folders_only, _ = get(base, "/services/browse/%s?includeFiles=0" % folder)
+    status_on, with_files, _ = get(base, "/services/browse/%s?includeFiles=1" % folder)
+    check("the folder picker needs includeFiles present, and =1 lists the files too",
+          status_off == 200 and not folders_only.get("File")
+          and status_on == 200 and with_files.get("File"),
+          "HTTP %s / %s, %d file(s)" % (status_off, status_on, len(with_files.get("File") or [])))
+
+    recent_rows = get(base, "/library/recentlyAdded")[1].get("Metadata") or []
+    wrong_recent = [r.get("title") for r in recent_rows
+                    if "librarySectionKey" in r or "Guid" in r or "allowSync" not in r
+                    or not r.get("librarySectionUUID") or not r.get("librarySectionTitle")]
+    check("a recentlyAdded row names its section by id, title and UUID, and is light",
+          recent_rows and not wrong_recent, ",".join(str(w) for w in wrong_recent[:3]))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

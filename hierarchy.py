@@ -70,8 +70,8 @@ def _fill_real_pms_fields(rows):
             # this is the synthetic path already used for Part.file. Measured: a
             # MOVIE carries no Location on either real server, and a show carries it
             # on its detail row only.
-            row.setdefault("Location", [{"id": int(rating_key), "path":
-                                         "/plexsim/%s/%s" % (row.get("librarySectionID"), rating_key)}])
+            row.setdefault("Location", [{"path": "/plexsim/%s/%s"
+                                         % (row.get("librarySectionID"), rating_key)}])
         if kind in ("show", "movie"):
             row.setdefault("slug", _slug(row.get("title") or ""))
             if row.get("rating") is not None:
@@ -131,8 +131,11 @@ def normalize_rows(rows):
     * `rating` is the CRITIC rating (Rotten Tomatoes on fun), absent when there is
       none -- the lab's own TMDB-matched movies carry only `audienceRating`.
       plexsim copied the TMDB vote into both.
-    * A season has no `year`, `skipCount` or `titleSort`; an episode has no
-      `chapterSource` without chapters. A show has `index: 1`.
+    * A season with a year of its own carries it, a `titleSort` EQUAL to its title
+      (the one row type that does) and no `parentYear`; one without has
+      `parentYear` only. A zero `skipCount` is omitted. An episode has no
+      `chapterSource` without chapters. A show has `index: 1`, and its `Location`
+      is `{path}` with no id -- the id belongs to a SECTION's location.
     * No row names a theme -- `theme`, `parentTheme`, `grandparentTheme` -- because
       plexsim has no theme audio and its theme endpoint 404s. Measured on fun: a show
       without a theme carries none of the three, on itself or its children, and the
@@ -166,8 +169,16 @@ def normalize_rows(rows):
         for key in ("theme", "parentTheme", "grandparentTheme"):
             row.pop(key, None)
         if kind == "season":
-            for key in ("year", "skipCount"):
-                row.pop(key, None)
+            if not row.get("skipCount"):
+                row.pop("skipCount", None)
+            if row.get("year"):
+                row["titleSort"] = title
+                row.pop("parentYear", None)
+            else:
+                row.pop("year", None)
+        if kind == "show":
+            for location in row.get("Location") or []:
+                location.pop("id", None)
         if kind == "episode":
             if not row.get("Chapter"):
                 row.pop("chapterSource", None)
@@ -304,10 +315,13 @@ def build(leaves):
                 "guid": leaf.get("_season_guid"),
                 "title": "Season %d" % season_number,
                 "index": season_number,
-                # Measured on both servers: a season row carries NO year, no
-                # titleSort and no skipCount. An older note here said the season
-                # list rendered empty without `year`; that was the paging bug.
+                # A season carries a `year` only when it has an air date of its OWN
+                # -- then `titleSort` too, equal to its title -- and `parentYear`
+                # otherwise. Measured on 74 seasons on fun; never the show's year
+                # borrowed. An older note tied the season list rendering to `year`;
+                # that was the paging bug.
                 "parentIndex": 1,
+                "year": leaf.get("_season_year"),
                 "summary": leaf.get("_season_summary") or "",
                 "parentRatingKey": show["ratingKey"],
                 "parentKey": "/library/metadata/%s" % show["ratingKey"],

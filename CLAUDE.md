@@ -426,7 +426,9 @@ precisely how the Seasons bug survived a fix attempt.
   sends `year%3E%3E=2000`, so the server reads a parameter called `year>>`. A
   server that looks for names it knows sees nothing and filters nothing — which is
   what plexsim did for its whole life, while advertising 40 filterable fields.
-  A bare `=` on a string CONTAINS; `==` is the exact one. See `filters.py`.
+  A bare `=` on a string CONTAINS -- except on `title`, where each query word must
+  BEGIN a title word in order, and on `titleSort`/`summary`/`tagline`, where it is
+  equality. `==` is the exact one, and it ignores case. See `filters.py`.
 - **What a bare `=` means depends on the field's advertised TYPE, and three types
   are not strings.** A `tag` field is exact (`contentRating=G` does not match
   `PG`) and an EMPTY value on one means "has no value at all"; a `boolean` is true
@@ -443,8 +445,9 @@ precisely how the Seasons bug survived a fix attempt.
   `episode.title`) and the client sends the advertised key back verbatim. plexsim
   keyed its field map by those names and looked them up with the prefix stripped,
   so no filter on a show grid ever constrained anything. The prefix is a scope:
-  the field is the tail, the lookup is global, and `/query/parse` echoes the scope
-  back as the rule's own `type`.
+  the field is the tail, the TYPE lookup is global, the VALUE is read from the row the
+  prefix names (`type=4&show.title=` tests the show, and a scope below the row matches
+  when any child does), and `/query/parse` echoes the scope back as the rule's own `type`.
 - **`/filters` is per library TYPE too** — a movie library lists 28, a show library
   a different 15 whose keys carry `?type=2` (except `country`, `unmatched` and
   `editionTitle`). The type SCOPES an axis, so `/genre?type=2` on a movie library
@@ -598,6 +601,14 @@ precisely how the Seasons bug survived a fix attempt.
   the full row. `excludeFields` applies to every row AND to the container.
 - **`probes/ui_surface.py` without `--mutate` must send nothing but GET and HEAD** -- it
   is what gets pointed at the shared reference.
+- **A sort key is type-prefixed as well, and python-plexapi always prefixes it**
+  (`sort=movie.titleSort:desc`). On an episode list `show.titleSort` sorts by the SHOW
+  and ties fall back to broadcast order; an unknown prefix reads the row itself, an
+  unknown field after it is still a 500.
+- **`/library/all` is a query, not a dump**: `type`, filters and `sort` all apply,
+  the default order is the ratingKey, and a row carries `Media` only when typed.
+- **A season with a year of its own carries it**, with its title as `titleSort` and
+  no `parentYear`; only a season without one falls back to the show's year.
 
 ## Conventions
 

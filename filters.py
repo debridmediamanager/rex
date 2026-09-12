@@ -228,6 +228,33 @@ def _values(actual):
     return out
 
 
+# String fields whose bare `=` is equality, not containment (measured).
+EXACT_STRING_FIELDS = {"titleSort", "summary", "tagline"}
+
+
+def _word_prefixes(wanted, text):
+    """`title=` on a listing: each query WORD begins a distinct title word, in order.
+
+    Measured on two servers, and not the substring match every other string field
+    gets: `title=Fire` finds Firefly and `title=ire` does not, `Tears Steel` and
+    `b b b` find their titles where `steel of` and `b b b b` do not, and `,` and `.`
+    in the query are ignored. The query splits on SINGLE spaces, so an empty word
+    begins any word: `title=` is every row, `title=%20` every title of two words or
+    more, and `Tears%20%20Steel` still finds Tears of Steel. Only `=` works this
+    way; `title!=ears` excludes Tears of Steel, so `!=` still reads a substring.
+    """
+    words = wanted.replace(",", "").replace(".", "").lower().split(" ")
+    title_words = text.lower().split()
+    position = 0
+    for word in words:
+        while position < len(title_words) and not title_words[position].startswith(word):
+            position += 1
+        if position == len(title_words):
+            return False
+        position += 1
+    return True
+
+
 def _exact(operator, actual, wanted):
     """Exact set membership: tag, language and resolution fields.
 
@@ -342,10 +369,21 @@ def compare(kind, operator, actual, wanted, field=""):
 
     text = "" if actual is None else str(actual)
     wanted = str(wanted)
+    if field == "title" and operator == "=":
+        return _word_prefixes(wanted, text)
+    if field in EXACT_STRING_FIELDS and operator in ("=", "!="):
+        # Measured: `titleSort=Sin` and `summary=e` match nothing where
+        # `titleSort=sintel` matches, and `titleSort!=Sin` keeps every row -- on
+        # these fields both operators are a case-insensitive EQUALITY, and an
+        # empty value matches a row with none (`tagline=` is the three rows
+        # without one).
+        hit = text.lower() == wanted.lower()
+        return hit if operator == "=" else not hit
     if operator == "==":
-        return text == wanted
+        # Measured: `title%3D=sintel` finds Sintel. Exact, but not case-sensitive.
+        return text.lower() == wanted.lower()
     if operator == "!==":
-        return text != wanted
+        return text.lower() != wanted.lower()
     if operator == "<=":
         return text.lower().startswith(wanted.lower())
     if operator == ">=":
@@ -467,16 +505,27 @@ def parse(pairs, field_type, structural=STRUCTURAL, errors=None):
     return tree
 
 
-def evaluate(tree, row, value_of):
-    """Test one row against a parsed tree. `value_of(field, row)` reads the row."""
+def evaluate(tree, row, value_of, resolve=None):
+    """Test one row against a parsed tree. `value_of(field, row)` reads the row.
+
+    `resolve(scope, row)` names the rows a SCOPED rule reads its field from, and
+    the rule holds when ANY of them matches. Measured on a show library:
+    `type=4&show.title=Fire` is every Firefly episode (the show's title, not the
+    episode's), `type=3&episode.index=3` is both seasons that have an episode 3,
+    and `type=2&episode.title!=Train` still finds Firefly, whose other episodes
+    do not contain the word. No rows to read is no match.
+    """
     if tree is None:
         return True
     if "op" in tree:
-        results = (evaluate(rule, row, value_of) for rule in tree["rules"])
+        results = (evaluate(rule, row, value_of, resolve) for rule in tree["rules"])
         return all(results) if tree["op"] == "and" else any(results)
-    actual = value_of(tree["field"], row)
-    return compare(tree["type"], tree["operator"], actual, tree["value"],
-                   tree["field"])
+    candidates = [row]
+    if resolve is not None and tree.get("scope"):
+        candidates = resolve(tree["scope"], row)
+    return any(compare(tree["type"], tree["operator"], value_of(tree["field"], candidate),
+                       tree["value"], tree["field"])
+               for candidate in candidates)
 
 
 def sort_terms(spec):
