@@ -1126,6 +1126,40 @@ the `session` parameter; `allowSync` is the **string** `"1"`; and
 `librarySectionID` and `mediaTagVersion` are strings here where every other
 endpoint sends numbers.
 
+#### Three the replay probe caught once every endpoint above was in it
+
+Widening `probes/ui_surface.py` and diffing it whole against the reference turned
+up three the per-feature sweeps had each walked past.
+
+**`/myplex/account` must not carry a token.** plexsim sent `authToken` in it; the
+reference does not send the field at all. It buys nothing -- a client that reads
+this endpoint already holds a token -- and every page that reads it is a page that
+could log the server's. Removed.
+
+**`/system/scanners/{id}` answers `<Scanner name="…"/>` rows**, not `Directory`
+ones, in a container whose `identifier` is `com.plexapp.system` rather than the
+library's. A movie library lists four (`Plex Movie`, `Plex Movie Scanner`,
+`Plex Video Files Scanner`, `Plex Video Files`) and a show library two
+(`Plex TV Series`, `Plex Series Scanner`). plexsim answered one `Directory` row
+with a `key` and a `title`, which the Edit Library dialog's scanner dropdown does
+not read -- an advertised control with nothing behind it, from the other side.
+
+**`/statistics/resources` answers 200, and plexsim was 404ing it.** The earlier
+note here reasoned that a refusal reads to the client as "unsupported" and hides
+the graph, which is better than an empty one. The measurement contradicts the
+premise: BOTH reference servers answer 200 with a `StatisticsResources` series of
+`{timespan, at, hostCpuUtilization, processCpuUtilization, hostMemoryUtilization,
+processMemoryUtilization}`, and only `timespan=6` has samples -- every coarser
+bucket, and a request with no timespan, is an empty 200.
+
+plexsim now samples when the endpoint is ASKED, which is the only time the numbers
+are wanted: the Dashboard polls while it is open, so the graph fills in the way it
+does on a real server and no sampler thread runs for a page nobody is looking at.
+Two of the four numbers are real -- host CPU from the load average over the core
+count, process CPU from `getrusage` over wall time -- and the two memory ones are
+0.0, because the stdlib cannot see host memory and a plausible percentage would
+draw a graph of nothing.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

@@ -1359,11 +1359,26 @@ def main():
     check("media statistics count a completed play",
           bool(media_stats.get("StatisticsMedia")),
           "%d row(s)" % len(media_stats.get("StatisticsMedia") or []))
-    status, _, _ = container(base, "GET", "/statistics/resources?timespan=6")
-    # The client treats a refusal as "unsupported" and hides the graph, which is
-    # better than the empty graph forever that a `{size:0}` draws.
-    check("resource statistics are refused rather than faked", status == 404,
-          "HTTP %s" % status)
+    # Re-measured against BOTH reference servers: /statistics/resources answers
+    # 200 with a StatisticsResources series, and only timespan=6 has samples --
+    # every coarser bucket is an empty 200, and so is a request with no timespan.
+    # plexsim used to 404 it on the theory that the client hides an unsupported
+    # graph; the measurement says a real PMS answers.
+    status, resources, _ = get(base, "/statistics/resources?timespan=6")
+    sample = (resources.get("StatisticsResources") or [{}])[0]
+    check("resource statistics answer a series at the finest bucket",
+          status == 200 and sample.get("timespan") == 6 and sample.get("at")
+          and set(sample) == {"timespan", "at", "hostCpuUtilization",
+                              "processCpuUtilization", "hostMemoryUtilization",
+                              "processMemoryUtilization"},
+          "%d sample(s): %s" % (len(resources.get("StatisticsResources") or []),
+                                sorted(sample)))
+    for spec in ("", "?timespan=5", "?timespan=4"):
+        status, coarse, _ = get(base, "/statistics/resources%s" % spec)
+        check("resource statistics are empty for %s" % (spec or "no timespan"),
+              status == 200 and coarse.get("size") == 0
+              and not coarse.get("StatisticsResources"),
+              "HTTP %s size=%s" % (status, coarse.get("size")))
     for path_, want in (("/transcode/sessions/nope", 404),
                         ("/video/:/transcode/universal/subtitles?session=nope", 400)):
         status, _, _ = container(base, "GET", path_)
@@ -1705,10 +1720,33 @@ def main():
     check("Agents page lists the agents plexsim identifies with",
           status == 200 and agents.get("Agent"),
           "%d agent(s)" % len(agents.get("Agent") or []))
+    # Measured: the element is `Scanner` with nothing but a `name`, and the
+    # container's identifier is com.plexapp.system rather than the library's.
+    # plexsim answered `Directory` rows with a key and a title, which the Edit
+    # Library dialog's scanner dropdown does not read at all.
     status, scanners, _ = get(base, "/system/scanners/%s" % movie_section)
+    names = [s.get("name") for s in scanners.get("Scanner") or []]
     check("Edit Library dialog can list scanners",
-          status == 200 and scanners.get("Directory"),
-          "%d scanner(s)" % len(scanners.get("Directory") or []))
+          status == 200 and names == ["Plex Movie", "Plex Movie Scanner",
+                                      "Plex Video Files Scanner", "Plex Video Files"]
+          and not scanners.get("Directory")
+          and scanners.get("identifier") == "com.plexapp.system",
+          ", ".join(str(n) for n in names))
+    if show_section:
+        _, show_scanners, _ = get(base, "/system/scanners/%s" % show_section)
+        check("a show library lists its own two scanners",
+              [s.get("name") for s in show_scanners.get("Scanner") or []]
+              == ["Plex TV Series", "Plex Series Scanner"],
+              ", ".join(str(s.get("name")) for s in show_scanners.get("Scanner") or []))
+    else:
+        skip("a show library lists its own two scanners", "no show library")
+    # A real PMS does NOT put its account token in /myplex/account, and plexsim
+    # did -- a page that reads this endpoint is a page that could log the token.
+    _, body, _ = request(base, "GET", "/myplex/account")
+    account = json.loads(body).get("MyPlex", {}) if body[:1] == b"{" else {}
+    check("/myplex/account carries no authToken",
+          "authToken" not in account and account.get("signInState"),
+          ",".join(sorted(account)))
     status, token, _ = get(base, "/security/token?type=delegation&scope=all")
     check("a delegation token is issued", status == 200 and token.get("token"),
           token.get("token"))
