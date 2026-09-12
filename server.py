@@ -1419,6 +1419,12 @@ class PlexSim:
             # grabber's devices, one subscription. plexsim answered empty
             # containers, so the Live TV pages drew controls for things that do
             # not exist. The two collection roots themselves are real.
+            # `/media/grabbers/devices` is the tuner-device list and is real (an
+            # empty container); a NAMED grabber, and that grabber's own /devices,
+            # are both 404.
+            if segments[1] == "grabbers" and segments[2] == "devices" \
+                    and len(segments) == 3:
+                return self.bare_container(size=0)
             if not (segments[1] == "subscriptions" and segments[2] == "scheduled"):
                 return ("error", 404, "plexsim: not found")
         if route == "/security/resources":
