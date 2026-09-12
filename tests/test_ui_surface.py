@@ -413,6 +413,23 @@ def main():
               is_empty_200(status, body) and str(written.get("value")) == "1"
               and str(row.get("episodeSort")) == "1",
               "value=%s row=%s" % (written.get("value"), row.get("episodeSort")))
+        # flattenSeasons does NOT change what /children returns: measured, a real
+        # PMS still answers with the seasons and sets `skipChildren` on the SHOW,
+        # and the client skips the level on the strength of that one field.
+        # plexsim served the preference and then ignored it.
+        request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=1" % show_section)
+        _, flat, _ = get(base, "/library/metadata/%s" % show)
+        _, kids, _ = get(base, "/library/metadata/%s/children" % show)
+        check("flattenSeasons sets skipChildren on the show",
+              (flat.get("Metadata") or [{}])[0].get("skipChildren") is True,
+              str((flat.get("Metadata") or [{}])[0].get("skipChildren")))
+        check("flattenSeasons leaves /children answering seasons",
+              kids.get("viewGroup") == "season",
+              str(kids.get("viewGroup")))
+        request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=0" % show_section)
+        _, unflat, _ = get(base, "/library/metadata/%s" % show)
+        check("turning flattenSeasons off clears it again",
+              "skipChildren" not in (unflat.get("Metadata") or [{}])[0])
     else:
         skip("a season carries OnDeck, Extras and its own settings", "no show section")
 

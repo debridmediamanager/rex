@@ -281,6 +281,7 @@ class Catalog:
         self._number_tags()
         self._retitle_streams()
         self._strip_show_fields()
+        self._apply_section_defaults()
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
@@ -305,6 +306,35 @@ class Catalog:
     # genres where a real one shows none.
     SHOW_ONLY_FIELDS = ("Genre", "Country", "studio", "tagline", "originalTitle",
                         "rating", "Label")
+
+    def _apply_section_defaults(self):
+        """Apply the library-type preferences that change a ROW, at load."""
+        for section in self.sections:
+            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+            for setting in settings:
+                if setting.get("id") == "flattenSeasons":
+                    self.apply_flatten_seasons(section["key"], setting.get("value"))
+
+    def apply_flatten_seasons(self, section_id, value):
+        """`flattenSeasons` does NOT change what /children returns.
+
+        Measured: with the pref set to Hide, a real PMS still answers /children
+        with the SEASONS -- what changes is a single field on the show row,
+        `skipChildren`, and the CLIENT decides to skip the season level on the
+        strength of it. plexsim served the preference in its section prefs and
+        then ignored it, so a flatten-seasons library still drew every season.
+
+        Enum, measured: `0` Show, `1` Hide, `2` Hide for single-season series.
+        """
+        for row in self.section_items(section_id):
+            if row.get("type") != "show":
+                continue
+            seasons = len(self.children(row["ratingKey"]))
+            skip = str(value) == "1" or (str(value) == "2" and seasons <= 1)
+            if skip:
+                row["skipChildren"] = True
+            else:
+                row.pop("skipChildren", None)
 
     def _strip_show_fields(self):
         for row in self.items.values():
@@ -1658,6 +1688,9 @@ class PlexSim:
                         continue
                     self.section_pref_overrides[(str(section_id), name)] = value
                     logger.info("SECTION PREF %s %s = %s", section_id, name, value)
+                    if name == "flattenSeasons":
+                        # This one changes the ROWS, not just the setting list.
+                        self.catalog.apply_flatten_seasons(section_id, value)
                 return ("empty", 200)
             # A real PMS answers with a bare container and the full setting
             # list for the library's type.
