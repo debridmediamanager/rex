@@ -2443,6 +2443,113 @@ Measured and not acted on: on kids `/hubs/sections/1?count=1` drops the Recently
 Watched shelf, which fun does not, so there is no rule to follow. Kids' orphaned
 collection tags carry a `guid`, but only 3 of fun's 372 tags do.
 
+#### The seventh pass, second batch: python-plexapi as a third-party client
+
+The second agent of cycle 7 drove python-plexapi at plexsim, the reference and fun:
+463 calls per server, through a guard session that refused every write. It then
+diffed the three servers. The reference's library state was identical before and
+after. Every finding below was re-measured before anything changed.
+
+- **Every sort python-plexapi sends is type-prefixed, and the prefix is a scope.**
+  - `section.all(sort='titleSort:desc')` goes out as
+    `sort=movie.titleSort:desc`. `recentlyAdded()` and `search(sort=)` do the same.
+  - On an episode view, `show.titleSort` sorts by the SHOW's sort title,
+    `season.index` by season number and `episode.id` by ratingKey.
+  - An unknown prefix (`bogus.titleSort`) reads the row itself. An unknown field
+    after any prefix is still a 500.
+  - On a season or episode list, ties fall back to show, then season, then
+    episode order: `sort=episode.index:desc` puts S1E3 before S2E3.
+  - plexsim answered 500 for every prefixed key, including the
+    `show.titleSort:desc,season.index:nullsLast,...` descKey its own `/sorts`
+    advertises.
+- **A scoped filter reads the field of the row its prefix names.** Cycle 4 found
+  that the TYPE lookup is global. The VALUE, though, comes from the named row.
+  - `type=4&show.title=Fire` is all six Firefly episodes and
+    `type=3&show.title=Fire` both seasons.
+  - `type=4&season.index=2` is season 2's three episodes.
+  - A scope below the row matches when ANY descendant does.
+    `type=2&episode.title=Train` is Firefly. `type=3&episode.index=3` is both
+    seasons. `type=2&episode.title!=Train` is still Firefly, because its other
+    episodes do not contain the word.
+  - `index` filters an episode or season listing (`type=4&index=2` is both
+    episode 2s), although no Meta advertises it.
+  - plexsim compared the episode's own title for `show.title` and ignored `index`.
+- **`title=` matches word beginnings, not substrings.** Cycle 4's string table
+  holds for `studio` (`studio=lender` is still four rows) but not for `title`. The
+  reference and fun agree:
+
+  | `title=` | rows | why |
+  |---|---|---|
+  | `Fire`, `fire` | Firefly | begins a word, any case |
+  | `ire`, `fly`, `intel` | none | a substring never matches |
+  | `Tears Steel`, `of Steel`, `b b b` | their title | each query word begins a distinct title word, in order |
+  | `steel of`, `b b b b` | none | order and word count |
+  | `Tears, of` | Tears of Steel | `,` and `.` in the query are dropped |
+  | `Tears-of` | none | other punctuation is part of the word |
+  | (empty) | all five | an empty word begins any word |
+  | `%20` | the four titles of two words or more | the query splits on SINGLE spaces |
+  | `Tears%20%20Steel` | Tears of Steel | the empty word consumes `of` |
+
+  Only `=` works this way. `title!=ears` excludes Tears of Steel, so `!=` still
+  reads a substring, and `<=`/`>=` are still begins-with and ends-with.
+- **`titleSort`, `summary` and `tagline` compare by case-insensitive equality.**
+  - `titleSort=Sin` and `summary=e` match nothing, while `titleSort=sintel`
+    matches.
+  - `tagline=` is the three rows that have none.
+  - `titleSort!=Sin` keeps all five rows and `titleSort!=sintel` four.
+  - No Meta lists these fields, so plexsim ignored them.
+  - `==` and `!==` are case-insensitive on every field (`title%3D=sintel` finds
+    Sintel).
+- **`/library/all` is a query.**
+  - `type=` selects the rows, and filters and `sort=` apply.
+  - The default order is the ratingKey.
+  - A row carries `Media` only when a `type` was given.
+  - plexsim answered all nine of its rows whatever was asked, and that is what
+    `library.search(libtype=)` read.
+- **Four reads python-plexapi makes that plexsim answered 404.**
+  - `/hubs/sections/{id}/manage` lists 8 hubs for a movie library and 9 for a show
+    library. Only Recently Added, plus Seasonal for movies, is promoted to home.
+  - `/library/sections/{id}/timeline` is a secondary container with
+    `latestEntryTime` and `updateQueueSize: 0`.
+    - It lists items the server recently finished (state 5, the row without its
+      tags) and removed (state 9, a stub with an empty title and summary).
+    - fun, with nothing recent, answers size 0 and `latestEntryTime` 0.
+  - `/library/metadata/{id}/clearLogos` and `/themes` are candidate lists, of
+    `Photo` and `Track` rows, and empty for an item that has none.
+- **`/services/browse/<b64>` needs `includeFiles` PRESENT, not `=1`.** `=0` answers
+  the directories and `=1` adds `File` rows; only an absent parameter is a 400.
+  Cycle 5's note read the value.
+- **Row projections**, identical on both servers:
+  - `/library/recentlyAdded` rows name their section by `librarySectionID`,
+    `librarySectionTitle` and `librarySectionUUID` (no key). They carry
+    `allowSync` and are light: no `Guid`, no `Rating`, text-only tags.
+  - A season in a `type=3` LISTING has no `leafCount`/`viewedLeafCount`; its
+    `/children` row does.
+  - `/children` rows leave the librarySection fields to the container.
+  - A show's listing row carries `duration` and `originallyAvailableAt`, as its
+    detail does. A show's `Location` has no `id`.
+- **A season with a year of its own carries it**, with its title as `titleSort`
+  and no `parentYear`. This holds on the reference's season 1 and on fun alike.
+  Only a season without a year carries `parentYear`. It overturns cycle 5's "a
+  season row carries no year or titleSort", which was measured on seasons that
+  had no year yet.
+
+Measured and not acted on:
+
+- The agent reported `/system/agents` in the wrong shape. Re-measured, the
+  reference's six modern `tv.plex.*` rows match plexsim's exactly: `name`,
+  `hasPrefs`, `id`, `Language` rows with a `title`, and no `primary`. The
+  `primary`/`MediaType` shape the agent saw belongs to the legacy
+  `com.plexapp.agents.*` plug-ins, which plexsim has left out on purpose since
+  cycle 5.
+- `/library/metadata/{id}/matches?manual=1` lists 20 candidates from the metadata
+  provider, and plexsim's list is empty. Filling it needs a provider search per
+  request.
+- `thumbBlurHash`/`artBlurHash` under `includeFields` need image decoding, which
+  the stdlib server path does not have.
+- `guid=plex` is a prefix match and `slug=x` a 500 on the reference. The client
+  filters on neither.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
