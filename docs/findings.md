@@ -1845,6 +1845,9 @@ and a PAGED request omits it entirely (`size 1, totalSize 2` for one season).
 plexsim appended it to EVERY page and counted it there, so a virtualised list
 mis-measured and every page grew a spurious tile.
 
+Corrected in the eighth pass: only a ONE-ROW page drops it. The client's own
+`Start=0` page keeps it, outside the page, and it carries the show's leaf counts.
+
 #### `nocache` tracks the library TYPE on a listing too — correcting an earlier finding
 
 This file recorded the rule as paged-versus-unpaged. Re-measured on four libraries
@@ -2548,7 +2551,131 @@ Measured and not acted on:
 - `thumbBlurHash`/`artBlurHash` under `includeFields` need image decoding, which
   the stdlib server path does not have.
 - `guid=plex` is a prefix match and `slug=x` a 500 on the reference. The client
-  filters on neither.
+  filters on neither. (Overturned for `guid=` in the eighth pass: the client's
+  availability lookup sends `/library/all?type=N&guid=`.)
+
+#### The eighth pass: every path the web bundle can build
+
+Cycle 8's first agent read the served client instead of a recording. It pulled
+466 path literals out of `webclient/js` (328 distinct), resolved 152 GET templates
+with each server's own ids, and fetched every one from kids, fun and plexsim, in
+JSON and in XML. 37 templates differed in behaviour; they came down to 13
+findings, and 12 were re-measured on both servers and acted on. Each is tied to
+the code in the bundle that builds it.
+
+- **The library subsets were the "All" grid.** `onDeck`, `recentlyAdded`,
+  `newest`, `recentlyViewed` and `recentlyViewedShows` are the pivot bar's
+  entries, and plexsim answered each with the library's top-level rows titled
+  "All <library>", and 404'd the last. Measured on both servers:
+  - `title2` names the subset. A show library's Recently Viewed is "Recently
+    Viewed Episodes".
+  - On a show library the first four are episode lists (`viewGroup` episode,
+    `mixedParents`, `nocache`) whatever `type=` says. The client rewrites a show or
+    season type to episode for them itself (`getMetadataTypeID`).
+  - `recentlyViewedShows` lists every top-level row: viewed ones first, newest
+    view first, then the rest by sort title. It is the only subset with
+    `allowSync` false, and the only one that carries `offset` and `totalSize`
+    unpaged.
+  - Recently Added and Recently Viewed stop at 100 rows. fun's totalSize is
+    exactly 100 on both of its libraries.
+- **`/library/sections/{id}/autocomplete` was never routed.** The Edit dialog's
+  suggestions send `type=N&<field>.query=<text>&limit=10`.
+  - The query is a phrase that must begin a whitespace-separated word:
+    - `ste` finds Tears of Steel, and so does `of s`;
+    - `tears steel` finds nothing;
+    - `gate` does not match inside Steins;Gate.
+  - `<field>.queryRange` is the inclusive span of the FIRST case-insensitive
+    occurrence of the query, which is not always the word that matched. On fun,
+    `e` matches 300: Rise of an Empire through "Empire" and reports `8,8`, the
+    end of "Rise".
+  - Rows are the listing's own, in sort-title order.
+  - Tag fields answer `Directory` rows of id, `filter`, tag and tagType, plus
+    tagKey and thumb for a person. Neither server has a label, so its tagType 11
+    is python-plexapi's `utils.TAGTYPES`, which also confirms the measured 319
+    for a network.
+  - `year` matches its digits as a word (`201` finds 2010 to 2015, `12` finds
+    nothing).
+  - Refusals, all measured on both servers:
+    - no `type`, no field, two different fields, an empty value, an unknown
+      field or a non-integer `limit` is a 400;
+    - a media, state or decade field is a 500;
+    - `limit=0` answers one row and a negative limit every row;
+    - a season list answers nothing.
+- **`/filters` is the asked TYPE's list, not the library's.** A movie library
+  answers the 17 episode filters to `type=4`. A show library answers the 28
+  movie filters to `type=1`. Types 8, 9, 10, 13 and 20 have lists of their own,
+  `type=3` and everything else is empty, and a non-number is a 400.
+  `includeAdvanced=1` appends Duplicates to types 1 and 4 only. The lists are
+  `section_filters.json`, captured from the reference. fun has the same types
+  and the same Duplicates rule, with shorter 1.42 lists.
+- **By Folder never opened a folder.** plexsim listed one directory per item
+  and ignored `parent`. Every folder therefore reopened the same list, and the
+  view never reached an item. Measured:
+  - `?parent=<id>` lists that directory. Subdirectories are rows of `key` and
+    `title`. Files are the items they hold: listing rows, `<Video>` in XML, and
+    an episode's has no Director, Writer or Role.
+  - Rows come in file-name order. Firefly's episodes come by their s01eNN names.
+  - An unknown or empty parent is empty. A non-numeric one is the top level.
+  - The container carries `allowSync` and pages.
+
+  plexsim's files sit flat under `/plexsim/<n>`, so its top level is the items
+  themselves.
+- **`/library/metadata/{id}/grandchildren` was a 404.** The client builds it: a
+  hub row with `skipChildren` has `/children` rewritten to `/grandchildren`.
+  - A show answers its episodes, a season its episodes, an episode itself, and a
+    movie an empty 200.
+  - The container has no parent identity, no librarySection fields and no
+    `allowSync`, and its `viewGroup` is the library's type.
+- **A paged season list.** The earlier finding had the paging rule wrong:
+  - The client's `Start=0` page keeps "All episodes", outside the page, with
+    `leafCount`, `viewedLeafCount` and the show's `thumb`. Only `Size=1` drops it.
+  - Paged rows carried the librarySection fields, because the paged branch
+    skipped the child projection.
+  - The row came last in XML where both servers put it first.
+  - `excludeElements=Media` gives each child row `mediaCount` (0 on a season)
+    and `mediaCountOptimized`.
+- **`guid=` is how the client asks whether this server holds an item.** On a
+  section listing and `/library/all` it is a case-sensitive prefix: an exact
+  guid is that item, `guid=plex` every matched item, an empty value every row.
+  plexsim ignored it, so every lookup "found" the whole library.
+- **Four reads and five refusals.**
+  - `/library/sections?includePreferences=1` puts each library's settings on its
+    row. A show library's `episodeSort` is the per-show variant, whose enum starts
+    with "Library default". The first-run flow reads `Preferences.Setting` off
+    every row to find hidden libraries, and threw on plexsim.
+  - `/:/prefs/get?id=` returns one Setting with an empty label and summary and no
+    enumValues. It is 400 with no id and 404 for an unknown, empty or comma-joined
+    id.
+  - A comma-joined `/library/metadata/a,b` container carries `allowSync` and the
+    FIRST row's library, even across two.
+  - `/neighborhood/devices` is an empty container.
+  - The refusals:
+    - `/hubs/sections/{id}/manage?metadataItemId=` is a 400;
+    - `/channels/recentlyViewed` and `/devices.xml` are the plug-in dispatcher's
+      200 (plexsim answered its device list to the second);
+    - `/media/subscriptions/template` and `/services/defaultLibraries` are 400s.
+
+Thirteen checks cover these. Twelve are new, and all twelve fail against
+`c62c51b` (743/755 there). The cycle-4 XML check that wanted `<Directory>` for
+every folder row was re-measured and updated: a folder's files render as the
+items they are.
+
+Measured and not acted on:
+
+- fun's `newest` stops at 47 movies and 60 episodes, with no bound visible in
+  release or added dates; kids lists all five. plexsim lists every row.
+- fun's Recently Viewed order follows neither `lastViewedAt` nor `viewCount`.
+- Autocomplete orders by ICU collation with numeric runs, so 10, 12, 40, 300,
+  2001 on fun. ICU collation stays out.
+- On a show's `/children` at `Start>0`, kids drops All episodes and fun keeps it.
+  plexsim follows kids.
+- `guid==` answers nothing and `guid!=` everything; the client sends neither.
+- `/library/all` with no `type` and `show.guid=…&season.index=1` answers the
+  show; the client always sends `type=3`, which already works.
+- `/system/services/url/lookup` is a 500 carrying the legacy plug-in
+  framework's Python traceback.
+- A folder level holding both subdirectories and files was not measured. No
+  plexsim catalog has one, and its directory rows would render as `<Video>`.
 
 ### Emulation calibrated against the account's own claimed servers
 

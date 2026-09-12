@@ -406,69 +406,43 @@ SECTION_SORTS = [
      "title": "Randomly"},
 ]
 
-# `/library/sections/{id}/filters`, captured entry for entry from a real PMS --
-# 28 on a movie library and a DIFFERENT 15 on a show one, which is the same
-# lesson as the two `Meta` sidecars: one list served for both types gives a show
-# library a filter bar that can only talk about movies. plexsim served a
-# hand-trimmed 15 for both.
-#
-# The tuple is (filter, filterType, title, key suffix). The suffix is measured
-# and not derivable: a show library's keys carry `?type=2` -- except `country`,
-# `unmatched` and `editionTitle`, which do not.
+# `/library/sections/{id}/filters`, captured entry for entry from a real PMS.
+# Re-measured in cycle 8, which corrects how this was keyed: the list belongs to the
+# `?type=` asked for, not to the library. A movie library answers the 17 episode
+# filters to `type=4` and a show library the 28 movie ones to `type=1`, identically,
+# and only the DEFAULT follows the library. `type=3` and every type with no list are
+# an empty 200, a non-number is a 400, and `includeAdvanced=1` appends the Duplicates
+# filter to types 1 and 4 only. plexsim served the library's own list to every type
+# and never sent Duplicates, so an episode view's filter bar offered show filters.
+# The key suffixes (`?type=2` on most show keys, but not on `country`, `unmatched`
+# or `editionTitle`) are measured and not derivable.
 #
 # Seven of these axes 404 on the reference itself (`hdr`, `dovi`, `hdr10plus`,
 # `atmos`, `inProgress`, `unmatched`, `unwatchedLeaves`). They are advertised
 # anyway, because that is what a real PMS advertises -- plexsim's unknown-leaf
 # 404 reproduces the rest of it for free.
-SECTION_FILTERS = {
-    "movie": [
-        ("genre", "string", "Genre", ""),
-        ("year", "integer", "Year", ""),
-        ("decade", "integer", "Decade", ""),
-        ("contentRating", "string", "Content Rating", ""),
-        ("collection", "string", "Collection", ""),
-        ("director", "string", "Director", ""),
-        ("actor", "string", "Actor", ""),
-        ("writer", "string", "Writer", ""),
-        ("producer", "string", "Producer", ""),
-        ("country", "string", "Country", ""),
-        ("studio", "string", "Studio", ""),
-        ("resolution", "string", "Resolution", ""),
-        ("hdr", "boolean", "HDR", ""),
-        ("dovi", "boolean", "DOVI", ""),
-        ("hdr10plus", "boolean", "HDR10+", ""),
-        ("atmos", "boolean", "Atmos", ""),
-        ("unwatched", "boolean", "Unwatched", ""),
-        ("inProgress", "boolean", "In Progress", ""),
-        ("unmatched", "boolean", "Unmatched", ""),
-        ("videoCodec", "string", "Video Codec", ""),
-        ("audioCodec", "string", "Audio Codec", ""),
-        ("subtitleCodec", "string", "Subtitle Codec", ""),
-        ("audioLayout", "string", "Audio Layout", ""),
-        ("audioLanguage", "string", "Audio Language", ""),
-        ("subtitleLanguage", "string", "Subtitle Language", ""),
-        ("editionTitle", "string", "Edition", ""),
-        ("label", "string", "Labels", ""),
-        ("location", "string", "Folder Location", ""),
-    ],
-    "show": [
-        ("genre", "string", "Genre", "?type=2"),
-        ("year", "integer", "Year", "?type=2"),
-        ("contentRating", "string", "Content Rating", "?type=2"),
-        ("studio", "string", "Studio", "?type=2"),
-        ("network", "string", "Network", "?type=2"),
-        ("country", "string", "Country", ""),
-        ("collection", "string", "Collection", "?type=2"),
-        ("director", "string", "Director", "?type=2"),
-        ("actor", "string", "Actor", "?type=2"),
-        ("writer", "string", "Writer", "?type=2"),
-        ("producer", "string", "Producer", "?type=2"),
-        ("unwatchedLeaves", "boolean", "Unwatched", "?type=2"),
-        ("unmatched", "boolean", "Unmatched", ""),
-        ("editionTitle", "string", "Edition", ""),
-        ("label", "string", "Labels", "?type=2"),
-    ],
-}
+_SECTION_FILTERS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "section_filters.json")
+try:
+    with open(_SECTION_FILTERS_PATH) as _handle:
+        SECTION_FILTERS = json.load(_handle)
+except OSError:
+    SECTION_FILTERS = {"plain": {}, "advanced": {}}
+
+
+def _begins_word(text, wanted):
+    """True when `wanted` (lowercase) starts at the beginning of a word of `text`.
+
+    Measured on both servers for `/library/sections/{id}/autocomplete`: the query is
+    a PHRASE that must begin a whitespace-separated word -- `ste` finds Tears of
+    Steel, `of s` finds it too, `tears steel` does not, and neither `gate` in
+    Steins;Gate nor `burbs` in The 'Burbs matches, because only whitespace starts a
+    word. This is not the listing's `title=` matcher, whose words may skip.
+    """
+    lowered = str(text).lower()
+    return any((at == 0 or lowered[at - 1].isspace()) and lowered.startswith(wanted, at)
+               for at in range(len(lowered)))
+
 
 # `/playlists/sorts`, from a real PMS.
 PLAYLIST_SORTS = [
@@ -1660,20 +1634,73 @@ class PlexSim:
         # when BOTH container parameters are present; see page_window().
         page, paged, start, total = self.page_window(rows, query or {})
         if paged:
-            fields["Metadata"] = self._guid_gate([_full(r) for r in page], query)
+            # Measured: a PAGED row is the same light projection as an unpaged one.
+            # plexsim served the full row here, so every row of the page the client
+            # actually asks for carried the librarySection fields a child row never
+            # does.
+            fields["Metadata"] = [_grid_row(r, keep_section=False, keep_guid=True)
+                                  for r in self._guid_gate([_full(r) for r in page], query)]
             fields["offset"] = start
             fields["totalSize"] = total
+        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",") if e]
+        if "Media" in excluded:
+            # Measured on both servers: `excludeElements=Media` on a child list gives
+            # every row the two counts the detail read gets -- `mediaCount` 0 on a
+            # season, which has no Media of its own, and `mediaCountOptimized` 0.
+            fields["Metadata"] = [dict({k: v for k, v in r.items() if k != "Media"},
+                                       mediaCount=len(r.get("Media") or []),
+                                       mediaCountOptimized=0)
+                                  for r in fields["Metadata"]]
         fields.update(extra)
         if extra.get("Directory"):
             # Measured: the container's `size` counts the "All episodes" Directory
             # row as well as the seasons, which is what `excludeAllLeaves=1` takes
-            # back off it -- and a PAGED request drops the row entirely, because it
-            # is not part of the page. plexsim appended it to every page and counted
-            # it there, so a virtualised list mis-measured and every page grew a
-            # spurious tile. In XML the row also comes FIRST, before the seasons.
+            # back off it; `totalSize` does not. In XML the row comes FIRST, before
+            # the seasons, and plexsim sent it last.
             fields["size"] = len(fields.get("Metadata") or []) + len(extra["Directory"])
+            fields = dict([("Directory", fields.pop("Directory"))] + list(fields.items()))
 
         return self.container(**{k: v for k, v in fields.items() if v is not None})
+
+    def grandchildren(self, row, query):
+        """`/library/metadata/{id}/grandchildren` -- the items two levels down.
+
+        Measured on both servers: a show's are its episodes, a season's its
+        episodes, an episode's itself, and a movie's an empty 200. The client builds
+        this path itself -- a hub row with `skipChildren` has its `/children` key
+        rewritten to `/grandchildren` -- and plexsim 404'd it. The container is not
+        the allLeaves one: no parent identity, no librarySection fields and no
+        allowSync, just the library's title and art and a `viewGroup` naming the
+        LIBRARY's type, so an episode list says `show`.
+        """
+        kind = row.get("type")
+        if kind == "show":
+            rows = self.catalog.leaves(row["ratingKey"])
+        elif kind == "season":
+            rows = self.catalog.children(row["ratingKey"])
+        elif kind == "episode":
+            rows = [row]
+        else:
+            rows = []
+        section = self.catalog.section(row.get("librarySectionID")) or {}
+        is_show = section.get("type") == "show"
+        page, paged, start, total = self.page_window(rows, query)
+        fields = {
+            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+            "title1": section.get("title"),
+            "viewGroup": "show" if is_show else "movie",
+            "viewMode": 65592,
+            "Metadata": [_grid_row(r, keep_section=False, keep_guid=True)
+                         for r in self._guid_gate([_full(r) for r in page], query)],
+        }
+        if is_show:
+            fields["nocache"] = True
+        if paged:
+            fields.update(offset=start, totalSize=total)
+        return self.bare_container(size=len(page), **fields)
 
     def section_directory(self, section, shared=False):
         """One section as a Directory row.
@@ -1922,6 +1949,20 @@ class PlexSim:
         # back as PUT /:/prefs?<id>=<value>. Answering the write with a
         # MediaContainer is wrong -- a real PMS returns an empty 200 -- and
         # dropping it means the page silently reverts on its next read.
+        if route == "/:/prefs/get" and method in ("GET", "HEAD"):
+            # One setting by id -- how Home reads MergedRecentlyAdded. Measured on both
+            # servers: a one-row container whose Setting has an EMPTY label and summary
+            # and no enumValues; no `id` is a 400, and an unknown, empty or
+            # comma-joined id a 404. plexsim 404'd the path.
+            if "id" not in query:
+                return ("error", 400, "plexsim: bad request")
+            setting = next((s for s in self.server_prefs() if s.get("id") == query["id"]),
+                           None)
+            if setting is None:
+                return ("error", 404, "plexsim: not found")
+            setting = {k: v for k, v in setting.items() if k != "enumValues"}
+            setting.update(label="", summary="")
+            return self.bare_container(size=1, Setting=[setting])
         if route in ("/:/prefs", "/:/prefs/"):
             if method == "PUT":
                 return self.set_prefs(query)
@@ -2008,7 +2049,7 @@ class PlexSim:
 
         if segments[:1] == ["accounts"]:
             return self.accounts(segments[1] if len(segments) > 1 else None)
-        if segments[:1] == ["devices"] or route == "/devices.xml":
+        if segments[:1] == ["devices"]:
             if method == "DELETE":
                 return ("empty", 200)
             if method == "POST" and len(segments) == 1:
@@ -2016,7 +2057,7 @@ class PlexSim:
                 return self.bare_container(size=0, content="plugins")
             if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
-            if len(segments) == 2 and route != "/devices.xml":
+            if len(segments) == 2:
                 # `/devices/{id}`: one row, and a 404 for an id the server never
                 # assigned -- including a non-number.
                 device = self.sessions.device(segments[1])
@@ -2132,6 +2173,19 @@ class PlexSim:
             return self.bare_container(size=2, Directory=[
                 {"key": "all", "title": "All"},
                 {"key": "recentlyViewed", "title": "Recently Viewed"}])
+        if route == "/channels/recentlyViewed":
+            # Measured on both servers: the plug-in dispatcher's empty answer, the
+            # same as /channels/all. plexsim 404'd it.
+            return self.bare_container(size=0, content="plugins")
+        if route == "/neighborhood/devices" and method in ("GET", "HEAD"):
+            # The DLNA devices this server can see. Measured: an empty container on
+            # the reference, and fun lists the renderers on its LAN. plexsim sees
+            # none, and 404'd the Settings page's read.
+            return self.bare_container(size=0)
+        if route == "/services/defaultLibraries" and method in ("GET", "HEAD"):
+            # Measured on both servers: a 400 with and without a language, which the
+            # first-run setup reads as "no suggested libraries".
+            return ("error", 400, "plexsim: bad request")
         if route == "/channels/all":
             # Measured 200 on the reference with nothing but `size` and
             # `content="plugins"`; plexsim 404'd it.
@@ -2157,6 +2211,10 @@ class PlexSim:
             if segments[1] == "grabbers" and segments[2] == "devices" \
                     and len(segments) == 3:
                 return self.bare_container(size=0)
+            if segments[1] == "subscriptions" and segments[2] == "template" \
+                    and len(segments) == 3 and method in ("GET", "HEAD"):
+                # Measured on both servers: a 400 for any guid, where plexsim 404'd.
+                return ("error", 400, "plexsim: bad request")
             if not (segments[1] == "subscriptions" and segments[2] == "scheduled"):
                 return ("error", 404, "plexsim: not found")
         if route == "/security/resources":
@@ -2244,6 +2302,22 @@ class PlexSim:
             if method == "POST":
                 return self.create_section(query)
             rows = [self.section_directory(s) for s in catalog.sections]
+            if query.get("includePreferences") == "1":
+                # Measured on both servers: every row gains its library's settings,
+                # the same list /library/sections/{id}/prefs answers -- except that a
+                # show library's `episodeSort` is the per-SHOW variant, with "Library
+                # default" in its enum. The setup flow reads `Preferences.Setting` off
+                # every row to find hidden libraries, and plexsim ignored the flag, so
+                # that read threw and the flow treated no library as hidden.
+                for section, row in zip(catalog.sections, rows):
+                    settings = self.section_settings(section["key"], section)
+                    if section.get("type") == "show":
+                        own = {s.get("id"): s for s in ITEM_PREFS.get("show") or []}
+                        settings = [dict(s, summary=own[s["id"]].get("summary"),
+                                         enumValues=own[s["id"]].get("enumValues"))
+                                    if s.get("id") == "episodeSort" and "episodeSort" in own
+                                    else s for s in settings]
+                    row["Preferences"] = {"Setting": settings}
             # Measured on fun and on the 1.43.4 reference: this container carries
             # `title1` and allowSync only -- no identifier and no media-tag pair,
             # which the generic library container was adding.
@@ -2356,6 +2430,7 @@ class PlexSim:
                           .get(next(iter(kinds))) if len(kinds) == 1 else None)
                 source = [r for r in source if wanted and r.get("type") == wanted]
             source, _ = self.apply_filters(source, query)
+            source = self._guid_prefix(source, query)
             if query.get("sort"):
                 source, unsupported = self._sorted(source, query["sort"])
                 if unsupported:
@@ -2486,6 +2561,10 @@ class PlexSim:
             section = catalog.section(segments[2])
             if section is None or method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
+            if "metadataItemId" in query:
+                # Measured on both servers: naming an item -- even with an empty id --
+                # is a 400 on a read.
+                return ("error", 400, "plexsim: bad request")
             kind = "show" if section.get("type") == "show" else "movie"
             rows = [{"identifier": identifier, "title": title,
                      "recommendationsVisibility": "all",
@@ -3066,11 +3145,7 @@ class PlexSim:
                 settings = self.section_pref_rows(type_id, query["agent"], current)
             # A real PMS answers with a bare container and the full setting
             # list for the library's type.
-            settings = [
-                dict(s, value=self.section_pref_overrides[(str(section_id), s.get("id"))])
-                if (str(section_id), s.get("id")) in self.section_pref_overrides else s
-                for s in settings
-            ]
+            settings = self.section_settings(section_id, section, settings)
             return self.bare_container(size=len(settings), Setting=settings)
 
         # -- listings ------------------------------------------------------
@@ -3101,17 +3176,10 @@ class PlexSim:
             if method != "GET":
                 return ("error", 404, "plexsim: not found")
             return self.common_fields(section_id, section, query)
-        if leaf in ("recentlyAdded", "newest", "recentlyViewed", "onDeck"):
-            rows = self.catalog.section_items(section_id)
-            if leaf == "onDeck":
-                rows = [r for r in self.continue_watching()
-                        if str(r.get("librarySectionID")) == str(section_id)]
-            elif leaf == "recentlyViewed":
-                rows = [r for r in rows if r.get("lastViewedAt")]
-            else:
-                rows = sorted(rows, key=lambda r: -(r.get("addedAt") or 0))[:12]
-            return self.listing_container(
-                section_id, section, [_listing_row(r) for r in rows])
+        if leaf in self.SUBSET_TITLES:
+            return self.section_subset(section_id, section, leaf, query)
+        if leaf == "autocomplete":
+            return self.autocomplete(section_id, section, query)
         if leaf == "collections":
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
@@ -3119,19 +3187,7 @@ class PlexSim:
             rows = self.library.collections(section_id)
             return self.listing_container(section_id, section, rows, query=query)
         if leaf == "folder":
-            # By Folder. plexsim's rows have one Part each, so the folder tree
-            # is one level: the release directory each Part sits in.
-            rows = []
-            for index, row in enumerate(self.catalog.section_items(section_id), 1):
-                title = row.get("title") or ""
-                rows.append({"key": "/library/sections/%s/folder?parent=%d"
-                                    % (section_id, index), "title": title})
-            return self.secondary_container(
-                section_id, section, "By Folder", Metadata=rows,
-                _xml={"Metadata": "Directory"},
-                librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
-                librarySectionTitle=section.get("title"),
-                librarySectionUUID=section.get("uuid"))
+            return self.folder_view(section_id, section, query)
 
         if leaf == "query":
             # Measured: only the `parse` child exists -- `/query` alone is a 404,
@@ -3164,18 +3220,17 @@ class PlexSim:
             return self.secondary_container(section_id, section, None,
                                             Directory=sorts)
         if leaf == "filters":
-            entries = (SECTION_FILTERS.get(section.get("type"))
-                       or SECTION_FILTERS["movie"])
-            filters = [
-                {
-                    "filter": name,
-                    "filterType": kind,
-                    "key": "/library/sections/%s/%s%s" % (section_id, name, suffix),
-                    "title": title,
-                    "type": "filter",
-                }
-                for name, kind, title, suffix in entries
-            ]
+            raw = query.get("type")
+            if raw in (None, ""):
+                wanted = "2" if section.get("type") == "show" else "1"
+            elif raw.lstrip("-").isdigit():
+                wanted = str(int(raw))
+            else:
+                return ("error", 400, "plexsim: bad request")
+            entries = list(SECTION_FILTERS["plain"].get(wanted) or [])
+            if query.get("includeAdvanced") == "1":
+                entries += SECTION_FILTERS["advanced"].get(wanted) or []
+            filters = json.loads(json.dumps(entries).replace("{section}", str(section_id)))
             return self.secondary_container(section_id, section, None,
                                             Directory=filters)
         if leaf == "firstCharacter":
@@ -3397,6 +3452,7 @@ class PlexSim:
         source = self.typed_rows(section_id, query)
 
         source, _ = self.apply_filters(source, query, section)
+        source = self._guid_prefix(source, query)
         # Measured on both servers: the DEFAULT order of a listing is `titleSort`
         # ascending (falling back to the title where no sort title is stored), not
         # the catalog's own order -- fun's show grid opens on `【OSHI NO KO】, 13
@@ -3434,6 +3490,240 @@ class PlexSim:
             if meta:
                 extra["Meta"] = meta
         return self.listing_container(section_id, section, rows, query=query, **extra)
+
+    # The subsets a library's pivot bar opens, and the title2 each one carries.
+    SUBSET_TITLES = {"onDeck": "On Deck", "recentlyAdded": "Recently Added",
+                     "newest": "Recently Released", "recentlyViewed": "Recently Viewed",
+                     "recentlyViewedShows": "Recently Viewed Shows"}
+
+    def section_subset(self, section_id, section, leaf, query):
+        """`/library/sections/{id}/{onDeck,recentlyAdded,newest,recentlyViewed,...}`.
+
+        Measured on both servers, and plexsim had all of it wrong: it answered each
+        subset as the library's "All" grid of top-level rows, and 404'd
+        recentlyViewedShows, which the pivot bar offers.
+
+        - `title2` names the subset; a show library's Recently Viewed is "Recently
+          Viewed Episodes".
+        - On a SHOW library the first four are EPISODE lists -- viewGroup `episode`,
+          `mixedParents`, `nocache` -- whatever `type=` asks for (the client itself
+          rewrites a show or season type to episode for them). A movie library's
+          stay movies.
+        - recentlyViewedShows is every top-level row, the viewed ones first by when
+          and the rest by sort title. It is the one with `allowSync` false, and it
+          carries offset and totalSize even unpaged.
+        - Recently Added and Recently Viewed stop at 100 rows: fun's totalSize is
+          exactly 100 on both of its libraries, and 6 or 60 on the others.
+        """
+        is_show = section.get("type") == "show"
+        extra = {"title2": self.SUBSET_TITLES[leaf], "allowSync": True}
+        if is_show:
+            extra["mixedParents"] = True
+            extra["nocache"] = True
+            if leaf == "recentlyViewed":
+                extra["title2"] = "Recently Viewed Episodes"
+        view_group = "episode" if is_show else "movie"
+        if leaf == "recentlyViewedShows":
+            rows, _ = self._sorted(self.typed_rows(section_id, {"type": "2" if is_show else "1"}),
+                                   "titleSort")
+            rows.sort(key=lambda r: -self._last_viewed(r))
+            extra["allowSync"] = False
+            view_group = "show" if is_show else "movie"
+        else:
+            kind = "episode" if is_show else "movie"
+            rows, _ = self._sorted(self.typed_rows(section_id, {"type": "4" if is_show else "1"}),
+                                   "titleSort")
+            if leaf == "onDeck":
+                rows = [r for r in self.continue_watching()
+                        if str(r.get("librarySectionID")) == str(section_id)
+                        and r.get("type") == kind]
+            elif leaf == "recentlyViewed":
+                rows = sorted([r for r in rows if r.get("lastViewedAt")],
+                              key=lambda r: -r["lastViewedAt"])[:100]
+            elif leaf == "recentlyAdded":
+                rows = sorted(rows, key=lambda r: -(r.get("addedAt") or 0))[:100]
+            else:
+                rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
+                              reverse=True)
+        if leaf == "recentlyViewedShows" and not self.page_window(rows, query)[1]:
+            extra["offset"] = 0
+            extra["totalSize"] = len(rows)
+        return self.listing_container(section_id, section, [_listing_row(r) for r in rows],
+                                      view_group=view_group, query=query, **extra)
+
+    def _last_viewed(self, row):
+        """When a row was last watched -- for a show, its most recent episode."""
+        stamps = [row.get("lastViewedAt") or 0]
+        if row.get("type") == "show":
+            stamps += [leaf.get("lastViewedAt") or 0
+                       for leaf in self.catalog.leaves(row["ratingKey"])]
+        return max(stamps)
+
+    # `/library/sections/{id}/autocomplete`, field by field on both servers: a tag
+    # field answers its tags, a text or number field answers the rows it matches,
+    # the fields below answer 500, and any other name is unknown and a 400.
+    AUTOCOMPLETE_TAGS = {"genre": ("Genre", 1), "collection": ("Collection", 2),
+                         "director": ("Director", 4), "writer": ("Writer", 5),
+                         "actor": ("Role", 6), "producer": ("Producer", 7),
+                         "country": ("Country", 8), "label": ("Label", 11),
+                         "network": ("Network", 319)}
+    AUTOCOMPLETE_TEXT = ("title", "titleSort", "originalTitle", "summary", "tagline",
+                         "studio", "contentRating", "editionTitle", "year", "index")
+    AUTOCOMPLETE_EMPTY = ("userRating", "duration", "addedAt", "originallyAvailableAt",
+                          "guid", "similar", "mood", "style")
+    AUTOCOMPLETE_REFUSED = ("decade", "resolution", "unwatched", "inProgress",
+                            "audioLanguage", "location", "viewCount", "lastViewedAt",
+                            "unwatchedLeaves")
+
+    def autocomplete(self, section_id, section, query):
+        """The Edit dialog's suggestions: `?type=N&<field>.query=<text>&limit=10`.
+
+        Measured on both servers; plexsim 404'd every form of it.
+
+        - `type` is required, exactly ONE field may be asked (a repeat of the same
+          field keeps its last value, two different fields are a 400), and an empty
+          value is a 400. `limit` must be an integer: 0 answers one row and a
+          negative one every row, as does no limit at all.
+        - A TAG field answers `Directory` rows of id, `filter`, tag and tagType (plus
+          tagKey and thumb for a person), alphabetical, drawn from the rows of that
+          type in this library.
+        - A text or number field answers the matching rows as the listing carries
+          them, in sort-title order, each led by `<field>.queryRange`: the inclusive
+          span of the FIRST case-insensitive occurrence of the query. That is not
+          always the word that matched -- `e` matches 300: Rise of an Empire through
+          "Empire" and reports `8,8`, the end of "Rise". `index` has no range, and a
+          movie's index is 1.
+        - A season list answers nothing, and neither does a type the library does not
+          hold.
+        """
+        if not query.get("type"):
+            return ("error", 400, "plexsim: bad request")
+        asked = [(name[:-len(".query")], value)
+                 for name, value in query.get("_pairs") or [] if name.endswith(".query")]
+        if len({field for field, _ in asked}) != 1:
+            return ("error", 400, "plexsim: bad request")
+        field, wanted = asked[-1]
+        if not wanted:
+            return ("error", 400, "plexsim: bad request")
+        limit = None
+        if "limit" in query:
+            try:
+                limit = int(query["limit"])
+            except ValueError:
+                return ("error", 400, "plexsim: bad request")
+            limit = None if limit < 0 else max(limit, 1)
+        if field in self.AUTOCOMPLETE_REFUSED:
+            return ("error", 500, "plexsim: internal error")
+        if field not in self.AUTOCOMPLETE_TAGS and field not in self.AUTOCOMPLETE_TEXT \
+                and field not in self.AUTOCOMPLETE_EMPTY:
+            return ("error", 400, "plexsim: bad request")
+        kind = {"1": "movie", "2": "show", "4": "episode"}.get(query["type"])
+        rows = self.typed_rows(section_id, {"type": query["type"]}) if kind else []
+        wanted = wanted.lower()
+        if field in self.AUTOCOMPLETE_TAGS:
+            element, tag_type = self.AUTOCOMPLETE_TAGS[field]
+            seen = {}
+            for row in rows:
+                for tag in row.get(element) or []:
+                    if isinstance(tag, dict) and tag.get("tag") \
+                            and _begins_word(tag["tag"], wanted):
+                        seen.setdefault(tag["tag"].lower(), tag)
+            entries = []
+            for _, tag in sorted(seen.items()):
+                entry = {"id": tag.get("id"), "filter": "%s=%s" % (field, tag.get("id")),
+                         "tag": tag["tag"], "tagType": tag_type}
+                for extra in ("tagKey", "thumb"):
+                    if tag.get(extra):
+                        entry[extra] = tag[extra]
+                entries.append(entry)
+            return self.secondary_container(section_id, section, None,
+                                            Directory=entries[:limit])
+        found = []
+        if field in self.AUTOCOMPLETE_TEXT:
+            for row in rows:
+                if field == "titleSort":
+                    value = row.get("titleSort") or row.get("title")
+                elif field == "index":
+                    value = row.get("index") or (1 if row.get("type") == "movie" else None)
+                else:
+                    value = row.get(field)
+                if value is None or value == "" or not _begins_word(value, wanted):
+                    continue
+                shown = _grid_row(_listing_row(row), keep_section=False)
+                if field != "index":
+                    at = str(value).lower().find(wanted)
+                    shown = dict([("%s.queryRange" % field,
+                                   "%d,%d" % (at, at + len(wanted) - 1))] + list(shown.items()))
+                found.append((row, shown))
+        order = self._sort_key("titleSort")
+        found.sort(key=lambda pair: order(pair[0]))
+        return self.secondary_container(section_id, section, None,
+                                        Metadata=[shown for _, shown in found][:limit])
+
+    def folder_view(self, section_id, section, query):
+        """By Folder: the library's directory tree, one level per request.
+
+        Measured on both servers: the top level lists the directories under the
+        library's Location as `{key: .../folder?parent=<id>, title}` rows, and
+        `?parent=<id>` lists THAT directory -- its subdirectories the same way and its
+        files as the items they hold, full listing rows (an episode's without its
+        Director, Writer and Role). An unknown or empty parent is an empty list and a
+        non-numeric one the top level. A directory's items come in FILE order --
+        Firefly's episodes by their s01eNN names, not their titles. The container is
+        the secondary one plus the librarySection triple and `allowSync`, and it pages.
+
+        plexsim listed one directory per ITEM, titled after the item, and ignored
+        `parent`, so every folder opened the same list again and the view never
+        reached an item. Its catalogs keep every file flat under `/plexsim/<n>`, so
+        the tree is built from each Part's path relative to the library's Location --
+        a file outside it sits at the top -- with directory ids numbered in path order.
+        """
+        is_show = section.get("type") == "show"
+        root = "/plexsim/%s/" % section_id
+        placed = []
+        for row in self.typed_rows(section_id, {"type": "4" if is_show else "1"}):
+            files = [part.get("file") for media in row.get("Media") or []
+                     for part in media.get("Part") or [] if part.get("file")]
+            if not files:
+                continue
+            relative = (files[0][len(root):] if files[0].startswith(root)
+                        else files[0].rsplit("/", 1)[-1])
+            parts = tuple(p for p in relative.split("/") if p) or ("",)
+            placed.append((parts[:-1], parts[-1], row))
+        directories = {folders[:depth] for folders, _, _ in placed
+                       for depth in range(1, len(folders) + 1)}
+        ids = {folders: number for number, folders in enumerate(sorted(directories), 1)}
+        level = ()
+        parent = query.get("parent")
+        if parent == "":
+            level = None
+        elif parent is not None and parent.isdigit():
+            level = next((f for f, number in ids.items() if number == int(parent)), None)
+        rows = []
+        if level is not None:
+            for folders in sorted((f for f in directories if f[:-1] == level),
+                                  key=lambda f: f[-1].lower()):
+                rows.append({"key": "/library/sections/%s/folder?parent=%d"
+                                    % (section_id, ids[folders]),
+                             "title": folders[-1]})
+            for _, _, row in sorted((p for p in placed if p[0] == level),
+                                    key=lambda p: (p[1].lower(), int(p[2]["ratingKey"]))):
+                shown = _grid_row(_listing_row(row), keep_section=False)
+                if row.get("type") == "episode":
+                    for tag in ("Director", "Writer", "Role"):
+                        shown.pop(tag, None)
+                rows.append(shown)
+        page, paged, start, total = self.page_window(rows, query)
+        fields = {}
+        if paged:
+            fields.update(offset=start, totalSize=total)
+        if page and not any("type" in r for r in page):
+            fields["_xml"] = {"Metadata": "Directory"}
+        return self.secondary_container(
+            section_id, section, "By Folder", Metadata=page, allowSync=True,
+            librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
+            librarySectionTitle=section.get("title"),
+            librarySectionUUID=section.get("uuid"), **fields)
 
     # The sort keys the captured Meta advertises. A key the listing cannot honour
     # is a sort the UI offers and the server ignores, which reads as a broken
@@ -3797,6 +4087,24 @@ class PlexSim:
             self.tag_title)
 
     @staticmethod
+    def _guid_prefix(rows, query):
+        """`guid=` on a listing: a case-sensitive PREFIX of the row's guid.
+
+        Measured on both servers, and not a field the filter grammar advertises:
+        `/library/all?type=1&guid=<guid>` is that one movie, `guid=plex` every matched
+        one, `guid=PLEX` none and an empty value every row. It is how the client asks
+        whether this server holds an item it found elsewhere -- `type=N&guid=`, from
+        its availability lookup -- and plexsim ignored it, so every movie guid
+        "found" the whole library. `guid==` and `guid!=` do something else again and
+        the client sends neither; they are left to the grammar.
+        """
+        wanted = [value for name, value in query.get("_pairs") or [] if name == "guid"]
+        if not wanted:
+            return rows
+        return [r for r in rows
+                if all(str(r.get("guid") or "").startswith(value) for value in wanted)]
+
+    @staticmethod
     def _guid_gate(rows, query):
         """Strip `Guid` from listing rows unless the client asked for it.
 
@@ -3871,6 +4179,16 @@ class PlexSim:
                                          latestEntryTime=latest, updateQueueSize=0)
         found["MediaContainer"]["size"] = len(rows)
         return found
+
+    def section_settings(self, section_id, section, settings=None):
+        """A library's setting list with the values written to it."""
+        if settings is None:
+            settings = SECTION_PREFS.get(section.get("type") or "movie") or []
+        return [
+            dict(s, value=self.section_pref_overrides[(str(section_id), s.get("id"))])
+            if (str(section_id), s.get("id")) in self.section_pref_overrides else s
+            for s in settings
+        ]
 
     def secondary_container(self, section_id, section, title2, **fields):
         """A secondary list (By Genre, By Year, sorts, filters).
@@ -4255,8 +4573,18 @@ class PlexSim:
                 # Measured: a batch EDIT. plexsim answered the listing here, so a
                 # multi-select edit applied to nothing and reported success.
                 return self.apply_edit([self.catalog.items[k] for k in keys], query)
-            return self.container(Metadata=[_full(self.catalog.items[k])
-                                            for k in keys])
+            fields = {}
+            if keys:
+                # Measured on both servers: the container says `allowSync` and names
+                # the FIRST row's library, even when the list spans two.
+                first = self.catalog.items[keys[0]]
+                first_section = self.catalog.section(first.get("librarySectionID")) or {}
+                fields = {"allowSync": True,
+                          "librarySectionID": first.get("librarySectionID"),
+                          "librarySectionTitle": first_section.get("title"),
+                          "librarySectionUUID": first_section.get("uuid")}
+            return self.container(Metadata=[_full(self.catalog.items[k]) for k in keys],
+                                  **fields)
         if not raw_key.isdigit():
             # Measured: a non-numeric ratingKey is a 404, not an empty container.
             return ("error", 404, "plexsim: not found")
@@ -4332,24 +4660,36 @@ class PlexSim:
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
             return ("error", 400, "plexsim: bad request")
+        if leaf == "grandchildren":
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.grandchildren(row, query)
         if leaf in ("children", "allLeaves"):
             if leaf == "children":
                 rows = self.catalog.children(rating_key)
             else:
                 rows = self.catalog.leaves(rating_key)
             extra = {}
-            paging = ("X-Plex-Container-Start" in query
-                      and "X-Plex-Container-Size" in query)
+            _, paged, start, _ = self.page_window(rows, query)
+            size = query.get("X-Plex-Container-Size") or ""
+            short_page = paged and (start > 0 or (size.lstrip("-").isdigit() and int(size) < 2))
             if (leaf == "children" and row.get("type") == "show"
                     and query.get("excludeAllLeaves") != "1" and rows
-                    and not paging):
+                    and not short_page):
                 # Measured: a SHOW's /children carries an extra `Directory` row
-                # linking to /allLeaves, titled "All episodes", and the container's
-                # size counts it -- which is what `excludeAllLeaves=1` removes.
-                # plexsim never emitted it, so the season list had no "All
-                # episodes" entry and the count was one short of the reference's.
-                extra["Directory"] = [{"key": "/library/metadata/%s/allLeaves"
-                                              % rating_key,
+                # linking to /allLeaves, titled "All episodes", with the show's leaf
+                # counts and poster, and the container's size counts it -- which is what
+                # `excludeAllLeaves=1` removes. Re-measured in cycle 8 on both
+                # servers, correcting "a paged request drops it": the client's own
+                # Start=0 page KEEPS it, outside the page (Size=2 answers it plus two
+                # seasons), and only a one-row page drops it. At Start>0 the two
+                # servers disagree; this follows the reference and drops it.
+                leaves = self.catalog.leaves(rating_key)
+                extra["Directory"] = [{"leafCount": len(leaves),
+                                       "thumb": row.get("thumb"),
+                                       "viewedLeafCount": sum(1 for leaf_row in leaves
+                                                              if leaf_row.get("viewCount")),
+                                       "key": "/library/metadata/%s/allLeaves" % rating_key,
                                        "title": "All episodes"}]
             return self.child_container(row, rows, leaf, query, **extra)
 
