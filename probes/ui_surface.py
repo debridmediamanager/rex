@@ -180,7 +180,6 @@ def steps(ids, machine, mutate):
         ("connect", "GET", "/status/sessions"),
         ("connect", "GET", "/status/sessions/background"),
         ("connect", "GET", "/updater/status"),
-        ("connect", "PUT", "/updater/check"),
         ("connect", "GET", "/hubs"),
         ("connect", "GET", "/hubs/promoted"),
         ("connect", "GET", "/hubs/continueWatching"),
@@ -426,6 +425,9 @@ def steps(ids, machine, mutate):
         plan += [("menu:select stream", "PUT",
                   "/library/parts/%s?subtitleStreamID=0&allParts=1" % part)]
     plan += [
+        # A write, so it lives behind --mutate: it sat in the read-only plan and sent
+        # a PUT to whatever server a "read-only" run was pointed at.
+        ("connect", "PUT", "/updater/check"),
         ("playqueue", "POST", "/playQueues?type=video&shuffle=0&repeat=0&own=1&uri=%s"
                               % quote(uri_for(machine, movie), safe="")),
         ("playlist", "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"

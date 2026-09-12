@@ -590,6 +590,15 @@ precisely how the Seasons bug survived a fix attempt.
   one trailing slash is harmless. Catch a leading `//` before `urlparse`, which reads it
   as a host.
 
+- **No row names a theme.** plexsim has no theme audio, so `theme`, `parentTheme` and
+  `grandparentTheme` stay off every row and container -- a real show without one
+  carries none of the three, and the client fetches whichever it finds.
+- **A hub row's projection depends on the row's TYPE**: movies and episodes are light
+  (no Guid, text-only tags) everywhere, but a show on a `mixed` Recently Added shelf is
+  the full row. `excludeFields` applies to every row AND to the container.
+- **`probes/ui_surface.py` without `--mutate` must send nothing but GET and HEAD** -- it
+  is what gets pointed at the shared reference.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

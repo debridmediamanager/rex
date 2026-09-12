@@ -4463,8 +4463,10 @@ def main():
               "title1=%r parentTitle=%r" % (episodes_doc.get("title1"), episodes_doc.get("parentTitle")))
     if c5_episode:
         episode_row = (get(base, "/library/metadata/%s" % c5_episode)[1].get("Metadata") or [{}])[0]
+        # And no grandparentTheme either: plexsim has no theme audio, and a real show
+        # without a theme names none on itself or on its children (measured, cycle 7).
         check("an episode row carries no theme of its own", "theme" not in episode_row
-              and episode_row.get("grandparentTheme"), str(episode_row.get("theme")))
+              and "grandparentTheme" not in episode_row, str(episode_row.get("theme")))
     grid = get(base, "/library/sections/%s/all" % movie_lib)[1].get("Metadata") or []
     heavy = [r.get("title") for r in grid
              if any(set(t) != {"tag"} for key in ("Genre", "Country", "Director", "Writer", "Role")
@@ -4919,6 +4921,76 @@ def main():
                             seconds=4, spec="?filters=")
     check("an empty filters= delivers the log stream as well",
           any(name == "log" for name, _ in logged), ",".join(sorted({n for n, _ in logged})))
+
+    # ------------------------------------------------------------------
+    # Cycle 7: themes, hub row projections, excludeFields, library playlists,
+    # season and episode artwork. Measured against the reference; every check
+    # fails against the server as it stood before.
+    # ------------------------------------------------------------------
+    print("\n=== themes, hub rows, excludeFields and episode artwork ===")
+    if c5_show and c5_season and c5_episode:
+        show_row = detail_of(c5_show)
+        _, season_list, _ = get(base, "/library/metadata/%s/children" % c5_season)
+        episode_row = detail_of(c5_episode)
+        themed = ([k for k in show_row if "heme" in k] + [k for k in season_list if "heme" in k]
+                  + [k for k in episode_row if "heme" in k]
+                  + [k for r in season_list.get("Metadata") or [] for k in r if "heme" in k])
+        check("nothing advertises a theme plexsim cannot serve", not themed, ",".join(themed))
+        images = [(i.get("type"), i.get("url")) for i in episode_row.get("Image") or []]
+        check("an episode's coverPoster is its show's poster and its still a snapshot",
+              images[:2] == [("coverPoster", episode_row.get("grandparentThumb")),
+                             ("snapshot", episode_row.get("thumb"))],
+              str([t for t, _ in images]))
+        arts = [get(base, "/library/metadata/%s/arts" % key)[1].get("size")
+                for key in (c5_season, c5_episode)]
+        check("a season and an episode offer no background of the show's", arts == [0, 0],
+              str(arts))
+    else:
+        skip("nothing advertises a theme plexsim cannot serve", "no show in this catalog")
+
+    _, with_playlists, _ = get(base, "/hubs/sections/%s?includeLibraryPlaylists=1" % movie_lib)
+    _, without, _ = get(base, "/hubs/sections/%s" % movie_lib)
+    ids = [h.get("hubIdentifier") for h in with_playlists.get("Hub") or []]
+    wanted_shelf = "recent.library.playlists.%s" % movie_lib
+    added_at = ids.index("movie.recentlyadded.%s" % movie_lib) if "movie.recentlyadded.%s" % movie_lib in ids else -2
+    check("includeLibraryPlaylists adds Recent Playlists right after Recently Added",
+          wanted_shelf in ids and ids.index(wanted_shelf) == added_at + 1
+          and wanted_shelf not in [h.get("hubIdentifier") for h in without.get("Hub") or []],
+          ",".join(str(i) for i in ids))
+
+    _, recent_movies, _ = get(base, "/hubs/home/recentlyAdded?type=1")
+    word = str((detail_of(c5_movie).get("title") or "x").split()[0])
+    _, searched, _ = get(base, "/hubs/search?query=%s" % quote(word))
+    light = [r for r in (recent_movies.get("Metadata") or [])
+             + [m for h in searched.get("Hub") or [] for m in h.get("Metadata") or []
+                if m.get("type") in ("movie", "episode")]]
+    heavy = [r.get("title") for r in light
+             if "Guid" in r or any(set(t) != {"tag"} for key in ("Genre", "Country", "Director", "Writer", "Role")
+                                   for t in r.get(key) or [])]
+    check("a movie on a hub or in search has no Guid and text-only tags",
+          light and not heavy, ",".join(str(h) for h in heavy[:3]))
+    if show_lib:
+        _, show_hubs, _ = get(base, "/hubs/sections/%s" % show_lib)
+        tv_added = next((h for h in show_hubs.get("Hub") or []
+                         if str(h.get("hubIdentifier", "")).startswith("tv.recentlyadded")), {})
+        shows_there = [r for r in tv_added.get("Metadata") or [] if r.get("type") == "show"]
+        check("a show on Recently Added TV is the full row",
+              shows_there and all("Location" in r and r.get("Guid") for r in shows_there),
+              ",".join(sorted(shows_there[0]) if shows_there else []))
+
+    _, trimmed_grid, _ = get(base, "/library/sections/%s/all?excludeFields=summary" % movie_lib)
+    _, trimmed_hubs, _ = get(base, "/hubs/sections/%s?excludeFields=summary" % movie_lib)
+    trimmed_rows = (trimmed_grid.get("Metadata") or []) + [
+        m for h in trimmed_hubs.get("Hub") or [] for m in h.get("Metadata") or []]
+    summary_left = [r.get("title") for r in trimmed_rows if "summary" in r]
+    children_trim = {}
+    if c5_show:
+        _, children_trim, _ = get(base, "/library/metadata/%s/children?excludeFields=summary"
+                                  % c5_show)
+    check("excludeFields drops the field from every row and from the container",
+          trimmed_rows and not summary_left and "summary" not in children_trim
+          and not any("summary" in r for r in children_trim.get("Metadata") or []),
+          "%d row(s) kept summary" % len(summary_left))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

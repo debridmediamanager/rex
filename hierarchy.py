@@ -80,11 +80,6 @@ def _fill_real_pms_fields(rows):
                 ])
                 row.setdefault("audienceRatingImage", "themoviedb://image.rating")
 
-        if kind == "show":
-            # Measured: only the SHOW carries `theme`. A season carries
-            # `parentTheme` and an episode `grandparentTheme`, both set below.
-            row.setdefault("theme", "/library/metadata/%s/theme/1" % rating_key)
-
         if kind in ("show", "season", "movie", "episode"):
             # Plex derives this palette from the artwork; the values are only
             # used for background tinting.
@@ -96,11 +91,8 @@ def _fill_real_pms_fields(rows):
         if kind == "season":
             parent = row.get("parentTitle") or ""
             row.setdefault("parentSlug", _slug(parent))
-            row.setdefault("parentTheme", "/library/metadata/%s/theme/1" % row.get("parentRatingKey"))
         if kind == "episode":
             row.setdefault("grandparentSlug", _slug(row.get("grandparentTitle") or ""))
-            row.setdefault("grandparentTheme",
-                           "/library/metadata/%s/theme/1" % row.get("grandparentRatingKey"))
 
 
 _ARTICLE = re.compile(r"(?i)^(the|a|an)\s+")
@@ -139,8 +131,12 @@ def normalize_rows(rows):
     * `rating` is the CRITIC rating (Rotten Tomatoes on fun), absent when there is
       none -- the lab's own TMDB-matched movies carry only `audienceRating`.
       plexsim copied the TMDB vote into both.
-    * A season has no `year`, `skipCount`, `theme` or `titleSort`; an episode has
-      no `theme` and, with no chapters, no `chapterSource`. A show has `index: 1`.
+    * A season has no `year`, `skipCount` or `titleSort`; an episode has no
+      `chapterSource` without chapters. A show has `index: 1`.
+    * No row names a theme -- `theme`, `parentTheme`, `grandparentTheme` -- because
+      plexsim has no theme audio and its theme endpoint 404s. Measured on fun: a show
+      without a theme carries none of the three, on itself or its children, and the
+      web client asks for whichever it finds when theme music is on.
     """
     for row in rows:
         kind = row.get("type")
@@ -167,11 +163,12 @@ def normalize_rows(rows):
             row.pop("rating", None)
         if kind == "show":
             row.setdefault("index", 1)
+        for key in ("theme", "parentTheme", "grandparentTheme"):
+            row.pop(key, None)
         if kind == "season":
-            for key in ("year", "skipCount", "theme"):
+            for key in ("year", "skipCount"):
                 row.pop(key, None)
         if kind == "episode":
-            row.pop("theme", None)
             if not row.get("Chapter"):
                 row.pop("chapterSource", None)
     return rows

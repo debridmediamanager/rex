@@ -882,7 +882,14 @@ def _public_row(row):
     out = {k: v for k, v in row.items() if not k.startswith("_")}
     title = out.get("title") or ""
     images = []
-    if out.get("thumb"):
+    if out.get("type") == "episode" and out.get("grandparentThumb"):
+        # Measured on both servers, detail and listing alike: an episode's
+        # coverPoster is its SHOW's poster and its own 16:9 still is `snapshot`.
+        # plexsim labelled the still as the poster.
+        images.append({"alt": title, "type": "coverPoster", "url": out["grandparentThumb"]})
+        if out.get("thumb"):
+            images.append({"alt": title, "type": "snapshot", "url": out["thumb"]})
+    elif out.get("thumb"):
         images.append({"alt": title, "type": "coverPoster", "url": out["thumb"]})
     if out.get("art"):
         images.append({"alt": title, "type": "background", "url": out["art"]})
@@ -929,8 +936,40 @@ SUBTITLE_LANGUAGES = frozenset(
     if len(code) == 2 and code.isalpha())
 
 
-def _grid_row(row, keep_section=True):
+def _exclude_fields(container, spec):
+    """`excludeFields=` applied to a whole response, as a real PMS applies it.
+
+    Measured: the named fields go from EVERY row -- section listings, `/children`,
+    `/allLeaves`, hubs, search -- and from the container itself (a show's
+    `/children?excludeFields=summary` loses the container's summary too). plexsim
+    applied it to detail reads only, and the client sends `excludeFields=summary` on
+    every library hubs request. Rows are copied, never trimmed in place.
+    """
+    fields = {name for name in spec.split(",") if name}
+    body = container.get("MediaContainer")
+    if not fields or not isinstance(body, dict):
+        return container
+
+    def trim(rows):
+        return [{k: v for k, v in row.items() if k not in fields}
+                if isinstance(row, dict) else row for row in rows]
+
+    body = {k: v for k, v in body.items() if k not in fields}
+    if isinstance(body.get("Metadata"), list):
+        body["Metadata"] = trim(body["Metadata"])
+    if isinstance(body.get("Hub"), list):
+        body["Hub"] = [dict(hub, Metadata=trim(hub["Metadata"]))
+                       if isinstance(hub.get("Metadata"), list) else hub
+                       for hub in body["Hub"]]
+    return dict(container, MediaContainer=body)
+
+
+def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
+
+    Also measured: no `Guid` on a hub or search row (a listing decides that by
+    `includeGuids`, and passes `keep_guid`), and a SHOW in search keeps its
+    `Location`.
 
     Measured in the client's own corpus against the reference, and on fun: a grid
     or shelf row's tags are `{tag}` and nothing else (no id, filter, role or thumb),
@@ -940,7 +979,9 @@ def _grid_row(row, keep_section=True):
     everywhere. The catalog's own lists are shared, so this copies what it trims.
     """
     out = {k: v for k, v in row.items()
-           if k not in ("Location", "Rating", "Field", "Producer")}
+           if k not in ("Rating", "Field", "Producer")
+           and (k != "Location" or keep_location)
+           and (k != "Guid" or keep_guid)}
     if not keep_section:
         for key in ("librarySectionID", "librarySectionTitle", "librarySectionKey"):
             out.pop(key, None)
@@ -1467,8 +1508,10 @@ class PlexSim:
 
         The parent's own identity is repeated on the CONTAINER, not just on the
         rows -- `parentTitle`, `parentIndex`, `parentYear`, `thumb`, `art`,
-        `theme`, `viewMode` and, for an episode list, the whole
-        `grandparent*` set. The desktop client rendered an empty season list
+        `viewMode` and, for an episode list, the whole `grandparent*` set. No
+        `theme`: plexsim has no theme audio, and a real show without one carries no
+        `theme`, `parentTheme` or `grandparentTheme` anywhere (measured on fun) --
+        advertising a URL that 404s made every page with theme music on ask for it. The desktop client rendered an empty season list
         while these were missing, even though the rows themselves were correct.
         """
         section = self.catalog.section(parent.get("librarySectionID")) or {}
@@ -1507,7 +1550,6 @@ class PlexSim:
                     "parentTitle": "",
                     "thumb": parent.get("thumb"),
                     "art": parent.get("art"),
-                    "theme": "/library/metadata/%s/theme/1" % show_key if show_key else None,
                 }
             )
             if show:
@@ -1521,7 +1563,6 @@ class PlexSim:
                         "grandparentThumb": show.get("thumb"),
                         "grandparentStudio": show.get("studio"),
                         "grandparentContentRating": show.get("contentRating"),
-                        "grandparentTheme": "/library/metadata/%s/theme/1" % show.get("ratingKey"),
                     }
                 )
         else:
@@ -1533,7 +1574,6 @@ class PlexSim:
                     "parentYear": parent.get("year"),
                     "thumb": parent.get("thumb"),
                     "art": parent.get("art"),
-                    "theme": "/library/metadata/%s/theme/1" % parent.get("ratingKey"),
                 }
             )
         if leaf == "allLeaves":
@@ -1744,7 +1784,10 @@ class PlexSim:
             return ("stream", segments, query)
 
         try:
-            return self._route(method, route, segments, query, body, headers, address)
+            result = self._route(method, route, segments, query, body, headers, address)
+            if isinstance(result, dict) and query.get("excludeFields"):
+                result = _exclude_fields(result, query["excludeFields"])
+            return result
         except filters_module.FilterError as refused:
             # A query a real PMS refuses, with the status IT answers: 400 for a
             # malformed key, 500 for a value it cannot parse. Answering 200 with
@@ -2324,14 +2367,18 @@ class PlexSim:
                 rows = self.recently_added_rows(query.get("type"), query.get("sectionID"))
                 if rows is None:
                     return self.hub_container(size=0)
-                page = [_listing_row(r) for r in rows[:self.HUB_COUNT]]
+                # Measured: a movie or episode row here is the light projection
+                # (no Guid, text-only tags); a show row is the full one.
+                page = [_listing_row(r) if r.get("type") == "show"
+                        else _grid_row(_listing_row(r)) for r in rows[:self.HUB_COUNT]]
                 return self.hub_container(size=len(page), Metadata=page)
             # Measured: a home hub a real PMS does not have is a 404, not the
             # empty container plexsim answered -- which a client reads as "this
             # shelf exists and is empty".
             return ("error", 404, "plexsim: not found")
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
-            return self.section_hubs(segments[2], query.get("count"))
+            return self.section_hubs(segments[2], query.get("count"),
+                                     query.get("includeLibraryPlaylists") == "1")
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
             # The Continue Watching shelf's own "see all" list.
@@ -3551,7 +3598,7 @@ class PlexSim:
         """The container a section listing returns, with the client's paging."""
         rows = self._guid_gate(rows, query)
         page, paged, start, total = self.page_window(rows, query)
-        page = [_grid_row(r, keep_section=False) for r in page]
+        page = [_grid_row(r, keep_section=False, keep_guid=True) for r in page]
         fields = {
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
             "librarySectionTitle": section.get("title"),
@@ -4287,7 +4334,13 @@ class PlexSim:
         limit = self.HUB_COUNT
         if count is not None and str(count).strip().lstrip("-").isdigit():
             limit = max(int(count), 0)
-        page = [_grid_row(r) for r in rows[:limit]]
+        # Measured: a SHOW on a `mixed` shelf -- Recently Added TV, on the home
+        # screen, the library tab and /hubs/promoted -- is the FULL row, Guid,
+        # Location, Rating and tag ids included, where every other row on every
+        # shelf is the light one.
+        full_shows = extra.get("type") == "mixed"
+        page = [r if full_shows and r.get("type") == "show" else _grid_row(r)
+                for r in rows[:limit]]
         body = {
             "hubIdentifier": identifier,
             "title": title,
@@ -4501,7 +4554,7 @@ class PlexSim:
                 if not wanted or identifier in wanted]
         return self.hub_container(Hub=hubs)
 
-    def section_hubs(self, section_id, count=None):
+    def section_hubs(self, section_id, count=None, library_playlists=False):
         """`/hubs/sections/{id}` -- the library's Recommended tab.
 
         Five shelves, measured hub for hub against the reference: identifier,
@@ -4609,6 +4662,19 @@ class PlexSim:
                 "/library/sections/%s/all?sort=lastViewedAt:desc&unwatched=0"
                 "&viewOffset=0" % section_id, "hub.movie.recentlyviewed"))
 
+        if library_playlists:
+            # Measured: `includeLibraryPlaylists=1` -- which the client's own hub
+            # request always sends -- adds a Recent Playlists shelf right after the
+            # library's Recently Added. plexsim ignored the parameter, so the tab
+            # could never show one. Only its empty form was measurable (no playlists
+            # on either server); what fills it is not recorded, so it stays empty.
+            position = next((index + 1 for index, hub in enumerate(hubs)
+                             if ".recentlyadded." in hub["hubIdentifier"]), len(hubs))
+            hubs.insert(position, shelf(
+                "recent.library.playlists.%s" % section_id, "Recent Playlists", [],
+                "playlist",
+                "/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc"
+                "&sectionID=%s" % section_id, "hub.recent.library.playlists"))
         return self.hub_container(
             librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
             librarySectionTitle=title,
@@ -4717,7 +4783,9 @@ class PlexSim:
         for kind, title in self.SEARCH_HUBS:
             rows = []
             for row in typed.get(kind, []):
-                entry = _listing_row(row)
+                # Measured: a search row is the light projection, and a show keeps
+                # its Location in it.
+                entry = _grid_row(_listing_row(row), keep_location=row.get("type") == "show")
                 title_words = re.split(r"[^0-9a-z]+",
                                        str(row.get("title") or "").lower())
                 matched_title = any(w.startswith(needle) for w in title_words if w)
@@ -5749,6 +5817,11 @@ class PlexSim:
         on the current one. plexsim has exactly what TMDB gave it plus its own
         generated placeholder, and says so rather than padding the list.
         """
+        if kind == "arts" and row.get("type") in ("season", "episode"):
+            # Measured: a season's and an episode's background candidates are their
+            # OWN (none on the lab, fanart.tv's on fun) -- never the show's. plexsim
+            # offered the show's backdrop as the item's selected choice.
+            return self.tag_container(size=0, _xml={"Metadata": "Photo"})
         entries = []
         field = "thumb" if kind == "posters" else "art"
         stored = row.get("_poster_url") if kind == "posters" else row.get("_art_url")
