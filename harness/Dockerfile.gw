@@ -1,0 +1,14 @@
+# mitmproxy plus iptables, acting as the egress gateway for the PMS container.
+#
+# mitmproxy runs as uid 8888, NOT the image default 1000: PMS in this stack runs
+# as uid 1000, and the iptables owner match that stops the proxy intercepting
+# itself would otherwise exempt PMS as well and capture nothing.
+FROM mitmproxy/mitmproxy:latest
+USER root
+RUN apt-get update -qq \
+ && apt-get install -y -qq iptables iproute2 procps curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd -u 8888 -m -s /bin/bash mitmgw
+COPY gw-entry.sh /gw-entry.sh
+RUN chmod +x /gw-entry.sh
+ENTRYPOINT ["/gw-entry.sh"]
