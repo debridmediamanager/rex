@@ -90,12 +90,19 @@ try:
 except (OSError, ValueError):
     SECTION_PREFS = {}
 
-_SECTION_META_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_meta.json")
-try:
-    with open(_SECTION_META_PATH) as _handle:
-        SECTION_META = json.load(_handle)
-except (OSError, ValueError):
-    SECTION_META = None
+# Filter/sort/field descriptors per library TYPE, captured from a real PMS. A
+# movie section's Meta has 2 Types; a SHOW section's has four (show, season,
+# episode, folder) with their own filters and sorts, so retargeting the movie
+# template onto a show library gave the client a show grid whose filter bar
+# could only talk about movies.
+SECTION_META = {}
+for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show.json")):
+    _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _name)
+    try:
+        with open(_path) as _handle:
+            SECTION_META[_kind] = json.load(_handle)
+    except (OSError, ValueError):
+        pass
 
 _OWNER_FEATURES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "owner_features.txt")
 try:
@@ -259,6 +266,44 @@ class Catalog:
             parent = row.get("parentRatingKey")
             if parent:
                 self._children.setdefault(str(parent), []).append(rating_key)
+
+        self._number_tags()
+
+    # Tag ids are how the whole filter surface is addressed: a real PMS's
+    # secondary axes key their entries by tag id (`/all?genre=24`), not by the
+    # tag's text. TMDB gives plexsim tag names and nothing else, so the ids are
+    # minted here -- deterministically from the text, so they survive a restart
+    # and a catalog rebuild, and so the `filter` string on each tag agrees.
+    TAG_FIELDS = ("Genre", "Collection", "Director", "Writer", "Producer", "Role",
+                  "Country", "Label", "Similar", "Mood", "Style")
+    TAG_FILTERS = {"Genre": "genre", "Collection": "collection", "Director": "director",
+                   "Writer": "writer", "Producer": "producer", "Role": "actor",
+                   "Country": "country", "Label": "label", "Similar": "similar",
+                   "Mood": "mood", "Style": "style"}
+
+    def _number_tags(self):
+        for row in self.items.values():
+            self.number_tags(row)
+
+    def number_tags(self, row):
+        """Give every tag on one row an id and a filter string.
+
+        Called again after anything that can WRITE tags -- a match re-identifies
+        a row straight from TMDB, which supplies names and no ids, and a row
+        whose tags lost their ids drops out of every secondary filter while
+        still looking correct on its own detail page.
+        """
+        for field in self.TAG_FIELDS:
+            for tag in row.get(field) or []:
+                if not isinstance(tag, dict) or not tag.get("tag"):
+                    continue
+                if not tag.get("id"):
+                    seed = "%s:%s" % (field, tag["tag"])
+                    # A small positive int, the way a real PMS's ids look.
+                    tag["id"] = zlib.crc32(seed.encode()) % 900000 + 1000
+                name = self.TAG_FILTERS.get(field)
+                if name and not tag.get("filter"):
+                    tag["filter"] = "%s=%s" % (name, tag["id"])
 
     def section(self, section_id):
         for section in self.sections:
@@ -706,19 +751,19 @@ class PlexSim:
         return self.container(**{k: v for k, v in fields.items() if v is not None})
 
     def section_meta(self, section_id, section_type):
-        """Per-section filter/sort descriptors, retargeted from the template."""
-        if not SECTION_META:
+        """Per-section filter/sort descriptors, retargeted from the template.
+
+        Every key in the captured blob names the section it came from, in Type
+        keys, Sort firstCharacterKeys and Filter keys alike, so the retarget is
+        a rewrite of the whole document rather than of the three fields that
+        happen to be at the top.
+        """
+        template = SECTION_META.get("show" if section_type == "show" else "movie")
+        if not template:
             return None
-        meta = json.loads(json.dumps(SECTION_META))  # deep copy per request
-        plex_type = 2 if section_type == "show" else 1
-        for entry in meta.get("Type") or []:
-            entry["key"] = "/library/sections/%s/all?type=%d" % (section_id, plex_type)
-            entry["type"] = section_type
-            entry["title"] = "TV Shows" if section_type == "show" else "Movies"
-            for sort in entry.get("Sort") or []:
-                if sort.get("firstCharacterKey"):
-                    sort["firstCharacterKey"] = "/library/sections/%s/firstCharacter" % section_id
-        return meta
+        blob = json.dumps(template)
+        blob = re.sub(r"/library/sections/\d+/", "/library/sections/%s/" % section_id, blob)
+        return json.loads(blob)
 
     def _claimed(self):
         # `assert_claimed` reports a claim plexsim does not hold. It is honest
@@ -988,11 +1033,23 @@ class PlexSim:
         if route == "/hubs/promoted":
             return self.hubs(query)
         if route.startswith("/hubs/home"):
-            # Measured on a real PMS: this answers with no Hub at all unless the
-            # client passes the identifiers it wants.
+            if route == "/hubs/home/recentlyAdded" and query.get("sectionID"):
+                # The TV section's Recently Added shelf links here rather than to
+                # the section listing, so it has to answer for a section.
+                rows = sorted(catalog.section_items(query["sectionID"]),
+                              key=lambda r: -(r.get("addedAt") or 0))
+                return self.container(Metadata=[_listing_row(r) for r in rows[:12]])
+            # Measured on a real PMS: with no identifiers named, this answers with
+            # no Hub at all.
             return self.hub_container()
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
             return self.section_hubs(segments[2])
+        if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
+                and segments[3] == "continueWatching"):
+            # The Continue Watching shelf's own "see all" list.
+            rows = [_listing_row(r) for r in self.continue_watching()
+                    if str(r.get("librarySectionID")) == str(segments[2])]
+            return self.container(Metadata=rows)
         if route == "/hubs/search":
             return self.search(query)
         if segments[:2] == ["hubs", "metadata"]:
@@ -1132,7 +1189,8 @@ class PlexSim:
                     "scanner": ("Plex TV Series" if section["type"] == "show"
                                 else "Plex Movie"),
                     "uuid": section["uuid"],
-                    "id": int(key),
+                    # A string on a real PMS, not a number.
+                    "id": str(key),
                     "key": "/library/sections/%s" % key,
                     "hubKey": "/hubs/sections/%s" % key,
                     "type": section["type"],
@@ -1157,24 +1215,34 @@ class PlexSim:
                             "context": "content.library",
                             "symbol": "library",
                         },
+                        # The Categories tab. plexsim can answer it now that the
+                        # secondary axes are real, and a real PMS advertises it
+                        # as the third pivot on every content directory.
+                        {
+                            "id": "categories",
+                            "key": "/library/sections/%s/categories" % key,
+                            "type": "list",
+                            "title": "Categories",
+                            "context": "content.categories",
+                            "symbol": "stack",
+                        },
                     ],
                 }
             )
 
+        # Order is the reference server's, feature for feature. It is not
+        # cosmetic for diffing: harness/scripts/replay.py compares the i-th
+        # Feature against the i-th, so a set that matches in a different order
+        # reads as a dozen value differences and hides the real ones.
         features = [
             {"key": "/library/sections", "type": "content", "Directory": directories},
             {"key": "/hubs/search", "type": "search"},
+            {"key": "/library/matches", "type": "match"},
             {"key": "/library/metadata", "type": "metadata"},
+            {"key": "/:/rate", "type": "rate"},
+            {"key": "/photo/:/transcode", "type": "imagetranscoder"},
             {"key": "/hubs/promoted", "type": "promoted"},
             {"key": "/hubs/continueWatching", "type": "continuewatching"},
-            {"key": "/photo/:/transcode", "type": "imagetranscoder"},
-            {"flavor": "universal", "key": "/playQueues", "type": "playqueue"},
-            {
-                "key": "/:/timeline",
-                "type": "timeline",
-                "scrobbleKey": "/:/scrobble",
-                "unscrobbleKey": "/:/unscrobble",
-            },
             {
                 "key": "/actions",
                 "type": "actions",
@@ -1185,18 +1253,19 @@ class PlexSim:
                     }
                 ],
             },
-            {"key": "/library/matches", "type": "match"},
-            {"type": "queryParser"},
-            # Feature types a real PMS advertises that plexsim was missing. A
-            # client will not offer the corresponding UI without them, and the
-            # web app re-requested /media/providers 43 times while they were
-            # absent -- it treats an incomplete provider as not-yet-ready.
-            {"key": "/library/collections", "type": "collection"},
             {"flavor": "universal", "key": "/playlists", "type": "playlist"},
-            {"key": "/:/rate", "type": "rate"},
+            {"flavor": "universal", "key": "/playQueues", "type": "playqueue"},
+            {"key": "/library/collections", "type": "collection"},
+            {
+                "key": "/:/timeline",
+                "type": "timeline",
+                "scrobbleKey": "/:/scrobble",
+                "unscrobbleKey": "/:/unscrobble",
+            },
             {"type": "manage"},
-            {"key": "/library/search", "type": "universalsearch"},
+            {"type": "queryParser"},
             {"flavor": "download", "type": "subscribe"},
+            {"key": "/library/search", "type": "universalsearch"},
         ]
 
         # Attribute set taken from a real claimed PMS 1.43.4's own
@@ -1425,6 +1494,36 @@ class PlexSim:
             entries = [{"size": counts[k], "key": k, "title": k} for k in sorted(counts)]
             return self.secondary_container(section_id, section, "By First Letter",
                                             Directory=entries)
+        if leaf == "categories":
+            # The Categories tab: one tile per genre, each opening the filtered
+            # list. Measured shape: Directory rows of {thumb, type:"directory",
+            # key, title} plus a Meta.Type block naming the active category. The
+            # thumb is an art transcode of one of the genre's own items, which is
+            # what a real PMS blends its tile colour from.
+            tiles = []
+            for entry in (self.secondary_directory(section_id, section, "genre")
+                          ["MediaContainer"].get("Directory") or []):
+                art = None
+                for row in self.catalog.section_items(section_id):
+                    if any(str(tag.get("id")) == entry["key"]
+                           for tag in row.get("Genre") or []):
+                        art = row.get("art")
+                        break
+                tile = {
+                    "type": "directory",
+                    "key": entry["fastKey"],
+                    "title": entry["title"],
+                }
+                if art:
+                    tile["thumb"] = ("/photo/:/transcode?width=2560&height=1440&url=%s"
+                                     % urllib.parse.quote(art, safe=""))
+                tiles.append(tile)
+            return self.secondary_container(
+                section_id, section, "", Directory=tiles,
+                Meta={"Type": [{"key": "/library/sections/%s/categories" % section_id,
+                                "type": "directory", "title": "Categories",
+                                "active": True}]})
+
         if leaf in SECONDARY_TAGS or leaf in SECONDARY_FIELDS:
             return self.secondary_directory(section_id, section, leaf)
 
@@ -1458,16 +1557,7 @@ class PlexSim:
             source = self.catalog.section_items(section_id)
 
         source = [r for r in source if self._matches_filters(r, query)]
-        sort_key = (query.get("sort") or "").split(":")[0]
-        reverse = (query.get("sort") or "").endswith(":desc")
-        if sort_key in ("addedAt", "lastViewedAt", "year", "originallyAvailableAt",
-                        "rating", "audienceRating", "duration", "titleSort", "title"):
-            source = sorted(source, key=lambda r: (r.get(sort_key) is None,
-                                                   r.get(sort_key) or 0
-                                                   if sort_key not in ("titleSort", "title",
-                                                                       "originallyAvailableAt")
-                                                   else str(r.get(sort_key) or "")),
-                            reverse=reverse)
+        source = self._sorted(source, query.get("sort") or "")
         rows = [_listing_row(r) for r in source]
         # Measured: only the unpaged /all listing carries `nocache`; newest,
         # recentlyAdded, onDeck and collections carry neither it nor totalSize.
@@ -1479,6 +1569,33 @@ class PlexSim:
             if meta:
                 extra["Meta"] = meta
         return self.listing_container(section_id, section, rows, query=query, **extra)
+
+    # The sort keys the captured Meta advertises. A key the listing cannot honour
+    # is a sort the UI offers and the server ignores, which reads as a broken
+    # control rather than a missing one.
+    TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt")
+
+    def _sorted(self, rows, spec):
+        key = spec.split(":")[0]
+        reverse = spec.endswith(":desc")
+        if key == "random":
+            # Deterministic per row so a re-request is stable, which is what a
+            # client paging through a random sort needs.
+            return sorted(rows, key=lambda r: zlib.crc32(str(r.get("ratingKey")).encode()))
+        if key == "mediaHeight":
+            return sorted(rows,
+                          key=lambda r: max([m.get("height") or 0
+                                             for m in r.get("Media") or []] or [0]),
+                          reverse=reverse)
+        if key in ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
+                   "duration", "viewCount", "viewOffset", "index",
+                   "leafCount", "unviewedLeafCount") + self.TEXT_SORTS:
+            return sorted(rows,
+                          key=lambda r: (r.get(key) is None,
+                                         str(r.get(key) or "") if key in self.TEXT_SORTS
+                                         else (r.get(key) or 0)),
+                          reverse=reverse)
+        return rows
 
     def _matches_filters(self, row, query):
         """One row against the filter params the client sends."""
@@ -1564,7 +1681,8 @@ class PlexSim:
             "viewGroup": "secondary",
             "viewMode": 65592,
         }
-        if title2:
+        if title2 is not None:
+            # An empty title2 is sent, not omitted -- the Categories view's is "".
             body["title2"] = title2
         body.update(fields)
         for key in ("Directory", "Metadata"):
@@ -1790,22 +1908,111 @@ class PlexSim:
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id):
-        rows = [_listing_row(r) for r in self.catalog.section_items(section_id)]
+        """`/hubs/sections/{id}` -- the library's Recommended tab.
+
+        Five shelves, measured hub for hub against the reference: identifier,
+        title, type, style, context, the `promoted` flag on Recently Added and
+        the `key` each shelf's "see all" link follows. plexsim answered with one
+        shelf, so the tab existed and was nearly empty; every row here comes out
+        of its own catalog.
+        """
         section = self.catalog.section(section_id) or {}
+        is_show = section.get("type") == "show"
+        title = section.get("title") or ""
+        items = self.catalog.section_items(section_id)
+        episodes = [r for r in self.catalog.items.values()
+                    if r.get("type") == "episode"
+                    and str(r.get("librarySectionID")) == str(section_id)]
+        in_progress = [r for r in self.continue_watching()
+                       if str(r.get("librarySectionID")) == str(section_id)]
+        watched = sorted([r for r in (episodes if is_show else items)
+                          if r.get("lastViewedAt")],
+                         key=lambda r: -(r.get("lastViewedAt") or 0))
+        released = sorted(episodes if is_show else items,
+                          key=lambda r: str(r.get("originallyAvailableAt") or ""),
+                          reverse=True)
+        added = sorted(items, key=lambda r: -(r.get("addedAt") or 0))
+
+        def shelf(identifier, shelf_title, rows, kind, key, context, **extra):
+            return self.hub(
+                identifier, shelf_title, [_listing_row(r) for r in rows[:12]],
+                type=kind, hubKey=key, key=key, context=context, style="shelf",
+                more=False, size=len(rows[:12]),
+                librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
+                librarySectionTitle=title, **extra)
+
+        prefix = "tv" if is_show else "movie"
+        hubs = [
+            shelf("%s.inprogress.%s" % (prefix, section_id), "Continue Watching",
+                  in_progress, "episode" if is_show else "movie",
+                  "/hubs/sections/%s/continueWatching/items" % section_id,
+                  "hub.%s.inprogress" % prefix),
+        ]
+        if is_show:
+            hubs += [
+                shelf("tv.recentlyaired.%s" % section_id, "Recently Released Episodes",
+                      released, "episode",
+                      "/library/sections/%s/all?type=4&sort=originallyAvailableAt:desc"
+                      % section_id, "hub.tv.recentlyaired"),
+                shelf("tv.recentlyadded.%s" % section_id, "Recently Added in %s" % title,
+                      added, "mixed",
+                      "/hubs/home/recentlyAdded?type=2&sectionID=%s" % section_id,
+                      "hub.tv.recentlyadded", promoted=True),
+                shelf("tv.rediscover.%s" % section_id, "Rediscover", watched, "show",
+                      "/library/sections/%s/all?type=2&unwatchedLeaves=1&viewCount>=1"
+                      % section_id, "hub.tv.rediscover", random=True),
+                shelf("tv.recentlyviewed.%s" % section_id, "Recently Watched Episodes",
+                      watched, "episode",
+                      "/library/sections/%s/all?sort=lastViewedAt:desc&unwatched=0"
+                      "&viewOffset=0&type=4" % section_id, "hub.tv.recentlyviewed"),
+            ]
+        else:
+            top_genre, top_rows = self._top_genre(items)
+            hubs += [
+                shelf("movie.recentlyreleased.%s" % section_id,
+                      "Recently Released Movies", released, "movie",
+                      "/library/sections/%s/all?sort=originallyAvailableAt:desc"
+                      "&originallyAvailableAt>=-1y" % section_id,
+                      "hub.movie.recentlyreleased"),
+                shelf("movie.recentlyadded.%s" % section_id,
+                      "Recently Added in %s" % title, added, "movie",
+                      "/library/sections/%s/all?sort=addedAt:desc" % section_id,
+                      "hub.movie.recentlyadded", promoted=True),
+            ]
+            if top_genre:
+                hubs.append(shelf(
+                    "movie.genre.%s.%s" % (section_id, top_genre["id"]),
+                    "Top Movies in %s" % top_genre["tag"], top_rows, "movie",
+                    "/library/sections/%s/all?unwatched=1&genre=%s&audienceRating>=7.0"
+                    % (section_id, top_genre["id"]), "hub.movie.genre"))
+            hubs.append(shelf(
+                "movie.recentlyviewed.%s" % section_id, "Recently Watched Movies",
+                watched, "movie",
+                "/library/sections/%s/all?sort=lastViewedAt:desc&unwatched=0"
+                "&viewOffset=0" % section_id, "hub.movie.recentlyviewed"))
+
         return self.hub_container(
             librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
-            librarySectionTitle=section.get("title"),
+            librarySectionTitle=title,
             librarySectionUUID=section.get("uuid"),
-            Hub=[
-                self.hub(
-                    "movie.recentlyadded.%s" % section_id,
-                    "Recently Added",
-                    rows[:12],
-                    librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
-                    librarySectionTitle=section.get("title"),
-                )
-            ],
+            Hub=hubs,
         )
+
+    def _top_genre(self, rows):
+        """The genre shelf a real PMS puts on a movie section's Recommended tab:
+        the most common genre, unwatched and well rated."""
+        counts = {}
+        for row in rows:
+            for tag in row.get("Genre") or []:
+                if tag.get("tag"):
+                    counts.setdefault(tag["tag"], (tag, []))[1].append(row)
+        if not counts:
+            return None, []
+        best = max(counts.items(), key=lambda kv: len(kv[1][1]))
+        tag, members = best[1]
+        members = [r for r in members
+                   if not r.get("viewCount") and (r.get("audienceRating") or 0) >= 7.0]
+        return tag, members
 
     def search(self, query):
         rows = [_listing_row(r) for r in self.catalog.search(query.get("query", ""))]

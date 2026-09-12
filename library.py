@@ -33,6 +33,7 @@ playlists 40000+, collections 50000+.
 
 import time
 import uuid
+import zlib
 
 # Fields a row carries as a number. The client sends every edit as a string.
 INTEGER_FIELDS = {"year", "index", "parentIndex", "duration", "viewOffset",
@@ -287,9 +288,11 @@ class Library:
         tags = row.setdefault(key, [])
         if any(t.get("tag") == value for t in tags):
             return
-        self._next_tag_id += 1
-        tags.append({"id": self._next_tag_id, "tag": value,
-                     "filter": "%s=%d" % (tag_type, self._next_tag_id)})
+        # Minted the way the catalog mints them (Catalog._number_tags): from the
+        # text, so the same tag added twice keeps one id and the filter agrees.
+        tag_id = zlib.crc32(("%s:%s" % (TAG_KEYS[tag_type], value)).encode()) % 900000 + 1000
+        tags.append({"id": tag_id, "tag": value,
+                     "filter": "%s=%s" % (tag_type, tag_id)})
         if key == "Collection":
             self._sync_collection_tag(row, value)
 
@@ -368,6 +371,9 @@ class Library:
         """
         if identify is not None:
             identify(row, guid)
+            # The agent supplies tag names and no ids; without this the row
+            # keeps its detail page and disappears from every secondary filter.
+            self.catalog.number_tags(row)
         row["guid"] = guid
         if name:
             row["title"] = name
@@ -390,6 +396,7 @@ class Library:
         """
         stamp = _now()
         row["updatedAt"] = stamp
+        self.catalog.number_tags(row)
         for key, kind in (("thumb", "thumb"), ("art", "art")):
             if row.get(key):
                 row[key] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], kind, stamp)

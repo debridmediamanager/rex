@@ -143,8 +143,16 @@ def main():
           "transcoderVideo=%s" % providers.get("transcoderVideo"))
     # `showEdit`/`showRefresh`/`showAnalyze`/`showFixMatch`: features.manage
     for kind in ("manage", "playlist", "collection", "rate", "actions", "timeline",
-                 "playqueue", "metadata", "match", "search", "content"):
+                 "playqueue", "metadata", "match", "search", "content",
+                 "imagetranscoder", "promoted", "continuewatching", "queryParser",
+                 "subscribe", "universalsearch"):
         check("provider advertises %s" % kind, kind in features)
+    # The Categories tab is a pivot on every content directory of a real PMS.
+    pivots = [p.get("id") for d in (features.get("content") or {}).get("Directory") or []
+              for p in d.get("Pivot") or []]
+    check("each library offers the recommended, library and categories pivots",
+          pivots.count("recommended") and pivots.count("library")
+          and pivots.count("categories"), ",".join(sorted(set(pivots))))
     timeline = features.get("timeline") or {}
     check("Mark as Played gate: timeline carries scrobbleKey",
           timeline.get("scrobbleKey") == "/:/scrobble"
@@ -441,11 +449,12 @@ def main():
               row.get("title") == filename, "%r" % row.get("title"))
     else:
         skip("unmatch retitles the row from its file name", "row has no Part file")
-    if candidates:
+    if candidates and candidates[0].get("guid"):
         chosen = candidates[0]
         status, body, _ = request(
             base, "PUT", "/library/metadata/%s/match?guid=%s&name=%s&year=%s"
-                         % (movie, quote(chosen["guid"]), quote(chosen["name"]),
+                         % (movie, quote(chosen["guid"]),
+                            quote(chosen.get("name") or ""),
                             chosen.get("year") or ""))
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
         row = (detail.get("Metadata") or [{}])[0]
@@ -467,7 +476,7 @@ def main():
               and all("selected" in e and e.get("key") for e in entries),
               "%d candidate(s)" % len(entries))
     status, listing, _ = get(base, "/library/metadata/%s/posters" % movie)
-    entries = listing.get("Metadata") or []
+    entries = [e for e in (listing.get("Metadata") or []) if e.get("key")]
     if entries:
         status, body, _ = request(base, "PUT", "/library/metadata/%s/posters?url=%s"
                                                % (movie, quote(entries[-1]["key"])))
@@ -629,7 +638,7 @@ def main():
                                              added.get("leafCountRequested")))
         _, items, _ = get(base, "/playlists/%s/items" % playlist_key)
         rows = items.get("Metadata") or []
-        if rows:
+        if rows and rows[0].get("playlistItemID"):
             item_id = rows[0]["playlistItemID"]
             status, removed, _ = container(base, "DELETE", "/playlists/%s/items/%s"
                                                           % (playlist_key, item_id))
@@ -842,6 +851,19 @@ def main():
           "%d letter(s)" % len(chars.get("Directory") or []))
 
     print("\n=== secondary filter axes ===")
+    # A tag axis keys its entries by tag id and a field axis by the value, and
+    # getting that wrong is invisible unless the filtered list is checked against
+    # the rows themselves: a key of `None` matched every row that had any tag at
+    # all, which looks like a working filter from the outside.
+    TAG_AXES = {"genre": "Genre", "director": "Director", "country": "Country",
+                "collection": "Collection", "actor": "Role", "writer": "Writer",
+                "label": "Label"}
+    FIELD_AXES = {"year": "year", "contentRating": "contentRating", "studio": "studio"}
+    # Re-read the section rather than reusing the listing from the top of the
+    # run: the Unmatch check above deliberately strips a row's tags, so the
+    # expectation has to come from the library as it is now.
+    _, current, _ = get(base, "/library/sections/%s/all" % movie_section)
+    present = current.get("Metadata") or []
     for axis in ("genre", "year", "decade", "contentRating", "director", "country",
                  "studio", "collection", "actor", "writer", "label"):
         status, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
@@ -849,18 +871,125 @@ def main():
         ok = status == 200 and listing.get("viewGroup") == "secondary"
         detail = "%d entry(ies)" % len(entries)
         if entries:
-            # Every entry has to open a list that is actually filtered, which
-            # only works if the key matches what the listing reads back.
-            _, filtered, _ = get(base, entries[0]["fastKey"])
+            entry = entries[0]
+            if not entry.get("fastKey"):
+                check("By %s lists and filters" % axis, False, "entry has no fastKey")
+                continue
+            _, filtered, _ = get(base, entry["fastKey"])
             rows = filtered.get("Metadata") or []
-            ok = ok and bool(rows) and len(rows) <= len(movies)
             detail += ", first opens %d row(s)" % len(rows)
+            ok = ok and bool(rows)
+            if axis in TAG_AXES:
+                field = TAG_AXES[axis]
+                ok = ok and all(any(t.get("tag") == entry["title"]
+                                    for t in row.get(field) or []) for row in rows)
+                expected = [m for m in present
+                            if any(t.get("tag") == entry["title"]
+                                   for t in m.get(field) or [])]
+                ok = ok and len(rows) == len(expected)
+                detail += " of %d that carry it" % len(expected)
+            elif axis in FIELD_AXES:
+                field = FIELD_AXES[axis]
+                ok = ok and all(str(row.get(field)) == entry["title"] for row in rows)
+            elif axis == "decade":
+                ok = ok and all(int(row.get("year") or 0) // 10 * 10
+                                == int(entry["key"]) for row in rows)
         check("By %s lists and filters" % axis, ok, detail)
+    status, categories, _ = get(base, "/library/sections/%s/categories" % movie_section)
+    tiles = categories.get("Directory") or []
+    check("the Categories pivot lists genre tiles",
+          status == 200 and tiles
+          and all(t.get("type") == "directory" and t.get("key") for t in tiles)
+          and (categories.get("Meta") or {}).get("Type"),
+          "%d tile(s)" % len(tiles))
+    if tiles and tiles[0].get("key"):
+        _, opened, _ = get(base, tiles[0]["key"])
+        check("a Categories tile opens its filtered list",
+              bool(opened.get("Metadata")),
+              "%d row(s)" % len(opened.get("Metadata") or []))
     status, folders, _ = get(base, "/library/sections/%s/folder" % movie_section)
     check("By Folder lists folders with the librarySection triple",
           status == 200 and folders.get("Metadata")
           and folders.get("librarySectionUUID"),
           "%d folder(s)" % len(folders.get("Metadata") or []))
+
+    print("\n=== the library's Recommended tab ===")
+    for section_id, prefix in ((movie_section, "movie"), (show_section, "tv")):
+        if not section_id:
+            continue
+        status, hubs, _ = get(base, "/hubs/sections/%s" % section_id)
+        shelves = hubs.get("Hub") or []
+        identifiers = [h.get("hubIdentifier") for h in shelves]
+        check("section %s offers the five measured shelves" % section_id,
+              status == 200 and len(shelves) == 5
+              and identifiers[0] == "%s.inprogress.%s" % (prefix, section_id),
+              ", ".join(str(i) for i in identifiers))
+        check("every shelf is a shelf with a context and a key",
+              all(h.get("style") == "shelf" and h.get("context") and h.get("key")
+                  for h in shelves),
+              ",".join(str(h.get("context")) for h in shelves))
+        promoted = [h.get("hubIdentifier") for h in shelves if h.get("promoted")]
+        check("Recently Added is the promoted shelf",
+              promoted == ["%s.recentlyadded.%s" % (prefix, section_id)],
+              ",".join(promoted))
+        broken = []
+        for shelf in shelves:
+            # A shelf with no key is itself the failure: its "see all" link has
+            # nowhere to go.
+            if not shelf.get("key"):
+                broken.append("%s -> no key" % shelf.get("hubIdentifier"))
+                continue
+            shelf_status, _, _ = get(base, shelf["key"])
+            if shelf_status != 200:
+                broken.append("%s -> %s" % (shelf["key"], shelf_status))
+        check("every shelf's own list answers 200", not broken, "; ".join(broken))
+
+    print("\n=== the filter bar's descriptors ===")
+    _, movie_meta, _ = get(base, "/library/sections/%s/all?includeMeta=1" % movie_section)
+    types = (movie_meta.get("Meta") or {}).get("Type") or []
+    movie_type = next((x for x in types if x.get("type") == "movie"), {})
+    check("a movie section's Meta carries filters and fields",
+          len(movie_type.get("Filter") or []) > 10
+          and len(movie_type.get("Field") or []) > 10
+          and len(movie_type.get("Sort") or []) > 5,
+          "%d filter(s), %d field(s), %d sort(s)"
+          % (len(movie_type.get("Filter") or []), len(movie_type.get("Field") or []),
+             len(movie_type.get("Sort") or [])))
+    if show_section:
+        _, show_meta, _ = get(base,
+                              "/library/sections/%s/all?type=2&includeMeta=1" % show_section)
+        show_types = [x.get("type") for x in (show_meta.get("Meta") or {}).get("Type") or []]
+        # Retargeting the movie template onto a show library gave the client a
+        # show grid whose filter bar could only talk about movies.
+        check("a show section's Meta carries its own four types",
+              show_types == ["show", "season", "episode", "folder"],
+              ",".join(str(x) for x in show_types))
+        keys = [x.get("key") for x in (show_meta.get("Meta") or {}).get("Type") or []]
+        check("the show Meta's keys are retargeted onto this section",
+              all(("/library/sections/%s/" % show_section) in str(k) for k in keys),
+              ",".join(str(k) for k in keys))
+
+    print("\n=== sorting ===")
+    _, ascending, _ = get(base, "/library/sections/%s/all?sort=titleSort:asc" % movie_section)
+    _, descending, _ = get(base, "/library/sections/%s/all?sort=titleSort:desc" % movie_section)
+    up = [r.get("ratingKey") for r in ascending.get("Metadata") or []]
+    down = [r.get("ratingKey") for r in descending.get("Metadata") or []]
+    check("a sort direction is honoured", len(up) > 1 and up == list(reversed(down)),
+          "%s vs %s" % (up, down))
+    _, first, _ = get(base, "/library/sections/%s/all?sort=random" % movie_section)
+    _, second, _ = get(base, "/library/sections/%s/all?sort=random" % movie_section)
+    # A random sort has to be stable per request, or paging through it repeats
+    # and skips rows.
+    check("the random sort is stable across requests",
+          [r.get("ratingKey") for r in first.get("Metadata") or []]
+          == [r.get("ratingKey") for r in second.get("Metadata") or []])
+    for spec in ("addedAt:desc", "mediaHeight:desc", "originallyAvailableAt:desc",
+                 "lastViewedAt:desc", "audienceRating:desc", "duration:desc"):
+        status, sorted_rows, _ = get(base, "/library/sections/%s/all?sort=%s"
+                                           % (movie_section, spec))
+        check("sort %s is answered" % spec,
+              status == 200 and len(sorted_rows.get("Metadata") or []) == len(movies),
+              "%d row(s)" % len(sorted_rows.get("Metadata") or []))
 
     print("\n=== listing container rules ===")
     _, paged, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0"
