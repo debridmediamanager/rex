@@ -255,6 +255,167 @@ produced it.
 Against the pre-fix server those six checks fail and the other 45 pass — which
 is the shape of this bug in one line.
 
+### The UI is a write surface, and the server decides what it offers
+
+Measured 2026-09-12. Browsing was the whole story until now; everything in the
+Plex UI that *changes* something was either unimplemented or answered with the
+generic empty container plexsim returns for an unknown route. That is worse than
+a 404, for the same reason fix 4 above was: the client does not ask whether a
+write will work before drawing the entry that performs it. **It decides from
+what the server advertises**, so an unimplemented endpoint shows the user a menu
+entry, a confirmation dialog, and nothing happening.
+
+Two instruments, and the second one is the interesting one:
+
+1. **plexlab** on kids: a real PMS 1.43.4 in a container (`~/plexlab`), the
+   official web client in a second container driven over CDP, and mitmproxy
+   between them recording both axes (client -> server, server -> plex.tv). Its
+   library is four Blender open movies and Firefly, so every endpoint could be
+   measured against real rows, mutations included, without touching production.
+   Where the lab had no rows at all -- play history, live activities -- the
+   measurement came from **fun**, read-only.
+2. **The client's own bundle.** plexsim serves the web client, so the gating
+   logic can simply be read. `main-*.js` module 92273 is the whole contract: a
+   map of item type -> ordered list of menu flags, plus one predicate per flag.
+
+#### Which capability draws which menu entry
+
+Straight out of module 92273's predicates. The left column is what the user
+sees; the right is what the server has to say for it to exist at all:
+
+| Menu entry | Gate |
+|---|---|
+| Play / Play All | playability, and provider feature `playqueue` |
+| Play Next, Add to Queue | `playqueue` feature |
+| Shuffle | `playqueue` feature |
+| Mark as Played / Unplayed | `timeline` feature with `scrobbleKey`/`unscrobbleKey`, **and for a show or season `unviewedLeafCount > 0`** |
+| Add to Playlist | `playlist` feature |
+| Edit, Refresh Metadata | `manage` feature |
+| Analyze | `manage`, and the item is not `indirect`/`remoteMedia` |
+| Fix Match… | `manage`, and a guid that is **not** `local://` or `none://` |
+| Match… | `manage`, and a guid that **is** one of those |
+| Unmatch | same as Fix Match |
+| Split Apart | `manage`, and more than one `Media` (or `Location` for a show) |
+| Delete | `manage`, and the server reports `allowMediaDeletion` |
+| Delete Version | `allowMediaDeletion`, and a `Media` with a `proxyType` |
+| Download | provider `protocols` contains `download` |
+| Optimize… | server reports `transcoderVideo` **and** `backgroundProcessing` |
+| Sync & Download | `subscribe` feature with a download flavor, and `allowSync` |
+| Get Info | library provider, item not an extra |
+| Remove from Continue Watching | the `actions` feature advertises that Action |
+
+Consequences for plexsim, each one a behaviour change rather than a new field:
+
+- **Download was hidden by one word.** The provider advertised
+  `protocols: "stream"`. plexsim can serve a download -- it is the same Part read
+  with `download=1` and a `Content-Disposition` -- so the entry was hiding a
+  feature that already worked.
+- **Delete needs `allowMediaDeletion`.** plexsim reported false because it owns
+  no files. But the Plex phrasing ("delete from your filesystem") has a local
+  meaning here: drop the row from the library. The debrid content is untouched,
+  and since the mutation is in memory, a restart is the undo button.
+- **`allowSync` was absent rather than false.** An absent field and a false one
+  are different statements, and the Sync entry reads it.
+- **Unmatch has to leave a `local://` guid.** Stripping the guid entirely -- the
+  obvious reading of "unmatch" -- leaves an item that offers *neither* Match nor
+  Fix Match, because both predicates require a guid to be present.
+- **Marking a show played has to walk to the leaves.** The predicate reads
+  `unviewedLeafCount`, derived from `leafCount` and `viewedLeafCount` on the show
+  row, so a show whose episodes stayed unwatched keeps offering "Mark as Played"
+  however correct the show row looks.
+- **Optimize stays hidden on purpose.** It is gated on `transcoderVideo`, which
+  plexsim must not claim: a transcode verdict means the item does not play at
+  all. Advertising a transcoder it does not have is what produced "This server is
+  not powerful enough to convert video" in the first place.
+
+#### Response shapes the write half turned up
+
+| Measured | What plexsim did |
+|---|---|
+| Every mutating endpoint answers **200 with an empty body** and `text/html` (refresh, analyze, unmatch, match, split, merge, scrobble, unscrobble, rate, prefs write, section tasks, edits) | answered with a MediaContainer |
+| `DELETE /playlists/{id}` answers **204**, while `DELETE /library/collections/{id}` answers **200** | neither existed |
+| `PUT /playlists/{id}/items` answers with `leafCountAdded` / `leafCountRequested` | — |
+| An empty child list is **omitted**, never sent as `[]` -- these responses are XML underneath, and `Metadata: []` says "there is state here and it is empty" | sent `Metadata: []` |
+| `/library/sections/{id}/sorts` and `/filters` carry **`Directory`**, 9 and 28 entries | carried `Sort` (2 entries) and `Filter` (0) |
+| A tag axis keys entries by **tag id** (`?genre=24`), a field axis by the **value** (`?contentRating=PG`) | neither existed, so every secondary filter opened the whole library |
+| A **paged** listing carries `offset` + `totalSize`; an **unpaged** one carries `nocache` instead. `newest`, `recentlyAdded`, `onDeck` and `collections` carry none of the three | every listing carried all of them |
+| `/library/metadata/{id}/allLeaves` says `mixedParents` and omits `thumb` and `summary`, both of which `/children` carries | carried thumb and summary, no mixedParents |
+| `/library/sections` carries `title1` and `allowSync` only | carried `identifier` and the media-tag pair |
+| `/library/metadata/{id}` **does** carry `identifier` and the media-tag pair | a note here claimed the opposite -- see below |
+| `/library/collections` bare, `/library/optimize` via GET, `/library/sections/prefs`, `/library/people`, `/sync/*` all answer 4xx | answered 200 with an empty container |
+| `/:/timeline` answers `{size, playbackState}` | answered a bare container |
+| A play-queue response carries `playQueueSourceURI` | omitted it, so a client re-reading the queue lost its source |
+| An Activity is `{uuid, type, cancellable, userID, title, subtitle, progress}` (measured on fun mid-refresh) | — |
+| A history row is `{historyKey, key, ratingKey, librarySectionID (a **string**), type, viewedAt, accountID, deviceID}` plus `grandparent*`/`index`/`parentIndex` for an episode (measured on fun, 3879 rows) | — |
+
+**A measurement claim in this file did not hold.** The item-detail handler
+carried a comment saying "Verified against fun: an item-detail container is
+BARE -- no identifier, mediaTagPrefix or mediaTagVersion". Re-measured on
+2026-09-12 against both fun and the 1.43.4 reference, with the client's own
+`includeX` param set: both send all three. The note was wrong, and
+`mediaTagPrefix` is what a client uses to turn a tag into an image URL. Fixed.
+
+#### Merge is not reversible, and that was learnt the hard way
+
+`PUT /library/metadata/{id}/merge?ids=` on the reference server merged two of
+its movies for good. `PUT .../split` does undo the *shape* -- two rows again --
+but the second row comes back on a **new ratingKey carrying the first one's
+metadata**, so it has to be re-matched by hand. Measuring merge cost a
+re-identification of Elephants Dream. `probes/ui_surface.py` therefore excludes
+merge from its `--mutate` set, with that reason written next to it, and plexsim's
+own merge is in memory where a restart undoes it.
+
+#### What plexsim now answers
+
+Item context menu: Play, Play All, Play Next, Add to Queue, Shuffle, Mark as
+Played/Unplayed (walking to the leaves), rate, Add to Playlist, Add to
+Collection (a tag edit), Edit with field locks, Refresh Metadata, Analyze, Fix
+Match/Match against live TMDB, Unmatch, Split Apart, Merge, Download, Delete,
+Delete Version, Get Info, Change Artwork, Remove from Continue Watching, View
+Play History, audio/subtitle selection.
+
+Server pages: Status (Dashboard, Alerts, Conversions), Settings (General, Remote
+Access, Agents, Library, Network, Transcoder, Languages, DLNA, Scheduled Tasks,
+Extras -- all of them the `/:/prefs` group list, now writable), Manage
+(Libraries with add/rename/delete/scan/cancel/refresh/empty trash/analyze/
+preview thumbnails, Optimized Versions, Live TV & DVR, Troubleshooting with a
+real log zip, Console, Plugins), plus `/activities`, `/statistics/*`,
+`/status/sessions*`, `/transcode/sessions`, `/devices`, `/accounts`,
+`/security/token`, `/updater/*`, `/system/agents`, `/system/scanners`,
+playlists and collections in full.
+
+Deliberately still refused, each because the honest answer is no: Optimize and
+Sync & Download (no encoder), Live TV and tuners (no tuner), Download Database
+(no database, and `diagnostics` no longer advertises one), and the Console's log
+stream -- the notification shape a real PMS pushes for it was not measured, and
+inventing one is exactly what this file exists to prevent.
+
+#### Verified in the official client, not only against the API
+
+The same item detail page in Plex Web 4.147.1, driven over CDP from the plexlab
+browser, before and after -- the menu the user actually sees:
+
+```
+old  Watch Together… · Play Next · Add to Queue · Add to · Refresh Metadata ·
+     Analyze · Fix Match… · Unmatch · Grant Access… · View Play History · Get Info
+new  … the same, plus  Save File  and  Delete
+```
+
+Exactly the two entries whose gates changed: `protocols: "stream,download"`
+draws **Save File** (the client's label for Download) and `allowMediaDeletion`
+draws **Delete**. Everything else was already being drawn by the old server and
+did nothing when pressed, which is the failure mode this whole section is about.
+
+And one entry followed end to end rather than inspected: clicking **Mark as
+Watched** in the client turned the button into "Mark as Unwatched", and plexsim
+logged `SCROBBLE 1007 -> 1 leaf row(s)` with `viewCount=1` on the row.
+
+`tests/test_ui_surface.py` covers all of it: **156/156 checks against the new
+server, 45/137 against the old one** on the same fixture catalog
+(`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
+section has more than one movie and the show has two seasons). The count differs
+between the two runs because a check that depends on a playlist the old server
+never created does not run at all.
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

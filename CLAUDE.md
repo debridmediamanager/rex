@@ -28,7 +28,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 | Path | What it is |
 |---|---|
-| `server.py` | The PMS surface. Every route, ~1800 lines. Start here. |
+| `server.py` | The PMS surface. Every route, ~2900 lines. Start here. |
+| `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
@@ -37,7 +38,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
-| `tests/` | Conformance and end-to-end suites |
+| `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
 | `probes/` | One-off measurement scripts that produced findings |
@@ -243,9 +244,25 @@ Run both against a live server. Neither needs network beyond RD and TMDB.
 
 ```bash
 python3 tests/test_navigation.py            # client request replay, shape conformance
+python3 tests/test_ui_surface.py            # context menu + every server page, end to end
 python3 tests/test_all.py                   # play queue → decision → byte reads → real decode
 python3 tests/conformance.py                # drives plexsim with python-plexapi
 ```
+
+`test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
+collections, and finally deletes a row and a section. Everything it touches is in
+memory, so restarting the server is the undo button — but run it against a test
+instance, started on the fixture the checks are written against:
+
+```bash
+python3 server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
+python3 tests/test_ui_surface.py --base http://127.0.0.1:32500
+```
+
+That fixture exists because multiplicity is a prerequisite, not a detail: on a
+one-movie section the Shuffle, Play Next, Merge and second-page checks have
+nothing to compare and quietly become no-ops. `probes/ui_surface.py` is the other
+half — replay the same surface against a real PMS and diff the two tables.
 
 `test_navigation.py` is the regression suite. Every fixed rendering bug gets a
 check here, and the check must **fail against the unfixed server** — prove it,
@@ -277,6 +294,19 @@ precisely how the Seasons bug survived a fix attempt.
 - **`Connection: close` on part responses is load-bearing.** With keep-alive,
   ffmpeg reuses a connection behind an undrained body and seeking fails with
   `AVERROR(ENOSYS)`.
+- **The UI draws a menu entry from what the server *advertises*, not from
+  whether the write behind it works.** `/media/providers` decides whether Edit,
+  Delete, Download, Optimize and Mark as Played exist at all; an unimplemented
+  endpoint behind an advertised capability is a menu entry that does nothing.
+  The per-entry gates are in `docs/findings.md`, read out of the client's own
+  bundle (`main-*.js` module 92273).
+- **A mutating endpoint answers 200 with an EMPTY body**, not a MediaContainer —
+  and a playlist delete is 204 while a collection delete is 200.
+- **An empty child list is omitted, never sent as `[]`.** These responses are XML
+  underneath; `Metadata: []` is a shape no real PMS returns.
+- **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that
+  undoes it hands the second item back on a NEW ratingKey carrying the first
+  one's metadata, so measuring it costs a re-match. It cost one here.
 - **`viewMode`: a season list is 65593, an episode list 65592.** Inverted, the
   client is handed the episode layout for a season list and draws no seasons.
 - **Artwork URLs must be versioned.** Unversioned `/thumb/1` plus ratingKey

@@ -23,6 +23,11 @@ Jellyfin.
 - **Real identification.** TMDB gives episode titles, summaries, cast, posters
   and art; `plex://show|season|episode|movie/<24hex>` guids are minted per item
   with external ids on the show.
+- **The whole UI, not just browsing.** Every entry in an item's context menu —
+  Mark as Played, Edit, Fix Match, Refresh, Analyze, Split, Merge, Download,
+  Delete, Get Info, Add to Playlist, Add to Collection, Play Next — and every
+  server page: Status, all ten Settings pages (writable), and Manage with
+  library add/rename/delete, scans, playlists and collections.
 - **Claimed-server emulation**, calibrated field by field against the account's
   own real servers at `/identity`, `/media/providers`, `/:/prefs` and
   `/library/sections`.
@@ -44,6 +49,7 @@ client bundle with `--web-root`, or point any Plex client at the host.
 
 ```bash
 python3 tests/test_navigation.py   # replays a client's request sequence, checks shape
+python3 tests/test_ui_surface.py   # the context menu and every server page, end to end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
 ```
 
