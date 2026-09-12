@@ -31,6 +31,7 @@ shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:
 playlists 40000+, collections 50000+.
 """
 
+import re
 import time
 import urllib.parse
 import uuid
@@ -39,6 +40,41 @@ import zlib
 # Fields a row carries as a number. The client sends every edit as a string.
 INTEGER_FIELDS = {"year", "index", "parentIndex", "duration", "viewOffset",
                   "viewCount", "leafCount", "childCount"}
+
+DATE_FIELDS = {"originallyAvailableAt"}
+
+# Fields the Edit dialog may write. Measured: anything else is a 400, including
+# `sortTitle` (the field is `titleSort`) -- plexsim stored whatever it was sent,
+# so a client typo became a row attribute and a `Field` lock for a field that
+# does not exist.
+EDITABLE_FIELDS = {
+    "title", "titleSort", "originalTitle", "studio", "tagline", "summary",
+    "contentRating", "originallyAvailableAt", "year", "index", "editionTitle",
+    "userRating", "audienceRating", "rating", "duration",
+}
+
+# Accepted, locked, and DISCARDED: the star rating is written through /:/rate.
+IGNORED_EDIT_FIELDS = {"userRating"}
+
+# The only two fields an empty value STORES as "" rather than removing. Measured
+# one field at a time; everything else falls back to what the agent supplies.
+KEEP_EMPTY_FIELDS = {"title", "summary"}
+
+# The order a real PMS lists locks in -- a fixed column order, not the order the
+# client happened to write them. plexsim appended, so re-locking a field moved it
+# to the end and the dialog's checkbox order shuffled.
+FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "tagline",
+               "summary", "contentRating", "originallyAvailableAt", "year",
+               "collection", "editionTitle", "userRating"]
+
+
+class EditError(Exception):
+    """An edit a real PMS refuses. `status` is the code it answers with."""
+
+    def __init__(self, status, detail):
+        super().__init__(detail)
+        self.status = status
+        self.detail = detail
 
 PLAYLIST_BASE = 40000
 COLLECTION_BASE = 50000
@@ -87,6 +123,12 @@ class Library:
         self._next_playlist = PLAYLIST_BASE
         self._next_collection = COLLECTION_BASE
         self._next_tag_id = 90000
+        # The tag TABLE: every tag this server has ever minted, by (row key,
+        # lowercased name). A real PMS keeps tags independently of membership, so a
+        # tag removed from the last row and re-added comes back with its original
+        # id and spelling -- measured. plexsim looked only at the rows, so clearing
+        # a tag lost its identity.
+        self._tags = {}
         # Play history, newest last -- the order /status/sessions/history/all
         # returns (measured on fun: the newest rows are at the highest offset).
         self._history = []
@@ -261,48 +303,190 @@ class Library:
 
     # -- metadata edits --------------------------------------------------
 
-    def edit(self, row, params):
+    def edit(self, row, params, pairs=None, bare_fields=True):
         """`PUT /library/metadata/{id}?title.value=X&title.locked=1`.
 
-        Three param shapes, all from the client's own `getSaveParams`:
+        Four param shapes, all from the client's own `getSaveParams`:
           `<field>.value=`         set a field
+          `<field>=`               the same, without the suffix -- also honoured
           `<field>.locked=0|1`     lock it against a future agent refresh
           `<tag>[N].tag.tag=`      set tag N of a tag type
           `<tag>[].tag.tag-=a,b`   remove those tags
+
+        Raises EditError with the status a real PMS answers. Measured, parameter by
+        parameter against the reference, and plexsim had all of this wrong:
+
+          * an UNKNOWN field is a 400, not a silently stored attribute;
+          * `year.value=abc` is a 500, and `year.value=-5` REMOVES the year;
+          * an unparseable date removes the field rather than storing the text;
+          * `userRating` is accepted and IGNORED (the star rating is /:/rate);
+          * only `.locked=1` locks -- `true`, `false` and an empty value all
+            UNLOCK, where plexsim locked on anything non-empty;
+          * an indexed tag list REPLACES the whole list rather than appending, and
+            a `tag-` removal with any value CLEARS it;
+          * a tag matches case-insensitively and keeps its canonical spelling;
+          * an unknown TAG type is a 400.
         """
+        # The ORDERED pairs matter: `genre[0]`, `genre[1]` build one desired list,
+        # and a dict collapses them. The caller passes them when it has them.
+        items = list(pairs) if pairs is not None else list(params.items())
+        items = [(k, v) for k, v in items
+                 if not k.startswith(("X-Plex-", "include", "exclude"))
+                 and k not in ("_pairs", "id", "type")]
+        if not bare_fields:
+            # On the SECTION path a bare `field=value` is a FILTER that scopes the
+            # edit, not a field to write -- measured: `?type=1&title=Sintel` edits
+            # only Sintel. On the ITEM path the same shape IS an edit (a bare
+            # `studio=` is applied). So which it means depends on the path.
+            items = [(k, v) for k, v in items
+                     if k.endswith((".value", ".locked")) or ".tag.tag" in k]
+        if not items:
+            # Measured: a PUT with no parameters at all is a 400.
+            raise EditError(400, "bad request")
+
         changed = False
-        for name, value in params.items():
-            if name.endswith(".value"):
-                field = name[: -len(".value")]
-                if value == "":
-                    row.pop(field, None)
-                elif field in INTEGER_FIELDS and str(value).lstrip("-").isdigit():
-                    # `year.value=2012` arrives as a string; a real row carries
-                    # an int here, and the client sorts and filters on it.
-                    row[field] = int(value)
-                else:
-                    row[field] = value
-                changed = True
-            elif name.endswith(".locked"):
-                self._set_lock(row, name[: -len(".locked")], value not in ("0", "", None))
-                changed = True
-            elif ".tag.tag-" in name:
+        replacing = {}     # tag type -> the desired list, in index order
+        clearing = set()   # tag types a `tag-` removal empties
+        for name, value in items:
+            if ".tag.tag-" in name:
                 tag_type = name.split("[", 1)[0].lower()
-                self._remove_tags(row, tag_type, [v for v in value.split(",") if v])
+                if tag_type not in TAG_KEYS:
+                    raise EditError(400, "unknown tag field %r" % tag_type)
+                # Measured: ANY `tag-` removal clears the whole list, whatever it
+                # names -- even a value the row does not have. The indexed list in
+                # the same request then rebuilds it, which is how the client's
+                # "remove one tag" actually works.
+                clearing.add(tag_type)
                 changed = True
             elif ".tag.tag" in name:
                 tag_type = name.split("[", 1)[0].lower()
-                self._add_tag(row, tag_type, value)
+                if tag_type not in TAG_KEYS:
+                    raise EditError(400, "unknown tag field %r" % tag_type)
+                replacing.setdefault(tag_type, [])
+                if value:
+                    replacing[tag_type].append(value)
                 changed = True
+            elif name.endswith(".locked"):
+                field = name[: -len(".locked")]
+                if field not in EDITABLE_FIELDS and field not in TAG_KEYS:
+                    raise EditError(400, "unknown field %r" % field)
+                # Measured: `1` is the only value that locks.
+                self._set_lock(row, field, str(value) == "1")
+                changed = True
+            else:
+                field = name[: -len(".value")] if name.endswith(".value") else name
+                if field not in EDITABLE_FIELDS:
+                    raise EditError(400, "unknown field %r" % field)
+                self._set_field(row, field, value)
+                changed = True
+
+        for tag_type in clearing | set(replacing):
+            self._set_tags(row, tag_type, replacing.get(tag_type) or [])
         if changed:
             row["updatedAt"] = _now()
         return changed
 
+    def _set_field(self, row, field, value):
+        """One scalar field, with the coercions a real PMS applies."""
+        if field in IGNORED_EDIT_FIELDS:
+            # Measured: accepted, lock recorded, value discarded -- the star
+            # rating is written through /:/rate, not through the Edit dialog.
+            return
+        if value == "":
+            if field in INTEGER_FIELDS:
+                # Measured: `year.value=` is a 500, the same refusal the filter
+                # grammar gives an empty integer.
+                raise EditError(500, "unparseable %s %r" % (field, value))
+            if field in KEEP_EMPTY_FIELDS:
+                # Measured field by field: only `title` and `summary` are STORED as
+                # the empty string. `studio`, `contentRating`, `originalTitle`,
+                # `editionTitle` and `titleSort` are REMOVED, which is what lets the
+                # agent supply them again -- and `titleSort` in particular is derived
+                # from the title when absent.
+                row[field] = ""
+            else:
+                row.pop(field, None)
+            return
+        if field in INTEGER_FIELDS:
+            text = str(value).strip()
+            if not text.lstrip("-").isdigit():
+                # Measured: a real PMS answers 500 for `year.value=abc`.
+                raise EditError(500, "unparseable %s %r" % (field, value))
+            number = int(text)
+            if number < 0:
+                # Measured: a negative year REMOVES the field.
+                row.pop(field, None)
+            else:
+                row[field] = number
+            return
+        if field in DATE_FIELDS:
+            if not re.match(r"^\d{4}-\d{2}-\d{2}", str(value)):
+                # Measured: an unparseable date removes the field rather than
+                # storing the text, which is what plexsim did.
+                row.pop(field, None)
+            else:
+                row[field] = value
+            return
+        row[field] = value
+
+    def _set_tags(self, row, tag_type, values):
+        """Replace a tag list, which is what an indexed write means.
+
+        Measured: `genre[0].tag.tag=A&genre[1].tag.tag=B` leaves EXACTLY [A, B] --
+        the originals are gone. plexsim appended, so the Edit dialog could only
+        ever add tags and the list grew every time it was saved.
+        """
+        key = TAG_KEYS.get(tag_type)
+        if not key:
+            return
+        before = {str(t.get("tag")) for t in row.get(key) or []}
+        existing = {str(t.get("tag")).lower(): t for t in row.get(key) or []}
+        # A tag's canonical spelling and id survive: `huntgenrea` matches
+        # `HuntGenreA` and comes back spelled the way it was first stored -- and it
+        # survives the tag being removed from every row, because a real PMS keeps a
+        # tag TABLE rather than storing tags only on the items. Measured: id 235
+        # came back on a re-add after the tag had been cleared.
+        for other in self.catalog.items.values():
+            for tag in other.get(key) or []:
+                existing.setdefault(str(tag.get("tag")).lower(), tag)
+        for (table_key, lowered), tag in self._tags.items():
+            if table_key == key:
+                existing.setdefault(lowered, tag)
+        fresh = []
+        for value in values:
+            known = existing.get(str(value).lower())
+            if known is not None:
+                fresh.append(dict(known))
+                continue
+            tag_id = zlib.crc32(("%s:%s" % (key, value)).encode()) % 900000 + 1000
+            minted = {"id": tag_id, "tag": value,
+                      "filter": "%s=%s" % (tag_type, tag_id)}
+            self._tags[(key, str(value).lower())] = minted
+            fresh.append(minted)
+        if fresh:
+            row[key] = fresh
+        else:
+            row.pop(key, None)
+        if key == "Collection":
+            for entry in fresh:
+                self._sync_collection_tag(row, entry["tag"])
+            for gone in before - {str(t["tag"]) for t in fresh}:
+                self._untag_collection(row, gone)
+
     def _set_lock(self, row, field, locked):
-        """A real PMS reports locks as a `Field` array on the row."""
+        """A real PMS reports locks as a `Field` array on the row, in COLUMN order.
+
+        Measured: the order is fixed (title, titleSort, originalTitle, studio,
+        tagline, summary, contentRating, originallyAvailableAt, year, collection,
+        editionTitle, userRating), not the order the client wrote them -- plexsim
+        appended, so re-locking a field moved it to the end.
+        """
         fields = [f for f in row.get("Field", []) if f.get("name") != field]
         if locked:
             fields.append({"locked": True, "name": field})
+        fields.sort(key=lambda f: (FIELD_ORDER.index(f["name"])
+                                   if f.get("name") in FIELD_ORDER
+                                   else len(FIELD_ORDER), f.get("name")))
         if fields:
             row["Field"] = fields
         else:
@@ -335,16 +519,24 @@ class Library:
             row.pop(key, None)
         if key == "Collection":
             for value in values:
-                collection = self.find_collection(value, row.get("librarySectionID"))
-                if not collection:
-                    continue
-                collection["items"] = [k for k in collection["items"]
-                                       if int(k) != int(row["ratingKey"])]
-                if not collection["items"]:
-                    # A Plex collection exists only as the tag on its members:
-                    # untag the last one and the collection is gone, rather than
-                    # lingering in the Collections pivot as an empty row.
-                    self._collections.pop(collection["ratingKey"], None)
+                self._untag_collection(row, value)
+
+    def _untag_collection(self, row, title):
+        """Drop this row from the named collection, and the collection if empty."""
+        collection = self.find_collection(title, row.get("librarySectionID"))
+        if not collection:
+            return
+        collection["items"] = [k for k in collection["items"]
+                               if int(k) != int(row["ratingKey"])]
+        if not collection["items"]:
+            # A Plex collection exists only as the tag on its members: untag the
+            # last one and the collection is gone, rather than lingering in the
+            # Collections pivot as an empty row. (The reference DOES keep an empty
+            # collection row -- measured, childCount 0 and still listed -- but it
+            # also leaves the stale tag on the item, which is a state plexsim has
+            # no way to represent consistently; a vanishing collection is the
+            # lesser divergence.)
+            self._collections.pop(collection["ratingKey"], None)
 
     # -- match / unmatch / refresh / split / merge ------------------------
 
@@ -643,7 +835,9 @@ class Library:
         return self._playlists.get(int(key)) if str(key).isdigit() else None
 
     def edit_playlist(self, playlist, title=None, summary=None):
-        if title:
+        # Measured: `title=` stores the EMPTY string rather than being ignored, so
+        # the test is `is not None` and not truthiness.
+        if title is not None:
             playlist["title"] = title
         if summary is not None:
             playlist["summary"] = summary
@@ -870,6 +1064,12 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
+        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode"):
+            # Whatever the Edit Collection dialog and its prefs wrote. Measured: the
+            # sort and mode come back as STRING attributes on the row, which is what
+            # the dialog reads to show the current selection.
+            if collection.get(name) is not None:
+                row[name] = collection[name]
         if years and not collection.get("smart"):
             # Measured: a SMART collection carries no minYear/maxYear -- its
             # membership is a query, so there is no fixed span to report. plexsim

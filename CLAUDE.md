@@ -299,6 +299,21 @@ precisely how the Seasons bug survived a fix attempt.
 - **`Connection: close` on part responses is load-bearing.** With keep-alive,
   ffmpeg reuses a connection behind an undrained body and seeking fails with
   `AVERROR(ENOSYS)`.
+- **The Edit dialog saves to `PUT /library/sections/{id}/all`**, reads
+  `/library/sections/{id}/common` first, and gets its editable TAG fields from
+  `/library/sections/{id}?includeDetails=1`. plexsim answered the grid listing to
+  the save (200, nothing written), 404'd the pre-read, and sent two pivot rows and
+  no `Type` — so every Save was a silent no-op and the Tags pane was empty. With no
+  `id=` the save edits the whole FILTERED set, and a bare `field=value` there is a
+  filter that SCOPES it where on the item path it is an edit.
+- **An indexed tag write REPLACES the list** (`genre[0]…&genre[1]…` leaves exactly
+  those two), and ANY `tag-` removal clears the whole list whatever it names. A tag
+  matches case-insensitively and keeps its canonical spelling and id even after
+  being removed from every row — a real PMS keeps a tag TABLE, so plexsim does too.
+- **Edit parameters are validated**: an unknown field or tag type is 400, an empty
+  or unparseable integer is 500, a negative year or a bad date REMOVES the field,
+  only `title`/`summary` store `""`, `userRating` is accepted and discarded, and
+  only `.locked=1` locks. Library create and edit validate their whole form.
 - **The UI draws a menu entry from what the server *advertises*, not from
   whether the write behind it works.** `/media/providers` decides whether Edit,
   Delete, Download, Optimize and Mark as Played exist at all; an unimplemented
