@@ -132,6 +132,7 @@ class Library:
         # Play history, newest last -- the order /status/sessions/history/all
         # returns (measured on fun: the newest rows are at the highest offset).
         self._history = []
+        self._next_history = 0
         self._activities = []
 
     # -- watch state -----------------------------------------------------
@@ -152,11 +153,28 @@ class Library:
                 leaf["viewCount"] = int(leaf.get("viewCount", 0)) + 1
                 leaf["lastViewedAt"] = _now()
                 leaf.pop("viewOffset", None)
-                self.record_view(leaf, account_id=account_id, device_id=device_id)
+                # Measured: a scrobble writes NO history row -- the reference's
+                # history stayed at one row through three scrobbles, because rows
+                # come only from a timeline that reaches the end. plexsim recorded
+                # one per mark-as-played, so the History page and the Top shelf
+                # counted things nobody had watched.
             else:
                 leaf.pop("viewCount", None)
                 leaf.pop("viewOffset", None)
                 leaf.pop("lastViewedAt", None)
+        # A show or season keeps its OWN play counter, independent of its leaves:
+        # measured, scrobbling one episode twice took the show to `viewCount 2`,
+        # unscrobbling that episode left it at 2 (it increments, it does not
+        # recompute), and unscrobbling the SHOW removed the field entirely. plexsim
+        # emitted neither field on a parent at all, so a TV grid's "Last Played" sort
+        # and its viewCount filter had nothing to read.
+        if row.get("type") in ("show", "season"):
+            if watched:
+                row["viewCount"] = int(row.get("viewCount", 0)) + 1
+                row["lastViewedAt"] = _now()
+            else:
+                row.pop("viewCount", None)
+                row.pop("lastViewedAt", None)
         self.recount(row)
         return targets
 
@@ -180,23 +198,50 @@ class Library:
             return None
         total = duration or row.get("duration") or 0
         if offset is not None:
-            row["viewOffset"] = int(offset)
-            row["lastViewedAt"] = _now()
+            # A timeline puts the row back in Continue Watching, whatever the menu
+            # entry did before -- measured on the reference.
+            row.pop("_hiddenFromContinueWatching", None)
+            # Measured: a resume point under a MINUTE is not stored at all -- the
+            # reference answers `playbackState: ignore` AND leaves the row untouched
+            # at 3 000, 20 000 and 59 000 ms, and only starts recording at 61 000.
+            # plexsim answered `ignore` and wrote the offset anyway, so a title
+            # glanced at for two seconds appeared in Continue Watching.
+            # The boundary is bracketed rather than pinned: 59 000 is measured NOT
+            # stored and 61 000 IS, so the threshold is somewhere in between and
+            # 60 000 -- Plex's own documented "ignore under a minute" -- is the
+            # reading. python-plexapi's own progress test uses exactly 60 000.
+            if int(offset) >= 60000 or state == "stopped":
+                row["viewOffset"] = int(offset)
+                row["lastViewedAt"] = _now()
         if state == "stopped":
             if total and row.get("viewOffset", 0) >= total * 0.9:
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 row.pop("viewOffset", None)
                 self.record_view(row)
+                # A completed play bumps the parents' own counters too.
+                for key in ("parentRatingKey", "grandparentRatingKey"):
+                    parent = self.catalog.items.get(int(row[key])) \
+                        if str(row.get(key) or "").isdigit() else None
+                    if parent is not None:
+                        parent["viewCount"] = int(parent.get("viewCount", 0)) + 1
+                        parent["lastViewedAt"] = _now()
             self.recount(row)
         return row
 
     def remove_from_continue_watching(self, rating_key):
-        """The menu entry of the same name: drop the resume point, keep plays."""
+        """The menu entry of the same name: HIDE the row, keep the resume point.
+
+        Measured: the reference answers 200, the row KEEPS its `viewOffset` (91 000
+        was still there afterwards), and it simply stops appearing in
+        `/library/onDeck` and `/hubs/continueWatching` -- until the next timeline
+        brings it back. plexsim deleted the offset, so "Remove from Continue
+        Watching" also threw away the resume position and the next Play started the
+        item over.
+        """
         row = self.catalog.items.get(rating_key)
         if row is None:
             return None
-        row.pop("viewOffset", None)
-        self.recount(row)
+        row["_hiddenFromContinueWatching"] = True
         return row
 
     def recount(self, row):
@@ -229,8 +274,13 @@ class Library:
         carries title and originallyAvailableAt, and both carry historyKey,
         librarySectionID as a STRING, viewedAt, accountID and deviceID.
         """
+        # Measured: the key is a MONOTONIC counter, never reused -- the reference went
+        # 34, 35, delete 35, then 36. plexsim derived it from the list length, so a
+        # delete made the next play reuse the deleted key and a client keyed on
+        # historyKey got two different plays under one key.
+        self._next_history += 1
         entry = {
-            "historyKey": "/status/sessions/history/%d" % (len(self._history) + 1),
+            "historyKey": "/status/sessions/history/%d" % self._next_history,
             "key": "/library/metadata/%s" % row["ratingKey"],
             "ratingKey": str(row["ratingKey"]),
             "librarySectionID": str(row.get("librarySectionID", "")),
@@ -254,6 +304,18 @@ class Library:
                     entry[key] = row[key]
         self._history.append(entry)
         return entry
+
+    def _forget_item(self, rating_key):
+        """Strip a removed row's keys from its history rows, as a real PMS does.
+
+        Measured: after the scanner removed an item its history row SURVIVED as
+        `{historyKey, title, viewedAt}` -- `ratingKey` and `key` were stripped.
+        plexsim left both, so the History page linked a 404.
+        """
+        for entry in self._history:
+            if str(entry.get("ratingKey")) == str(rating_key):
+                entry.pop("ratingKey", None)
+                entry.pop("key", None)
 
     def history(self):
         return list(self._history)
@@ -543,6 +605,21 @@ class Library:
             for value in values:
                 self._untag_collection(row, value)
 
+    def remove_collection_item(self, collection, row):
+        """Drop one member from a collection, and its Collection tag with it."""
+        before = len(collection["items"])
+        collection["items"] = [k for k in collection["items"]
+                               if int(k) != int(row["ratingKey"])]
+        if len(collection["items"]) != before:
+            collection["updatedAt"] = _now()
+        tags = [t for t in row.get("Collection") or []
+                if str(t.get("tag")) != str(collection["title"])]
+        if tags:
+            row["Collection"] = tags
+        else:
+            row.pop("Collection", None)
+        return before != len(collection["items"])
+
     def _untag_collection(self, row, title):
         """Drop this row from the named collection, and the collection if empty."""
         collection = self.find_collection(title, row.get("librarySectionID"))
@@ -716,6 +793,18 @@ class Library:
             return None
         parent_key = row.get("parentRatingKey") or row.get("grandparentRatingKey")
         removed = self.catalog.remove(rating_key)
+        # `catalog.remove` returns the SET of keys it took out.
+        for gone in (removed or {rating_key}):
+            self._forget_item(gone)
+        # Measured through the reference's scanner: removing a season's LAST episode
+        # removes the season too, and the show's childCount drops with it. plexsim
+        # left the empty season listed, so the show page drew a season tile with
+        # nothing behind it.
+        if row.get("type") == "episode" and parent_key:
+            season = self.catalog.items.get(int(parent_key))
+            if season is not None and not self.catalog.children(parent_key):
+                self.catalog.remove(int(parent_key))
+                parent_key = season.get("parentRatingKey") or parent_key
         for playlist in self._playlists.values():
             playlist["items"] = [i for i in playlist["items"]
                                  if int(i["ratingKey"]) not in removed]
@@ -790,12 +879,21 @@ class Library:
         """`PUT /playlists/{id}/items?uri=` -- returns how many were added.
 
         The real response carries `leafCountAdded` and `leafCountRequested`, so
-        the client can tell the user "3 of 5 added".
+        the client can tell the user "3 of 5 added" -- and measured, a row already in
+        the playlist is NOT added again: re-adding it answers `leafCountAdded: 0` and
+        leaves the count alone, and a uri naming the same key twice adds it once.
+        plexsim appended every time, so Add to Playlist on something already there
+        silently duplicated it.
         """
         added = 0
+        present = {int(entry["ratingKey"]) for entry in playlist["items"]}
         for row in rows:
+            key = int(row["ratingKey"])
+            if key in present:
+                continue
+            present.add(key)
             playlist["items"].append({
-                "ratingKey": int(row["ratingKey"]),
+                "ratingKey": key,
                 "playlistItemID": playlist["next_item_id"],
             })
             playlist["next_item_id"] += 1

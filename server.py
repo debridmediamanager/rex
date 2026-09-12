@@ -109,6 +109,81 @@ for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show
     except (OSError, ValueError):
         pass
 
+# What `includeAdvanced=1` ADDS to a section's Meta, captured type by type off the
+# reference by diffing the plain and advanced documents. The client sends the flag on
+# the grid listing and on its FilterCollection, and reads the Sort list straight into
+# the sort menu -- so ignoring the flag cost a movie library six sort options and a
+# show library's episode view eight, plus the Duplicates filter on both. plexsim's
+# Meta was identical with and without it.
+ADVANCED_META = {
+    ("movie", "movie"): {
+        "Sort": [
+            {"defaultDirection": "desc", "descKey": "year:desc", "key": "year",
+             "title": "Year"},
+            {"defaultDirection": "desc", "descKey": "userRating:desc",
+             "key": "userRating", "title": "Rating"},
+            {"defaultDirection": "desc", "descKey": "contentRating:desc",
+             "key": "contentRating", "title": "Content Rating"},
+            {"defaultDirection": "desc", "descKey": "viewOffset:desc",
+             "key": "viewOffset", "title": "Progress"},
+            {"defaultDirection": "desc", "descKey": "viewCount:desc",
+             "key": "viewCount", "title": "Plays"},
+            {"defaultDirection": "desc", "descKey": "mediaBitrate:desc",
+             "key": "mediaBitrate", "title": "Bitrate"},
+        ],
+        "Filter": [{"filter": "duplicate", "filterType": "boolean",
+                    "key": "/library/sections/%s/duplicate", "title": "Duplicates",
+                    "type": "filter", "advanced": True}],
+    },
+    ("show", "show"): {
+        "Sort": [
+            {"defaultDirection": "desc", "descKey": "year:desc", "key": "year",
+             "title": "Year"},
+            {"defaultDirection": "desc", "descKey": "userRating:desc",
+             "key": "userRating", "title": "Rating"},
+            {"defaultDirection": "desc", "descKey": "contentRating:desc",
+             "key": "contentRating", "title": "Content Rating"},
+            {"defaultDirection": "desc", "descKey": "addedAt:desc", "key": "addedAt",
+             "title": "Date Added"},
+        ],
+    },
+    ("show", "season"): {
+        "Sort": [
+            {"defaultDirection": "asc",
+             "descKey": "season.index:desc,season.titleSort",
+             "key": "season.index,season.titleSort", "title": "Season"},
+            {"defaultDirection": "desc", "descKey": "userRating:desc",
+             "key": "userRating", "title": "Rating"},
+            {"defaultDirection": "desc", "descKey": "addedAt:desc", "key": "addedAt",
+             "title": "Date Added"},
+        ],
+    },
+    ("show", "episode"): {
+        "Sort": [
+            {"defaultDirection": "desc", "descKey": "titleSort:desc",
+             "firstCharacterKey": "/library/sections/%s/firstCharacter?type=4",
+             "key": "titleSort", "title": "Title"},
+            {"defaultDirection": "desc", "descKey": "year:desc", "key": "year",
+             "title": "Year"},
+            {"defaultDirection": "desc", "descKey": "userRating:desc",
+             "key": "userRating", "title": "Rating"},
+            {"defaultDirection": "desc", "descKey": "duration:desc", "key": "duration",
+             "title": "Duration"},
+            {"defaultDirection": "desc", "descKey": "viewOffset:desc",
+             "key": "viewOffset", "title": "Progress"},
+            {"defaultDirection": "desc", "descKey": "viewCount:desc",
+             "key": "viewCount", "title": "Plays"},
+            {"defaultDirection": "desc", "descKey": "mediaHeight:desc",
+             "key": "mediaHeight", "title": "Resolution"},
+            {"defaultDirection": "desc", "descKey": "mediaBitrate:desc",
+             "key": "mediaBitrate", "title": "Bitrate"},
+        ],
+        "Filter": [{"filter": "duplicate", "filterType": "boolean",
+                    "key": "/library/sections/%s/duplicate?type=4",
+                    "title": "Duplicates", "type": "filter", "advanced": True}],
+    },
+}
+
 # Plex's numeric type codes, and the field-name PREFIX each one uses. A show
 # library advertises `show.genre` and `episode.title`; a movie library advertises
 # the bare name. /query/parse echoes the prefix back as the rule's own `type`,
@@ -165,6 +240,19 @@ except OSError:
 KNOWN_RESOURCES = {"movie.png", "show.png", "artist.png", "photo.png",
                    "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg",
                    "library-art.png", "playlist.png"}
+
+# Which verbs each section leaf accepts. Everything absent here is a 404 for POST,
+# PUT and DELETE -- measured leaf by leaf, and a real PMS never answers 405: that
+# status does not appear anywhere on its surface.
+SECTION_LEAF_VERBS = {
+    "refresh": {"GET", "HEAD", "POST", "DELETE"},
+    "emptyTrash": {"PUT"},
+    "analyze": {"PUT"},
+    "indexes": {"DELETE"},
+    "prefs": {"GET", "HEAD", "PUT"},
+    "all": {"GET", "HEAD", "PUT"},
+    "common": {"GET", "HEAD"},
+}
 
 KNOWN_AGENTS = {"tv.plex.agents.movie", "tv.plex.agents.series", "tv.plex.agents.none",
                 "com.plexapp.agents.none"}
@@ -1228,8 +1316,11 @@ class PlexSim:
         fields.update(extra)
         if extra.get("Directory"):
             # Measured: the container's `size` counts the "All episodes" Directory
-            # row as well as the seasons, which is what `excludeAllLeaves=1`
-            # takes back off it.
+            # row as well as the seasons, which is what `excludeAllLeaves=1` takes
+            # back off it -- and a PAGED request drops the row entirely, because it
+            # is not part of the page. plexsim appended it to every page and counted
+            # it there, so a virtualised list mis-measured and every page grew a
+            # spurious tile. In XML the row also comes FIRST, before the seasons.
             fields["size"] = len(fields.get("Metadata") or []) + len(extra["Directory"])
 
         return self.container(**{k: v for k, v in fields.items() if v is not None})
@@ -1281,20 +1372,42 @@ class PlexSim:
             row["composite"] = "/library/sections/%s/composite/1" % key
         return row
 
-    def section_meta(self, section_id, section_type):
+    def section_meta(self, section_id, section_type, advanced=False):
         """Per-section filter/sort descriptors, retargeted from the template.
 
         Every key in the captured blob names the section it came from, in Type
         keys, Sort firstCharacterKeys and Filter keys alike, so the retarget is
         a rewrite of the whole document rather than of the three fields that
         happen to be at the top.
+
+        `advanced` is the client's `includeAdvanced=1`, which plexsim ignored: a real
+        PMS then adds six Sort entries to a movie library, four to a show, three to a
+        season and eight to an episode view, plus the `Duplicates` filter. The client
+        reads that Sort list straight into its sort menu, so ignoring the flag cost
+        the menu most of its options.
         """
-        template = SECTION_META.get("show" if section_type == "show" else "movie")
+        kind = "show" if section_type == "show" else "movie"
+        template = SECTION_META.get(kind)
         if not template:
             return None
         blob = json.dumps(template)
         blob = re.sub(r"/library/sections/\d+/", "/library/sections/%s/" % section_id, blob)
-        return json.loads(blob)
+        document = json.loads(blob)
+        if advanced:
+            for entry in document.get("Type") or []:
+                extra = ADVANCED_META.get((kind, entry.get("type")))
+                if not extra:
+                    continue
+                for name, rows in extra.items():
+                    for row in rows:
+                        copy = dict(row)
+                        if "%s" in str(copy.get("key", "")):
+                            copy["key"] = copy["key"] % section_id
+                        if "%s" in str(copy.get("firstCharacterKey", "")):
+                            copy["firstCharacterKey"] = \
+                                copy["firstCharacterKey"] % section_id
+                        entry.setdefault(name, []).append(copy)
+        return document
 
     def _claimed(self):
         # `assert_claimed` reports a claim plexsim does not hold. It is honest
@@ -1641,6 +1754,14 @@ class PlexSim:
             # 400 for every one of them. plexsim answered 200 with a container,
             # which tells a companion client the command was accepted.
             return ("error", 400, "plexsim: bad request")
+        if route in ("/livetv/epg/lineup", "/livetv/epg/channelmap",
+                     "/livetv/epg/lineupchannels"):
+            # Measured on two servers with NO tuner: these three are 400, not the
+            # blanket empty container plexsim answered for the whole /livetv tree.
+            # (`/livetv/epg/countries` and `/languages` are real there -- 97 and 594
+            # rows -- and plexsim answers them empty, which is honest for a server
+            # with no EPG provider and is recorded as a deviation rather than faked.)
+            return ("error", 400, "plexsim: bad request")
         if segments[:1] == ["livetv"]:
             # No tuner. `livetv: 0` on /media/providers already hides the UI;
             # this is the shape a real PMS uses when it has no DVR configured.
@@ -1731,9 +1852,19 @@ class PlexSim:
         if segments[:2] == ["library", "metadata"] and len(segments) >= 3:
             return self.library_metadata(segments, query, method)
 
-        if route in ("/library/onDeck", "/library/recentlyAdded"):
-            rows = [_listing_row(r) for r in list(catalog.items.values())[:12]]
+        if route == "/library/onDeck":
+            # Measured: this is the server-wide Continue Watching list -- every row
+            # carries a `viewOffset` and a `lastViewedAt`, and it is EMPTY on a
+            # server with nothing in progress. plexsim answered the first twelve
+            # catalog rows with no view state at all, which is what every non-web
+            # client's On Deck reads (plexapi, Kodi/PKC, the legacy apps).
+            rows = [_listing_row(r) for r in self.continue_watching()]
             return self.container(Metadata=rows)
+        if route == "/library/recentlyAdded":
+            rows = sorted(catalog.items.values(), key=lambda r: -(r.get("addedAt") or 0))
+            rows = [r for r in rows if r.get("type") in ("movie", "season", "episode")]
+            return self.container(
+                Metadata=[_listing_row(r) for r in rows[:self.HUB_COUNT]])
 
         if route == "/library/all":
             rows = [_listing_row(r) for r in catalog.items.values()]
@@ -1858,9 +1989,13 @@ class PlexSim:
         if route == "/playQueues" and method == "POST":
             return self.create_play_queue(query)
         if route == "/playQueues":
-            # Measured: a GET of the collection is a 400, not the 404 an unrouted
-            # path gets -- the endpoint exists and the request is wrong.
-            return ("error", 400, "plexsim: bad request")
+            # Re-measured, and it splits on ONE parameter: a bare GET (or one with
+            # any parameter but `type`) is an empty 200, and `?type=` is a 400 --
+            # naming a type without creating anything is the malformed request. The
+            # earlier finding saw only the `?type=1` half.
+            if query.get("type"):
+                return ("error", 400, "plexsim: bad request")
+            return self.bare_container(size=0)
         if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET":
             return self.get_play_queue(segments[1], query)
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
@@ -2251,8 +2386,19 @@ class PlexSim:
 
     def library_section(self, segments, query, method="GET"):
         section_id = segments[2]
-        section = self.catalog.section(section_id) or {}
+        section = self.catalog.section(section_id)
+        if section is None:
+            # Measured: every leaf of a section the server does not have is a 404.
+            # plexsim answered a complete, valid 200 -- an empty library with a
+            # working 28-row filter bar and a 19-row settings pane -- so a deleted
+            # library or a stale bookmark rendered as a real one. Fix 4's trap from
+            # the inside.
+            return ("error", 404, "plexsim: no such section")
         if len(segments) == 3:
+            if method not in ("GET", "HEAD", "PUT", "DELETE"):
+                # Measured: a POST to a section is a 404; only the edit (PUT) and the
+                # delete exist beside the read.
+                return ("error", 404, "plexsim: not found")
             if method == "DELETE":
                 # Manage > Libraries > Delete Library. Drops the section and
                 # every row in it, in memory: catalog.json is untouched.
@@ -2282,6 +2428,14 @@ class PlexSim:
             return self.section_pivots(section_id, section, query)
 
         leaf = segments[3]
+
+        # Measured across 21 section leaves: a real PMS 404s every verb a leaf does
+        # not implement, and it never answers 405 anywhere. plexsim answered the
+        # GET body to any verb -- so `DELETE /library/sections/1/all` came back 200
+        # with the grid, which tells a client the delete was accepted.
+        allowed = SECTION_LEAF_VERBS.get(leaf, {"GET", "HEAD"})
+        if method not in allowed:
+            return ("error", 404, "plexsim: not found")
 
         # -- the write half of Manage > Libraries -------------------------
         if leaf == "refresh":
@@ -2316,7 +2470,9 @@ class PlexSim:
             return ("empty", 200)
         if leaf in ("emptyTrash", "analyze"):
             if method != "PUT":
-                return ("error", 405, "plexsim: method not allowed")
+                # Measured: a real PMS 404s this rather than answering 405, which is
+                # a status it never sends.
+                return ("error", 404, "plexsim: not found")
             logger.info("SECTION %s %s -- nothing to %s, plexsim owns no files",
                         leaf, section_id, leaf)
             return ("empty", 200)
@@ -2509,11 +2665,16 @@ class PlexSim:
             if not query.get("type"):
                 return ("error", 400, "plexsim: bad request")
             rows = self.typed_rows(section_id, query)
-            text = query.get("query") or ""
+            text = (query.get("query") or "").strip().lower()
             if text:
-                matched = {str(r.get("ratingKey"))
-                           for r in self.catalog.search(text)}
-                rows = [r for r in rows if str(r.get("ratingKey")) in matched]
+                # Measured: this is a SUBSTRING match on the title, not the word-
+                # prefix matcher /hubs/search uses, and ONE character is enough --
+                # `?query=ear` finds "Tears of Steel" and `?query=a` finds three
+                # rows. plexsim routed it through the hub matcher, so the in-library
+                # search box found nothing that did not start a word.
+                rows = [r for r in rows
+                        if text in str(r.get("title") or "").lower()
+                        or text in str(r.get("originalTitle") or "").lower()]
             found = self.secondary_container(
                 section_id, section, "Search for '%s'" % text,
                 Metadata=[_listing_row(r) for r in rows],
@@ -2619,7 +2780,8 @@ class PlexSim:
                   "Directory": [dict(p) for p in pivots]}
         size = len(pivots)
         if query.get("includeDetails") == "1":
-            meta = self.section_meta(section_id, section.get("type") or "movie") or {}
+            meta = self.section_meta(section_id, section.get("type") or "movie",
+                                     advanced=True) or {}
             if meta.get("Type"):
                 fields["Type"] = meta["Type"]
                 size += len(meta["Type"])
@@ -2648,7 +2810,13 @@ class PlexSim:
         source = self.typed_rows(section_id, query)
 
         source, _ = self.apply_filters(source, query, section)
-        source, unsupported = self._sorted(source, query.get("sort") or "")
+        # Measured on both servers: the DEFAULT order of a listing is `titleSort`
+        # ascending (falling back to the title where no sort title is stored), not
+        # the catalog's own order -- fun's show grid opens on `【OSHI NO KO】, 13
+        # Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100` because The 100's titleSort
+        # is "100". plexsim answered catalog order, so an edited Sort Title never
+        # moved a row and the grid's own default disagreed with its sort control.
+        source, unsupported = self._sorted(source, query.get("sort") or "titleSort")
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
             # than ignoring it. Silently returning the list unsorted is the worse
@@ -2661,10 +2829,16 @@ class PlexSim:
         # Measured: only the unpaged /all listing carries `nocache`; newest,
         # recentlyAdded, onDeck and collections carry neither it nor totalSize.
         extra = {}
-        if not ("X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query):
+        if section.get("type") == "show":
+            # Re-measured on both servers: `nocache` on a section listing tracks the
+            # library TYPE, exactly as it does on the secondary containers -- a show
+            # library carries it paged AND unpaged, a movie library never does. The
+            # earlier reading (unpaged only) had it the wrong way round, so a show
+            # grid -- which the client always pages -- never carried it.
             extra["nocache"] = True
         if query.get("includeMeta") == "1":
-            meta = self.section_meta(section_id, section.get("type") or "movie")
+            meta = self.section_meta(section_id, section.get("type") or "movie",
+                                     advanced=query.get("includeAdvanced") == "1")
             if meta:
                 extra["Meta"] = meta
         return self.listing_container(section_id, section, rows, query=query, **extra)
@@ -2672,17 +2846,25 @@ class PlexSim:
     # The sort keys the captured Meta advertises. A key the listing cannot honour
     # is a sort the UI offers and the server ignores, which reads as a broken
     # control rather than a missing one.
-    TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt")
+    TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt", "contentRating")
 
     NUMERIC_SORTS = ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
                      "duration", "viewCount", "viewOffset", "index", "leafCount",
                      "unviewedLeafCount", "originallyAvailableAt", "mediaHeight",
-                     "updatedAt", "lastRatedAt", "ratingCount")
+                     "updatedAt", "lastRatedAt", "ratingCount",
+                     # The keys `includeAdvanced=1` advertises. Three of them --
+                     # userRating, contentRating, mediaBitrate -- answered 500 on
+                     # plexsim while its own Meta was about to offer them, which is
+                     # an advertised control that breaks the grid when used.
+                     "userRating", "mediaBitrate")
 
     def _sort_key(self, key):
         """One row -> comparable value for a sort key, or None if unsupported."""
         if key == "mediaHeight":
             return lambda r: max([m.get("height") or 0
+                                  for m in r.get("Media") or []] or [0])
+        if key == "mediaBitrate":
+            return lambda r: max([m.get("bitrate") or 0
                                   for m in r.get("Media") or []] or [0])
         if key in self.TEXT_SORTS:
             def text(row):
@@ -2719,6 +2901,14 @@ class PlexSim:
         terms = filters_module.sort_terms(spec)
         if not terms:
             return rows, None
+        # Measured: the secondary key is ALWAYS titleSort ascending, whatever the
+        # primary is and whichever direction it runs -- fun's `sort=year` breaks its
+        # 1915 ties alphabetically, and `sort=rating:desc` with no ratings comes out
+        # in title order rather than in catalog order. plexsim left ties in whatever
+        # order the rows arrived in, so a tied page was unstable between requests.
+        if [key for key, _desc, _seed in terms] != ["titleSort"] \
+                and not any(key == "random" for key, _d, _s in terms):
+            terms = list(terms) + [("titleSort", False, "")]
         ordered = list(rows)
         # Right to left, relying on the sort being stable: the leftmost key ends
         # up dominant, which is the order a real PMS applies them in.
@@ -3303,6 +3493,7 @@ class PlexSim:
                     # real PMS answers 400 when there are none to delete.
                     return ("error", 400, "plexsim: no optimized versions")
                 self.library.delete(rating_key)
+                self.drop_from_queues(rating_key)
                 self.notify_deleted(row)
                 logger.info("DELETE %s (%s)", rating_key, row.get("title"))
                 return ("empty", 200)
@@ -3350,8 +3541,11 @@ class PlexSim:
             else:
                 rows = self.catalog.leaves(rating_key)
             extra = {}
+            paging = ("X-Plex-Container-Start" in query
+                      and "X-Plex-Container-Size" in query)
             if (leaf == "children" and row.get("type") == "show"
-                    and query.get("excludeAllLeaves") != "1" and rows):
+                    and query.get("excludeAllLeaves") != "1" and rows
+                    and not paging):
                 # Measured: a SHOW's /children carries an extra `Directory` row
                 # linking to /allLeaves, titled "All episodes", and the container's
                 # size counts it -- which is what `excludeAllLeaves=1` removes.
@@ -3367,9 +3561,22 @@ class PlexSim:
             return self.item_action(row, leaf, method, query)
         if leaf == "matches":
             return self.matches(row, query)
+        if leaf in ("poster", "art"):
+            # The SINGULAR path is the write, and plexsim had it as the image read.
+            # The client's own Change Poster / Change Background builds
+            # `/library/metadata/{id}/` + ("poster"|"art") with type PUT, and then
+            # does `model.set("thumb", response)` -- so the response BODY is the new
+            # artwork path, not a container and not empty. plexsim answered the
+            # PLURAL path for the write and served image bytes from the singular one,
+            # which meant Change Poster did nothing AND set the tile's img src to a
+            # blob of PNG.
+            if method == "PUT":
+                return self.set_artwork(row, leaf + "s", query)
+            return ("image-key", row, leaf)
         if leaf in ("posters", "arts"):
             if method == "PUT":
-                return self.set_artwork(row, leaf, query)
+                # Measured: the plural path is a 404 for a write.
+                return ("error", 404, "plexsim: not found")
             return self.artwork_list(row, leaf)
         if leaf == "tree":
             # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
@@ -4434,7 +4641,12 @@ class PlexSim:
         recorded `{size, playbackState}` with the state echoed; that was wrong.
         """
         rating_key = query.get("ratingKey") or ""
-        state = query.get("state") or "stopped"
+        if not query.get("state"):
+            # Measured: `state` is the ONE required parameter -- a timeline without
+            # it is a 400 even with a ratingKey and a key, and `state` alone with
+            # nothing else is a 200. plexsim defaulted it to `stopped`.
+            return ("error", 400, "plexsim: bad request")
+        state = query.get("state")
         if state not in self.TIMELINE_STATES:
             # Measured: `state` is a CLOSED set and anything else is a 400.
             # plexsim treated an unknown state as live and opened a session.
@@ -4631,14 +4843,18 @@ class PlexSim:
         only draws the entry when that Action is present.
         """
         key = (query.get("ratingKey") or query.get("key") or "").rsplit("/", 1)[-1]
-        if key.isdigit():
-            self.library.remove_from_continue_watching(int(key))
-        return ("empty", 200)
+        if not key.isdigit() or self.library.remove_from_continue_watching(
+                int(key)) is None:
+            # Measured: an unknown ratingKey is a 404 here, where plexsim answered
+            # an empty 200 for anything at all.
+            return ("error", 404, "plexsim: no such item")
+        return self.bare_container(size=0)
 
     def continue_watching(self):
         """Rows with a resume point, newest first -- the Continue Watching hub."""
         rows = [r for r in self.catalog.items.values()
-                if r.get("viewOffset") and r.get("type") in ("movie", "episode")]
+                if r.get("viewOffset") and r.get("type") in ("movie", "episode")
+                and not r.get("_hiddenFromContinueWatching")]
         return sorted(rows, key=lambda r: -(r.get("lastViewedAt") or 0))
 
     def select_stream(self, part_id, query):
@@ -4820,23 +5036,29 @@ class PlexSim:
         generated placeholder, and says so rather than padding the list.
         """
         entries = []
+        field = "thumb" if kind == "posters" else "art"
         stored = row.get("_poster_url") if kind == "posters" else row.get("_art_url")
-        current = row.get("thumb") if kind == "posters" else row.get("art")
+        current = row.get(field)
+        # `selected` is whichever candidate the row's artwork actually POINTS AT: a
+        # versioned `/library/metadata/{id}/thumb/{ver}` means the remote one, a bare
+        # `/thumb/1` the generated placeholder. plexsim keyed it on "is there any
+        # artwork at all", so after picking the placeholder NOTHING came back selected
+        # and the picker showed no current choice.
+        chose_remote = bool(stored)
+        placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"], field)
         if stored:
             entries.append({
                 "key": stored,
                 "ratingKey": stored,
                 "thumb": stored,
-                "selected": bool(current),
+                "selected": chose_remote,
                 "provider": "tmdb",
             })
-        placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"],
-                                                     "thumb" if kind == "posters" else "art")
         entries.append({
             "key": placeholder,
             "ratingKey": placeholder,
             "thumb": placeholder,
-            "selected": not current,
+            "selected": not chose_remote and bool(current),
             "provider": "local",
         })
         # Measured: an artwork list renders as <Photo> in XML while its JSON
@@ -4859,7 +5081,10 @@ class PlexSim:
             row.pop(private, None)
             row[field] = chosen
         logger.info("ARTWORK %s %s -> %s", row["ratingKey"], kind, chosen[:80])
-        return ("empty", 200)
+        # Measured: the body is the NEW artwork path, bare -- `/library/metadata/1/
+        # thumb/1789241428` -- because the client assigns the response straight onto
+        # the model's `thumb`. An empty 200 there blanks the tile.
+        return ("text", 200, row[field])
 
     def metadata_tree(self, row):
         """`/library/metadata/{id}/tree` -- the raw item/media/part tree.
@@ -5005,6 +5230,19 @@ class PlexSim:
             # member list was blank.
             rows = [_listing_row(r) for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
+        if leaf == "items" and len(segments) == 5 and method == "DELETE":
+            # Remove-from-collection, which the client builds as
+            # `collection.url + "/items/" + ratingKey` with type DELETE and then
+            # assigns the RESPONSE onto its own model. plexsim had no DELETE branch
+            # at all, so it fell to an empty container: the tile disappeared
+            # optimistically and came back on the next fetch. Measured: 200 with the
+            # collection row, and it is idempotent.
+            row = self.catalog.items.get(int(segments[4])) \
+                if segments[4].isdigit() else None
+            if row is not None:
+                self.library.remove_collection_item(collection, row)
+            return self.bare_container(
+                size=1, Metadata=[self.library._collection_row(collection)])
         if leaf == "items" and len(segments) == 6 and segments[5] == "move":
             if method != "PUT":
                 return ("error", 405, "plexsim: method not allowed")
@@ -5014,9 +5252,13 @@ class PlexSim:
             return ("empty", 200)
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""))
-            added = self.library.add_collection_items(collection, rows)
-            return self.bare_container(size=1, leafCountAdded=added,
-                                       leafCountRequested=len(rows))
+            self.library.add_collection_items(collection, rows)
+            # Measured: a collection add answers the collection ROW -- with its new
+            # childCount and year span -- and not the leafCountAdded/Requested pair a
+            # PLAYLIST add answers. plexsim sent the playlist shape here, so the
+            # collection page had nothing to update itself from.
+            return self.bare_container(
+                size=1, Metadata=[self.library._collection_row(collection)])
         if leaf == "composite":
             art = self.composite_for("collection", segments[2])
             if art:
@@ -5240,6 +5482,27 @@ class PlexSim:
             return self.play_queue_container(queue_id, query)
         return ("error", 404, "plexsim: not found")
 
+    def drop_from_queues(self, rating_key):
+        """Take a removed row out of every play queue, moving the selection with it.
+
+        Measured on the reference: the queue shrinks, `playQueueTotalCount` drops and
+        the VERSION steps -- and the selection moves to a row that still exists.
+        plexsim left the removed row's item id as `playQueueSelectedItemID` and never
+        moved the version, which per its own findings is the response the client
+        throws away: the player would have been holding a selection that no longer
+        existed on a queue it could not refresh.
+        """
+        with self.lock:
+            for queue in self.play_queues.values():
+                keeping = [e for e in queue["items"]
+                           if int(e["ratingKey"]) != int(rating_key)]
+                if len(keeping) == len(queue["items"]):
+                    continue
+                queue["items"] = keeping
+                queue["version"] += 1
+                if not any(e["id"] == queue["selected"] for e in keeping):
+                    queue["selected"] = keeping[0]["id"] if keeping else None
+
     def move_play_queue_item(self, queue_id, item_id, after, query):
         """`PUT /playQueues/{id}/items/{itemID}/move?after=` -- drag in Up Next.
 
@@ -5270,14 +5533,29 @@ class PlexSim:
 
     # -- server settings -------------------------------------------------
 
+    def _identity_prefs(self):
+        """The preference rows whose value IS this server's identity.
+
+        `FriendlyName` is the one that matters: it is `hidden: false, group:
+        "general"` and the client looks it up BY ID to draw Settings > General's
+        server-name field and to set its own `friendlyName`. plexsim's list was
+        missing it, so the field did not render and a write to it was refused as an
+        unknown preference.
+        """
+        return {"FriendlyName": self.catalog.friendly,
+                "MachineIdentifier": self.catalog.machine,
+                "PlexOnlineMail": self._owner() if self._claimed() else ""}
+
     def server_prefs(self):
-        """The setting list with any value the client has written applied."""
-        if not self.pref_overrides:
-            return SERVER_PREFS
+        """The setting list, with this server's identity and any written value."""
+        identity = self._identity_prefs()
         out = []
         for setting in SERVER_PREFS:
-            if setting.get("id") in self.pref_overrides:
-                setting = dict(setting, value=self.pref_overrides[setting["id"]])
+            name = setting.get("id")
+            if name in self.pref_overrides:
+                setting = dict(setting, value=self.pref_overrides[name])
+            elif name in identity:
+                setting = dict(setting, value=identity[name])
             out.append(setting)
         return out
 
@@ -6024,6 +6302,24 @@ class Handler(BaseHTTPRequestHandler):
                 # rate, the prefs write and the section tasks. A MediaContainer
                 # here is a different shape from the one the client parses.
                 self._send(result[1], "text/html", b"")
+                return
+            if kind == "text":
+                # A body that IS the answer: the artwork write returns the new
+                # artwork path, which the client assigns straight onto the row.
+                self._send(result[1], "text/html", str(result[2]).encode())
+                return
+            if kind == "image-key":
+                # `/library/metadata/{id}/{poster,art}` on a GET is the image the
+                # row currently points at.
+                row, which = result[1], result[2]
+                target = row.get("thumb" if which == "poster" else "art")
+                resolved = self.server.sim.resolve_artwork(target or "")
+                if resolved:
+                    self._serve_image(resolved)
+                    return
+                payload = _png(342, 513, (32, 34, 38))
+                self._send(200, "image/png", payload,
+                           [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")])
                 return
             if kind == "created":
                 # POST /library/sections answers 201 with the created Directory.

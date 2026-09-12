@@ -505,21 +505,74 @@ def main():
     check("a resumed item appears in Continue Watching",
           any(str(r.get("ratingKey")) == str(movie) for r in rows),
           "%d row(s) in the hub" % len(rows))
-    status, body, _ = request(base, "PUT",
-                              "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
+    # Re-measured: this HIDES the row and KEEPS the resume point. The reference's
+    # viewOffset was still 91000 afterwards and the row simply stopped appearing in
+    # /library/onDeck and /hubs/continueWatching -- until the next timeline brought it
+    # back. plexsim deleted the offset, so the entry also threw away the resume
+    # position and the next Play started the item over.
+    status, hidden, _ = container(base, "PUT",
+                                  "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
-    check("Remove from Continue Watching clears the resume point",
-          is_empty_200(status, body)
-          and "viewOffset" not in (detail.get("Metadata") or [{}])[0],
+    _, hubs, _ = get(base, "/hubs/continueWatching")
+    rows = [r for hub in hubs.get("Hub") or [] for r in hub.get("Metadata") or []]
+    _, on_deck, _ = get(base, "/library/onDeck")
+    check("Remove from Continue Watching hides the row and keeps the offset",
+          status == 200
+          and (detail.get("Metadata") or [{}])[0].get("viewOffset")
+          and not any(str(r.get("ratingKey")) == str(movie) for r in rows)
+          and not any(str(r.get("ratingKey")) == str(movie)
+                      for r in on_deck.get("Metadata") or []),
+          "viewOffset=%s, %d hub row(s)"
+          % ((detail.get("Metadata") or [{}])[0].get("viewOffset"), len(rows)))
+    status, _, _ = container(base, "PUT",
+                             "/actions/removeFromContinueWatching?ratingKey=999999")
+    check("removing an unknown item from Continue Watching is a 404", status == 404,
           "HTTP %s" % status)
+    # And the next timeline puts it back.
+    request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=90000"
+                         "&duration=600000" % movie)
+    _, hubs, _ = get(base, "/hubs/continueWatching")
+    rows = [r for hub in hubs.get("Hub") or [] for r in hub.get("Metadata") or []]
+    check("the next timeline brings it back",
+          any(str(r.get("ratingKey")) == str(movie) for r in rows),
+          "%d row(s)" % len(rows))
+    # A resume point under a MINUTE is not stored at all -- the reference leaves the
+    # row untouched at 59 s and starts recording at 61.
+    _, spare_detail, _ = get(base, "/library/metadata/%s" % (spare or movie))
+    if spare and "viewOffset" not in (spare_detail.get("Metadata") or [{}])[0]:
+        request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=5000"
+                             "&duration=600000" % spare)
+        _, glanced, _ = get(base, "/library/metadata/%s" % spare)
+        check("a resume point under a minute is not stored",
+              "viewOffset" not in (glanced.get("Metadata") or [{}])[0],
+              str((glanced.get("Metadata") or [{}])[0].get("viewOffset")))
+    else:
+        skip("a resume point under a minute is not stored", "no clean second row")
 
     # ------------------------------------------------------------------
     # 4. Play History
     # ------------------------------------------------------------------
     print("\n=== View Play History ===")
+    # Re-measured: a SCROBBLE writes no history row -- the reference's history stayed
+    # at one row through three of them, because rows come only from a timeline that
+    # reaches the end. plexsim recorded one per mark-as-played, so History and the Top
+    # shelf counted things nobody had watched. So the row has to be earned here.
+    request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=100000"
+                         "&duration=100000" % movie)
+    request(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=100000"
+                         "&duration=100000" % movie)
     status, history, _ = get(base, "/status/sessions/history/all")
     rows = history.get("Metadata") or []
-    check("history has a row for the item just played", bool(rows), "%d row(s)" % len(rows))
+    check("a completed play writes a history row", bool(rows), "%d row(s)" % len(rows))
+    _, before_scrobble, _ = get(base, "/status/sessions/history/all")
+    request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                         % movie)
+    _, after_scrobble, _ = get(base, "/status/sessions/history/all")
+    check("a scrobble writes none",
+          len(after_scrobble.get("Metadata") or [])
+          == len(before_scrobble.get("Metadata") or []),
+          "%d -> %d" % (len(before_scrobble.get("Metadata") or []),
+                        len(after_scrobble.get("Metadata") or [])))
     if rows:
         entry = rows[-1]
         # Field set measured on production fun.
@@ -943,10 +996,32 @@ def main():
     status, listing, _ = get(base, "/library/metadata/%s/posters" % movie)
     entries = [e for e in (listing.get("Metadata") or []) if e.get("key")]
     if entries:
-        status, body, _ = request(base, "PUT", "/library/metadata/%s/posters?url=%s"
+        # Change Poster writes to the SINGULAR path, and the response body is the new
+        # artwork path -- the client does `model.set("thumb", response)` with it.
+        # plexsim had the plural path as the write and served image bytes from the
+        # singular one, so Change Poster did nothing AND set the tile's img src to a
+        # blob of PNG. The plural path is a 404 for a write.
+        status, body, _ = request(base, "PUT", "/library/metadata/%s/poster?url=%s"
                                                % (movie, quote(entries[-1]["key"])))
-        check("selecting a poster answers an empty 200", is_empty_200(status, body),
-              "HTTP %s" % status)
+        _, detail, _ = get(base, "/library/metadata/%s" % movie)
+        row = (detail.get("Metadata") or [{}])[0]
+        check("selecting a poster answers the new artwork path as its body",
+              status == 200 and body.decode() == str(row.get("thumb")),
+              "HTTP %s body=%r thumb=%r" % (status, body[:48], row.get("thumb")))
+        status_plural, _, _ = request(base, "PUT", "/library/metadata/%s/posters?url=%s"
+                                                  % (movie, quote(entries[-1]["key"])))
+        check("the plural artwork path is a 404 for a write", status_plural == 404,
+              "HTTP %s" % status_plural)
+        _, after, _ = get(base, "/library/metadata/%s/posters" % movie)
+        check("the chosen poster comes back selected",
+              any(p.get("selected") for p in after.get("Metadata") or []),
+              str([p.get("selected") for p in after.get("Metadata") or []]))
+        status_img, _, headers_img = request(base, "GET", "/library/metadata/%s/poster"
+                                                         % movie, want_json=False)
+        check("the singular path on a GET is the image itself",
+              status_img == 200
+              and str(headers_img.get("Content-Type", "")).startswith("image/"),
+              "HTTP %s %s" % (status_img, headers_img.get("Content-Type")))
 
     # ------------------------------------------------------------------
     # 9. Get Info
@@ -1410,13 +1485,33 @@ def main():
                   and all(r.get("playlistItemID") != item_id
                           for r in items.get("Metadata") or []),
                   "%d item(s) left" % len(items.get("Metadata") or []))
-        # The removal above left one item; put another back so the reorder has
-        # something to reorder.
-        if spare:
+        # The removal above left one item; put a DIFFERENT one back so the reorder
+        # has something to reorder. A real PMS does not add a row that is already in
+        # the playlist -- measured, `leafCountAdded: 0` and the count unchanged -- so
+        # re-adding the same key would leave one item here.
+        _, section_rows, _ = get(base, "/library/sections/%s/all" % movie_section)
+        present = {str(r.get("ratingKey")) for r in items.get("Metadata") or []}
+        other = next((r.get("ratingKey") for r in section_rows.get("Metadata") or []
+                      if str(r.get("ratingKey")) not in present), None)
+        if other:
             container(base, "PUT", "/playlists/%s/items?uri=%s"
                                    % (playlist_key,
                                       quote("server://%s/com.plexapp.plugins.library"
-                                            "/library/metadata/%s" % (machine, spare))))
+                                            "/library/metadata/%s" % (machine, other))))
+            # And prove the dedupe while we are here.
+            _, twice, _ = container(base, "PUT", "/playlists/%s/items?uri=%s"
+                                                % (playlist_key,
+                                                   quote("server://%s/com.plexapp"
+                                                         ".plugins.library/library"
+                                                         "/metadata/%s"
+                                                         % (machine, other))))
+            check("re-adding a playlist item adds nothing",
+                  twice.get("leafCountAdded") == 0
+                  and twice.get("leafCountRequested") == 1,
+                  "added=%s requested=%s" % (twice.get("leafCountAdded"),
+                                             twice.get("leafCountRequested")))
+        else:
+            skip("re-adding a playlist item adds nothing", "no second row to add")
         _, items, _ = get(base, "/playlists/%s/items" % playlist_key)
         order = [r.get("playlistItemID") for r in items.get("Metadata") or []]
         if len(order) < 2:
@@ -3784,6 +3879,127 @@ def main():
               status == 200 and len(sorted_rows.get("Metadata") or []) == len(movies),
               "%d row(s)" % len(sorted_rows.get("Metadata") or []))
 
+    print("\n=== order, and the state the sequence leaves behind ===")
+    # Measured on both servers: the DEFAULT order of a listing is titleSort ascending,
+    # not the catalog's own order, and the secondary key is ALWAYS titleSort whatever
+    # the primary is. plexsim answered catalog order, so an edited Sort Title never
+    # moved a row and the grid's default disagreed with its own sort control.
+    _, defaulted, _ = get(base, "/library/sections/%s/all" % movie_section)
+    _, by_title, _ = get(base, "/library/sections/%s/all?sort=titleSort" % movie_section)
+    check("the default listing order is titleSort",
+          [r.get("ratingKey") for r in defaulted.get("Metadata") or []]
+          == [r.get("ratingKey") for r in by_title.get("Metadata") or []],
+          ", ".join(str(r.get("titleSort") or r.get("title"))
+                    for r in (defaulted.get("Metadata") or [])[:3]))
+    # A key every row ties on must fall back to titleSort, not to arrival order.
+    _, tied_titles, _ = get(base, "/library/sections/%s/all?sort=titleSort" % movie_section)
+    # Whichever advertised key the rows all share -- the suite's own scrobbles and
+    # edits move some of these, so the tying key is found rather than assumed.
+    tie_key = next((key for key in ("audienceRating", "userRating", "duration",
+                                    "viewCount", "mediaBitrate", "year")
+                    if len({str(r.get(key)) for r in defaulted.get("Metadata") or []}) == 1
+                    and len(defaulted.get("Metadata") or []) > 1), None)
+    if tie_key:
+        _, tied, _ = get(base, "/library/sections/%s/all?sort=%s" % (movie_section, tie_key))
+        check("a tie falls back to titleSort",
+              [r.get("ratingKey") for r in tied.get("Metadata") or []]
+              == [r.get("ratingKey") for r in tied_titles.get("Metadata") or []],
+              "every row ties on %s" % tie_key)
+    else:
+        skip("a tie falls back to titleSort", "no key the rows all share")
+    # The advanced Meta: the client sends includeAdvanced=1 and reads the Sort list
+    # straight into its sort menu. plexsim's Meta was identical with and without it.
+    _, plain_meta, _ = get(base, "/library/sections/%s/all?includeMeta=1"
+                                "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
+                                % movie_section)
+    _, adv_meta, _ = get(base, "/library/sections/%s/all?includeMeta=1&includeAdvanced=1"
+                               "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
+                               % movie_section)
+    plain_type = ((plain_meta.get("Meta") or {}).get("Type") or [{}])[0]
+    adv_type = ((adv_meta.get("Meta") or {}).get("Type") or [{}])[0]
+    added_sorts = [s.get("key") for s in adv_type.get("Sort") or []
+                   if s.get("key") not in {x.get("key") for x in plain_type.get("Sort") or []}]
+    check("includeAdvanced adds the reference's six movie sorts and Duplicates",
+          added_sorts == ["year", "userRating", "contentRating", "viewOffset",
+                          "viewCount", "mediaBitrate"]
+          and any(f.get("advanced") and f.get("filter") == "duplicate"
+                  for f in adv_type.get("Filter") or []),
+          ", ".join(added_sorts))
+    # And every key it advertises has to WORK -- three of them were 500s.
+    for key in added_sorts:
+        status, _, _ = container(base, "GET", "/library/sections/%s/all?sort=%s"
+                                             % (movie_section, key))
+        check("the advertised sort %s is answered" % key, status == 200,
+              "HTTP %s" % status)
+    # The in-library search box is a SUBSTRING matcher, not the word-prefix one
+    # /hubs/search uses -- and one character is enough.
+    _, sample_rows, _ = get(base, "/library/sections/%s/all" % movie_section)
+    a_title = str((sample_rows.get("Metadata") or [{}])[0].get("title") or "")
+    if len(a_title) > 3:
+        fragment = a_title[1:4]
+        _, in_library, _ = get(base, "/library/sections/%s/search?type=1&query=%s"
+                                    % (movie_section, quote(fragment)))
+        _, hub_search, _ = get(base, "/hubs/search?query=%s" % quote(fragment))
+        hub_hits = sum(h.get("size") or 0 for h in hub_search.get("Hub") or [])
+        check("the in-library search box matches a mid-word fragment",
+              (in_library.get("size") or 0) > 0 and hub_hits == 0,
+              "%r -> %s in-library, %s in the hub search"
+              % (fragment, in_library.get("size"), hub_hits))
+    else:
+        skip("the in-library search box matches a mid-word fragment", "title too short")
+    # Removing a collection member: the client builds this exact DELETE and assigns
+    # the response onto its model. plexsim had no DELETE branch, so the tile
+    # disappeared optimistically and came back on the next fetch.
+    _, made, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s"
+                                        "&title=%s&uri=%s"
+                                        % (movie_section, quote("plexsim member probe"),
+                                           quote("server://%s/com.plexapp.plugins.library"
+                                                 "/library/metadata/%s" % (machine, movie))))
+    ckey = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if ckey:
+        status, answer, _ = container(base, "DELETE", "/library/collections/%s/items/%s"
+                                                     % (ckey, movie))
+        _, left, _ = get(base, "/library/collections/%s/children" % ckey)
+        row = (answer.get("Metadata") or [{}])[0]
+        check("removing a collection member answers the collection row",
+              status == 200 and str(row.get("ratingKey")) == str(ckey)
+              and (left.get("size") or 0) == 0,
+              "childCount=%s, %s child(ren) left" % (row.get("childCount"),
+                                                     left.get("size")))
+        status_again, _, _ = container(base, "DELETE", "/library/collections/%s/items/%s"
+                                                      % (ckey, movie))
+        check("removing it twice is idempotent", status_again == 200,
+              "HTTP %s" % status_again)
+        request(base, "DELETE", "/library/collections/%s" % ckey)
+    else:
+        skip("removing a collection member answers the collection row",
+             "could not create a collection")
+    # /library/onDeck is the server-wide Continue Watching list, not the first twelve
+    # catalog rows -- which is what every non-web client's On Deck reads.
+    _, deck, _ = get(base, "/library/onDeck")
+    _, hub_deck, _ = get(base, "/hubs/continueWatching/items")
+    check("/library/onDeck is the resume list, and every row has an offset",
+          all(r.get("viewOffset") for r in deck.get("Metadata") or [])
+          and (deck.get("size") or 0) == (hub_deck.get("size") or 0),
+          "%s row(s), hub says %s" % (deck.get("size"), hub_deck.get("size")))
+    # A monotonic historyKey: a delete must not make the next play reuse the key.
+    _, current_history, _ = get(base, "/status/sessions/history/all")
+    keys = [str(r.get("historyKey") or "") for r in current_history.get("Metadata") or []]
+    if keys:
+        last = keys[-1].rsplit("/", 1)[-1]
+        container(base, "DELETE", "/status/sessions/history/%s" % last)
+        request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=100000"
+                             "&duration=100000" % movie)
+        request(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=100000"
+                             "&duration=100000" % movie)
+        _, after_history, _ = get(base, "/status/sessions/history/all")
+        fresh = [str(r.get("historyKey") or "").rsplit("/", 1)[-1]
+                 for r in after_history.get("Metadata") or []]
+        check("a historyKey is never reused after a delete",
+              last not in fresh, "deleted %s, now %s" % (last, fresh))
+    else:
+        skip("a historyKey is never reused after a delete", "no history rows")
+
     print("\n=== listing container rules ===")
     _, paged, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0"
                             "&X-Plex-Container-Size=1" % movie_section)
@@ -3791,10 +4007,26 @@ def main():
     check("a paged listing carries offset and totalSize",
           paged.get("offset") == 0 and paged.get("totalSize") == len(movies),
           "offset=%s totalSize=%s" % (paged.get("offset"), paged.get("totalSize")))
-    check("an unpaged listing carries nocache and neither",
-          unpaged.get("nocache") is True
-          and "offset" not in unpaged and "totalSize" not in unpaged,
+    check("an unpaged listing carries neither offset nor totalSize",
+          "offset" not in unpaged and "totalSize" not in unpaged,
           ",".join(sorted(k for k in unpaged if not isinstance(unpaged[k], list))))
+    # Re-measured on both servers: `nocache` on a section listing tracks the library
+    # TYPE, not paging -- a show library carries it paged AND unpaged, a movie library
+    # never does. The earlier reading had it the other way round, so the show grid the
+    # client always pages never carried it.
+    if show_section:
+        _, show_paged, _ = get(base, "/library/sections/%s/all?type=2"
+                                    "&X-Plex-Container-Start=0&X-Plex-Container-Size=1"
+                                    % show_section)
+        _, show_unpaged, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
+        check("nocache tracks the library type, not the paging",
+              show_paged.get("nocache") is True and show_unpaged.get("nocache") is True
+              and "nocache" not in unpaged and "nocache" not in paged,
+              "show paged=%s unpaged=%s movie unpaged=%s"
+              % (show_paged.get("nocache"), show_unpaged.get("nocache"),
+                 unpaged.get("nocache")))
+    else:
+        skip("nocache tracks the library type, not the paging", "no show library")
     for leaf in ("newest", "recentlyAdded", "onDeck", "collections"):
         _, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, leaf))
         check("%s carries neither nocache nor totalSize" % leaf,
