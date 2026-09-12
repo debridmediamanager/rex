@@ -1,0 +1,121 @@
+# plexlab -- a reference Plex Media Server plus full request/response capture.
+#
+# Two capture axes, deliberately separate:
+#   A  client -> server   mitm-client, an explicit proxy the browser points at.
+#                         Sees the web client's traffic to BOTH plex.tv and PMS.
+#   B  server -> plex.tv  see scripts/outbound-*.sh; PMS's own announce/registration
+#                         traffic, which is what makes a server "detected".
+services:
+  # Axis B: PMS's own outbound traffic. plex shares this container's network
+  # namespace, so an OUTPUT-chain REDIRECT here catches everything the server
+  # says to plex.tv -- the announce and registration calls that are what make a
+  # server "detected" in the first place.
+  gw:
+    image: plexlab-gw:latest
+    container_name: plexlab-gw
+    restart: unless-stopped
+    cap_add: [NET_ADMIN, NET_RAW]
+    ports:
+      - "32400:32400"     # PMS API + web client (published here, not on plex)
+    volumes:
+      - ./certs-gw:/gwcerts
+      - ./capture:/capture
+      - ./scripts:/scripts:ro
+    networks: [labnet]
+
+  plex:
+    image: plexinc/pms-docker:latest
+    container_name: plexlab-plex
+    restart: unless-stopped
+    network_mode: "service:gw"
+    depends_on: [gw]
+    environment:
+      TZ: "${TZ:-Europe/Amsterdam}"
+      # Unclaimed until a claim token is supplied; ALLOWED_NETWORKS keeps the
+      # API reachable on LAN/Tailscale without a plex.tv sign-in in the meantime.
+      ALLOWED_NETWORKS: "192.168.88.0/24,100.64.0.0/10,172.16.0.0/12,127.0.0.1/32"
+      PLEX_UID: "1000"
+      PLEX_GID: "1000"
+    volumes:
+      - ./config:/config
+      - ./transcode:/transcode
+      - ./media:/data:ro
+      - ./certs-gw:/gwcerts:ro
+
+  # Axis A: explicit HTTP(S) proxy for the browser. --set stream_large_bodies
+  # keeps media byte ranges from being buffered into the capture.
+  mitm-client:
+    image: mitmproxy/mitmproxy:latest
+    container_name: plexlab-mitm-client
+    restart: unless-stopped
+    ports:
+      - "9080:8080"       # proxy endpoint the browser uses
+      - "9081:8081"       # mitmweb UI
+    volumes:
+      - ./certs:/home/mitmproxy/.mitmproxy
+      - ./capture:/capture
+      - ./scripts:/scripts:ro
+    command: >
+      mitmweb --mode regular --listen-host 0.0.0.0 --listen-port 8080
+              --web-host 0.0.0.0 --web-port 8081 --no-web-open-browser
+              --set web_password=plexlab
+              --set stream_large_bodies=1m
+              --set confdir=/home/mitmproxy/.mitmproxy
+              --ssl-insecure
+              -s /scripts/tap.py
+              --set taplog=/capture/client.jsonl
+              -s /scripts/isolate.py
+              --set labhash=${PLEXLAB_CERT_HASH}
+              --set labmachine=${PLEXLAB_MACHINE_ID}
+              --set blockhosts=${PLEXLAB_BLOCK_HOSTS:-}
+    networks: [labnet]
+
+  # The client under test. Points at mitm-client, so every request the web app
+  # makes -- to plex.tv AND to the server -- lands in capture/client.jsonl.
+  #
+  # LocalNetworkAccessChecks must be off: app.plex.tv is a public origin and the
+  # server is a private IP, and Chrome blocks that pairing in a way that looks
+  # exactly like a dead network. It is not CORS -- Plex sends the CORS headers
+  # and omits Access-Control-Allow-Private-Network, which is the one that counts.
+  browser:
+    image: lscr.io/linuxserver/chromium:latest
+    container_name: plexlab-browser
+    restart: unless-stopped
+    shm_size: 1gb
+    security_opt: [seccomp:unconfined]
+    ports:
+      - "7902:3000"     # KasmVNC web desktop
+      - "9224:9333"     # CDP (via cdp-relay; Chrome itself binds 127.0.0.1 only)
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "${TZ:-Europe/Amsterdam}"
+      CHROME_CLI: >-
+        --remote-debugging-address=0.0.0.0 --remote-debugging-port=9222
+        --proxy-server=http://mitm-client:8080
+        --proxy-bypass-list=<-loopback>
+        --disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights,PrivateNetworkAccessRespectPreflightResults
+        --disable-gpu --enable-unsafe-swiftshader --mute-audio
+        --disable-background-networking --disable-component-update
+        --disable-domain-reliability --disable-sync --disable-breakpad
+    volumes:
+      - ./browser-config:/config
+      - ./certs:/certs:ro
+    networks: [labnet]
+
+  # Chrome ignores --remote-debugging-address and binds 127.0.0.1:9222 inside the
+  # container, which no port mapping can reach. Relay it from the same netns.
+  cdp-relay:
+    image: alpine/socat:latest
+    container_name: plexlab-cdp-relay
+    restart: unless-stopped
+    network_mode: "service:browser"
+    command: TCP-LISTEN:9333,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:9222
+    depends_on: [browser]
+
+networks:
+  labnet:
+    name: plexlab
+    ipam:
+      config:
+        - subnet: 172.31.7.0/24
