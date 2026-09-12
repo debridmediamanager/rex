@@ -1749,6 +1749,240 @@ def main():
                                  "/library/sections/%s/all%s" % (movie_section, spec))
         check("filter: %s" % why, status == want, "HTTP %s" % status)
 
+    print("\n=== the filter query language: the field's TYPE decides ===")
+    # The operator table alone is not the whole language: what a bare `=` MEANS
+    # depends on the field's advertised type, and plexsim treated everything that
+    # was not a number or a date as a substring match.
+    _, sample, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rows = sample.get("Metadata") or []
+    total = len(rows)
+    rating = next((r.get("contentRating") for r in rows if r.get("contentRating")), "")
+    if rating and len(rating) > 1:
+        check("filter: a tag field's = is EXACT, not contains",
+              filtered("?contentRating=%s" % quote(rating)) > 0
+              and filtered("?contentRating=%s" % quote(rating[:1])) == 0,
+              "%s matches, %s does not" % (rating, rating[:1]))
+    else:
+        skip("filter: a tag field's = is EXACT, not contains",
+             "no multi-character contentRating in the catalog")
+    # Measured: an EMPTY tag value matches the rows that have NO value -- on the
+    # reference `?contentRating=` returned exactly the two rows without one, and
+    # `?genre=` returned none because every row has a genre.
+    # The counts come off the rows rather than being assumed: earlier checks in
+    # this suite edit tags, so a hard-coded expectation here reads as a filter bug.
+    unlabelled = len([r for r in rows if not (r.get("Label") or [])])
+    ungenred = len([r for r in rows if not (r.get("Genre") or [])])
+    check("filter: an empty tag value matches the rows with no tag",
+          filtered("?label=") == unlabelled and filtered("?genre=") == ungenred,
+          "label= -> %d of %d, genre= -> %d of %d"
+          % (filtered("?label="), unlabelled, filtered("?genre="), ungenred))
+    # Measured: `?unwatched=2` returns the same rows as `?unwatched=0`, so a
+    # boolean value is true only when it is exactly `1`.
+    def watch_set(spec):
+        _, body, _ = get(base, "/library/sections/%s/all?%s" % (movie_section, spec))
+        return sorted(str(r.get("ratingKey")) for r in body.get("Metadata") or [])
+    false_rows, other_rows = watch_set("unwatched=0"), watch_set("unwatched=2")
+    true_rows = watch_set("unwatched=1")
+    check("filter: a boolean is true only for the value 1",
+          false_rows == other_rows
+          and len(true_rows) + len(false_rows) == total
+          and not set(true_rows) & set(false_rows),
+          "=1 -> %d, =0 -> %d, =2 -> %d"
+          % (len(true_rows), len(false_rows), len(other_rows)))
+    # Measured: `resolution` is validated against a fixed set, so a value outside
+    # it is a 500 rather than an empty list -- and a valid one that matches
+    # nothing is a plain empty 200.
+    have = {str(m.get("videoResolution")) for r in rows for m in r.get("Media") or []}
+    mine = next(iter(have - {"None"}), "")
+    if mine:
+        others = sorted({"4k", "1080", "720", "576", "480", "sd"} - {mine})
+        check("filter: a known resolution matches and another is empty",
+              filtered("?resolution=%s" % mine) == total
+              and filtered("?resolution=%s" % others[0]) == 0,
+              "%s -> %d, %s -> 0" % (mine, filtered("?resolution=%s" % mine), others[0]))
+    else:
+        skip("filter: a known resolution matches and another is empty",
+             "no videoResolution on the catalog's Media")
+    for spec, want, why in (("?resolution=2160", 500, "a resolution outside the set is a 500"),
+                            ("?resolution=", 500, "an empty resolution is a 500"),
+                            ("?location=%2Fplexsim%2F1", 500,
+                             "a folder location is an ID, so a path is a 500")):
+        status, _, _ = container(base, "GET",
+                                 "/library/sections/%s/all%s" % (movie_section, spec))
+        check("filter: %s" % why, status == want, "HTTP %s" % status)
+    check("filter: a folder location matches by its section id",
+          filtered("?location=%s" % movie_section) == total
+          and filtered("?location=99") == 0,
+          "location=%s -> %d" % (movie_section, filtered("?location=%s" % movie_section)))
+    # Measured: an operator the field's type does not take is an unknown KEY, so
+    # the listing ignores it -- `?genre>>=6` returns the whole library.
+    check("filter: an operator the type does not take is ignored",
+          filtered("?genre%3E%3E=1") == total and filtered("?title%3C%3C=x") == total,
+          "genre>> -> %d, title<< -> %d"
+          % (filtered("?genre%3E%3E=1"), filtered("?title%3C%3C=x")))
+
+    # A SHOW library advertises its fields PREFIXED (`show.genre`), and the client
+    # sends the advertised key back verbatim. plexsim looked the name up after
+    # stripping the prefix, in a map keyed by the prefixed names, so nothing
+    # matched and every filter on a show grid returned the whole library.
+    if show_section:
+        _, shows, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
+        show_rows = shows.get("Metadata") or []
+        title = (show_rows[0].get("title") or "") if show_rows else ""
+
+        def show_filtered(spec):
+            _, body, _ = container(base, "GET", "/library/sections/%s/all?%s"
+                                                % (show_section, spec))
+            return len(body.get("Metadata") or [])
+
+        if title:
+            check("filter: a show library's PREFIXED field filters",
+                  show_filtered("type=2&show.title=%s" % quote(title)) == 1
+                  and show_filtered("type=2&show.title=zzznope") == 0
+                  and show_filtered("type=2&title=%s" % quote(title)) == 1,
+                  "%d show(s) in the section" % len(show_rows))
+        else:
+            skip("filter: a show library's PREFIXED field filters", "no show rows")
+    else:
+        skip("filter: a show library's PREFIXED field filters", "no show library")
+
+    print("\n=== the query language read back: /query/parse ===")
+    # A tag id from the catalog's own numbering, so `valueTitle` has something to
+    # resolve: a real PMS titles `?genre=6` "Animation" and leaves a name or an
+    # unknown id untitled.
+    genre_id = genre_name = None
+    for row in rows:
+        for tag in row.get("Genre") or []:
+            if tag.get("id") and tag.get("tag"):
+                genre_id, genre_name = tag["id"], tag["tag"]
+                break
+        if genre_id:
+            break
+    # The Edit Filters dialog reopens a saved filter by handing the query string
+    # back here and reading the Rule tree out of the answer. An unrouted path is
+    # a 404 the dialog reads as "no rules", so the dialog silently draws empty.
+    def parsed(spec, section=None):
+        status, body, _ = request(base, "GET", "/library/sections/%s/query/parse%s"
+                                              % (section or movie_section, spec))
+        if body[:1] != b"{":
+            return status, {}
+        try:
+            return status, json.loads(body).get("Query", {})
+        except ValueError:
+            return status, {}
+
+    status, doc = parsed("?type=1&genre=%s&sort=titleSort" % quote(str(genre_id or 1)))
+    rule = doc.get("Rule") or {}
+    check("query/parse answers a Query, not a MediaContainer",
+          status == 200 and doc.get("type") == 1
+          and rule.get("field") == "genre" and rule.get("operator") == "="
+          and rule.get("fieldTitle") == "Genre" and rule.get("value") == str(genre_id or 1)
+          and doc.get("Order") == [{"field": "titleSort", "ascending": True}],
+          json.dumps(doc)[:90])
+    if genre_id:
+        check("query/parse titles a tag value from the tag table",
+              rule.get("valueTitle") == genre_name,
+              "%s -> %s" % (genre_id, rule.get("valueTitle")))
+    else:
+        skip("query/parse titles a tag value from the tag table", "no tag ids in the catalog")
+    # Measured: the default type is the SECTION's own, and it is an integer.
+    _, doc = parsed("")
+    _, show_doc = parsed("", show_section) if show_section else (200, {"type": 2})
+    check("query/parse defaults the type to the section's own",
+          doc.get("type") == 1 and show_doc.get("type") == 2,
+          "movie %s, show %s" % (doc.get("type"), show_doc.get("type")))
+    _, doc = parsed("?type=1&push=1&genre=1&or=1&genre=2&pop=1&and=1&year%3E%3E=2000")
+    outer = doc.get("Rule") or {}
+    inner = (outer.get("Rule") or [{}])[0]
+    check("query/parse nests a push/pop group as a composite",
+          outer.get("type") == "composite" and outer.get("operator") == "and"
+          and inner.get("type") == "composite" and inner.get("operator") == "or"
+          and len(inner.get("Rule") or []) == 2,
+          json.dumps(outer)[:90])
+    _, doc = parsed("?type=1&push=1&genre=1&pop=1")
+    check("query/parse collapses a one-rule group to the rule",
+          (doc.get("Rule") or {}).get("field") == "genre",
+          json.dumps(doc.get("Rule"))[:70])
+    _, doc = parsed("?type=1&group=year&limit=7&sort=year:desc&genre=1&bogus=1")
+    check("query/parse carries Order, Limit, Group and Error",
+          doc.get("Order") == [{"field": "year", "ascending": False}]
+          and doc.get("Limit") == [{"limit": 7}]
+          and doc.get("Group") == [{"field": "year"}]
+          and doc.get("Error") == [{"type": "field", "value": "bogus"}],
+          json.dumps(doc)[:110])
+    # The seed is DROPPED from the Order block, and `nocollate` is a modifier
+    # that does not change the direction.
+    _, seeded = parsed("?type=1&sort=random:12345")
+    _, collated = parsed("?type=1&sort=titleSort:desc:nocollate")
+    check("query/parse drops a random seed and reads desc past a modifier",
+          seeded.get("Order") == [{"field": "random", "ascending": True}]
+          and collated.get("Order") == [{"field": "titleSort", "ascending": False}],
+          "%s / %s" % (seeded.get("Order"), collated.get("Order")))
+    # An unknown FIELD is reported beside whatever did parse, where the same
+    # field on a listing is ignored; an operator the type does not take is
+    # reported as an unknown field too, key and all.
+    _, doc = parsed("?type=1&genre=1&bogus%3E%3E=3&checkFiles=1&includeGuids=1")
+    check("query/parse reports unknown fields and keeps the good rule",
+          (doc.get("Rule") or {}).get("field") == "genre"
+          and doc.get("Error") == [{"type": "field", "value": "bogus>>"},
+                                   {"type": "field", "value": "checkFiles"}],
+          json.dumps(doc.get("Error")))
+    _, doc = parsed("?type=1&genre%3E%3E=1")
+    check("query/parse reports a tag field's comparison operator as a bad field",
+          doc.get("Error") == [{"type": "field", "value": "genre>>"}]
+          and "Rule" not in doc, json.dumps(doc))
+    _, doc = parsed("?type=1&push=1&genre=1")
+    check("query/parse reports an unclosed push as a mismatch",
+          doc.get("Error") == [{"type": "mismatch", "value": "eof",
+                                "expected": "pop"}], json.dumps(doc.get("Error")))
+    # The field titles are scoped: an explicit prefix wins, otherwise the type
+    # implies one, and a type with no such field answers an EMPTY title.
+    _, doc = parsed("?type=1&show.title=x")
+    scoped = doc.get("Rule") or {}
+    check("query/parse echoes a field's scope and titles it from there",
+          scoped.get("type") == "show" and scoped.get("field") == "title"
+          and scoped.get("fieldTitle") == "Show Title", json.dumps(scoped))
+    _, doc = parsed("?type=3&title=x")
+    check("query/parse answers an empty title for a type with no such field",
+          (doc.get("Rule") or {}).get("fieldTitle") == "",
+          json.dumps(doc.get("Rule")))
+    if show_section:
+        _, doc = parsed("?type=4&unwatched=1", show_section)
+        check("query/parse titles an unprefixed field from the requested type",
+              (doc.get("Rule") or {}).get("fieldTitle") == "Episode Unwatched",
+              json.dumps(doc.get("Rule")))
+    for spec, want, why in (("?type=abc", 400, "a non-numeric type is a 400"),
+                            ("?type=1&year%3E2010", 400, "a malformed key is a 400"),
+                            ("?type=1&limit=abc", 500, "an unparseable limit is a 500"),
+                            ("?type=1&sort=bogusKey", 500, "an unknown sort key is a 500")):
+        status, _ = parsed(spec)
+        check("query/parse: %s" % why, status == want, "HTTP %s" % status)
+    # Measured: an unknown type NUMBER is echoed untouched, and only `parse`
+    # exists under `/query` -- the parent and a POST are both 404.
+    _, doc = parsed("?type=99")
+    check("query/parse echoes an unknown type number", doc.get("type") == 99,
+          json.dumps(doc))
+    status, _, _ = request(base, "GET", "/library/sections/%s/query?type=1" % movie_section)
+    status_post, _, _ = request(base, "POST",
+                                "/library/sections/%s/query/parse?type=1" % movie_section)
+    check("query/parse: /query alone and a POST are both 404",
+          status == 404 and status_post == 404, "%s / %s" % (status, status_post))
+    # XML is plexsim's default, and this response's root is not a MediaContainer.
+    status, raw, _ = request(base, "GET", "/library/sections/%s/query/parse"
+                                         "?type=1&genre=1&sort=titleSort" % movie_section,
+                             want_json=False)
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        root = None
+    check("query/parse renders <Query> in XML with ascending as 1/0",
+          root is not None and root.tag == "Query"
+          and root.findtext(".") is not None
+          and root.find("Order") is not None
+          and root.find("Order").get("ascending") == "1"
+          and root.find("Rule") is not None,
+          (raw[:80].decode("utf-8", "replace")) if raw else "no body")
+
     print("\n=== container paging: both parameters, either transport ===")
     # Measured: a real PMS pages only when BOTH parameters are present, and it
     # accepts them as HTTP HEADERS as well as query parameters -- the React paths
@@ -1951,6 +2185,21 @@ def main():
               "%s vs %s" % (order_a, order_b))
     else:
         skip("two seeds give two orders", "need two rows")
+    # A term's TAIL is a list too: direction and modifiers come in either order,
+    # and reading the direction off the first colon made `titleSort:desc:nocollate`
+    # ascending -- the reference orders it descending.
+    def titles(spec):
+        _, body, _ = get(base, "/library/sections/%s/all?sort=%s" % (movie_section, spec))
+        return [r.get("title") for r in body.get("Metadata") or []]
+
+    check("a sort modifier does not eat the direction",
+          titles("titleSort:desc:nocollate") == titles("titleSort:desc")
+          and titles("titleSort:nocollate:desc") == titles("titleSort:desc")
+          and titles("titleSort:desc") == list(reversed(titles("titleSort:asc"))),
+          ", ".join(str(t) for t in titles("titleSort:desc:nocollate")))
+    check("an unknown modifier is ignored, where an unknown KEY is a 500",
+          titles("titleSort:bogus") == titles("titleSort"),
+          ", ".join(str(t) for t in titles("titleSort:bogus")))
     status, _, _ = container(base, "GET", "/library/sections/%s/all?sort=bogus" % movie_section)
     # Measured on the reference: an unknown sort key is a 500 there, not a
     # silently unsorted 200. A caller cannot tell the difference otherwise.

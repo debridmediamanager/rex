@@ -28,7 +28,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 | Path | What it is |
 |---|---|
-| `server.py` | The PMS surface. Every route, ~2900 lines. Start here. |
+| `server.py` | The PMS surface. Every route, ~4400 lines. Start here. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
@@ -312,8 +312,9 @@ precisely how the Seasons bug survived a fix attempt.
   reads a 200 as "this endpoint exists and is empty". Flipping it is what finally
   surfaced `GET /library`, which python-plexapi asks for first and which had
   never been routed. If something breaks after adding an endpoint, look here.
-- **`/butler` is the one response on the surface whose root is not a
-  MediaContainer** — it is `ButlerTasks`. Not guessable; it was measured.
+- **Two responses on the surface have a root that is not a MediaContainer** —
+  `/butler` answers `ButlerTasks` and `/library/sections/{id}/query/parse`
+  answers `Query`. Neither is guessable; both were measured.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.
@@ -333,13 +334,32 @@ precisely how the Seasons bug survived a fix attempt.
   server that looks for names it knows sees nothing and filters nothing — which is
   what plexsim did for its whole life, while advertising 40 filterable fields.
   A bare `=` on a string CONTAINS; `==` is the exact one. See `filters.py`.
+- **What a bare `=` means depends on the field's advertised TYPE, and three types
+  are not strings.** A `tag` field is exact (`contentRating=G` does not match
+  `PG`) and an EMPTY value on one means "has no value at all"; a `boolean` is true
+  only for the literal `1`, so `unwatched=2` means false; `resolution` is an enum
+  and a value outside `{4k,1080,720,576,480,sd}` is a 500; `location` is a section
+  Location **id**, not a path. An empty value is a 500 only where it has to parse
+  as a number or a date, not everywhere.
+- **Which operator KEYS a field takes is not its advertised operator list.**
+  `resolution>>=720` parses although only `=` is advertised. What is closed is
+  tag-TABLE fields (`=`/`!=` only) and string fields (their six); anything else on
+  one of those is an unknown FIELD, ignored by a listing and reported as an error
+  by `/query/parse`.
+- **A show library advertises its filter fields PREFIXED** (`show.genre`,
+  `episode.title`) and the client sends the advertised key back verbatim. plexsim
+  keyed its field map by those names and looked them up with the prefix stripped,
+  so no filter on a show grid ever constrained anything. The prefix is a scope:
+  the field is the tail, the lookup is global, and `/query/parse` echoes the scope
+  back as the rule's own `type`.
 - **Container paging needs BOTH parameters, and the client sends them as HTTP
   HEADERS.** One alone is ignored by a real PMS; a negative size drops paging
   rather than slicing.
-- **A `sort=` spec is a comma-separated LIST, and `random:<seed>` differs per
-  seed.** Splitting the whole spec on its first colon drops the secondary key and
-  reads the direction off the wrong end. An unknown key is a 500 on a real PMS,
-  not a silently unsorted 200.
+- **A `sort=` spec is a comma-separated LIST, and so is each term.**
+  `random:<seed>` differs per seed, and `titleSort:desc:nocollate` is descending —
+  splitting the spec on its first colon drops the secondary key and reading the
+  direction off the first colon of a term loses it entirely. An unknown key is a
+  500 on a real PMS, not a silently unsorted 200; an unknown MODIFIER is ignored.
 - **CORS: echo the Origin and echo the requested header list.** A fixed
   allow-list blocks whatever it forgot, and the browser refuses the request with
   no server-side trace. `*` is invalid on a credentialed request. Plex Web hides
