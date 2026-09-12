@@ -346,6 +346,7 @@ Consequences for plexsim, each one a behaviour change rather than a new field:
 | `/:/timeline` answers `{size, playbackState}` | answered a bare container |
 | A play-queue response carries `playQueueSourceURI` | omitted it, so a client re-reading the queue lost its source |
 | An Activity is `{uuid, type, cancellable, userID, title, subtitle, progress}` (measured on fun mid-refresh) | — |
+| `download=1` sends `Content-Disposition: attachment; filename="<the media file's name>"` **plus** the RFC 5987 `filename*=UTF-8''…` form | — |
 | A history row is `{historyKey, key, ratingKey, librarySectionID (a **string**), type, viewedAt, accountID, deviceID}` plus `grandparent*`/`index`/`parentIndex` for an episode (measured on fun, 3879 rows) | — |
 
 **A measurement claim in this file did not hold.** The item-detail handler
@@ -409,6 +410,16 @@ did nothing when pressed, which is the failure mode this whole section is about.
 And one entry followed end to end rather than inspected: clicking **Mark as
 Watched** in the client turned the button into "Mark as Unwatched", and plexsim
 logged `SCROBBLE 1007 -> 1 leaf row(s)` with `viewCount=1` on the row.
+
+Save File was checked against a real provider link rather than the fixture,
+because the fixture's links are the example file's placeholder:
+
+```
+GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
+206  video/x-matroska  Content-Range: bytes 0-99/16692904
+     Content-Disposition: attachment; filename="For the Birds (2000).mkv";
+                          filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
+```
 
 `tests/test_ui_surface.py` covers all of it: **156/156 checks against the new
 server, 45/137 against the old one** on the same fixture catalog

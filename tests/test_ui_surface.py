@@ -489,20 +489,32 @@ def main():
     # 10. Download
     # ------------------------------------------------------------------
     print("\n=== context menu: Download ===")
+    part_file = None
+    for media in movies[0].get("Media") or []:
+        for part in media.get("Part") or []:
+            part_file = str(part.get("file") or "").rsplit("/", 1)[-1]
+            break
     if part_id is None:
-        skip("download serves an attachment", "the row has no Part")
+        skip("download serves an attachment named after the media file",
+             "the row has no Part")
     else:
         status, _, headers = request(
             base, "HEAD", "/library/parts/%s/file.mkv?download=1" % part_id,
             want_json=False)
         disposition = headers.get("Content-Disposition", "")
         if status == 502:
-            skip("download serves an attachment",
+            # The bytes come from the provider, so this needs a catalog whose
+            # links the configured RD account owns. Verified by hand against a
+            # live link: 206, video/x-matroska, and
+            # `attachment; filename="For the Birds (2000).mkv"` plus the
+            # RFC 5987 form -- the shape measured on a real PMS.
+            skip("download serves an attachment named after the media file",
                  "part unresolvable: catalog links are account-scoped "
-                 "(HTTP 502 = RD said unavailable_file)")
+                 "(HTTP 502 = the provider said unavailable_file)")
         else:
-            check("download serves an attachment",
-                  status in (200, 206) and "attachment" in disposition,
+            check("download serves an attachment named after the media file",
+                  status in (200, 206) and "attachment" in disposition
+                  and (not part_file or part_file in disposition),
                   "HTTP %s %s" % (status, disposition))
 
     # ------------------------------------------------------------------
