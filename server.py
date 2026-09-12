@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import claim as claim_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
 import library as library_module  # noqa: E402
+import filters as filters_module  # noqa: E402
 import mediainfo as mediainfo_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
@@ -888,13 +889,10 @@ class PlexSim:
             fields.pop("thumb", None)
             fields.pop("summary", None)
 
-        # A real PMS emits offset/totalSize only when the client pages.
-        query = query or {}
-        if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
-            total = len(rows)
-            start = int(query.get("X-Plex-Container-Start", 0) or 0)
-            size = int(query.get("X-Plex-Container-Size", total) or total)
-            page = rows[start : start + size]
+        # A real PMS emits offset/totalSize only when the client pages -- and only
+        # when BOTH container parameters are present; see page_window().
+        page, paged, start, total = self.page_window(rows, query or {})
+        if paged:
             fields["Metadata"] = [_full(r) for r in page]
             fields["offset"] = start
             fields["totalSize"] = total
@@ -983,10 +981,23 @@ class PlexSim:
     def handle(self, method, path, body, headers):
         parsed = urllib.parse.urlparse(path)
         route = parsed.path
-        query = {
-            k: v[-1]
-            for k, v in urllib.parse.parse_qs(parsed.query, keep_blank_values=True).items()
-        }
+        # Both shapes are needed. The dict is what every endpoint reads, but a
+        # filter query is ORDERED and may repeat a key -- `?genre=6&genre=23` is
+        # an intersection and `push`/`pop` are positional -- so the pairs are
+        # carried alongside rather than collapsed away.
+        pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        query = {k: v for k, v in pairs}
+        query["_pairs"] = pairs
+        # Container paging arrives as query parameters from the Backbone paths and
+        # as HTTP HEADERS from the React ones (`fetchRange` sets
+        # `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`). A real
+        # PMS honours either, and a mix of the two. plexsim read only the query
+        # string, so every windowed grid request got the whole library and no
+        # `totalSize` -- the same shape of bug as the missing Seasons block, one
+        # transport over. Normalised here so every listing sees one form.
+        for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
+            if name not in query and headers.get(name) is not None:
+                query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
 
         # A Part read is not a container response; it returns a streaming
@@ -995,8 +1006,15 @@ class PlexSim:
         if route.startswith("/library/parts/") and method in ("GET", "HEAD"):
             return ("stream", segments, query)
 
-        container = self._route(method, route, segments, query, body, headers)
-        return container
+        try:
+            return self._route(method, route, segments, query, body, headers)
+        except filters_module.FilterError as refused:
+            # A query a real PMS refuses, with the status IT answers: 400 for a
+            # malformed key, 500 for a value it cannot parse. Answering 200 with
+            # the library unfiltered is the trap -- the caller cannot tell its
+            # filter did nothing.
+            logger.warning("REFUSED %s: %s", route, refused.detail)
+            return ("error", refused.status, "plexsim: %s" % refused.detail)
 
     def _route(self, method, route, segments, query, body, headers):
         catalog = self.catalog
@@ -1860,7 +1878,7 @@ class PlexSim:
         else:
             source = self.catalog.section_items(section_id)
 
-        source = [r for r in source if self._matches_filters(r, query)]
+        source, _ = self.apply_filters(source, query, section)
         source, unsupported = self._sorted(source, query.get("sort") or "")
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
@@ -1942,52 +1960,98 @@ class PlexSim:
             ordered = sorted(ordered, key=getter, reverse=direction == "desc")
         return ordered, None
 
-    def _matches_filters(self, row, query):
-        """One row against the filter params the client sends."""
-        for name, value in query.items():
-            if name in SECONDARY_TAGS:
-                key = SECONDARY_TAGS[name]
-                tags = row.get(key) or []
-                if not any(str(t.get("id")) == value or t.get("tag") == value
-                           for t in tags):
-                    return False
-            elif name in SECONDARY_FIELDS and name != "decade":
-                if str(row.get(SECONDARY_FIELDS[name]) or "") != urllib.parse.unquote(value):
-                    return False
-            elif name == "decade":
-                year = row.get("year")
-                if not year or not str(value).isdigit():
-                    return False
-                if int(year) // 10 * 10 != int(value):
-                    return False
-            elif name == "resolution":
-                if not any(str(m.get("videoResolution")) == value
-                           for m in row.get("Media") or []):
-                    return False
-            elif name == "unwatched" and value == "1":
-                if row.get("viewCount"):
-                    return False
-            elif name == "inProgress" and value == "1":
-                if not row.get("viewOffset"):
-                    return False
-            elif name == "unmatched" and value == "1":
-                # An unmatched row is one with no agent identity, and a real PMS
-                # writes that as `tv.plex.agents.none://<key>`; `local://` is the
-                # legacy form. The client's own Match/Fix Match predicate tests
-                # for exactly these two, so the filter has to agree with it.
-                guid = str(row.get("guid") or "")
-                if not (guid.startswith("local://") or "none://" in guid):
-                    return False
-        return True
+    # How each advertised filter field is read off a row. The keys here are the
+    # `Field` entries of the captured Meta, so plexsim filters on exactly what it
+    # tells the client it can filter on -- and a field it cannot answer from its
+    # own rows is honestly absent rather than guessed at.
+    TAG_FILTER_FIELDS = {"genre": "Genre", "collection": "Collection",
+                         "director": "Director", "writer": "Writer",
+                         "producer": "Producer", "country": "Country",
+                         "actor": "Role", "label": "Label",
+                         "contentRating": "contentRating", "studio": "studio"}
+
+    def filter_value(self, field, row):
+        """One row's value for an advertised filter field."""
+        # `episode.unwatched` and friends: the type prefix is the scope, and the
+        # field behind it is the same field.
+        if "." in field:
+            field = field.split(".", 1)[1]
+        if field in self.TAG_FILTER_FIELDS:
+            return row.get(self.TAG_FILTER_FIELDS[field])
+        if field == "decade":
+            year = row.get("year")
+            return (int(year) // 10 * 10) if year else None
+        if field == "unwatched":
+            return 0 if row.get("viewCount") else 1
+        if field == "inProgress":
+            return 1 if row.get("viewOffset") else 0
+        if field == "unmatched":
+            guid = str(row.get("guid") or "")
+            return 1 if (guid.startswith("local://") or "none://" in guid) else 0
+        if field == "unwatchedLeaves":
+            leaves = (row.get("leafCount") or 0) - (row.get("viewedLeafCount") or 0)
+            return 1 if leaves > 0 else 0
+        if field == "unviewedLeafCount":
+            return (row.get("leafCount") or 0) - (row.get("viewedLeafCount") or 0)
+        media = (row.get("Media") or [{}])[0]
+        parts = media.get("Part") or [{}]
+        if field == "resolution":
+            return media.get("videoResolution")
+        if field in ("videoCodec", "audioCodec", "container"):
+            return media.get(field)
+        if field == "audioLayout":
+            return media.get("audioChannelLayout")
+        if field == "mediaBitrate":
+            return media.get("bitrate")
+        if field == "mediaSize":
+            return parts[0].get("size")
+        if field == "location":
+            return parts[0].get("file")
+        if field in ("subtitleCodec",):
+            return [s.get("codec") for part in (media.get("Part") or [])
+                    for s in part.get("Stream") or [] if s.get("streamType") == 3]
+        if field in ("audioLanguage", "subtitleLanguage"):
+            wanted = 2 if field == "audioLanguage" else 3
+            return [s.get("languageCode") or s.get("languageTag")
+                    for part in (media.get("Part") or [])
+                    for s in part.get("Stream") or []
+                    if s.get("streamType") == wanted]
+        if field in ("hdr", "dovi", "hdr10plus", "atmos", "duplicate", "trash"):
+            # plexsim's probe data carries no HDR or Atmos flag and it keeps no
+            # trash, so these are honestly false rather than guessed.
+            return 0
+        return row.get(field)
+
+    def filter_fields(self, section):
+        """field name -> advertised type, from this section's own Meta."""
+        meta = SECTION_META.get("show" if section.get("type") == "show" else "movie") or {}
+        types = {}
+        for entry in meta.get("Type") or []:
+            for field in entry.get("Field") or []:
+                if field.get("key"):
+                    types.setdefault(field["key"], field.get("type") or "string")
+        return types
+
+    def apply_filters(self, rows, query, section):
+        """Filter rows by the query, or raise the status a real PMS answers with."""
+        advertised = self.filter_fields(section)
+
+        def field_type(name):
+            # `episode.unwatched` is scoped to a type; the field is the tail.
+            bare = name.split(".", 1)[1] if "." in name else name
+            return advertised.get(bare)
+
+        tree = filters_module.parse(query.get("_pairs") or [], field_type)
+        if tree is None:
+            return rows, None
+        kept = [r for r in rows
+                if filters_module.evaluate(tree, r, self.filter_value)]
+        return kept, tree
 
     def listing_container(self, section_id, section, rows, view_group=None,
                           query=None, **extra):
         """The container a section listing returns, with the client's paging."""
-        query = query or {}
-        start = int(query.get("X-Plex-Container-Start", 0) or 0)
-        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
-        page = rows[start:start + size]
-        paged = "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query
+        page, paged, start, total = self.page_window(rows, query)
         fields = {
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
             "librarySectionTitle": section.get("title"),
@@ -2010,7 +2074,7 @@ class PlexSim:
         # block for a week.
         if paged:
             fields["offset"] = start
-            fields["totalSize"] = len(rows)
+            fields["totalSize"] = total
         fields.update(extra)
         return self.container(Metadata=page, **fields)
 
@@ -2235,6 +2299,32 @@ class PlexSim:
         logger.warning("UNKNOWN item leaf %s on %s", leaf, rating_key)
         return ("error", 404, "plexsim: not found")
 
+    @staticmethod
+    def page_window(rows, query):
+        """(page, paged, start, total) for a listing, by the measured rule.
+
+        A real PMS pages only when `X-Plex-Container-Start` **and**
+        `X-Plex-Container-Size` are both present: one alone is ignored entirely,
+        with no slice, no `offset` and no `totalSize`. plexsim tested them with
+        OR, so a lone `Size=1` returned one row and claimed a total, and a lone
+        `Start=1` silently dropped the first row. A negative size drops paging
+        altogether on a real server -- in plexsim it was a Python slice, so
+        `Size=-1` quietly served every row but the last.
+        """
+        query = query or {}
+        start_raw = query.get("X-Plex-Container-Start")
+        size_raw = query.get("X-Plex-Container-Size")
+        if start_raw is None or size_raw is None:
+            return list(rows), False, 0, len(rows)
+        try:
+            start = int(start_raw)
+            size = int(size_raw)
+        except (TypeError, ValueError):
+            raise filters_module.FilterError(500, "bad container parameter")
+        if size < 0 or start < 0:
+            return list(rows), False, 0, len(rows)
+        return list(rows)[start:start + size], True, start, len(rows)
+
     def paged_container(self, rows, query, **fields):
         """A bare container that pages when the client asks, and not otherwise.
 
@@ -2243,14 +2333,11 @@ class PlexSim:
         The same rule as every other listing here -- the client pages playlists
         as soon as there are more than a screenful.
         """
-        query = query or {}
-        start = int(query.get("X-Plex-Container-Start", 0) or 0)
-        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
-        page = rows[start:start + size]
+        page, paged, start, total = self.page_window(rows, query)
         body = dict(fields)
         body["size"] = len(page)
-        if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
-            body["totalSize"] = len(rows)
+        if paged:
+            body["totalSize"] = total
             body["offset"] = start
         body["Metadata"] = page
         return self.bare_container(**body)
@@ -3243,12 +3330,10 @@ class PlexSim:
         title and originallyAvailableAt.
         """
         rows = self.library.history()
-        start = int(query.get("X-Plex-Container-Start", 0) or 0)
-        size = int(query.get("X-Plex-Container-Size", len(rows)) or len(rows))
-        page = rows[start:start + size]
+        page, paged, start, total = self.page_window(rows, query)
         fields = {"size": len(page), "Metadata": page}
-        if "X-Plex-Container-Start" in query or "X-Plex-Container-Size" in query:
-            fields["totalSize"] = len(rows)
+        if paged:
+            fields["totalSize"] = total
             fields["offset"] = start
         return self.bare_container(**fields)
 

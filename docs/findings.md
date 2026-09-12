@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **278/278 checks against the new
+`tests/test_ui_surface.py` covers all of it: **307/307 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -666,6 +666,78 @@ request now picks the variant nearest the width asked for
 a fixed width rather than exactly the one requested, which is a deliberate
 difference: the alternative would be shipping a 1280-wide backdrop to fill a
 240-wide tile, which is what it did before.
+
+#### The filter query language: the operator is part of the KEY
+
+The single biggest gap found in six passes, and it hid because of one line in the
+client (`main-*.js` module 14056):
+
+```js
+const t = e.operator.slice(0, -1)
+r.push(`${e.field}${encodeURIComponent(t)}=${e.value}`)
+```
+
+The client holds operators WITH a trailing `=` (`>>=`, `<=`, `==`), strips that
+last character, and appends its own `=` as the separator. So "year is after 2000"
+goes out as `year%3E%3E=2000` and the server reads a parameter **named** `year>>`
+whose value is `2000`. There is no `year>=2000` on the wire, ever.
+
+plexsim iterated its query parameters looking for names it recognised, found
+none of these, and applied no constraint -- so **every filter returned the whole
+library while looking like it worked**. Its own `Meta` advertises 40 filterable
+fields and an operator list per type; it honoured exact equality on eight of them
+and nothing else.
+
+What each (type, operator) pair means, measured against two real servers:
+
+| | `=` | `!=` | `==` | `!==` | `<=` | `>=` | `<<=` | `>>=` |
+|---|---|---|---|---|---|---|---|---|
+| tag | is (by **id or name**) | is not | | | | | | |
+| integer | is | is not | | | at most | at least | strictly < | strictly > |
+| string | **contains** | does not contain | is exactly | is not exactly | begins with | ends with | | |
+| date | is | | | | | inclusive after | before | after |
+
+The surprise is a bare `=` on a string: it is a substring match, and `==` is the
+exact one. Three more shapes, all measured:
+
+- a **repeated key is AND** (`?genre=6&genre=23` is the intersection) while a
+  **comma is OR** (`?genre=6,27` is the union) -- except under a negating
+  operator, where the comma becomes AND: `?genre!=6,27` returns the rows with
+  NEITHER tag, and reading it as an OR would match everything;
+- `push=1`/`pop=1` are parentheses and `and=1`/`or=1` the separator between
+  siblings, with **AND binding tighter than OR**, exactly as in SQL. plexsim ANDed
+  everything, so the UI's "Match any of the following" silently meant "match all";
+- a date value may be relative (`-30d`), an absolute epoch, an ISO date or an ISO
+  datetime. The suffixes are `s m h d w mon y` -- **`m` is MINUTES** and `mon` is
+  the only month form -- an unsigned value means the past and a leading `+` the
+  future. Anything else is a 500, case-sensitively.
+
+And the refusals, which matter because the alternative is a silent no-op: a
+comparison character with no `=` separating it from its value (`?year%3E2010`) is
+a **400**; an unparseable number, an empty value and an unknown date suffix are
+each a **500**; an unknown FIELD is ignored with a 200. plexsim answered 200 with
+the library unfiltered for all of them.
+
+The engine lives in `filters.py` and is driven by the `FieldType` block of the
+captured `Meta`, so plexsim can only honour the operators it advertises.
+
+#### Container paging: both parameters, and the client sends HEADERS
+
+Two defects in one predicate. A real PMS pages only when
+`X-Plex-Container-Start` **and** `X-Plex-Container-Size` are both present -- one
+alone is ignored entirely, with no slice, no `offset` and no `totalSize`. plexsim
+tested them with OR, so a lone `Size=1` returned one row and claimed a total, and
+a lone `Start=1` silently dropped the first row. A negative size drops paging on a
+real server; in plexsim it was a Python slice, so `Size=-1` served every row but
+the last.
+
+And the modern client sends them as **HTTP headers**, not query parameters
+(`fetchRange`: `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`).
+plexsim read only the query string, so every windowed grid request got the whole
+library and no `totalSize` -- the same shape of bug as the missing Seasons block,
+one transport over. Both are now normalised at the door.
+
+`totalSize` is the FILTERED count, which plexsim already had right.
 
 #### Sorting: a spec is a LIST, and the seed matters
 

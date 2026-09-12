@@ -1538,6 +1538,110 @@ def main():
           and all(d.get("size") for d in chars["Directory"]),
           "%d letter(s)" % len(chars.get("Directory") or []))
 
+    print("\n=== the filter query language ===")
+    # The operator is part of the KEY, not the value: the client holds `>>=` and
+    # sends `year%3E%3E=2000`, so the server reads a parameter NAMED `year>>`.
+    # plexsim iterated its parameters looking for names it knew, saw none of
+    # these, and applied no constraint -- every filter returned the whole library
+    # while looking like it worked.
+    def filtered(spec):
+        _, body, _ = container(base, "GET", "/library/sections/%s/all%s" % (movie_section, spec))
+        return len(body.get("Metadata") or [])
+
+    total = len(movies)
+    _, sample, _ = get(base, "/library/sections/%s/all" % movie_section)
+    titles = [r.get("title") or "" for r in sample.get("Metadata") or []]
+    first = titles[0] if titles else ""
+    word = first.split(" ")[0] if first else "zzz"
+    cases = [
+        ("?title=%s" % quote(word), total, "a bare = on a string CONTAINS"),
+        ("?title=zzzznope", 0, "a contains miss"),
+        ("?title%%3D=%s" % quote(word), 0, "== is exact, so a word does not match"),
+        ("?title%%3D=%s" % quote(first), 1, "== matches the whole title"),
+        ("?title%%3C=%s" % quote(word), total, "<= begins with"),
+        ("?bogusfield=1", total, "an unknown field is ignored, not an error"),
+    ]
+    years = sorted({r.get("year") for r in sample.get("Metadata") or [] if r.get("year")})
+    if years:
+        low, high = years[0] - 1, years[-1] + 1
+        cases += [
+            ("?year%%3E%%3E=%d" % low, total, ">>= is strictly greater"),
+            ("?year%%3C%%3C=%d" % low, 0, "<<= is strictly less"),
+            ("?year%%3E=%d" % years[0], total, ">= is inclusive"),
+            ("?year%%3C%%3C=%d" % high, total, "<<= the other way"),
+            ("?push=1&year=%d&or=1&year=%d&pop=1" % (low, years[0]), total,
+             "push/pop with or is a union"),
+            ("?year=%d&and=1&year=%d" % (low, years[0]), 0, "and of two years is empty"),
+        ]
+    tags = [t.get("tag") for r in (sample.get("Metadata") or []) for t in r.get("Genre") or []]
+    if tags:
+        tag = tags[0]
+        cases += [
+            ("?genre=%s" % quote(tag), None, "a tag matches by name"),
+            ("?genre!=%s" % quote(tag), None, "a negated tag excludes"),
+            ("?genre=%s,zzznope" % quote(tag), None, "a comma is an OR"),
+            ("?genre!=%s,zzznope" % quote(tag), None, "a negated comma is NEITHER"),
+            ("?genre=%s&genre=zzznope" % quote(tag), 0, "a repeated key is an AND"),
+        ]
+    for spec, want, why in cases:
+        got = filtered(spec)
+        if want is None:
+            check("filter: %s" % why, True, "%s -> %d row(s)" % (spec[:46], got))
+        else:
+            check("filter: %s" % why, got == want,
+                  "%s -> %d row(s), wanted %d" % (spec[:46], got, want))
+    check("filter: a relative date in the past matches",
+          filtered("?addedAt%3E%3E=-10y") == total, "-10y")
+    check("filter: a relative date in the future matches nothing",
+          filtered("?addedAt%3E%3E=%2B30d") == 0, "+30d")
+    # Measured refusals: a real PMS is explicit rather than silently unfiltered.
+    for spec, want, why in (
+            ("?year%3E2011", 400, "a comparison with no separator is a 400"),
+            ("?year%3E%3E=notanumber", 500, "an unparseable number is a 500"),
+            ("?year=", 500, "an empty value is a 500"),
+            ("?addedAt%3E%3E=-1mo", 500, "an unknown date suffix is a 500")):
+        status, _, _ = container(base, "GET",
+                                 "/library/sections/%s/all%s" % (movie_section, spec))
+        check("filter: %s" % why, status == want, "HTTP %s" % status)
+
+    print("\n=== container paging: both parameters, either transport ===")
+    # Measured: a real PMS pages only when BOTH parameters are present, and it
+    # accepts them as HTTP HEADERS as well as query parameters -- the React paths
+    # send headers, which plexsim never read.
+    _, both, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0"
+                           "&X-Plex-Container-Size=1" % movie_section)
+    _, size_only, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Size=1"
+                                % movie_section)
+    _, start_only, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=1"
+                                 % movie_section)
+    _, negative, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0"
+                               "&X-Plex-Container-Size=-1" % movie_section)
+    check("both parameters page", both.get("size") == 1 and both.get("totalSize") == total,
+          "size=%s total=%s" % (both.get("size"), both.get("totalSize")))
+    check("a size alone is ignored entirely",
+          size_only.get("size") == total and "totalSize" not in size_only,
+          "size=%s total=%s" % (size_only.get("size"), size_only.get("totalSize")))
+    check("a start alone is ignored entirely",
+          start_only.get("size") == total and "offset" not in start_only,
+          "size=%s offset=%s" % (start_only.get("size"), start_only.get("offset")))
+    check("a negative size drops paging rather than slicing",
+          negative.get("size") == total and "totalSize" not in negative,
+          "size=%s" % negative.get("size"))
+    _, past, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=500"
+                           "&X-Plex-Container-Size=10" % movie_section)
+    check("paging past the end is an empty page, not an error",
+          past.get("size") == 0 and past.get("totalSize") == total,
+          "size=%s total=%s" % (past.get("size"), past.get("totalSize")))
+    header_request = urllib.request.Request(
+        base.rstrip("/") + "/library/sections/%s/all" % movie_section,
+        headers={"Accept": "application/json", "User-Agent": UA,
+                 "X-Plex-Container-Start": "0", "X-Plex-Container-Size": "1"})
+    with urllib.request.urlopen(header_request, timeout=20) as response:
+        by_header = json.load(response)["MediaContainer"]
+    check("paging arrives as HTTP headers too",
+          by_header.get("size") == 1 and by_header.get("totalSize") == total,
+          "size=%s total=%s" % (by_header.get("size"), by_header.get("totalSize")))
+
     print("\n=== secondary filter axes ===")
     # A tag axis keys its entries by tag id and a field axis by the value, and
     # getting that wrong is invisible unless the filtered list is checked against
