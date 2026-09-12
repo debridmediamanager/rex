@@ -2073,6 +2073,15 @@ def main():
     check("Agents page lists the agents plexsim identifies with",
           status == 200 and agents.get("Agent"),
           "%d agent(s)" % len(agents.get("Agent") or []))
+    # The agent CHAIN the page edits lives one path deeper, and plexsim answered
+    # the plain agent list to every /system/agents* path.
+    status, chain, _ = get(base, "/system/agents/tv.plex.agents.movie/config/1")
+    rows = chain.get("Agent") or []
+    check("the agent chain for a media type is its own container",
+          status == 200 and chain.get("identifier") == "com.plexapp.system"
+          and rows and all(set(a) == {"name", "enabled", "hasPrefs", "identifier"}
+                           for a in rows),
+          "%d agent(s): %s" % (len(rows), [a.get("identifier") for a in rows]))
     # Measured: the element is `Scanner` with nothing but a `name`, and the
     # container's identifier is com.plexapp.system rather than the library's.
     # plexsim answered `Directory` rows with a key and a title, which the Edit

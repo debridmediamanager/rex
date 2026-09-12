@@ -1274,6 +1274,20 @@ class PlexSim:
             return self.bare_container(size=len(settings), Setting=settings)
 
         # -- system ------------------------------------------------------
+        if (segments[:2] == ["system", "agents"] and len(segments) == 5
+                and segments[3] == "config"):
+            # `/system/agents/{identifier}/config/{mediaType}` -- the ordered agent
+            # chain the Agents page edits. Measured: a `com.plexapp.system`
+            # container of `Agent` rows carrying name/enabled/hasPrefs/identifier,
+            # not the plain agent list plexsim answered to every /system/agents*.
+            rows = [{"name": agent.get("name"),
+                     "enabled": True,
+                     "hasPrefs": False,
+                     "identifier": agent.get("identifier")}
+                    for agent in SYSTEM_AGENTS
+                    if str(agent.get("mediaType")) == str(segments[4])]
+            return self.bare_container(size=len(rows), noHistory=0, replaceParent=0,
+                                       identifier="com.plexapp.system", Agent=rows)
         if route.startswith("/system/agents"):
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
