@@ -596,9 +596,9 @@ precisely how the Seasons bug survived a fix attempt.
 - **No row names a theme.** plexsim has no theme audio, so `theme`, `parentTheme` and
   `grandparentTheme` stay off every row and container -- a real show without one
   carries none of the three, and the client fetches whichever it finds.
-- **A hub row's projection depends on the row's TYPE**: movies and episodes are light
-  (no Guid, text-only tags) everywhere, but a show on a `mixed` Recently Added shelf is
-  the full row. `excludeFields` applies to every row AND to the container.
+- **A hub row's projection depends on the row's TYPE and the SHELF**: movies and
+  episodes are light (no Guid, text-only tags) on every shelf but Related and postplay,
+  which carry the full row, and a show on a `mixed` Recently Added shelf is the full row. `excludeFields` applies to every row AND to the container.
 - **`probes/ui_surface.py` without `--mutate` must send nothing but GET and HEAD** -- it
   is what gets pointed at the shared reference.
 - **A sort key is type-prefixed as well, and python-plexapi always prefixes it**
@@ -632,6 +632,20 @@ precisely how the Seasons bug survived a fix attempt.
   projection.
 - **`guid=` is the client's "do you have this?" lookup** (`/library/all?type=N&guid=`),
   a case-sensitive prefix. Ignoring it answers yes for every item.
+
+- **Never write into a row `_full` returned.** It copies the top level only; its Media,
+  Part and Stream dicts are the catalog's. `/status/sessions` set its playback flags there
+  and every later read of the item said `directplay`.
+- **Recently Added lists a new episode as its SEASON**, dated by the earliest episode, and
+  the server-wide On Deck and Recently Added page. A `/library/search` hit names its
+  library by title only.
+- **The tree blanks every season title** and gives every node the ROOT's parentTitle; an
+  episode part leads with `metadataType` 4 and a show ends with eight string settings.
+- **The iOS platform types "All episodes" as a season.** Read the platform from the
+  header as well as the query -- only the paging headers used to be normalised.
+- **XML children have a fixed order** (Media, Image, UltraBlurColors, the tags, then
+  Preferences/OnDeck/Extras/Related/Children) and `Meta` precedes a listing's rows. It
+  lives in `xmlout._CHILD_ORDER`.
 
 ## Conventions
 

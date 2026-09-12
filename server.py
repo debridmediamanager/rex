@@ -1583,7 +1583,9 @@ class PlexSim:
             # the parent -- hence grandparent* on the container. Measured on both
             # servers: `title1` is the SHOW's title, not the library's;
             # `parentTitle` is the EMPTY string; `grandparentRatingKey` is a
-            # number; and there is no `summary`, `parentYear` or `grandparentYear`.
+            # number; and there is no `summary` or `grandparentYear`. `parentYear` is
+            # the SEASON's own year when it has one -- re-measured in cycle 8 on both
+            # servers; the first reading was taken on seasons without a year.
             show_key = parent.get("parentRatingKey")
             show = self.catalog.items.get(int(show_key)) if show_key else None
             fields.pop("summary", None)
@@ -1593,6 +1595,7 @@ class PlexSim:
                     "title2": parent.get("title"),
                     "parentIndex": parent.get("index"),
                     "parentTitle": "",
+                    "parentYear": parent.get("year"),
                     "thumb": parent.get("thumb"),
                     "art": parent.get("art"),
                 }
@@ -1849,7 +1852,10 @@ class PlexSim:
         # string, so every windowed grid request got the whole library and no
         # `totalSize` -- the same shape of bug as the missing Seasons block, one
         # transport over. Normalised here so every listing sees one form.
-        for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
+        # The platform too: Plex Web sends it in the query string and the native apps as
+        # a header, and the one response that depends on it -- iOS types a show's "All
+        # episodes" row -- has to see either.
+        for name in ("X-Plex-Container-Start", "X-Plex-Container-Size", "X-Plex-Platform"):
             if name not in query and headers.get(name) is not None:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
@@ -2397,25 +2403,55 @@ class PlexSim:
             # server with nothing in progress. plexsim answered the first twelve
             # catalog rows with no view state at all, which is what every non-web
             # client's On Deck reads (plexapi, Kodi/PKC, the legacy apps).
-            rows = [_listing_row(r) for r in self.continue_watching()]
+            rows = []
+            for row in self.continue_watching():
+                # Measured on fun, the reference having nothing in progress: the light
+                # projection, naming its library by id, title and UUID and not by key.
+                entry = _grid_row(_listing_row(row))
+                entry.pop("librarySectionKey", None)
+                entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
+                                               or {}).get("uuid")
+                rows.append(entry)
             # Measured on both lists: `mixedParents`, because the rows come from
-            # more than one library.
-            return self.container(Metadata=rows, mixedParents=True)
+            # more than one library -- and on both servers both lists PAGE, with the
+            # headers or the query parameters, where plexsim answered every row.
+            page, paged, start, total = self.page_window(rows, query)
+            fields = {"offset": start, "totalSize": total} if paged else {}
+            return self.container(Metadata=page, mixedParents=True, **fields)
         if route == "/library/recentlyAdded":
-            rows = sorted(catalog.items.values(), key=lambda r: -(r.get("addedAt") or 0))
-            rows = [r for r in rows if r.get("type") in ("movie", "season", "episode")]
+            # Measured on both servers: a new episode is listed as its SEASON, never on
+            # its own, and the season row's `addedAt` is its EARLIEST episode's -- the
+            # reference's Season 1 says 1789187076, its first episode's, where the
+            # season's own row says 1789187257. plexsim listed each episode beside its
+            # season, dated by the season. The list stops at 50 (fun's totalSize) and
+            # pages.
+            seasons = {}
+            for row in catalog.items.values():
+                parent_key = str(row.get("parentRatingKey") or "")
+                if row.get("type") == "episode" and parent_key.isdigit() \
+                        and int(parent_key) in catalog.items:
+                    added = row.get("addedAt") or 0
+                    seasons[int(parent_key)] = min(seasons.get(int(parent_key), added), added)
+            dated = [(r.get("addedAt") or 0, r) for r in catalog.items.values()
+                     if r.get("type") == "movie"]
+            dated += [(added, catalog.items[key]) for key, added in seasons.items()]
+            dated.sort(key=lambda pair: (-pair[0], str(pair[1].get("titleSort")
+                                                       or pair[1].get("title") or "").lower()))
             # Measured on both servers: these rows are the light projection (text
             # tags, no Guid, no Rating), and each names its section by ID, title and
             # UUID -- not by key -- and carries `allowSync`.
-            page = []
-            for row in rows[:self.HUB_COUNT]:
+            rows = []
+            for added, row in dated[:50]:
                 entry = _grid_row(_listing_row(row))
                 entry.pop("librarySectionKey", None)
                 entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
                                                or {}).get("uuid")
                 entry["allowSync"] = False
-                page.append(entry)
-            return self.container(Metadata=page, mixedParents=True)
+                entry["addedAt"] = added
+                rows.append(entry)
+            page, paged, start, total = self.page_window(rows, query)
+            fields = {"offset": start, "totalSize": total} if paged else {}
+            return self.container(Metadata=page, mixedParents=True, **fields)
 
         if route == "/library/all":
             # Measured: a real query endpoint, not a dump. `type=` selects the rows,
@@ -2489,6 +2525,10 @@ class PlexSim:
                 if method == "PUT" and len(segments) == 3:
                     return ("error", 400, "plexsim: bad request")
                 return ("error", 404, "plexsim: not found")
+            if segments[3:] == ["levels"]:
+                # Measured on both servers: the loudness levels of a stream the server
+                # has not analysed are a 404, where the stream itself is the 501.
+                return ("error", 404, "plexsim: not found")
             return ("error", 501, "plexsim: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method == "PUT":
@@ -2529,7 +2569,8 @@ class PlexSim:
             return self.promoted_hubs(query)
         if route.startswith("/hubs/home"):
             if route == "/hubs/home/continueWatching":
-                rows = [_listing_row(r) for r in self.continue_watching()]
+                # Measured on fun: the light projection, like the shelf it expands.
+                rows = [_grid_row(_listing_row(r)) for r in self.continue_watching()]
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/onDeck":
                 rows = [_listing_row(r) for r in self.continue_watching()
@@ -3185,7 +3226,10 @@ class PlexSim:
             # ("movie" / "All Movies"), not "collection" -- the rows are
             # collections but the view is still the library's.
             rows = self.library.collections(section_id)
-            return self.listing_container(section_id, section, rows, query=query)
+            # Measured on both servers: a SHOW library's list carries `nocache`, paged
+            # or not, as its other listings do; a movie library's does not.
+            extra = {"nocache": True} if section.get("type") == "show" else {}
+            return self.listing_container(section_id, section, rows, query=query, **extra)
         if leaf == "folder":
             return self.folder_view(section_id, section, query)
 
@@ -3834,7 +3878,7 @@ class PlexSim:
         # in title order rather than in catalog order. plexsim left ties in whatever
         # order the rows arrived in, so a tied page was unstable between requests.
         if [key for key, _desc, _seed in terms] != ["titleSort"] \
-                and not any(key == "random" for key, _d, _s in terms):
+                and not any(key.rpartition(".")[2] == "random" for key, _d, _s in terms):
             # ...except on a season or episode list, where a tie falls back to the
             # show, season and episode order: `sort=episode.index:desc` puts S1E3
             # before S2E3, and `sort=show.titleSort` on one show keeps broadcast
@@ -3847,7 +3891,10 @@ class PlexSim:
         # Right to left, relying on the sort being stable: the leftmost key ends
         # up dominant, which is the order a real PMS applies them in.
         for key, descending, seed in reversed(terms):
-            if key == "random":
+            # Measured on both servers: `movie.random` and `show.random` (with a
+            # direction or a seed) sort like `random`; python-plexapi always sends the
+            # prefixed form, and plexsim 500'd it.
+            if key.rpartition(".")[2] == "random":
                 ordered = sorted(ordered, key=lambda r: zlib.crc32(
                     ("%s/%s" % (seed or "0", r.get("ratingKey"))).encode()))
                 if descending:
@@ -3900,7 +3947,7 @@ class PlexSim:
         it IS a sort a real PMS accepts -- and /query/parse validates the key
         before it echoes the Order block, answering 500 for one it does not know.
         """
-        return key == "random" or self._scoped_sort_key(key) is not None
+        return key.rpartition(".")[2] == "random" or self._scoped_sort_key(key) is not None
 
     # How each advertised filter field is read off a row. The keys here are the
     # `Field` entries of the captured Meta, so plexsim filters on exactly what it
@@ -4685,12 +4732,18 @@ class PlexSim:
                 # seasons), and only a one-row page drops it. At Start>0 the two
                 # servers disagree; this follows the reference and drops it.
                 leaves = self.catalog.leaves(rating_key)
-                extra["Directory"] = [{"leafCount": len(leaves),
-                                       "thumb": row.get("thumb"),
-                                       "viewedLeafCount": sum(1 for leaf_row in leaves
-                                                              if leaf_row.get("viewCount")),
-                                       "key": "/library/metadata/%s/allLeaves" % rating_key,
-                                       "title": "All episodes"}]
+                all_episodes = {"leafCount": len(leaves), "thumb": row.get("thumb")}
+                if query.get("X-Plex-Platform") == "iOS":
+                    # Measured on both servers, in XML and JSON, and the one
+                    # client-profile rule a cycle-8 sweep of four client families found:
+                    # the iOS PLATFORM -- not the product, not tvOS -- types this row as
+                    # a season.
+                    all_episodes["type"] = "season"
+                all_episodes.update(viewedLeafCount=sum(1 for leaf_row in leaves
+                                                        if leaf_row.get("viewCount")),
+                                    key="/library/metadata/%s/allLeaves" % rating_key,
+                                    title="All episodes")
+                extra["Directory"] = [all_episodes]
             return self.child_container(row, rows, leaf, query, **extra)
 
         # -- the context menu's write half --------------------------------
@@ -4934,7 +4987,8 @@ class PlexSim:
         # Location, Rating and tag ids included, where every other row on every
         # shelf is the light one.
         full_shows = extra.get("type") == "mixed"
-        page = [r if full_shows and r.get("type") == "show" else _grid_row(r)
+        full_rows = extra.pop("full", False)
+        page = [r if full_rows or (full_shows and r.get("type") == "show") else _grid_row(r)
                 for r in rows[:limit]]
         body = {
             "hubIdentifier": identifier,
@@ -5087,9 +5141,15 @@ class PlexSim:
         if not rows:
             return []
         kind = row.get("type") if row.get("type") in ("movie", "show") else "movie"
+        # Measured on both servers, and overturning cycle 7's "a movie or episode is
+        # light on every shelf": a Related shelf -- on both related endpoints, on
+        # postplay and inside includeRelated=1 -- carries the FULL row: Guid, Rating,
+        # Field, tag ids and roles, the Part's Streams and the librarySection triple.
+        # python-plexapi built those items with no guids, ratings or streams.
         return [self.home_hub(
             "%s.similar" % kind, "Related %s" % ("Shows" if kind == "show" else "Movies"),
-            "/library/metadata/%s/similar" % row["ratingKey"], rows, query, kind=kind)]
+            "/library/metadata/%s/similar" % row["ratingKey"], rows, query, kind=kind,
+            full=True)]
 
     def recently_added_rows(self, type_id, section_id=None):
         """Newest first, by TYPE (1 movies, 2 shows, 4 episodes); None for others."""
@@ -5452,6 +5512,21 @@ class PlexSim:
             result["thumb"] = tag["thumb"]
         return result
 
+    @staticmethod
+    def _search_result_row(row):
+        """A `/library/search` hit.
+
+        Measured on both servers: the light projection -- text tags, no Guid, Rating
+        or Streams -- naming its library by TITLE only, except a show, which keeps the
+        id and key beside the title, and its Location. plexsim sent the full row with
+        the id and key on every hit.
+        """
+        shown = _grid_row(_listing_row(row), keep_location=row.get("type") == "show")
+        if row.get("type") != "show":
+            shown.pop("librarySectionID", None)
+            shown.pop("librarySectionKey", None)
+        return shown
+
     def library_search(self, query):
         """`/library/search` -- the same matches as a flat `SearchResult` list.
 
@@ -5474,7 +5549,7 @@ class PlexSim:
                     else 0.73 if str(row.get("title") or "").lower().startswith(needle) \
                     else 0.33
                 results.append({"score": float(self._score(score)),
-                                "Metadata": _listing_row(row)})
+                                "Metadata": self._search_result_row(row)})
             for entry in tags.get(kind, []):
                 results.append({"score": 0.32,
                                 "Directory": self._tag_result(entry, kind)})
@@ -6125,14 +6200,23 @@ class PlexSim:
             item = _full(row)
             item["sessionKey"] = entry["sessionKey"]
             item["viewOffset"] = entry["viewOffset"]
-            # The selected flags a real session row carries on its own media.
+            # The selected flags a real session row carries on its own media -- set on
+            # COPIES. `_full` copies only the row's top level, so writing them into its
+            # Media wrote them into the catalog: after one play every detail, listing
+            # and search row of the item said `selected` and `directplay`, which no read
+            # outside a session carries on either real server.
+            media_rows = []
             for media in item.get("Media") or []:
-                media["selected"] = True
+                parts = []
                 for part in media.get("Part") or []:
-                    part["decision"] = "directplay"
-                    part["selected"] = True
-                    for stream in part.get("Stream") or []:
-                        stream["location"] = "direct"
+                    played = dict(part, decision="directplay", selected=True)
+                    if part.get("Stream"):
+                        played["Stream"] = [dict(stream, location="direct")
+                                            for stream in part["Stream"]]
+                    parts.append(played)
+                media_rows.append(dict(media, selected=True, Part=parts))
+            if media_rows:
+                item["Media"] = media_rows
             item["User"] = entry["User"]
             item["Player"] = entry["Player"]
             item["Session"] = entry["Session"]
@@ -6468,7 +6552,13 @@ class PlexSim:
         # the model's `thumb`. An empty 200 there blanks the tile.
         return ("text", 200, row[field])
 
-    def metadata_tree(self, row):
+    # The show settings the tree carries, measured: the show's eleven minus the three
+    # a show shares with a movie.
+    TREE_SHOW_SETTINGS = ("episodeSort", "autoDeletionItemPolicyUnwatchedLibrary",
+                          "autoDeletionItemPolicyWatchedLibrary", "flattenSeasons",
+                          "showOrdering", "audioLanguage", "subtitleLanguage", "subtitleMode")
+
+    def metadata_tree(self, row, root=None):
         """`/library/metadata/{id}/tree` -- the raw item/media/part tree.
 
         Measured shape: MetadataItem rows carrying MediaItem, each with MediaPart.
@@ -6491,6 +6581,10 @@ class PlexSim:
                     "size": part.get("size"),
                     "duration": part.get("duration"),
                 }
+                if row.get("type") == "episode":
+                    # Measured on both servers: an episode's part names its item's
+                    # type number first; a movie's part does not.
+                    entry = dict([("metadataType", 4)] + list(entry.items()))
                 # A real MediaPart carries its streams here as MediaStream, with
                 # `type` rather than `streamType`. Get Info reads this tree for
                 # an item whose Media the client has not already loaded.
@@ -6505,11 +6599,16 @@ class PlexSim:
         # `hash` and `openSubtitleHash` are on a real MediaPart here and are
         # deliberately absent: both are hashes OF THE FILE, and plexsim has no
         # file to hash.
+        # Measured on both servers: a season's title is always EMPTY here, and every
+        # node's parentTitle is the ROOT's -- the show's title throughout a season's
+        # tree, and empty throughout a show's (which is where an episode's tree is
+        # rooted). plexsim sent each row's own titles.
+        root = root or row
         item = {
             "id": int(row["ratingKey"]),
-            "title": row.get("title") or "",
+            "title": "" if row.get("type") == "season" else (row.get("title") or ""),
             "guid": row.get("guid") or "",
-            "parentTitle": row.get("parentTitle") or "",
+            "parentTitle": (root.get("parentTitle") or "") if root.get("type") == "season" else "",
             "instanceRatingKey": "",
             "index": row.get("index") or 1,
             "originallyAvailableAt": row.get("originallyAvailableAt") or "",
@@ -6520,7 +6619,7 @@ class PlexSim:
             # Never `MediaItem: []`: a parent row has no media at all, and an
             # empty list is a shape no real PMS sends.
             item["MediaItem"] = media_items
-        children = [self._tree_item(child)
+        children = [self._tree_item(child, root)
                     for child in self.catalog.children(row["ratingKey"])]
         if children:
             # Measured: the tree NESTS -- a show holds its seasons, each season
@@ -6528,11 +6627,30 @@ class PlexSim:
             # row with an empty MediaItem list, so Get Info on a show or a season
             # had nothing under it.
             item["MetadataItem"] = children
+        if row.get("type") == "show":
+            # Measured on both servers: a show's node ends with eight of its settings,
+            # after its seasons, every value and default a STRING.
+            stored = row.get("_prefs") or {}
+            known = {s.get("id"): s for s in ITEM_PREFS.get("show") or []}
+            settings = []
+            for name in self.TREE_SHOW_SETTINGS:
+                if name not in known:
+                    continue
+                setting = dict(known[name])
+                if name in stored:
+                    setting["value"] = stored[name]
+                for field in ("default", "value"):
+                    value = setting.get(field)
+                    setting[field] = "" if value is None else (
+                        ("1" if value else "0") if isinstance(value, bool) else str(value))
+                settings.append(setting)
+            if settings:
+                item["Setting"] = settings
         return self.tag_container(size=1, MetadataItem=[item])
 
-    def _tree_item(self, row):
+    def _tree_item(self, row, root=None):
         """One node of the tree, with its own children beneath it."""
-        inner = self.metadata_tree(row)["MediaContainer"]["MetadataItem"][0]
+        inner = self.metadata_tree(row, root)["MediaContainer"]["MetadataItem"][0]
         return inner
 
     # -- collections -----------------------------------------------------
@@ -7075,7 +7193,7 @@ class PlexSim:
     TAG_TYPES = {"1": ("Genre", "genre"), "2": ("Collection", "collection"),
                  "4": ("Director", "director"), "5": ("Writer", "writer"),
                  "6": ("Role", "actor"), "7": ("Producer", "producer"),
-                 "8": ("Country", "country")}
+                 "8": ("Country", "country"), "319": ("Network", "network")}
 
     def library_tags(self, query):
         """Every tag of one type the server knows, ordered by id.
@@ -7089,6 +7207,17 @@ class PlexSim:
         kind = query.get("type") or ""
         if not kind.lstrip("-").isdigit():
             return ("error", 400, "plexsim: bad request")
+        if str(int(kind)) == "318":
+            # Measured on both servers: studios are a tag table too, whose filter is a
+            # bare `=<id>`, ordered by id. plexsim keeps a studio as text on the row, so
+            # it mints the id from the name the way it mints every other tag's.
+            names = {row.get("studio") for row in self.catalog.items.values()
+                     if row.get("studio")}
+            entries = sorted(({"id": zlib.crc32(("Studio:%s" % name).encode()) % 900000 + 1000,
+                               "tag": name} for name in names), key=lambda entry: entry["id"])
+            rows = [{"id": entry["id"], "filter": "=%d" % entry["id"], "tag": entry["tag"],
+                     "tagType": 318} for entry in entries]
+            return self.tag_container(size=len(rows), Directory=rows)
         field = self.TAG_TYPES.get(str(int(kind)))
         if field is None:
             return self.tag_container(size=0)
