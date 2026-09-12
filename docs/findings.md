@@ -2400,6 +2400,49 @@ Reference and fun agree on every one of these.
 - The effect of a subtitle selection on the play queue and the next decision. The lab
   has no subtitle tracks and fun is read-only.
 
+#### The seventh pass: the whole probe table and every corpus, diffed mechanically
+
+Cycle 7 ran `probes/ui_surface.py` read-only against both servers (202 rows) and
+replayed the recorded corpus with its ratingKeys remapped onto plexsim's items. It
+triaged every difference into catalog content, already recorded, or new behaviour.
+Six were new.
+
+- **A theme plexsim can never serve.** Every show, season and episode named
+  `/library/metadata/{show}/theme/1`, and the endpoint answers 404 because plexsim
+  has no theme audio. On fun, a show without a theme carries no `theme`, and its
+  children carry no `parentTheme` or `grandparentTheme`. The web client reads
+  `grandparentTheme || parentTheme || theme`, so with theme music on every page
+  asked for a 404. No row names a theme now.
+- **Recent Playlists on a library's hubs.** `includeLibraryPlaylists=1`, which the
+  client's own hub request always sends, adds `recent.library.playlists.{id}` right
+  after the library's Recently Added. Its key is
+  `/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={id}`,
+  with style `shelf` and no `promoted`. plexsim ignored the parameter. Only the
+  empty shelf was measurable, because neither server has a playlist.
+- **Hub and search rows by type.** A movie or episode on any shelf or in search has
+  no `Guid` and text-only tags. This includes `/hubs/home/recentlyAdded?type=1` and
+  `/hubs/search`, which bypassed the projection. A SHOW on a `mixed` Recently Added
+  TV shelf, whether on home, the library tab or `/hubs/promoted`, is the FULL row:
+  `Guid`, `Location`, `Rating` and tag ids. A show in search keeps its `Location`.
+- **`excludeFields` everywhere.** The named fields go from every row (listings,
+  `/children`, `/allLeaves`, hubs, search) and from the container. A show's
+  `/children?excludeFields=summary` loses the container's summary too. plexsim
+  applied it only to detail reads.
+- **A season's and an episode's `/arts` are their own.** They are empty on the lab,
+  and fanart.tv's season art on fun. plexsim offered the SHOW's backdrop as the
+  item's selected choice.
+- **An episode's `Image` list.** `coverPoster` is the show's poster and the
+  episode's own 16:9 still is `snapshot`, on detail and listing rows alike. plexsim
+  labelled the still as the poster.
+
+`probes/ui_surface.py` also carried a write in its read-only plan: `PUT
+/updater/check`. It now runs only under `--mutate`, beside the probe's other
+writes.
+
+Measured and not acted on: on kids `/hubs/sections/1?count=1` drops the Recently
+Watched shelf, which fun does not, so there is no rule to follow. Kids' orphaned
+collection tags carry a `guid`, but only 3 of fun's 372 tags do.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
