@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **275/275 checks against the new
+`tests/test_ui_surface.py` covers all of it: **278/278 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -607,6 +607,19 @@ now come off the same notification bus, each formatting for itself.
 | A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
 | `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
 | ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
+
+#### `flattenSeasons` is one field on the show, not a different `/children`
+
+plexsim served `flattenSeasons` in its section preferences and then ignored it,
+so a library set to hide seasons still drew every one of them. The obvious
+implementation -- have `/children` return episodes instead of seasons -- is wrong.
+Measured: with the pref set to Hide, a real PMS **still answers `/children` with
+the seasons**, and what changes is a single field on the SHOW row,
+`skipChildren: true`. The client skips the level on the strength of that.
+
+Enum, measured: `0` Show, `1` Hide, `2` Hide for single-season series -- so `2`
+depends on the show, not just the library, and a two-season show under `2` keeps
+its seasons.
 
 #### A season is not a lesser show, and an episode is not a small one
 
