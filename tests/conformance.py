@@ -215,14 +215,17 @@ def main():
             "key": "/library/metadata/%s" % target.ratingKey,
             "identifier": "com.plexapp.plugins.library",
             "state": "playing",
-            "time": 60000,
+            # Past the minute: a real PMS stores nothing at EXACTLY 60 000 ms
+            # (measured), so a check written at 60 000 measures a resume point that
+            # a real server would not keep.
+            "time": 90000,
             "duration": media.duration,
             "X-Plex-Token": args.token,
         },
         timeout=15,
     )
     reloaded = server.fetchItem(int(target.ratingKey))
-    check("viewOffset persisted", reloaded.viewOffset == 60000, str(reloaded.viewOffset))
+    check("viewOffset persisted", reloaded.viewOffset == 90000, str(reloaded.viewOffset))
 
     total = len(results)
     passed = sum(results)

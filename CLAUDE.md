@@ -368,8 +368,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **The decision container sends ONE pair of codes.** A direct play is only
   `mdeDecisionCode: 1000` / `"Direct play OK."`; the general/directPlay/transcode
   triples appear only when direct play is REFUSED. Sending all of them says a
-  transcode decision was made when none was. `resourceSession` is the client
-  identifier, and `allowSync`, `librarySectionID` and `mediaTagVersion` are all
+  transcode decision was made when none was. `resourceSession` is the X-Plex-Session-Identifier (then the client
+  identifier, then `""`), and `allowSync`, `librarySectionID` and `mediaTagVersion` are all
   STRINGS here.
 - **`/hubs/promoted` is called ONCE PER PINNED LIBRARY** (`contentDirectoryID=`),
   and every shelf carries `key`, `context` (the identifier with a trailing section
@@ -574,6 +574,21 @@ precisely how the Seasons bug survived a fix attempt.
   lists every client with its X-Plex-Device-Name and X-Plex-Platform.
 - **`/library/metadata/{id}/related` carries the same hub as the hubs form** -- an
   earlier note said it was always empty, from a recording of items with no relations.
+
+- **A decision REFUSES what it cannot answer**, with a 400: a path that is not a
+  playable `/library/metadata/{id}`, a bad `mediaIndex`, and a request whose profile
+  name, platform and device all name no file in the server's `Resources/Profiles`
+  (`Chrome` passes, `chrome` and `Darwin` do not). A test harness must send a real
+  `X-Plex-Platform`. And plexsim cannot convert, so a refused direct play answers
+  2000 / 4005 "neither", never 1001 "Conversion OK".
+- **A playlist's timeline frames are type 15 and a collection's 18**, and the client
+  builds the URL it updates from that number. A collection delete refetches its
+  members (state 3 then 5 each) before its own state 9.
+- **The timeline's minute is strict and has no `stopped` exemption**: 60 000 ms
+  exactly is not stored, and a play completes past 90% on any state, once.
+- **A query pair with no `=` is a 400 everywhere**, an empty path segment is a 404, and
+  one trailing slash is harmless. Catch a leading `//` before `urlparse`, which reads it
+  as a host.
 
 ## Conventions
 
