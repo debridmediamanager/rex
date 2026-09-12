@@ -1022,6 +1022,38 @@ Resolving the stored URI turned out to fix a second thing: `_items_for_uri` was
 dropping the query string entirely, so "Play all" from a filtered grid enqueued
 the **whole section** rather than what was on screen.
 
+#### `count=` caps a shelf, and `more` is how the chevron gets drawn
+
+A hub is not paged the way a listing is. `?count=N` caps every shelf at N rows and
+sets **`more: true`** on the ones that were cut; the default with no `count` is 12.
+plexsim sliced at a hard 12 and wrote `more: false` unconditionally, so a
+truncated shelf looked complete and its "see all" chevron never appeared.
+
+Measured on the reference, the same section at three counts:
+
+| Request | `movie.recentlyadded.1` |
+|---|---|
+| no count | `size 5, more false` |
+| `?count=1` | `size 1, more true` |
+| `?count=2` | `size 2, more true` |
+| `?count=12` | `size 5, more false` |
+
+The client asks for **`count+1`** for exactly this reason: it wants to know
+whether the row after the last visible one exists.
+
+#### `/library/all/top` counts PLAYS, not the row's `viewCount`
+
+Three fields plexsim did not send -- `globalViewCount`, `userCount` and a
+`User: [{"id": 1}]` list -- and one refusal it did not make: `type=` is required
+and a real PMS answers **400** without it.
+
+The giveaway that these come from the play HISTORY rather than off the row: Big
+Buck Bunny reported `globalViewCount: 1` with **no `viewCount` at all**, because
+it had been played and then marked unplayed. The row's counter is current state;
+this shelf is the history, and `userCount` is how many distinct accounts appear in
+it. plexsim sorted by `viewCount` off the row, so anything watched and then marked
+unplayed vanished from the Top shelf that is supposed to remember it.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when
