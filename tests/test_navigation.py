@@ -20,6 +20,7 @@ import urllib.request
 
 GREEN = "\033[32m"
 RED = "\033[31m"
+YELLOW = "\033[33m"
 OFF = "\033[0m"
 
 UA = "Plex/1.115.0 (Macintosh; plexsim-test)"
@@ -126,17 +127,24 @@ def main():
               "a real PMS adds them only when the client pages")
 
         # A second page must actually move the window, not resend page one.
-        status, page2 = get(args.base,
-                            "/library/metadata/%s/children?excludeAllLeaves=1"
-                            "&X-Plex-Container-Start=1&X-Plex-Container-Size=1" % show_key)
-        rows2 = page2.get("Metadata") or []
-        check("second page is honoured",
-              status == 200 and page2.get("offset") == 1 and page2.get("size") == 1
-              and len(rows2) == 1
-              and rows2[0].get("ratingKey") == seasons[1].get("ratingKey")
-              and page2.get("totalSize") == (show.get("childCount") or 0),
-              "offset=%s size=%s totalSize=%s" % (page2.get("offset"), page2.get("size"),
-                                                  page2.get("totalSize")))
+        # Only provable on a show with more than one season -- against a
+        # single-season catalog this check asserted seasons[1] and failed for
+        # want of data, which is noise rather than a regression.
+        if len(seasons) < 2:
+            print("  %sSKIP%s  %-46s %s" % (YELLOW, OFF, "second page is honoured",
+                                            "needs a show with two or more seasons"))
+        else:
+            status, page2 = get(args.base,
+                                "/library/metadata/%s/children?excludeAllLeaves=1"
+                                "&X-Plex-Container-Start=1&X-Plex-Container-Size=1" % show_key)
+            rows2 = page2.get("Metadata") or []
+            check("second page is honoured",
+                  status == 200 and page2.get("offset") == 1 and page2.get("size") == 1
+                  and len(rows2) == 1
+                  and rows2[0].get("ratingKey") == seasons[1].get("ratingKey")
+                  and page2.get("totalSize") == (show.get("childCount") or 0),
+                  "offset=%s size=%s totalSize=%s" % (page2.get("offset"), page2.get("size"),
+                                                      page2.get("totalSize")))
 
         # 3. each season's episodes
         total_episodes = 0
