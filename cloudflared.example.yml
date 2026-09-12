@@ -1,0 +1,26 @@
+# Publishing plexsim over a NAMED Cloudflare tunnel.
+#
+# Quick tunnels (`cloudflared tunnel --url`) do not work for this: Plex clients
+# reject the hostname and the edge mangles media requests. A named tunnel with
+# its own hostname does work.
+#
+# Two things measured through the edge, both in docs/findings.md:
+#   * Cloudflare strips `Range` on a prefix request, so `--part-mode proxy`
+#     sees range=- and serves the whole file. `--part-mode redirect` avoids it.
+#   * Cloudflare answers 403 to a `Python-urllib/*` User-Agent on the media
+#     path. Every other UA, including an empty one, gets 206.
+
+tunnel: 00000000-0000-0000-0000-000000000000
+credentials-file: /path/to/00000000-0000-0000-0000-000000000000.json
+
+ingress:
+  - hostname: plexsim.example.com
+    service: http://127.0.0.1:32400
+    originRequest:
+      # A media range read is a long streaming response: fine to connect in
+      # 30s, but the body must not be cut.
+      connectTimeout: 30s
+      noTLSVerify: false
+      # Never buffer at the connector, or seeking stalls.
+      disableChunkedEncoding: false
+  - service: http_status:404

@@ -1,0 +1,803 @@
+{
+  "machineIdentifier": "0000000000000000000000000000000000000000",
+  "friendlyName": "plexsim",
+  "sections": [
+    {
+      "key": "1",
+      "type": "movie",
+      "title": "Debrid Movies",
+      "uuid": "4d3316c14882aeacb807a385e2b089e2a47f563f"
+    },
+    {
+      "key": "2",
+      "type": "show",
+      "title": "Debrid TV",
+      "uuid": "f4ff9b82807b7e5a1972f3b818062ffee2e373e8"
+    }
+  ],
+  "items": [
+    {
+      "ratingKey": "20001",
+      "key": "/library/metadata/20001/children",
+      "guid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "type": "show",
+      "title": "The Simpsons",
+      "titleSort": "The Simpsons",
+      "summary": "Set in Springfield, the average American town, the show focuses on the antics and everyday adventures of the Simpson family; Homer, Marge, Bart, Lisa and Maggie, as well as a virtual cast of thousands. Since the beginning, the series has been a pop culture icon, attracting hundreds of celebrities to guest star. The show has also made name for itself in its fearless satirical take on politics, media and American life in general.",
+      "year": 1989,
+      "thumb": "/library/metadata/20001/thumb/33edc963d0",
+      "art": "/library/metadata/20001/art/a46fe593d7",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "childCount": 1,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "_poster_url": "https://image.tmdb.org/t/p/w342/uWpG7GqfKGQqX4YMAo3nv5OrglV.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "contentRating": "12",
+      "studio": "Gracie Films",
+      "Genre": [
+        {
+          "tag": "Animation"
+        },
+        {
+          "tag": "Comedy"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United States of America"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg"
+        }
+      ],
+      "rating": 8.0,
+      "audienceRating": 8.0,
+      "tagline": "Just a product of society that's lost its good manners.",
+      "Guid": [
+        {
+          "id": "imdb://tt0096697"
+        },
+        {
+          "id": "tmdb://456"
+        }
+      ],
+      "Location": [
+        {
+          "id": 20001,
+          "path": "/plexsim/2/20001"
+        }
+      ],
+      "slug": "the-simpsons",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 8.0,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "Field": [
+        {
+          "locked": true,
+          "name": "thumb"
+        }
+      ],
+      "Label": [],
+      "theme": "/library/metadata/20001/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "30001",
+      "key": "/library/metadata/30001/children",
+      "type": "season",
+      "guid": "plex://season/2319f21a0e7c7cda123bbba3",
+      "title": "Season 19",
+      "titleSort": "Season 19",
+      "index": 19,
+      "parentIndex": 1,
+      "year": 2007,
+      "summary": "",
+      "parentRatingKey": "20001",
+      "parentKey": "/library/metadata/20001",
+      "parentTitle": "The Simpsons",
+      "parentThumb": "/library/metadata/20001/thumb/33edc963d0",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "thumb": "/library/metadata/30001/thumb/b3aeffde16",
+      "art": "/library/metadata/30001/art/a46fe593d7",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "skipCount": 0,
+      "parentStudio": "Gracie Films",
+      "parentYear": 1989,
+      "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "theme": "/library/metadata/20001/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "the-simpsons",
+      "parentTheme": "/library/metadata/20001/theme/1"
+    },
+    {
+      "ratingKey": "1001",
+      "key": "/library/metadata/1001",
+      "guid": "plex://episode/a683d9c98b39e2e1915920ed",
+      "type": "episode",
+      "title": "Eternal Moonshine of the Simpson Mind",
+      "titleSort": "Simpsons",
+      "originalTitle": "The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+      "year": 2007,
+      "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+      "duration": 1311769,
+      "addedAt": 1789180059,
+      "updatedAt": 1789180059,
+      "thumb": "/library/metadata/1001/thumb/b2d1f10c76",
+      "art": "/library/metadata/30001/art/a46fe593d7",
+      "contentRating": "12",
+      "Media": [
+        {
+          "id": 100100,
+          "duration": 1311769,
+          "bitrate": 9428,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 6,
+          "audioCodec": "eac3",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mkv",
+          "videoFrameRate": "24p",
+          "videoProfile": "high",
+          "audioProfile": null,
+          "optimizedForStreaming": false,
+          "has64bitOffsets": false,
+          "Part": [
+            {
+              "id": 10010,
+              "key": "/library/parts/10010/1789180059/file.mkv",
+              "duration": 1311769,
+              "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+              "size": 1546039833,
+              "container": "mkv",
+              "videoProfile": "high",
+              "audioProfile": null,
+              "hasThumbnail": false,
+              "exists": true,
+              "accessible": true,
+              "Stream": [
+                {
+                  "id": 1001001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "high",
+                  "level": 40,
+                  "refFrames": null,
+                  "bitDepth": "8",
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 23.976,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p (H264)"
+                },
+                {
+                  "id": 1001002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "eac3",
+                  "index": 1,
+                  "channels": 6,
+                  "audioChannelLayout": "5.1(side)",
+                  "samplingRate": 48000,
+                  "profile": null,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 640,
+                  "displayTitle": "English (Dolby Digital Plus 5.1)"
+                },
+                {
+                  "id": 1001003,
+                  "streamType": 3,
+                  "codec": "srt",
+                  "index": 2,
+                  "default": false,
+                  "forced": false,
+                  "embeddedInVideo": true,
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "displayTitle": "English"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2007-12-16",
+      "tagline": "Just a product of society that's lost its good manners.",
+      "rating": 8.0,
+      "audienceRating": 8.0,
+      "studio": "Gracie Films",
+      "Genre": [
+        {
+          "tag": "Animation"
+        },
+        {
+          "tag": "Comedy"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United States of America"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Dan Castellaneta",
+          "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg"
+        },
+        {
+          "tag": "Julie Kavner",
+          "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg"
+        },
+        {
+          "tag": "Nancy Cartwright",
+          "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg"
+        },
+        {
+          "tag": "Yeardley Smith",
+          "role": "Lisa Simpson / Maggie Simpson (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg"
+        },
+        {
+          "tag": "Hank Azaria",
+          "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg"
+        },
+        {
+          "tag": "Harry Shearer",
+          "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+          "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg"
+        }
+      ],
+      "index": 9,
+      "parentIndex": 19,
+      "grandparentTitle": "The Simpsons",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30001",
+      "parentKey": "/library/metadata/30001",
+      "parentTitle": "Season 19",
+      "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
+      "grandparentRatingKey": "20001",
+      "grandparentKey": "/library/metadata/20001",
+      "grandparentThumb": "/library/metadata/20001/thumb/33edc963d0",
+      "grandparentArt": "/library/metadata/20001/art/a46fe593d7",
+      "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+      "theme": "/library/metadata/20001/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "the-simpsons",
+      "grandparentTheme": "/library/metadata/20001/theme/1",
+      "chapterSource": "media"
+    },
+    {
+      "ratingKey": "20002",
+      "key": "/library/metadata/20002/children",
+      "guid": "plex://show/cb62dcb0d27f10c5761674d4",
+      "type": "show",
+      "title": "Hell's Kitchen",
+      "titleSort": "Hell's Kitchen",
+      "summary": "Aspiring restaurateurs brave Ramsay and his fiery command of the kitchen as he puts the competitors through an intense culinary academy to prove they possess the right combination of ingredients to win a life-changing grand prize.",
+      "year": 2005,
+      "thumb": "/library/metadata/20002/thumb/622db56068",
+      "art": "/library/metadata/20002/art/a91e2056e7",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180063,
+      "updatedAt": 1789180063,
+      "childCount": 1,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "_poster_url": "https://image.tmdb.org/t/p/w342/shOVFku8daIGRpgjTdMZBxUAvsV.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/kitfuCa2TqX6oY5HvdFRjMMaLwc.jpg",
+      "contentRating": "TV-14",
+      "studio": "A. Smith & Co. Productions",
+      "Genre": [
+        {
+          "tag": "Reality"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United States of America"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Gordon Ramsay",
+          "role": "Self - Chef",
+          "thumb": "https://image.tmdb.org/t/p/w185/72LCF6OLi95odUlqtDi8vAcW3zw.jpg"
+        }
+      ],
+      "rating": 6.8,
+      "audienceRating": 6.8,
+      "tagline": "He's no angel.",
+      "Guid": [
+        {
+          "id": "imdb://tt0437005"
+        },
+        {
+          "id": "tmdb://2370"
+        }
+      ],
+      "Location": [
+        {
+          "id": 20002,
+          "path": "/plexsim/2/20002"
+        }
+      ],
+      "slug": "hell-s-kitchen",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 6.8,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "Field": [
+        {
+          "locked": true,
+          "name": "thumb"
+        }
+      ],
+      "Label": [],
+      "theme": "/library/metadata/20002/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    },
+    {
+      "ratingKey": "30004",
+      "key": "/library/metadata/30004/children",
+      "type": "season",
+      "guid": "plex://season/fe3e5a605684f41e04e66031",
+      "title": "Season 17",
+      "titleSort": "Season 17",
+      "index": 17,
+      "parentIndex": 1,
+      "year": 2017,
+      "summary": "Chef Ramsay invites sixteen all-stars back to the kitchen for a second chance to prove they have what it takes.",
+      "parentRatingKey": "20002",
+      "parentKey": "/library/metadata/20002",
+      "parentTitle": "Hell's Kitchen",
+      "parentThumb": "/library/metadata/20002/thumb/622db56068",
+      "parentGuid": "plex://show/cb62dcb0d27f10c5761674d4",
+      "thumb": "/library/metadata/30004/thumb/820dd37f8f",
+      "art": "/library/metadata/30004/art/a91e2056e7",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "addedAt": 1789180063,
+      "updatedAt": 1789180063,
+      "leafCount": 1,
+      "viewedLeafCount": 0,
+      "skipCount": 0,
+      "parentStudio": "A. Smith & Co. Productions",
+      "parentYear": 2005,
+      "_poster_url": "https://image.tmdb.org/t/p/w342/iFpfJuV4gizeMBArpzhruUvaifX.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/kitfuCa2TqX6oY5HvdFRjMMaLwc.jpg",
+      "theme": "/library/metadata/20002/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "parentSlug": "hell-s-kitchen",
+      "parentTheme": "/library/metadata/20002/theme/1"
+    },
+    {
+      "ratingKey": "1005",
+      "key": "/library/metadata/1005",
+      "guid": "plex://episode/900ec23e0029e320c96cc471",
+      "type": "episode",
+      "title": "All-Star Finale",
+      "titleSort": "Hell's Kitchen",
+      "originalTitle": "Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
+      "year": 2018,
+      "summary": "The final two All-Stars pick from the season's past contestants to join them on their team for the final dinner service. With a head chef position at the first ever Hell's Kitchen flagship restaurant at Caesars Palace Las Vegas, and a salary of a quarter of a million dollars on the line it all comes down to this.",
+      "duration": 2588252,
+      "addedAt": 1789180063,
+      "updatedAt": 1789180063,
+      "thumb": "/library/metadata/1005/thumb/34e3ed74be",
+      "art": "/library/metadata/30004/art/a91e2056e7",
+      "contentRating": "TV-14",
+      "Media": [
+        {
+          "id": 100500,
+          "duration": 2588252,
+          "bitrate": 5793,
+          "width": 1920,
+          "height": 1080,
+          "aspectRatio": 1.78,
+          "audioChannels": 2,
+          "audioCodec": "aac",
+          "videoCodec": "h264",
+          "videoResolution": "1080",
+          "container": "mp4",
+          "videoFrameRate": "NTSC",
+          "videoProfile": "main",
+          "audioProfile": "lc",
+          "optimizedForStreaming": false,
+          "has64bitOffsets": false,
+          "Part": [
+            {
+              "id": 10050,
+              "key": "/library/parts/10050/1789180063/file.mp4",
+              "duration": 2588252,
+              "file": "/plexsim/1/Hells.Kitchen.S17E16.1080p.FAWE.WEB.DL.AAC2.0.H.264-FUZEER.mp4",
+              "size": 1874229686,
+              "container": "mp4",
+              "videoProfile": "main",
+              "audioProfile": "lc",
+              "hasThumbnail": false,
+              "exists": true,
+              "accessible": true,
+              "Stream": [
+                {
+                  "id": 1005001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "h264",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 1080,
+                  "profile": "main",
+                  "level": 41,
+                  "refFrames": null,
+                  "bitDepth": "8",
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": "bt709",
+                  "colorTrc": "bt709",
+                  "colorSpace": "bt709",
+                  "frameRate": 29.97,
+                  "scanType": "progressive",
+                  "displayTitle": "1080p (H264)",
+                  "bitrate": 5631
+                },
+                {
+                  "id": 1005002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "aac",
+                  "index": 1,
+                  "channels": 2,
+                  "audioChannelLayout": "stereo",
+                  "samplingRate": 44100,
+                  "profile": "lc",
+                  "language": "English",
+                  "languageCode": "eng",
+                  "languageTag": "en",
+                  "bitrate": 157,
+                  "displayTitle": "English (AAC Stereo)"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2018-02-02",
+      "tagline": "He's no angel.",
+      "rating": 6.8,
+      "audienceRating": 6.8,
+      "studio": "A. Smith & Co. Productions",
+      "Genre": [
+        {
+          "tag": "Reality"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "United States of America"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Gordon Ramsay",
+          "role": "Self - Chef",
+          "thumb": "https://image.tmdb.org/t/p/w185/72LCF6OLi95odUlqtDi8vAcW3zw.jpg"
+        }
+      ],
+      "index": 16,
+      "parentIndex": 17,
+      "grandparentTitle": "Hell's Kitchen",
+      "_poster_url": "https://image.tmdb.org/t/p/w1280/cz1iCSh5hPcSffTuZkrvy4S1YAp.jpg",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Debrid TV",
+      "librarySectionKey": "/library/sections/2",
+      "parentRatingKey": "30004",
+      "parentKey": "/library/metadata/30004",
+      "parentTitle": "Season 17",
+      "parentThumb": "/library/metadata/30004/thumb/820dd37f8f",
+      "grandparentRatingKey": "20002",
+      "grandparentKey": "/library/metadata/20002",
+      "grandparentThumb": "/library/metadata/20002/thumb/622db56068",
+      "grandparentArt": "/library/metadata/20002/art/a91e2056e7",
+      "grandparentGuid": "plex://show/cb62dcb0d27f10c5761674d4",
+      "parentGuid": "plex://show/cb62dcb0d27f10c5761674d4",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/kitfuCa2TqX6oY5HvdFRjMMaLwc.jpg",
+      "theme": "/library/metadata/20002/theme/1",
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      },
+      "grandparentSlug": "hell-s-kitchen",
+      "grandparentTheme": "/library/metadata/20002/theme/1",
+      "chapterSource": "media"
+    },
+    {
+      "ratingKey": "1007",
+      "key": "/library/metadata/1007",
+      "guid": "plex://movie/520a1a3c2c634f2594808ee9",
+      "type": "movie",
+      "title": "Tears of Steel",
+      "titleSort": "Tears of Steel",
+      "originalTitle": "Tears of Steel.webm",
+      "year": 2012,
+      "summary": "The film\u2019s premise is about a group of warriors and scientists, who gathered at the \u201cOude Kerk\u201d in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+      "duration": 734167,
+      "addedAt": 1789180064,
+      "updatedAt": 1789180064,
+      "thumb": "/library/metadata/1007/thumb/9609a68937",
+      "art": "/library/metadata/1007/art/f1b91762af",
+      "contentRating": "NR",
+      "Media": [
+        {
+          "id": 100700,
+          "duration": 734167,
+          "bitrate": 6225,
+          "width": 1920,
+          "height": 800,
+          "aspectRatio": 2.4,
+          "audioChannels": 2,
+          "audioCodec": "vorbis",
+          "videoCodec": "vp8",
+          "videoResolution": "720",
+          "container": "webm",
+          "videoFrameRate": "24p",
+          "videoProfile": "0",
+          "audioProfile": null,
+          "optimizedForStreaming": false,
+          "has64bitOffsets": false,
+          "Part": [
+            {
+              "id": 10070,
+              "key": "/library/parts/10070/1789180064/file.webm",
+              "duration": 734167,
+              "file": "/plexsim/1/Tears of Steel.webm",
+              "size": 571346576,
+              "container": "webm",
+              "videoProfile": "0",
+              "audioProfile": null,
+              "hasThumbnail": false,
+              "exists": true,
+              "accessible": true,
+              "Stream": [
+                {
+                  "id": 1007001,
+                  "streamType": 1,
+                  "default": true,
+                  "codec": "vp8",
+                  "index": 0,
+                  "width": 1920,
+                  "height": 800,
+                  "profile": "0",
+                  "level": -99,
+                  "refFrames": null,
+                  "bitDepth": 8,
+                  "chromaSubsampling": "4:2:0",
+                  "colorPrimaries": null,
+                  "colorTrc": null,
+                  "colorSpace": null,
+                  "frameRate": 24.0,
+                  "scanType": "progressive",
+                  "displayTitle": "720p (VP8)"
+                },
+                {
+                  "id": 1007002,
+                  "streamType": 2,
+                  "selected": true,
+                  "default": true,
+                  "codec": "vorbis",
+                  "index": 1,
+                  "channels": 2,
+                  "audioChannelLayout": "stereo",
+                  "samplingRate": 48000,
+                  "profile": null,
+                  "displayTitle": "Unknown (VORBIS Stereo)"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+      "originallyAvailableAt": "2012-09-25",
+      "rating": 5.7,
+      "audienceRating": 5.7,
+      "studio": "Blender Foundation",
+      "Genre": [
+        {
+          "tag": "Science Fiction"
+        },
+        {
+          "tag": "Animation"
+        }
+      ],
+      "Country": [
+        {
+          "tag": "Netherlands"
+        }
+      ],
+      "Role": [
+        {
+          "tag": "Derek de Lint",
+          "role": "Old Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/8fRRmh8EYZBlUtu1Wlop0j22QcP.jpg"
+        },
+        {
+          "tag": "Sergio Hasselbaink",
+          "role": "Barly",
+          "thumb": "https://image.tmdb.org/t/p/w185/6xjL2LqOEURISAzzFLtYsIVmGT1.jpg"
+        },
+        {
+          "tag": "Vanja Rukavina",
+          "role": "Thom",
+          "thumb": "https://image.tmdb.org/t/p/w185/4zzhALIIwYvBFmem3dm6nOZg8py.jpg"
+        },
+        {
+          "tag": "Denise Rebergen",
+          "role": "Celia",
+          "thumb": "https://image.tmdb.org/t/p/w185/hBJjiMZsz5WaEgCpkUsw7Z0lekD.jpg"
+        },
+        {
+          "tag": "Rogier Schippers",
+          "role": "Kapit\u00e4n",
+          "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg"
+        },
+        {
+          "tag": "Chris Haley",
+          "role": "Tech head"
+        }
+      ],
+      "Director": [
+        {
+          "tag": "Ian Hubert"
+        }
+      ],
+      "Writer": [
+        {
+          "tag": "Ian Hubert"
+        }
+      ],
+      "Guid": [
+        {
+          "id": "imdb://tt5129250"
+        },
+        {
+          "id": "tmdb://133701"
+        }
+      ],
+      "_poster_url": "https://image.tmdb.org/t/p/w342/8qy3jRmaHR7f8VZh3iXCqCWfFsH.jpg",
+      "_art_url": "https://image.tmdb.org/t/p/w1280/fOy6SL5Zs2PFcNXwqEPIDPrLB1q.jpg",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Debrid Movies",
+      "librarySectionKey": "/library/sections/1",
+      "Location": [
+        {
+          "id": 1007,
+          "path": "/plexsim/1/1007"
+        }
+      ],
+      "slug": "tears-of-steel",
+      "Rating": [
+        {
+          "image": "themoviedb://image.rating",
+          "value": 5.7,
+          "type": "audience"
+        }
+      ],
+      "audienceRatingImage": "themoviedb://image.rating",
+      "Field": [
+        {
+          "locked": true,
+          "name": "thumb"
+        }
+      ],
+      "Label": [],
+      "UltraBlurColors": {
+        "topLeft": "1a1a1e",
+        "topRight": "24242a",
+        "bottomRight": "15151a",
+        "bottomLeft": "1f1f26"
+      }
+    }
+  ]
+}

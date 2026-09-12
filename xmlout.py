@@ -1,0 +1,86 @@
+"""MediaContainer -> Plex XML.
+
+Plex serves the same container as JSON or XML depending on the client, and the
+mapping is not a generic json2xml: scalars are ATTRIBUTES, lists of dicts are
+CHILD ELEMENTS, and the element name for a `Metadata` row is chosen from the
+row's own `type` (`<Video>` for movie/episode/clip, `<Directory>` for
+show/season, `<Track>` for a track).  pd_inject sidestepped all of this by
+hardcoding one giant XML string per response; that does not survive a second
+endpoint, so this is the real mapping.
+
+Booleans go on the wire as 1/0 and `None` is dropped, both because that is what
+a real PMS emits and because plexsim's own clients gate on attribute presence.
+"""
+
+from xml.sax.saxutils import quoteattr
+
+# A `Metadata` row's element name comes from its `type`.
+_METADATA_ELEMENT = {
+    "movie": "Video",
+    "episode": "Video",
+    "clip": "Video",
+    "show": "Directory",
+    "season": "Directory",
+    "artist": "Directory",
+    "album": "Directory",
+    "collection": "Directory",
+    "playlist": "Playlist",
+    "track": "Track",
+}
+
+
+def _attr(value):
+    """Render one scalar the way PMS does: bools as 1/0, everything else str."""
+    if value is True:
+        return "1"
+    if value is False:
+        return "0"
+    return str(value)
+
+
+def _element_name(key, row):
+    if key == "Metadata":
+        return _METADATA_ELEMENT.get(str(row.get("type", "")).lower(), "Video")
+    return key
+
+
+def _render(name, row, out):
+    attrs = []
+    children = []
+
+    for key, value in row.items():
+        if value is None:
+            continue
+        if isinstance(value, dict):
+            children.append((key, [value]))
+        elif isinstance(value, (list, tuple)):
+            # A list of dicts is a child element set; a list of scalars has no
+            # representation in Plex XML, so it is joined the way tag lists are.
+            if value and all(isinstance(v, dict) for v in value):
+                children.append((key, list(value)))
+            elif value:
+                attrs.append((key, ",".join(_attr(v) for v in value)))
+        else:
+            attrs.append((key, _attr(value)))
+
+    out.append("<" + name)
+    for key, value in attrs:
+        out.append(" %s=%s" % (key, quoteattr(_attr(value))))
+
+    if not children:
+        out.append(" />")
+        return
+
+    out.append(">")
+    for key, rows in children:
+        for child in rows:
+            _render(_element_name(key, child), child, out)
+    out.append("</%s>" % name)
+
+
+def to_xml(container):
+    """Serialize a {"MediaContainer": {...}} dict to a Plex XML document."""
+    root, body = next(iter(container.items()))
+    out = ['<?xml version="1.0" encoding="UTF-8"?>\n']
+    _render(root, body, out)
+    return "".join(out).encode("utf-8")

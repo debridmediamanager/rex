@@ -1,0 +1,14 @@
+#!/bin/zsh
+# Copy to run.sh (gitignored) and fill in the credential.
+#
+# RD_TOKEN is the Real-Debrid API key whose account owns the /d/ links in
+# catalog.json. Those links are account-scoped: another account answers
+# 404 unavailable_file for them, which surfaces as HTTP 502 on every part read.
+set -e
+cd "$(dirname "$0")"
+export RD_TOKEN=...
+exec /usr/bin/python3 server.py \
+  --port 32400 \
+  --part-mode proxy \
+  --assert-claimed \
+  --verbose
