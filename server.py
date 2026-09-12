@@ -51,6 +51,7 @@ import heartbeat as heartbeat_module  # noqa: E402
 import library as library_module  # noqa: E402
 import filters as filters_module  # noqa: E402
 import mediainfo as mediainfo_module  # noqa: E402
+import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
 from xmlout import to_xml  # noqa: E402
@@ -624,6 +625,9 @@ class PlexSim:
         # four types it actually sends were measured on the reference (see
         # docs/findings.md), and plexsim pushed none of them.
         self.sockets = []
+        # Live playback sessions and the byte counters behind the Dashboard. A
+        # session is created by /:/timeline, not by anyone reading bytes.
+        self.sessions = sessions_module.Sessions(owner=owner_username)
 
     # -- notifications ---------------------------------------------------
 
@@ -978,7 +982,7 @@ class PlexSim:
 
     # -- routing ---------------------------------------------------------
 
-    def handle(self, method, path, body, headers):
+    def handle(self, method, path, body, headers, address=None):
         parsed = urllib.parse.urlparse(path)
         route = parsed.path
         # Both shapes are needed. The dict is what every endpoint reads, but a
@@ -1007,7 +1011,7 @@ class PlexSim:
             return ("stream", segments, query)
 
         try:
-            return self._route(method, route, segments, query, body, headers)
+            return self._route(method, route, segments, query, body, headers, address)
         except filters_module.FilterError as refused:
             # A query a real PMS refuses, with the status IT answers: 400 for a
             # malformed key, 500 for a value it cannot parse. Answering 200 with
@@ -1016,7 +1020,7 @@ class PlexSim:
             logger.warning("REFUSED %s: %s", route, refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
 
-    def _route(self, method, route, segments, query, body, headers):
+    def _route(self, method, route, segments, query, body, headers, address=None):
         catalog = self.catalog
 
         # -- identity / capability ---------------------------------------
@@ -1096,7 +1100,7 @@ class PlexSim:
             return self.bare_container(size=0)
 
         if segments[:1] == ["statistics"]:
-            return self.statistics(segments[1] if len(segments) > 1 else "")
+            return self.statistics(segments[1] if len(segments) > 1 else "", query)
 
         if route == "/updater/status":
             return self.updater_status()
@@ -1115,12 +1119,34 @@ class PlexSim:
         if route == "/status/sessions/history/all":
             return self.history(query)
         if route == "/status/sessions/terminate":
+            # Measured: keyed on `Session.id` (not sessionKey), 400 without one,
+            # 404 for an id that is not live, and the kill itself is delivered
+            # through that session's NEXT timeline rather than in this response.
+            session_id = query.get("sessionId")
+            if not session_id:
+                return ("error", 400, "plexsim: bad request")
+            if not self.sessions.terminate(session_id, query.get("reason")):
+                return ("error", 404, "plexsim: no such session")
+            logger.info("TERMINATE %s: %s", session_id, query.get("reason"))
             return ("empty", 200)
-        if route.startswith("/status/sessions"):
-            # A real PMS omits Metadata entirely when nothing is playing rather
-            # than sending an empty list.
+        if route == "/status/sessions/background":
             return self.bare_container(size=0)
+        if route.startswith("/status/sessions"):
+            rows = self.session_rows()
+            page, paged, start, total = self.page_window(rows, query)
+            fields = {"size": len(page)}
+            if paged:
+                fields["totalSize"] = total
+                fields["offset"] = start
+            if page:
+                fields["Metadata"] = page
+            return self.bare_container(**fields)
         if segments[:2] == ["transcode", "sessions"]:
+            if len(segments) > 2:
+                # Measured: an id that is not a live transcode session is a 404,
+                # for GET and DELETE alike. plexsim never opens one, so that is
+                # every id.
+                return ("error", 404, "plexsim: no such transcode session")
             if method == "DELETE":
                 return ("empty", 200)
             return self.bare_container(size=0)
@@ -1339,9 +1365,13 @@ class PlexSim:
             # also the signal that the client's own gate rejected direct play.
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
+        if route == "/video/:/transcode/universal/subtitles":
+            # Measured: a real PMS answers 400 here for an unknown session, where
+            # the rest of the universal/* family answers 404.
+            return ("error", 400, "plexsim: bad request")
         if route.startswith("/video/:/transcode/universal/"):
-            # Includes /subtitles and /session: all of it belongs to a transcode
-            # session, and plexsim never opens one.
+            # /ping, /stop, /session: all of it belongs to a transcode session,
+            # and plexsim never opens one.
             return ("error", 404, "plexsim: no transcoder")
         if route == "/photo/:/transcode":
             # The client asks for artwork through the transcoder, passing the
@@ -1378,7 +1408,7 @@ class PlexSim:
 
         # -- timeline / state --------------------------------------------
         if route in ("/:/timeline", "/:/progress"):
-            return self.timeline(query)
+            return self.timeline(query, headers, address)
         if route == "/:/scrobble":
             return self.set_watched(query, True)
         if route == "/:/unscrobble":
@@ -2661,25 +2691,104 @@ class PlexSim:
             identifier="com.plexapp.plugins.library",
         )
 
-    def timeline(self, query):
-        """`/:/timeline` -- the player's progress report.
+    def timeline(self, query, headers=None, address=None):
+        """`/:/timeline` -- the player's progress report, and what CREATES a session.
 
-        A real PMS answers `{size, playbackState}`, not a bare container: the
-        client reads `playbackState` back to reconcile what it just sent.
+        Two things measured here that plexsim had wrong. First, this endpoint is
+        what puts a row in /status/sessions: a bare timeline with no play queue,
+        no decision and no byte read is enough, and `state=stopped` removes the
+        row. plexsim only stored a viewOffset, so Now Playing was always empty.
+
+        Second, the response is NOT an echo of the state sent. A real PMS answers
+        `{size, playbackState, skipCount, viewCount, viewOffset}` where
+        `playbackState` is `ignore` until the client passes 60 s, then `progress`,
+        and `complete` once it stops at the end -- and `viewOffset` on the
+        response is `-1`, not the offset. An earlier note in docs/findings.md
+        recorded `{size, playbackState}` with the state echoed; that was wrong.
         """
         rating_key = query.get("ratingKey") or ""
         state = query.get("state") or "stopped"
-        if rating_key.isdigit():
-            offset = query.get("time")
-            duration = query.get("duration")
-            self.library.progress(
-                int(rating_key),
-                int(offset) if str(offset).isdigit() else None,
-                state=state,
-                duration=int(duration) if str(duration).isdigit() else None,
-            )
-            logger.info("TIMELINE %s state=%s t=%sms", rating_key, state, offset)
-        return self.bare_container(size=0, playbackState=state)
+        offset = query.get("time")
+        duration = query.get("duration")
+        offset_ms = int(offset) if str(offset).isdigit() else 0
+        total_ms = int(duration) if str(duration).isdigit() else None
+        row = self.catalog.items.get(int(rating_key)) if rating_key.isdigit() else None
+
+        playback_state = "ignore"
+        view_count = 0
+        fields = {}
+        if row is not None:
+            self.library.progress(int(rating_key), offset_ms, state=state,
+                                  duration=total_ms)
+            entry = self.sessions.touch(row, query, headers, address, state,
+                                        offset_ms, total_ms)
+            self.notify_playing(entry, row, state, offset_ms)
+            # Measured thresholds: nothing is reported back under a minute.
+            if offset_ms > 60000:
+                playback_state = "progress"
+                view_count = 1
+            if state == "stopped":
+                watched = total_ms and offset_ms >= total_ms * 0.9
+                if watched:
+                    playback_state = "complete"
+                    view_count = 1
+                self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0)
+            bitrate = ((row.get("Media") or [{}])[0]).get("bitrate") or 0
+            if state != "stopped" and bitrate:
+                # Only ever sent alongside a live session, measured.
+                fields["Bandwidths"] = [{"Bandwidth": [{
+                    "time": 0, "bandwidth": int(round(bitrate * 2.1)),
+                    "resolution": ((row.get("Media") or [{}])[0]
+                                   ).get("videoResolution") or ""}]}]
+            # A terminate is delivered HERE, not in the terminate response.
+            session_id = entry.get("id")
+            killed = self.sessions.termination(session_id)
+            if killed:
+                fields["terminationCode"], fields["terminationText"] = killed
+            logger.info("TIMELINE %s state=%s t=%sms session=%s",
+                        rating_key, state, offset, entry.get("sessionKey"))
+        return self.bare_container(size=1 if row is not None else 0,
+                                   playbackState=playback_state,
+                                   skipCount=0, viewCount=view_count,
+                                   viewOffset=-1, **fields)
+
+    def notify_playing(self, entry, row, state, offset_ms):
+        """The `playing` notification -- a FIFTH type, and the one Now Playing
+        depends on. Measured: one frame per timeline, and the client drops the
+        row from its own state on `stopped` or refetches /status/sessions when it
+        does not already know the sessionKey."""
+        self.notify("playing", "PlaySessionStateNotification", [{
+            "sessionKey": entry.get("sessionKey"),
+            "clientIdentifier": (entry.get("Player") or {}).get("machineIdentifier", ""),
+            "guid": "",
+            "ratingKey": str(row.get("ratingKey")),
+            "url": "",
+            "key": "/library/metadata/%s" % row.get("ratingKey"),
+            "viewOffset": int(offset_ms or 0),
+            "state": state or "playing",
+        }])
+
+    def session_rows(self):
+        """`/status/sessions` -- the item row plus its session blocks."""
+        rows = []
+        for entry in self.sessions.live():
+            row = entry.get("row") or {}
+            item = _full(row)
+            item["sessionKey"] = entry["sessionKey"]
+            item["viewOffset"] = entry["viewOffset"]
+            # The selected flags a real session row carries on its own media.
+            for media in item.get("Media") or []:
+                media["selected"] = True
+                for part in media.get("Part") or []:
+                    part["decision"] = "directplay"
+                    part["selected"] = True
+                    for stream in part.get("Stream") or []:
+                        stream["location"] = "direct"
+            item["User"] = entry["User"]
+            item["Player"] = entry["Player"]
+            item["Session"] = entry["Session"]
+            rows.append(item)
+        return rows
 
     def set_watched(self, query, watched):
         """`/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed.
@@ -3265,7 +3374,7 @@ class PlexSim:
         return self.bare_container(
             size=1, identifier="com.plexapp.system.devices", Device=[device])
 
-    def statistics(self, which):
+    def statistics(self, which, query=None):
         """`/statistics/{bandwidth,media,resources}` -- the Dashboard graphs.
 
         The Device and Account rows are real; the per-interval series is empty
@@ -3274,11 +3383,37 @@ class PlexSim:
         """
         if which not in ("bandwidth", "media", "resources"):
             return ("error", 404, "plexsim: not found")
-        # Measured on a production PMS with no rows for the window: the answer
-        # is a container carrying nothing but `size`. The Device and Account
-        # blocks only appear alongside an actual series, so emitting them with
-        # an empty series would be a shape no real server sends.
-        return self.bare_container(size=0)
+        if which == "resources":
+            # Host CPU and memory sampling. plexsim will not invent a graph, and
+            # the client treats a refusal as "unsupported" and hides it -- which
+            # is the honest answer, and better than the empty graph forever that
+            # a `{size:0}` draws.
+            return ("error", 404, "plexsim: no resource statistics")
+
+        query = query or {}
+        timespan = query.get("timespan") or (6 if which == "bandwidth" else 4)
+        since = query.get("at>") or query.get("at>=")
+        try:
+            since = int(since) if since else None
+        except ValueError:
+            since = None
+        if which == "bandwidth":
+            rows = self.sessions.bandwidth(timespan, since)
+            element = "StatisticsBandwidth"
+        else:
+            rows = self.sessions.media_statistics(timespan)
+            element = "StatisticsMedia"
+        if not rows:
+            # Measured on a real server with no rows for the window: nothing but
+            # `size`. The Device and Account blocks only appear with a series.
+            return self.bare_container(size=0)
+        account = {"id": 1, "key": "/accounts/1", "name": self.owner_username,
+                   "defaultAudioLanguage": "en", "autoSelectAudio": True,
+                   "defaultSubtitleLanguage": "en", "subtitleMode": 2, "thumb": ""}
+        devices = self.sessions.devices()
+        return self.bare_container(size=len(rows) + len(devices) + 1,
+                                   Device=devices, Account=[account],
+                                   **{element: rows})
 
     # Scheduled tasks. A real PMS lists 23; plexsim lists the ones it can
     # actually perform, because the page's Run button is a promise. The root
@@ -3490,6 +3625,25 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return True
 
+    def _count_bytes(self, count):
+        """Every response counts towards the bandwidth statistics.
+
+        Measured: a real PMS's `StatisticsBandwidth` rows include API replies,
+        not only media -- a 4 KB `/status/sessions` answer showed up as its own
+        per-second row. plexsim serves every byte it reports, so these are real
+        numbers rather than a drawn graph.
+        """
+        try:
+            sim = self.server.sim
+            identifier = (self.headers.get("X-Plex-Client-Identifier")
+                          or urllib.parse.parse_qs(
+                              urllib.parse.urlparse(self.path).query
+                          ).get("X-Plex-Client-Identifier", [""])[0])
+            address = self.client_address[0] if self.client_address else None
+            sim.sessions.record_bytes(identifier, sessions_module._private(address), count)
+        except Exception:
+            pass
+
     def _cors_headers(self):
         """The CORS headers a real PMS sends, measured either side of an Origin.
 
@@ -3519,6 +3673,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(payload)
+        self._count_bytes(len(payload))
 
     def _send_container(self, container):
         # `_xml` names the element a container's rows render as where the rows
@@ -3584,7 +3739,8 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(length) if length else b""
 
         try:
-            result = sim.handle(method, self.path, body, self.headers)
+            result = sim.handle(method, self.path, body, self.headers,
+                                self.client_address[0] if self.client_address else None)
         except Exception:
             logger.exception("handler failed for %s %s", method, self.path)
             self._send(500, "text/plain", b"plexsim: internal error")
@@ -3868,6 +4024,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, "text/plain", b"plexsim: no such part")
             return
 
+        # A terminated session's next part read is a 503 on a real PMS -- the
+        # terminate call itself only arms it, and this is where the client
+        # actually stops getting bytes.
+        session_id = query.get("X-Plex-Session-Identifier") or ""
+        if session_id and sim.sessions.is_terminated(session_id):
+            logger.info("PART %s refused: session %s terminated", part_id, session_id)
+            self._send(503, "text/plain", b"plexsim: session terminated")
+            return
+
         # The Download context-menu entry is the same Part read with
         # `download=1`; the only difference a real PMS makes is the disposition
         # header, which is what turns a play into a save.
@@ -3967,6 +4132,9 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionResetError):
                 # A seek or a stop closes the socket mid-body. Normal.
                 logger.debug("PART %s client closed", part_id)
+            finally:
+                if content_length:
+                    self._count_bytes(int(content_length))
 
 
 class Server(ThreadingHTTPServer):

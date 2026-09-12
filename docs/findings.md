@@ -343,7 +343,7 @@ Consequences for plexsim, each one a behaviour change rather than a new field:
 | `/library/sections` carries `title1` and `allowSync` only | carried `identifier` and the media-tag pair |
 | `/library/metadata/{id}` **does** carry `identifier` and the media-tag pair | a note here claimed the opposite -- see below |
 | `/library/collections` bare, `/library/optimize` via GET, `/library/sections/prefs`, `/library/people`, `/sync/*` all answer 4xx | answered 200 with an empty container |
-| `/:/timeline` answers `{size, playbackState}` | answered a bare container |
+| `/:/timeline` answers `{size, playbackState, skipCount, viewCount, viewOffset}` -- and `playbackState` is `ignore`/`progress`/`complete`, never the state sent (corrected below) | answered a bare container |
 | A play-queue response carries `playQueueSourceURI` | omitted it, so a client re-reading the queue lost its source |
 | An Activity is `{uuid, type, cancellable, userID, title, subtitle, progress}` (measured on fun mid-refresh) | — |
 | `download=1` sends `Content-Disposition: attachment; filename="<the media file's name>"` **plus** the RFC 5987 `filename*=UTF-8''…` form | — |
@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **307/307 checks against the new
+`tests/test_ui_surface.py` covers all of it: **329/329 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -666,6 +666,84 @@ request now picks the variant nearest the width asked for
 a fixed width rather than exactly the one requested, which is a deliberate
 difference: the alternative would be shipping a 1280-wide backdrop to fill a
 240-wide tile, which is what it did before.
+
+#### A session is created by the TIMELINE, not by anyone reading bytes
+
+`/status/sessions` answered `{size: 0}` for plexsim's whole life, so Now Playing
+and the Dashboard were permanently empty and the Terminate button had nothing to
+act on -- while the timeline it was already receiving carried everything needed
+to fill them.
+
+Measured on a real PMS, and the first fact is the surprising one: a bare
+`GET /:/timeline?…&state=playing` from curl -- **no play queue, no decision, no
+byte read** -- puts a full row in `/status/sessions` immediately, and a part read
+on its own puts nothing there. `state=stopped` removes the row at once, and with
+no further timelines a row survived 60 s past its last one and was gone by 80 s.
+
+| Block | What it is |
+|---|---|
+| `sessionKey` | a server counter, as a **string** |
+| `viewOffset` | the last timeline's `time` |
+| `Player` | an **echo** of the client's own `X-Plex-*` values, plus the peer address, the last `state`, and `local`/`relayed`/`secure` |
+| `Session` | `id` is the client's `X-Plex-Session-Identifier` -- or its machine identifier when it sends none, as Plex for Apple TV does |
+| `User` | the account |
+
+No `TranscodeSession` is ever emitted, and that is not a gap: the client renders
+"Direct Play" **precisely when a `Session` is present and a `TranscodeSession` is
+not**, which is the truth for a server with no encoder.
+
+`Session.bandwidth` is ~2.1x the media bitrate in kbps (exact on two of three
+measured samples). It is the one field here that is derived rather than known,
+and it is marked as such in the code.
+
+#### The timeline RESPONSE is not an echo, and a fifth notification exists
+
+Two corrections to this file. It recorded `/:/timeline` as answering
+`{size, playbackState}` with the state echoed back. Measured:
+
+```
+no session   {"size":0,"playbackState":"ignore","skipCount":0,"viewCount":0,"viewOffset":-1}
+live         adds "Bandwidths":[{"Bandwidth":[{"time":0,"bandwidth":10486,"resolution":"1080p"}]}]
+past 60 s    "playbackState":"progress","viewCount":1
+stopped, end "playbackState":"complete","viewCount":1
+```
+
+`playbackState` is `ignore` / `progress` / `complete` -- **never** the state sent
+-- and `viewOffset` on the response is `-1`, not the offset.
+
+And the four notification types recorded earlier are **five**: `playing` carries
+`PlaySessionStateNotification` `{sessionKey, clientIdentifier, guid, ratingKey,
+url, key, viewOffset, state}`, one frame per timeline, and it is the one the Now
+Playing panel depends on -- the client drops a row on `stopped` and refetches
+`/status/sessions` when it sees a sessionKey it does not know. Without it, even a
+correct `/status/sessions` would not appear until a reload.
+
+#### Terminate is armed here and lands there
+
+`GET /status/sessions/terminate?sessionId=&reason=` is keyed on **`Session.id`**,
+not on `sessionKey`: no id is a 400, an id that is not live is a 404, a live one
+is an empty 200 -- and the row **stays listed**. The kill is delivered through
+that session's *next* timeline as `terminationCode: 2006` with a
+`terminationText` quoting the reason, and its next part read answers **503**.
+plexsim answered 200 to every terminate and did nothing.
+
+Adjacent, measured: an unknown transcode session is a **404** for both
+`GET` and `DELETE /transcode/sessions/{id}`, while
+`/video/:/transcode/universal/subtitles` is a **400**. plexsim answered 200 and
+404 respectively.
+
+#### The Dashboard's numbers are real, and `timespan` is a bucket size
+
+`timespan` decoded from a real server's own rows: **6 is per second**, then 4
+hour, 3 day, 2 ISO week, 1 month, 0 year, with `at` the bucket start in the
+server's local time. A real PMS counts **every response's bytes**, not only media
+-- a 4 KB `/status/sessions` reply showed up as its own per-second row.
+
+plexsim serves every byte it reports, so it now counts them per (device, lan) and
+rolls them up on read, and `/statistics/media` counts completed plays from the
+timelines. `/statistics/resources` is **refused with a 404** rather than faked:
+the client treats that as "unsupported" and hides the graph, where the `{size:0}`
+plexsim used to send draws an empty graph forever.
 
 #### The filter query language: the operator is part of the KEY
 

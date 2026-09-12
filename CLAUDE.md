@@ -31,6 +31,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `server.py` | The PMS surface. Every route, ~2900 lines. Start here. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
+| `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
@@ -316,8 +317,15 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.
+- **A playback session is created by `/:/timeline`**, not by a play queue, a
+  decision or a byte read — a bare timeline opens the row and `state=stopped`
+  closes it. The timeline's RESPONSE is not an echo: `playbackState` is
+  `ignore`/`progress`/`complete` and `viewOffset` is `-1`.
+- **Terminate is keyed on `Session.id`** and does not end anything by itself: the
+  kill arrives in that session's next timeline as `terminationCode: 2006`, and the
+  next part read is a 503.
 - **The notification socket has to carry frames, not just pings.** A real PMS
-  pushes `activity`, `timeline`, `status` and `progress`; a client that gets none
+  pushes `activity`, `timeline`, `status`, `progress` and `playing`; a client that gets none
   of them polls instead and never sees a change made elsewhere. Server frames are
   **unmasked**, and a malformed one puts the client back in fix 4's failure mode.
 - **A filter's operator is part of the parameter NAME, not the value.** The client
