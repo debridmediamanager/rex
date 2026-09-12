@@ -348,6 +348,28 @@ Consequences for plexsim, each one a behaviour change rather than a new field:
 | An Activity is `{uuid, type, cancellable, userID, title, subtitle, progress}` (measured on fun mid-refresh) | — |
 | `download=1` sends `Content-Disposition: attachment; filename="<the media file's name>"` **plus** the RFC 5987 `filename*=UTF-8''…` form | — |
 | A history row is `{historyKey, key, ratingKey, librarySectionID (a **string**), type, viewedAt, accountID, deviceID}` plus `grandparent*`/`index`/`parentIndex` for an episode (measured on fun, 3879 rows) | — |
+| A section's Recommended tab is **five** shelves, each with `style: "shelf"`, a `context`, a `key` for its own see-all list, and `promoted` on Recently Added | one shelf, so the tab existed and was nearly empty |
+| Every content directory advertises a **third** pivot, `categories`, keyed `/library/sections/{id}/categories` | two pivots, and no such endpoint |
+| A **show** section's `Meta` has four Types (show, season, episode, folder) with their own filters and sorts | the movie template retargeted, so a show grid's filter bar could only talk about movies |
+| A `Feature` list is compared position by position by `harness/scripts/replay.py`; the same set in a different order reads as a dozen value differences | a different order |
+
+#### Tag ids are the whole filter surface
+
+A secondary axis keys its entries by **tag id** (`/all?genre=24`), and TMDB hands
+plexsim tag names with no ids at all. Every `Genre`, `Director`, `Role` and
+`Country` tag therefore gets an id minted from its own text at catalog load
+(`Catalog.number_tags`), which is stable across restarts and rebuilds, plus the
+`filter` string a real row carries.
+
+The interesting part is how the gap hid. Before the ids existed, the axis emitted
+`?genre=None` and the listing compared `str(tag.get("id")) == value` -- `"None"
+== "None"` -- so **every filter matched every row that had any tag at all**. From
+the outside it looked like a working filter, and `By genre lists and filters`
+passed. What caught it was tightening the check to compare the filtered list
+against the rows' own tags: `first opens 1 row(s) of 3 that carry it`. The same
+check then caught the follow-on case, where a row re-identified by a manual match
+came back from the agent with fresh, id-less tags and silently dropped out of
+every filter while its own detail page still looked right.
 
 **A measurement claim in this file did not hold.** The item-detail handler
 carried a comment saying "Verified against fun: an item-detail container is
@@ -421,12 +443,22 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **156/156 checks against the new
-server, 45/137 against the old one** on the same fixture catalog
+`tests/test_ui_surface.py` covers all of it: **184/184 checks against the new
+server, 59/164 against the old one** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
 between the two runs because a check that depends on a playlist the old server
-never created does not run at all.
+never created does not run at all. Without a TMDB key it is 182/182, with the two
+Fix Match checks skipping rather than passing quietly.
+
+`harness/scripts/replay.py` was run against the same server with the recorded
+`reference-walk` corpus. What is left after this work is content (a different
+library: four Blender movies and Firefly against three fixture rows and two
+shows), the deliberate capability differences above, and 13 `404`s for the
+reference's own ratingKeys -- plexsim keeps its key ranges disjoint by type
+(leaves 1000+, shows 20000+, seasons 30000+), so a corpus recorded against a
+server whose keys are 1-8 cannot be replayed at it item for item. Everything
+structural is gone.
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

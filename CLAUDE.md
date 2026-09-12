@@ -45,9 +45,11 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 
 Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
-`section_meta.json`) are captured from a real PMS and loaded relative to
-`server.py`. Keep the layout flat — the code resolves them with
-`dirname(__file__)`.
+`section_meta.json`, `section_meta_show.json`) are captured from a real PMS and
+loaded relative to `server.py`. Keep the layout flat — the code resolves them
+with `dirname(__file__)`. A movie library and a show library have **different**
+`Meta` descriptors, which is why there are two: retargeting one onto the other
+gives the client a grid whose filter bar can only talk about the wrong type.
 
 ## Running it
 
