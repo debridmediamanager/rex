@@ -48,7 +48,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
 `section_meta.json`, `section_meta_show.json`, `item_prefs.json`, `section_prefs_new.json`,
-`system_agents.json`) are captured
+`section_filters.json`, `system_agents.json`) are captured
 from a real PMS and
 loaded relative to `server.py`. Keep the layout flat — the code resolves them
 with `dirname(__file__)`. A movie library and a show library have **different**
@@ -609,6 +609,29 @@ precisely how the Seasons bug survived a fix attempt.
   the default order is the ratingKey, and a row carries `Media` only when typed.
 - **A season with a year of its own carries it**, with its title as `titleSort` and
   no `parentYear`; only a season without one falls back to the show's year.
+
+- **`/filters` is keyed by the asked `type=`, not by the library.** A movie library
+  answers the episode list to `type=4`, types 8/9/10/13/20 have lists, `type=3` is
+  empty and a non-number a 400; `includeAdvanced=1` adds Duplicates to 1 and 4 only.
+  See `section_filters.json`.
+- **The library subsets are not the grid.** On a SHOW library `onDeck`,
+  `recentlyAdded`, `newest` and `recentlyViewed` are EPISODE lists whatever `type=`
+  says, each `title2` names the subset, and `recentlyViewedShows` (top-level rows,
+  viewed first) is the one with `allowSync` false and an unpaged totalSize.
+- **Autocomplete matches a PHRASE at a word start, and reports the first
+  occurrence.** `of s` finds Tears of Steel and `tears steel` does not; the
+  `queryRange` can point at a different word than the one that matched. Exactly one
+  `<field>.query`, and a media or state field is a 500.
+- **By Folder follows `?parent=`**: a folder's subfolders are key/title rows and its
+  files the items themselves, in FILE order. A view that ignores `parent` reopens
+  the same list forever.
+- **The client builds `/grandchildren` itself** from a hub row with `skipChildren`.
+  A show's are its episodes, an episode's itself, a movie's an empty 200.
+- **A paged season list KEEPS "All episodes"** at `Start=0`, outside the page, with
+  its leaf counts; only a one-row page drops it. A paged row is still the light child
+  projection.
+- **`guid=` is the client's "do you have this?" lookup** (`/library/all?type=N&guid=`),
+  a case-sensitive prefix. Ignoring it answers yes for every item.
 
 ## Conventions
 

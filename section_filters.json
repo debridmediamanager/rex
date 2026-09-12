@@ -1,0 +1,715 @@
+{
+ "_provenance": "GET /library/sections/1/filters?type=N[&includeAdvanced=1] on the plexlab reference (1.43.4), 2026-09-13. The list is the TYPE's, identical on a movie and a show library; fun (1.42.2) has the same types, the same Duplicates rule and shorter per-version lists. `{section}` is the library id.",
+ "plain": {
+  "1": [
+   {
+    "filter": "genre",
+    "filterType": "string",
+    "key": "/library/sections/{section}/genre",
+    "title": "Genre",
+    "type": "filter"
+   },
+   {
+    "filter": "year",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/year",
+    "title": "Year",
+    "type": "filter"
+   },
+   {
+    "filter": "decade",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/decade",
+    "title": "Decade",
+    "type": "filter"
+   },
+   {
+    "filter": "contentRating",
+    "filterType": "string",
+    "key": "/library/sections/{section}/contentRating",
+    "title": "Content Rating",
+    "type": "filter"
+   },
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection",
+    "title": "Collection",
+    "type": "filter"
+   },
+   {
+    "filter": "director",
+    "filterType": "string",
+    "key": "/library/sections/{section}/director",
+    "title": "Director",
+    "type": "filter"
+   },
+   {
+    "filter": "actor",
+    "filterType": "string",
+    "key": "/library/sections/{section}/actor",
+    "title": "Actor",
+    "type": "filter"
+   },
+   {
+    "filter": "writer",
+    "filterType": "string",
+    "key": "/library/sections/{section}/writer",
+    "title": "Writer",
+    "type": "filter"
+   },
+   {
+    "filter": "producer",
+    "filterType": "string",
+    "key": "/library/sections/{section}/producer",
+    "title": "Producer",
+    "type": "filter"
+   },
+   {
+    "filter": "country",
+    "filterType": "string",
+    "key": "/library/sections/{section}/country",
+    "title": "Country",
+    "type": "filter"
+   },
+   {
+    "filter": "studio",
+    "filterType": "string",
+    "key": "/library/sections/{section}/studio",
+    "title": "Studio",
+    "type": "filter"
+   },
+   {
+    "filter": "resolution",
+    "filterType": "string",
+    "key": "/library/sections/{section}/resolution",
+    "title": "Resolution",
+    "type": "filter"
+   },
+   {
+    "filter": "hdr",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/hdr",
+    "title": "HDR",
+    "type": "filter"
+   },
+   {
+    "filter": "dovi",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/dovi",
+    "title": "DOVI",
+    "type": "filter"
+   },
+   {
+    "filter": "hdr10plus",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/hdr10plus",
+    "title": "HDR10+",
+    "type": "filter"
+   },
+   {
+    "filter": "atmos",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/atmos",
+    "title": "Atmos",
+    "type": "filter"
+   },
+   {
+    "filter": "unwatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unwatched",
+    "title": "Unwatched",
+    "type": "filter"
+   },
+   {
+    "filter": "inProgress",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/inProgress",
+    "title": "In Progress",
+    "type": "filter"
+   },
+   {
+    "filter": "unmatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unmatched",
+    "title": "Unmatched",
+    "type": "filter"
+   },
+   {
+    "filter": "videoCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/videoCodec",
+    "title": "Video Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "audioCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioCodec",
+    "title": "Audio Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "subtitleCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/subtitleCodec",
+    "title": "Subtitle Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "audioLayout",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioLayout",
+    "title": "Audio Layout",
+    "type": "filter"
+   },
+   {
+    "filter": "audioLanguage",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioLanguage",
+    "title": "Audio Language",
+    "type": "filter"
+   },
+   {
+    "filter": "subtitleLanguage",
+    "filterType": "string",
+    "key": "/library/sections/{section}/subtitleLanguage",
+    "title": "Subtitle Language",
+    "type": "filter"
+   },
+   {
+    "filter": "editionTitle",
+    "filterType": "string",
+    "key": "/library/sections/{section}/editionTitle",
+    "title": "Edition",
+    "type": "filter"
+   },
+   {
+    "filter": "label",
+    "filterType": "string",
+    "key": "/library/sections/{section}/label",
+    "title": "Labels",
+    "type": "filter"
+   },
+   {
+    "filter": "location",
+    "filterType": "string",
+    "key": "/library/sections/{section}/location",
+    "title": "Folder Location",
+    "type": "filter"
+   }
+  ],
+  "2": [
+   {
+    "filter": "genre",
+    "filterType": "string",
+    "key": "/library/sections/{section}/genre?type=2",
+    "title": "Genre",
+    "type": "filter"
+   },
+   {
+    "filter": "year",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/year?type=2",
+    "title": "Year",
+    "type": "filter"
+   },
+   {
+    "filter": "contentRating",
+    "filterType": "string",
+    "key": "/library/sections/{section}/contentRating?type=2",
+    "title": "Content Rating",
+    "type": "filter"
+   },
+   {
+    "filter": "studio",
+    "filterType": "string",
+    "key": "/library/sections/{section}/studio?type=2",
+    "title": "Studio",
+    "type": "filter"
+   },
+   {
+    "filter": "network",
+    "filterType": "string",
+    "key": "/library/sections/{section}/network?type=2",
+    "title": "Network",
+    "type": "filter"
+   },
+   {
+    "filter": "country",
+    "filterType": "string",
+    "key": "/library/sections/{section}/country",
+    "title": "Country",
+    "type": "filter"
+   },
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection?type=2",
+    "title": "Collection",
+    "type": "filter"
+   },
+   {
+    "filter": "director",
+    "filterType": "string",
+    "key": "/library/sections/{section}/director?type=2",
+    "title": "Director",
+    "type": "filter"
+   },
+   {
+    "filter": "actor",
+    "filterType": "string",
+    "key": "/library/sections/{section}/actor?type=2",
+    "title": "Actor",
+    "type": "filter"
+   },
+   {
+    "filter": "writer",
+    "filterType": "string",
+    "key": "/library/sections/{section}/writer?type=2",
+    "title": "Writer",
+    "type": "filter"
+   },
+   {
+    "filter": "producer",
+    "filterType": "string",
+    "key": "/library/sections/{section}/producer?type=2",
+    "title": "Producer",
+    "type": "filter"
+   },
+   {
+    "filter": "unwatchedLeaves",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unwatchedLeaves?type=2",
+    "title": "Unwatched",
+    "type": "filter"
+   },
+   {
+    "filter": "unmatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unmatched",
+    "title": "Unmatched",
+    "type": "filter"
+   },
+   {
+    "filter": "editionTitle",
+    "filterType": "string",
+    "key": "/library/sections/{section}/editionTitle",
+    "title": "Edition",
+    "type": "filter"
+   },
+   {
+    "filter": "label",
+    "filterType": "string",
+    "key": "/library/sections/{section}/label?type=2",
+    "title": "Labels",
+    "type": "filter"
+   }
+  ],
+  "4": [
+   {
+    "filter": "year",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/year?type=4",
+    "title": "Year",
+    "type": "filter"
+   },
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection?type=4",
+    "title": "Collection",
+    "type": "filter"
+   },
+   {
+    "filter": "resolution",
+    "filterType": "string",
+    "key": "/library/sections/{section}/resolution?type=4",
+    "title": "Resolution",
+    "type": "filter"
+   },
+   {
+    "filter": "hdr",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/hdr?type=4",
+    "title": "HDR",
+    "type": "filter"
+   },
+   {
+    "filter": "dovi",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/dovi?type=4",
+    "title": "DOVI",
+    "type": "filter"
+   },
+   {
+    "filter": "hdr10plus",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/hdr10plus?type=4",
+    "title": "HDR10+",
+    "type": "filter"
+   },
+   {
+    "filter": "atmos",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/atmos?type=4",
+    "title": "Atmos",
+    "type": "filter"
+   },
+   {
+    "filter": "unwatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unwatched?type=4",
+    "title": "Unwatched",
+    "type": "filter"
+   },
+   {
+    "filter": "inProgress",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/inProgress?type=4",
+    "title": "In Progress",
+    "type": "filter"
+   },
+   {
+    "filter": "videoCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/videoCodec",
+    "title": "Video Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "audioCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioCodec",
+    "title": "Audio Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "subtitleCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/subtitleCodec",
+    "title": "Subtitle Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "audioLayout",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioLayout",
+    "title": "Audio Layout",
+    "type": "filter"
+   },
+   {
+    "filter": "audioLanguage",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioLanguage",
+    "title": "Audio Language",
+    "type": "filter"
+   },
+   {
+    "filter": "subtitleLanguage",
+    "filterType": "string",
+    "key": "/library/sections/{section}/subtitleLanguage",
+    "title": "Subtitle Language",
+    "type": "filter"
+   },
+   {
+    "filter": "unmatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unmatched",
+    "title": "Unmatched",
+    "type": "filter"
+   },
+   {
+    "filter": "location",
+    "filterType": "string",
+    "key": "/library/sections/{section}/location",
+    "title": "Folder Location",
+    "type": "filter"
+   }
+  ],
+  "8": [
+   {
+    "filter": "genre",
+    "filterType": "string",
+    "key": "/library/sections/{section}/genre?type=8",
+    "title": "Genre",
+    "type": "filter"
+   },
+   {
+    "filter": "mood",
+    "filterType": "string",
+    "key": "/library/sections/{section}/mood?type=8",
+    "title": "Mood",
+    "type": "filter"
+   },
+   {
+    "filter": "style",
+    "filterType": "string",
+    "key": "/library/sections/{section}/style?type=8",
+    "title": "Style",
+    "type": "filter"
+   },
+   {
+    "filter": "country",
+    "filterType": "string",
+    "key": "/library/sections/{section}/country?type=8",
+    "title": "Country",
+    "type": "filter"
+   },
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection?type=8",
+    "title": "Collection",
+    "type": "filter"
+   },
+   {
+    "filter": "unmatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unmatched",
+    "title": "Unmatched",
+    "type": "filter"
+   }
+  ],
+  "9": [
+   {
+    "filter": "genre",
+    "filterType": "string",
+    "key": "/library/sections/{section}/genre?type=9",
+    "title": "Genre",
+    "type": "filter"
+   },
+   {
+    "filter": "mood",
+    "filterType": "string",
+    "key": "/library/sections/{section}/mood?type=9",
+    "title": "Mood",
+    "type": "filter"
+   },
+   {
+    "filter": "style",
+    "filterType": "string",
+    "key": "/library/sections/{section}/style?type=9",
+    "title": "Style",
+    "type": "filter"
+   },
+   {
+    "filter": "year",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/year?type=9",
+    "title": "Year",
+    "type": "filter"
+   },
+   {
+    "filter": "decade",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/decade?type=9",
+    "title": "Decade",
+    "type": "filter"
+   },
+   {
+    "filter": "studio",
+    "filterType": "string",
+    "key": "/library/sections/{section}/studio?type=9",
+    "title": "Record Label",
+    "type": "filter"
+   },
+   {
+    "filter": "format",
+    "filterType": "string",
+    "key": "/library/sections/{section}/format?type=9",
+    "title": "Format",
+    "type": "filter"
+   },
+   {
+    "filter": "subformat",
+    "filterType": "string",
+    "key": "/library/sections/{section}/subformat?type=9",
+    "title": "Type",
+    "type": "filter"
+   },
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection?type=9",
+    "title": "Collection",
+    "type": "filter"
+   },
+   {
+    "filter": "label",
+    "filterType": "string",
+    "key": "/library/sections/{section}/label?type=9",
+    "title": "Labels",
+    "type": "filter"
+   },
+   {
+    "filter": "source",
+    "filterType": "string",
+    "key": "/library/sections/{section}/source?type=9",
+    "title": "Source",
+    "type": "filter"
+   },
+   {
+    "filter": "unmatched",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/unmatched",
+    "title": "Unmatched",
+    "type": "filter"
+   }
+  ],
+  "10": [
+   {
+    "filter": "mood",
+    "filterType": "string",
+    "key": "/library/sections/{section}/mood?type=10",
+    "title": "Mood",
+    "type": "filter"
+   },
+   {
+    "filter": "genre",
+    "filterType": "string",
+    "key": "/library/sections/{section}/genre?type=10",
+    "title": "Genre",
+    "type": "filter"
+   },
+   {
+    "filter": "userRating",
+    "filterType": "string",
+    "key": "/library/sections/{section}/userRating?type=10",
+    "title": "Rating",
+    "type": "filter"
+   },
+   {
+    "filter": "audioCodec",
+    "filterType": "string",
+    "key": "/library/sections/{section}/audioCodec",
+    "title": "Audio Codec",
+    "type": "filter"
+   },
+   {
+    "filter": "location",
+    "filterType": "string",
+    "key": "/library/sections/{section}/location",
+    "title": "Folder Location",
+    "type": "filter"
+   },
+   {
+    "filter": "source",
+    "filterType": "string",
+    "key": "/library/sections/{section}/source?type=10",
+    "title": "Source",
+    "type": "filter"
+   }
+  ],
+  "13": [
+   {
+    "filter": "year",
+    "filterType": "integer",
+    "key": "/library/sections/{section}/year?type=13",
+    "title": "Year",
+    "type": "filter"
+   },
+   {
+    "filter": "make",
+    "filterType": "string",
+    "key": "/library/sections/{section}/make?type=13",
+    "title": "Camera Make",
+    "type": "filter"
+   },
+   {
+    "filter": "model",
+    "filterType": "string",
+    "key": "/library/sections/{section}/model?type=13",
+    "title": "Camera Model",
+    "type": "filter"
+   },
+   {
+    "filter": "aperture",
+    "filterType": "string",
+    "key": "/library/sections/{section}/aperture?type=13",
+    "title": "Aperture",
+    "type": "filter"
+   },
+   {
+    "filter": "exposure",
+    "filterType": "string",
+    "key": "/library/sections/{section}/exposure?type=13",
+    "title": "Shutter Speed",
+    "type": "filter"
+   },
+   {
+    "filter": "iso",
+    "filterType": "string",
+    "key": "/library/sections/{section}/iso?type=13",
+    "title": "ISO",
+    "type": "filter"
+   },
+   {
+    "filter": "lens",
+    "filterType": "string",
+    "key": "/library/sections/{section}/lens?type=13",
+    "title": "Lens",
+    "type": "filter"
+   },
+   {
+    "filter": "tag",
+    "filterType": "string",
+    "key": "/library/sections/{section}/tag?type=13",
+    "title": "Tag",
+    "type": "filter"
+   },
+   {
+    "filter": "trash",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/trash",
+    "title": "Trash",
+    "type": "filter"
+   },
+   {
+    "filter": "location",
+    "filterType": "string",
+    "key": "/library/sections/{section}/location",
+    "title": "Folder Location",
+    "type": "filter"
+   },
+   {
+    "filter": "place",
+    "filterType": "string",
+    "key": "/library/sections/{section}/place?type=13",
+    "title": "Places",
+    "type": "filter"
+   }
+  ],
+  "20": [
+   {
+    "filter": "collection",
+    "filterType": "string",
+    "key": "/library/sections/{section}/collection?type=20",
+    "title": "Collection",
+    "type": "filter"
+   }
+  ]
+ },
+ "advanced": {
+  "1": [
+   {
+    "filter": "duplicate",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/duplicate",
+    "title": "Duplicates",
+    "type": "filter",
+    "advanced": true
+   }
+  ],
+  "4": [
+   {
+    "filter": "duplicate",
+    "filterType": "boolean",
+    "key": "/library/sections/{section}/duplicate?type=4",
+    "title": "Duplicates",
+    "type": "filter",
+    "advanced": true
+   }
+  ]
+ }
+}

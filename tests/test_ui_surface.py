@@ -2538,7 +2538,6 @@ def main():
     for path, wanted, why in (
             ("/library/metadata/%s/posters" % movie, "Photo", "an artwork list"),
             ("/library/metadata/%s/arts" % movie, "Photo", "a background list"),
-            ("/library/sections/%s/folder" % movie_section, "Directory", "a folder list"),
             ("/library/shared/all", "Directory", "the shared library list"),
             ("/library/sections/%s/all" % movie_section, "Video", "a movie listing"),
             ("/playlists", "Playlist", "a playlist list")):
@@ -2547,6 +2546,19 @@ def main():
         check("%s renders as <%s>" % (why, wanted),
               root is not None and wanted in kids,
               "HTTP %s, got %s" % (status, ",".join(sorted(kids)) or "nothing"))
+    # Re-measured in cycle 8: a folder's SUBDIRECTORIES render as <Directory> and its
+    # FILES as the items they hold -- <Video> for Firefly's episodes under `?parent=`.
+    # The cycle-4 check wanted <Directory> for every row, which holds only for a level
+    # made of folders; plexsim's catalogs keep their files flat, so its top level is
+    # the items themselves.
+    status, root = xml_root("/library/sections/%s/folder" % movie_section)
+    folder_rows = get(base, "/library/sections/%s/folder" % movie_section)[1].get("Metadata") or []
+    wanted_tags = sorted("Video" if r.get("type") in ("movie", "episode") else "Directory"
+                         for r in folder_rows)
+    got_tags = sorted(child.tag for child in (root or []))
+    check("a folder list renders folders as <Directory>, files as their items",
+          root is not None and got_tags and got_tags == wanted_tags,
+          "HTTP %s, got %s" % (status, ",".join(got_tags) or "nothing"))
     if show:
         status, root = xml_root("/library/metadata/%s/children" % show)
         kids = {child.tag for child in (root or [])}
@@ -5200,6 +5212,205 @@ def main():
                     or not r.get("librarySectionUUID") or not r.get("librarySectionTitle")]
     check("a recentlyAdded row names its section by id, title and UUID, and is light",
           recent_rows and not wrong_recent, ",".join(str(w) for w in wrong_recent[:3]))
+
+    # -- cycle 8: the paths the web bundle builds that no recorded walk reached ------
+    def paged(path, start, size):
+        """A JSON read with the container paging the client sends as HEADERS."""
+        req = urllib.request.Request(base.rstrip("/") + path, headers={
+            "User-Agent": UA, "Accept": "application/json",
+            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Platform": "Chrome",
+            "X-Plex-Container-Start": str(start), "X-Plex-Container-Size": str(size)})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return response.status, json.loads(response.read()).get("MediaContainer") or {}
+        except urllib.error.HTTPError as error:
+            return error.code, {}
+        except ValueError:
+            return None, {}
+
+    subsets = {}
+    for leaf in ("onDeck", "recentlyAdded", "newest", "recentlyViewed", "recentlyViewedShows"):
+        status_subset, body_subset, _ = get(base, "/library/sections/%s/%s" % (movie_lib, leaf))
+        subsets[leaf] = (status_subset, body_subset.get("title2"), body_subset.get("allowSync"))
+    check("a library's subsets are titled for themselves; only Viewed Shows can't sync",
+          subsets == {"onDeck": (200, "On Deck", True),
+                      "recentlyAdded": (200, "Recently Added", True),
+                      "newest": (200, "Recently Released", True),
+                      "recentlyViewed": (200, "Recently Viewed", True),
+                      "recentlyViewedShows": (200, "Recently Viewed Shows", False)},
+          str(subsets))
+    if show_lib:
+        _, show_added, _ = get(base, "/library/sections/%s/recentlyAdded?type=2" % show_lib)
+        _, show_viewed, _ = get(base, "/library/sections/%s/recentlyViewed" % show_lib)
+        _, show_shows, _ = get(base, "/library/sections/%s/recentlyViewedShows?type=2" % show_lib)
+        added_types = sorted({str(r.get("type")) for r in show_added.get("Metadata") or []})
+        shows_listed = show_shows.get("Metadata") or []
+        check("a show library's recent subsets are EPISODE lists, Viewed Shows its shows",
+              added_types == ["episode"] and show_added.get("viewGroup") == "episode"
+              and show_added.get("mixedParents") and show_added.get("nocache")
+              and show_viewed.get("title2") == "Recently Viewed Episodes"
+              and shows_listed and {r.get("type") for r in shows_listed} == {"show"}
+              and show_shows.get("totalSize") == len(shows_listed) and show_shows.get("offset") == 0,
+              "types %s viewGroup %s, %d show(s) totalSize %s" % (
+                  added_types, show_added.get("viewGroup"), len(shows_listed),
+                  show_shows.get("totalSize")))
+    else:
+        skip("a show library's recent subsets are EPISODE lists, Viewed Shows its shows",
+             "no show library in this catalog")
+
+    movie_rows8 = get(base, "/library/sections/%s/all" % movie_lib)[1].get("Metadata") or []
+    subject8 = next((r for r in movie_rows8 if len(str(r.get("title", "")).split()) >= 3), None)
+    if subject8:
+        title8 = str(subject8["title"])
+        words8 = title8.split()
+        prefix8 = words8[-1][:3]
+        at8 = title8.lower().find(prefix8.lower())
+
+        def completes(spec):
+            return get(base, "/library/sections/%s/autocomplete?type=1&limit=10&%s"
+                       % (movie_lib, spec))
+
+        status_ac, found_ac, _ = completes("title.query=%s" % quote(prefix8))
+        hit8 = next((r for r in found_ac.get("Metadata") or []
+                     if str(r.get("ratingKey")) == str(subject8["ratingKey"])), {})
+        skipping8 = completes("title.query=%s" % quote(words8[0] + " " + words8[-1]))[1]
+        genres8 = detail_of(subject8["ratingKey"]).get("Genre") or []
+        tag_rows = (completes("genre.query=%s" % quote(genres8[0]["tag"][:2]))[1]
+                    .get("Directory") or []) if genres8 else []
+        tag_hit = next((t for t in tag_rows if t.get("tag") == (genres8[0]["tag"] if genres8 else None)), {})
+        refusals = (get(base, "/library/sections/%s/autocomplete?title.query=a" % movie_lib)[0],
+                    completes("title.query=a&genre.query=a")[0], completes("decade.query=1")[0],
+                    completes("bogus.query=1")[0], completes("title.query=a&limit=abc")[0])
+        check("autocomplete finds a phrase at a word's start and says where it matched",
+              status_ac == 200 and hit8.get("title.queryRange") == "%d,%d" % (at8, at8 + len(prefix8) - 1)
+              and not any(str(r.get("ratingKey")) == str(subject8["ratingKey"])
+                          for r in skipping8.get("Metadata") or [])
+              and (not genres8 or (tag_hit.get("tagType") == 1
+                                   and tag_hit.get("filter") == "genre=%s" % genres8[0].get("id")))
+              and refusals == (400, 400, 500, 400, 400),
+              "%r: range %s, tag %s, refusals %s" % (title8, hit8.get("title.queryRange"),
+                                                     tag_hit.get("filter"), refusals))
+    else:
+        skip("autocomplete finds a phrase at a word's start and says where it matched",
+             "no title of three words")
+
+    episode_filters = get(base, "/library/sections/%s/filters?type=4" % movie_lib)[1].get("Directory") or []
+    advanced_filters = (get(base, "/library/sections/%s/filters?includeAdvanced=1" % movie_lib)[1]
+                        .get("Directory") or [])
+    season_filters = get(base, "/library/sections/%s/filters?type=3" % movie_lib)[1].get("Directory")
+    check("/filters is the asked TYPE's list, and includeAdvanced adds Duplicates",
+          len(episode_filters) == 17
+          and episode_filters[0].get("key") == "/library/sections/%s/year?type=4" % movie_lib
+          and not season_filters
+          and get(base, "/library/sections/%s/filters?type=movie" % movie_lib)[0] == 400
+          and advanced_filters and advanced_filters[-1].get("filter") == "duplicate"
+          and advanced_filters[-1].get("advanced") is True,
+          "%d episode filter(s), last advanced %s" % (
+              len(episode_filters), advanced_filters[-1].get("filter") if advanced_filters else None))
+
+    status_top, top_folder, _ = get(base, "/library/sections/%s/folder" % movie_lib)
+    top_rows = top_folder.get("Metadata") or []
+    folders8 = [r for r in top_rows if not r.get("ratingKey")]
+    opened8 = (get(base, folders8[0]["key"])[1].get("Metadata") or []) if folders8 else top_rows
+    check("By Folder opens a folder into what it holds; an unknown parent is empty",
+          status_top == 200 and top_folder.get("allowSync") is True
+          and any(r.get("ratingKey") for r in opened8)
+          and get(base, "/library/sections/%s/folder?parent=987654" % movie_lib)[1].get("size") == 0,
+          "%d top row(s), %d folder(s), opened %d" % (len(top_rows), len(folders8), len(opened8)))
+
+    libraries8 = get(base, "/library/sections?includePreferences=1")[1].get("Directory") or []
+    inline8 = {d.get("key"): [s.get("id") for s in (d.get("Preferences") or {}).get("Setting") or []]
+               for d in libraries8}
+    own8 = {d.get("key"): [s.get("id") for s in get(base, "/library/sections/%s/prefs" % d.get("key"))[1]
+                           .get("Setting") or []] for d in libraries8}
+    episode_sort = next((s for d in libraries8 if d.get("type") == "show"
+                         for s in (d.get("Preferences") or {}).get("Setting") or []
+                         if s.get("id") == "episodeSort"), {})
+    check("includePreferences puts each library's settings on its row",
+          libraries8 and inline8 == own8 and all(inline8.values())
+          and (not show_lib or "-1:Library default" in str(episode_sort.get("enumValues"))),
+          "%s" % {k: len(v) for k, v in inline8.items()})
+
+    if c5_show and c5_season and c5_episode:
+        leaves8 = [r.get("ratingKey") for r in get(base, "/library/metadata/%s/allLeaves" % c5_show)[1]
+                   .get("Metadata") or []]
+        status_gc, grand8, _ = get(base, "/library/metadata/%s/grandchildren" % c5_show)
+        season_grand = [r.get("ratingKey") for r in get(base, "/library/metadata/%s/grandchildren"
+                                                        % c5_season)[1].get("Metadata") or []]
+        season_kids = [r.get("ratingKey") for r in get(base, "/library/metadata/%s/children"
+                                                       % c5_season)[1].get("Metadata") or []]
+        episode_grand = [r.get("ratingKey") for r in get(base, "/library/metadata/%s/grandchildren"
+                                                         % c5_episode)[1].get("Metadata") or []]
+        status_movie_gc, movie_gc, _ = get(base, "/library/metadata/%s/grandchildren" % c5_movie)
+        check("grandchildren: a show's episodes, a season's, an episode itself, a movie none",
+              status_gc == 200 and leaves8
+              and [r.get("ratingKey") for r in grand8.get("Metadata") or []] == leaves8
+              and grand8.get("viewGroup") == "show" and "librarySectionID" not in grand8
+              and season_grand == season_kids and episode_grand == [str(c5_episode)]
+              and status_movie_gc == 200 and not movie_gc.get("Metadata"),
+              "HTTP %s, %d of %d leaves" % (status_gc, len(grand8.get("Metadata") or []), len(leaves8)))
+
+        _, page8 = paged("/library/metadata/%s/children" % c5_show, 0, 20)
+        _, single8 = paged("/library/metadata/%s/children" % c5_show, 0, 1)
+        all_row8 = (page8.get("Directory") or [{}])[0]
+        _, raw8, _ = request(base, "GET", "/library/metadata/%s/children" % c5_show, want_json=False)
+        try:
+            first8 = list(ET.fromstring(raw8))[0].get("title")
+        except (ET.ParseError, IndexError):
+            first8 = None
+        excluded8 = (get(base, "/library/metadata/%s/children?excludeElements=Media" % c5_show)[1]
+                     .get("Metadata") or [])
+        check("the client's paged season list keeps All episodes, counted, first in XML",
+              all_row8.get("title") == "All episodes" and all_row8.get("leafCount") == len(leaves8)
+              and all_row8.get("thumb") == detail_of(c5_show).get("thumb")
+              and page8.get("size") == len(page8.get("Metadata") or []) + 1
+              and not any("librarySectionID" in r for r in page8.get("Metadata") or [])
+              and not single8.get("Directory") and first8 == "All episodes"
+              and excluded8 and all(r.get("mediaCount") == 0 and "Media" not in r for r in excluded8),
+              "All episodes %r leafCount %s, XML first %r" % (all_row8.get("title"),
+                                                           all_row8.get("leafCount"), first8))
+
+        _, pair8, _ = get(base, "/library/metadata/%s,%s" % (c5_show, c5_movie))
+        check("a comma-joined read names the FIRST row's library and can sync",
+              pair8.get("allowSync") is True and str(pair8.get("librarySectionID")) == str(show_lib)
+              and pair8.get("librarySectionUUID"),
+              "allowSync %s section %s" % (pair8.get("allowSync"), pair8.get("librarySectionID")))
+    else:
+        skip("grandchildren: a show's episodes, a season's, an episode itself, a movie none",
+             "no show, season and episode in this catalog")
+
+    guid8 = detail_of(c5_movie).get("guid")
+    same_guid = sorted(str(r.get("ratingKey")) for r in movie_rows8 if r.get("guid") == guid8)
+    by_guid = sorted(str(r.get("ratingKey")) for r in get(base, "/library/all?type=1&guid=%s"
+                                                          % quote(guid8))[1].get("Metadata") or [])
+    no_guid = get(base, "/library/all?type=1&guid=%s"
+                  % quote("plex://movie/000000000000000000000000"))[1].get("Metadata")
+    wrong_type = get(base, "/library/all?type=2&guid=%s" % quote(guid8))[1].get("Metadata")
+    check("guid= finds the rows whose guid it begins, of the asked type, and nothing else",
+          guid8 and by_guid and by_guid == same_guid and not no_guid and not wrong_type,
+          "%s: %d found, %d expected" % (guid8, len(by_guid), len(same_guid)))
+
+    status_pref, one_pref, _ = get(base, "/:/prefs/get?id=FriendlyName")
+    pref8 = (one_pref.get("Setting") or [{}])[0]
+    check("/:/prefs/get reads one setting, unlabelled, and refuses what it cannot find",
+          status_pref == 200 and one_pref.get("size") == 1 and pref8.get("id") == "FriendlyName"
+          and pref8.get("label") == "" and pref8.get("summary") == "" and "enumValues" not in pref8
+          and get(base, "/:/prefs/get")[0] == 400
+          and get(base, "/:/prefs/get?id=NoSuchSetting")[0] == 404,
+          "HTTP %s, %s" % (status_pref, sorted(pref8)))
+
+    small8 = (get(base, "/hubs/sections/%s/manage?metadataItemId=%s" % (movie_lib, c5_movie))[0],
+              get(base, "/neighborhood/devices")[:2],
+              get(base, "/channels/recentlyViewed")[1].get("content"),
+              get(base, "/media/subscriptions/template?guid=x")[0],
+              get(base, "/services/defaultLibraries")[0],
+              get(base, "/devices.xml")[1].get("content"))
+    check("the small reads the bundle builds answer as a real PMS answers them",
+          small8[0] == 400 and small8[1][0] == 200 and small8[1][1].get("size") == 0
+          and small8[2] == "plugins" and small8[3] == 400 and small8[4] == 400
+          and small8[5] == "plugins",
+          str([s if not isinstance(s, tuple) else s[0] for s in small8]))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
