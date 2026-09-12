@@ -160,6 +160,12 @@ except OSError:
 # What the Edit Library dialog is allowed to name. Measured: a real PMS answers
 # 400 for an agent, scanner or language it does not have, where plexsim accepted
 # anything with a 200 -- so a typo in the dialog looked saved and silently was not.
+# The `/:/resources/*` names plexsim's own containers reference. A real PMS 404s a
+# name it does not have; plexsim generated a tile for anything.
+KNOWN_RESOURCES = {"movie.png", "show.png", "artist.png", "photo.png",
+                   "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg",
+                   "library-art.png", "playlist.png"}
+
 KNOWN_AGENTS = {"tv.plex.agents.movie", "tv.plex.agents.series", "tv.plex.agents.none",
                 "com.plexapp.agents.none"}
 KNOWN_SCANNERS = {"Plex Movie", "Plex Movie Scanner", "Plex Video Files Scanner",
@@ -1374,6 +1380,13 @@ class PlexSim:
             }
 
         if route == "/media/providers":
+            # Measured: a real PMS routes per (method, path) and NOT uniformly --
+            # /identity and /hubs answer any verb, while these three refuse, each
+            # with its own status. plexsim answered the GET body to every verb.
+            if method == "POST":
+                return ("error", 400, "plexsim: bad request")
+            if method in ("PUT", "DELETE"):
+                return ("error", 404, "plexsim: not found")
             return self.media_providers()
 
         # The claim flow: a client hands the server a short-lived claim token
@@ -1513,6 +1526,10 @@ class PlexSim:
         if route == "/status/sessions/background":
             return self.bare_container(size=0)
         if route.startswith("/status/sessions"):
+            if method in ("POST", "PUT", "DELETE"):
+                # Measured: all three are 404 here. plexsim answered the session
+                # listing to any verb.
+                return ("error", 404, "plexsim: not found")
             rows = self.session_rows()
             page, paged, start, total = self.page_window(rows, query)
             fields = {"size": len(page)}
@@ -1546,6 +1563,13 @@ class PlexSim:
                     # Measured: 403 here, not the 401 every other path answers.
                     return ("error", 403, "plexsim: forbidden")
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
+        if route == "/channels":
+            # Measured 200 on both servers with exactly these two rows. The channel
+            # APPSTORE paths do 404 (which CLAUDE.md already records) -- bare
+            # /channels does not, and plexsim 404'd it.
+            return self.bare_container(size=2, Directory=[
+                {"key": "all", "title": "All"},
+                {"key": "recentlyViewed", "title": "Recently Viewed"}])
         if route == "/media/grabbers":
             # Measured: four grabbers, verbatim. plexsim answered an empty
             # container, which tells the Live TV setup page the server has no
@@ -1634,6 +1658,9 @@ class PlexSim:
 
         # -- library -----------------------------------------------------
         if route == "/library/sections":
+            if method in ("PUT", "DELETE"):
+                # Measured: 404 for both, where a POST with a bad form is a 400.
+                return ("error", 404, "plexsim: not found")
             if method == "POST":
                 return self.create_section(query)
             rows = [self.section_directory(s) for s in catalog.sections]
@@ -1861,6 +1888,22 @@ class PlexSim:
             # and plexsim never opens one.
             return ("error", 404, "plexsim: no transcoder")
         if route == "/photo/:/transcode":
+            # Measured: both dimensions are MANDATORY and a real PMS 400s the request
+            # without them, 400s a non-numeric one, and 404s a `url` naming a row it
+            # does not have. plexsim answered a 200 grey tile to all four, so a client
+            # that would have drawn its own title-card placeholder drew -- and could
+            # cache -- plexsim's instead.
+            if not query.get("url"):
+                return ("error", 400, "plexsim: bad request")
+            for name in ("width", "height"):
+                if not query.get(name):
+                    return ("error", 400, "plexsim: bad request")
+                if not str(query[name]).lstrip("-").isdigit():
+                    return ("error", 400, "plexsim: bad request")
+            inner = urllib.parse.urlparse(urllib.parse.unquote(query["url"])).path
+            owner = re.match(r"^/library/metadata/(\d+)/", inner)
+            if owner and int(owner.group(1)) not in catalog.items:
+                return ("error", 404, "plexsim: no such item")
             # The client asks for artwork through the transcoder, passing the
             # real path in `url`. Resolve that to the row's TMDB image when
             # there is one; only fall back to a generated tile when there is not.
@@ -1869,6 +1912,10 @@ class PlexSim:
                 return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)
         if route.startswith("/:/resources/"):
+            # Measured: a real PMS 404s a resource name it does not have -- plexsim
+            # generated a tile for ANY name, so a typo'd art path silently drew.
+            if route.split("/")[-1] not in KNOWN_RESOURCES:
+                return ("error", 404, "plexsim: not found")
             return ("png", query)
         # A real PMS serves the official Plex Web client from /web, and that
         # client talks to the server it was loaded FROM -- window.location's
@@ -1912,6 +1959,15 @@ class PlexSim:
             return self.bare_container(size=0)
         if segments[:1] == ["sync"]:
             return ("error", 404, "plexsim: no sync")
+
+        if len(segments) == 1 and method in ("GET", "HEAD"):
+            # Measured on both reference servers: an unknown SINGLE-segment path
+            # falls into the legacy plug-in dispatcher and answers a 200 with
+            # `content="plugins"`, where a multi-segment one 404s. `/prefs`,
+            # `/settings`, `/login` and `/logout` -- all four named in the client
+            # bundle -- are 200 there and were 404 here.
+            logger.info("PLUGIN PATH %s %s -- legacy dispatcher", method, route)
+            return self.bare_container(size=0, content="plugins")
 
         with self.lock:
             self.unknown.append("%s %s" % (method, route))
@@ -5690,7 +5746,7 @@ class PlexSim:
         return None
 
     def resolve_part(self, part_id):
-        """part id -> (restricted debrid link, container, file name).
+        """part id -> (restricted debrid link, container, file name, the Part).
 
         The file name is for the Download entry's `Content-Disposition`: a real
         PMS names the saved file after the media file, not after the URL's last
@@ -5701,8 +5757,11 @@ class PlexSim:
                 for part in media.get("Part", []):
                     if str(part.get("id")) == str(part_id):
                         name = str(part.get("file") or "").rsplit("/", 1)[-1]
-                        return row.get("_debrid"), part.get("container"), name
-        return None, None, None
+                        # The part itself comes back too, for the ETag and
+                        # Last-Modified a real PMS puts on every byte response.
+                        return (row.get("_debrid"), part.get("container"), name,
+                                dict(part, addedAt=row.get("addedAt")))
+        return None, None, None, None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -6271,7 +6330,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         sim = self.server.sim
         part_id = segments[2] if len(segments) > 2 else ""
-        link, container, part_name = sim.resolve_part(part_id)
+        link, container, part_name, part_row = sim.resolve_part(part_id)
         if not link:
             self._send(404, "text/plain", b"plexsim: no such part")
             return
@@ -6307,9 +6366,11 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         self._proxy(upstream_url, container, part_id, method,
-                    download=filename if download else None)
+                    download=filename if download else None, part=part_row)
 
-    def _proxy(self, upstream_url, container, part_id, method, download=None):
+    def _proxy(self, upstream_url, container, part_id, method, download=None,
+               part=None):
+        import hashlib
         request_range = self.headers.get("Range")
         headers = {"User-Agent": UPSTREAM_UA}
         if request_range:
@@ -6345,6 +6406,20 @@ class Handler(BaseHTTPRequestHandler):
             # container's real type is substituted here.
             self.send_header("Content-Type", CONTENT_TYPES.get(container, "video/mp4"))
             self.send_header("Accept-Ranges", "bytes")
+            # Measured: every byte response from a real PMS carries BOTH validators,
+            # on the 200 and on every 206 -- its `ETag` is the part's own file hash
+            # and `Last-Modified` is the file's mtime. plexsim sent neither, so a
+            # client had nothing to revalidate against. plexsim owns no file to hash,
+            # so the ETag is a digest of what identifies these bytes (part id,
+            # version, size) -- an opaque validator is exactly what the header is.
+            if part is not None:
+                stamp = part.get("addedAt") or part.get("updatedAt") or 0
+                seed = "%s/%s/%s" % (part_id, stamp, part.get("size") or 0)
+                self.send_header("ETag", '"%s"' % hashlib.sha1(seed.encode()).hexdigest())
+                if stamp:
+                    self.send_header(
+                        "Last-Modified",
+                        time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(stamp)))
             if download:
                 # Both forms, the way a real PMS sends them: the plain one for
                 # old clients and the RFC 5987 one for names that are not ASCII.
