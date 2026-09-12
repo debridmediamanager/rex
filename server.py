@@ -765,6 +765,10 @@ class PlexSim:
         # Download Logs button, which is only drawn when the server advertises
         # `diagnostics` containing "logs".
         self.log_lines = []
+        # Channels that opened with `filters=log`. Kept apart from `sockets` because
+        # a log frame must reach ONLY those: measured, a socket with no filters gets
+        # everything EXCEPT log, and one with `filters=log` gets nothing else.
+        self.log_sinks = []
         # TMDB, when a key is configured: Fix Match searches it live. Without
         # one the match dialog honestly reports no candidates rather than
         # offering a list plexsim cannot act on.
@@ -783,14 +787,63 @@ class PlexSim:
 
     # -- notifications ---------------------------------------------------
 
-    def add_socket(self, sink):
+    def log_sink(self, sink):
+        """Register a channel that asked for `filters=log`."""
         with self.lock:
-            self.sockets.append(sink)
+            self.log_sinks.append(sink)
+
+    def drop_log_sink(self, sink):
+        with self.lock:
+            self.log_sinks = [s for s in self.log_sinks if s is not sink]
+
+    def push_log(self, record):
+        """One `LogSentNotification`, in the shape the reference sends.
+
+        Measured with `?filters=log`, which is what the client's own
+        MediaServerLogEventConnection passes: `{"level": 3, "thread": "...",
+        "time": "Sep 12, 2026 18:19:15.428", "message": "..."}`. An earlier finding
+        said this channel carries no log frames on a real server -- that measurement
+        was taken without the parameter, which is the exact trap this project's one
+        rule is about.
+        """
+        with self.lock:
+            sinks = list(self.log_sinks)
+        if not sinks:
+            return
+        try:
+            row = {
+                "level": {"DEBUG": 4, "INFO": 3, "WARNING": 2,
+                          "ERROR": 1, "CRITICAL": 0}.get(record.levelname, 3),
+                "thread": str(record.thread),
+                "time": time.strftime("%b %d, %Y %H:%M:%S",
+                                      time.localtime(record.created))
+                        + ".%03d" % (record.msecs,),
+                "message": record.getMessage(),
+            }
+        except Exception:
+            return
+        for sink in sinks:
+            try:
+                sink("log", "LogSentNotification", [row])
+            except Exception:
+                self.drop_log_sink(sink)
+
+    def add_socket(self, sink, filters=None):
+        """Register a channel. `filters` is the client's `filters=` parameter.
+
+        Measured by running two sockets side by side: `filters=` is an exact
+        whitelist of type names, and `log` is OPT-IN ONLY -- a socket with no
+        filters receives everything EXCEPT log frames, and `?filters=log` receives
+        386 log frames and nothing else. plexsim fanned every event to every sink,
+        so a socket opened for the Console's log pane got playing and activity
+        frames and never a log line.
+        """
+        with self.lock:
+            self.sockets.append((sink, frozenset(filters) if filters else None))
 
     def drop_socket(self, sink):
         with self.lock:
-            if sink in self.sockets:
-                self.sockets.remove(sink)
+            self.sockets = [(s, f) for s, f in self.sockets if s is not sink]
 
     def notify(self, kind, element, rows):
         """Fan one event out to every open channel, in that channel's own format.
@@ -807,7 +860,13 @@ class PlexSim:
         """
         with self.lock:
             sinks = list(self.sockets)
-        for sink in sinks:
+        for sink, filters in sinks:
+            if filters is None:
+                # No `filters=`: everything except `log`, which is opt-in only.
+                if kind == "log":
+                    continue
+            elif kind not in filters:
+                continue
             try:
                 sink(kind, element, rows)
             except Exception:
@@ -834,20 +893,77 @@ class PlexSim:
     # The `state` values /:/timeline accepts. Measured: anything else is a 400.
     TIMELINE_STATES = {"playing", "paused", "buffering", "stopped"}
 
+    # The timeline's state alphabet, read off the reference and pinned against the
+    # client's own reducer (`main-*.js` module 35623, constants `lm = 5`, `cm = 9`):
+    #
+    #   0  created        3  queued / processing / loading an edit
+    #   4  loading        5  DONE -- and it carries NO metadataState
+    #   9  deleted
+    #
+    # `5` is what dispatches `metadataProcessed`, which is what makes the client
+    # REFETCH the row. And the reducer deletes its entry only when `metadataState` is
+    # absent, so a state that always carries one latches every `!!metadataState`
+    # gate: the spinner, and the Refresh/Match menu entries.
+    TIMELINE_CREATED = 0
+    TIMELINE_QUEUED = 3
+    TIMELINE_LOADING = 4
+    TIMELINE_DONE = 5
+    TIMELINE_DELETED = 9
+
     def notify_timeline(self, row, state=3, metadata_state="queued"):
         """A TimelineEntry for one row, with the field set measured off a real
         refresh: identifier, sectionID and itemID as STRINGS, the numeric type,
-        the title, `state` and `metadataState`."""
-        self.notify("timeline", "TimelineEntry", [{
+        the title, `state` and `metadataState`.
+
+        `metadata_state=None` omits the field, which is what state 5 does.
+        """
+        entry = {
             "identifier": "com.plexapp.plugins.library",
             "sectionID": str(row.get("librarySectionID", "")),
             "itemID": str(row.get("ratingKey", "")),
             "type": self.TIMELINE_TYPES.get(row.get("type"), 1),
             "title": row.get("title") or "",
             "state": state,
-            "metadataState": metadata_state,
             "updatedAt": int(time.time()),
-        }])
+        }
+        if metadata_state is not None:
+            entry["metadataState"] = metadata_state
+        self.notify("timeline", "TimelineEntry", [entry])
+
+    def notify_refreshed(self, row):
+        """The seven-frame sequence a real PMS pushes for a metadata refresh.
+
+        Measured verbatim off the reference's eventsource: timeline(3, queued),
+        activity started, activity updated, timeline(3, processing),
+        timeline(4, loading), activity ended, timeline(5, no metadataState).
+
+        plexsim pushed the first activity frame and ONE timeline(3, queued) and
+        stopped. So state 5 never arrived, the client never dispatched
+        `metadataProcessed` and never refetched the row it had just refreshed --
+        Refresh Metadata did nothing on screen until a reload -- and because
+        `metadataState` was never cleared, the reducer entry was never deleted and
+        every `!!metadataState` gate stayed latched.
+        """
+        self.notify_timeline(row, self.TIMELINE_QUEUED, "queued")
+        activity = self.library.add_activity(row.get("title") or "", progress=-1)
+        self.notify_timeline(row, self.TIMELINE_QUEUED, "processing")
+        self.notify_timeline(row, self.TIMELINE_LOADING, "loading")
+        self.library.finish_activity(activity)
+        self.notify_timeline(row, self.TIMELINE_DONE, None)
+
+    def notify_edited(self, row):
+        """The two frames an EDIT pushes: loading, then done. plexsim pushed none,
+        so an edit made here was invisible to every other open client."""
+        self.notify_timeline(row, self.TIMELINE_QUEUED, "loading")
+        self.notify_timeline(row, self.TIMELINE_DONE, None)
+
+    def notify_created(self, row):
+        self.notify_timeline(row, self.TIMELINE_CREATED, "created")
+
+    def notify_deleted(self, row):
+        """state 9, which is what dispatches the client's own `deleted` action --
+        without it a row deleted through the API stays on screen everywhere else."""
+        self.notify_timeline(row, self.TIMELINE_DELETED, "deleted")
 
     # -- helpers ---------------------------------------------------------
 
@@ -2134,8 +2250,10 @@ class PlexSim:
             for row in rows:
                 if query.get("force") == "1":
                     self.library.refresh(row)
+                    self.notify_refreshed(row)
                 else:
-                    self.library.add_activity(row.get("title") or "")
+                    self.library.finish_activity(
+                        self.library.add_activity(row.get("title") or "", progress=-1))
             self.refreshing.discard(str(section_id))
             logger.info("SECTION refresh %s force=%s -> %d row(s)",
                         section_id, query.get("force") == "1", len(rows))
@@ -3019,7 +3137,7 @@ class PlexSim:
             for row in rows:
                 self.library.edit(row, query, pairs=query.get("_pairs"),
                                   bare_fields=bare_fields)
-                self.notify_timeline(row, state=5, metadata_state="edited")
+                self.notify_edited(row)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
@@ -3129,6 +3247,7 @@ class PlexSim:
                     # real PMS answers 400 when there are none to delete.
                     return ("error", 400, "plexsim: no optimized versions")
                 self.library.delete(rating_key)
+                self.notify_deleted(row)
                 logger.info("DELETE %s (%s)", rating_key, row.get("title"))
                 return ("empty", 200)
             section = self.catalog.section(row["librarySectionID"]) or {}
@@ -4542,9 +4661,11 @@ class PlexSim:
 
         if action == "refresh":
             self.library.refresh(row)
-            # A real PMS pushes a TimelineEntry for the row it just refreshed;
-            # without it the client keeps its stale poster until a reload.
-            self.notify_timeline(row)
+            # The FULL seven-frame sequence a real PMS pushes. One timeline(3) is
+            # not enough: without state 5 the client never refetches the row it just
+            # refreshed, and without the final frame clearing `metadataState` its
+            # spinner never stops.
+            self.notify_refreshed(row)
             logger.info("REFRESH %s (%s)", row["ratingKey"], row.get("title"))
         elif action == "analyze":
             # The catalog rows already carry ffprobe-derived Media attributes;
@@ -4791,7 +4912,11 @@ class PlexSim:
 
         if len(segments) == 3:
             if method == "DELETE":
+                title = collection.get("title") or ""
                 self.library.delete_collection(segments[2])
+                self.notify_deleted({"ratingKey": segments[2], "type": "collection",
+                                     "librarySectionID": collection["librarySectionID"],
+                                     "title": title})
                 return ("empty", 200)
             if method == "PUT":
                 self.library.edit_collection(
@@ -4867,6 +4992,9 @@ class PlexSim:
                     smart=query.get("smart") == "1", uri=query.get("uri"))
                 logger.info("PLAYLIST create %s smart=%s (%d item(s))",
                             playlist["title"], playlist["smart"], len(rows))
+                self.notify_created({"ratingKey": playlist["ratingKey"],
+                                     "librarySectionID": -1, "type": "playlist",
+                                     "title": ""})
                 # Measured: the CREATE response omits `content` the same way the
                 # list does; only /playlists/{id} carries it.
                 return self.bare_container(
@@ -4885,7 +5013,12 @@ class PlexSim:
 
         if len(segments) == 2:
             if method == "DELETE":
+                title = playlist.get("title") or ""
                 self.library.delete_playlist(segments[1])
+                # state 9 is what dispatches the client's own `deleted` action --
+                # without it the row stays on screen in every other open client.
+                self.notify_deleted({"ratingKey": segments[1], "librarySectionID": -1,
+                                     "type": "playlist", "title": title})
                 # Measured: a real PMS answers the playlist delete with 204,
                 # not the 200 it uses for a collection delete.
                 return ("empty", 204)
@@ -5351,7 +5484,8 @@ class PlexSim:
         if name == "RefreshLibraries":
             for section in self.catalog.sections:
                 for row in self.catalog.section_items(section["key"]):
-                    self.library.add_activity(row.get("title") or "")
+                    self.library.finish_activity(
+                        self.library.add_activity(row.get("title") or "", progress=-1))
             # The message a real PMS pushes when this task finishes, verbatim.
             self.notify_progress("The butler refreshed all libraries.")
         logger.info("BUTLER ran %s", name)
@@ -5977,16 +6111,23 @@ class Handler(BaseHTTPRequestHandler):
         ).decode()
 
         self.close_connection = True
-        self.wfile.write(
-            (
-                "HTTP/1.1 101 Switching Protocols\r\n"
-                "Upgrade: websocket\r\n"
-                "Connection: Upgrade\r\n"
-                "Sec-WebSocket-Accept: %s\r\n\r\n" % accept
-            ).encode()
-        )
+        # Measured: the reference's 101 carries the protocol version, the CORS pair
+        # and `Cache-Control` alongside the handshake. plexsim sent the three
+        # handshake headers alone.
+        upgrade = ["HTTP/1.1 101 Switching Protocols",
+                   "X-Plex-Protocol: 1.0",
+                   "Upgrade: websocket",
+                   "Connection: Upgrade",
+                   "Sec-WebSocket-Accept: %s" % accept,
+                   "Cache-Control: no-cache"]
+        for name, value in self._cors_headers():
+            upgrade.append("%s: %s" % (name, value))
+        self.wfile.write(("\r\n".join(upgrade) + "\r\n\r\n").encode())
         self.wfile.flush()
-        logger.info("websocket event channel opened")
+        filters = [f for f in (urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
+        ).split(",") if f]
+        logger.info("websocket event channel opened filters=%s", filters or "all")
 
         sim = self.server.sim
         lock = threading.Lock()
@@ -6000,21 +6141,68 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(self._ws_frame(payload))
                 self.wfile.flush()
 
-        sim.add_socket(sink)
+        sim.add_socket(sink, filters)
+        if "log" in filters:
+            # The Console's log pane. An earlier finding recorded that this channel
+            # carries no log frames on a real server either -- which was a
+            # measurement taken WITHOUT the `filters=log` the client actually sends.
+            # With it, the reference pushes log lines continuously (386 in 14 s).
+            sim.log_sink(sink)
         # Keep it alive with server-side pings. A silent socket is eventually
-        # reaped by proxies, and Cloudflare sits in front of this one.
+        # reaped by proxies, and Cloudflare sits in front of this one. Measured: the
+        # reference pings every 10 s with a ONE-byte payload, not every 20 empty.
         deadline = time.time() + 3600
         try:
             while time.time() < deadline:
-                time.sleep(20)
+                # A client CLOSE has to be answered, or the browser sits in CLOSING
+                # until its own timeout and the sink is never reaped. Poll for it
+                # between pings rather than blocking on the socket.
+                if self._client_went_away():
+                    break
                 with lock:
-                    # opcode 0x9 = ping, FIN set, no payload.
-                    self.wfile.write(struct.pack("!BB", 0x89, 0x00))
+                    self.wfile.write(struct.pack("!BB", 0x89, 0x01) + b"?")
                     self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             logger.debug("websocket event channel closed by client")
         finally:
             sim.drop_socket(sink)
+            sim.drop_log_sink(sink)
+
+    def _client_went_away(self, seconds=10):
+        """Wait out one ping interval, answering a CLOSE frame if one arrives.
+
+        plexsim never read the socket at all, so a browser's `ws.close()` hung in
+        CLOSING until its own timeout, plexsim never learnt the peer had gone, and
+        the sink stayed registered with its thread alive to the one-hour deadline --
+        never-reaped sinks accumulating for the life of the process.
+        """
+        import select
+        ready, _, _ = select.select([self.connection], [], [], seconds)
+        if not ready:
+            return False
+        try:
+            head = self.connection.recv(2)
+        except OSError:
+            return True
+        if not head:
+            return True
+        opcode = head[0] & 0x0F
+        length = head[1] & 0x7F
+        masked = bool(head[1] & 0x80)
+        # Drain the rest of the frame so the next read starts on a boundary.
+        try:
+            self.connection.recv(length + (4 if masked else 0))
+        except OSError:
+            return True
+        if opcode == 0x8:
+            # Echo the close with status 1000, which is what the reference sends.
+            try:
+                self.connection.sendall(struct.pack("!BBH", 0x88, 0x02, 1000))
+            except OSError:
+                pass
+            logger.info("websocket closed by client")
+            return True
+        return False
 
     def _serve_eventsource(self):
         """Server-Sent Events channel the web app subscribes to on connect.
@@ -6026,15 +6214,24 @@ class Handler(BaseHTTPRequestHandler):
         NotificationContainer and no size around it.
         """
         self.send_response(200)
+        self.send_header("X-Plex-Protocol", "1.0")
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # This handler bypassed _cors_headers() and hardcoded `*` -- the exact bug
+        # this project already found and fixed for _send(). A wildcard is invalid on
+        # a credentialed request, and the reference sends NO CORS headers at all
+        # without an Origin and the echoed origin with one.
+        for name, value in self._cors_headers():
+            self.send_header(name, value)
         self.send_header("Connection", "close")
         self.close_connection = True
         self.end_headers()
 
         sim = self.server.sim
         lock = threading.Lock()
+        filters = [f for f in (urllib.parse.parse_qs(
+            urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
+        ).split(",") if f]
 
         def sink(kind, element, rows):
             frames = "".join(
@@ -6044,18 +6241,23 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(frames.encode())
                 self.wfile.flush()
 
-        sim.add_socket(sink)
+        sim.add_socket(sink, filters)
+        if "log" in filters:
+            sim.log_sink(sink)
         deadline = time.time() + 300
         try:
             while time.time() < deadline:
                 with lock:
-                    self.wfile.write(b": ping\n\n")
+                    # Measured: a real named SSE event every 10 s, not a comment
+                    # every 15 -- a comment is invisible to an EventSource listener.
+                    self.wfile.write(b"event: ping\ndata: {}\n\n")
                     self.wfile.flush()
-                time.sleep(15)
+                time.sleep(10)
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
         finally:
             sim.drop_socket(sink)
+            sim.drop_log_sink(sink)
 
     # -- part streaming --------------------------------------------------
 
@@ -6312,6 +6514,9 @@ def main():
                 sim.log_lines.append(line)
                 if len(sim.log_lines) > 5000:
                     del sim.log_lines[:1000]
+            # Push it to any channel that opened with `filters=log` -- the Console's
+            # log pane, which is the only subscriber a real PMS feeds these to.
+            sim.push_log(record)
 
     logger.addHandler(_Capture())
 

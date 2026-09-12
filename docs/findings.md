@@ -1638,6 +1638,90 @@ X-Plex-Content-Compressed-Length: 3069
 3.4x on a five-row grid, 5.4x on plexsim's own. Both servers always use
 `Content-Length` and never chunk, even at 4.9 MB -- which plexsim already matched.
 
+#### The notification LIFECYCLE, which is what makes a client refetch
+
+plexsim pushed the FIRST frame of every sequence and stopped. That is enough for a
+client to know something started and never enough for it to act.
+
+A refresh on the reference pushes **seven** frames, captured verbatim off its
+eventsource:
+
+```
+timeline  state 3  metadataState "queued"
+activity  started   progress -1
+activity  updated   progress 49
+timeline  state 3  metadataState "processing"
+timeline  state 4  metadataState "loading"
+activity  ended     progress 100
+timeline  state 5   -- and NO metadataState
+```
+
+The state alphabet, pinned against the client's own reducer (`main-*.js` module
+35623, constants `lm = 5` and `cm = 9`): **0 created, 3 queued/processing, 4
+loading, 5 done, 9 deleted**.
+
+Two of those frames are load-bearing, and plexsim sent neither:
+
+- **`state: 5` dispatches `metadataProcessed`, which is what makes the client
+  REFETCH the row.** Without it Refresh Metadata does nothing on screen until a
+  reload.
+- **The reducer deletes its entry only when `metadataState` is ABSENT**
+  (`t.metadataState||t.mediaState ? … : delete e[t.sourceURI]`), and plexsim's one
+  frame always carried `"queued"` -- so every gate spelled `!!metadataState` stayed
+  latched: the spinner, and the Refresh and Match menu entries.
+
+And the activity never ended. `add_activity` fired `started`; only
+`cancel_activity` ever fired `ended`. So an activity nothing cancelled sat in
+`/activities` for the life of the process at `progress: 0` -- where the reference's
+started frame is `progress: -1` and it reaches `ended` at 100.
+
+An **edit** pushes two frames (`state 3, "loading"` then `state 5`); plexsim pushed
+none, so an edit made through the API was invisible to every other open client. A
+**create** pushes `state 0, "created"` and a **delete** pushes `state 9,
+"deleted"` -- and `9` is what dispatches the client's own `deleted` action, so
+without it a row deleted through plexsim stayed on screen everywhere else.
+
+#### `filters=` is a whitelist, and `log` is opt-in — correcting a recorded finding
+
+This file used to say: *"The Console's live log stream is not fed by that socket. 75
+seconds against a busy reference pushed zero log frames, and the client opens no
+second socket and passes no filter."*
+
+Both halves were wrong, and for the reason this project's one rule exists: the
+measurement was taken **without the parameter the client sends**. The client does
+open a second socket and does pass a filter -- `chunk-1439-*.js`,
+`MediaServerLogEventConnection`:
+
+```js
+url(){ … this.server.resolveUrl("/:/websockets/notifications",
+        {params:{filters:"log"}, …}) }
+```
+
+With it, the reference pushes log frames continuously -- **386 in 14 seconds**:
+
+```json
+{"NotificationContainer":{"type":"log","size":1,"LogSentNotification":[
+  {"level":3,"thread":"134304658963256","time":"Sep 12, 2026 18:19:15.428",
+   "message":"Request: [100.85.55.10:55607 (WAN)] GET /:/websockets/notifications?filters=log …"}]}}
+```
+
+`filters` is an exact whitelist of type names, pinned by running two sockets side by
+side: `?filters=log` received 386 log frames and **zero** of anything else, while a
+socket with no filters received `playing` and `timeline` and **zero** log frames. So
+**`log` is opt-in only and everything else is opt-out only.** plexsim fanned every
+event to every sink, so the socket opened for the Console's log pane got playing and
+activity frames and never a log line -- and the pane was empty.
+
+#### The channels' own plumbing
+
+| | Reference | plexsim before |
+|---|---|---|
+| websocket keepalive | protocol ping every **10 s** with a ONE-byte payload | every 20 s, empty |
+| eventsource keepalive | `event: ping\ndata: {}` -- a real named event -- every **10 s** | `: ping`, an SSE COMMENT (invisible to an EventSource listener), every 15 s |
+| a client CLOSE frame | answered with a close, status 1000 | never read, so a browser's `ws.close()` hung in CLOSING until its own timeout and the sink was never reaped |
+| the 101 upgrade | carries `X-Plex-Protocol`, `Cache-Control` and the CORS pair | the three handshake headers alone |
+| SSE CORS | no CORS headers without an Origin, the echoed origin with one | **`Access-Control-Allow-Origin: *`** unconditionally — the exact bug already fixed once for `_send` |
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

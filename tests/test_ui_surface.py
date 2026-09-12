@@ -145,13 +145,17 @@ def notifications(base, trigger, seconds=8):
     return "101", frames
 
 
-def eventsource(base, trigger, seconds=8):
-    """Read the SSE channel while `trigger` runs. Returns (status, [(event, data)])."""
+def eventsource(base, trigger, seconds=8, spec=""):
+    """Read the SSE channel while `trigger` runs. Returns (status, [(event, data)]).
+
+    `spec` appends a query string -- `?filters=log` is the one the client's own log
+    connection passes, and the filter is what decides which frames arrive at all.
+    """
     import threading
 
-    request_ = urllib.request.Request(base.rstrip("/") + "/:/eventsource/notifications",
-                                      headers={"Accept": "text/event-stream",
-                                               "User-Agent": UA})
+    request_ = urllib.request.Request(
+        base.rstrip("/") + "/:/eventsource/notifications" + spec,
+        headers={"Accept": "text/event-stream", "User-Agent": UA})
     try:
         response = urllib.request.urlopen(request_, timeout=seconds + 5)
     except Exception as error:
@@ -175,7 +179,9 @@ def eventsource(base, trigger, seconds=8):
             elif text.startswith("data:") and name:
                 events.append((name, text.split(":", 1)[1].strip()))
                 name = None
-            if len(events) >= 4:
+            if len(events) >= 12:
+                # A refresh alone pushes seven frames plus the opening ping, so a cap
+                # of four cut the sequence off before the one that matters (state 5).
                 break
     finally:
         response.close()
@@ -827,8 +833,13 @@ def main():
               "%s -> %s" % (before_thumb, after_thumb))
     else:
         skip("refresh re-versions the artwork key", "row has no artwork to version")
+    # Re-measured: a refresh's activity ENDS. plexsim only ever fired `started`, so
+    # an activity that nothing cancelled stayed in /activities for the life of the
+    # process and the header's spinner never stopped -- this check used to assert
+    # that stuck row was there.
     status, activities, _ = get(base, "/activities")
-    check("refresh reports an activity", bool(activities.get("Activity")),
+    check("a finished refresh leaves no activity behind",
+          status == 200 and not activities.get("Activity"),
           "%d activity(ies)" % len(activities.get("Activity") or []))
     if activities.get("Activity"):
         activity = activities["Activity"][0]
@@ -2017,6 +2028,78 @@ def main():
               and isinstance(entry.get("type"), int)
               and entry.get("metadataState") and entry.get("updatedAt"),
               json.dumps(entry)[:110])
+
+    print("\n=== the notification LIFECYCLE, which is what makes a client refetch ===")
+    # Measured verbatim off the reference's eventsource: a refresh pushes SEVEN
+    # frames, and the last one is `state: 5` with NO metadataState. That frame is
+    # what dispatches the client's `metadataProcessed` -- which is what makes it
+    # refetch the row it just refreshed. plexsim pushed one activity `started` and
+    # one `timeline(3, queued)` and stopped: Refresh Metadata did nothing on screen
+    # until a reload, the spinner never stopped (its gate is `!!metadataState`, never
+    # cleared), and the activity stayed in /activities for the life of the process.
+    def sequence(trigger, seconds=5, spec=""):
+        status, events = eventsource(base, trigger, seconds=seconds, spec=spec)
+        return [(name, json.loads(data)) for name, data in events
+                if name != "ping"] if status == 200 else []
+
+    frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s/refresh" % movie))
+    states = [(row.get("TimelineEntry") or {}).get("state") for name, row in frames
+              if name == "timeline"]
+    metadata_states = [(row.get("TimelineEntry") or {}).get("metadataState")
+                       for name, row in frames if name == "timeline"]
+    activity_events = [(row.get("ActivityNotification") or {}).get("event")
+                       for name, row in frames if name == "activity"]
+    check("a refresh pushes the reference's timeline states, ending at 5",
+          states == [3, 3, 4, 5] and metadata_states[:3] == ["queued", "processing",
+                                                             "loading"],
+          "states=%s metadataStates=%s" % (states, metadata_states))
+    check("the last timeline frame carries NO metadataState",
+          metadata_states and metadata_states[-1] is None, str(metadata_states[-1:]))
+    check("the activity starts, updates and ENDS",
+          activity_events == ["started", "updated", "ended"], str(activity_events))
+    progresses = [(row.get("ActivityNotification") or {}).get("Activity", {}).get("progress")
+                  for name, row in frames if name == "activity"]
+    # Measured: the started frame's progress is -1, not 0, and it reaches 100.
+    check("the activity's progress runs -1 to 100",
+          progresses and progresses[0] == -1 and progresses[-1] == 100, str(progresses))
+    # An EDIT pushes two frames. plexsim pushed none, so an edit made here was
+    # invisible to every other open client.
+    frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=%s"
+                                                  % (movie, quote("notified"))))
+    edit_states = [(row.get("TimelineEntry") or {}).get("state") for name, row in frames
+                   if name == "timeline"]
+    check("an edit pushes loading then done", edit_states == [3, 5], str(edit_states))
+    # And a DELETE pushes state 9, which is what dispatches the client's `deleted`
+    # action -- without it a deleted row stays on screen in every other client.
+    _, made, _ = container(base, "POST", "/playlists?type=video&title=%s&uri=%s"
+                                        % (quote("plexsim notify probe"),
+                                           quote("server://%s/com.plexapp.plugins.library"
+                                                 "/library/metadata/%s" % (machine, movie))))
+    probe_key = (made.get("Metadata") or [{}])[0].get("ratingKey")
+    if probe_key:
+        frames = sequence(lambda: request(base, "DELETE", "/playlists/%s" % probe_key))
+        gone = [(row.get("TimelineEntry") or {}).get("state") for name, row in frames
+                if name == "timeline"]
+        check("a delete pushes state 9", gone == [9], str(gone))
+    else:
+        skip("a delete pushes state 9", "could not create a playlist")
+    # `filters=` is an exact whitelist, and `log` is OPT-IN ONLY. An earlier finding
+    # said this channel carries no log frames on a real server -- that measurement
+    # was taken WITHOUT the `filters=log` the client's own log connection passes.
+    frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=%s"
+                                                  % (movie, quote("logged"))),
+                      spec="?filters=log")
+    kinds = {name for name, _row in frames}
+    check("filters=log answers log frames and nothing else",
+          kinds == {"log"} and frames
+          and set((frames[0][1].get("LogSentNotification") or {}))
+              >= {"level", "thread", "time", "message"},
+          "kinds=%s" % (kinds or "none"))
+    frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=%s"
+                                                  % (movie, quote("unfiltered"))))
+    check("an unfiltered channel gets everything EXCEPT log",
+          frames and "log" not in {name for name, _row in frames},
+          "kinds=%s" % {name for name, _row in frames})
 
     print("\n=== endpoints that are not the UI's but are a server's ===")
     # The one root element on the whole surface that is NOT a MediaContainer, so

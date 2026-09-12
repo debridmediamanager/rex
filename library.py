@@ -287,6 +287,28 @@ class Library:
             self._notify("started", activity)
         return activity
 
+    def finish_activity(self, activity):
+        """End an activity the way a real refresh does: an `updated` frame, then
+        `ended` at 100, and the row leaves /activities.
+
+        plexsim only ever fired `started`, and only `cancel_activity` ever fired
+        `ended` -- so an activity that nothing cancelled stayed in /activities for
+        the life of the process and the header's spinner never stopped. Measured on
+        the reference: the started frame's progress is **-1**, not 0, and it reaches
+        `ended` with 100.
+        """
+        if activity not in self._activities:
+            return False
+        activity["progress"] = 49
+        if self._notify:
+            self._notify("updated", activity)
+        activity["progress"] = 100
+        self._activities = [a for a in self._activities
+                            if a["uuid"] != activity["uuid"]]
+        if self._notify:
+            self._notify("ended", activity)
+        return True
+
     def activities(self):
         return list(self._activities)
 
@@ -634,7 +656,9 @@ class Library:
         for key, kind in (("thumb", "thumb"), ("art", "art")):
             if row.get(key):
                 row[key] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], kind, stamp)
-        self.add_activity(row.get("title") or "")
+        # The activity belongs to the notification SEQUENCE, not to this function:
+        # the server runs it start-to-end around the refresh so it also ends. Adding
+        # one here as well pushed two `started` frames for one refresh.
         return row
 
     def split(self, row):
