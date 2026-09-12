@@ -30,6 +30,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 |---|---|
 | `server.py` | The PMS surface. Every route, ~2900 lines. Start here. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
+| `filters.py` | Plex's filter query language: the operator is part of the KEY |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
@@ -319,6 +320,14 @@ precisely how the Seasons bug survived a fix attempt.
   pushes `activity`, `timeline`, `status` and `progress`; a client that gets none
   of them polls instead and never sees a change made elsewhere. Server frames are
   **unmasked**, and a malformed one puts the client back in fix 4's failure mode.
+- **A filter's operator is part of the parameter NAME, not the value.** The client
+  sends `year%3E%3E=2000`, so the server reads a parameter called `year>>`. A
+  server that looks for names it knows sees nothing and filters nothing — which is
+  what plexsim did for its whole life, while advertising 40 filterable fields.
+  A bare `=` on a string CONTAINS; `==` is the exact one. See `filters.py`.
+- **Container paging needs BOTH parameters, and the client sends them as HTTP
+  HEADERS.** One alone is ignored by a real PMS; a negative size drops paging
+  rather than slicing.
 - **A `sort=` spec is a comma-separated LIST, and `random:<seed>` differs per
   seed.** Splitting the whole spec on its first colon drops the secondary key and
   reads the direction off the wrong end. An unknown key is a 500 on a real PMS,
