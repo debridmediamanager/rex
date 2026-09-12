@@ -566,17 +566,31 @@ class Catalog:
         return section
 
     def search(self, query):
+        """Rows whose title matches, by WORD PREFIX rather than by substring.
+
+        Measured against the reference, query by query: `te`, `tea`, `tear`,
+        `tears`, `of` and `steel` all find "Tears of Steel" and `uck` does NOT
+        find "Big Buck Bunny" -- so a match is a prefix of some WORD in the
+        title, not a substring of it. A single character matches nothing at all,
+        whatever it is (`t` answers seventeen empty hubs). plexsim used a plain
+        substring test, so `uck` matched and `t` returned the whole library.
+
+        The reference is additionally fuzzy -- `eel` finds "Firefly" and an actor
+        called "Halina Reijn" -- which is a trigram score plexsim does not try to
+        reproduce, and says so rather than approximating it badly.
+        """
         needle = query.lower().strip()
-        if not needle:
+        if len(needle) < 2:
             return []
-        return [
-            row
-            for row in self.items.values()
-            if row.get("type") in ("movie", "show", "episode")
-            and (needle in str(row.get("title", "")).lower()
-                 or needle in str(row.get("grandparentTitle", "")).lower()
-                 or needle in str(row.get("originalTitle", "")).lower())
-        ]
+
+        def hit(text):
+            words = re.split(r"[^0-9a-z]+", str(text or "").lower())
+            return any(word.startswith(needle) for word in words if word) \
+                or " ".join(w for w in words if w).startswith(needle)
+
+        return [row for row in self.items.values()
+                if row.get("type") in ("movie", "show", "season", "episode")
+                and (hit(row.get("title")) or hit(row.get("originalTitle")))]
 
 
 # --------------------------------------------------------------------------
@@ -1483,31 +1497,64 @@ class PlexSim:
             return self.select_stream(segments[2] if len(segments) > 2 else "", query)
 
         if route == "/library/search":
-            # `universalsearch`. A real PMS answers the bare query with an empty
-            # container; the hub search below is what the UI actually uses.
-            return self.bare_container(size=0)
+            # `universalsearch`, which plexsim advertised in /media/providers and
+            # answered with an empty container -- on the note that "a real PMS
+            # answers the bare query with an empty container". Measured: a real PMS
+            # answers a bare query with a 400 and a real one with SearchResult rows.
+            return self.library_search(query)
+        if route == "/search":
+            # The legacy search endpoint, which also lists the search PROVIDERS.
+            return self.legacy_search(query)
 
         # -- hubs --------------------------------------------------------
         if route == "/hubs":
             return self.hubs(query)
         if route == "/hubs/metadata":
             return ("error", 404, "plexsim: not found")
+        if segments[:2] == ["hubs", "metadata"] and len(segments) == 4:
+            return self.item_hubs(segments[2], segments[3], query)
         if route == "/hubs/continueWatching":
-            return self.hub_container(
-                Hub=[self.hub("home.continue", "Continue Watching",
-                              [_listing_row(r) for r in self.continue_watching()])])
+            # Measured: this hub's own identifier is `continueWatching` (not the
+            # home screen's `home.continue`), its key is its OWN items endpoint,
+            # and its style is `hero`. plexsim answered a bare hub whose key was
+            # /library/all, so the shelf had nowhere to expand to.
+            rows = [_listing_row(r) for r in self.continue_watching()]
+            return self.hub_container(Hub=[self.home_hub(
+                "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
+                rows, query, kind="mixed", style="hero")])
+        if route == "/hubs/continueWatching/items":
+            rows = [_listing_row(r) for r in self.continue_watching()]
+            return self.hub_container(size=len(rows), Metadata=rows)
         if route == "/hubs/promoted":
-            return self.hubs(query)
+            return self.promoted_hubs(query)
         if route.startswith("/hubs/home"):
-            if route == "/hubs/home/recentlyAdded" and query.get("sectionID"):
-                # The TV section's Recently Added shelf links here rather than to
-                # the section listing, so it has to answer for a section.
-                rows = sorted(catalog.section_items(query["sectionID"]),
-                              key=lambda r: -(r.get("addedAt") or 0))
-                return self.container(Metadata=[_listing_row(r) for r in rows[:12]])
-            # Measured on a real PMS: with no identifiers named, this answers with
-            # no Hub at all.
-            return self.hub_container()
+            if route == "/hubs/home/continueWatching":
+                rows = [_listing_row(r) for r in self.continue_watching()]
+                return self.hub_container(size=len(rows), Metadata=rows)
+            if route == "/hubs/home/onDeck":
+                rows = [_listing_row(r) for r in self.continue_watching()
+                        if r.get("type") == "episode"]
+                return self.hub_container(size=len(rows), Metadata=rows)
+            if route == "/hubs/home/recentlyAdded":
+                # Measured: this endpoint keys on `type`, NOT on `sectionID` --
+                # `?sectionID=1` alone is empty and `?type=2` alone answers for
+                # every show library. plexsim had it the other way round, so the
+                # TV shelf's "see all" opened an empty page.
+                wanted = {"1": "movie", "2": "show", "4": "episode"}.get(
+                    query.get("type"))
+                if wanted is None:
+                    return self.hub_container(size=0)
+                rows = [r for r in catalog.items.values() if r.get("type") == wanted]
+                if query.get("sectionID"):
+                    rows = [r for r in rows
+                            if str(r.get("librarySectionID")) == str(query["sectionID"])]
+                rows.sort(key=lambda r: -(r.get("addedAt") or 0))
+                page = [_listing_row(r) for r in rows[:self.HUB_COUNT]]
+                return self.hub_container(size=len(page), Metadata=page)
+            # Measured: a home hub a real PMS does not have is a 404, not the
+            # empty container plexsim answered -- which a client reads as "this
+            # shelf exists and is empty".
+            return ("error", 404, "plexsim: not found")
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
             return self.section_hubs(segments[2], query.get("count"))
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
@@ -1518,6 +1565,8 @@ class PlexSim:
             return self.container(Metadata=rows)
         if route == "/hubs/search":
             return self.search(query)
+        if route == "/hubs/search/voice":
+            return self.voice_search(query)
 
 
         # -- playback ----------------------------------------------------
@@ -2049,8 +2098,26 @@ class PlexSim:
             return self.listing_container(
                 section_id, section, [_listing_row(r) for r in rows], **extra)
         if leaf == "search":
-            # Measured: a real PMS answers 400 here; search is /hubs/search.
-            return ("error", 400, "plexsim: bad request")
+            # Measured again, more carefully than the first time: only the form
+            # with NO `type` is a 400. With a type this is a real listing, whose
+            # title2 is "Search for '<query>'" -- it is the in-library search box,
+            # and plexsim refused every form of it.
+            if not query.get("type"):
+                return ("error", 400, "plexsim: bad request")
+            rows = self.typed_rows(section_id, query)
+            text = query.get("query") or ""
+            if text:
+                matched = {str(r.get("ratingKey"))
+                           for r in self.catalog.search(text)}
+                rows = [r for r in rows if str(r.get("ratingKey")) in matched]
+            found = self.secondary_container(
+                section_id, section, "Search for '%s'" % text,
+                Metadata=[_listing_row(r) for r in rows],
+                viewGroup=section.get("type"))
+            # Measured: this one is NOT a secondary view -- it carries no
+            # `content`, and its viewGroup is the library's type.
+            found["MediaContainer"].pop("content", None)
+            return found
         if leaf == "composite":
             art = self.composite_for("section", section_id)
             if art:
@@ -2687,6 +2754,11 @@ class PlexSim:
         if leaf == "extras":
             return self.tag_container(size=0)
         if leaf == "related":
+            # NOTE: this is NOT /hubs/metadata/{id}/related -- the client rewrites
+            # the path for that one, and only the hubs form carries the shelves.
+            # Measured: this one answers an empty container even where the hubs
+            # form has a hub, and it keeps the media-tag pair that the hubs form
+            # drops.
             section = self.catalog.section(row["librarySectionID"]) or {}
             return self.bare_container(
                 size=0, allowSync=False, identifier="com.plexapp.plugins.library",
@@ -2696,11 +2768,16 @@ class PlexSim:
                 mediaTagPrefix="/system/bundle/media/flags/",
                 mediaTagVersion=1655122614)
         if leaf == "similar":
-            # Measured: a real PMS 404s this for a season or an episode and
-            # answers an empty container for a movie or a show.
+            # Measured: a real PMS 404s this for a season or an episode, and for a
+            # movie or a show it answers a tag container whose rows are the agent's
+            # similar titles that are IN the library -- 2 to 4 rows on the lab, and
+            # zero for one of the five movies, so an empty answer is correct too.
+            # plexsim answered an unconditional empty, which made the Related shelf
+            # never appear; the rows come from `similar_rows()` now.
             if row.get("type") in ("season", "episode"):
                 return ("error", 404, "plexsim: not found")
-            return self.tag_container(size=0)
+            rows = [_listing_row(r) for r in self.similar_rows(row)]
+            return self.tag_container(size=len(rows), Metadata=rows)
         if leaf == "userState":
             # A real PMS 404s this (verified against fun). Answering with an
             # empty MediaContainer instead tells the client there IS state.
@@ -2813,6 +2890,141 @@ class PlexSim:
         }
         body.update(extra)
         return body
+
+    def home_hub(self, identifier, title, key, rows, query, kind="mixed",
+                 style="shelf", **extra):
+        """One Home-screen shelf, with the five fields plexsim never sent.
+
+        Measured on the reference: every shelf carries `key` (where "see all"
+        goes), `context` (`hub.<identifier>`, which is what the client keys its
+        layout off), `style` (`hero` for Continue Watching, `shelf` for the rest)
+        and, on /hubs/promoted, `promoted`. And `hubKey` is not a path to a
+        listing: it is `/library/metadata/<comma-joined ratingKeys>` naming the
+        rows THIS shelf holds, present only when there are any.
+
+        plexsim sent `hubIdentifier`, `title`, `type`, `size`, `more` and a
+        `hubKey` of `/library/all` for everything, so every shelf expanded to the
+        whole library and none of them had a context to lay out by.
+        """
+        # The context is the identifier with any trailing SECTION ID stripped:
+        # `movie.recentlyadded.1` has context `hub.movie.recentlyadded`, measured.
+        # It names the KIND of shelf, which is why it is shared across libraries.
+        parts = identifier.split(".")
+        stem = ".".join(parts[:-1]) if parts[-1].isdigit() else identifier
+        built = self.hub(identifier, title, rows, count=query.get("count"),
+                         type=kind, key=key, context="hub.%s" % stem,
+                         style=style, **extra)
+        keys = [str(r.get("ratingKey")) for r in built.get("Metadata") or []]
+        if keys:
+            built["hubKey"] = "/library/metadata/" + ",".join(keys)
+        else:
+            built.pop("hubKey", None)
+        return built
+
+    def promoted_hubs(self, query):
+        """`/hubs/promoted` -- the Home screen, one call per pinned library.
+
+        Measured: `contentDirectoryID=N` selects ONE library's Recently Added
+        shelf, and the call is repeated per pinned library rather than made once.
+        plexsim ignored it and answered every library's shelf every time, so Home
+        drew each library's rows under every library's heading.
+
+        `excludeContinueWatching=1` drops that shelf, and the bare call (no
+        contentDirectoryID) adds `home.playlists`.
+        """
+        hubs = []
+        if query.get("excludeContinueWatching") != "1":
+            hubs.append(self.home_hub(
+                "home.continue", "Continue Watching", "/hubs/home/continueWatching",
+                [_listing_row(r) for r in self.continue_watching()], query,
+                style="hero", promoted=True))
+        hubs.append(self.home_hub(
+            "home.ondeck", "On Deck", "/hubs/home/onDeck",
+            [_listing_row(r) for r in self.continue_watching()
+             if r.get("type") == "episode"], query, kind="episode", promoted=True))
+        wanted = query.get("contentDirectoryID")
+        for section in self.catalog.sections:
+            if wanted and str(section["key"]) != str(wanted):
+                continue
+            is_show = section.get("type") == "show"
+            rows = sorted(self.catalog.section_items(section["key"]),
+                          key=lambda r: -(r.get("addedAt") or 0))
+            # Measured: a SHOW library's Recently Added shelf is typed `mixed` and
+            # its key goes to /hubs/home/recentlyAdded; a movie library's is typed
+            # `movie` and goes straight to the section listing.
+            key = ("/hubs/home/recentlyAdded?type=2&sectionID=%s" % section["key"]
+                   if is_show else
+                   "/library/sections/%s/all?sort=addedAt:desc" % section["key"])
+            hubs.append(self.home_hub(
+                "%s.recentlyadded.%s" % ("tv" if is_show else "movie", section["key"]),
+                "Recently Added in %s" % (section.get("title") or ""), key,
+                [_listing_row(r) for r in rows], query,
+                kind="mixed" if is_show else "movie", promoted=True))
+        if not wanted:
+            hubs.append(self.home_hub(
+                "home.playlists", "Recent Playlists",
+                "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio",
+                [], query, kind="playlist", promoted=True))
+        return self.hub_container(Hub=hubs)
+
+    def similar_rows(self, row):
+        """Rows a client should offer as "Related".
+
+        The reference fills this from its metadata agent, which plexsim has no
+        equivalent of -- and the reference's own list is EMPTY for some items
+        (`/library/metadata/1/similar` is `size 0` on the lab while its
+        neighbours answer 2 to 4 rows), so an empty answer is a correct answer.
+        Rather than leave it always empty, plexsim computes its own: other rows in
+        the same library that share a genre. The SHAPE is measured; the source is
+        plexsim's own and says so.
+        """
+        tags = {str(t.get("id")) for t in row.get("Genre") or [] if t.get("id")}
+        if not tags:
+            return []
+        scored = []
+        for other in self.catalog.section_items(row.get("librarySectionID")):
+            if str(other.get("ratingKey")) == str(row.get("ratingKey")):
+                continue
+            shared = len(tags & {str(t.get("id")) for t in other.get("Genre") or []})
+            if shared:
+                scored.append((-shared, -(other.get("addedAt") or 0), other))
+        scored.sort(key=lambda entry: entry[:2])
+        return [entry[2] for entry in scored[:self.HUB_COUNT]]
+
+    def item_hubs(self, rating_key, leaf, query):
+        """`/hubs/metadata/{id}/{related,postplay}` -- the preplay page's shelves.
+
+        The client rewrites `/library/metadata/{id}` to `/hubs/metadata/{id}` and
+        appends the leaf, so these are not the same endpoints as
+        `/library/metadata/{id}/related`. plexsim routed neither, and a 404 is
+        what the preplay page reads as "no related items" -- silently.
+
+        Measured: `related` carries the librarySection triple and `allowSync`,
+        `postplay` carries NEITHER, and the hub inside them is `movie.similar`
+        keyed on the item's own `/similar`.
+        """
+        if leaf not in ("related", "postplay"):
+            return ("error", 404, "plexsim: not found")
+        row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() \
+            else None
+        if row is None:
+            return ("error", 404, "plexsim: no such item")
+        rows = [_listing_row(r) for r in self.similar_rows(row)]
+        hubs = []
+        if rows:
+            kind = row.get("type") if row.get("type") in ("movie", "show") else "movie"
+            hubs.append(self.home_hub(
+                "%s.similar" % kind, "Related %s" % ("Shows" if kind == "show"
+                                                     else "Movies"),
+                "/library/metadata/%s/similar" % rating_key, rows, query, kind=kind))
+        if leaf == "postplay":
+            return self.hub_container(Hub=hubs)
+        section = self.catalog.section(row["librarySectionID"]) or {}
+        return self.hub_container(
+            Hub=hubs, allowSync=True,
+            librarySectionID=row["librarySectionID"],
+            librarySectionTitle=section.get("title"),
+            librarySectionUUID=section.get("uuid"))
 
     def hubs(self, query):
         """`/hubs` -- the Home screen's shelves.
@@ -2952,16 +3164,261 @@ class PlexSim:
                    if not r.get("viewCount") and (r.get("audienceRating") or 0) >= 7.0]
         return tag, members
 
+    # The seventeen typed hubs /hubs/search answers with, in the reference's order
+    # and with its titles. Every one is present on every search, EMPTY ones
+    # included -- the client lays the results page out from this list, so a server
+    # that omits the empty hubs is handing it a different page. Note "Shows", not
+    # "TV Shows", which is what plexsim called it.
+    SEARCH_HUBS = [
+        ("movie", "Movies"), ("show", "Shows"), ("artist", "Artists"),
+        ("album", "Albums"), ("episode", "Episodes"), ("track", "Tracks"),
+        ("collection", "Collections"), ("photoalbum", "Photo Albums"),
+        ("autotag", "Automatic Tags"), ("photo", "Photos"), ("tag", "Tags"),
+        ("actor", "Actors"), ("director", "Directors"), ("genre", "Genres"),
+        ("playlist", "Playlists"), ("shared", "Shared"), ("place", "Places"),
+    ]
+
+    # The tag hubs, and which of a row's tag lists each one searches.
+    SEARCH_TAG_HUBS = {"actor": "Role", "director": "Director", "genre": "Genre"}
+
+    def _score(self, rank):
+        """A relevance score in the shape the reference prints it.
+
+        Measured: `/hubs/search` sends it as a STRING with five decimals
+        ("0.73055") and `/library/search` sends the same number as a FLOAT. The
+        value itself is Plex's own relevance, which plexsim cannot reproduce, so it
+        ranks by match quality and prints it the same way.
+        """
+        return "%.5f" % max(0.0, min(1.0, rank))
+
+    def search_matches(self, text, limit):
+        """(typed row lists, tag hits) for one query, both ranked."""
+        rows = self.catalog.search(text)
+        needle = (text or "").strip().lower()
+
+        def rank(row):
+            title = str(row.get("title") or "").lower()
+            # An exact title is the best match, a title that starts with the query
+            # next, a later word last -- which is the ordering the reference's own
+            # scores produce even though its numbers differ.
+            if title == needle:
+                return 0.95
+            if title.startswith(needle):
+                return 0.73
+            return 0.31
+
+        typed = {}
+        for row in rows:
+            typed.setdefault(row.get("type"), []).append(row)
+        for kind in typed:
+            typed[kind].sort(key=lambda r: (-rank(r), str(r.get("title") or "")))
+            typed[kind] = typed[kind][:limit]
+
+        tags = {}
+        for hub, field in self.SEARCH_TAG_HUBS.items():
+            seen = {}
+            for row in self.catalog.items.values():
+                for tag in row.get(field) or []:
+                    name = str(tag.get("tag") or "")
+                    words = re.split(r"[^0-9a-z]+", name.lower())
+                    if len(needle) < 2 or not any(w.startswith(needle)
+                                                  for w in words if w):
+                        continue
+                    entry = seen.setdefault(name, {"tag": tag, "rows": [], "row": row})
+                    entry["rows"].append(row)
+            if seen:
+                tags[hub] = [seen[name] for name in sorted(seen)][:limit]
+        return typed, tags
+
     def search(self, query):
-        rows = [_listing_row(r) for r in self.catalog.search(query.get("query", ""))]
+        """`/hubs/search` -- the search page, which is seventeen hubs every time.
+
+        plexsim answered only the hubs that had rows, so the results page was laid
+        out from a list that changed per query. It also matched by substring and
+        sent no `score`, which is what the client sorts by.
+        """
+        text = query.get("query")
+        if not text:
+            # Measured: a missing or empty query is a 400, not an empty result.
+            return ("error", 400, "plexsim: bad request")
         limit = int(query.get("limit", 30) or 30)
+        typed, tags = self.search_matches(text, limit)
+        needle = text.strip().lower()
+
         hubs = []
-        for kind, title in (("movie", "Movies"), ("show", "TV Shows"),
-                            ("episode", "Episodes")):
-            matched = [r for r in rows if r.get("type") == kind][:limit]
-            if not matched:
+        for kind, title in self.SEARCH_HUBS:
+            rows = []
+            for row in typed.get(kind, []):
+                entry = _listing_row(row)
+                title_words = re.split(r"[^0-9a-z]+",
+                                       str(row.get("title") or "").lower())
+                matched_title = any(w.startswith(needle) for w in title_words if w)
+                entry["score"] = self._score(
+                    0.95 if str(row.get("title") or "").lower() == needle
+                    else 0.73 if matched_title else 0.33)
+                if not matched_title:
+                    # Measured: a row that matched through a TAG rather than its
+                    # own title names the tag it matched on -- the client prints
+                    # "because Ian Hubert" under the row.
+                    for hub, field in self.SEARCH_TAG_HUBS.items():
+                        for tag in row.get(field) or []:
+                            words = re.split(r"[^0-9a-z]+",
+                                             str(tag.get("tag") or "").lower())
+                            if any(w.startswith(needle) for w in words if w):
+                                entry["reason"] = hub
+                                entry["reasonID"] = tag.get("id")
+                                entry["reasonTitle"] = tag.get("tag")
+                                break
+                        if "reason" in entry:
+                            break
+                rows.append(entry)
+            hub = {
+                "title": title,
+                "type": kind,
+                "hubIdentifier": kind,
+                # Measured: the search hubs carry an EMPTY context, and no hubKey.
+                "context": "",
+                "size": len(rows),
+                "more": False,
+                "style": "shelf",
+            }
+            if rows:
+                hub["Metadata"] = rows
+            if kind in tags:
+                hub["Directory"] = [self._tag_result(entry, kind)
+                                    for entry in tags[kind]]
+                hub["size"] = len(hub["Directory"])
+            hubs.append(hub)
+        return self.bare_container(size=len(hubs), Hub=hubs)
+
+    def _tag_result(self, entry, hub):
+        """One tag row of a search result, field for field off the reference."""
+        tag, row = entry["tag"], entry["row"]
+        section_id = row.get("librarySectionID")
+        section = self.catalog.section(section_id) or {}
+        field = "actor" if hub == "actor" else hub
+        result = {
+            "key": "/library/sections/%s/all?%s=%s" % (section_id, field, tag.get("id")),
+            "librarySectionID": section_id,
+            "librarySectionKey": "/library/sections/%s" % section_id,
+            "librarySectionTitle": section.get("title"),
+            "librarySectionType": 2 if section.get("type") == "show" else 1,
+            # A tag row matched because its SECTION did, which is what the
+            # reference reports rather than naming the tag again.
+            "reason": "section",
+            "reasonID": int(section_id) if str(section_id).isdigit() else section_id,
+            "reasonTitle": section.get("title"),
+            "score": self._score(0.32),
+            "type": "tag",
+            "id": tag.get("id"),
+            "filter": "%s=%s" % (field, tag.get("id")),
+            "tag": tag.get("tag"),
+            # Plex's own tagType codes: 4 is a person, 1 a genre.
+            "tagType": 4 if hub in ("actor", "director") else 1,
+            "count": len(entry["rows"]),
+        }
+        if tag.get("thumb"):
+            result["thumb"] = tag["thumb"]
+        return result
+
+    def library_search(self, query):
+        """`/library/search` -- the same matches as a flat `SearchResult` list.
+
+        Advertised by plexsim's own /media/providers as `universalsearch` and
+        answered with an empty container, which is the exact failure this project
+        is about. Measured: one `SearchResult` per hit, each holding a `score` (a
+        FLOAT here, where /hubs/search sends the same number as a string) and
+        either a `Metadata` row or a `Directory` tag row.
+        """
+        text = query.get("query")
+        if not text:
+            return ("error", 400, "plexsim: bad request")
+        limit = int(query.get("limit", 30) or 30)
+        typed, tags = self.search_matches(text, limit)
+        needle = text.strip().lower()
+        results = []
+        for kind, _title in self.SEARCH_HUBS:
+            for row in typed.get(kind, []):
+                score = 0.95 if str(row.get("title") or "").lower() == needle \
+                    else 0.73 if str(row.get("title") or "").lower().startswith(needle) \
+                    else 0.33
+                results.append({"score": float(self._score(score)),
+                                "Metadata": _listing_row(row)})
+            for entry in tags.get(kind, []):
+                results.append({"score": 0.32,
+                                "Directory": self._tag_result(entry, kind)})
+        return self.bare_container(size=len(results), SearchResult=results)
+
+    # The search providers /search lists beside its results, measured verbatim.
+    # The `m_` prefix is the reference's, not a typo.
+    SEARCH_PROVIDERS = [
+        {"key": "/system/search", "m_title": "Local Network", "m_type": "mixed"},
+        {"key": "/search?type=10", "m_title": "Tracks", "m_type": "tracks"},
+        {"key": "/search/actor", "m_title": "Actors", "m_type": "actors"},
+        {"key": "/search/director", "m_title": "Directors", "m_type": "directors"},
+    ]
+
+    def legacy_search(self, query):
+        """`/search` -- the old flat search, which also lists the PROVIDERS.
+
+        Measured, and both refusals are different: no `query` parameter at all is
+        a 400 and an EMPTY one is a 404. The container's `size` counts the Provider
+        rows as well as the results (1 row + 4 providers = 5), each row carries
+        `personal` and `sourceTitle` naming this server, and plexsim 404'd the
+        whole endpoint.
+        """
+        if "query" not in query:
+            return ("error", 400, "plexsim: bad request")
+        if not query.get("query"):
+            return ("error", 404, "plexsim: not found")
+        limit = int(query.get("limit", 30) or 30)
+        typed, _tags = self.search_matches(query["query"], limit)
+        rows = []
+        for kind, _title in self.SEARCH_HUBS:
+            for row in typed.get(kind, []):
+                entry = _listing_row(row)
+                entry["personal"] = True
+                entry["sourceTitle"] = self.catalog.friendly
+                rows.append(entry)
+        # The container is the tag one (identifier plus the media-tag pair, no
+        # allowSync) and its `size` counts the Provider rows as well as the
+        # results -- measured: 1 result + 4 providers answered size 5.
+        body = self.tag_container(Metadata=rows, Provider=self.SEARCH_PROVIDERS)
+        body["MediaContainer"]["size"] = len(rows) + len(self.SEARCH_PROVIDERS)
+        return body
+
+    def voice_search(self, query):
+        """`/hubs/search/voice` -- the same matches, keyed by edit distance.
+
+        Measured: one hub per TYPE, titled with the bare type name, identified
+        `results.search.<n>` with context `hub.results.search`, and both the hub
+        and every row carry a `distance`. plexsim 404'd it.
+        """
+        text = query.get("query")
+        if not text:
+            return ("error", 400, "plexsim: bad request")
+        limit = int(query.get("limit", 30) or 30)
+        typed, _tags = self.search_matches(text, limit)
+        hubs = []
+        for kind, _title in self.SEARCH_HUBS:
+            rows = typed.get(kind)
+            if not rows:
                 continue
-            hubs.append(self.hub(kind, title, matched, type=kind, hubIdentifier=kind))
+            # The reference's distance is its own fuzzy-match cost; plexsim reports
+            # the query's length, which is what an exact word-prefix hit costs it.
+            distance = len(text.strip())
+            entries = []
+            for row in rows:
+                entry = _listing_row(row)
+                entry["distance"] = distance
+                entries.append(entry)
+            hubs.append(self.home_hub(
+                "results.search.%d" % (len(hubs) + 1), kind, None,
+                entries, query, kind=kind, distance=distance))
+            # Measured: a voice hub carries `hubKey` and NO `key`, and its context
+            # is the shared `hub.results.search` rather than one per hub.
+            hubs[-1].pop("key", None)
+            hubs[-1]["context"] = "hub.results.search"
         return self.bare_container(size=len(hubs), Hub=hubs)
 
     def _items_for_uri(self, uri):

@@ -2461,6 +2461,216 @@ def main():
           and folders.get("librarySectionUUID"),
           "%d folder(s)" % len(folders.get("Metadata") or []))
 
+    print("\n=== the Home screen's own shelves ===")
+    # /hubs/promoted is called ONCE PER PINNED LIBRARY, and plexsim ignored
+    # contentDirectoryID and answered every library's shelf every time -- so Home
+    # drew each library's rows under every library's heading. Its hubs were also
+    # missing the five fields the client lays the page out from.
+    _, promoted, _ = get(base, "/hubs/promoted?contentDirectoryID=%s"
+                               "&pinnedContentDirectoryID=%s" % (movie_section, movie_section))
+    hubs = promoted.get("Hub") or []
+    identifiers = [h.get("hubIdentifier") for h in hubs]
+    check("promoted answers Continue Watching, On Deck and ONE library's shelf",
+          identifiers == ["home.continue", "home.ondeck",
+                          "movie.recentlyadded.%s" % movie_section],
+          ", ".join(str(i) for i in identifiers))
+    check("every promoted shelf carries key, context, style and promoted",
+          all(h.get("key") and h.get("context") and h.get("style")
+              and h.get("promoted") is True for h in hubs),
+          ", ".join("%s/%s" % (h.get("context"), h.get("style")) for h in hubs))
+    # Measured: the context drops a trailing section id -- it names the KIND of
+    # shelf, which is why it is shared across libraries.
+    recent = next((h for h in hubs if "recentlyadded" in (h.get("hubIdentifier") or "")), {})
+    check("a shelf's context drops the section id and hubKey names its rows",
+          recent.get("context") == "hub.movie.recentlyadded"
+          and (recent.get("hubKey") or "").startswith("/library/metadata/")
+          and "," in (recent.get("hubKey") or ",")
+          and recent.get("key") == "/library/sections/%s/all?sort=addedAt:desc" % movie_section,
+          "%s | %s" % (recent.get("context"), recent.get("hubKey")))
+    if show_section:
+        _, tv_promoted, _ = get(base, "/hubs/promoted?contentDirectoryID=%s" % show_section)
+        tv = next((h for h in tv_promoted.get("Hub") or []
+                   if "recentlyadded" in (h.get("hubIdentifier") or "")), {})
+        # Measured: a SHOW library's shelf is typed `mixed` and keyed to
+        # /hubs/home/recentlyAdded, where a movie library's is typed `movie`.
+        check("a show library's Recently Added shelf is mixed and keyed to hubs/home",
+              tv.get("hubIdentifier") == "tv.recentlyadded.%s" % show_section
+              and tv.get("type") == "mixed"
+              and tv.get("key") == "/hubs/home/recentlyAdded?type=2&sectionID=%s" % show_section,
+              "%s %s %s" % (tv.get("hubIdentifier"), tv.get("type"), tv.get("key")))
+    else:
+        skip("a show library's Recently Added shelf is mixed and keyed to hubs/home",
+             "no show library")
+    _, bare, _ = get(base, "/hubs/promoted")
+    check("the bare call adds Recent Playlists and every library",
+          "home.playlists" in [h.get("hubIdentifier") for h in bare.get("Hub") or []]
+          and len(bare.get("Hub") or []) > len(hubs),
+          ", ".join(str(h.get("hubIdentifier")) for h in bare.get("Hub") or []))
+    _, excluded, _ = get(base, "/hubs/promoted?contentDirectoryID=%s"
+                               "&excludeContinueWatching=1" % movie_section)
+    check("excludeContinueWatching drops that shelf",
+          "home.continue" not in [h.get("hubIdentifier")
+                                  for h in excluded.get("Hub") or []],
+          ", ".join(str(h.get("hubIdentifier")) for h in excluded.get("Hub") or []))
+    # The Continue Watching hub is identified `continueWatching`, styled hero, and
+    # its key is its OWN items endpoint -- which plexsim did not route at all.
+    _, watching, _ = get(base, "/hubs/continueWatching?contentDirectoryID=%s" % movie_section)
+    hub = (watching.get("Hub") or [{}])[0]
+    status, items, _ = get(base, hub.get("key") or "/nope")
+    check("the Continue Watching hub is hero-styled and its key resolves",
+          hub.get("hubIdentifier") == "continueWatching"
+          and hub.get("style") == "hero" and hub.get("type") == "mixed"
+          and hub.get("key") == "/hubs/continueWatching/items" and status == 200,
+          "%s %s -> HTTP %s" % (hub.get("hubIdentifier"), hub.get("key"), status))
+    # Measured: /hubs/home/recentlyAdded keys on `type`, not on `sectionID`.
+    _, by_type, _ = get(base, "/hubs/home/recentlyAdded?type=1")
+    _, by_section, _ = get(base, "/hubs/home/recentlyAdded?sectionID=%s" % movie_section)
+    check("hubs/home/recentlyAdded keys on type, not sectionID",
+          (by_type.get("size") or 0) > 0 and by_section.get("size") == 0,
+          "type=1 -> %s, sectionID -> %s" % (by_type.get("size"), by_section.get("size")))
+    for leaf in ("continueWatching", "onDeck"):
+        status, body, _ = get(base, "/hubs/home/%s" % leaf)
+        check("hubs/home/%s answers a plain row list" % leaf,
+              status == 200 and "Hub" not in body
+              and sorted(k for k in body if not isinstance(body[k], list))
+                  == ["allowSync", "identifier", "size"],
+              ",".join(sorted(k for k in body if not isinstance(body[k], list))))
+    status, _, _ = get(base, "/hubs/home/nosuchhub")
+    check("an unknown home hub is a 404, not an empty shelf", status == 404,
+          "HTTP %s" % status)
+
+    print("\n=== the preplay page's Related shelf ===")
+    # The client rewrites /library/metadata/{id} to /hubs/metadata/{id} and appends
+    # the leaf. plexsim routed neither, and a 404 is exactly what the preplay page
+    # reads as "no related items" -- silently.
+    # Pick a row that still HAS genres: the Unmatch check above deliberately strips
+    # them off the movie every other check uses, and a row with no genre has no
+    # related rows to offer -- which is itself what the reference answers for one
+    # of its own five movies.
+    _, current, _ = get(base, "/library/sections/%s/all" % movie_section)
+    genred = next((r.get("ratingKey") for r in current.get("Metadata") or []
+                   if r.get("Genre")), None)
+    subject = genred or movie
+    status, related, _ = get(base, "/hubs/metadata/%s/related?includeExternalMedia=1"
+                                   "&includeExternalMetadata=1&asyncAugmentMetadata=1"
+                                   % subject)
+    hub = (related.get("Hub") or [{}])[0]
+    if genred:
+        check("hubs/metadata/{id}/related answers a movie.similar shelf",
+              status == 200 and hub.get("hubIdentifier") == "movie.similar"
+              and hub.get("title") == "Related Movies"
+              and hub.get("key") == "/library/metadata/%s/similar" % subject
+              and hub.get("context") == "hub.movie.similar",
+              json.dumps({k: v for k, v in hub.items() if not isinstance(v, list)})[:110])
+    else:
+        check("hubs/metadata/{id}/related answers an empty shelf list",
+              status == 200 and not related.get("Hub"),
+              "no row in the section carries a genre")
+    # Measured: related carries the librarySection triple and allowSync, postplay
+    # carries NEITHER.
+    status, postplay, _ = get(base, "/hubs/metadata/%s/postplay" % subject)
+    check("related carries the librarySection triple and postplay does not",
+          related.get("librarySectionID") is not None
+          and related.get("allowSync") is True
+          and status == 200 and "librarySectionID" not in postplay
+          and postplay.get("allowSync") is False,
+          "related=%s postplay=%s" % (sorted(k for k in related
+                                             if not isinstance(related[k], list)),
+                                      sorted(k for k in postplay
+                                             if not isinstance(postplay[k], list))))
+    _, similar, _ = get(base, "/library/metadata/%s/similar" % subject)
+    check("the shelf's key resolves to the same rows",
+          (similar.get("size") or 0) == (hub.get("size") or 0),
+          "%s vs %s" % (similar.get("size"), hub.get("size")))
+    status, _, _ = get(base, "/hubs/metadata/%s/nosuchleaf" % subject)
+    check("an unknown item hub leaf is a 404", status == 404, "HTTP %s" % status)
+
+    print("\n=== search, which is seventeen hubs every time ===")
+    # plexsim answered only the hubs that had rows, so the results page was laid
+    # out from a list that changed per query; it matched by SUBSTRING, where a real
+    # PMS matches a word PREFIX; and it sent no `score`, which the client sorts by.
+    _, sample, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first = ((sample.get("Metadata") or [{}])[0].get("title") or "").split(" ")[0]
+    _, found, _ = get(base, "/hubs/search?query=%s&limit=30&includeCollections=1"
+                            % quote(first.lower()))
+    hubs = found.get("Hub") or []
+    # Indexed defensively: a server that answers fewer hubs must FAIL this check,
+    # not crash the run before the rest of the suite gets to speak.
+    second = hubs[1] if len(hubs) > 1 else {}
+    check("search answers all seventeen typed hubs, empty ones included",
+          len(hubs) == 17 and [h.get("hubIdentifier") for h in hubs][:5]
+          == ["movie", "show", "artist", "album", "episode"]
+          and second.get("title") == "Shows",
+          "%d hub(s), second is %r" % (len(hubs), second.get("title")))
+    check("every search hub has an empty context, a shelf style and no hubKey",
+          all(h.get("context") == "" and h.get("style") == "shelf"
+              and "hubKey" not in h for h in hubs),
+          "contexts=%s" % {h.get("context") for h in hubs})
+    movie_hub = next((h for h in hubs if h.get("hubIdentifier") == "movie"), {})
+    rows = movie_hub.get("Metadata") or []
+    check("a search row carries a score as a five-decimal STRING",
+          rows and all(isinstance(r.get("score"), str)
+                       and len(r["score"].split(".")[-1]) == 5 for r in rows),
+          ", ".join(str(r.get("score")) for r in rows[:3]))
+    # Measured word-prefix rule: one character matches nothing, and a non-prefix
+    # fragment of a word matches nothing either.
+    for spec, want, why in ((first[:1].lower(), 0, "a single character matches nothing"),
+                            (first[:2].lower(), 1, "two characters match the prefix"),
+                            (first[1:].lower(), 0, "a mid-word fragment matches nothing")):
+        _, probe, _ = get(base, "/hubs/search?query=%s" % quote(spec))
+        hit = sum(h.get("size") or 0 for h in probe.get("Hub") or [])
+        check("search: %s" % why, (hit > 0) == bool(want), "%r -> %d hit(s)" % (spec, hit))
+    status, _, _ = container(base, "GET", "/hubs/search")
+    check("search with no query is a 400, not an empty page", status == 400,
+          "HTTP %s" % status)
+    # /library/search is advertised as `universalsearch` and answered nothing.
+    _, universal, _ = get(base, "/library/search?query=%s&limit=30" % quote(first.lower()))
+    # NOT named `results`: that is the module-level list check() appends to, and
+    # shadowing it here made the whole run report three checks.
+    hits = universal.get("SearchResult") or []
+    check("universalsearch answers SearchResult rows with a FLOAT score",
+          hits and all(isinstance(r.get("score"), float) and r.get("Metadata")
+                       for r in hits),
+          "%d result(s), score %r" % (len(hits),
+                                      hits[0].get("score") if hits else None))
+    status, _, _ = container(base, "GET", "/library/search")
+    check("universalsearch with no query is a 400", status == 400, "HTTP %s" % status)
+    # The legacy /search also lists the providers, and its size counts them.
+    _, legacy, _ = get(base, "/search?query=%s" % quote(first.lower()))
+    providers = legacy.get("Provider") or []
+    check("legacy search lists four providers and counts them in size",
+          len(providers) == 4
+          and legacy.get("size") == len(legacy.get("Metadata") or []) + 4
+          and all(r.get("personal") is True and r.get("sourceTitle")
+                  for r in legacy.get("Metadata") or []),
+          "size=%s rows=%d providers=%d" % (legacy.get("size"),
+                                            len(legacy.get("Metadata") or []),
+                                            len(providers)))
+    # Measured: no `query` parameter is a 400 and an EMPTY one is a 404 -- two
+    # different refusals on the same endpoint.
+    status_missing, _, _ = container(base, "GET", "/search")
+    status_empty, _, _ = container(base, "GET", "/search?query=")
+    check("legacy search: a missing query is 400 and an empty one 404",
+          status_missing == 400 and status_empty == 404,
+          "%s / %s" % (status_missing, status_empty))
+    _, voice, _ = get(base, "/hubs/search/voice?query=%s" % quote(first.lower()))
+    vhub = (voice.get("Hub") or [{}])[0]
+    check("voice search hubs are titled by type and carry a distance",
+          vhub.get("hubIdentifier") == "results.search.1"
+          and vhub.get("context") == "hub.results.search"
+          and vhub.get("distance") is not None and "key" not in vhub
+          and (vhub.get("hubKey") or "").startswith("/library/metadata/"),
+          json.dumps({k: v for k, v in vhub.items() if not isinstance(v, list)})[:110])
+    # The in-library search box: only the form with NO type is a 400.
+    status, in_library, _ = get(base, "/library/sections/%s/search?type=1&query=%s"
+                                      % (movie_section, quote(first.lower())))
+    check("a section search with a type is a listing titled Search for '...'",
+          status == 200 and in_library.get("title2") == "Search for '%s'" % first.lower()
+          and "content" not in in_library
+          and in_library.get("viewGroup") == "movie",
+          "%r, %d row(s)" % (in_library.get("title2"),
+                             len(in_library.get("Metadata") or [])))
+
     print("\n=== the library's Recommended tab ===")
     # Measured: `?count=N` caps every shelf at N rows AND sets `more` on the ones
     # that were cut, which is how the client knows to draw the "see all" chevron.

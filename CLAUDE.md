@@ -340,6 +340,20 @@ precisely how the Seasons bug survived a fix attempt.
   transcode decision was made when none was. `resourceSession` is the client
   identifier, and `allowSync`, `librarySectionID` and `mediaTagVersion` are all
   STRINGS here.
+- **`/hubs/promoted` is called ONCE PER PINNED LIBRARY** (`contentDirectoryID=`),
+  and every shelf carries `key`, `context` (the identifier with a trailing section
+  id stripped), `style` and `promoted`. `hubKey` is not a listing path — it is
+  `/library/metadata/<comma-joined ratingKeys>` naming that shelf's own rows. And
+  `/hubs/home/recentlyAdded` keys on `type`, NOT on `sectionID`.
+- **The preplay page's Related shelf is `/hubs/metadata/{id}/related`**, a
+  different endpoint from `/library/metadata/{id}/related` — the client rewrites
+  the path. `related` carries the librarySection triple, `postplay` carries none of
+  it, and a 404 on either reads to the page as "no related items".
+- **Search is seventeen typed hubs on EVERY query**, empty ones included, because
+  the client lays the page out from that list; each row carries a `score` (a string
+  at `/hubs/search`, a float at `/library/search`) and a tag-matched row names the
+  tag in `reason`/`reasonID`/`reasonTitle`. Matching is a word **PREFIX**: `uck`
+  does not find "Big Buck Bunny" and one character finds nothing.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.
