@@ -37,6 +37,7 @@ import socket
 import struct
 import sys
 import threading
+import uuid
 import time
 import urllib.error
 import urllib.parse
@@ -152,6 +153,19 @@ try:
         OWNER_FEATURES = _handle.read().strip()
 except OSError:
     OWNER_FEATURES = "pass,sync,hwtranscode"
+
+# `/media/grabbers`, verbatim off the reference. plexsim answered an empty
+# container, which tells the Live TV setup page the server supports no tuner
+# protocols at all rather than that it has no tuners.
+MEDIA_GRABBERS = [
+    {"title": "HDHomerun", "identifier": "tv.plex.grabbers.hdhomerun",
+     "protocol": "livetv"},
+    {"title": "Stream", "identifier": "tv.plex.grabbers.stream", "protocol": "stream"},
+    {"title": "Download", "identifier": "tv.plex.grabbers.download",
+     "protocol": "download"},
+    {"title": "Remote", "identifier": "tv.plex.grabbers.tunerservice",
+     "protocol": "livetv"},
+]
 
 CONTENT_TYPES = {
     "mkv": "video/x-matroska",
@@ -855,10 +869,14 @@ class PlexSim:
             "allowSync": False,
         }
         body.update(fields)
-        for key in ("Metadata", "Directory", "Hub", "Video"):
-            if key in fields and isinstance(fields[key], list):
-                body["size"] = len(fields[key])
-                break
+        if "size" not in fields:
+            # An explicit size wins: a show's /children counts its "All episodes"
+            # Directory row alongside the seasons, so the count is not simply the
+            # length of the first list.
+            for key in ("Metadata", "Directory", "Hub", "Video"):
+                if key in fields and isinstance(fields[key], list):
+                    body["size"] = len(fields[key])
+                    break
         return {"MediaContainer": self._prune(body)}
 
     def _owner(self):
@@ -974,7 +992,7 @@ class PlexSim:
                 ]}
         return detail
 
-    def child_container(self, parent, rows, leaf, query=None):
+    def child_container(self, parent, rows, leaf, query=None, **extra):
         """`/children` and `/allLeaves`, matched against a real PMS.
 
         Paging is not cosmetic here. Plex Web asks for a show's seasons with
@@ -995,7 +1013,7 @@ class PlexSim:
         is_episode_list = bool(rows) and rows[0].get("type") == "episode"
 
         fields = {
-            "Metadata": [_full(r) for r in rows],
+            "Metadata": self._guid_gate([_full(r) for r in rows], query),
             "key": str(parent.get("ratingKey")),
             "nocache": True,
             "viewGroup": "episode" if is_episode_list else "season",
@@ -1063,9 +1081,15 @@ class PlexSim:
         # when BOTH container parameters are present; see page_window().
         page, paged, start, total = self.page_window(rows, query or {})
         if paged:
-            fields["Metadata"] = [_full(r) for r in page]
+            fields["Metadata"] = self._guid_gate([_full(r) for r in page], query)
             fields["offset"] = start
             fields["totalSize"] = total
+        fields.update(extra)
+        if extra.get("Directory"):
+            # Measured: the container's `size` counts the "All episodes" Directory
+            # row as well as the seasons, which is what `excludeAllLeaves=1`
+            # takes back off it.
+            fields["size"] = len(fields.get("Metadata") or []) + len(extra["Directory"])
 
         return self.container(**{k: v for k, v in fields.items() if v is not None})
 
@@ -1194,7 +1218,9 @@ class PlexSim:
         catalog = self.catalog
 
         # -- identity / capability ---------------------------------------
-        if route in ("/", "/identity"):
+        if route == "/":
+            return self.server_root()
+        if route == "/identity":
             # Matched field-for-field against a real claimed PMS 1.43.4, which
             # answers /identity with exactly FIVE fields and nothing else. The
             # earlier version of this handler returned the whole server-info
@@ -1239,6 +1265,11 @@ class PlexSim:
         if route in ("/:/prefs", "/:/prefs/"):
             if method == "PUT":
                 return self.set_prefs(query)
+            if method != "GET":
+                # Measured: a POST here is a 404 -- plexsim answered the whole
+                # Setting list to any verb, so a client that posted by mistake got
+                # a success and the settings page never showed an error.
+                return ("error", 404, "plexsim: not found")
             settings = self.server_prefs()
             return self.bare_container(size=len(settings), Setting=settings)
 
@@ -1246,7 +1277,24 @@ class PlexSim:
         if route.startswith("/system/agents"):
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
-            return self.system_scanners(segments[2] if len(segments) > 2 else None)
+            if len(segments) == 2:
+                # Measured: the bare collection is a 404 -- scanners are listed
+                # per section. plexsim answered the movie list to it.
+                return ("error", 404, "plexsim: not found")
+            return self.system_scanners(segments[2])
+        if segments[:3] == ["system", "library", "sections"]:
+            # The system view of the libraries, which the Agents page reads to
+            # know which sections an agent can be configured for. Measured: a
+            # `com.plexapp.system` container of Directory rows.
+            rows = [{"key": section["key"], "type": section.get("type"),
+                     "title": section.get("title"),
+                     "agent": ("tv.plex.agents.series"
+                               if section.get("type") == "show"
+                               else "tv.plex.agents.movie")}
+                    for section in catalog.sections]
+            return self.bare_container(size=len(rows),
+                                       identifier="com.plexapp.system",
+                                       Directory=rows)
         if route.startswith("/system/appstore"):
             # Measured: a real PMS 404s the appstore paths -- the channel store
             # is gone, and the client's Plugins page copes with that.
@@ -1275,13 +1323,22 @@ class PlexSim:
         if route == "/updater/status":
             return self.updater_status()
         if route in ("/updater/check", "/updater/apply"):
+            # Measured: only the PUT of `check` exists. A GET of either is a 404,
+            # and a PUT of `apply` with nothing downloaded is a 400 -- plexsim
+            # answered an empty 200 to all four, which reads as "the update is
+            # being installed".
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
             if route == "/updater/apply":
-                logger.warning("UPDATER apply requested -- plexsim does not update itself")
+                logger.warning("UPDATER apply requested -- nothing downloaded")
+                return ("error", 400, "plexsim: bad request")
             return ("empty", 200)
 
         if segments[:1] == ["activities"]:
             if method == "DELETE" and len(segments) > 1:
-                self.library.cancel_activity(segments[1])
+                # Measured: cancelling an activity that is not running is a 404.
+                if not self.library.cancel_activity(segments[1]):
+                    return ("error", 404, "plexsim: no such activity")
                 return ("empty", 200)
             activities = self.library.activities()
             return self.bare_container(size=len(activities), Activity=activities)
@@ -1328,16 +1385,43 @@ class PlexSim:
 
         if route == "/security/token":
             # The client asks for a delegation token before handing a URL to
-            # another device. plexsim has no second party to delegate to, but
-            # the shape is what the caller reads.
-            return self.bare_container(size=0, token="transient-" + catalog.machine[:8])
+            # another device. plexsim has no second party to delegate to, but the
+            # shape is what the caller reads. Measured: a request with no `type`
+            # and no `scope` is a 400, and each call answers a DIFFERENT token --
+            # plexsim answered a constant, so two devices shared one credential.
+            if not query.get("type") or not query.get("scope"):
+                return ("error", 400, "plexsim: bad request")
+            return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
+        if route == "/media/grabbers":
+            # Measured: four grabbers, verbatim. plexsim answered an empty
+            # container, which tells the Live TV setup page the server has no
+            # tuner protocols at all rather than no tuners.
+            return self.bare_container(size=len(MEDIA_GRABBERS),
+                                       MediaGrabber=MEDIA_GRABBERS)
+        if (segments[:1] == ["media"] and len(segments) > 1
+                and segments[1] in ("grabbers", "subscriptions")
+                and len(segments) > 2):
+            # Measured: every child of these two is a 404 -- a named grabber, a
+            # grabber's devices, one subscription. plexsim answered empty
+            # containers, so the Live TV pages drew controls for things that do
+            # not exist. The two collection roots themselves are real.
+            if not (segments[1] == "subscriptions" and segments[2] == "scheduled"):
+                return ("error", 404, "plexsim: not found")
         if route == "/security/resources":
             return ("error", 400, "plexsim: bad request")
 
-        if route == "/logs":
-            # Not the zip -- measured: a container with a `content` string. The
-            # Console page reads this; /diagnostics/logs is the download.
+        if route in ("/logs", "/diagnostics"):
+            # Not the zip -- measured: a container with a `content` string, and
+            # `/diagnostics` answers the same. plexsim 404'd the latter.
             return self.bare_container(size=0, content="plugins")
+        if route == "/log/networked":
+            # The networked-logging endpoint a companion client posts to. Measured
+            # 200 with an empty body on both verbs; plexsim 404'd it.
+            return ("empty", 200)
+        if route == "/resources":
+            # Measured: an empty container, not a 404. It is the device-resource
+            # list a companion client reads, and plexsim has no devices of its own.
+            return self.bare_container(size=0)
         if route == "/log":
             # The web client posts its OWN errors here. Answering with a
             # container is wrong (a real PMS answers empty), and dropping them
@@ -1736,6 +1820,113 @@ class PlexSim:
         advertise the matching feature, so an omission here looks to the user
         like a missing feature rather than a protocol error.
         """
+        return self.bare_container(size=1,
+                                   MediaProvider=self.media_provider_rows(),
+                                   **self.server_info())
+
+        return self.bare_container(size=1, MediaProvider=self.media_provider_rows(),
+                                   **self.server_info())
+
+    # The 25 top-level Directory rows `/` lists, in the reference's order. The row
+    # shape is `{count, key, title}` and the count is 1 on every one.
+    ROOT_DIRECTORIES = [
+        "actions", "activities", "butler", "channels", "clients", "devices",
+        "diagnostics", "downloadQueue", "hubs", "library", "livetv", "media",
+        "neighborhood", "playQueues", "playlists", "resources", "search",
+        "server", "servers", "service", "statistics", "system", "transcode",
+        "updater", "user",
+    ]
+
+    def server_root(self):
+        """`GET /` -- the server-info document, which is NOT `/identity`.
+
+        plexsim answered `/` with the five-field identity document. Measured, a
+        real PMS answers the whole capability blob -- the same ~50 scalars as
+        /media/providers -- plus 25 `Directory` rows naming its top-level
+        endpoints. python-plexapi's `PlexServer()` loads every attribute it has
+        from here, so an identity document leaves it with almost none of them.
+        """
+        rows = [{"count": 1, "key": name, "title": name}
+                for name in self.ROOT_DIRECTORIES]
+        return self.bare_container(size=len(rows), Directory=rows,
+                                   **self.server_info())
+
+    def server_info(self):
+        """The capability scalars `/` and `/media/providers` both carry.
+
+        Taken from a real claimed PMS 1.43.4's own /media/providers, which carries
+        30 attributes plexsim was missing -- including apiVersion and the myPlex*
+        claim-state pair. THIS, not /identity, is where a client reads whether the
+        server is signed in; the web app re-requested that endpoint 43 times while
+        they were absent, treating an incomplete provider as not-yet-ready. And
+        measured since: `GET /` carries the same set, which is where
+        python-plexapi reads every attribute it has.
+
+        The transcoder capability flags stay false: plexsim has no encoder, and
+        advertising one invites a transcode request it cannot serve.
+        """
+        return dict(
+            machineIdentifier=self.catalog.machine,
+            friendlyName=self.catalog.friendly,
+            version=SERVER_VERSION,
+            apiVersion="1.1.1",
+            musicAnalysis=2,
+            myPlex=True,
+            myPlexSubscription=self._claimed(),
+            myPlexUsername=(self._owner() if self._claimed() else None),
+            myPlexMappingState="mapped",
+            myPlexSigninState="ok" if self._claimed() else "none",
+            certificate=True,
+            platform="Linux",
+            platformVersion="6.1",
+            eventStream=True,
+            backgroundProcessing=True,
+            companionProxy=True,
+            pluginHost=True,
+            updater=True,
+            voiceSearch=True,
+            sync=True,
+            readOnlyLibraries=False,
+            # Present and false, not absent: the client's Sync & Download menu
+            # entry reads `server.allowSync`, and plexsim has no encoder to
+            # convert anything for a device.
+            allowSync=False,
+            pushNotifications=False,
+            allowCameraUpload=False,
+            allowChannelAccess=True,
+            # The Delete entry in an item's context menu is drawn only when the
+            # server reports this (client module 92273's `showDelete`). plexsim
+            # owns no files, so its delete drops the ROW from the in-memory
+            # library and leaves the debrid content alone -- which is the only
+            # honest local meaning of "delete" here, and a restart undoes it.
+            allowMediaDeletion=True,
+            allowSharing=True,
+            allowTuners=False,
+            livetv=0,
+            offlineTranscode=0,
+            streamingBrainVersion=2,
+            streamingBrainABRVersion=3,
+            # A real PMS says "logs,databases,streaminglogs"; plexsim has no
+            # database, and this string is exactly what the Troubleshooting page
+            # reads to decide which Download buttons to draw.
+            diagnostics="logs,streaminglogs",
+            countryCode="deu",
+            updatedAt=1789127123,
+            ownerFeatures=OWNER_FEATURES,
+            transcoderActiveVideoSessions=0,
+            transcoderVideo=False,
+            transcoderAudio=False,
+            transcoderSubtitles=False,
+            transcoderLyrics=False,
+        )
+
+    def media_provider_rows(self):
+        """The MediaProvider row, whose Feature list is the capability contract.
+
+        A client will not offer search, playback state or a play queue for a
+        provider that does not advertise the matching feature, so an omission here
+        looks to the user like a missing feature rather than a protocol error.
+        """
         directories = [{"hubKey": "/hubs", "title": "Home"}]
         for section in self.catalog.sections:
             key = section["key"]
@@ -1827,70 +2018,7 @@ class PlexSim:
             {"key": "/library/search", "type": "universalsearch"},
         ]
 
-        # Attribute set taken from a real claimed PMS 1.43.4's own
-        # /media/providers, which carries 30 attributes plexsim was missing --
-        # including apiVersion and the myPlex* claim-state pair. THIS, not
-        # /identity, is where a client reads whether the server is signed in;
-        # the web app re-requested this endpoint 43 times while they were
-        # absent, treating an incomplete provider as not-yet-ready.
-        #
-        # The transcoder capability flags stay false: plexsim has no encoder,
-        # and advertising one invites a transcode request it cannot serve.
-        return self.bare_container(
-            size=1,
-            machineIdentifier=self.catalog.machine,
-            friendlyName=self.catalog.friendly,
-            version=SERVER_VERSION,
-            apiVersion="1.1.1",
-            musicAnalysis=2,
-            myPlex=True,
-            myPlexSubscription=self._claimed(),
-            myPlexUsername=(self._owner() if self._claimed() else None),
-            myPlexMappingState="mapped",
-            myPlexSigninState="ok" if self._claimed() else "none",
-            certificate=True,
-            platform="Linux",
-            platformVersion="6.1",
-            eventStream=True,
-            backgroundProcessing=True,
-            companionProxy=True,
-            pluginHost=True,
-            updater=True,
-            voiceSearch=True,
-            sync=True,
-            readOnlyLibraries=False,
-            # Present and false, not absent: the client's Sync & Download menu
-            # entry reads `server.allowSync`, and plexsim has no encoder to
-            # convert anything for a device.
-            allowSync=False,
-            pushNotifications=False,
-            allowCameraUpload=False,
-            allowChannelAccess=True,
-            # The Delete entry in an item's context menu is drawn only when the
-            # server reports this (client module 92273's `showDelete`). plexsim
-            # owns no files, so its delete drops the ROW from the in-memory
-            # library and leaves the debrid content alone -- which is the only
-            # honest local meaning of "delete" here, and a restart undoes it.
-            allowMediaDeletion=True,
-            allowSharing=True,
-            allowTuners=False,
-            livetv=0,
-            offlineTranscode=0,
-            streamingBrainVersion=2,
-            streamingBrainABRVersion=3,
-            # A real PMS says "logs,databases,streaminglogs"; plexsim has no
-            # database, and this string is exactly what the Troubleshooting page
-            # reads to decide which Download buttons to draw.
-            diagnostics="logs,streaminglogs",
-            countryCode="deu",
-            updatedAt=1789127123,
-            ownerFeatures=OWNER_FEATURES,
-            transcoderActiveVideoSessions=0,
-            transcoderVideo=False,
-            transcoderAudio=False,
-            transcoderSubtitles=False,
-            transcoderLyrics=False,
-            MediaProvider=[
+        return [
                 {
                     "identifier": "com.plexapp.plugins.library",
                     "title": "Library",
@@ -1903,8 +2031,7 @@ class PlexSim:
                     "protocols": "stream,download",
                     "Feature": features,
                 }
-            ],
-        )
+        ]
 
     def library_section(self, segments, query, method="GET"):
         section_id = segments[2]
@@ -2466,9 +2593,23 @@ class PlexSim:
             lambda field, scope: FIELD_TITLES.get((scope or implicit, field), ""),
             self.tag_title)
 
+    @staticmethod
+    def _guid_gate(rows, query):
+        """Strip `Guid` from listing rows unless the client asked for it.
+
+        Measured: a DETAIL read always carries the `Guid` list, and a LISTING
+        carries it only under `includeGuids=1`. plexsim sent it everywhere, which
+        is a superset rather than a break -- but it is not what a real PMS sends,
+        and the grid payload is the one place the difference is measurable.
+        """
+        if (query or {}).get("includeGuids") == "1":
+            return rows
+        return [{k: v for k, v in row.items() if k != "Guid"} for row in rows]
+
     def listing_container(self, section_id, section, rows, view_group=None,
                           query=None, **extra):
         """The container a section listing returns, with the client's paging."""
+        rows = self._guid_gate(rows, query)
         page, paged, start, total = self.page_window(rows, query)
         fields = {
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
@@ -2747,7 +2888,18 @@ class PlexSim:
                 rows = self.catalog.children(rating_key)
             else:
                 rows = self.catalog.leaves(rating_key)
-            return self.child_container(row, rows, leaf, query)
+            extra = {}
+            if (leaf == "children" and row.get("type") == "show"
+                    and query.get("excludeAllLeaves") != "1" and rows):
+                # Measured: a SHOW's /children carries an extra `Directory` row
+                # linking to /allLeaves, titled "All episodes", and the container's
+                # size counts it -- which is what `excludeAllLeaves=1` removes.
+                # plexsim never emitted it, so the season list had no "All
+                # episodes" entry and the count was one short of the reference's.
+                extra["Directory"] = [{"key": "/library/metadata/%s/allLeaves"
+                                              % rating_key,
+                                       "title": "All episodes"}]
+            return self.child_container(row, rows, leaf, query, **extra)
 
         # -- the context menu's write half --------------------------------
         if leaf in ("refresh", "analyze", "unmatch", "match", "split", "merge"):
@@ -2759,7 +2911,12 @@ class PlexSim:
                 return self.set_artwork(row, leaf, query)
             return self.artwork_list(row, leaf)
         if leaf == "tree":
-            return self.metadata_tree(row)
+            # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
+            # the season. The dialog reads the whole branch, not just the leaf.
+            top = row
+            if row.get("type") == "episode" and row.get("grandparentRatingKey"):
+                top = self.catalog.items.get(int(row["grandparentRatingKey"])) or row
+            return self.metadata_tree(top)
         if leaf == "media" and len(segments) > 4:
             if method != "DELETE":
                 return ("error", 405, "plexsim: method not allowed")
@@ -4244,9 +4401,15 @@ class PlexSim:
     def metadata_tree(self, row):
         """`/library/metadata/{id}/tree` -- the raw item/media/part tree.
 
-        Measured shape: MetadataItem rows carrying MediaItem, each with
-        MediaPart. It is what "Get Info" falls back to for an item whose
-        Media the client has not already loaded.
+        Measured shape: MetadataItem rows carrying MediaItem, each with MediaPart.
+        It is what "Get Info" falls back to for an item whose Media the client has
+        not already loaded.
+
+        It NESTS, which plexsim did not do: a show's tree holds its seasons, each
+        season its episodes, and each episode its MediaItem -- and an EPISODE's own
+        tree is rooted at the SHOW. plexsim answered one flat row with
+        `MediaItem: []`, which is both empty-list-shaped and missing the hierarchy
+        the dialog reads.
         """
         media_items = []
         for media in row.get("Media", []):
@@ -4272,16 +4435,10 @@ class PlexSim:
                 if streams:
                     entry["MediaStream"] = streams
                 parts.append(entry)
-            media_items.append({
-                "id": media.get("id"),
-                "width": media.get("width"),
-                "height": media.get("height"),
-                "videoCodec": media.get("videoCodec"),
-                "audioCodec": media.get("audioCodec"),
-                "container": media.get("container"),
-                "bitrate": media.get("bitrate"),
-                "MediaPart": parts,
-            })
+            # Measured: a MediaItem here carries ONLY its id -- the width,
+            # height, codecs, container and bitrate plexsim added belong on the
+            # Media of a normal detail response, not on this tree.
+            media_items.append({"id": media.get("id"), "MediaPart": parts})
         # `hash` and `openSubtitleHash` are on a real MediaPart here and are
         # deliberately absent: both are hashes OF THE FILE, and plexsim has no
         # file to hash.
@@ -4295,9 +4452,25 @@ class PlexSim:
             "originallyAvailableAt": row.get("originallyAvailableAt") or "",
             "addedAt": row.get("addedAt") or 0,
             "refreshedAt": row.get("updatedAt") or 0,
-            "MediaItem": media_items,
         }
+        if media_items:
+            # Never `MediaItem: []`: a parent row has no media at all, and an
+            # empty list is a shape no real PMS sends.
+            item["MediaItem"] = media_items
+        children = [self._tree_item(child)
+                    for child in self.catalog.children(row["ratingKey"])]
+        if children:
+            # Measured: the tree NESTS -- a show holds its seasons, each season
+            # its episodes, each episode its MediaItem. plexsim answered one flat
+            # row with an empty MediaItem list, so Get Info on a show or a season
+            # had nothing under it.
+            item["MetadataItem"] = children
         return self.tag_container(size=1, MetadataItem=[item])
+
+    def _tree_item(self, row):
+        """One node of the tree, with its own children beneath it."""
+        inner = self.metadata_tree(row)["MediaContainer"]["MetadataItem"][0]
+        return inner
 
     # -- collections -----------------------------------------------------
 
@@ -4340,17 +4513,29 @@ class PlexSim:
                     summary=query.get("summary.value") or query.get("summary"))
                 return ("empty", 200)
             section = self.catalog.section(collection["librarySectionID"]) or {}
+            # Measured: this container carries `allowSync` TRUE, the identifier and
+            # the media-tag pair, and its librarySectionID is a NUMBER -- plexsim
+            # sent a string and omitted the other three, so a client could not
+            # resolve a tag into an image URL from a collection page.
             return self.bare_container(
                 size=1,
-                allowSync=False,
-                librarySectionID=collection["librarySectionID"],
+                allowSync=True,
+                identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
+                librarySectionID=int(collection["librarySectionID"])
+                if str(collection["librarySectionID"]).isdigit()
+                else collection["librarySectionID"],
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"),
                 Metadata=[self.library._collection_row(collection)],
             )
 
         leaf = segments[3]
-        if leaf == "children":
+        if leaf in ("children", "items") and method == "GET":
+            # Measured: `/items` answers the same members as `/children` -- plexsim
+            # answered an empty container to it, so the Edit Collection dialog's
+            # member list was blank.
             rows = [_listing_row(r) for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
         if leaf == "items" and len(segments) == 6 and segments[5] == "move":
@@ -4460,7 +4645,12 @@ class PlexSim:
             return self.paged_container(
                 rows, query,
                 composite=summary["composite"],
-                duration=summary["duration"],
+                # Measured, and documented in findings.md before it was
+                # implemented: the CONTAINER's duration is in SECONDS where the
+                # playlist ROW's is in milliseconds -- the same number, two units,
+                # one endpoint apart. Rounded to whole seconds, as the reference
+                # rounds it (2 x 10023 ms answered 20000 on the row and 20 here).
+                duration=int(round(summary["duration"] / 1000.0)),
                 leafCount=summary["leafCount"],
                 playlistType=summary["playlistType"],
                 ratingKey=summary["ratingKey"],
@@ -4607,8 +4797,14 @@ class PlexSim:
         """`PUT /:/prefs?<id>=<value>` -- one or more settings at a time."""
         known = {s.get("id") for s in SERVER_PREFS}
         for name, value in query.items():
-            if name.startswith("X-Plex-") or name not in known:
+            if name.startswith("X-Plex-") or name == "_pairs":
                 continue
+            if name not in known:
+                # Measured, message and all: a real PMS REFUSES an unknown
+                # preference rather than ignoring it, so a client that misspells
+                # one is told. plexsim skipped it and answered 200.
+                return ("error", 400,
+                        "cannot set preference value for unknown preference " + name)
             self.pref_overrides[name] = value
             logger.info("PREF %s = %s", name, value)
         return ("empty", 200)
@@ -4665,9 +4861,13 @@ class PlexSim:
             "subtitleMode": 2,
             "thumb": "",
         }
-        rows = [account] if account_id in (None, "1") else []
+        if account_id not in (None, "1"):
+            # Measured: an account the server does not have is a 404, not an empty
+            # container -- which a client reads as "the account exists, with no
+            # settings".
+            return ("error", 404, "plexsim: no such account")
         return self.bare_container(
-            size=len(rows), identifier="com.plexapp.system.accounts", Account=rows)
+            size=1, identifier="com.plexapp.system.accounts", Account=[account])
 
     def devices(self):
         """`/devices` -- what the Manage > Devices list reads."""
@@ -4723,13 +4923,60 @@ class PlexSim:
     # element is `ButlerTasks`, not MediaContainer -- one of the few endpoints
     # on the whole surface that is not a MediaContainer, which is exactly the
     # kind of thing that cannot be guessed.
+    # The Scheduled Tasks page, task for task off the reference: 23 of them, and
+    # only BackupDatabase carries a `title` and a `description` -- the client
+    # humanises the rest from the name itself. plexsim listed two with invented
+    # titles, so the page showed two tasks that do not exist on a real server and
+    # hid twenty-one that do.
     BUTLER_TASKS = [
-        {"name": "RefreshLibraries", "interval": 3, "scheduleRandomized": False,
-         "enabled": True, "title": "Update all libraries during maintenance",
-         "description": "Re-read every row in every library"},
+        {"name": "AutomaticUpdates", "interval": 1, "scheduleRandomized": False,
+         "enabled": False},
+        {"name": "BackupDatabase", "interval": 3, "scheduleRandomized": False,
+         "enabled": True, "title": "Backup Database",
+         "description": "Create a backup copy of the server's database in the "
+                        "configured backup directory"},
+        {"name": "ButlerTaskCleanSupplementalLogFiles", "interval": 1,
+         "scheduleRandomized": False, "enabled": False},
+        {"name": "ButlerTaskGenerateAdMarkers", "interval": 1,
+         "scheduleRandomized": False, "enabled": True},
+        {"name": "ButlerTaskGenerateCreditsMarkers", "interval": 1,
+         "scheduleRandomized": True, "enabled": True},
+        {"name": "ButlerTaskGenerateIntroMarkers", "interval": 1,
+         "scheduleRandomized": False, "enabled": True},
+        {"name": "ButlerTaskGenerateVoiceActivity", "interval": 1,
+         "scheduleRandomized": True, "enabled": False},
         {"name": "CleanOldBundles", "interval": 7, "scheduleRandomized": False,
-         "enabled": True, "title": "Remove old bundles",
-         "description": "Remove bundles no longer in use"},
+         "enabled": True},
+        {"name": "CleanOldCacheFiles", "interval": 7, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "DeepMediaAnalysis", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "GarbageCollectBlobs", "interval": 7, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "GarbageCollectLibraryMedia", "interval": 1,
+         "scheduleRandomized": False, "enabled": True},
+        {"name": "GenerateChapterThumbs", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "GenerateMediaIndexFiles", "interval": 1,
+         "scheduleRandomized": False, "enabled": False},
+        {"name": "LoudnessAnalysis", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "MusicAnalysis", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "OptimizeDatabase", "interval": 7, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "ProcessAssets", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "RefreshEpgGuides", "interval": 1, "scheduleRandomized": True,
+         "enabled": True},
+        {"name": "RefreshLibraries", "interval": 1, "scheduleRandomized": False,
+         "enabled": False},
+        {"name": "RefreshLocalMedia", "interval": 3, "scheduleRandomized": False,
+         "enabled": True},
+        {"name": "RefreshPeriodicMetadata", "interval": 1, "scheduleRandomized": True,
+         "enabled": True},
+        {"name": "UpgradeMediaAnalysis", "interval": 1, "scheduleRandomized": False,
+         "enabled": True},
     ]
 
     def resource_statistics(self, query):
@@ -4789,8 +5036,9 @@ class PlexSim:
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
         if len(segments) == 1:
-            return {"ButlerTasks": {"size": len(self.BUTLER_TASKS),
-                                    "ButlerTask": self.BUTLER_TASKS}}
+            # Measured: the ButlerTasks root carries NO size attribute, unlike
+            # every MediaContainer on the surface.
+            return {"ButlerTasks": {"ButlerTask": self.BUTLER_TASKS}}
         name = segments[1]
         if name not in {task["name"] for task in self.BUTLER_TASKS}:
             return ("error", 404, "plexsim: no such task")
@@ -4798,7 +5046,9 @@ class PlexSim:
             # Cancelling a queued task.
             return ("empty", 200)
         if method != "POST":
-            return ("error", 405, "plexsim: method not allowed")
+            # Measured: a PUT to a task a real PMS HAS is a 404, not the 405
+            # plexsim answered -- only POST (run now) and DELETE (cancel) exist.
+            return ("error", 404, "plexsim: not found")
         if name == "RefreshLibraries":
             for section in self.catalog.sections:
                 for row in self.catalog.section_items(section["key"]):

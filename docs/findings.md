@@ -1403,6 +1403,72 @@ findings.md already recorded that a client which does not claim MDE gets the
 `directPlay` alone. So plexsim answered the MDE pair to a client that never
 claimed MDE -- telling it a media decision was made on its behalf.
 
+#### `GET /` is not `/identity`, and eleven refusals a real PMS makes
+
+plexsim answered `/` with the five-field identity document. Measured, a real PMS
+answers the whole capability blob -- the same ~50 scalars as `/media/providers`
+-- plus **25 `Directory` rows** (`{count, key, title}`) naming its top-level
+endpoints: actions, activities, butler, channels, clients, devices, diagnostics,
+downloadQueue, hubs, library, livetv, media, neighborhood, playQueues, playlists,
+resources, search, server, servers, service, statistics, system, transcode,
+updater, user. python-plexapi's `PlexServer()` loads every attribute it has from
+here, so an identity document leaves it with almost none of them.
+
+`/butler` lists **23** tasks, and only `BackupDatabase` carries a `title` and a
+`description` -- the client humanises the rest from the name. Its root carries no
+`size`. plexsim listed two with invented titles, so the Scheduled Tasks page
+showed two tasks that do not exist on a real server and hid twenty-one that do.
+A PUT to a task that exists is a **404**; only POST (run now) and DELETE (cancel).
+
+`/library/metadata/{id}/tree` **nests**: a show's tree holds its seasons, each
+season its episodes, each episode its `MediaItem`, and an EPISODE's own tree is
+rooted at the SHOW. A `MediaItem` here carries only its `id` -- the width, codecs
+and bitrate plexsim put on it belong to a normal detail response. plexsim answered
+one flat row with `MediaItem: []`, which is both the empty-list shape no real PMS
+sends and missing the whole hierarchy the Get Info dialog reads.
+
+Two listing details: a show's `/children` carries an extra `Directory` row
+`{key: "/library/metadata/{id}/allLeaves", title: "All episodes"}` and the
+container's `size` **counts it**, which is exactly what `excludeAllLeaves=1`
+takes back off. And `Guid` is gated: a DETAIL row always carries it, a LISTING
+carries it only under `includeGuids=1`; plexsim sent it everywhere.
+
+The refusals, each of which plexsim answered an empty 200 or an empty container
+to -- which a client reads as "that worked" or "that exists and is empty":
+
+| Request | Reference |
+|---|---|
+| `GET /updater/check`, `GET /updater/apply` | 404 — only the PUT of `check` exists |
+| `PUT /updater/apply` with nothing downloaded | 400 |
+| `DELETE /activities/{unknown uuid}` | 404 |
+| `PUT /:/prefs?NoSuchPref=1` | **400**, body `cannot set preference value for unknown preference NoSuchPref` |
+| `POST /:/prefs` | 404 |
+| `GET /accounts/{unknown}` | 404 |
+| `GET /media/subscriptions/{id}`, `/media/grabbers/{id}`, `/media/grabbers/{id}/devices` | 404 |
+| `GET /system/scanners` (bare) | 404 — scanners are listed per section |
+| `GET /security/token` with no `type`/`scope` | 400 |
+| `PUT /butler/{task}` | 404 |
+| `GET /library/collections/{id}/items` | the members, not an empty container |
+
+And five endpoints plexsim refused that a real PMS answers: `/log/networked`
+(200, empty), `/diagnostics` (`{size: 0, content: "plugins"}`), `/resources`
+(`{size: 0}`), `/media/grabbers` (four `MediaGrabber` rows -- an empty list tells
+the Live TV page the server supports no tuner protocols at all rather than that it
+has no tuners), and `/system/library/sections` (a `com.plexapp.system` container).
+
+`/security/token` answers a **different** token on every call; plexsim answered a
+constant, so two devices would have shared one delegation credential.
+
+Three shapes on the collection and playlist side: a single collection's container
+carries `allowSync: true`, the identifier and the media-tag pair, and a NUMERIC
+`librarySectionID` (plexsim sent a string and omitted the other three, so a client
+could not resolve a tag into an image URL from a collection page); a SMART
+collection carries no `minYear`/`maxYear`, because its membership is a query and
+there is no fixed span to report; and the playlist ITEMS container reports its
+`duration` in **seconds** where the playlist ROW reports the same number in
+milliseconds -- one endpoint apart, recorded in this file before it was
+implemented.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

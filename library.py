@@ -870,7 +870,10 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
-        if years:
+        if years and not collection.get("smart"):
+            # Measured: a SMART collection carries no minYear/maxYear -- its
+            # membership is a query, so there is no fixed span to report. plexsim
+            # computed them from whatever the query matched at that moment.
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]
         return row
