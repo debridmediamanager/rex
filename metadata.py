@@ -140,6 +140,21 @@ class Tmdb:
                 return kind, results[0]["id"]
         return None, None
 
+    def search(self, kind, title, year=None):
+        """Every candidate for a title, not just the first.
+
+        `identify()` deliberately takes the top hit and nothing else, because a
+        near match in a catalog build is a confidently wrong library row. Fix
+        Match is the opposite case: the user is choosing, so they get the list.
+        """
+        if not title:
+            return []
+        params = {"query": title}
+        if year and kind == "movie":
+            params["year"] = year
+        found = self._get("search/" + kind, **params)
+        return (found or {}).get("results") or []
+
     def details(self, kind, tmdb_id):
         return self._get(
             "%s/%s" % (kind, tmdb_id),
@@ -222,14 +237,18 @@ def _content_rating(details, kind):
     return None
 
 
-def enrich(row, tmdb, parsed):
+def enrich(row, tmdb, parsed, chosen=None):
     """Add TMDB-derived Plex metadata to a catalog row, in place.
 
     Returns True when the release was identified. Everything written here is
     sourced from TMDB; nothing is invented, so an unidentified release keeps the
     probe-derived row it already had.
+
+    `chosen` is `(kind, tmdb_id)` picked by a person rather than by the search:
+    the Fix Match dialog in the UI. It skips identify() entirely, because the
+    whole point of that dialog is that the search got it wrong.
     """
-    kind, tmdb_id = tmdb.identify(parsed)
+    kind, tmdb_id = chosen if chosen else tmdb.identify(parsed)
     if not kind:
         return False
 
