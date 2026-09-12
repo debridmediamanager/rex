@@ -1393,12 +1393,33 @@ class PlexSim:
 
         if route == "/library/all/top":
             # Most played first -- what the Home screen's "Top" shelf reads.
+            # Measured: `type=` is REQUIRED (a real PMS answers 400 without it),
+            # and the counts come out of the play HISTORY rather than off the row.
+            # Big Buck Bunny reported `globalViewCount: 1` with no `viewCount` at
+            # all, because it had been played and then marked unplayed: the row's
+            # counter is current state, this shelf is the history.
             wanted = {"1": "movie", "2": "show", "4": "episode"}.get(query.get("type"))
-            rows = [r for r in catalog.items.values()
-                    if (not wanted or r.get("type") == wanted) and r.get("viewCount")]
-            rows.sort(key=lambda r: -(r.get("viewCount") or 0))
+            if wanted is None:
+                return ("error", 400, "plexsim: bad request")
+            plays, viewers = {}, {}
+            for entry in self.library.history():
+                key = entry.get("ratingKey")
+                row = catalog.items.get(int(key)) if str(key).isdigit() else None
+                if row is None or row.get("type") != wanted:
+                    continue
+                plays[int(key)] = plays.get(int(key), 0) + 1
+                viewers.setdefault(int(key), set()).add(entry.get("accountID") or 1)
+            ordered = sorted(plays, key=lambda k: (-plays[k], k))
             limit = int(query.get("limit", 12) or 12)
-            return self.container(Metadata=[_listing_row(r) for r in rows[:limit]])
+            rows = []
+            for key in ordered[:limit]:
+                row = _listing_row(catalog.items[key])
+                row["globalViewCount"] = plays[key]
+                row["userCount"] = len(viewers[key])
+                # Who watched it, which is what the Home shelf's avatar reads.
+                row["User"] = [{"id": account} for account in sorted(viewers[key])]
+                rows.append(row)
+            return self.container(Metadata=rows)
 
         if segments[:2] == ["library", "streams"]:
             # Sidecar subtitle extraction. plexsim never repackages, so every
@@ -1439,7 +1460,7 @@ class PlexSim:
             # no Hub at all.
             return self.hub_container()
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
-            return self.section_hubs(segments[2])
+            return self.section_hubs(segments[2], query.get("count"))
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
             # The Continue Watching shelf's own "see all" list.
@@ -2666,15 +2687,31 @@ class PlexSim:
         body.update(fields)
         return {"MediaContainer": self._prune(body)}
 
-    def hub(self, identifier, title, rows, **extra):
+    # A hub's default row cap, measured: with no `count=` a shelf carries up to 12.
+    HUB_COUNT = 12
+
+    def hub(self, identifier, title, rows, count=None, **extra):
+        """One shelf, capped at `count` with `more` saying whether it was cut.
+
+        Measured on the reference: `?count=2` caps every shelf at two rows AND
+        sets `more: true` on the ones that had more, which is how the client knows
+        to draw the "see all" chevron. plexsim hard-coded `more: false` and ignored
+        `count` entirely, so a shelf was either complete or looked complete. The
+        client asks for `count+1` for exactly this reason -- it wants to know
+        whether the row after the last visible one exists.
+        """
+        limit = self.HUB_COUNT
+        if count is not None and str(count).strip().lstrip("-").isdigit():
+            limit = max(int(count), 0)
+        page = rows[:limit]
         body = {
             "hubIdentifier": identifier,
             "title": title,
             "type": "movie",
             "hubKey": "/library/all",
-            "size": len(rows),
-            "more": False,
-            "Metadata": rows,
+            "size": len(page),
+            "more": len(rows) > len(page),
+            "Metadata": page,
         }
         body.update(extra)
         return body
@@ -2686,8 +2723,10 @@ class PlexSim:
         regardless means Home draws rows it did not ask for, in the wrong places.
         """
         wanted = [i for i in (query.get("identifier") or "").split(",") if i]
+        count = query.get("count")
         hubs = [self.hub("home.continue", "Continue Watching",
-                         [_listing_row(r) for r in self.continue_watching()])]
+                         [_listing_row(r) for r in self.continue_watching()],
+                         count=count)]
         for section in self.catalog.sections:
             rows = [_listing_row(r) for r in self.catalog.section_items(section["key"])]
             if not rows:
@@ -2696,7 +2735,8 @@ class PlexSim:
                 self.hub(
                     "movie.recentlyadded.%s" % section["key"],
                     "Recently Added in %s" % section["title"],
-                    rows[:12],
+                    rows,
+                    count=count,
                     hubKey="/library/sections/%s/recentlyAdded" % section["key"],
                     librarySectionID=int(section["key"]),
                     librarySectionTitle=section["title"],
@@ -2707,7 +2747,7 @@ class PlexSim:
                     or h["hubIdentifier"].split(".")[0] in wanted]
         return self.hub_container(Hub=hubs)
 
-    def section_hubs(self, section_id):
+    def section_hubs(self, section_id, count=None):
         """`/hubs/sections/{id}` -- the library's Recommended tab.
 
         Five shelves, measured hub for hub against the reference: identifier,
@@ -2735,9 +2775,9 @@ class PlexSim:
 
         def shelf(identifier, shelf_title, rows, kind, key, context, **extra):
             return self.hub(
-                identifier, shelf_title, [_listing_row(r) for r in rows[:12]],
+                identifier, shelf_title, [_listing_row(r) for r in rows],
+                count=count,
                 type=kind, hubKey=key, key=key, context=context, style="shelf",
-                more=False, size=len(rows[:12]),
                 librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
                 librarySectionTitle=title, **extra)
 

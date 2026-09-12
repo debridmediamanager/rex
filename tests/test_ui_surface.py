@@ -576,6 +576,12 @@ def main():
     print("\n=== context menu: Refresh Metadata / Analyze ===")
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     before_thumb = (detail.get("Metadata") or [{}])[0].get("thumb")
+    # An artwork version is a unix SECOND, so a refresh inside the same second as
+    # the row's last version produces the same key and the check fails for a
+    # reason that is not a bug. Wait for the clock to tick first.
+    edge = time.time()
+    while int(time.time()) == int(edge):
+        time.sleep(0.05)
     status, body, _ = request(base, "PUT", "/library/metadata/%s/refresh" % movie)
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     after_thumb = (detail.get("Metadata") or [{}])[0].get("thumb")
@@ -2304,6 +2310,56 @@ def main():
           "%d folder(s)" % len(folders.get("Metadata") or []))
 
     print("\n=== the library's Recommended tab ===")
+    # Measured: `?count=N` caps every shelf at N rows AND sets `more` on the ones
+    # that were cut, which is how the client knows to draw the "see all" chevron.
+    # plexsim hard-coded `more: false` and ignored count, so a truncated shelf
+    # looked complete. The client asks for count+1 for exactly this reason.
+    for section_id in (movie_section, show_section):
+        if not section_id:
+            continue
+        _, full, _ = get(base, "/hubs/sections/%s" % section_id)
+        _, capped, _ = get(base, "/hubs/sections/%s?count=1" % section_id)
+        by_id = {h.get("hubIdentifier"): h for h in capped.get("Hub") or []}
+        cut = [h for h in full.get("Hub") or [] if (h.get("size") or 0) > 1]
+        if not cut:
+            skip("count caps a shelf and sets more on section %s" % section_id,
+                 "no shelf has more than one row")
+            continue
+        ok = all(len(by_id.get(h["hubIdentifier"], {}).get("Metadata") or []) == 1
+                 and by_id.get(h["hubIdentifier"], {}).get("size") == 1
+                 and by_id.get(h["hubIdentifier"], {}).get("more") is True
+                 for h in cut)
+        untouched = [h for h in full.get("Hub") or [] if (h.get("size") or 0) <= 1]
+        ok = ok and all(by_id.get(h["hubIdentifier"], {}).get("more") is False
+                        for h in untouched)
+        check("count caps a shelf and sets more on section %s" % section_id, ok,
+              "%d shelf(s) cut, %d untouched" % (len(cut), len(untouched)))
+    _, home, _ = get(base, "/hubs?count=1")
+    check("count caps the Home shelves too",
+          all(len(h.get("Metadata") or []) <= 1 for h in home.get("Hub") or []),
+          ",".join("%s=%s" % (h.get("hubIdentifier"), h.get("size"))
+                   for h in home.get("Hub") or []))
+
+    # The Top shelf counts PLAYS, not the row's current viewCount: measured on the
+    # reference, a movie that had been played and then marked unplayed still
+    # reported globalViewCount 1 with no viewCount at all.
+    status, _, _ = container(base, "GET", "/library/all/top")
+    check("the top shelf needs a type, as a real PMS does", status == 400,
+          "HTTP %s" % status)
+    _, top, _ = get(base, "/library/all/top?type=1&limit=5")
+    rows = top.get("Metadata") or []
+    _, played, _ = get(base, "/status/sessions/history/all")
+    history = [h for h in played.get("Metadata") or [] if h.get("type") == "movie"]
+    if history:
+        check("the top shelf carries globalViewCount, userCount and User",
+              rows and all(r.get("globalViewCount") and r.get("userCount")
+                           and r.get("User") for r in rows),
+              "%d row(s): %s" % (len(rows), [(r.get("title"), r.get("globalViewCount"),
+                                              r.get("User")) for r in rows[:2]]))
+    else:
+        skip("the top shelf carries globalViewCount, userCount and User",
+             "nothing has been played yet in this run")
+
     for section_id, prefix in ((movie_section, "movie"), (show_section, "tv")):
         if not section_id:
             continue

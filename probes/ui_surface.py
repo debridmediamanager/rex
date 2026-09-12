@@ -264,6 +264,13 @@ def steps(ids, machine, mutate):
         ("browse", "GET", "/library/sections/%s/collections" % movie_section),
         ("browse", "GET", "/library/tags?type=2&sectionId=%s" % movie_section),
         ("browse", "GET", "/hubs/sections/%s" % movie_section),
+        # `count=` caps each shelf and sets `more` on the ones it cut, which is
+        # what draws the "see all" chevron. The client asks for count+1.
+        ("browse", "GET", "/hubs/sections/%s?count=1" % movie_section),
+        ("browse", "GET", "/hubs?count=13"),
+        # The Top shelf counts PLAYS, and needs a type: a real PMS 400s without one.
+        ("browse", "GET", "/library/all/top?type=1&limit=5"),
+        ("browse", "GET", "/library/all/top"),
         ("browse", "GET", "/hubs/search?query=a"),
         ("browse", "GET", "/library/search?query=a"),
     ]
