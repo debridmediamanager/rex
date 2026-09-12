@@ -38,13 +38,23 @@ def _attr(value):
     return str(value)
 
 
-def _element_name(key, row):
+def _element_name(key, row, overrides=None):
+    """The element a container key renders as.
+
+    A `Metadata` row usually names its own element through `type`, but some
+    endpoints carry rows with no type at all and a fixed element that only the
+    endpoint knows: an artwork list is `<Photo>` and a folder list is
+    `<Directory>`, both measured against a real PMS. Those pass an override,
+    because guessing from the row would make both `<Video>`.
+    """
+    if overrides and key in overrides:
+        return overrides[key]
     if key == "Metadata":
         return _METADATA_ELEMENT.get(str(row.get("type", "")).lower(), "Video")
     return key
 
 
-def _render(name, row, out):
+def _render(name, row, out, overrides=None):
     attrs = []
     children = []
 
@@ -74,13 +84,19 @@ def _render(name, row, out):
     out.append(">")
     for key, rows in children:
         for child in rows:
-            _render(_element_name(key, child), child, out)
+            # Overrides apply to the container's own children only; a nested
+            # `Metadata` inside one of them still names itself.
+            _render(_element_name(key, child, overrides), child, out)
     out.append("</%s>" % name)
 
 
-def to_xml(container):
-    """Serialize a {"MediaContainer": {...}} dict to a Plex XML document."""
+def to_xml(container, elements=None):
+    """Serialize a {"MediaContainer": {...}} dict to a Plex XML document.
+
+    `elements` overrides the element name for a container key, for the endpoints
+    whose rows do not carry a `type` to name themselves with.
+    """
     root, body = next(iter(container.items()))
     out = ['<?xml version="1.0" encoding="UTF-8"?>\n']
-    _render(root, body, out)
+    _render(root, body, out, elements)
     return "".join(out).encode("utf-8")
