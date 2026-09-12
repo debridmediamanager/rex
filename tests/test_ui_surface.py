@@ -1391,10 +1391,16 @@ def main():
           status == 200 and resolution.get("Directory"),
           ",".join(d.get("title") for d in resolution.get("Directory") or []))
     if resolution.get("Directory"):
-        _, rows, _ = get(base, resolution["Directory"][0]["fastKey"])
-        check("a resolution entry filters the listing",
-              bool(rows.get("Metadata")),
-              "%d row(s)" % len(rows.get("Metadata") or []))
+        entry = resolution["Directory"][0]
+        # Measured: a media axis entry carries `key` and `title` and NO fastKey --
+        # the client builds `?resolution=<key>` itself -- and the title is the
+        # LABEL (`1080p`), not the value.
+        _, rows, _ = get(base, "/library/sections/%s/all?resolution=%s"
+                               % (movie_section, quote(entry["key"])))
+        check("a resolution entry filters the listing, with no fastKey to follow",
+              bool(rows.get("Metadata")) and "fastKey" not in entry
+              and entry.get("title") != entry.get("key"),
+              "%s -> %d row(s)" % (entry.get("title"), len(rows.get("Metadata") or [])))
 
     print("\n=== CORS, which a browser enforces before the server sees anything ===")
     # Measured either side of an Origin header: a real PMS ECHOES the origin and
@@ -2046,7 +2052,14 @@ def main():
             if not entry.get("fastKey"):
                 check("By %s lists and filters" % axis, False, "entry has no fastKey")
                 continue
-            _, filtered, _ = get(base, entry["fastKey"])
+            # The reference's own `studio` fastKey carries a RAW space
+            # (`all?studio=Blender Foundation`), which cannot go on an HTTP
+            # request line at all -- the client encodes it before use. So the
+            # fastKey is re-encoded here rather than followed literally.
+            path, _, raw = entry["fastKey"].partition("?")
+            follow = path + ("?" + urllib.parse.urlencode(
+                urllib.parse.parse_qsl(raw, keep_blank_values=True)) if raw else "")
+            _, filtered, _ = get(base, follow)
             rows = filtered.get("Metadata") or []
             detail += ", first opens %d row(s)" % len(rows)
             ok = ok and bool(rows)
@@ -2066,6 +2079,114 @@ def main():
                 ok = ok and all(int(row.get("year") or 0) // 10 * 10
                                 == int(entry["key"]) for row in rows)
         check("By %s lists and filters" % axis, ok, detail)
+    # Measured: only a `genre` entry carries a `type`, and a person entry carries
+    # the tag's own `thumb`. plexsim stamped `type` on every tag axis.
+    _, genres, _ = get(base, "/library/sections/%s/genre" % movie_section)
+    _, actors, _ = get(base, "/library/sections/%s/actor" % movie_section)
+    genre_entries = genres.get("Directory") or []
+    actor_entries = actors.get("Directory") or []
+    check("only a genre entry carries a type",
+          all(e.get("type") == "genre" for e in genre_entries)
+          and all("type" not in e for e in actor_entries),
+          "%d genre(s), %d actor(s)" % (len(genre_entries), len(actor_entries)))
+    if actor_entries:
+        with_thumb = [e for e in actor_entries if e.get("thumb")]
+        check("a person entry carries the tag's thumb",
+              bool(with_thumb) or not any(
+                  t.get("thumb") for m in present for t in m.get("Role") or []),
+              "%d of %d" % (len(with_thumb), len(actor_entries)))
+    else:
+        skip("a person entry carries the tag's thumb", "no actor tags in the catalog")
+    # An axis is scoped by `?type=`: a movie library asked for shows lists nothing.
+    _, wrong_type, _ = get(base, "/library/sections/%s/genre?type=2" % movie_section)
+    check("an axis is scoped by the requested type",
+          wrong_type.get("size") == 0 and not wrong_type.get("Directory"),
+          "size=%s" % wrong_type.get("size"))
+
+    print("\n=== the media axes, and the two that are not secondary at all ===")
+    # These read off the Media and its Streams. Measured: their entries carry
+    # `key` and `title` and no `fastKey`, and the title is a LABEL -- `1080`
+    # prints as `1080p`, a language code as the language's own name.
+    for axis in ("resolution", "videoCodec", "audioCodec", "subtitleCodec",
+                 "audioLayout", "audioLanguage", "subtitleLanguage"):
+        status, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
+        entries = listing.get("Directory") or []
+        check("the %s axis answers with key/title entries" % axis,
+              status == 200 and listing.get("viewGroup") == "secondary"
+              and listing.get("title2", "").startswith("By ")
+              and all(set(e) == {"key", "title"} for e in entries),
+              "%s: %d entry(ies) %s" % (listing.get("title2"), len(entries),
+                                        entries[:2]))
+    # By Folder Location is the one axis whose container is NOT the secondary one.
+    status, location, _ = get(base, "/library/sections/%s/location" % movie_section)
+    entries = location.get("Directory") or []
+    check("By Folder Location carries only size and title2",
+          status == 200
+          and sorted(k for k in location if not isinstance(location[k], list))
+              == ["size", "title2"]
+          and location.get("title2") == "By Folder Location",
+          ",".join(sorted(location)))
+    if entries:
+        _, by_location, _ = get(base, entries[0]["fastKey"])
+        check("a folder location entry filters the listing",
+              bool(by_location.get("Metadata")),
+              "%s -> %d row(s)" % (entries[0].get("title"),
+                                   len(by_location.get("Metadata") or [])))
+    else:
+        skip("a folder location entry filters the listing", "the section has no Location")
+    # `/unwatched` is a LISTING titled "Unplayed", not an axis.
+    _, unplayed, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
+    check("the unwatched listing is titled Unplayed",
+          unplayed.get("title2") == "Unplayed" and unplayed.get("viewGroup") != "secondary",
+          "%s / %s" % (unplayed.get("title2"), unplayed.get("viewGroup")))
+    # The seven axes the REFERENCE itself 404s, advertised in /filters all the
+    # same. plexsim advertises them too, so a 200 here would be the invention.
+    for axis in ("hdr", "dovi", "hdr10plus", "atmos", "inProgress", "unmatched"):
+        status, _, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
+        check("the %s axis 404s, as the reference's does" % axis, status == 404,
+              "HTTP %s" % status)
+
+    print("\n=== /filters is per library TYPE ===")
+    # A movie library advertises 28 filters and a show library a DIFFERENT 15 --
+    # the same lesson as the two Meta sidecars. plexsim served one trimmed list
+    # for both, so a show grid's filter bar could only talk about movies.
+    _, movie_filters, _ = get(base, "/library/sections/%s/filters" % movie_section)
+    movie_names = [e.get("filter") for e in movie_filters.get("Directory") or []]
+    check("a movie library advertises the reference's 28 filters",
+          len(movie_names) == 28 and movie_names[0] == "genre"
+          and "resolution" in movie_names and "location" in movie_names
+          and "network" not in movie_names,
+          "%d: %s" % (len(movie_names), ",".join(movie_names[:6])))
+    if show_section:
+        _, show_filters, _ = get(base, "/library/sections/%s/filters" % show_section)
+        show_entries = show_filters.get("Directory") or []
+        show_names = [e.get("filter") for e in show_entries]
+        check("a show library advertises a different 15",
+              len(show_names) == 15 and "network" in show_names
+              and "unwatchedLeaves" in show_names and "resolution" not in show_names,
+              "%d: %s" % (len(show_names), ",".join(show_names[:6])))
+        # The `?type=2` suffix is measured per entry and is not uniform: three
+        # entries do not carry it.
+        bare = sorted(e.get("filter") for e in show_entries
+                      if "?" not in (e.get("key") or ""))
+        check("a show library's filter keys carry ?type=2, with three exceptions",
+              bare == ["editionTitle", "unmatched"] or bare == ["country",
+                                                                "editionTitle",
+                                                                "unmatched"],
+              ",".join(bare))
+        # Every advertised key either answers or 404s the way the reference's
+        # does; an advertised key that answers a 200 the reference does not is
+        # the invention this suite exists to catch.
+        broken = []
+        for entry in show_entries:
+            status, _, _ = get(base, entry["key"])
+            if status not in (200, 404):
+                broken.append("%s=%s" % (entry.get("filter"), status))
+        check("every advertised show filter key answers 200 or 404",
+              not broken, ",".join(broken) or "all clean")
+    else:
+        skip("a show library advertises a different 15", "no show library")
+
     status, categories, _ = get(base, "/library/sections/%s/categories" % movie_section)
     tiles = categories.get("Directory") or []
     check("the Categories pivot lists genre tiles",

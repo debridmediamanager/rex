@@ -922,6 +922,66 @@ duplicating the last clause -- are parser artifacts of the real server that no
 client can reach. They are reproduced anyway, because the harness diffs plexsim's
 answer against the reference's and a "corrected" answer is a difference to chase.
 
+#### `/filters` is per library TYPE, and seven of the axes it names 404
+
+The filter BAR is a separate surface from the filter engine, and plexsim served
+one hand-trimmed 15-entry list for every library. Measured: a movie library
+advertises **28** filters and a show library a **different 15** -- the same
+lesson as the two `Meta` sidecars, one endpoint over. A show grid's filter bar
+could therefore only ever talk about movies.
+
+The show list is not a subset: it adds `network` and `unwatchedLeaves`, drops
+`decade`, `resolution` and every media axis, and its keys carry **`?type=2`** --
+except `country`, `unmatched` and `editionTitle`, which do not. That suffix is
+load-bearing: an axis is scoped by the type, so `/library/sections/1/genre?type=2`
+is an empty axis on a movie library.
+
+Seven of the 28 axes **404 on the reference itself**: `hdr`, `dovi`,
+`hdr10plus`, `atmos`, `inProgress`, `unmatched`, and `unwatchedLeaves` on the show
+side. A real PMS advertises axes it does not serve, so plexsim advertises them
+too and its unknown-leaf 404 answers them the same way. The filters behind them
+do work on the grid -- it is only the "list me the values" axis that is missing.
+
+What the axes themselves answer, measured against the lab and against a
+6000-item production library:
+
+| Axis kind | Entry | Note |
+|---|---|---|
+| tag (`genre`, `director`, `actor`, …) | `{fastKey, [thumb], key, title}` | only a **genre** entry carries `type`; a person entry carries the tag's `thumb`. plexsim stamped `type` on every one |
+| field (`year`, `decade`, `contentRating`) | `{fastKey, key, title}` | key and fastKey single-encoded |
+| field (`studio`) | same | fastKey **raw** (`all?studio=Blender Foundation` -- unusable on an HTTP request line) and key **double**-encoded. The reference's own inconsistency |
+| media (`resolution`, `videoCodec`, `audioLanguage`, …) | `{key, title}` | **no fastKey at all**, and the title is a LABEL: `1080` → `1080p`, `en` → `English` |
+| `location` | `{fastKey, key, title}` | its container carries **only `size` and `title2`** -- no art, thumb, identifier or viewGroup. The one outlier |
+| `unwatched` | Metadata rows | not an axis: a LISTING with `title2: "Unplayed"` |
+
+`resolution`'s accepted values are a closed enum, probed value by value against
+production: `sd 480 576 720 1080 2k 2.7k 4k 8k 16k`. `240`, `360`, `400`, `1081`,
+`1440`, `2160`, `3k`, `9k`, `10k`, `SD` and `1080p` are each a **500**. The axis
+labels them `SD`, `480p` … `2K`, `2.7K`, `4K`.
+
+`videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` answer on the lab's
+1.43.4 and **404 on production's older build**; plexsim follows the lab, which is
+the designated reference.
+
+#### An unexplained field that is still a measurement: `nocache` on show axes
+
+Every secondary container of a **show** library carries `nocache: true` -- its
+`/filters`, `/sorts`, `/genre`, `/year`, all of them -- and no movie library's
+does. The first reading was cache state, which would make it per-server and
+transient. Three movie libraries and two show libraries across **two independent
+servers** rule that out: it tracks the library's TYPE. The cause is not visible
+from outside, so the correlation is what plexsim reproduces.
+
+#### A deliberate deviation: plexsim's error bodies
+
+A real PMS answers a refusal with an HTML shell (`<html><head><title>Not
+Found</title>…`, `text/html`, 85 bytes). plexsim answers `text/plain` with the
+reason it refused (`plexsim: unsupported sort key bogusKey`). No client parses a
+4xx body, and the reason is what makes a failed probe diagnosable, so this one
+difference is kept on purpose. It is the only remaining shape difference in the
+whole `/library/sections/*` surface apart from rows plexsim's catalog has no data
+for.
+
 #### Container paging: both parameters, and the client sends HEADERS
 
 Two defects in one predicate. A real PMS pages only when

@@ -233,6 +233,27 @@ def steps(ids, machine, mutate):
         ("browse", "GET", "/library/sections/%s/contentRating" % movie_section),
         ("browse", "GET", "/library/sections/%s/director" % movie_section),
         ("browse", "GET", "/library/sections/%s/folder" % movie_section),
+        # The media axes, read off the Media rather than a tag, plus the two that
+        # are not secondary containers at all: `location` carries only size and
+        # title2, and `unwatched` is a listing titled "Unplayed".
+        ("browse", "GET", "/library/sections/%s/resolution" % movie_section),
+        ("browse", "GET", "/library/sections/%s/videoCodec" % movie_section),
+        ("browse", "GET", "/library/sections/%s/audioCodec" % movie_section),
+        ("browse", "GET", "/library/sections/%s/subtitleCodec" % movie_section),
+        ("browse", "GET", "/library/sections/%s/audioLayout" % movie_section),
+        ("browse", "GET", "/library/sections/%s/audioLanguage" % movie_section),
+        ("browse", "GET", "/library/sections/%s/subtitleLanguage" % movie_section),
+        ("browse", "GET", "/library/sections/%s/editionTitle" % movie_section),
+        ("browse", "GET", "/library/sections/%s/location" % movie_section),
+        ("browse", "GET", "/library/sections/%s/unwatched" % movie_section),
+        # Advertised in /filters and 404 on the reference itself -- the probe
+        # records that, so a plexsim that starts answering them shows up.
+        ("browse", "GET", "/library/sections/%s/hdr" % movie_section),
+        ("browse", "GET", "/library/sections/%s/inProgress" % movie_section),
+        ("browse", "GET", "/library/sections/%s/unmatched" % movie_section),
+        # An axis is scoped by the requested type: a movie library asked for
+        # shows lists nothing.
+        ("browse", "GET", "/library/sections/%s/genre?type=2" % movie_section),
         ("browse", "GET", "/library/sections/%s/newest" % movie_section),
         ("browse", "GET", "/library/sections/%s/recentlyAdded" % movie_section),
         ("browse", "GET", "/library/sections/%s/onDeck" % movie_section),
@@ -247,6 +268,15 @@ def steps(ids, machine, mutate):
         plan += [
             ("browse", "GET", "/library/sections/%s/all?type=2&includeMeta=1" % show_section),
             ("browse", "GET", "/library/sections/%s/prefs" % show_section),
+            # A show library's /filters is a DIFFERENT list, and its axis keys
+            # carry ?type=2 -- except country, unmatched and editionTitle.
+            ("browse", "GET", "/library/sections/%s/filters" % show_section),
+            ("browse", "GET", "/library/sections/%s/genre?type=2" % show_section),
+            ("browse", "GET", "/library/sections/%s/network?type=2" % show_section),
+            ("browse", "GET", "/library/sections/%s/country" % show_section),
+            ("browse", "GET", "/library/sections/%s/editionTitle" % show_section),
+            ("browse", "GET", "/library/sections/%s/unwatchedLeaves?type=2"
+                              % show_section),
             # A show library advertises its filter fields PREFIXED, so this is
             # the only place the scope echo and the per-type titles show up.
             ("browse", "GET", "/library/sections/%s/query/parse?type=4"
