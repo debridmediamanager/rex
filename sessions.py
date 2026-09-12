@@ -77,6 +77,7 @@ class Sessions:
         # buckets on read.
         self._bytes = {}
         self._devices = {}
+        self._device_seen = {}
         self._next_device = 1
         self._plays = []
 
@@ -88,12 +89,20 @@ class Sessions:
         if identifier not in self._devices:
             self._next_device += 1
             self._devices[identifier] = self._next_device
+            self._device_seen[identifier] = int(time.time())
         return self._devices[identifier]
 
     def devices(self):
+        """The Device rows the Dashboard's graphs are keyed by.
+
+        Measured: a real PMS leaves `name` and `platform` EMPTY here -- the
+        identity is the clientIdentifier -- but `createdAt` is the moment the
+        device was first seen. plexsim sent 0, which draws every device as having
+        appeared at the epoch.
+        """
         return [{"id": key, "name": "", "platform": "", "clientIdentifier": name,
-                 "createdAt": 0} for name, key in sorted(self._devices.items(),
-                                                         key=lambda kv: kv[1])]
+                 "createdAt": self._device_seen.get(name, 0)}
+                for name, key in sorted(self._devices.items(), key=lambda kv: kv[1])]
 
     # -- sessions --------------------------------------------------------
 
