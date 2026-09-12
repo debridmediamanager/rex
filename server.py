@@ -172,13 +172,20 @@ SECONDARY_TAGS = {
     "actor": "Role",
     "country": "Country",
     "label": "Label",
+    "network": "Network",
 }
 SECONDARY_FIELDS = {
     "year": "year",
     "decade": "year",
     "contentRating": "contentRating",
     "studio": "studio",
+    "editionTitle": "editionTitle",
 }
+# The axes read off the Media and its Streams rather than off a tag or a field.
+# Their entries carry only `key` and `title` -- measured, there is no `fastKey`
+# here, so the client builds the URL itself.
+SECONDARY_MEDIA = ("resolution", "videoCodec", "audioCodec", "subtitleCodec",
+                   "audioLayout", "audioLanguage", "subtitleLanguage")
 SECONDARY_TITLES = {
     "genre": "By Genre",
     "year": "By Year",
@@ -188,10 +195,23 @@ SECONDARY_TITLES = {
     "director": "By Director",
     "writer": "By Writer",
     "producer": "By Producer",
-    "actor": "By Actor",
+    # Measured: "By Starring Actor", not "By Actor".
+    "actor": "By Starring Actor",
     "country": "By Country",
     "studio": "By Studio",
     "label": "By Label",
+    "network": "By Network",
+    "editionTitle": "By Edition",
+    "resolution": "By Resolution",
+    "videoCodec": "By Video Codec",
+    "audioCodec": "By Audio Codec",
+    "subtitleCodec": "By Subtitle Codec",
+    "audioLayout": "By Audio Layout",
+    "audioLanguage": "By Audio Language",
+    "subtitleLanguage": "By Subtitle Language",
+    "location": "By Folder Location",
+    # `/unwatched` is a LISTING, not an axis, and this is its title2.
+    "unwatched": "Unplayed",
 }
 
 # `/library/sections/{id}/sorts`, copied from a real PMS movie section. The
@@ -218,25 +238,69 @@ SECTION_SORTS = [
      "title": "Randomly"},
 ]
 
-# `/library/sections/{id}/filters`. Only the axes plexsim can actually answer
-# from its rows: a real PMS lists 28, including tuner and photo ones.
-SECTION_FILTERS = [
-    ("genre", "Genre", "string"),
-    ("year", "Year", "integer"),
-    ("decade", "Decade", "integer"),
-    ("contentRating", "Content Rating", "string"),
-    ("collection", "Collection", "string"),
-    ("director", "Director", "string"),
-    ("actor", "Actor", "string"),
-    ("writer", "Writer", "string"),
-    ("producer", "Producer", "string"),
-    ("country", "Country", "string"),
-    ("studio", "Studio", "string"),
-    ("label", "Labels", "string"),
-    ("unwatched", "Unwatched", "boolean"),
-    ("inProgress", "In Progress", "boolean"),
-    ("unmatched", "Unmatched", "boolean"),
-]
+# `/library/sections/{id}/filters`, captured entry for entry from a real PMS --
+# 28 on a movie library and a DIFFERENT 15 on a show one, which is the same
+# lesson as the two `Meta` sidecars: one list served for both types gives a show
+# library a filter bar that can only talk about movies. plexsim served a
+# hand-trimmed 15 for both.
+#
+# The tuple is (filter, filterType, title, key suffix). The suffix is measured
+# and not derivable: a show library's keys carry `?type=2` -- except `country`,
+# `unmatched` and `editionTitle`, which do not.
+#
+# Seven of these axes 404 on the reference itself (`hdr`, `dovi`, `hdr10plus`,
+# `atmos`, `inProgress`, `unmatched`, `unwatchedLeaves`). They are advertised
+# anyway, because that is what a real PMS advertises -- plexsim's unknown-leaf
+# 404 reproduces the rest of it for free.
+SECTION_FILTERS = {
+    "movie": [
+        ("genre", "string", "Genre", ""),
+        ("year", "integer", "Year", ""),
+        ("decade", "integer", "Decade", ""),
+        ("contentRating", "string", "Content Rating", ""),
+        ("collection", "string", "Collection", ""),
+        ("director", "string", "Director", ""),
+        ("actor", "string", "Actor", ""),
+        ("writer", "string", "Writer", ""),
+        ("producer", "string", "Producer", ""),
+        ("country", "string", "Country", ""),
+        ("studio", "string", "Studio", ""),
+        ("resolution", "string", "Resolution", ""),
+        ("hdr", "boolean", "HDR", ""),
+        ("dovi", "boolean", "DOVI", ""),
+        ("hdr10plus", "boolean", "HDR10+", ""),
+        ("atmos", "boolean", "Atmos", ""),
+        ("unwatched", "boolean", "Unwatched", ""),
+        ("inProgress", "boolean", "In Progress", ""),
+        ("unmatched", "boolean", "Unmatched", ""),
+        ("videoCodec", "string", "Video Codec", ""),
+        ("audioCodec", "string", "Audio Codec", ""),
+        ("subtitleCodec", "string", "Subtitle Codec", ""),
+        ("audioLayout", "string", "Audio Layout", ""),
+        ("audioLanguage", "string", "Audio Language", ""),
+        ("subtitleLanguage", "string", "Subtitle Language", ""),
+        ("editionTitle", "string", "Edition", ""),
+        ("label", "string", "Labels", ""),
+        ("location", "string", "Folder Location", ""),
+    ],
+    "show": [
+        ("genre", "string", "Genre", "?type=2"),
+        ("year", "integer", "Year", "?type=2"),
+        ("contentRating", "string", "Content Rating", "?type=2"),
+        ("studio", "string", "Studio", "?type=2"),
+        ("network", "string", "Network", "?type=2"),
+        ("country", "string", "Country", ""),
+        ("collection", "string", "Collection", "?type=2"),
+        ("director", "string", "Director", "?type=2"),
+        ("actor", "string", "Actor", "?type=2"),
+        ("writer", "string", "Writer", "?type=2"),
+        ("producer", "string", "Producer", "?type=2"),
+        ("unwatchedLeaves", "boolean", "Unwatched", "?type=2"),
+        ("unmatched", "boolean", "Unmatched", ""),
+        ("editionTitle", "string", "Edition", ""),
+        ("label", "string", "Labels", "?type=2"),
+    ],
+}
 
 # `/playlists/sorts`, from a real PMS.
 PLAYLIST_SORTS = [
@@ -1833,15 +1897,17 @@ class PlexSim:
             return self.secondary_container(section_id, section, None,
                                             Directory=sorts)
         if leaf == "filters":
+            entries = (SECTION_FILTERS.get(section.get("type"))
+                       or SECTION_FILTERS["movie"])
             filters = [
                 {
                     "filter": name,
                     "filterType": kind,
-                    "key": "/library/sections/%s/%s" % (section_id, name),
+                    "key": "/library/sections/%s/%s%s" % (section_id, name, suffix),
                     "title": title,
                     "type": "filter",
                 }
-                for name, title, kind in SECTION_FILTERS
+                for name, kind, title, suffix in entries
             ]
             return self.secondary_container(section_id, section, None,
                                             Directory=filters)
@@ -1887,33 +1953,26 @@ class PlexSim:
                                 "active": True}]})
 
         if leaf in SECONDARY_TAGS or leaf in SECONDARY_FIELDS:
-            return self.secondary_directory(section_id, section, leaf)
+            return self.secondary_directory(section_id, section, leaf, query)
+        if leaf in SECONDARY_MEDIA:
+            return self.media_axis(section_id, section, leaf, query)
+        if leaf == "location":
+            return self.location_axis(section_id, section)
 
         if leaf in ("unwatched", "recentlyReleased"):
-            # Listing shortcuts the hub shelves link to.
-            rows = self.catalog.section_items(section_id)
+            # Listing shortcuts the hub shelves link to. Measured: `/unwatched` is
+            # a LISTING with title2 "Unplayed", not a secondary axis -- the
+            # `/filters` entry beside it advertises a boolean the grid applies.
+            rows = self.typed_rows(section_id, query)
+            extra = {}
             if leaf == "unwatched":
                 rows = [r for r in rows if not r.get("viewCount")]
+                extra["title2"] = SECONDARY_TITLES["unwatched"]
             else:
                 rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
                               reverse=True)
             return self.listing_container(
-                section_id, section, [_listing_row(r) for r in rows])
-        if leaf == "resolution":
-            # A real axis, read off the Media rather than off a tag.
-            seen = {}
-            for row in self.catalog.section_items(section_id):
-                for media in row.get("Media") or []:
-                    value = media.get("videoResolution")
-                    if value:
-                        seen[str(value)] = True
-            entries = [
-                {"fastKey": "/library/sections/%s/all?resolution=%s" % (section_id, v),
-                 "key": v, "title": v}
-                for v in sorted(seen, key=lambda x: (not x.isdigit(), x))
-            ]
-            return self.secondary_container(section_id, section, "By Resolution",
-                                            Directory=entries)
+                section_id, section, [_listing_row(r) for r in rows], **extra)
         if leaf == "search":
             # Measured: a real PMS answers 400 here; search is /hubs/search.
             return ("error", 400, "plexsim: bad request")
@@ -1927,6 +1986,26 @@ class PlexSim:
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
 
+    def typed_rows(self, section_id, query):
+        """The rows a listing or a secondary axis is over, scoped by `?type=`.
+
+        Measured: `/library/sections/1/genre?type=2` is an EMPTY axis on a movie
+        library, so the type selects rows rather than being ignored -- and a show
+        library's filter keys all carry `?type=2`, so an axis that ignored it
+        would list the wrong type's tags on every show grid.
+        """
+        wanted = {"1": "movie", "2": "show", "3": "season",
+                  "4": "episode"}.get(str(query.get("type") or ""))
+        if wanted is None:
+            return self.catalog.section_items(section_id)
+        rows = [r for r in self.catalog.items.values()
+                if r.get("type") == wanted
+                and str(r.get("librarySectionID")) == str(section_id)]
+        if wanted in ("season", "episode"):
+            rows.sort(key=lambda r: (r.get("grandparentTitle") or r.get("parentTitle") or "",
+                                     r.get("parentIndex") or 0, r.get("index") or 0))
+        return rows
+
     def section_listing(self, section_id, section, query):
         """`/library/sections/{id}/all` -- the grid, with the client's filters.
 
@@ -1934,21 +2013,12 @@ class PlexSim:
         entry (By Genre, By Year, ...) open a list of the whole library, which
         looks like the filter is broken rather than unimplemented.
         """
-        wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(
-            query.get("type"))
-        if wanted in ("season", "episode"):
-            source = [r for r in self.catalog.items.values()
-                      if r.get("type") == wanted
-                      and str(r.get("librarySectionID")) == str(section_id)]
-            source.sort(key=lambda r: (r.get("grandparentTitle") or r.get("parentTitle") or "",
-                                       r.get("parentIndex") or 0, r.get("index") or 0))
-        elif query.get("type") == "18":
+        if query.get("type") == "18":
             # Plex's collection type. The Collections pivot asks for it here
             # rather than at /library/sections/{id}/collections.
             rows = self.library.collections(section_id)
             return self.listing_container(section_id, section, rows, query=query)
-        else:
-            source = self.catalog.section_items(section_id)
+        source = self.typed_rows(section_id, query)
 
         source, _ = self.apply_filters(source, query, section)
         source, unsupported = self._sorted(source, query.get("sort") or "")
@@ -2100,11 +2170,16 @@ class PlexSim:
             return [s.get("codec") for part in (media.get("Part") or [])
                     for s in part.get("Stream") or [] if s.get("streamType") == 3]
         if field in ("audioLanguage", "subtitleLanguage"):
+            # Both forms: the axis keys by the 2-letter tag (`en`) and that is
+            # what the client sends back, but a hand-built `?audioLanguage=eng`
+            # should not silently miss.
             wanted = 2 if field == "audioLanguage" else 3
-            return [s.get("languageCode") or s.get("languageTag")
+            return [code
                     for part in (media.get("Part") or [])
                     for s in part.get("Stream") or []
-                    if s.get("streamType") == wanted]
+                    if s.get("streamType") == wanted
+                    for code in (s.get("languageTag"), s.get("languageCode"))
+                    if code]
         if field in ("hdr", "dovi", "hdr10plus", "atmos", "duplicate", "trash"):
             # plexsim's probe data carries no HDR or Atmos flag and it keeps no
             # trash, so these are honestly false rather than guessed.
@@ -2236,6 +2311,13 @@ class PlexSim:
             "viewGroup": "secondary",
             "viewMode": 65592,
         }
+        if section.get("type") == "show":
+            # Measured across two servers and five libraries: every secondary
+            # container of a SHOW library carries `nocache` (filters, sorts, genre,
+            # year alike) and no movie library's does. The cause is not visible
+            # from outside -- it tracks the library's TYPE, not its cache state,
+            # which is what three movie libraries and two show ones rule out.
+            body["nocache"] = True
         if title2 is not None:
             # An empty title2 is sent, not omitted -- the Categories view's is "".
             body["title2"] = title2
@@ -2246,35 +2328,46 @@ class PlexSim:
         body.setdefault("size", 0)
         return {"MediaContainer": self._prune(body)}
 
-    def secondary_directory(self, section_id, section, leaf):
+    def secondary_directory(self, section_id, section, leaf, query=None):
         """`/library/sections/{id}/{genre,year,director,...}`.
 
         A tag axis keys its entries by TAG ID and a field axis by the value
         itself -- measured: `?genre=24` but `?contentRating=PG`. Getting that
         backwards makes every entry open an empty list.
+
+        Three smaller measurements, each of which plexsim had wrong: only a
+        `genre` entry carries a `type`, a person entry carries the tag's `thumb`,
+        and the two field axes encode differently -- a `contentRating` entry
+        single-encodes its key and its fastKey alike, while a `studio` entry
+        leaves the fastKey RAW and DOUBLE-encodes the key. That inconsistency is
+        the reference's own; it is reproduced so the replay diff stays clean.
         """
+        rows = self.typed_rows(section_id, query or {})
         entries = []
         if leaf in SECONDARY_TAGS:
             key = SECONDARY_TAGS[leaf]
             seen = {}
-            for row in self.catalog.section_items(section_id):
+            for row in rows:
                 for tag in row.get(key) or []:
                     name = tag.get("tag")
                     if not name or name in seen:
                         continue
-                    seen[name] = tag.get("id")
+                    seen[name] = tag
             for name in sorted(seen):
-                tag_id = seen[name]
-                entries.append({
-                    "fastKey": "/library/sections/%s/all?%s=%s" % (section_id, leaf, tag_id),
-                    "key": str(tag_id),
-                    "title": name,
-                    "type": leaf,
-                })
+                tag = seen[name]
+                entry = {"fastKey": "/library/sections/%s/all?%s=%s"
+                                    % (section_id, leaf, tag.get("id"))}
+                if tag.get("thumb"):
+                    entry["thumb"] = tag["thumb"]
+                entry["key"] = str(tag.get("id"))
+                entry["title"] = name
+                if leaf == "genre":
+                    entry["type"] = leaf
+                entries.append(entry)
         else:
             field = SECONDARY_FIELDS[leaf]
             seen = set()
-            for row in self.catalog.section_items(section_id):
+            for row in rows:
                 value = row.get(field)
                 if value is None or value == "":
                     continue
@@ -2282,14 +2375,83 @@ class PlexSim:
                     value = int(value) // 10 * 10
                 seen.add(str(value))
             for value in sorted(seen, reverse=leaf in ("year", "decade")):
+                once = urllib.parse.quote(value)
                 entries.append({
                     "fastKey": "/library/sections/%s/all?%s=%s"
-                               % (section_id, leaf, urllib.parse.quote(value)),
-                    "key": urllib.parse.quote(value),
+                               % (section_id, leaf,
+                                  value if leaf == "studio" else once),
+                    "key": urllib.parse.quote(once) if leaf == "studio" else once,
                     "title": (value + "s") if leaf == "decade" else value,
                 })
         return self.secondary_container(section_id, section,
                                         SECONDARY_TITLES.get(leaf), Directory=entries)
+
+    def media_axis(self, section_id, section, leaf, query=None):
+        """`/library/sections/{id}/{resolution,videoCodec,audioLanguage,...}`.
+
+        The axes read off the Media and its Streams. Measured: their entries
+        carry `key` and `title` and NO `fastKey` -- the client builds the URL --
+        and the title is a LABEL rather than the value: `1080` prints as `1080p`
+        and a language code prints as the language's own name.
+
+        These four (`videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`)
+        404 on production's older PMS and answer on the lab's 1.43.4. plexsim
+        follows the lab, which is the designated reference.
+        """
+        seen = {}
+        for row in self.typed_rows(section_id, query or {}):
+            for media in row.get("Media") or []:
+                if leaf == "resolution":
+                    found = [(media.get("videoResolution"), None)]
+                elif leaf == "audioLayout":
+                    found = [(media.get("audioChannelLayout"), None)]
+                elif leaf in ("videoCodec", "audioCodec"):
+                    found = [(media.get(leaf), None)]
+                else:
+                    wanted = 2 if leaf == "audioLanguage" else 3
+                    found = []
+                    for part in media.get("Part") or []:
+                        for stream in part.get("Stream") or []:
+                            if stream.get("streamType") != wanted:
+                                continue
+                            if leaf == "subtitleCodec":
+                                found.append((stream.get("codec"), None))
+                            else:
+                                found.append((stream.get("languageTag"),
+                                              stream.get("language")))
+                for value, label in found:
+                    if value in (None, ""):
+                        continue
+                    seen.setdefault(str(value), label)
+        if leaf == "resolution":
+            # Best first, which is the order the reference's own axis opened with.
+            order = list(filters_module.RESOLUTION_TITLES)
+            keys = sorted(seen, key=lambda v: -order.index(v) if v in order else 1)
+            entries = [{"key": v,
+                        "title": filters_module.RESOLUTION_TITLES.get(v, v)}
+                       for v in keys]
+        else:
+            entries = [{"key": v, "title": seen[v] or v} for v in sorted(seen)]
+        return self.secondary_container(section_id, section,
+                                        SECONDARY_TITLES.get(leaf), Directory=entries)
+
+    def location_axis(self, section_id, section):
+        """`/library/sections/{id}/location` -- By Folder Location.
+
+        The one secondary axis whose container is NOT the secondary one: measured,
+        it carries `size` and `title2` and nothing else, where every other axis
+        carries the full art/thumb/identifier/viewGroup set. The key is the
+        section's Location ID, which is also what the matching filter compares.
+        """
+        entries = [{"fastKey": "/library/sections/%s/all?location=%s"
+                               % (section_id, location.get("id")),
+                    "key": str(location.get("id")),
+                    "title": location.get("path")}
+                   for location in self.section_directory(section).get("Location") or []]
+        return {"MediaContainer": {"size": len(entries),
+                                   "title2": SECONDARY_TITLES["location"],
+                                   "Directory": entries}}
+
 
     def library_metadata(self, segments, query, method="GET"):
         raw_key = segments[2]

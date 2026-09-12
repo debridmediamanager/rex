@@ -352,6 +352,18 @@ precisely how the Seasons bug survived a fix attempt.
   so no filter on a show grid ever constrained anything. The prefix is a scope:
   the field is the tail, the lookup is global, and `/query/parse` echoes the scope
   back as the rule's own `type`.
+- **`/filters` is per library TYPE too** — a movie library lists 28, a show library
+  a different 15 whose keys carry `?type=2` (except `country`, `unmatched` and
+  `editionTitle`). The type SCOPES an axis, so `/genre?type=2` on a movie library
+  is empty. Seven of the advertised axes **404 on a real PMS as well**, so
+  advertising them is the faithful answer, not the bug.
+- **A media axis entry has no `fastKey` and its title is a LABEL** — `1080` prints
+  as `1080p`, `en` as `English` — while `location` is the one axis whose container
+  carries nothing but `size` and `title2`, and `/unwatched` is a LISTING titled
+  "Unplayed" rather than an axis at all.
+- **Every secondary container of a show library carries `nocache`** and no movie
+  library's does. Measured across two servers and five libraries, so it tracks the
+  library's type rather than cache state, even though the cause is invisible.
 - **Container paging needs BOTH parameters, and the client sends them as HTTP
   HEADERS.** One alone is ignored by a real PMS; a negative size drops paging
   rather than slicing.

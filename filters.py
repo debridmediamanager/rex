@@ -88,9 +88,18 @@ TAG_TABLE_FIELDS = {"genre", "collection", "director", "writer", "producer",
 STRING_OPERATORS = {"=", "!=", "==", "!==", "<=", ">="}
 TAG_OPERATORS = {"=", "!="}
 
-# The `resolution` values a real PMS accepts, case sensitive. Anything else --
-# `2160`, `4K`, `hd`, `360`, or an empty value -- is a 500, not an empty result.
-RESOLUTIONS = {"4k", "1080", "720", "576", "480", "sd"}
+# The `resolution` values a real PMS accepts, probed value by value against a
+# 6000-item production library. It is a closed enum, not a continuum: `240`,
+# `360`, `400`, `1081`, `1440`, `2160`, `3k`, `9k`, `10k`, `SD`, `hd` and `1080p`
+# are each a 500, and so is an empty value. An accepted value that no row has is
+# a plain empty 200.
+RESOLUTIONS = {"sd", "480", "576", "720", "1080", "2k", "2.7k", "4k", "8k", "16k"}
+
+# How each of those is LABELLED on the `/library/sections/{id}/resolution` axis:
+# a bare number gains a `p`, a `k` form uppercases, and `sd` is `SD`.
+RESOLUTION_TITLES = {"sd": "SD", "480": "480p", "576": "576p", "720": "720p",
+                     "1080": "1080p", "2k": "2K", "2.7k": "2.7K", "4k": "4K",
+                     "8k": "8K", "16k": "16K"}
 
 # A `sort=` term's colon-separated tail holds direction and modifiers in any
 # order; anything here is not a `random` seed.
