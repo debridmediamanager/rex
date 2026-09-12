@@ -13,6 +13,7 @@ cloudflared.yml
 server_token.txt
 shots/
 webclient/
+webclient
 webclient_fun/
 __pycache__/
 *.pyc
