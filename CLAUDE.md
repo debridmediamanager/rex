@@ -486,9 +486,18 @@ precisely how the Seasons bug survived a fix attempt.
   codec** — not the other way round — and a subtitle with a track title shows its
   LANGUAGE plainly, the track name only in the extended title. These two strings
   are what the quality and track pickers print.
-- **The Console's live log stream is not fed by that socket.** 75 seconds against
-  a busy reference pushed zero log frames, and the client opens no second socket
-  and passes no filter — the page renders empty on a real server too.
+- **`filters=` on the notification channels is a whitelist, and `log` is opt-in.**
+  An earlier note here said the Console's log stream is not fed by that socket —
+  measured WITHOUT the `filters=log` the client's own log connection passes. With it
+  the reference pushes log frames continuously (386 in 14 s). A socket with no
+  filters gets everything EXCEPT log; one with `filters=log` gets nothing else.
+- **The notification LIFECYCLE is what makes a client refetch.** A refresh pushes
+  seven frames ending in `state: 5` with NO `metadataState` — that frame dispatches
+  `metadataProcessed`, and the client's reducer clears its entry only when
+  `metadataState` is absent. Sending one `state: 3, "queued"` frame means the row is
+  never refetched and every `!!metadataState` gate (the spinner, Refresh, Match)
+  latches forever. The states are 0 created, 3 queued/processing, 4 loading, 5 done,
+  9 deleted; an edit pushes 3 then 5, a delete pushes 9, and the activity must END.
 - **An empty child list is omitted, never sent as `[]`.** These responses are XML
   underneath; `Metadata: []` is a shape no real PMS returns.
 - **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that
