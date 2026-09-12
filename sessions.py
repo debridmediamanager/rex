@@ -76,33 +76,61 @@ class Sessions:
         # bytes, not just media, and rolls the per-second rows into the coarser
         # buckets on read.
         self._bytes = {}
-        self._devices = {}
-        self._device_seen = {}
+        # Id 1 is the row with NO client identifier -- measured: the reference's
+        # device 1 has an empty name, platform and clientIdentifier and was created
+        # when the server started. Every client after it counts up from 2.
+        started = int(time.time())
+        self._devices = {"": 1}
+        self._device_seen = {"": started}
+        self._device_names = {}
+        self._device_platforms = {}
         self._next_device = 1
         self._plays = []
 
     # -- identity --------------------------------------------------------
 
-    def device_id(self, identifier):
-        """A stable small integer per client identifier, as a PMS assigns."""
+    def device_id(self, identifier, name=None, platform=None):
+        """A stable small integer per client identifier, as a PMS assigns.
+
+        `name` and `platform` are the client's X-Plex-Device-Name and
+        X-Plex-Platform, recorded whenever a request carries them.
+        """
         identifier = identifier or ""
         if identifier not in self._devices:
             self._next_device += 1
             self._devices[identifier] = self._next_device
             self._device_seen[identifier] = int(time.time())
+        if identifier and name:
+            self._device_names[identifier] = name
+        if identifier and platform:
+            self._device_platforms[identifier] = platform
         return self._devices[identifier]
 
     def devices(self):
-        """The Device rows the Dashboard's graphs are keyed by.
+        """The Device rows `/devices` lists and the Dashboard's graphs key by.
 
-        Measured: a real PMS leaves `name` and `platform` EMPTY here -- the
-        identity is the clientIdentifier -- but `createdAt` is the moment the
-        device was first seen. plexsim sent 0, which draws every device as having
-        appeared at the epoch.
+        Re-measured, and overturning the note that stood here: a real PMS fills
+        `name` from X-Plex-Device-Name and `platform` from X-Plex-Platform, each
+        independently (a client that sent only a platform has `name: ""`), and
+        leaves them empty only for a client that sent neither -- which is all the
+        earlier probe, sending no X-Plex headers, could see. `/devices` lists
+        EVERY device the server has seen, 40 on the reference, where plexsim
+        listed one row describing itself.
         """
-        return [{"id": key, "name": "", "platform": "", "clientIdentifier": name,
-                 "createdAt": self._device_seen.get(name, 0)}
-                for name, key in sorted(self._devices.items(), key=lambda kv: kv[1])]
+        return [self._device_row(identifier, key)
+                for identifier, key in sorted(self._devices.items(), key=lambda kv: kv[1])]
+
+    def device(self, device_id):
+        for identifier, key in self._devices.items():
+            if str(key) == str(device_id):
+                return self._device_row(identifier, key)
+        return None
+
+    def _device_row(self, identifier, key):
+        return {"id": key, "name": self._device_names.get(identifier, ""),
+                "platform": self._device_platforms.get(identifier, ""),
+                "clientIdentifier": identifier,
+                "createdAt": self._device_seen.get(identifier, 0)}
 
     # -- sessions --------------------------------------------------------
 
@@ -146,7 +174,9 @@ class Sessions:
                         "location": "lan" if player["local"] else "wan"},
             "User": {"id": "1", "thumb": "", "title": self.owner},
         })
-        self.record_bytes(identifier, player["local"], 0)
+        self.record_bytes(identifier, player["local"], 0,
+                          name=value("X-Plex-Device-Name"),
+                          platform=value("X-Plex-Platform"))
         if state == "stopped":
             self._sessions.pop(session_id, None)
         return entry
@@ -185,21 +215,27 @@ class Sessions:
 
     # -- statistics ------------------------------------------------------
 
-    def record_bytes(self, identifier, lan, count):
+    def record_bytes(self, identifier, lan, count, name=None, platform=None):
         """Count a response against a (device, lan) bucket for this second."""
         if count < 0:
             return
-        key = (self.device_id(identifier), bool(lan))
+        key = (self.device_id(identifier, name, platform), bool(lan))
         second = int(time.time())
         buckets = self._bytes.setdefault(key, {})
         buckets[second] = buckets.get(second, 0) + count
 
-    def record_play(self, row, seconds):
+    def record_play(self, row, seconds, device_id=1):
         self._plays.append({"at": int(time.time()), "type": row.get("type"),
-                            "seconds": int(seconds or 0)})
+                            "seconds": int(seconds or 0), "device": device_id})
+
+    # Measured: with NO `timespan` a real PMS answers every rollup at once --
+    # year, month, week, day and hour rows (0 to 4) in one list, ordered by span.
+    ROLLUPS = (0, 1, 2, 3, 4)
 
     def bandwidth(self, timespan=6, since=None):
         """Rows for `/statistics/bandwidth`, rolled into the asked-for bucket."""
+        if timespan is None:
+            return [row for span in self.ROLLUPS for row in self.bandwidth(span, since)]
         width = TIMESPANS.get(int(timespan), 1)
         rows = {}
         for (device, lan), buckets in self._bytes.items():
@@ -217,15 +253,22 @@ class Sessions:
                                                        key=lambda kv: kv[0][2])]
 
     def media_statistics(self, timespan=4):
-        """Rows for `/statistics/media`: a count and a duration per bucket."""
+        """Rows for `/statistics/media`: a count and a duration per bucket.
+
+        Keyed by the device that PLAYED, which is the client that sent the
+        timeline. plexsim wrote device 1 on every row, an id that no Device row in
+        the same container named.
+        """
+        if timespan is None:
+            return [row for span in self.ROLLUPS for row in self.media_statistics(span)]
         width = TIMESPANS.get(int(timespan), 3600)
         kinds = {"movie": 1, "show": 2, "season": 3, "episode": 4}
         rows = {}
         for play in self._plays:
             at = play["at"] - (play["at"] % width)
-            key = (at, kinds.get(play["type"], 1))
+            key = (at, kinds.get(play["type"], 1), play.get("device", 1))
             count, seconds = rows.get(key, (0, 0))
             rows[key] = (count + 1, seconds + play["seconds"])
-        return [{"accountID": 1, "deviceID": 1, "timespan": int(timespan),
+        return [{"accountID": 1, "deviceID": device, "timespan": int(timespan),
                  "at": at, "metadataType": kind, "count": count, "duration": seconds}
-                for (at, kind), (count, seconds) in sorted(rows.items())]
+                for (at, kind, device), (count, seconds) in sorted(rows.items())]

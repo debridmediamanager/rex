@@ -2063,6 +2063,204 @@ reference's own ratingKeys -- plexsim keeps its key ranges disjoint by type
 (leaves 1000+, shows 20000+, seasons 30000+), so a corpus recorded against a
 server whose keys are 1-8 cannot be replayed at it item for item. Everything
 structural is gone.
+
+#### The fifth pass: two agents, and the reference had been rebuilt under them
+
+Cycle 5 ran a wire-format sweep and a settings-and-dialogs sweep, each against the
+1.43.4 reference and fun. One operational fact first, because it changes every
+recording made before it: cycle 4's broad sweep sent `DELETE /library/sections/1`
+to the reference, and its Movies library was restored from Plex's own 13:18 backup
+on 2026-09-12. The section ids and uuids survived; **Cosmos Laundromat re-keyed from
+30 to 18**. A corpus recorded before that names a key the lab no longer has. The
+hunting prompts now forbid every destructive write to the reference and require a
+list of each write and its undo, and the lab's state is snapshotted before and
+compared after a cycle.
+
+#### The Add Library form 400'd, and the settings writes validated nothing
+
+The Add Library dialog reads `/library/sections/prefs?type=<N>&agent=<id>` before
+the library exists and joins it with three other reads, so a refusal stops the
+dialog from validating. plexsim answered 400 to every call. Measured on the whole
+matrix of types and agents, now `section_prefs_new.json`:
+
+| request | reference |
+|---|---|
+| `type=1` / a legacy or unknown agent | 7 settings |
+| `type=1&agent=tv.plex.agents.movie` | 19 (the section-1 list) |
+| `type=1&agent=tv.plex.agents.series` | 18 |
+| `type=1&agent=tv.plex.agents.none` (or `.music`) | 12 |
+| `type=2` / `+movie` / `+series` / `+none` | 9 / 21 / 21 (a different 21) / 15 |
+| `type=13`, `type=8` (`+music`) | 2, 5 (13) |
+| `type=3,4,9,10,18,99` | `hidden` alone |
+| no `type`, `type=abc` | 400 |
+
+`?agent=` reshapes an EXISTING library's list the same way, keeping its values.
+Every setting has one definition across all nineteen lists.
+
+The three writers, each measured with its value restored afterwards:
+
+| write | server `/:/prefs` | library `/sections/{id}/prefs` | item `/metadata/{id}/prefs` |
+|---|---|---|---|
+| unknown setting | 400, **nothing** applied | 400, nothing applied | 400, nothing applied |
+| int, not a number (`abc`, `4.5`) | **500** | ignored, 200 | stored raw; the Setting still reads its default |
+| int, empty | ignored | ignored | clears the setting |
+| bool | `1`/`true` true, anything else false | stored as the STRING `"true"`/`"false"` | -- |
+| value type on read-back | keeps its type (`40`, `false`) | string | string |
+
+plexsim applied the known settings beside an unknown one, stored `"abc"` in an int,
+echoed every bool back as the string that was written, and stored ANY item key --
+including its own parser's `_pairs` list, which then rendered onto the metadata row.
+An episode has no settings, so every write to one is a 400.
+
+#### Agents, scanners and plug-ins
+
+- `/system/agents?mediaType=1` lists the reference's three modern agents (Plex Movie,
+  Personal Media, NFO Movie) each with 45 `Language` rows and `default="1"` on
+  `en-US`, which the dialog's `findWhere({default:true})` preselects. plexsim sent
+  one language and no default. `mediaType=abc` is a 400; a type no agent serves is
+  `size: 0`. Now `system_agents.json`.
+- `/system/agents/{id}/config/{type}` and `/contributors` are EMPTY containers for a
+  modern agent on BOTH real servers -- only a legacy plug-in has a chain -- with 404
+  for a type no agent serves and 500 for a non-number or missing parameters.
+  `/attribution` and `/attribution/image` are 404 for a modern agent. plexsim
+  answered the JSON agent list to all of them, one of which the page feeds to `<img>`.
+- `/system/scanners/{N}` is keyed by library TYPE (`ScannerCollection` builds it
+  from `sectionTypeID`), not by section: `/13` is the photo scanner on a server with
+  no photo library, and a type with no scanner is a 500.
+- `/:/plugins/<id>/prefs` is a 404 for a modern agent and for an unknown one.
+
+#### Devices, play attribution and the counters behind the Dashboard
+
+Overturning the note that stood in `sessions.py`: a Device row's `name` is the
+client's `X-Plex-Device-Name` and `platform` its `X-Plex-Platform`, each recorded
+independently. The earlier probe sent no X-Plex headers and saw them empty. Device 1
+is the row with no client identifier, created when the server started. `/devices`
+lists every device ever seen (41 on the reference) and `/devices/{id}` reads one
+(404 for an unknown id, `abc` included); plexsim listed one row describing itself.
+
+A completed play's history row and its `StatisticsMedia` row carry the PLAYING
+device's id. plexsim wrote device 1 on both, an id no Device row in the same
+container named. With no `timespan`, `/statistics/bandwidth` and `/media` answer
+every rollup, 0 to 4, in one list.
+
+`/library/metadata/{id}/users/top` is one `Account` row with a `globalViewCount`
+for an item that has completed views, `size: 0` otherwise, and a **500 for a
+season**. The count survives a history delete and an unscrobble (movie 1 reports 2
+with neither), so plexsim keeps its own. `/nearest` is an empty library container
+for every item and a 404 for an unknown one.
+
+#### Small endpoints, and the last three 405s
+
+| request | reference | plexsim before |
+|---|---|---|
+| `/channels/all` | 200 `size=0 content="plugins"` | 404 |
+| `/log` with no `level`, no `message`, or a non-numeric level | 400 on every verb | 200 |
+| `/services/browse` | `/` and the mount points | 404 |
+| `/services/browse/<base64>` | 400 without `includeFiles=1`; its directories with it; 200 empty for a path that is not there | 404 |
+| `/library/tags?type=N` | the tag TABLE for that type, by id: `{id, filter, tag, tagType}` plus tagKey/thumb for people; bare or non-numeric is 400 | `size: 0` for every type |
+| `GET /library/metadata/{id}/refresh`, `/analyze`, `/media/{id}` | 404 | 405 |
+
+#### The wire format: how Accept is read, and what JSON never carries
+
+Only an exact, case-sensitive `application/json` or `application/xml` range counts;
+`q` ranks them and a tie goes to the one listed first; any other parameter
+disqualifies the range. So `application/xml, application/json` is XML,
+`application/json; charset=utf-8` is XML, `Application/JSON` is XML, and axios's
+`application/json, text/plain, */*` is JSON. plexsim answered JSON whenever the
+substring appeared.
+
+Across ~110 JSON responses of the reference there is not one `null` and not one
+`[]`. The XML writer already dropped `None`, but plexsim's JSON carried
+`audioProfile: null`, five null Stream fields, `Label: []` and `Metadata: []` on
+every empty hub. An empty OBJECT is real: `includeRelated=1` on an item with no hubs
+is `"Related": {}`, and a multi-item Common carries `"Rating": [{}]`.
+
+Number formats are per field in XML: a stream's `frameRate` always has three
+decimals (`24.000`), a `double` Setting's whole value drops its fraction
+(`value="1"`), and every other float is written as Python writes it
+(`audienceRating="5.0"`).
+
+#### Row shapes
+
+- `titleSort` is the title with a leading English article stripped, and it is sent
+  **only when it differs** -- 0 of 3,856 movies and 0 of 599 shows on fun carry an
+  equal one. An episode strips its OWN title. plexsim filed "The Simpsons" under T
+  and gave every episode its show's name as titleSort.
+- `originalTitle` is the original-language title, present only when it differs.
+  plexsim put the media FILENAME there, which the client prints on the preplay page,
+  in the window title and as the OS media-session artist.
+- No default `Field` lock, no empty `Label`, no `Location` on a movie, and no
+  `rating` without a critic source -- the lab's TMDB-matched movies carry only
+  `audienceRating`. A season has no `year`, `skipCount`, `theme` or `titleSort` (the
+  old comment tying `year` to the Seasons block was the paging bug); an episode no
+  `theme` and, with no chapters, no `chapterSource`; a show has `index: 1`.
+- On 2,558 fun rows `optimizedForStreaming` and `has64bitOffsets` exist only for an
+  mp4/mov -- an integer on Media, a boolean on Part -- `hasVoiceActivity: false` is on
+  every Media, and `Part.hasThumbnail` appears only as `"1"`. `bitDepth` is an int.
+- A grid or hub row is a lighter projection than the detail row: tags are `{tag}`
+  only, a Part has no `Stream`, and there is no `Rating`, `Location`, `Field` or
+  `Producer`; a section listing's rows also leave the librarySection fields to the
+  container, where a hub's rows keep them. Confirmed in the client's own corpus.
+- The tree's `MediaStream` writes its numbers as STRINGS except `id`, `index`,
+  `type` and an audio `channels`, with its own field set, and its `MediaPart` has no
+  `container`.
+- An episode list's container is presented as the SHOW's: `title1` is the show's
+  title, `parentTitle` is `""`, `grandparentRatingKey` is a number, and there is no
+  `summary`, `parentYear` or `grandparentYear`.
+- `/library/sections` rows carry no `composite`; `/library/onDeck` and
+  `/library/recentlyAdded` say `mixedParents`; `GET /` carries `hubSearch`,
+  `itemClusters`, `mediaProviders`, `multiuser` and `transcoderPhoto`, which
+  `/media/providers` does not.
+- An emptied playlist carries neither `composite` nor `duration`, on its row or on
+  its `/items` container. A collection read through `/library/metadata` has the
+  library container and its row names its section.
+
+Catalogs built before this carry the old fields, so `hierarchy.normalize_rows` and
+`mediainfo.normalize_media` apply the rules when a catalog loads as well as at build.
+
+#### Hubs, Related, Common and sorts
+
+- `/hubs` is EIGHT shelves on both real servers, in a fixed order and all promoted:
+  continue (hero, mixed), on deck, movies, television (mixed), music, photos,
+  personal videos and playlists, each with its measured key. plexsim answered three
+  of its own devising with no key, context, style or promoted flag.
+- A library shelf carries no librarySection fields, and its `hubKey` is the shelf's
+  own rows as `/library/metadata/<keys>`, absent when empty. Recently Released
+  Movies honours its key's one-year window (the reference's is empty for films from
+  2006-2015); Rediscover's key is `lastViewedAt<=-6w&lastViewedAt>=-5y` and its rows
+  are SHOWS.
+- Overturning an earlier finding: `/library/metadata/{id}/related` carries the SAME
+  hub as `/hubs/metadata/{id}/related`, and so does `includeRelated=1`. The earlier
+  recording only covered the four lab items with no related titles.
+- `/common` with no `id` computes over the whole filtered set -- the select-all edit,
+  whose save already did. `guid` is always `""`; a mixed `titleSort` is present as
+  `""`; `mixedFields` lists in a fixed field order; one `Rating` per rating image
+  every selected item has, empty when their values differ; `key` only for one item;
+  an id of the wrong type is not part of the set.
+- `/sorts` is per TYPE and honours `includeAdvanced=1`, and the advanced sorts are
+  INTERLEAVED -- Year is second on a movie library -- in the Meta as well.
+
+#### Measured in cycle 5 and deliberately left alone
+
+- The legacy `com.plexapp.agents.*` agents and the 17 plug-ins `/:/plugins` lists:
+  plexsim hosts no plug-in framework, so their prefs, contributors and attribution
+  would all be invented. `/system/*` stays JSON where the reference answers XML only,
+  and the reference's JSON collapses repeated `Language` rows into one object; the
+  list is the useful shape.
+- Search is typo-tolerant on the reference (`tearz` finds Tears of Steel at score
+  0.33, `zzqqxx` returns rows at 0.32). The rule is not recoverable from outside, so
+  the recorded word-prefix model stays.
+- A season and an episode carry their own external `Guid`s (tmdb/tvdb, imdb for an
+  episode). The catalog records none, and borrowing the show's would be wrong.
+- The Common of seasons and episodes has quirks that do not reduce to a rule: a
+  single episode omits `title` and `year`, two episodes of one season do not list
+  `title` mixed, all six of a show's episodes do.
+- `movie.by.actor.or.director` on a library's hubs is `random: true` on the reference;
+  its selection rule is not measurable. Markers and chapters have no data source.
+- `/services/browse` lists `/plexsim` rather than mount points, because plexsim
+  has no filesystem. `optimizedForStreaming` on an mp4 stays 0: where the moov atom
+  sits is not something ffprobe reports.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

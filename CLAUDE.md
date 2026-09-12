@@ -47,7 +47,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 
 Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
-`section_meta.json`, `section_meta_show.json`, `item_prefs.json`) are captured
+`section_meta.json`, `section_meta_show.json`, `item_prefs.json`, `section_prefs_new.json`,
+`system_agents.json`) are captured
 from a real PMS and
 loaded relative to `server.py`. Keep the layout flat — the code resolves them
 with `dirname(__file__)`. A movie library and a show library have **different**
@@ -240,6 +241,12 @@ settling. A larger number than that means the harness, not the target.
 - **Do not `chown -R` the capture directory.** The gateway runs as 8888 and
   everything else as 1000; a recursive chown takes the tree from every other
   writer and the next session dies on `PermissionError`.
+
+- **A hunting agent must never write destructively to the reference.** Cycle 4's
+  sent `DELETE /library/sections/1` and the Movies library had to be restored from
+  Plex's backup, re-keying a movie. Forbid section and item deletes, merge/split/
+  match/unmatch, maintenance endpoints and network/auth prefs in the prompt, ask for
+  every write and its undo, and snapshot the lab's state before and after.
 
 `harness/README.md` carries the same list with the measurements behind it.
 
@@ -544,6 +551,29 @@ precisely how the Seasons bug survived a fix attempt.
   announces with `PUT /devices/{machineIdentifier}` — the **identifier** form —
   carrying its full `<Device>` element and its `plex.direct` connection, and
   repeating on a timer. The numeric form is not what a real server uses.
+
+- **The Add Library form reads `/library/sections/prefs?type=N&agent=ID`** before the
+  library exists, and the list depends on BOTH; `?agent=` reshapes an existing
+  library's list too. A 400 there stops the whole dialog. See `section_prefs_new.json`.
+- **The three settings writers validate differently**, all measured: an unknown
+  setting refuses the WHOLE write everywhere; a bad int is a 500 on `/:/prefs`,
+  ignored on a library and stored raw on an item; a bool is true only for `1`/`true`;
+  and a server setting keeps its TYPE on read-back while a library's is a string.
+- **Accept is read exactly**: only a case-sensitive `application/json` or
+  `application/xml` range counts, ranked by `q`, first listed on a tie, and any other
+  parameter disqualifies it (`application/json; charset=utf-8` is XML).
+- **JSON never carries `null` or `[]`** -- `json_body` strips both -- but an empty
+  OBJECT is real (`"Related": {}`).
+- **`titleSort` is the article-stripped title, sent only when it differs, and
+  `originalTitle` is never a filename.** Catalogs built earlier carry both wrong, so
+  `hierarchy.normalize_rows` runs at LOAD as well as at build.
+- **A grid or hub row is a lighter projection** (`_grid_row`): text-only tags, no
+  `Stream`, no `Rating`/`Location`/`Field`. A check that needs streams or tag ids must
+  read the DETAIL row.
+- **`/system/scanners/{N}` is a library TYPE, not a section id**, and `/devices`
+  lists every client with its X-Plex-Device-Name and X-Plex-Platform.
+- **`/library/metadata/{id}/related` carries the same hub as the hubs form** -- an
+  earlier note said it was always empty, from a recording of items with no relations.
 
 ## Conventions
 
