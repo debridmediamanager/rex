@@ -357,6 +357,29 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/player/*` is not a server surface.** A real PMS answers 400 for every
   playback command: they go to a player. Answering 200 tells a companion client
   the command was accepted.
+- **A play queue over a show or season holds its EPISODES**, never the parent row —
+  which has no Media, so Play on every show page hands the player something
+  unplayable. Same for a show library's section, a playlist, a collection and a
+  comma-joined key list.
+- **A queue's item ids are GLOBAL and stable and its version steps on every
+  mutation.** The client DISCARDS any queue response whose `playQueueSelectedItemID`
+  is not the one it holds, and the selection moves from the TIMELINE's
+  `playQueueItemID` — so ids computed from position plus a frozen version means
+  every refresh is thrown away once playback passes the first item.
+  `playQueueLastAddedItemID` tracks plain adds only and disables the Up Next
+  shuffle button. `shuffle`/`unshuffle` are 404; `items/{id}/move` is real.
+- **`/:/progress` is NOT `/:/timeline`** — it keys on `key`, not `ratingKey`, and
+  answers an EMPTY body. Routed at the timeline it silently records nothing.
+- **The timeline's `viewOffset` is the item's STORED offset**, -1 only when it has
+  none, and `Bandwidths` is armed by a DECISION (then present even on `stopped`),
+  not by the state. An unknown `state` is 400 and an unknown ratingKey is 404.
+- **Every state write refuses properly**: scrobble/unscrobble/rate/progress are 400
+  with no `key` and 404 for a key that is not there, and `PUT /library/parts/{id}`
+  is 400 for a stream id of the wrong type — answering 200 and clearing the
+  selection leaves the track picker blank.
+- **`/status/sessions/history/all` filters and sorts**, with a plain `>=` operator
+  rather than the library grammar's `>>`, and an unknown sort key is 400 there
+  where a listing answers 500. `DELETE .../history/{key}` really deletes.
 - **A playback session is created by `/:/timeline`**, not by a play queue, a
   decision or a byte read — a bare timeline opens the row and `state=stopped`
   closes it. The timeline's RESPONSE is not an echo: `playbackState` is

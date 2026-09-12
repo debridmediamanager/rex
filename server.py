@@ -698,10 +698,16 @@ class PlexSim:
         self.requests = []
         self.lock = threading.Lock()
         # Playback bookkeeping a client expects to survive between calls.
+        # A play queue is a record, not a bare key list. Measured: its item ids
+        # are GLOBALLY increasing and stable across inserts, moves and deletes,
+        # its version increments on every mutation, and the client throws the
+        # whole response away when the selected id is not the one it holds.
         self.play_queues = {}
-        self.play_queue_sources = {}
-        self.play_queue_shuffled = {}
         self.next_play_queue = 1
+        self.next_play_queue_item = 1
+        # ratingKeys a decision has been made for. The timeline's `Bandwidths`
+        # block appears only after one, measured -- not merely while playing.
+        self.decided = set()
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
         # collections, play history. In memory only -- catalog.json is input.
@@ -791,6 +797,9 @@ class PlexSim:
 
     # Plex's numeric type codes, as a TimelineEntry carries them.
     TIMELINE_TYPES = {"movie": 1, "show": 2, "season": 3, "episode": 4}
+
+    # The `state` values /:/timeline accepts. Measured: anything else is a 400.
+    TIMELINE_STATES = {"playing", "paused", "buffering", "stopped"}
 
     def notify_timeline(self, row, state=3, metadata_state="queued"):
         """A TimelineEntry for one row, with the field set measured off a real
@@ -1277,8 +1286,13 @@ class PlexSim:
             activities = self.library.activities()
             return self.bare_container(size=len(activities), Activity=activities)
 
-        if route == "/status/sessions/history/all":
-            return self.history(query)
+        if segments[:3] == ["status", "sessions", "history"] and len(segments) == 4:
+            if method == "DELETE":
+                return self.delete_history(segments[3])
+            if segments[3] == "all":
+                return self.history(query)
+            # Measured: only `all` and a numeric historyKey exist here.
+            return ("error", 404, "plexsim: not found")
         if route == "/status/sessions/terminate":
             # Measured: keyed on `Session.id` (not sessionKey), 400 without one,
             # 404 for an id that is not live, and the kill itself is delivered
@@ -1572,6 +1586,12 @@ class PlexSim:
         # -- playback ----------------------------------------------------
         if route == "/playQueues" and method == "POST":
             return self.create_play_queue(query)
+        if route == "/playQueues":
+            # Measured: a GET of the collection is a 400, not the 404 an unrouted
+            # path gets -- the endpoint exists and the request is wrong.
+            return ("error", 400, "plexsim: bad request")
+        if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET":
+            return self.get_play_queue(segments[1], query)
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
             return self.play_queue_route(method, segments, query)
 
@@ -1582,6 +1602,12 @@ class PlexSim:
             # also the signal that the client's own gate rejected direct play.
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
+        if route == "/subtitles/:/transcode/universal/start":
+            # The URL Plex Web uses for a <track> src when it CAN direct play --
+            # which is plexsim's only path. Measured 400 on both reference servers,
+            # including for a real embedded SRT; plexsim let it fall into the
+            # catch-all 404, which is a different answer for the same condition.
+            return ("error", 400, "plexsim: bad request")
         if route == "/video/:/transcode/universal/subtitles":
             # Measured: a real PMS answers 400 here for an unknown session, where
             # the rest of the universal/* family answers 404.
@@ -1624,8 +1650,10 @@ class PlexSim:
             return ("websocket",)
 
         # -- timeline / state --------------------------------------------
-        if route in ("/:/timeline", "/:/progress"):
+        if route == "/:/timeline":
             return self.timeline(query, headers, address)
+        if route == "/:/progress":
+            return self.progress(query)
         if route == "/:/scrobble":
             return self.set_watched(query, True)
         if route == "/:/unscrobble":
@@ -2634,13 +2662,22 @@ class PlexSim:
     def library_metadata(self, segments, query, method="GET"):
         raw_key = segments[2]
 
-        # A comma-joined key list is a real client pattern (plezy batches).
+        # A comma-joined key list is a real client pattern (plezy batches, and the
+        # web client's own per-grid userState probe). Measured: a LEAF on a
+        # comma-joined list is a 404 -- plexsim returned before it looked at the
+        # leaf at all, so `/library/metadata/a,b/userState` answered full metadata
+        # rows with no UserState in them, which the client reads as state it has.
         if "," in raw_key:
+            if len(segments) > 3:
+                return ("error", 404, "plexsim: not found")
             rows = []
             for piece in raw_key.split(","):
                 if piece.isdigit() and int(piece) in self.catalog.items:
                     rows.append(_full(self.catalog.items[int(piece)]))
             return self.container(Metadata=rows)
+        if not raw_key.isdigit():
+            # Measured: a non-numeric ratingKey is a 404, not an empty container.
+            return ("error", 404, "plexsim: not found")
 
         if not raw_key.isdigit():
             return self.container()
@@ -3421,7 +3458,7 @@ class PlexSim:
             hubs[-1]["context"] = "hub.results.search"
         return self.bare_container(size=len(hubs), Hub=hubs)
 
-    def _items_for_uri(self, uri):
+    def _items_for_uri(self, uri, continuous=False):
         """Resolve a playQueue `uri` to the rows it should enqueue.
 
         Two shapes reach here, and only the first was handled before:
@@ -3451,27 +3488,115 @@ class PlexSim:
             if unsupported:
                 raise filters_module.FilterError(
                     500, "unsupported sort key %s" % unsupported)
-            return rows
-        # A single item.
-        match = re.search(r"/library/metadata/(\d+)", path)
+            return self._playable(rows)
+        # A playlist's items, which is what Play on a playlist sends.
+        match = re.search(r"/playlists/(\d+)/items", path)
         if match:
-            row = self.catalog.items.get(int(match.group(1)))
-            return [row] if row else []
+            playlist = self.library.playlist(match.group(1))
+            if playlist is None:
+                return []
+            return [row for row, _item in self.library.playlist_items(playlist)]
+        # A collection's children.
+        match = re.search(r"/library/collections/(\d+)/(?:children|items)", path)
+        if match:
+            collection = self.library.collection(match.group(1))
+            if collection is None:
+                return []
+            return self._playable(self.library.collection_children(collection))
+        # One or MORE items: a multi-select Play sends a comma-joined key list, and
+        # a regex that stops at the first key silently plays one of them.
+        match = re.search(r"/library/metadata/([\d,]+)", path)
+        if match:
+            rows = [self.catalog.items[int(k)] for k in match.group(1).split(",")
+                    if k.isdigit() and int(k) in self.catalog.items]
+            if continuous and len(rows) == 1 and rows[0].get("type") == "episode":
+                # Measured: `continuous=1` on an episode appends the episodes that
+                # FOLLOW it within its own season -- not the rest of the show.
+                episode = rows[0]
+                siblings = self.catalog.children(episode.get("parentRatingKey"))
+                index = next((i for i, r in enumerate(siblings)
+                              if str(r.get("ratingKey")) == str(episode["ratingKey"])),
+                             None)
+                if index is not None:
+                    return siblings[index:]
+            return self._playable(rows)
         # A bare trailing ratingKey, which some clients send.
         tail = path.rstrip("/").rsplit("/", 1)[-1]
         if tail.isdigit() and int(tail) in self.catalog.items:
-            return [self.catalog.items[int(tail)]]
+            return self._playable([self.catalog.items[int(tail)]])
         return []
+
+    def _playable(self, rows):
+        """Expand any show or season into the episodes a player can actually play.
+
+        Measured: a queue over a show holds its SIX EPISODES, a queue over a season
+        holds that season's three, and a queue over a show library's section holds
+        every leaf -- never the parent row. plexsim enqueued the parent, which has
+        no Media at all, so Play, Play All and Shuffle on every show page, season
+        page and TV library handed the player a row it could not play and the web
+        client said "An error occurred loading items to play".
+        """
+        out = []
+        for row in rows:
+            if row is None:
+                continue
+            if row.get("type") in ("show", "season"):
+                out.extend(self.catalog.leaves(row["ratingKey"]))
+            else:
+                out.append(row)
+        return out
+
+    @staticmethod
+    def source_uri(uri, rows):
+        """The `playQueueSourceURI` a real PMS reports, which is NOT what it was sent.
+
+        Measured: `server://<machine>/com.plexapp.plugins.library/library/metadata/1`
+        comes back as `library://x/item/%2Flibrary%2Fmetadata%2F1`, and anything
+        that names a LIST -- a section, a collection's children, a comma-joined key
+        set -- comes back as `library://x/directory/<the same encoding>`. plexsim
+        echoed the raw `server://` URI, so a client that re-read the queue got a
+        source it had not sent and could not match.
+        """
+        path = urllib.parse.unquote(uri or "")
+        marker = "/com.plexapp.plugins.library"
+        if marker not in path:
+            # An unresolvable but well-formed uri is echoed verbatim, measured.
+            return uri or ""
+        path = path.split(marker, 1)[1]
+        single = re.fullmatch(r"/library/metadata/\d+", path) is not None
+        kind = "item" if single else "directory"
+        return "library://x/%s/%s" % (kind, urllib.parse.quote(path, safe=""))
+
+    def _queue_items(self, rows):
+        """Wrap rows as queue items with globally increasing, stable ids."""
+        items = []
+        for row in rows:
+            self.next_play_queue_item += 1
+            items.append({"id": self.next_play_queue_item,
+                          "ratingKey": int(row["ratingKey"])})
+        return items
 
     def create_play_queue(self, query):
         """`POST /playQueues` -- every client builds a queue before playing.
 
-        `shuffle=1` is the Shuffle context-menu entry, and `playQueueSourceURI`
-        is on a real PMS's response (measured): the client echoes it back when
-        it later adds to the same queue.
+        `shuffle=1` is the Shuffle context-menu entry. Measured refusals: a POST
+        with no `uri` AND no `playlistID`, or with no `type`, is a 400 -- plexsim
+        answered 200 with an empty queue, which the client plays as nothing.
         """
         uri = query.get("uri", "")
-        rows = self._items_for_uri(uri)
+        playlist_id = query.get("playlistID")
+        if not query.get("type"):
+            return ("error", 400, "plexsim: bad request")
+        if not uri and not playlist_id:
+            return ("error", 400, "plexsim: bad request")
+        playlist = self.library.playlist(playlist_id) if playlist_id else None
+        if playlist is not None:
+            # Measured: `playlistID=` ALONE, with no uri at all, builds the same
+            # queue -- and the response then names the playlist instead of
+            # carrying a source URI.
+            rows = [row for row, _item_id in self.library.playlist_items(playlist)]
+        else:
+            rows = self._items_for_uri(uri, continuous=query.get("continuous") == "1")
         if query.get("shuffle") == "1":
             # Deterministic per queue rather than random, so a test can assert
             # the order changed without asserting which order.
@@ -3480,51 +3605,108 @@ class PlexSim:
         with self.lock:
             queue_id = self.next_play_queue
             self.next_play_queue += 1
-            self.play_queues[queue_id] = [int(r["ratingKey"]) for r in rows]
-            self.play_queue_sources[queue_id] = uri
-            self.play_queue_shuffled[queue_id] = query.get("shuffle") == "1"
-
+            items = self._queue_items(rows)
+            self.play_queues[queue_id] = {
+                "items": items,
+                "source": "" if playlist is not None else self.source_uri(uri, rows),
+                "shuffled": query.get("shuffle") == "1",
+                "version": 1,
+                "selected": items[0]["id"] if items else None,
+                "last_added": None,
+                "playlist": (int(playlist["ratingKey"]), playlist["title"])
+                            if playlist is not None else None,
+            }
         logger.info("PLAYQUEUE %s -> %d item(s) from uri=%s",
-                    queue_id, len(rows), uri[:80])
-        return self.play_queue_container(queue_id)
+                    queue_id, len(rows), (uri or playlist_id or "")[:80])
+        return self.play_queue_container(queue_id, query)
 
-    def get_play_queue(self, queue_id):
-        return self.play_queue_container(
-            int(queue_id) if str(queue_id).isdigit() else 0)
+    def get_play_queue(self, queue_id, query=None):
+        if not str(queue_id).isdigit() or int(queue_id) not in self.play_queues:
+            # Measured: an unknown queue is a 404, where plexsim invented an
+            # empty one -- which a client reads as "the queue is still there".
+            return ("error", 404, "plexsim: no such play queue")
+        return self.play_queue_container(int(queue_id), query)
 
-    def play_queue_container(self, queue_id):
+    def play_queue_container(self, queue_id, query=None):
         """One play-queue response, used by create, fetch and add-to.
 
-        Every field here is on a real PMS's, including playQueueSourceURI --
-        which plexsim omitted, so a client that re-read the queue after adding
-        to it lost the source it was playing from.
+        Two things here decide whether the client keeps the answer at all. Its
+        play-queue fetch DISCARDS the whole response when the returned
+        `playQueueSelectedItemID` is not the one it already holds, and it refreshes
+        only when `playQueueVersion` changed. plexsim recomputed the item ids from
+        their POSITION and hardcoded the version at 1, so every id moved whenever
+        anything was inserted and the version never moved at all: once the player
+        was past the first item, every refresh, Add to Queue and Play Next response
+        was silently thrown away.
+
+        `playQueueLastAddedItemID` is the third: the client disables the Up Next
+        shuffle button once it is present, and it tracks PLAIN adds only.
         """
+        query = query or {}
         with self.lock:
-            keys = list(self.play_queues.get(queue_id) or [])
-            source = self.play_queue_sources.get(queue_id, "")
-            shuffled = bool(self.play_queue_shuffled.get(queue_id))
+            queue = self.play_queues.get(queue_id)
+            if queue is None:
+                return ("error", 404, "plexsim: no such play queue")
+            items = list(queue["items"])
+            source = queue["source"]
+            shuffled = bool(queue["shuffled"])
+            version = queue["version"]
+            selected = queue["selected"]
+            last_added = queue["last_added"]
+            playlist = queue["playlist"]
         metadata = []
-        for position, rating_key in enumerate(keys):
-            row = self.catalog.items.get(rating_key)
+        for entry in items:
+            row = self.catalog.items.get(entry["ratingKey"])
             if row is None:
                 continue
             item = _full(row)
-            item["playQueueItemID"] = queue_id * 1000 + position + 1
+            item["playQueueItemID"] = entry["id"]
             metadata.append(item)
+        offset = next((i for i, m in enumerate(metadata)
+                       if m["playQueueItemID"] == selected), 0)
+        total = len(metadata)
+        # `window`/`center`: the client asks for a slice AROUND the current item
+        # rather than the whole queue, and `playQueueTotalCount` still reports the
+        # whole thing. plexsim ignored both and sent every row every time.
+        window = query.get("window")
+        centre = query.get("center")
+        if str(centre).isdigit():
+            offset = next((i for i, m in enumerate(metadata)
+                           if m["playQueueItemID"] == int(centre)), offset)
+        if str(window).isdigit():
+            span = int(window)
+            low = max(0, offset - span)
+            metadata = metadata[low:offset + span + 1]
+            offset = offset - low
         fields = {
             "Metadata": metadata,
             "playQueueID": queue_id,
-            "playQueueVersion": 1,
-            "playQueueSelectedItemID": (metadata[0]["playQueueItemID"] if metadata else None),
-            "playQueueSelectedItemOffset": 0,
-            "playQueueSelectedMetadataItemID": (str(keys[0]) if keys else None),
+            "playQueueVersion": version,
             "playQueueShuffled": shuffled,
-            "playQueueSourceURI": source,
-            "playQueueTotalCount": len(metadata),
             "identifier": "com.plexapp.plugins.library",
             "mediaTagPrefix": "/system/bundle/media/flags/",
         }
-        return self.container(**{k: v for k, v in fields.items() if v is not None})
+        if playlist is not None:
+            # Measured: a queue built from a playlist names it and carries NO
+            # source URI at all.
+            fields["playQueuePlaylistID"] = playlist[0]
+            fields["playQueuePlaylistTitle"] = playlist[1]
+        elif source:
+            fields["playQueueSourceURI"] = source
+        if metadata:
+            fields["playQueueSelectedItemID"] = selected if selected is not None \
+                else metadata[0]["playQueueItemID"]
+            fields["playQueueSelectedItemOffset"] = offset
+            fields["playQueueSelectedMetadataItemID"] = str(
+                items[min(offset, len(items) - 1)]["ratingKey"])
+            fields["playQueueTotalCount"] = total
+        if last_added is not None:
+            fields["playQueueLastAddedItemID"] = last_added
+        body = self.container(**fields)
+        # Measured: a play-queue container carries no allowSync, which the generic
+        # library container adds.
+        body["MediaContainer"].pop("allowSync", None)
+        return body
 
     def decision(self, query, headers=None):
         """`/video/:/transcode/universal/decision` -- always direct play.
@@ -3570,6 +3752,10 @@ class PlexSim:
             item["Media"] = media
             rows.append(item)
 
+        if row is not None:
+            # The timeline's Bandwidths block appears only once a decision has been
+            # made for the item, so the decision is what arms it.
+            self.decided.add(int(row["ratingKey"]))
         logger.info("DECISION direct play for path=%s (%s)", path, "hit" if rows else "miss")
 
         section = self.catalog.section(row["librarySectionID"]) if row else {}
@@ -3587,13 +3773,23 @@ class PlexSim:
             or query.get("X-Plex-Client-Identifier")
         if identifier:
             fields["resourceSession"] = identifier
-        if query.get("directPlay") == "0":
+        # Measured: without `hasMDE=1` the client has not claimed it can make a
+        # media decision, and a real PMS then refuses direct play outright with the
+        # 3000/1001 set -- naming the protocol it fell back to. plexsim answered the
+        # MDE pair to a client that never claimed MDE, which tells it a decision was
+        # made on its behalf.
+        if query.get("directPlay") == "0" or query.get("hasMDE") != "1":
             # Measured verbatim, including the punctuation: the client shows this
             # text in its playback-info panel.
+            media = (row.get("Media") or [{}])[0] if row is not None else {}
+            refusal = ("Direct play is disabled." if query.get("directPlay") == "0"
+                       else "No direct play video profile exists for protocol %s, "
+                            "with container %s, and video codec %s."
+                            % (query.get("protocol") or "http",
+                               media.get("container") or "", media.get("videoCodec") or ""))
             fields.update(
                 directPlayDecisionCode=3000,
-                directPlayDecisionText="App cannot direct play this item. "
-                                       "Direct play is disabled.",
+                directPlayDecisionText="App cannot direct play this item. " + refusal,
                 generalDecisionCode=1001,
                 generalDecisionText="Direct play not available; Conversion OK.",
                 transcodeDecisionCode=1001,
@@ -3621,11 +3817,32 @@ class PlexSim:
         """
         rating_key = query.get("ratingKey") or ""
         state = query.get("state") or "stopped"
+        if state not in self.TIMELINE_STATES:
+            # Measured: `state` is a CLOSED set and anything else is a 400.
+            # plexsim treated an unknown state as live and opened a session.
+            return ("error", 400, "plexsim: bad request")
         offset = query.get("time")
         duration = query.get("duration")
         offset_ms = int(offset) if str(offset).isdigit() else 0
         total_ms = int(duration) if str(duration).isdigit() else None
         row = self.catalog.items.get(int(rating_key)) if rating_key.isdigit() else None
+        if rating_key and row is None:
+            # Measured: a ratingKey the server does not have is a 404, not a 200
+            # with an empty container.
+            return ("error", 404, "plexsim: no such item")
+
+        # The player reports which queue item it is on, and a real PMS MOVES the
+        # queue's selection to it. The client's play-queue fetch then DISCARDS any
+        # response whose selected id is not the one it holds, so a server that
+        # never moves the selection has every queue refresh thrown away once
+        # playback is past the first item.
+        if str(query.get("playQueueItemID") or "").isdigit():
+            wanted = int(query["playQueueItemID"])
+            with self.lock:
+                for queue in self.play_queues.values():
+                    if any(e["id"] == wanted for e in queue["items"]):
+                        queue["selected"] = wanted
+                        break
 
         playback_state = "ignore"
         view_count = 0
@@ -3646,13 +3863,22 @@ class PlexSim:
                     playback_state = "complete"
                     view_count = 1
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0)
-            bitrate = ((row.get("Media") or [{}])[0]).get("bitrate") or 0
-            if state != "stopped" and bitrate:
-                # Only ever sent alongside a live session, measured.
+            media = (row.get("Media") or [{}])[0]
+            bitrate = media.get("bitrate") or 0
+            # Re-measured: `Bandwidths` appears once a DECISION has been made for
+            # this item and then on every timeline including `stopped`, and it
+            # disappears again after the stopping one. plexsim keyed it on the
+            # state alone, so it was present before any decision and absent on the
+            # stop -- exactly inverted at both ends. The resolution here is the
+            # LABEL (`1080p`), not the raw `videoResolution`.
+            if int(rating_key) in self.decided and bitrate:
+                resolution = media.get("videoResolution") or ""
                 fields["Bandwidths"] = [{"Bandwidth": [{
                     "time": 0, "bandwidth": int(round(bitrate * 2.1)),
-                    "resolution": ((row.get("Media") or [{}])[0]
-                                   ).get("videoResolution") or ""}]}]
+                    "resolution": filters_module.RESOLUTION_TITLES.get(
+                        str(resolution), str(resolution))}]}]
+            if state == "stopped":
+                self.decided.discard(int(rating_key))
             # A terminate is delivered HERE, not in the terminate response.
             session_id = entry.get("id")
             killed = self.sessions.termination(session_id)
@@ -3660,10 +3886,17 @@ class PlexSim:
                 fields["terminationCode"], fields["terminationText"] = killed
             logger.info("TIMELINE %s state=%s t=%sms session=%s",
                         rating_key, state, offset, entry.get("sessionKey"))
-        return self.bare_container(size=1 if row is not None else 0,
-                                   playbackState=playback_state,
+        if row is None:
+            # Measured: with no ratingKey at all the answer is just the two fields.
+            return self.bare_container(size=0, playbackState=playback_state)
+        # Re-measured, correcting an earlier finding: `viewOffset` is the item's
+        # STORED offset and is -1 only when it has none. plexsim always sent -1, so
+        # a client reading its resume point off the timeline never found one.
+        stored = row.get("viewOffset")
+        return self.bare_container(size=1, playbackState=playback_state,
                                    skipCount=0, viewCount=view_count,
-                                   viewOffset=-1, **fields)
+                                   viewOffset=int(stored) if stored else -1,
+                                   **fields)
 
     def notify_playing(self, entry, row, state, offset_ms):
         """The `playing` notification -- a FIFTH type, and the one Now Playing
@@ -3703,6 +3936,42 @@ class PlexSim:
             rows.append(item)
         return rows
 
+    def _keyed_row(self, query):
+        """The row a `key=` parameter names, or the refusal a real PMS answers.
+
+        Measured on every one of these state writes: a MISSING key is a 400 and a
+        key the server does not have is a 404. plexsim answered an empty 200 to
+        both, which tells the client the write landed.
+        """
+        raw = query.get("key")
+        if raw is None or raw == "":
+            return None, ("error", 400, "plexsim: bad request")
+        key = str(raw).rsplit("/", 1)[-1]
+        row = self.catalog.items.get(int(key)) if key.isdigit() else None
+        if row is None:
+            return None, ("error", 404, "plexsim: no such item")
+        return row, None
+
+    def progress(self, query):
+        """`/:/progress?key=&time=&state=` -- the OTHER way a client reports resume.
+
+        Not an alias of `/:/timeline`, which plexsim had it routed as: this one keys
+        on **`key`**, not `ratingKey`, and it answers an EMPTY body rather than a
+        MediaContainer. Routed at the timeline it read no key at all, so every
+        client that reports progress this way -- plex_debrid, Kodi/PKC, Infuse,
+        the older Plex apps -- lost its resume point silently.
+        """
+        row, refusal = self._keyed_row(query)
+        if refusal:
+            return refusal
+        offset = query.get("time")
+        offset_ms = int(offset) if str(offset).isdigit() else 0
+        self.library.progress(int(row["ratingKey"]), offset_ms,
+                              state=query.get("state") or "stopped")
+        logger.info("PROGRESS %s t=%sms state=%s", row["ratingKey"], offset,
+                    query.get("state"))
+        return ("empty", 200)
+
     def set_watched(self, query, watched):
         """`/:/scrobble` and `/:/unscrobble` -- Mark as Played / Unplayed.
 
@@ -3712,24 +3981,29 @@ class PlexSim:
         types, so a show whose episodes stayed unwatched keeps offering "Mark as
         Played" no matter what the show row says.
         """
-        key = (query.get("key") or "").rsplit("/", 1)[-1]
-        if key.isdigit():
-            changed = self.library.scrobble(int(key), watched)
-            logger.info("%s %s -> %d leaf row(s)",
-                        "SCROBBLE" if watched else "UNSCROBBLE", key, len(changed))
+        row, refusal = self._keyed_row(query)
+        if refusal:
+            return refusal
+        changed = self.library.scrobble(int(row["ratingKey"]), watched)
+        logger.info("%s %s -> %d leaf row(s)",
+                    "SCROBBLE" if watched else "UNSCROBBLE", row["ratingKey"],
+                    len(changed))
         return ("empty", 200)
 
     def rate(self, query):
         """`/:/rate?key=&identifier=&rating=` -- the star rating. -1 clears."""
-        key = (query.get("key") or "").rsplit("/", 1)[-1]
+        row, refusal = self._keyed_row(query)
+        if refusal:
+            return refusal
         rating = query.get("rating")
-        if key.isdigit():
-            try:
-                value = float(rating)
-            except (TypeError, ValueError):
-                value = None
-            self.library.rate(int(key), value)
-            logger.info("RATE %s -> %s", key, rating)
+        try:
+            value = float(rating)
+        except (TypeError, ValueError):
+            # Measured: an unparseable rating is a 400, where plexsim silently
+            # cleared the rating instead.
+            return ("error", 400, "plexsim: bad request")
+        self.library.rate(int(row["ratingKey"]), value)
+        logger.info("RATE %s -> %s", row["ratingKey"], rating)
         return ("empty", 200)
 
     def remove_from_continue_watching(self, query):
@@ -3774,6 +4048,25 @@ class PlexSim:
                         owner = row
         if owner is None:
             return ("error", 404, "plexsim: no such part")
+        # Measured: a stream id that is not a stream of the right TYPE on this item
+        # is a 400, and the selection is left untouched. plexsim accepted anything
+        # with a 200 and then cleared every selection, because nothing matched --
+        # so a rejected request left the item with no selected track at all and the
+        # track picker went blank. `0` is the client's "None" pseudo-stream and is
+        # valid for subtitles only.
+        available = {stream_type: {str(s.get("id"))
+                                  for media in owner.get("Media", [])
+                                  for part in media.get("Part", [])
+                                  for s in part.get("Stream", [])
+                                  if s.get("streamType") == stream_type}
+                     for stream_type in (2, 3)}
+        for stream_type, chosen in wanted.items():
+            if str(chosen) == "0" and stream_type == 3:
+                continue
+            if str(chosen) not in available.get(stream_type, set()):
+                logger.warning("STREAM SELECT refused: %s is not a type-%d stream of %s",
+                               chosen, stream_type, owner["ratingKey"])
+                return ("error", 400, "plexsim: bad request")
         for media in owner.get("Media", []):
             for part in media.get("Part", []):
                 if str(part.get("id")) != str(part_id) and query.get("allParts") != "1":
@@ -4148,9 +4441,11 @@ class PlexSim:
                     size=1, Metadata=[self.library._playlist_row(playlist)])
             if method == "PUT":
                 rows = self._items_for_uri(query.get("uri", ""))
-                if not rows and query.get("playQueueID"):
-                    keys = self.play_queues.get(int(query["playQueueID"]), [])
-                    rows = [self.catalog.items[k] for k in keys if k in self.catalog.items]
+                if not rows and str(query.get("playQueueID") or "").isdigit():
+                    queue = self.play_queues.get(int(query["playQueueID"])) or {}
+                    rows = [self.catalog.items[e["ratingKey"]]
+                            for e in queue.get("items") or []
+                            if e["ratingKey"] in self.catalog.items]
                 added = self.library.add_playlist_items(playlist, rows)
                 logger.info("PLAYLIST %s += %d item(s)", playlist["ratingKey"], added)
                 return self.bare_container(
@@ -4182,37 +4477,118 @@ class PlexSim:
     # -- play queue ------------------------------------------------------
 
     def play_queue_route(self, method, segments, query):
-        """`/playQueues/{id}` -- Play Next and Add to Queue live here.
+        """`/playQueues/{id}` -- Play Next, Add to Queue, move and delete.
 
-        The client builds both from the same call it uses to create a queue,
-        with `next=1` for Play Next; without the PUT, both menu entries are
-        drawn (the provider advertises `playqueue`) and neither does anything.
+        The client builds Play Next and Add to Queue from the same call it uses to
+        create a queue, with `next=1` for Play Next; without the PUT, both menu
+        entries are drawn (the provider advertises `playqueue`) and neither does
+        anything.
+
+        WHERE they insert is measured, and plexsim had both wrong. A plain add goes
+        after the block of already-added items following the current one; a
+        `next=1` add goes IMMEDIATELY after the current item, ahead of that block.
+        plexsim appended to the very end of the queue and inserted at index 1
+        regardless of where the player actually was.
         """
-        queue_id = int(segments[1]) if segments[1].isdigit() else 0
+        if not segments[1].isdigit():
+            return ("error", 404, "plexsim: no such play queue")
+        queue_id = int(segments[1])
+        with self.lock:
+            queue = self.play_queues.get(queue_id)
+        if queue is None:
+            return ("error", 404, "plexsim: no such play queue")
+
+        # Measured: the player's shuffle button PUTs here and a real PMS answers
+        # 404 -- it has no such endpoint. The client reverts its optimistic
+        # `playQueueShuffled` on a failure, so plexsim's 200 left the button stuck
+        # "on" over a queue that was never shuffled.
+        if len(segments) == 3 and segments[2] in ("shuffle", "unshuffle"):
+            return ("error", 404, "plexsim: not found")
+
+        if (len(segments) == 5 and segments[2] == "items"
+                and segments[4] == "move" and method == "PUT"):
+            return self.move_play_queue_item(queue_id, segments[3],
+                                            query.get("after"), query)
+
         if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
             with self.lock:
-                keys = self.play_queues.get(queue_id) or []
-                index = int(segments[3]) - queue_id * 1000 - 1
-                if 0 <= index < len(keys):
-                    keys.pop(index)
-            return self.play_queue_container(queue_id)
-        if method == "PUT":
-            rows = self._items_for_uri(query.get("uri", ""))
+                items = queue["items"]
+                index = next((i for i, e in enumerate(items)
+                              if str(e["id"]) == str(segments[3])), None)
+                if index is None:
+                    # Measured: an unknown item id is a 404. plexsim derived the
+                    # index from the id arithmetically, so an id the client cached
+                    # before an insert deleted a DIFFERENT row.
+                    return ("error", 404, "plexsim: no such play queue item")
+                items.pop(index)
+                queue["version"] += 1
+            return self.play_queue_container(queue_id, query)
+
+        if len(segments) == 2 and method == "PUT":
+            if not query.get("uri") and not query.get("playlistID"):
+                # Measured: a bare refresh PUT with no uri is a 400.
+                return ("error", 400, "plexsim: bad request")
+            rows = self._items_for_uri(query.get("uri", ""),
+                                      continuous=query.get("continuous") == "1")
             with self.lock:
-                keys = self.play_queues.setdefault(queue_id, [])
-                new = [int(r["ratingKey"]) for r in rows]
+                items = queue["items"]
+                new = self._queue_items(rows)
+                current = next((i for i, e in enumerate(items)
+                                if e["id"] == queue["selected"]), 0)
                 if query.get("next") == "1":
-                    keys[1:1] = new
+                    at = current + 1
                 else:
-                    keys.extend(new)
+                    # Skip past the items already queued up behind the current one.
+                    at = current + 1
+                    while at < len(items) and items[at]["id"] > queue["selected"]:
+                        at += 1
+                items[at:at] = new
+                queue["version"] += 1
+                if new and query.get("next") != "1":
+                    # Measured: this tracks PLAIN adds only -- a next=1 add leaves
+                    # it where it was. The client disables the Up Next shuffle
+                    # button once it is present.
+                    queue["last_added"] = new[-1]["id"]
             logger.info("PLAYQUEUE %s %s %d item(s)", queue_id,
                         "next" if query.get("next") == "1" else "append", len(rows))
-            return self.play_queue_container(queue_id)
-        if method == "DELETE":
-            with self.lock:
-                self.play_queues.pop(queue_id, None)
-            return ("empty", 200)
-        return self.play_queue_container(queue_id)
+            return self.play_queue_container(queue_id, query)
+
+        if len(segments) == 2 and method in ("POST", "DELETE"):
+            # Measured: both are 404 on a real PMS. plexsim's DELETE really dropped
+            # the queue, so a client that tried one lost the queue it was playing.
+            return ("error", 404, "plexsim: not found")
+
+        if len(segments) == 2:
+            return self.play_queue_container(queue_id, query)
+        return ("error", 404, "plexsim: not found")
+
+    def move_play_queue_item(self, queue_id, item_id, after, query):
+        """`PUT /playQueues/{id}/items/{itemID}/move?after=` -- drag in Up Next.
+
+        Measured: `after=-1` moves the item to the FRONT and the version steps.
+        plexsim did not route this at all -- the request fell through to its
+        add-to-queue branch and answered 200 with the queue unchanged, so the
+        handle moved and the order snapped back on the next read.
+        """
+        with self.lock:
+            queue = self.play_queues[queue_id]
+            items = queue["items"]
+            index = next((i for i, e in enumerate(items)
+                          if str(e["id"]) == str(item_id)), None)
+            if index is None:
+                return ("error", 404, "plexsim: no such play queue item")
+            moving = items.pop(index)
+            if after is None or str(after) in ("-1", ""):
+                items.insert(0, moving)
+            else:
+                target = next((i for i, e in enumerate(items)
+                               if str(e["id"]) == str(after)), None)
+                if target is None:
+                    items.insert(index, moving)
+                    return ("error", 404, "plexsim: no such play queue item")
+                items.insert(target + 1, moving)
+            queue["version"] += 1
+        return self.play_queue_container(queue_id, query)
 
     # -- server settings -------------------------------------------------
 
@@ -4446,12 +4822,56 @@ class PlexSim:
         title and originallyAvailableAt.
         """
         rows = self.library.history()
+        # Measured: this page filters and sorts, and plexsim ignored all of it --
+        # so Top Users' "View Play History" link (`accountID=&viewedAt=`) and the
+        # per-item history link (`metadataItemID=`) both showed the whole server's
+        # history in insertion order, and the Played column's sort did nothing.
+        #
+        # Note the operators: `viewedAt>=` here is a plain `>=`, NOT the library
+        # grammar's `>>`. Two query languages on one server.
+        for name, field in (("accountID", "accountID"),
+                            ("deviceID", "deviceID"),
+                            ("librarySectionID", "librarySectionID"),
+                            ("metadataItemID", "ratingKey")):
+            if query.get(name):
+                rows = [r for r in rows
+                        if str(r.get(field)) == str(query[name])]
+        for key, test in (("viewedAt>", lambda a, b: a > b),
+                          ("viewedAt>=", lambda a, b: a >= b),
+                          ("viewedAt<", lambda a, b: a < b),
+                          ("viewedAt<=", lambda a, b: a <= b)):
+            if str(query.get(key) or "").isdigit():
+                moment = int(query[key])
+                rows = [r for r in rows if test(int(r.get("viewedAt") or 0), moment)]
+        # Default order is viewedAt ASCENDING, and an unknown sort key is a 400 --
+        # not the 500 a library listing answers, which is its own small surprise.
+        spec = query.get("sort") or "viewedAt"
+        for field, descending, _seed in reversed(filters_module.sort_terms(spec)):
+            if field not in ("viewedAt", "historyKey", "ratingKey", "accountID",
+                             "deviceID", "title"):
+                return ("error", 400, "plexsim: bad request")
+            rows = sorted(rows, key=lambda r: (r.get(field) is None, r.get(field) or 0),
+                          reverse=descending)
         page, paged, start, total = self.page_window(rows, query)
         fields = {"size": len(page), "Metadata": page}
         if paged:
             fields["totalSize"] = total
             fields["offset"] = start
         return self.bare_container(**fields)
+
+    def delete_history(self, key):
+        """`DELETE /status/sessions/history/{historyKey}` -- one row off the page.
+
+        plexsim routed the history path on the path alone, so a DELETE was answered
+        with the LISTING, and a numeric key fell through to the live-sessions
+        handler and answered `{size: 0}` -- which is exactly the "it worked" signal
+        for a delete that did nothing. Measured: 200 with an empty container when
+        the row goes, 404 when there is no such row.
+        """
+        if not self.library.delete_history(key):
+            return ("error", 404, "plexsim: no such history row")
+        logger.info("HISTORY delete %s", key)
+        return self.bare_container(size=0)
 
     def log_archive(self):
         """A zip of plexsim's own recent log, for Download Logs.
