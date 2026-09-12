@@ -442,7 +442,7 @@ GET /library/parts/10070/1/file.mkv?download=1   Range: bytes=0-99
                           filename*=UTF-8''For%20the%20Birds%20%282000%29.mkv
 ```
 
-`tests/test_ui_surface.py` covers all of it: **252/252 checks against the new
+`tests/test_ui_surface.py` covers all of it: **256/256 checks against the new
 server, 68/220 against the spike it started from** on the same fixture catalog
 (`tests/catalog_ui.json`, rows cloned off the redacted real catalog so the
 section has more than one movie and the show has two seasons). The count differs
@@ -607,6 +607,34 @@ now come off the same notification bus, each formatting for itself.
 | A collections listing keeps the **section's** `viewGroup` and `title2` ("movie", "All Movies"), not "collection" | corrected |
 | `/playlists`, `/playlists/all` and `/playlists/{id}/items` page (`totalSize`/`offset`) and sort | added -- and a playlist row has no `titleSort`, so keying the sort on that alone made every row compare equal and the direction do nothing |
 | ffprobe reports `chroma_location`, `coded_height`, `coded_width` and a real PMS carries them | added to mediainfo; `hasScalingMatrix` is **not**, because a real PMS reads it out of the H.264 bitstream and ffprobe does not report it |
+
+#### What `unmatch` actually does, measured key by key
+
+The unmatch handler was written from the obvious reading -- "drop everything the
+agent supplied" -- and that is not what a real PMS does. Diffing a reference
+row's keys either side of the call:
+
+| | |
+|---|---|
+| dropped | `Genre`, `Country`, `Role`, `Director`, `Writer`, `Producer`, `studio`, `contentRating`, `audienceRating`; `summary` is **emptied but kept** |
+| **kept** | `thumb`, `art`, `Image`, the external `Guid` array, `Rating`, `audienceRatingImage`, `UltraBlurColors`, `originallyAvailableAt`, `year`, `slug`, `userRating`, `lastRatedAt`, `Field` |
+| guid | becomes **`tv.plex.agents.none://<ratingKey>`**, not `local://` |
+| title | becomes the FILE NAME without its extension |
+
+The artwork surviving is the one that matters. plexsim was dropping `thumb` and
+`art`, which leaves the row with no artwork URL for the client to ask for at all
+-- so the grid tile goes blank, where a real unmatched item still shows its
+poster. The `unmatched=1` filter had to learn the same guid forms the client's
+own Match/Fix Match predicate tests for, or an item the server called unmatched
+was invisible to the filter that looks for exactly those.
+
+Also measured while there, and deliberately NOT copied: every real row carries
+**four** `Image` entries -- `coverPoster`, `background`, `clearLogo`
+(`/library/metadata/{rk}/clearLogo/{v}`) and `backgroundSquare` (`/squareArt/{v}`)
+-- and all four endpoints serve bytes. plexsim advertises only the two it has.
+Advertising a clear logo it cannot supply would put its generated grey tile over
+the hero banner in place of the title, which is worse than the client falling
+back to text.
 
 #### A negative result worth keeping: no lock was needed
 

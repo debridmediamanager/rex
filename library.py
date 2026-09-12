@@ -330,20 +330,35 @@ class Library:
 
     # -- match / unmatch / refresh / split / merge ------------------------
 
+    # What `PUT .../unmatch` actually drops, measured field for field by diffing
+    # a reference row's keys either side of the call. Far less than "everything
+    # the agent supplied": the artwork, the external `Guid` array, the ratings,
+    # the air date and the slug all SURVIVE, and only the agent-sourced
+    # descriptive fields and people go.
+    UNMATCH_DROPS = ("Genre", "Country", "Role", "Director", "Writer", "Producer",
+                     "studio", "contentRating", "contentRatingAge", "tagline",
+                     "audienceRating", "rating")
+
     def unmatch(self, row, identify=None):
         """Strip the agent's identity, the way `PUT .../unmatch` does.
 
-        A real PMS keeps the file and drops everything the agent supplied, and
-        the row's guid becomes a `local://` one -- which is exactly what flips
-        the menu from "Fix Match..." to "Match...".
+        Measured on the reference by diffing the row's keys across the call:
+
+          guid      becomes `tv.plex.agents.none://<ratingKey>`, NOT `local://`
+          title     becomes the FILE NAME without its extension
+          summary   is emptied but kept
+          thumb/art/Image/Guid/Rating/year/originallyAvailableAt/slug  all KEPT
+
+        The artwork surviving is the one that matters: dropping `thumb` leaves
+        the row with no artwork URL for the client to ask for at all, so the grid
+        tile goes blank -- where a real unmatched item still shows its poster.
+        Either way the guid is what flips the menu from "Fix Match..." to
+        "Match...", because both predicates test it for `local://` or `none://`.
         """
-        for key in ("guid", "Guid", "summary", "tagline", "studio", "contentRating",
-                    "rating", "audienceRating", "audienceRatingImage", "Genre",
-                    "Country", "Role", "Director", "Writer", "Producer", "slug",
-                    "originallyAvailableAt", "year", "UltraBlurColors",
-                    "_poster_url", "_art_url", "thumb", "art"):
+        for key in self.UNMATCH_DROPS:
             row.pop(key, None)
-        row["guid"] = "local://%s" % row["ratingKey"]
+        row["summary"] = ""
+        row["guid"] = "tv.plex.agents.none://%s" % row["ratingKey"]
         # The FILE NAME is the only title left that an agent did not supply, so
         # that is what an unmatched row is called -- the same thing a real PMS
         # falls back to. Keeping the agent's title would leave the row claiming

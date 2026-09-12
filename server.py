@@ -1867,7 +1867,12 @@ class PlexSim:
                 if not row.get("viewOffset"):
                     return False
             elif name == "unmatched" and value == "1":
-                if not str(row.get("guid") or "").startswith("local://"):
+                # An unmatched row is one with no agent identity, and a real PMS
+                # writes that as `tv.plex.agents.none://<key>`; `local://` is the
+                # legacy form. The client's own Match/Fix Match predicate tests
+                # for exactly these two, so the filter has to agree with it.
+                guid = str(row.get("guid") or "")
+                if not (guid.startswith("local://") or "none://" in guid):
                     return False
         return True
 
