@@ -38,6 +38,7 @@ reason rather than passing quietly.
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -62,6 +63,84 @@ def check(label, ok, detail=""):
 def skip(label, why):
     skipped.append((label, why))
     print("  %s  %-52s %s" % (YELLOW + "SKIP" + OFF, label, why))
+
+
+def notifications(base, trigger, seconds=8):
+    """Open the notification socket, run `trigger`, and collect what arrives.
+
+    A hand-rolled client rather than a dependency: the handshake plus text-frame
+    parsing is a few lines, and the point is to prove the socket carries real
+    frames. A client that receives none of these falls back to polling and never
+    sees a change made anywhere else.
+    """
+    import base64
+    import os
+    import socket
+    import struct
+    import threading
+
+    parsed = urllib.parse.urlparse(base)
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 32400
+    key = base64.b64encode(os.urandom(16)).decode()
+    sock = socket.create_connection((host, port), timeout=seconds + 5)
+    sock.sendall((
+        "GET /:/websockets/notifications HTTP/1.1\r\n"
+        "Host: %s:%d\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+        "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n"
+        % (host, port, key)).encode())
+    buffer = b""
+    while b"\r\n\r\n" not in buffer:
+        chunk = sock.recv(4096)
+        if not chunk:
+            sock.close()
+            return None, []
+        buffer += chunk
+    head, _, rest = buffer.partition(b"\r\n\r\n")
+    if b"101" not in head.split(b"\r\n")[0]:
+        sock.close()
+        return head.split(b"\r\n")[0].decode(), []
+
+    threading.Timer(0.5, trigger).start()
+    frames = []
+    sock.settimeout(seconds)
+    data = rest
+    deadline = time.time() + seconds
+    try:
+        while time.time() < deadline:
+            while len(data) >= 2:
+                first, second = data[0], data[1]
+                length = second & 0x7F
+                offset = 2
+                if length == 126:
+                    if len(data) < 4:
+                        break
+                    length = struct.unpack("!H", data[2:4])[0]
+                    offset = 4
+                elif length == 127:
+                    if len(data) < 10:
+                        break
+                    length = struct.unpack("!Q", data[2:10])[0]
+                    offset = 10
+                if len(data) < offset + length:
+                    break
+                payload = data[offset:offset + length]
+                data = data[offset + length:]
+                if first & 0x0F == 0x1 and payload:
+                    try:
+                        frames.append(json.loads(payload))
+                    except ValueError:
+                        pass
+            try:
+                chunk = sock.recv(65536)
+            except socket.timeout:
+                break
+            if not chunk:
+                break
+            data += chunk
+    finally:
+        sock.close()
+    return "101", frames
 
 
 def request(base, method, path, want_json=True):
@@ -790,10 +869,55 @@ def main():
             ("GET", "/video/:/transcode/universal/subtitles?session=x", 404,
              "a transcode session"),
             ("GET", "/library/optimize", 404, "optimize via GET"),
+            ("GET", "/system/appstore/updates", 404, "the channel appstore"),
             ("GET", "/library/collections", 404, "the bare collections path"),
             ("GET", "/playlists/generators?type=42", 404, "version generators")):
         status, _, _ = container(base, method, path)
         check("%s answers %s" % (why, want), status == want, "HTTP %s" % status)
+
+    print("\n=== the notification socket ===")
+
+    def stir():
+        request(base, "PUT", "/library/metadata/%s/refresh" % movie)
+        get(base, "/library/sections/%s/refresh" % movie_section)
+        request(base, "POST", "/butler/RefreshLibraries")
+
+    status, frames = notifications(base, stir, seconds=8)
+    kinds = {(f.get("NotificationContainer") or {}).get("type") for f in frames}
+    check("the notification socket completes a real upgrade", status == "101",
+          str(status))
+    # Measured on the reference: these four are what a real PMS pushes. Without
+    # them a client polls, and never sees a change made from another device.
+    for kind, element in (("activity", "ActivityNotification"),
+                          ("timeline", "TimelineEntry"),
+                          ("status", "StatusNotification"),
+                          ("progress", "ProgressNotification")):
+        rows = [r for f in frames
+                for r in ((f.get("NotificationContainer") or {}).get(element) or [])
+                if (f.get("NotificationContainer") or {}).get("type") == kind]
+        check("the socket pushes %s notifications" % kind, bool(rows),
+              "%d frame(s)" % len(rows))
+    activity_rows = [r for f in frames
+                     for r in ((f.get("NotificationContainer") or {})
+                               .get("ActivityNotification") or [])]
+    if activity_rows:
+        check("an activity notification carries the event and the Activity",
+              all(r.get("event") and r.get("uuid")
+                  and (r.get("Activity") or {}).get("type") for r in activity_rows),
+              activity_rows[0].get("event"))
+    timeline_rows = [r for f in frames
+                     for r in ((f.get("NotificationContainer") or {})
+                               .get("TimelineEntry") or [])]
+    if timeline_rows:
+        entry = timeline_rows[0]
+        # sectionID and itemID are STRINGS on the reference, and `type` is Plex's
+        # numeric code rather than the word.
+        check("a timeline entry carries the measured field set",
+              isinstance(entry.get("sectionID"), str)
+              and isinstance(entry.get("itemID"), str)
+              and isinstance(entry.get("type"), int)
+              and entry.get("metadataState") and entry.get("updatedAt"),
+              json.dumps(entry)[:110])
 
     print("\n=== endpoints that are not the UI's but are a server's ===")
     # The one root element on the whole surface that is NOT a MediaContainer, so
