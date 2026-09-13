@@ -3016,6 +3016,9 @@ the same parameters, then read back from both.
   duration and index.
 - **A play queue starts on the item its `key` names.** A queue over a whole library with
   `key=/library/metadata/3` selects that movie (offset 3); plexsim selected the first row.
+- **A client's new play queue retires its older ones.** Client A's queue was still
+  readable after client B created one, and a 404 once A created another. plexsim kept
+  every queue it had ever built.
 
 ### Emulation calibrated against the account's own claimed servers
 

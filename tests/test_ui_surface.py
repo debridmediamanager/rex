@@ -6465,6 +6465,25 @@ def main():
     else:
         skip("a play queue starts on the item its key names", "need two movies")
 
+    # Measured on plexscratch: a client's new play queue retires its older one -- reading it
+    # is a 404 -- while another client's queue leaves it alone. plexsim kept every queue.
+    uri_w14c = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
+    first_w14c = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % uri_w14c)[1].get("playQueueID")
+    other_w14c = urllib.request.Request(base.rstrip("/") + "/playQueues?type=video&own=1&uri=%s" % uri_w14c,
+                                        method="POST", headers={"User-Agent": UA, "Accept": "application/json",
+                                                                "X-Plex-Client-Identifier": "plexsim-w14c-other",
+                                                                "X-Plex-Platform": "Chrome"})
+    with urllib.request.urlopen(other_w14c, timeout=30) as response_w14c:
+        other_status_w14c = response_w14c.status
+    survives_w14c = container(base, "GET", "/playQueues/%s?own=1" % first_w14c)[0]
+    second_w14c = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % uri_w14c)[1].get("playQueueID")
+    retired_w14c = container(base, "GET", "/playQueues/%s?own=1" % first_w14c)[0]
+    current_w14c = container(base, "GET", "/playQueues/%s?own=1" % second_w14c)[0]
+    check("a client's new play queue retires its older one, and another client's does not",
+          (other_status_w14c, survives_w14c, retired_w14c, current_w14c) == (200, 200, 404, 200),
+          "other %s, first after it %s, first after our second %s, second %s"
+          % (other_status_w14c, survives_w14c, retired_w14c, current_w14c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
