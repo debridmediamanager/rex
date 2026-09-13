@@ -2901,6 +2901,20 @@ class PlexSim:
             # `type=` with 400 where a section listing answers 500, and both answer
             # 500 to an empty one.
             self._parsed_type(query, status=400)
+            if str(query.get("type")) == "18":
+                # Cycle 14, measured on the copy: `/library/all?type=18` lists every
+                # collection the SERVER holds, across libraries, in title order -- the
+                # same rows the section form answers, each carrying its tag id as
+                # `index` and its own `librarySectionID`. plexsim answered `size 0`,
+                # because its collections are not rows in `catalog.items` and this
+                # handler only ever looked there.
+                rows = []
+                for section in catalog.sections:
+                    rows += self.library.collections(section["key"])
+                rows, _ = self._sorted(rows, query.get("sort") or "titleSort")
+                page, paged, start, total = self.page_window(rows, query)
+                fields = {"offset": start, "totalSize": total} if paged else {}
+                return self.container(Metadata=[_listing_row(r) for r in page], **fields)
             source = sorted(catalog.items.values(), key=lambda r: int(r["ratingKey"]))
             kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
             if kinds:
