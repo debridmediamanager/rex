@@ -5979,7 +5979,18 @@ class PlexSim:
             # No theme audio; answer empty rather than falling through to the
             # unknown-route handler.
             return ("error", 404, "plexsim: no theme")
-        if leaf in ("thumb", "art", "poster", "background", "composite"):
+        if leaf in ("thumb", "art", "poster"):
+            # Cycle 14: `background` and `composite` used to be served here too, and
+            # both are a **404** on kids and zen alike, on a movie, a show, a season
+            # and an episode, bare and versioned -- while `thumb`, `art` and `poster`
+            # are the 200s they always were. A `composite` is real on a PLAYLIST and a
+            # COLLECTION, which is where plexsim's own rows point and which is handled
+            # elsewhere; on a library ITEM there is no such thing, and `background` is
+            # not a path at all -- it is the `type` of an `Image` element.
+            #
+            # The same sweep that found `/recentlyReleased`: fetch every leaf from both
+            # references and from plexsim, and report only where the references agree
+            # and plexsim does not.
             resolved = self.artwork_for(rating_key, leaf)
             if resolved:
                 return ("image", self._at_width(resolved, query.get("width")))
