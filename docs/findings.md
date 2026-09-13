@@ -2974,6 +2974,13 @@ the same parameters, then read back from both.
   `after=0` and `after=abc` all send the item first, as no `after` does, and `after`
   naming the item itself changes nothing. plexsim appended to the end, and moved an item
   after itself to the end too.
+- **Every state write needs the `identifier` the client sends.** Without it
+  `/:/scrobble`, `/:/unscrobble`, `/:/rate` and `/:/progress` are a 400 -- even for a key
+  the server does not have, so the earlier reading of a 404 for an unknown key holds only
+  with the identifier present -- and a foreign identifier is a 404. The order is fixed: a
+  missing key, a missing identifier, the write's own parameter (an unparseable rating is
+  still a 400 with a bogus identifier), then a foreign identifier or an unknown key.
+  plexsim never read the identifier.
 
 ### Emulation calibrated against the account's own claimed servers
 

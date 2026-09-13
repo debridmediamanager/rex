@@ -1361,12 +1361,12 @@ def main():
           "HTTP %s body=%r viewOffset=%s" % (status, body[:20], stored))
     for path_, want, why in (
             ("/:/progress?time=1", 400, "progress with no key"),
-            ("/:/progress?key=999999&time=1", 404, "progress for an unknown key"),
+            ("/:/progress?key=999999&time=1&identifier=com.plexapp.plugins.library", 404, "progress for an unknown key"),
             ("/:/scrobble", 400, "scrobble with no key"),
-            ("/:/scrobble?key=999999", 404, "scrobble for an unknown key"),
-            ("/:/unscrobble?key=999999", 404, "unscrobble for an unknown key"),
+            ("/:/scrobble?key=999999&identifier=com.plexapp.plugins.library", 404, "scrobble for an unknown key"),
+            ("/:/unscrobble?key=999999&identifier=com.plexapp.plugins.library", 404, "unscrobble for an unknown key"),
             ("/:/rate?rating=8", 400, "rate with no key"),
-            ("/:/rate?key=999999&rating=8", 404, "rate for an unknown key"),
+            ("/:/rate?key=999999&rating=8&identifier=com.plexapp.plugins.library", 404, "rate for an unknown key"),
             ("/:/rate?key=%s&rating=abc" % movie, 400, "rate with an unparseable rating"),
             ("/:/timeline?ratingKey=%s&state=wibble" % movie, 400, "a timeline state"
              " outside the closed set"),
@@ -6309,6 +6309,21 @@ def main():
         skip("a playlist move after nothing it holds goes to the front, and after itself stays",
              "need three movies")
     request(base, "DELETE", "/playlists/%s" % list_w12c)
+
+    # Measured on plexscratch: every state write needs the `identifier` the client always
+    # sends -- without it a scrobble, unscrobble, rate or progress is a 400, even for a key
+    # the server does not have -- and a foreign identifier is a 404. plexsim accepted both.
+    statuses_w10a = [container(base, "GET", path_w10a % movie)[0] for path_w10a in (
+        "/:/scrobble?key=%s", "/:/unscrobble?key=%s", "/:/rate?key=%s&rating=6", "/:/progress?key=%s&time=120000",
+        "/:/scrobble?key=%s&identifier=bogus", "/:/rate?key=%s&rating=6&identifier=bogus")]
+    unknown_w10a, _, _ = container(base, "GET", "/:/scrobble?key=999999")
+    bad_rating_w10a, _, _ = container(base, "GET", "/:/rate?key=%s&rating=abc&identifier=bogus" % movie)
+    request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    request(base, "GET", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1" % movie)
+    check("a state write needs the library identifier: 400 without it, 404 with a foreign one",
+          statuses_w10a == [400, 400, 400, 400, 404, 404] and unknown_w10a == 400 and bad_rating_w10a == 400,
+          "%s, unknown key %s, bad rating with a foreign identifier %s" % (statuses_w10a, unknown_w10a,
+                                                                          bad_rating_w10a))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
