@@ -925,7 +925,7 @@ def _public_row(row):
 # is why eleven cycles of row-shape work missed it. `Director` is not capped in any
 # sample available (the richest row in 240 zen movies has two), so it is left alone
 # rather than guessed at; `Collection` and `Label` had no sample either.
-GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3}
+GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3}
 GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
 
 

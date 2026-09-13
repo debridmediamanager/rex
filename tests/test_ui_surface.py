@@ -8486,6 +8486,35 @@ def main():
           and "provider.subscriptions.process:ended" in forced_c12p,
           "plain %s | forced %s" % (plain_c12p[-7:], forced_c12p[:4]))
 
+        # Re-measured on zen (1.42.2) against its 3887-row library, on the one movie with
+    # 17 directors and on a show and an episode with four: a light row's `Director`
+    # list caps at 3 -- like `Role`, not like the two-entry Genre/Writer/Country caps
+    # -- and `Producer` is absent from a light row however many the detail row carries
+    # (22 on one zen movie, none on any listing of it). Cycle 12 recorded the cap as
+    # "only known to be above 2" because the richest Director row in its 240-movie
+    # sample had two. kids cannot show this: no lab item has more than one director.
+    def people_c13a(path_c13a):
+        status_c13a, body_c13a, _ = get(base, path_c13a)
+        rows_c13a = body_c13a.get("Metadata") or []
+        row_c13a = next((r for r in rows_c13a if str(r.get("ratingKey")) == str(movie)),
+                        rows_c13a[0] if rows_c13a else {})
+        return status_c13a, {el_c13a: len(row_c13a.get(el_c13a) or [])
+                             for el_c13a in ("Director", "Producer")}
+    # Built rather than hoped for: by this point the suite's own edits have rewritten
+    # the fixture's tag lists, and an indexed tag write REPLACES the list on the item
+    # path, so this leaves exactly four directors and two producers to truncate.
+    request(base, "PUT", "/library/metadata/%s?director[0].tag.tag=c13capa"
+                         "&director[1].tag.tag=c13capb&director[2].tag.tag=c13capc"
+                         "&director[3].tag.tag=c13capd"
+                         "&producer[0].tag.tag=c13cappa&producer[1].tag.tag=c13cappb" % movie)
+    detail_c13a = people_c13a("/library/metadata/%s" % movie)
+    grid_c13a = people_c13a("/library/sections/%s/all" % movie_section)
+    check("a light row caps Director at three and carries no Producer at all",
+          detail_c13a[0] == 200 and grid_c13a[0] == 200
+          and detail_c13a[1] == {"Director": 4, "Producer": 2}
+          and grid_c13a[1] == {"Director": 3, "Producer": 0},
+          "detail %s, grid %s" % (detail_c13a[1], grid_c13a[1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
