@@ -37,6 +37,8 @@ import urllib.parse
 import uuid
 import zlib
 
+from hierarchy import sort_title
+
 # Fields a row carries as a number. The client sends every edit as a string.
 INTEGER_FIELDS = {"year", "index", "parentIndex", "duration", "viewOffset",
                   "viewCount", "leafCount", "childCount"}
@@ -456,6 +458,10 @@ class Library:
             # Measured: a PUT with no parameters at all is a 400.
             raise EditError(400, "bad request")
 
+        # A title write, a sort-title write and a sort-title unlock each re-derive an
+        # unlocked Sort Title (`_derive_title_sort`).
+        sort_touched = any(name in ("title", "title.value", "titleSort", "titleSort.value",
+                                    "titleSort.locked") for name, _ in items)
         changed = False
         adding = {}     # tag type -> (index, position, value) per indexed entry
         removing = {}   # tag type -> the names a `tag-` removal lists
@@ -505,6 +511,8 @@ class Library:
                 # exact repeat is one tag; `Qx&qx` is the first spelling twice, because
                 # the tag lookup ignores case and the dedupe does not.
                 self._set_tags(row, tag_type, list(dict.fromkeys(wanted)))
+        if sort_touched:
+            self._derive_title_sort(row)
         if changed:
             row["updatedAt"] = _now()
         return changed
@@ -596,6 +604,28 @@ class Library:
                 self._sync_collection_tag(row, entry["tag"])
             for gone in before - {str(t["tag"]) for t in fresh}:
                 self._untag_collection(row, gone)
+
+    def _derive_title_sort(self, row):
+        """Measured on a writable copy of the reference: a Sort Title that is not
+        LOCKED does not stick. A title write, a sort-title write and an unlock all
+        re-derive it from the title, article stripped -- `The Thing` sorts as `Thing`
+        whatever `titleSort.value` said, a season retitled `The Season Name` sorts as
+        `Season Name` -- and only a lock, sent with the value or before the title
+        changes, keeps what was typed. An EMPTY title leaves it as it was. A
+        collection and a playlist follow the same rule. plexsim stored whatever it
+        was sent, so a Sort Title typed without its lock filed the row where a real
+        server would not.
+        """
+        if any(f.get("name") == "titleSort" and f.get("locked") for f in row.get("Field") or []):
+            return
+        title = row.get("title")
+        if not title:
+            return
+        derived = sort_title(title)
+        if derived != title:
+            row["titleSort"] = derived
+        else:
+            row.pop("titleSort", None)
 
     def _merge_tags(self, row, tag_type, wanted, removed):
         """The SECTION path's tag write, which merges where the item path replaces.
@@ -1088,6 +1118,8 @@ class Library:
             "addedAt": playlist["addedAt"],
             "updatedAt": stamp,
         }
+        if playlist.get("titleSort"):
+            row["titleSort"] = playlist["titleSort"]
         if rows:
             # Measured: an EMPTY playlist -- never filled, or emptied -- carries
             # neither a composite nor a duration. plexsim kept both, with the
@@ -1265,7 +1297,7 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
-        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode"):
+        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Field"):
             # Whatever the Edit Collection dialog and its prefs wrote. Measured: the
             # sort and mode come back as STRING attributes on the row, which is what
             # the dialog reads to show the current selection.

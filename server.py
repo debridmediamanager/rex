@@ -4632,8 +4632,15 @@ class PlexSim:
                 for name in ("titleSort", "contentRating"):
                     if query.get("%s.value" % name) is not None:
                         collection[name] = query["%s.value" % name]
+                if query.get("titleSort.locked") is not None:
+                    self.library._set_lock(collection, "titleSort",
+                                           query["titleSort.locked"] == "1")
             else:
                 self.library.edit_playlist(playlist, title=title, summary=summary)
+            if any(name in query for name in ("title", "title.value", "titleSort.value",
+                                              "titleSort.locked")):
+                # Measured: a list's Sort Title follows an item's rule.
+                self.library._derive_title_sort(target)
             logger.info("EDIT list %s <- %s", rating_key,
                         ",".join(k for k in query if not k.startswith("X-Plex-")
                                  and k != "_pairs"))
