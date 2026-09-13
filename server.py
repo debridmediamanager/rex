@@ -7749,12 +7749,24 @@ class PlexSim:
         """Rows for Continue Watching and On Deck, newest first.
 
         A movie is there while it has a resume point. A SHOW contributes one row --
-        measured on a writable copy of the reference, one timeline at a time: its
-        in-progress episode with the LOWEST season and episode number (not the one
-        played last), or with none in progress the episode after the highest-numbered
-        one watched. Removing any of its episodes from Continue Watching hides the
-        show's row, and a timeline on any of them brings it back. plexsim listed every
-        episode with a resume point, and never the next one.
+        its in-progress episode, or with none in progress the episode after the
+        highest-numbered one watched. Removing any of its episodes from Continue
+        Watching hides the show's row, and a timeline on any of them brings it back.
+        plexsim listed every episode with a resume point, and never the next one.
+
+        WHICH in-progress episode was recorded in cycle 9 as "the LOWEST season and
+        episode number (not the one played last)". Cycle 14 re-measured it on the copy
+        in `long` mode and it is the other way round: the show contributes its **most
+        recently viewed** in-progress episode. A beat on episode 8 at 40% puts 8 on
+        deck; a `/:/progress` on episode 10 -- a LATER one, still unwatched -- moves
+        the row to 10; a fresh beat on 8 moves it back to 8. Three transitions, and
+        `/library/onDeck`, `/library/sections/{id}/onDeck`, `/hubs/home/onDeck` and
+        `/hubs/continueWatching` all agree each time.
+
+        Cycle 9 measured this on the copy's TEN-SECOND clips, where every beat crosses
+        90% at once and an episode can barely be left in progress -- the handover's own
+        "re-run anything about sessions, completion or resume from cycles 9 or earlier
+        on `long`" entry, paying off.
         """
         rows = [r for r in self.catalog.items.values()
                 if r.get("viewOffset") and r.get("type") == "movie"
@@ -7768,7 +7780,14 @@ class PlexSim:
             if any(e.get("_hiddenFromContinueWatching") for e in episodes):
                 continue
             episodes.sort(key=lambda e: (e.get("parentIndex") or 0, e.get("index") or 0))
-            chosen = next((e for e in episodes if e.get("viewOffset")), None)
+            # The most recently viewed of the in-progress ones, not the lowest-numbered.
+            # `max` keeps the FIRST maximal element and `episodes` is already in
+            # (season, episode) order, so two beats inside one second -- `lastViewedAt`
+            # has one-second resolution -- fall back to the lowest-numbered. That
+            # tie-break is a choice, not a measurement.
+            in_progress = [e for e in episodes if e.get("viewOffset")]
+            chosen = max(in_progress, key=lambda e: e.get("lastViewedAt") or 0) \
+                if in_progress else None
             if chosen is None:
                 watched = [n for n, e in enumerate(episodes) if e.get("viewCount")]
                 chosen = next((e for e in episodes[watched[-1] + 1:] if not e.get("viewCount")),

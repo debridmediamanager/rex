@@ -9930,6 +9930,54 @@ def main():
                   "seasons %s | filtered %s | their own counts %s"
                   % (seasons_c14u, watched_c14u, own_c14u))
 
+
+    # Cycle 14: a show's On Deck row is its MOST RECENTLY VIEWED in-progress episode,
+    # not the lowest-numbered one. Re-measured on the copy in `long` mode, where an
+    # episode can actually be left in progress: a beat on the first episode puts it on
+    # deck, a progress write on a LATER one moves the row there, and a fresh beat on the
+    # first moves it back. Cycle 9 recorded the opposite from ten-second clips.
+    if not show or not show_section:
+        skip("On Deck is the most recently viewed in-progress episode", "need a show")
+    else:
+        eps_c14v = [r for r in get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                    .get("Metadata") or []]
+        if len(eps_c14v) < 2:
+            skip("On Deck is the most recently viewed in-progress episode", "need two episodes")
+        else:
+            first_c14v, later_c14v = eps_c14v[0], eps_c14v[-1]
+            dur_c14v = first_c14v.get("duration") or 1200000
+
+            def beat_c14v(row_c14v, fraction_c14v):
+                request(base, "GET", "/:/timeline?ratingKey=%s&key=/library/metadata/%s"
+                        "&state=playing&time=%d&duration=%d&identifier=com.plexapp.plugins.library"
+                        % (row_c14v["ratingKey"], row_c14v["ratingKey"],
+                           int((row_c14v.get("duration") or dur_c14v) * fraction_c14v),
+                           row_c14v.get("duration") or dur_c14v))
+
+            def deck_c14v():
+                return [r.get("ratingKey") for r in
+                        get(base, "/library/sections/%s/onDeck" % show_section)[1]
+                        .get("Metadata") or []]
+
+            # `lastViewedAt` has one-second resolution, so the beats have to be more
+            # than a second apart or they tie and the tie-break (lowest-numbered, which
+            # is what cycle 9 recorded as the whole rule) answers every time.
+            beat_c14v(first_c14v, 0.40)
+            one_c14v = deck_c14v()
+            time.sleep(1.1)
+            beat_c14v(later_c14v, 0.30)
+            two_c14v = deck_c14v()
+            time.sleep(1.1)
+            beat_c14v(first_c14v, 0.45)
+            three_c14v = deck_c14v()
+            check("On Deck is the most recently viewed in-progress episode",
+                  one_c14v == [first_c14v["ratingKey"]]
+                  and two_c14v == [later_c14v["ratingKey"]]
+                  and three_c14v == [first_c14v["ratingKey"]],
+                  "first %s -> later %s -> first again %s (episodes %s, %s)"
+                  % (one_c14v, two_c14v, three_c14v,
+                     first_c14v["ratingKey"], later_c14v["ratingKey"]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
