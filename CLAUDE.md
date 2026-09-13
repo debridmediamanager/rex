@@ -759,6 +759,21 @@ precisely how the Seasons bug survived a fix attempt.
   remote candidates live beside the row (`_poster_url`, `sim.uploads`); `thumb` and `art`
   stay `/library/metadata/{id}/{thumb,art}/{ts}`, because that string is what a client puts
   in an `img src`.
+- **A settings write, a butler run, a match, an artwork upload and a show's prefs write all
+  push frames**, and a real PMS answers every one of them with an EMPTY body -- the task list
+  or a container there reads to the client as a listing, not an acceptance. `POST /butler`
+  and `DELETE /butler` are empty too, while `DELETE /butler/{Task}` is a 404.
+- **A match is keyed on its `name`** (a guid with none is a 400, an empty guid with one
+  renames and refreshes), and matching to a guid another row in the library already holds
+  MERGES this row into that one. Every match runs the refresh sequence, so its activity ends:
+  an activity that never ends leaves the Dashboard's spinner turning for the life of the
+  process.
+- **A smart list's Save is `PUT {list}/items?uri=<listing>`**, which replaces the stored
+  query -- `limit` included -- and answers the list's row. Only the uri is stored; `content`,
+  `leafCount` and the items are derived from it on every read.
+- **A suite check that MERGES or deletes a fixture row starves the checks after it.** The
+  match check absorbs the spare movie for that reason; cycle 9's Delete Version check was
+  broken the same way, twice.
 
 ## Conventions
 
