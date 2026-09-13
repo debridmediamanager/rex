@@ -2970,6 +2970,10 @@ the same parameters, then read back from both.
   id -- is a 404; `DELETE /playlists/{id}/items` empties the list; and a smart playlist
   refuses an add or a removal with 400. plexsim answered 200 to all of them and cleared
   nothing.
+- **A move after an item the playlist does not hold goes to the front.** `after=999999`,
+  `after=0` and `after=abc` all send the item first, as no `after` does, and `after`
+  naming the item itself changes nothing. plexsim appended to the end, and moved an item
+  after itself to the end too.
 
 ### Emulation calibrated against the account's own claimed servers
 

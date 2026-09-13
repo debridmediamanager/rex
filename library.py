@@ -1174,13 +1174,16 @@ class Library:
         moving = next((i for i in items if str(i["playlistItemID"]) == str(item_id)), None)
         if moving is None:
             return False
+        if after is not None and str(after) == str(item_id):
+            # Measured: moving an item after ITSELF leaves the order alone.
+            return True
         items.remove(moving)
-        if after is None:
-            items.insert(0, moving)
-        else:
-            index = next((n for n, i in enumerate(items)
-                          if str(i["playlistItemID"]) == str(after)), None)
-            items.insert(len(items) if index is None else index + 1, moving)
+        index = None if after is None else next(
+            (n for n, i in enumerate(items) if str(i["playlistItemID"]) == str(after)), None)
+        # Measured on a writable copy of the reference: an `after` the playlist does not
+        # hold -- an unknown id, `0`, `abc` -- sends the item to the FRONT, as no `after`
+        # does. plexsim appended it at the end.
+        items.insert(0 if index is None else index + 1, moving)
         playlist["updatedAt"] = _now()
         return True
 
