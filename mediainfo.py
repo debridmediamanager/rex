@@ -234,8 +234,8 @@ def _video_stream(stream, stream_id):
         "streamIdentifier": _stream_identifier(stream),
         "width": width,
         "height": height,
-        "profile": (stream.get("profile") or "").lower() or None,
-        "level": stream.get("level"),
+        "profile": _video_profile(stream.get("profile")),
+        "level": None if stream.get("level") in (None, -99) else stream.get("level"),
         "refFrames": stream.get("refs"),
         # ffprobe reports this as a STRING; a real PMS sends an integer, and a
         # typed client decoding `"8"` into an int field fails the whole row.
@@ -312,6 +312,16 @@ def _bit_depth(stream):
         return raw
     match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
     return int(match.group(1)) if match else 8
+
+
+def _video_profile(profile):
+    """ffprobe's video profile as a real PMS writes it: lower case, without a trailing
+    ` Profile` (`Simple Profile` is `simple`), and absent where ffprobe has only its unknown
+    marker `0` (which comes with level -99). Measured on fun; plexsim wrote `0` and -99."""
+    text = (profile or "").strip().lower()
+    if text.endswith(" profile"):
+        text = text[:-len(" profile")]
+    return None if text in ("", "0") else text
 
 
 def _coded_height(stream):
@@ -531,7 +541,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # can, and it is what a real PMS reports.
     if container == "mkv" and (container_hint or "").lower() == "webm":
         container = "webm"
-    video_profile = (video.get("profile") or "").lower() if video else None
+    video_profile = _video_profile(video.get("profile")) if video else None
 
     part = {
         "id": part_id,

@@ -3215,6 +3215,8 @@ below is one check there, and each check failed against the code before its fix.
   height. Other codecs take ffprobe's value.
 - **A video stream has a language and a title too**, from its tags (17 and 10 streams on
   fun); plexsim set neither.
+- **Unknown markers are not written.** ffprobe's `profile: 0` and `level: -99` are absent on
+  fun, and `Simple Profile` is `simple`; plexsim wrote them as they came.
 
 ### Emulation calibrated against the account's own claimed servers
 
