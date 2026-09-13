@@ -8207,6 +8207,20 @@ def main():
                   for bad_c12f in ("genre", "duration", "userRating")),
           "%s" % groups_c12f)
 
+
+    # Measured across all 26 secondary axes on kids (1.43.4) and zen (1.42.2): every
+    # axis carries `content: "secondary"` except `actor`, which carries `viewGroup`
+    # without it. plexsim sent it there too. No rule explains the exception and both
+    # servers agree on it, so it is emulated as measured.
+    axes_c12h = {axis_c12h: get(base, "/library/sections/%s/%s" % (movie_section, axis_c12h))[1]
+                 for axis_c12h in ("actor", "genre", "director", "writer", "year", "collection")}
+    check("the actor axis carries no content, where every other axis does",
+          axes_c12h["actor"].get("content") is None
+          and axes_c12h["actor"].get("viewGroup") == "secondary"
+          and all(axes_c12h[axis_c12h].get("content") == "secondary"
+                  for axis_c12h in ("genre", "director", "writer", "year", "collection")),
+          "%s" % {a_c12h: b_c12h.get("content") for a_c12h, b_c12h in axes_c12h.items()})
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
