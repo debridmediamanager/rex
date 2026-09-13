@@ -6192,6 +6192,20 @@ def main():
         skip("progress stores a position past the end without completing, and needs a numeric time",
              "need a second movie")
 
+    # Measured on plexscratch: a negative rating other than -1 clears the stars and KEEPS
+    # lastRatedAt; only -1 clears both. plexsim cleared both for any negative rating.
+    rate_w10e = "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%%s" % movie
+    request(base, "GET", rate_w10e % "6")
+    request(base, "GET", rate_w10e % "-5")
+    minus5_w10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    request(base, "GET", rate_w10e % "-1")
+    minus1_w10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("a negative rating other than -1 clears the stars and keeps lastRatedAt",
+          "userRating" not in minus5_w10e and minus5_w10e.get("lastRatedAt")
+          and "userRating" not in minus1_w10e and "lastRatedAt" not in minus1_w10e,
+          "-5: %r/%r, -1: %r/%r" % (minus5_w10e.get("userRating"), minus5_w10e.get("lastRatedAt"),
+                                    minus1_w10e.get("userRating"), minus1_w10e.get("lastRatedAt")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

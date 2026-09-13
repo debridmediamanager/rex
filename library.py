@@ -237,9 +237,13 @@ class Library:
         row = self.catalog.items.get(rating_key)
         if row is None:
             return None
-        if rating is None or rating < 0:
+        if rating is None or rating == -1:
             row.pop("userRating", None)
             row.pop("lastRatedAt", None)
+        elif rating < 0:
+            # Measured on a writable copy of the reference: any OTHER negative rating
+            # clears the stars and KEEPS `lastRatedAt`; only -1 clears both.
+            row.pop("userRating", None)
         else:
             row["userRating"] = float(rating)
             row["lastRatedAt"] = _now()

@@ -2948,6 +2948,8 @@ the same parameters, then read back from both.
   `viewCount` and no history row, and a missing or unparseable `time` is a 500. plexsim
   marked the item watched and wrote a history row, and stored 0 with a 200 for a
   missing time.
+- **Only -1 clears a rating's timestamp.** `/:/rate?rating=-5` removes the stars and
+  keeps `lastRatedAt`; `-1` removes both. plexsim cleared both for any negative rating.
 
 ### Emulation calibrated against the account's own claimed servers
 
