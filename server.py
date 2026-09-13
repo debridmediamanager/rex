@@ -285,6 +285,21 @@ for _bare in ("updatedAt", "createdAt", "lastRatedAt"):
     FILTER_FIELD_TYPES.setdefault(_bare, "date")
 FILTER_FIELD_TYPES.setdefault("mediaCount", "integer")
 FILTER_FIELD_TYPES.setdefault("originalTitle", "string")
+# Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: four MORE
+# columns filter, and none of them appears in any Meta either. `parent=<ratingKey>`
+# is the row's immediate `parentRatingKey` -- kids' `type=4` goes 6 -> 3 for a season
+# and 6 -> 0 for the show above it, zen's 9287 -> 22 and -> 0, and it reaches
+# `/library/all` as well. `rating=` and `audienceRating=` are the two agent ratings
+# (`audienceRating>>=9` is 107 of zen's 3887 and `rating>>=9` is 142, `<<=1` is 0 for
+# both). `file=` is a case-insensitive SUBSTRING of the Part's path: `unn` finds Big
+# Buck Bunny, `.mkv` is 3811 of 3887, an empty value is every row and `zzz` is none --
+# which is the `string` type's bare `=` exactly. plexsim ignored all four, and an
+# ignored filter is worse than a refused one: it answered every row to
+# `audienceRating>>=9` AND to `audienceRating<<=1`.
+FILTER_FIELD_TYPES.setdefault("parent", "integer")
+for _bare in ("rating", "audienceRating"):
+    FILTER_FIELD_TYPES.setdefault(_bare, "integer")
+FILTER_FIELD_TYPES.setdefault("file", "string")
 # And `parentIndex` is a 500 on a listing on BOTH references -- on a movie library, on
 # a show library and at type=4 alike -- where plexsim filtered on it happily. It is the
 # one column of this family that refuses rather than filters.
@@ -4981,6 +4996,25 @@ class PlexSim:
             # The row's own key: `id=` is the client's "is there another copy of this?"
             # probe, sent beside `guid=`.
             return row.get("ratingKey")
+        if field == "parent":
+            # Cycle 15: the row's IMMEDIATE parent, so `type=4&parent=<season>` is that
+            # season's episodes and `parent=<show>` is none of them -- measured 6 -> 3
+            # and 6 -> 0 on kids, 9287 -> 22 and -> 0 on zen.
+            return row.get("parentRatingKey")
+        if field == "file":
+            # Cycle 15: a case-insensitive substring of the Part path, which is what
+            # the `string` type's bare `=` already does -- the value just has to be
+            # the path.
+            #
+            # It matches ANY Part, measured on zen: movie 10513 has two versions whose
+            # paths differ only in a trailing `{083223}`, and a fragment that occurs in
+            # the SECOND path alone still finds the row. The paths are joined on a
+            # newline rather than returned as a list, because a LIST routes through the
+            # tag-style set membership and would compare whole paths for equality; a
+            # newline cannot occur inside a path, so no match can span the join.
+            return chr(10).join(part.get("file") or ""
+                              for media in row.get("Media") or []
+                              for part in media.get("Part") or [])
         if field in self.TAG_FILTER_FIELDS:
             return row.get(self.TAG_FILTER_FIELDS[field])
         if field == "titleSort":

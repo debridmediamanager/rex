@@ -10442,6 +10442,62 @@ def main():
           % (show_row_c15c.get("Children", {}).get("size"),
              season_row_c15c.get("Children"), movie_row_c15c.get("Children")))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: four more
+    # columns filter a listing although no Meta advertises them.
+    #   parent=<ratingKey>  the row's immediate parentRatingKey. kids' type=4 goes
+    #                       6 -> 3 for a season and 6 -> 0 for the show above it;
+    #                       zen's goes 9287 -> 22 and -> 0. It reaches /library/all too.
+    #   rating=, audienceRating=  the two agent ratings. On zen `audienceRating>>=9` is
+    #                       107 of 3887 and `rating>>=9` is 142; `<<=1` is 0 for both.
+    #   file=               a case-insensitive SUBSTRING of the Part's path -- `unn`
+    #                       finds Big Buck Bunny, `.mkv` is 3811 of zen's 3887, an empty
+    #                       value is every row and `zzz` is none.
+    # plexsim ignored all four, which on a filter is worse than refusing: it answered
+    # every row to two mutually exclusive queries.
+    seasons_c15p = get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+    one_c15p = seasons_c15p[0]["ratingKey"]
+    kids_c15p = len(get(base, "/library/metadata/%s/children" % one_c15p)[1]
+                    .get("Metadata") or [])
+    all4_c15p = get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+    byparent_c15p = get(base, "/library/sections/%s/all?type=4&parent=%s"
+                        % (show_section, one_c15p))[1]
+    byshow_c15p = get(base, "/library/sections/%s/all?type=4&parent=%s"
+                      % (show_section, show))[1]
+    liball_c15p = get(base, "/library/all?type=4&parent=%s" % one_c15p)[1]
+    check("parent= filters a listing to one parent's children",
+          (byparent_c15p.get("size") or 0) == kids_c15p
+          and (all4_c15p.get("size") or 0) > kids_c15p
+          and (byshow_c15p.get("size") or 0) == 0
+          and (liball_c15p.get("size") or 0) == kids_c15p,
+          "all %s | parent=season %s (want %s) | parent=show %s | library/all %s"
+          % (all4_c15p.get("size"), byparent_c15p.get("size"), kids_c15p,
+             byshow_c15p.get("size"), liball_c15p.get("size")))
+    hi_c15p = get(base, "/library/sections/%s/all?type=1&audienceRating%%3E%%3E=9"
+                  % movie_section)[1]
+    lo_c15p = get(base, "/library/sections/%s/all?type=1&audienceRating%%3C%%3C=1"
+                  % movie_section)[1]
+    rhi_c15p = get(base, "/library/sections/%s/all?type=1&rating%%3E%%3E=9" % movie_section)[1]
+    check("rating= and audienceRating= are real columns, not a tolerated no-op",
+          (hi_c15p.get("size") or 0) + (lo_c15p.get("size") or 0)
+          <= (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("size") or 0)
+          and not ((hi_c15p.get("size") or 0) and (lo_c15p.get("size") or 0)),
+          "audienceRating>>9 %s <<1 %s rating>>9 %s"
+          % (hi_c15p.get("size"), lo_c15p.get("size"), rhi_c15p.get("size")))
+    part_c15p = (((get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                   or [{}])[0].get("Media") or [{}])[0].get("Part") or [{}])[0].get("file") or ""
+    frag_c15p = part_c15p.rsplit("/", 1)[-1][2:8]
+    hit_c15p = get(base, "/library/sections/%s/all?type=1&file=%s"
+                   % (movie_section, quote(frag_c15p)))[1]
+    miss_c15p = get(base, "/library/sections/%s/all?type=1&file=zzzzzz" % movie_section)[1]
+    empty_c15p = get(base, "/library/sections/%s/all?type=1&file=" % movie_section)[1]
+    every_c15p = get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+    check("file= is a case-insensitive substring of the Part path",
+          (hit_c15p.get("size") or 0) >= 1 and (miss_c15p.get("size") or 0) == 0
+          and (empty_c15p.get("size") or 0) == (every_c15p.get("size") or 0),
+          "fragment %r -> %s | zzzzzz %s | empty %s of %s"
+          % (frag_c15p, hit_c15p.get("size"), miss_c15p.get("size"),
+             empty_c15p.get("size"), every_c15p.get("size")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
