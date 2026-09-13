@@ -6468,10 +6468,15 @@ class PlexSim:
             playing_session = (query.get("X-Plex-Session-Identifier")
                                or (headers.get("X-Plex-Session-Identifier") if headers else None)
                                or client or "")
-            already = row.get("_completed") == (playing_session or True)
+            # A completed play answers `complete` to every beat past 90% until a
+            # `stopped` beat has closed it, and `ignore` to every beat after that.
+            already = (row.get("_completed") == (playing_session or True)
+                       and row.get("_completionStopped"))
             self.library.progress(int(rating_key), offset_ms, state=state,
                                   duration=total_ms, device_id=device,
                                   session=playing_session)
+            if state == "stopped" and row.get("_completed") == (playing_session or True):
+                row["_completionStopped"] = True
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms)
             self.notify_playing(entry, row, state, offset_ms)
@@ -6483,9 +6488,11 @@ class PlexSim:
             if offset_ms > 60000:
                 playback_state = "progress"
                 if total and offset_ms >= total * 0.9:
-                    # Measured on a writable copy of the reference: a second completion
-                    # of the same play counts nothing and answers `ignore`, where
-                    # plexsim said `complete` again.
+                    # Measured on a writable copy of the reference: a completed play
+                    # answers `complete` to every beat past 90% -- `playing` twice, then
+                    # `stopped` -- until a `stopped` beat has closed it, and `ignore` to
+                    # every beat after that, counting nothing. plexsim answered
+                    # `complete` to all of them.
                     playback_state = "ignore" if already else "complete"
             view_count = int(row.get("viewCount") or 0)
             if state == "stopped":

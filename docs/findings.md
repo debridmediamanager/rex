@@ -2956,9 +2956,16 @@ the same parameters, then read back from both.
   history row. A timeline with NO `duration` answered `ignore` on plexscratch, but its
   clips are ten seconds long, so that cannot be told apart from a position past the
   item's own length; it was not acted on.
-- **A second completion of the same play answers `ignore`.** Two `stopped` beats at 98%
-  count one view on both servers, but the second one's `playbackState` is `ignore` on the
-  reference, where plexsim said `complete` again.
+- **A completed play answers `complete` until a `stopped` beat closes it, then `ignore`.**
+  Without a session identifier: `playing` at 95% then `stopped` both answer `complete` and
+  a second `stopped` answers `ignore`; `playing` twice past 90% then `stopped` all answer
+  `complete`; `stopped` at 98% then `playing` answers `ignore`. Each counts one view.
+  plexsim answered `complete` to every one of them -- and the first reading here, two
+  `stopped` beats alone, was fixed as "any second beat is `ignore`", which the existing
+  playing-then-stopped check caught. With an `X-Plex-Session-Identifier` plexscratch
+  ignored every beat and counted nothing; its clips are ten seconds long, which a
+  session-bound timeline appears to be judged against, so none of this was measured
+  with one.
 - **Remove from Continue Watching is a PUT that needs its `ratingKey`.** A GET is a 404
   and a PUT with no `ratingKey` a 400; plexsim hid the row on a GET and 404'd the bare
   PUT.
