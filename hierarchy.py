@@ -163,8 +163,25 @@ def normalize_rows(rows):
             row.pop("Label")
         if kind == "movie":
             row.pop("Location", None)
-        if kind in ("movie", "show"):
+        if kind in ("movie", "show", "episode"):
+            # `rating` is the CRITIC rating and plexsim copies the TMDB vote into both,
+            # so it is dropped -- extended to EPISODE here because no episode on either
+            # reference carries one (0 of 20 One Piece episodes on zen, 0 of 3 on kids).
             row.pop("rating", None)
+        if kind == "episode" and row.get("audienceRating") is not None:
+            # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE with an
+            # `audienceRating` carries `audienceRatingImage` and a `Rating` element as
+            # well -- 60 of 60 One Piece episodes and 3 of 3 on the lab, with no
+            # exception, while the unmatched episodes with no rating carry none of the
+            # three and a SEASON never carries any of them (0 of 12 sampled across both
+            # servers). plexsim built these for a show and a movie only, so its own
+            # episode rows contradicted its own movie rows and no episode page or
+            # episode listing row drew a rating badge. A real PMS sends two agents'
+            # rows here (imdb and themoviedb); plexsim has one agent, so it sends the
+            # one row it can honestly source.
+            row.setdefault("Rating", [{"image": "themoviedb://image.rating",
+                                       "value": row["audienceRating"], "type": "audience"}])
+            row.setdefault("audienceRatingImage", "themoviedb://image.rating")
         if kind == "show":
             row.setdefault("index", 1)
         for key in ("theme", "parentTheme", "grandparentTheme"):
