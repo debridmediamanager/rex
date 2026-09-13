@@ -573,6 +573,11 @@ Before launching:
   `query` (server.py, the `for name in (...)` loop in the request handler).
 - A hunter on `model: "fable"` can die on a session rate limit ("resets 1am"); re-run
   the same prompt on opus rather than stall the cycle.
+- **Address every git command at its worktree with `git -C <path>`; never rely on a `cd`
+  earlier in a chain.** A heredoc ends the `&&` chain it sits in, so when a step before it
+  fails, the commands after the heredoc still run -- in whatever directory the shell was
+  left in. That once committed two changes on `main` in the shared checkout instead of
+  the worktree branch (caught before any push: `git log origin/main..main`).
 
 ---
 
