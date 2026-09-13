@@ -8544,6 +8544,13 @@ class PlexSim:
         """
         if which not in ("bandwidth", "media", "resources"):
             return ("error", 404, "plexsim: not found")
+        if "timespan" in (query or {}) and not str((query or {})["timespan"]).lstrip("-").isdigit():
+            # Measured on kids (1.43.4) and zen (1.42.2), on all three endpoints: the
+            # rollup window has to parse as a whole number. `abc`, `1.5`, an empty value
+            # and one with a leading space are 400s, where `0`, `-1` and `06` are 200s.
+            # plexsim ran an unguarded int() on it: a 500 on two of the three endpoints
+            # and, on /statistics/resources, a silently ignored parameter.
+            return ("error", 400, "plexsim: bad request")
         if which == "resources":
             return self.resource_statistics(query or {})
 
