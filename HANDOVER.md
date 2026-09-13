@@ -105,7 +105,8 @@ lab's config, for measuring WRITE behaviour the shared reference must never rece
 | Token | `ssh ben@kids /home/ben/plexscratch/scratch.sh token`: the copy's own `.LocalAdminToken`. **It changes on every start**, so fetch it after each `up`/`reset`. |
 | machineIdentifier | `12081b20eeb2f1ca3be0473ea444236d942d156a`; unclaimed, same 1.43.4 image by digest |
 | Library | identical to the lab at copy time (5 movies, Firefly 6, same ratingKeys) |
-| Control | `/home/ben/plexscratch/scratch.sh up | down | reset | status | token`; source in `harness/scratch/` |
+| Control | `/home/ben/plexscratch/scratch.sh up | down | reset | status | token | long | short`; source in `harness/scratch/` |
+| Media | `short` (default): the lab's ten-second clips. `long`: `media-long/` (movies 30 min, episodes 22 min, same paths and streams, built by `make-long-media.sh`) with its own `pristine-long/` baseline taken after a re-analysis. The mode sticks in `.mode` across `up`/`reset`. |
 | Undo | `./scratch.sh reset` restores from `pristine/`, which was copied once; the lab is never read again |
 
 Why it is built the way it is (all measured while setting it up):
@@ -167,6 +168,7 @@ python3 tests/test_ui_surface.py --base http://127.0.0.1:32541          # restar
 python3 tests/test_navigation.py --base http://127.0.0.1:32543 --catalog catalog.json
 uv run --quiet --no-project --with plexapi python3 tests/conformance.py --base http://127.0.0.1:32543
 python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 --public http://127.0.0.1:32543 --skip-decode
+python3 tests/test_mediainfo.py        # no server: mediainfo.py against real files' probes and a real PMS's analysis
 ```
 
 Suite conventions:
@@ -650,6 +652,17 @@ snapshot kids, and reset plexscratch. One hunter writes to plexscratch per cycle
   and no `X-Plex-Session-Identifier`, or every beat is ignored.
 - **A client's new play queue retires its older ones.** A check that builds a second queue
   cannot write to the first.
+- **A proof's parent tree needs every sidecar.** `mediainfo.py` loads `languages.json` beside
+  itself; a parent tree holding only `mediainfo.py` dies at import, and that reads as a failing
+  check. Cycle 10's first run of 16 media commits "failed on the parent" that way and had to be
+  re-proven. `c10/mdrive.py` copies the tracked JSON too and refuses a parent run that raised.
+- **A `cd` inside a Bash call moves the session's working directory** for the calls after it.
+  Use absolute paths, or `cd` back in the same call.
+- **CLAUDE.md bullets wrap mid-phrase and use em dashes.** A patch that finds a bullet by its
+  opening words has to match the line break; read the lines with `repr` first.
+- **ffprobe lists a Matroska cover image as a video stream** (`disposition.attached_pic`).
+- **plexscratch in `long` mode**: switch back with `./scratch.sh short` before re-measuring
+  something the short clips measured, and remember `reset` stays in the current mode.
 
 ---
 
@@ -690,6 +703,14 @@ re-measurement scripts `remeasure*.py` (each write sent to plexscratch and to an
 plexsim, both read back), the patch modules `p_w*.py`, `drive.py` (apply one named patch,
 prove its check fails on the unfixed server and passes on the fixed one, commit) and
 `runblock.py` (run one check block against servers), plus the unfixed tree `old9b/`.
+
+Cycle 10 ran in session `ebe127ef-5796-499a-9bac-d61169c66fc8`; its scratch directory's `c10/`
+holds hunter B's media corpus inputs (`media/`), hunter A's write logs and guarded client
+(`writes/`, `w10.py`), `mdrive.py` (apply one media patch, prove its offline check fails on the
+parent commit and passes on the fix, commit), `drive.py` + `runblock.py` (the same for a UI-surface
+block against an unfixed server), the patch modules `p_media.py`, `p_media2.py` and `p_srv.py`,
+`candidates.py` (every claimed media rule as a check), `remeasure_a.py` (hunter A's write findings
+sent to plexscratch and plexsim), and the hunter C prompt `prompt_C.md`.
 
 The full session transcript, including every hunter's report, is at:
 
