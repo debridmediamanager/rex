@@ -3094,6 +3094,12 @@ the same parameters, then read back from both.
 - **A merge refuses what it cannot merge.** No `ids` is a 400, an id the server does not
   have a 404, and a movie into a show a 400. plexsim answered 200 to all three -- and the
   last one moved the movie's media into the show.
+- **A merge and a split push their frames.** Merging Sintel into Tears of Steel pushed
+  state 9 for Sintel (untitled) and then `type: -1` state 3 and 5 for Tears of Steel; the
+  split pushed the new row created -- state 0 untitled, state 0 titled, state 1 -- and the
+  source's state 3 and 5, on a NEW ratingKey never used before (67 after 57). plexsim
+  pushed nothing for either, and put the split's row on the highest FREE key -- the one
+  the merge had just taken from the absorbed row.
 
 ### Emulation calibrated against the account's own claimed servers
 

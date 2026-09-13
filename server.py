@@ -681,7 +681,12 @@ class Catalog:
     def next_key(self, row_type):
         base = self.KEY_BASES.get(row_type, 1000)
         used = [k for k in self.items if base <= k < base + 10000]
-        return (max(used) + 1) if used else base + 1
+        # Measured on a writable copy of the reference: a split's new row takes a key
+        # NEVER used before (67 after 57), not the one a merge just freed. plexsim reused
+        # the highest free key, so a split after a merge put the new row on the absorbed
+        # row's old key -- one a client's cache still holds for the absorbed row.
+        retired = [k for k in getattr(self, "_retired", ()) if base <= k < base + 10000]
+        return (max(used + retired) + 1) if used or retired else base + 1
 
     def add(self, row):
         """Register a new row, keeping the section and child indexes in step."""
@@ -701,6 +706,7 @@ class Catalog:
         if row is None:
             return set()
         removed = {rating_key}
+        self.__dict__.setdefault("_retired", set()).add(rating_key)
         for child in list(self.children(rating_key)):
             removed |= self.remove(child["ratingKey"])
         self.items.pop(rating_key, None)
@@ -6981,6 +6987,15 @@ class PlexSim:
             logger.info("MATCH %s -> %s", row["ratingKey"], guid)
         elif action == "split":
             created = self.library.split(row)
+            # Measured: each new row is created -- state 0 untitled, state 0 titled, state
+            # 1 -- and the source then refreshed, state 3 then 5, with no metadataState.
+            for clone in created:
+                self.notify_timeline(dict(clone, title="", year=None), self.TIMELINE_CREATED, "created")
+                self.notify_timeline(clone, self.TIMELINE_CREATED, "created")
+                self.notify_timeline(clone, 1, "created")
+            if created:
+                self.notify_timeline(row, self.TIMELINE_QUEUED, None)
+                self.notify_timeline(row, self.TIMELINE_DONE, None)
             logger.info("SPLIT %s -> %d new row(s)", row["ratingKey"], len(created))
         elif action == "merge":
             ids = [i for i in (query.get("ids") or "").split(",") if i]
@@ -6996,6 +7011,14 @@ class PlexSim:
             if any(other.get("type") != row.get("type") for other in others):
                 return ("error", 400, "plexsim: bad request")
             merged = self.library.merge(row, ids)
+            # Measured on a writable copy of the reference: the absorbed row is deleted
+            # (state 9, untitled) and the survivor refreshed under type -1, state 3 then
+            # 5. plexsim pushed nothing.
+            for other in merged:
+                self.notify_timeline(dict(other, title="", year=None), self.TIMELINE_DELETED, "deleted")
+            if merged:
+                self.notify_timeline(row, self.TIMELINE_QUEUED, None, type_number=-1)
+                self.notify_timeline(row, self.TIMELINE_DONE, None, type_number=-1)
             logger.info("MERGE %s <- %s (%d row(s) absorbed)",
                         row["ratingKey"], ids, len(merged))
         else:

@@ -6864,6 +6864,37 @@ def main():
           (unknown_w16a, bare_w16a, cross_w16a) == (404, 400, 400) and kept_w16a >= 1,
           "unknown %s, bare %s, cross-type %s, movie media %s" % (unknown_w16a, bare_w16a, cross_w16a, kept_w16a))
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: a merge frames the absorbed row deleted and the survivor as
+    # type -1 (state 3 then 5); a split frames the new row created (0, 0, 1) and the source
+    # refreshed (3, 5). plexsim pushed nothing for either.
+    listing_w16b = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    if len(listing_w16b) >= 3:
+        keep_w16b, absorb_w16b = str(listing_w16b[1]["ratingKey"]), str(listing_w16b[2]["ratingKey"])
+        def frames_w16b(trigger):
+            _, frames = notifications(base, trigger, seconds=3)
+            return [(e.get("type"), e.get("state"), str(e.get("itemID"))) for e in timelines_w15(frames)]
+        merge_w16b = frames_w16b(lambda: request(base, "PUT", "/library/metadata/%s/merge?ids=%s" % (keep_w16b, absorb_w16b)))
+        split_w16b = frames_w16b(lambda: request(base, "PUT", "/library/metadata/%s/split" % keep_w16b))
+        new_w16b = sorted({e[2] for e in split_w16b if e[1] in (0, 1)})
+        check("a merge frames the absorbed row deleted and the survivor as type -1; a split frames the new row",
+              merge_w16b == [(1, 9, absorb_w16b), (-1, 3, keep_w16b), (-1, 5, keep_w16b)]
+              and len(new_w16b) == 1 and new_w16b[0] not in (keep_w16b, absorb_w16b)
+              and split_w16b == [(1, 0, new_w16b[0]), (1, 0, new_w16b[0]), (1, 1, new_w16b[0]),
+                                 (1, 3, keep_w16b), (1, 5, keep_w16b)],
+              "merge %s / split %s" % (merge_w16b, split_w16b))
+    else:
+        skip("a merge frames the absorbed row deleted and the survivor as type -1; a split frames the new row",
+             "need three movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
