@@ -5768,6 +5768,22 @@ def main():
     else:
         skip("a person reads back as its tag row, and /media lists what they are on", "no role on the movie")
 
+    movie9 = detail_of(c5_movie)
+    title9, year9, guid9 = movie9.get("title"), movie9.get("year"), movie9.get("guid")
+    def matched9(spec):
+        status, body, _ = get(base, "/library/matches?%s" % spec)
+        return status, [(str(r.get("ratingKey")), r.get("score")) for r in body.get("Metadata") or []]
+    exact9 = matched9("type=1&title=%s&year=%s" % (quote(str(title9).upper()), year9))
+    partial9 = matched9("type=1&title=%s" % quote(str(title9).split()[0]))
+    wrong_year9 = matched9("type=1&title=%s&year=1900" % quote(title9))
+    by_guid9 = matched9("type=1&guid=%s" % quote(guid9))
+    check("/library/matches finds a title exactly (scored) or a guid, and refuses no type",
+          exact9[0] == 200 and (str(c5_movie), 100) in exact9[1]
+          and partial9 == (200, []) and wrong_year9 == (200, [])
+          and (str(c5_movie), None) in by_guid9[1]
+          and matched9("type=1") == (200, []) and get(base, "/library/matches?title=%s" % quote(title9))[0] == 400,
+          "exact %s partial %s guid %s" % (exact9, partial9[1][:2], by_guid9[1][:2]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

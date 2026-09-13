@@ -2822,6 +2822,11 @@ anything changed.
   names the field the id came from (`actor=47`, `director=213`), and `/media` lists the
   items they are on as listing rows naming their library, with viewGroup `movie` even for
   shows. An unknown id is a 404. plexsim 404'd both, though every Role carries the id.
+- **`/library/matches` answers**, where plexsim refused every request although its own
+  `/media/providers` advertises the key. `type` is required and numeric; `title` matches a
+  movie or show title exactly, ignoring case, narrowed by `year`, each row led by
+  `score` 100; `guid` matches the whole guid and an episode matches by `grandparentTitle`,
+  `parentIndex` and `index`, unscored; `type` alone is `size 0`.
 
 ### Emulation calibrated against the account's own claimed servers
 
