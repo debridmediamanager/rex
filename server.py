@@ -248,6 +248,9 @@ for _meta in SECTION_META.values():
 # episode 2, `season.index=2` every episode of season 2) although no captured Meta
 # lists it as a field -- so plexsim ignored it and answered every row.
 FILTER_FIELD_TYPES.setdefault("index", "integer")
+# And `id` filters every listing although no Meta advertises it: `/query/parse` echoes
+# it as a Rule with an empty `fieldTitle`. See filters.py for the comparison rules.
+FILTER_FIELD_TYPES.setdefault("id", "id")
 # Likewise `titleSort`, `summary` and `tagline` filter on a real PMS (`titleSort=sintel`
 # is one row, `summary=e` none) without appearing in a Meta. See filters.py for how.
 for _bare in ("titleSort", "summary", "tagline"):
@@ -4538,6 +4541,10 @@ class PlexSim:
         # field behind it is the same field.
         if "." in field:
             field = field.split(".", 1)[1]
+        if field == "id":
+            # The row's own key: `id=` is the client's "is there another copy of this?"
+            # probe, sent beside `guid=`.
+            return row.get("ratingKey")
         if field in self.TAG_FILTER_FIELDS:
             return row.get(self.TAG_FILTER_FIELDS[field])
         if field == "titleSort":

@@ -7645,6 +7645,48 @@ def main():
           % (plain_c11d[1], year_c11d[1], nothing_c11d[1], typed_c11d[1], wrong_type_c11d[1],
              limit_c11d[1], desc_c11d[1], bad_sort_c11d, bad_type_c11d))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): `id` filters every listing although
+    # no Meta advertises it -- /query/parse echoes it as a Rule with an EMPTY
+    # fieldTitle. `=` is exact, `!=` excludes, a comma list is an OR, `>>`/`<<`/`>=`/`<=`
+    # compare numerically, and `==`/`!==` -- the exact-string pair -- never match a
+    # number. A value that is not a number sorts above every id: `id=abc` matches
+    # nothing and `id!=abc` everything. plexsim reported it as an unknown field, so
+    # python-plexapi's editions() (`guid=<x>&id!=<self>`) called every item its own
+    # duplicate.
+    def ids_c11e(query_c11e):
+        status, body, _ = get(base, "/library/sections/%s/all?%s" % (movie_section, query_c11e))
+        return status, [r.get("ratingKey") for r in (body.get("Metadata") or [])]
+    every_c11e = ids_c11e("x=1")[1]
+    first_c11e = every_c11e[0]
+    check("a listing filters by id, and an unparseable id sorts above every row",
+          ids_c11e("id=%s" % first_c11e) == (200, [first_c11e])
+          and ids_c11e("id%%21=%s" % first_c11e) == (200, [k for k in every_c11e if k != first_c11e])
+          and ids_c11e("id=%s" % ",".join(every_c11e[:2])) == (200, every_c11e[:2])
+          and ids_c11e("id%%3D=%s" % first_c11e) == (200, [])
+          and ids_c11e("id%%21%%3D=%s" % first_c11e) == (200, every_c11e)
+          and ids_c11e("id%%3E%%3E=%s" % first_c11e)[1] == [k for k in every_c11e if int(k) > int(first_c11e)]
+          and ids_c11e("id%%3C%%3C=%s" % first_c11e) == (200, [])
+          and ids_c11e("id=abc") == (200, []) and ids_c11e("id%%21=abc") == (200, every_c11e)
+          and ids_c11e("id=") == (200, []) and ids_c11e("id=999999999") == (200, []),
+          "all %s, =%s -> %s, != -> %s, == -> %s, abc -> %s"
+          % (every_c11e, first_c11e, ids_c11e("id=%s" % first_c11e)[1],
+             ids_c11e("id%%21=%s" % first_c11e)[1], ids_c11e("id%%3D=%s" % first_c11e)[1],
+             ids_c11e("id=abc")[1]))
+    status_c11e, parsed_c11e, _ = request(base, "GET",
+                                          "/library/sections/%s/query/parse?id%%21=1" % movie_section)
+    try:
+        query_c11e = json.loads(parsed_c11e).get("Query") or {}
+    except ValueError:
+        query_c11e = {}
+    rules_c11e = query_c11e.get("Rule")
+    rules_c11e = rules_c11e if isinstance(rules_c11e, list) else [rules_c11e or {}]
+    check("query/parse echoes an id rule with an empty fieldTitle",
+          status_c11e == 200 and not query_c11e.get("Error")
+          and [(r.get("field"), r.get("operator"), r.get("fieldTitle"), r.get("value"))
+               for r in rules_c11e] == [("id", "!=", "", "1")],
+          "%s %s" % (status_c11e, parsed_c11e[-120:]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
