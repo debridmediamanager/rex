@@ -3046,6 +3046,14 @@ the same parameters, then read back from both.
   another type -- an episode into a movie collection -- are each a 400, and so is any add
   to a smart collection, whose members are its query. plexsim added whatever the uri
   named, the episode included.
+- **A collection's children follow its `collectionSort`, and a move starts from the order
+  shown.** Three movies added newest first came back oldest first -- by release date, with
+  no sort set or `0` -- and `2` is the custom order. A move re-bases the custom order on
+  the order the collection is SHOWN in, applies the move, answers the collection row, and
+  switches the collection to `collectionSort: 2`; setting `0` again goes back to release
+  date. (`1` gave the same order on these members, and is alphabetical by
+  python-plexapi's mapping.) plexsim listed insertion order, answered the move with an
+  empty body, and never changed the sort.
 
 ### Emulation calibrated against the account's own claimed servers
 

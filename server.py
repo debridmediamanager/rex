@@ -7231,7 +7231,9 @@ class PlexSim:
             if not self.library.move_collection_item(collection, segments[4],
                                                      query.get("after")):
                 return ("error", 404, "plexsim: not in this collection")
-            return ("empty", 200)
+            # Measured: the move answers the collection ROW, where plexsim sent nothing.
+            return self.bare_container(
+                size=1, Metadata=[self.library._collection_row(collection)])
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""), expand=False)
             if collection.get("smart") or not rows or any(

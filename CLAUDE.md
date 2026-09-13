@@ -725,6 +725,8 @@ precisely how the Seasons bug survived a fix attempt.
   queue does not. A check that creates a second queue cannot read the first.
 - **Deleting a play queue's SELECTED item answers the queue as it stood** (old version,
   selection and total, no rows); the next read has the selection on the following item.
+- **A collection's children follow its `collectionSort`**: by release date when unset or 0,
+  custom at 2 -- and a move starts from the order SHOWN, then switches to custom.
 
 ## Conventions
 
