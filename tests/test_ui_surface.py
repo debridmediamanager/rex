@@ -6754,6 +6754,29 @@ def main():
           "HTTP %s language %r bif %r, %d activity frame(s), statuses %s"
           % (holder_w15a, language_w15a, bif_w15a, len(runs_w15a), statuses_w15(frames_w15a)[:2]))
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: /library/sections/all/refresh scans EVERY library -- a status
+    # naming each -- and a scan is one library.update.section activity. plexsim 404'd the
+    # path, and scanned by starting a metadata activity per row.
+    titles_w15b = [d.get("title") for d in get(base, "/library/sections")[1].get("Directory") or []]
+    holder_w15b = []
+    _, frames_w15b = notifications(base, lambda: holder_w15b.append(
+        request(base, "GET", "/library/sections/all/refresh")[0]), seconds=3)
+    kinds_w15b = {run[1] for run in activities_w15(frames_w15b)}
+    check("refreshing all libraries scans each one as a library.update.section activity",
+          holder_w15b == [200] and titles_w15b
+          and all('Scanning the "%s" section' % t in statuses_w15(frames_w15b) for t in titles_w15b)
+          and "library.update.section" in kinds_w15b and "library.update.item.metadata" not in kinds_w15b,
+          "HTTP %s, statuses %s, kinds %s" % (holder_w15b, statuses_w15(frames_w15b)[:4], sorted(kinds_w15b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

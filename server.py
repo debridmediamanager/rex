@@ -2506,6 +2506,8 @@ class PlexSim:
                 if segments[2] == "prefs":
                     # `/library/sections/prefs?type=movie` and friends: a 400.
                     return ("error", 400, "plexsim: bad request")
+                if segments[2:] == ["all", "refresh"]:
+                    return self.library_section(segments, query, method)
                 # Measured: any other non-numeric section id -- `abc`, `-1`, `1.5` --
                 # is a 404, not the 400 plexsim answered.
                 return ("error", 404, "plexsim: not found")
@@ -3176,6 +3178,13 @@ class PlexSim:
 
     def library_section(self, segments, query, method="GET"):
         section_id = segments[2]
+        if section_id == "all" and list(segments[3:]) == ["refresh"] and method in ("GET", "POST"):
+            # Measured on a writable copy of the reference: this scans EVERY library, one
+            # after another. plexsim 404'd it as an unknown section.
+            for directory in list(self.catalog.sections):
+                self.library_section(["library", "sections", str(directory["key"]), "refresh"],
+                                     query, method)
+            return ("empty", 200)
         section = self.catalog.section(section_id)
         if section is None:
             # Measured: every leaf of a section the server does not have is a 404.
@@ -3254,17 +3263,18 @@ class PlexSim:
                 logger.info("SECTION refresh cancelled %s", section_id)
                 return ("empty", 200)
             self.refreshing.add(str(section_id))
-            # Measured title, verbatim: it is what the header's activity spinner
-            # shows while a scan runs.
-            self.notify_status('Scanning the "%s" section' % (section.get("title") or ""))
             rows = self.catalog.section_items(section_id)
-            for row in rows:
-                if query.get("force") == "1":
+            if query.get("force") == "1":
+                # Measured title, verbatim: it is what the header's activity spinner
+                # shows while a scan runs.
+                self.notify_status('Scanning the "%s" section' % (section.get("title") or ""))
+                for row in rows:
                     self.library.refresh(row)
                     self.notify_refreshed(row)
-                else:
-                    self.library.finish_activity(
-                        self.library.add_activity(row.get("title") or "", progress=-1))
+            else:
+                # Measured on a writable copy of the reference: a scan is ONE
+                # `library.update.section` activity stepping through the items.
+                self.notify_section_scan(section_id, section)
             self.refreshing.discard(str(section_id))
             logger.info("SECTION refresh %s force=%s -> %d row(s)",
                         section_id, query.get("force") == "1", len(rows))
