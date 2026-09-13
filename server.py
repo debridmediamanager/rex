@@ -6829,16 +6829,20 @@ class PlexSim:
             # ANY state, and past 90% the play is `complete` on any state too.
             # `viewCount` is the item's own count -- 0 on a first play in progress,
             # measured -- where plexsim sent 1 for anything past a minute.
-            total = total_ms or row.get("duration") or 0
-            if offset_ms > 60000:
+            # The beat's own duration, as the library uses: with none, nothing is stored
+            # and nothing completes, and the answer carries the item's stored offset.
+            total = total_ms or 0
+            if offset_ms > 60000 and total:
                 playback_state = "progress"
-                if total and offset_ms >= total * 0.9:
-                    # Measured on a writable copy of the reference: a completed play
-                    # answers `complete` to every beat past 90% -- `playing` twice, then
-                    # `stopped` -- until a `stopped` beat has closed it, and `ignore` to
-                    # every beat after that, counting nothing. plexsim answered
-                    # `complete` to all of them.
-                    playback_state = "ignore" if already else "complete"
+                if offset_ms >= total * 0.9:
+                    # Past 90% the answer is never `progress`: it is `complete` for the beat
+                    # that completed the play and every one after it until a `stopped` closes
+                    # it, and `ignore` for a beat that completed nothing -- one that did not
+                    # cross into the last tenth inside this session. plexsim called every
+                    # near-end beat `complete`, and the crossing rule alone would have left
+                    # the refused ones saying `progress`.
+                    finished = row.get("_completed") == (playing_session or True)
+                    playback_state = "complete" if finished and not already else "ignore"
             view_count = int(row.get("viewCount") or 0)
             if state == "stopped":
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0,

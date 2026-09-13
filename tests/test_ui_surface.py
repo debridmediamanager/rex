@@ -7327,6 +7327,56 @@ def main():
         skip("a show's prefs write pushes the refresh cascade of its seasons and episodes",
              "need a show")
 
+    # Measured on plexscratch, whose clips are half an hour long: a play is marked watched
+    # only when a beat CROSSES 90% inside its own session -- the session must have reported a
+    # position under 90% of the duration THAT BEAT carries. A cold item beaten once at 95%
+    # records nothing (five climbing beats from 95% to 99% record nothing either), another
+    # client's earlier position does not enable it, and neither does a stored `/:/progress`
+    # offset. plexsim completed on the position alone, so dragging the scrubber to the end,
+    # or a second client joining near the end, silently marked the item watched.
+    def beat_c10l(key, position, duration, session, state="playing"):
+        path = ("/:/timeline?ratingKey=%s&key=%s&state=%s&hasMDE=1&time=%s"
+                % (key, urllib.parse.quote("/library/metadata/%s" % key, safe=""), state, position))
+        if duration is not None:
+            path += "&duration=%s" % duration
+        status, body, _ = request(base, "GET", path + "&X-Plex-Session-Identifier=" + session)
+        try:
+            return json.loads(body).get("MediaContainer", {})
+        except ValueError:
+            return {"status": status}
+    def viewed_c10l(key):
+        row = (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+        return (row.get("viewCount"), row.get("viewOffset"))
+    cold_c10l = [r["ratingKey"] for r in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
+                 if not r.get("viewCount") and not r.get("viewOffset")]
+    if len(cold_c10l) >= 3:
+        one_c10l, two_c10l, three_c10l = cold_c10l[:3]
+        span_c10l = int((get(base, "/library/metadata/%s" % one_c10l)[1]
+                         .get("Metadata") or [{}])[0].get("duration") or 0)
+        high_c10l, low_c10l = int(span_c10l * 0.95), int(span_c10l * 0.3)
+        answer_cold_c10l = beat_c10l(one_c10l, high_c10l, span_c10l, "c10l-cold")
+        climb_c10l = [beat_c10l(one_c10l, int(span_c10l * step), span_c10l, "c10l-cold").get("playbackState")
+                      for step in (0.96, 0.97, 0.98)]
+        beat_c10l(two_c10l, low_c10l, span_c10l, "c10l-cross")
+        answer_cross_c10l = beat_c10l(two_c10l, high_c10l, span_c10l, "c10l-cross")
+        beat_c10l(three_c10l, low_c10l, span_c10l, "c10l-clientA")
+        answer_other_c10l = beat_c10l(three_c10l, high_c10l, span_c10l, "c10l-clientB")
+        check("a play completes only when a beat crosses 90% inside its own session",
+              answer_cold_c10l.get("playbackState") == "ignore" and viewed_c10l(one_c10l) == (None, None)
+              and climb_c10l == ["ignore", "ignore", "ignore"]
+              and answer_cross_c10l.get("playbackState") == "complete"
+              and viewed_c10l(two_c10l)[0] == 1
+              and answer_other_c10l.get("playbackState") == "ignore"
+              and viewed_c10l(three_c10l)[0] is None,
+              "cold %r %s climb %s, crossed %r %s, other client %r %s"
+              % (answer_cold_c10l.get("playbackState"), viewed_c10l(one_c10l), climb_c10l,
+                 answer_cross_c10l.get("playbackState"), viewed_c10l(two_c10l),
+                 answer_other_c10l.get("playbackState"), viewed_c10l(three_c10l)))
+    else:
+        skip("a play completes only when a beat crosses 90% inside its own session",
+             "need three unwatched movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
