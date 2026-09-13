@@ -92,6 +92,11 @@ try:
 except (OSError, ValueError):
     SERVER_PREFS = []
 
+# The two library settings that change ROWS rather than only the setting list.
+# Both are ALSO item settings, where `-1` means "inherit this library's value"
+# -- measured on the copy in cycle 15, in all four combinations.
+SHOW_ROW_PREFS = ("flattenSeasons", "episodeSort")
+
 _SECTION_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_prefs.json")
 try:
     with open(_SECTION_PREFS_PATH) as _handle:
@@ -561,6 +566,9 @@ class Catalog:
         self.items = {}
         self._by_section = {}
         self._children = {}
+        # (section id, setting id) -> the library-wide value of a show setting
+        # a show inherits when its own is `-1`. Seeded from SECTION_PREFS at load.
+        self.section_show_prefs = {}
 
         # A section listing shows only TOP-LEVEL rows: movies in a movie
         # section, shows in a show section. Listing seasons or episodes at the
@@ -633,11 +641,57 @@ class Catalog:
         for section in self.sections:
             settings = SECTION_PREFS.get(section.get("type") or "movie") or []
             for setting in settings:
-                if setting.get("id") == "flattenSeasons":
-                    self.apply_flatten_seasons(section["key"], setting.get("value"))
+                if setting.get("id") in SHOW_ROW_PREFS:
+                    self.set_section_show_pref(section["key"], setting["id"],
+                                               setting.get("value"))
+
+    def set_section_show_pref(self, section_id, name, value):
+        """Store a library-wide show setting and re-apply every show's rows.
+
+        Cycle 15, measured on the copy: the LIBRARY-level `flattenSeasons` and
+        `episodeSort` produce exactly the row effects the item path produces, and
+        the show's OWN setting stays at `-1` while they do. So the item value is a
+        tri-state and `-1` means INHERIT -- not "off", which is how plexsim read it.
+        """
+        self.section_show_prefs[(str(section_id), name)] = str(value)
+        for row in self.section_items(section_id):
+            if row.get("type") == "show":
+                self.apply_show_prefs(row)
+
+    def show_pref(self, show, name):
+        """The EFFECTIVE value of a show setting: the item's unless it inherits.
+
+        Measured on the copy across all four combinations, for `flattenSeasons` and
+        `episodeSort` alike:
+
+            section 1, item -1 -> the effect is ON   (the item inherits)
+            section 1, item  0 -> the effect is OFF  (the item overrides, downwards)
+            section 0, item  1 -> the effect is ON   (the item overrides, upwards)
+            section 0, item -1 -> the effect is OFF
+
+        plexsim read only the item's `_prefs`, defaulting to `-1`, so a library-wide
+        write -- which is where the Plex UI actually puts these two -- moved the
+        setting list and nothing else. `ITEM_PREFS` supplies the value an item that
+        has never been written advertises.
+        """
+        stored = (show.get("_prefs") or {}).get(name)
+        if stored is None:
+            for setting in ITEM_PREFS.get(show.get("type")) or []:
+                if setting.get("id") == name:
+                    stored = setting.get("value")
+                    break
+        if stored is not None and str(stored) != "-1":
+            return str(stored)
+        section = self.section_show_prefs.get((str(show.get("librarySectionID")), name))
+        if section is not None:
+            return section
+        for setting in SECTION_PREFS.get("show") or []:
+            if setting.get("id") == name:
+                return str(setting.get("value"))
+        return "-1"
 
     def apply_show_prefs(self, show):
-        """The row effects of a show's own `flattenSeasons`, measured on the copy.
+        """The row effects of a show's effective `flattenSeasons`, measured on the copy.
 
         `flattenSeasons=1`: the show gains `skipChildren: true` and every episode
         under it gains `skipParent: true` and **loses `parentRatingKey` and
@@ -648,9 +702,11 @@ class Catalog:
         `=2` is "hide for single-season series" at the section level; the item enum is
         the same three values, and only `1` was exercised on a two-season show, so the
         `2` branch follows the section rule rather than a measurement of its own.
+
+        The value is the EFFECTIVE one -- see `show_pref`. Cycle 14 measured this on
+        the ITEM path only and cycle 15 found the section path produced half of it.
         """
-        stored = show.get("_prefs") or {}
-        value = str(stored.get("flattenSeasons", "-1"))
+        value = self.show_pref(show, "flattenSeasons")
         seasons = self.children(show["ratingKey"])
         skip = value == "1" or (value == "2" and len(seasons) <= 1)
         if skip:
@@ -671,27 +727,6 @@ class Catalog:
                 if season is not None:
                     leaf["parentRatingKey"] = season
                     leaf["parentKey"] = "/library/metadata/%s" % season
-
-    def apply_flatten_seasons(self, section_id, value):
-        """`flattenSeasons` does NOT change what /children returns.
-
-        Measured: with the pref set to Hide, a real PMS still answers /children
-        with the SEASONS -- what changes is a single field on the show row,
-        `skipChildren`, and the CLIENT decides to skip the season level on the
-        strength of it. plexsim served the preference in its section prefs and
-        then ignored it, so a flatten-seasons library still drew every season.
-
-        Enum, measured: `0` Show, `1` Hide, `2` Hide for single-season series.
-        """
-        for row in self.section_items(section_id):
-            if row.get("type") != "show":
-                continue
-            seasons = len(self.children(row["ratingKey"]))
-            skip = str(value) == "1" or (str(value) == "2" and seasons <= 1)
-            if skip:
-                row["skipChildren"] = True
-            else:
-                row.pop("skipChildren", None)
 
     def _strip_show_fields(self):
         for row in self.items.values():
@@ -3714,9 +3749,10 @@ class PlexSim:
                         value = "true" if value in ("1", "true") else "false"
                     self.section_pref_overrides[(str(section_id), name)] = value
                     logger.info("SECTION PREF %s %s = %s", section_id, name, value)
-                    if name == "flattenSeasons":
-                        # This one changes the ROWS, not just the setting list.
-                        self.catalog.apply_flatten_seasons(section_id, value)
+                    if name in SHOW_ROW_PREFS:
+                        # These two change the ROWS, not just the setting list,
+                        # and a show whose own value is `-1` inherits them.
+                        self.catalog.set_section_show_pref(section_id, name, value)
                 return ("empty", 200)
             if query.get("agent"):
                 # Measured: `?agent=` RESHAPES an existing library's list exactly as
@@ -5888,10 +5924,15 @@ class PlexSim:
                     # listing keep broadcast order either way, so this is the season
                     # page's own order and not a catalog-wide sort. plexsim stored the
                     # setting and never read it.
+                    #
+                    # Cycle 15: the value is the EFFECTIVE one. Written at the
+                    # LIBRARY level -- which is where the Edit Library dialog puts
+                    # it -- the show's own setting stays `-1` and inherits, so
+                    # reading the item's alone left a library-wide Newest First
+                    # ordering nothing at all.
                     parent = self.catalog.items.get(int(row["parentRatingKey"])) \
                         if str(row.get("parentRatingKey") or "").isdigit() else None
-                    if parent and str((parent.get("_prefs") or {})
-                                      .get("episodeSort", "-1")) == "1":
+                    if parent and self.catalog.show_pref(parent, "episodeSort") == "1":
                         rows = list(reversed(rows))
             elif row.get("type") in ("season", "episode"):
                 # Measured on both servers: `/allLeaves` below the SHOW is empty -- a
