@@ -7053,6 +7053,25 @@ def main():
           % ([(s.get("id"), s.get("value")) for s in settings_c10d], before_c10d, named_c10d,
              empty_c10d, value_c10d))
 
+    # Measured on plexscratch: track selection is a POST as well as a PUT -- the same
+    # endpoint, the same 200 -- where plexsim 404'd the POST.
+    row_c10e = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    part_c10e = ((row_c10e.get("Media") or [{}])[0].get("Part") or [{}])[0]
+    audio_c10e = next((s.get("id") for s in part_c10e.get("Stream") or []
+                       if s.get("streamType") == 2), None)
+    if audio_c10e:
+        status_post_c10e, _, _ = request(base, "POST", "/library/parts/%s?audioStreamID=%s"
+                                                       % (part_c10e.get("id"), audio_c10e))
+        status_put_c10e, _, _ = request(base, "PUT", "/library/parts/%s?audioStreamID=%s"
+                                                     % (part_c10e.get("id"), audio_c10e))
+        status_get_c10e, _, _ = request(base, "GET", "/library/parts/%s?audioStreamID=%s"
+                                                     % (part_c10e.get("id"), audio_c10e))
+        check("track selection takes a POST as well as a PUT",
+              (status_post_c10e, status_put_c10e) == (200, 200) and status_get_c10e != 200,
+              "POST %s, PUT %s, GET %s" % (status_post_c10e, status_put_c10e, status_get_c10e))
+    else:
+        skip("track selection takes a POST as well as a PUT", "need an audio stream")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

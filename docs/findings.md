@@ -3302,6 +3302,8 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   `/media/providers` and `/servers` -- with an empty one kept as the preference's value while
   the displayed name falls back to the host name. plexsim stored the values, pushed nothing,
   and kept its old name, so renaming the server in Settings changed nothing on screen.
+- **Track selection takes a POST as well as a PUT** on `/library/parts/{id}`; plexsim 404'd
+  the POST.
 
 ### Emulation calibrated against the account's own claimed servers
 
