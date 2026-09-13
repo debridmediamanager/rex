@@ -6212,7 +6212,13 @@ class PlexSim:
         if not text:
             # Measured: a missing or empty query is a 400, not an empty result.
             return ("error", 400, "plexsim: bad request")
-        limit = int(query.get("limit", 30) or 30)
+        # Measured on kids (1.43.4) and zen (1.42.2): the DEFAULT cap is 3 PER HUB, not
+        # 30. A zen search answering 6 movies, 26 directors, 11 episodes and 50 actors
+        # under `limit=50` answers three of each with no limit at all, and `more` stays
+        # false either way. plexsim's 30 handed the type-ahead path -- and every client
+        # that omits `limit` -- a results page many times the size a real PMS sends,
+        # which changes how the search page lays its shelves out.
+        limit = int(query.get("limit", 3) or 3)
         typed, tags = self.search_matches(text, limit)
         needle = text.strip().lower()
 
@@ -6321,7 +6327,7 @@ class PlexSim:
         text = query.get("query")
         if not text:
             return ("error", 400, "plexsim: bad request")
-        limit = int(query.get("limit", 30) or 30)
+        limit = int(query.get("limit", 10) or 10)
         typed, tags = self.search_matches(text, limit)
         needle = text.strip().lower()
         results = []

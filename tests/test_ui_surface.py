@@ -8131,6 +8131,39 @@ def main():
           and bare_c12c is False,
           "%s, /library/sections %s" % (sync_c12c, bare_c12c))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): with no `limit`, /hubs/search caps
+    # each hub at 3 rows and /library/search answers 10 results in all. plexsim
+    # defaulted both to 30, so the type-ahead path and every non-web client got a page
+    # many times the size a real PMS sends. The query has to overflow a hub or the
+    # fixture cannot tell 3 from 30 -- 'ha' matches four of its actors by word prefix.
+    def hubs_c12d(query_c12d, suffix_c12d=""):
+        status_c12d, body_c12d, _ = get(base, "/hubs/search?query=%s%s" % (query_c12d, suffix_c12d))
+        return status_c12d, {hub_c12d.get("type"): len(hub_c12d.get("Metadata")
+                                                       or hub_c12d.get("Directory") or [])
+                             for hub_c12d in (body_c12d.get("Hub") or [])
+                             if (hub_c12d.get("Metadata") or hub_c12d.get("Directory"))}
+    query_c12d = next((candidate_c12d for candidate_c12d in ("ha", "the", "sim", "tea")
+                       if any(count_c12d > 3 for count_c12d
+                              in hubs_c12d(candidate_c12d, "&limit=50")[1].values())), None)
+    if not query_c12d:
+        skip("a search caps at the rows a real PMS sends when no limit is asked for",
+             "no query overflows a hub on this fixture")
+    else:
+        wide_c12d = hubs_c12d(query_c12d, "&limit=50")
+        plain_c12d = hubs_c12d(query_c12d)
+        lib_wide_c12d = len(get(base, "/library/search?query=%s&limit=50" % query_c12d)[1]
+                            .get("SearchResult") or [])
+        lib_plain_c12d = len(get(base, "/library/search?query=%s" % query_c12d)[1]
+                             .get("SearchResult") or [])
+        check("a search caps at the rows a real PMS sends when no limit is asked for",
+              plain_c12d[0] == 200 and wide_c12d[0] == 200
+              and all(plain_c12d[1].get(hub_c12d) == min(count_c12d, 3)
+                      for hub_c12d, count_c12d in wide_c12d[1].items())
+              and lib_plain_c12d == min(lib_wide_c12d, 10),
+              "query %r -- hubs: no limit %s, limit=50 %s | /library/search %s vs %s"
+              % (query_c12d, plain_c12d[1], wide_c12d[1], lib_plain_c12d, lib_wide_c12d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
