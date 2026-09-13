@@ -2785,6 +2785,10 @@ anything changed.
   `.vtt` on a stream the server has are the bare stream's 501 (plexsim 404, reading the
   extension into the id); `/library/metadata/{id}/file` without `url` is a 400
   (plexsim 404).
+- **The livetv reads a tunerless server refuses.** `/livetv/epg`, `/epg/guide`,
+  `/epg/search`, `/recordings`, `/dvrs/{id}` and `/sessions/{id}` (and all beneath
+  them) are 404 on both servers and `/epg/channels` a 400; only `/livetv/dvrs` and
+  `/livetv/sessions` answer empty. plexsim answered an empty container to all of them.
 
 ### Emulation calibrated against the account's own claimed servers
 

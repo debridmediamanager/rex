@@ -2290,6 +2290,18 @@ class PlexSim:
             # rows -- and plexsim answers them empty, which is honest for a server
             # with no EPG provider and is recorded as a deviation rather than faked.)
             return ("error", 400, "plexsim: bad request")
+        if route == "/livetv/epg/channels":
+            # Measured on both servers with no tuner: a 400, like the lineup reads.
+            return ("error", 400, "plexsim: bad request")
+        if (route in ("/livetv/epg", "/livetv/epg/guide", "/livetv/epg/search",
+                      "/livetv/recordings")
+                or (segments[:2] in (["livetv", "dvrs"], ["livetv", "sessions"])
+                    and len(segments) > 2)):
+            # Measured on both servers: the guide, EPG search, recordings, a named DVR
+            # and a named live session (and everything under them) are 404s. plexsim's
+            # blanket empty container told a client each of these existed and was
+            # empty; the two collection roots below are the real empty ones.
+            return ("error", 404, "plexsim: not found")
         if segments[:1] == ["livetv"]:
             # No tuner. `livetv: 0` on /media/providers already hides the UI;
             # this is the shape a real PMS uses when it has no DVR configured.

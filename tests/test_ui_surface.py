@@ -5642,6 +5642,13 @@ def main():
     check("loudness 404s, a sidecar extension 501s like its stream, a bare file read 400s",
           stream9 and refusals9 == (404, 501, 501, 404, 400), str(refusals9))
 
+    livetv9 = [get(base, path)[0] for path in (
+        "/livetv/epg", "/livetv/epg/guide", "/livetv/epg/search", "/livetv/recordings",
+        "/livetv/dvrs/1", "/livetv/dvrs/1/guide", "/livetv/sessions/1",
+        "/livetv/sessions/1/index.m3u8", "/livetv/epg/channels", "/livetv/dvrs", "/livetv/sessions")]
+    check("livetv refuses the guide, recordings and named DVRs; its two roots are empty",
+          livetv9 == [404] * 8 + [400, 200, 200], str(livetv9))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
