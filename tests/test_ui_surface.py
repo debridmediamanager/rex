@@ -10288,6 +10288,58 @@ def main():
           str({n_e15: (v_e15.get("value"), v_e15.get("default"))
                for n_e15, v_e15 in prefs_e15.items()}))
 
+    # Cycle 15, measured on the copy: the LIBRARY-level `flattenSeasons` and
+    # `episodeSort` produce exactly the row effects the ITEM path produces, and the
+    # show's own setting stays `-1` throughout -- so `-1` on an item means INHERIT,
+    # not "off". All four combinations were measured; the item overrides the library
+    # in BOTH directions. plexsim read the item's `_prefs` alone, so a library-wide
+    # write (where the Edit Library dialog actually puts these two) moved the setting
+    # list and left every row untouched -- except `skipChildren` on the show, which it
+    # set without the episode half, leaving the client every `parentRatingKey` it
+    # needed to draw the season level anyway.
+    #
+    # Count the seasons LIVE and take the fullest: by this point in the suite rows
+    # have been deleted and moved, and a season with one episode reverses to itself.
+    seasons_s15 = [r_s15["ratingKey"] for r_s15 in
+                   get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []]
+    kids_s15 = {k_s15: get(base, "/library/metadata/%s/children" % k_s15)[1].get("Metadata") or []
+                for k_s15 in seasons_s15}
+    season_s15 = max(kids_s15, key=lambda k_s15: len(kids_s15[k_s15]))
+    order_before_s15 = [r_s15.get("index") for r_s15 in kids_s15[season_s15]]
+    leaf_s15 = kids_s15[season_s15][0]["ratingKey"]
+    request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=1&episodeSort=1" % show_section)
+    show_row_s15 = get(base, "/library/metadata/%s" % show)[1].get("Metadata", [{}])[0]
+    leaf_row_s15 = get(base, "/library/metadata/%s" % leaf_s15)[1].get("Metadata", [{}])[0]
+    order_after_s15 = [r_s15.get("index") for r_s15 in
+                       get(base, "/library/metadata/%s/children" % season_s15)[1]
+                       .get("Metadata") or []]
+    check("a library-wide flattenSeasons reaches the EPISODES, not just the show row",
+          show_row_s15.get("skipChildren") is True and leaf_row_s15.get("skipParent") is True
+          and leaf_row_s15.get("parentRatingKey") is None
+          and leaf_row_s15.get("parentKey") is None
+          and leaf_row_s15.get("parentIndex") is not None,
+          "show skipChildren=%r leaf skipParent=%r parentRatingKey=%r parentIndex=%r"
+          % (show_row_s15.get("skipChildren"), leaf_row_s15.get("skipParent"),
+             leaf_row_s15.get("parentRatingKey"), leaf_row_s15.get("parentIndex")))
+    check("a library-wide episodeSort=1 puts a season's children newest first",
+          len(order_before_s15) > 1 and order_after_s15 == list(reversed(order_before_s15)),
+          "season %s before %s after %s" % (season_s15, order_before_s15, order_after_s15))
+    # The item overrides the library in both directions: -1 inherits, 0 refuses.
+    request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=0&episodeSort=0" % show)
+    show_row_s15 = get(base, "/library/metadata/%s" % show)[1].get("Metadata", [{}])[0]
+    leaf_row_s15 = get(base, "/library/metadata/%s" % leaf_s15)[1].get("Metadata", [{}])[0]
+    order_over_s15 = [r_s15.get("index") for r_s15 in
+                      get(base, "/library/metadata/%s/children" % season_s15)[1]
+                      .get("Metadata") or []]
+    check("a show's own 0 overrides the library's 1 for both settings",
+          show_row_s15.get("skipChildren") is None and leaf_row_s15.get("skipParent") is None
+          and leaf_row_s15.get("parentRatingKey") is not None
+          and order_over_s15 == order_before_s15,
+          "skipChildren=%r skipParent=%r order %s"
+          % (show_row_s15.get("skipChildren"), leaf_row_s15.get("skipParent"), order_over_s15))
+    request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=-1&episodeSort=-1" % show)
+    request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=0&episodeSort=-1" % show_section)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
