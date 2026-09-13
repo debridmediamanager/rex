@@ -6185,6 +6185,21 @@ class PlexSim:
                           key=lambda r: str(r.get("originallyAvailableAt") or ""),
                           reverse=True)
         added = sorted(items, key=lambda r: -(r.get("addedAt") or 0))
+        # Each of the three shelves added below is built from its own key, which is
+        # the listing its "see all" opens: Top Unwatched is unwatched films rated 7.0
+        # or better, best first; Start Watching is the shows with no episode watched or
+        # in progress; Top Rated TV is the shows with an unwatched episode, rated 7.0
+        # or better. All three keys were read verbatim off zen.
+        def _rated(rows_in):
+            return sorted([r for r in rows_in if (r.get("audienceRating") or 0) >= 7.0],
+                          key=lambda r: -(r.get("audienceRating") or 0))
+        top_unwatched = _rated([r for r in items if not r.get("viewCount")])
+        shows_here = [r for r in items if r.get("type") == "show"]
+        unstarted = [r for r in shows_here
+                     if not any(leaf.get("viewCount") or leaf.get("viewOffset")
+                                for leaf in self.catalog.leaves(r.get("ratingKey")))]
+        top_rated = _rated([r for r in shows_here
+                            if (r.get("leafCount") or 0) > (r.get("viewedLeafCount") or 0)])
         # Rediscover, by its measured key: SHOWS watched between five years and six
         # weeks ago that still have unwatched episodes. plexsim filled this show
         # shelf with recently watched EPISODE rows.
@@ -6227,10 +6242,23 @@ class PlexSim:
                       added, "mixed",
                       "/hubs/home/recentlyAdded?type=2&sectionID=%s" % section_id,
                       "hub.tv.recentlyadded", promoted=True),
+                # Measured on zen, which is the 1.42.2 build plexsim reports: a show
+                # library carries "Start Watching" here -- the shows with no episode
+                # watched or in progress -- and "Top Rated TV" after Rediscover. kids
+                # (1.43.4) builds neither although its own library qualifies for both,
+                # so they are a version difference and not an absence.
+                shelf("tv.startwatching.%s" % section_id, "Start Watching",
+                      unstarted, "show",
+                      "/library/sections/%s/all?type=2&viewedOrInProgressLeafCount=0"
+                      % section_id, "hub.tv.startwatching", random=True),
                 shelf("tv.rediscover.%s" % section_id, "Rediscover", rediscover, "show",
                       "/library/sections/%s/all?type=2&lastViewedAt<=-6w"
                       "&lastViewedAt>=-5y&unwatchedLeaves=1&viewCount>=1"
                       % section_id, "hub.tv.rediscover", random=True),
+                shelf("tv.toprated.%s" % section_id, "Top Rated TV", top_rated, "show",
+                      "/library/sections/%s/all?type=2&unwatchedLeaves=1"
+                      "&audienceRating>=7.0&sort=audienceRating:desc" % section_id,
+                      "hub.tv.toprated", random=True),
                 shelf("tv.recentlyviewed.%s" % section_id, "Recently Watched Episodes",
                       watched, "episode",
                       "/library/sections/%s/all?sort=lastViewedAt:desc&unwatched=0"
@@ -6255,6 +6283,12 @@ class PlexSim:
                     "Top Movies in %s" % top_genre["tag"], top_rows, "movie",
                     "/library/sections/%s/all?unwatched=1&genre=%s&audienceRating>=7.0"
                     % (section_id, top_genre["id"]), "hub.movie.genre"))
+            hubs.append(shelf(
+                "movie.topunwatched.%s" % section_id, "Top Unwatched Movies",
+                top_unwatched, "movie",
+                "/library/sections/%s/all?unwatched=1&audienceRating>=7.0"
+                "&sort=audienceRating:desc" % section_id,
+                "hub.movie.topunwatched", random=True))
             hubs.append(shelf(
                 "movie.recentlyviewed.%s" % section_id, "Recently Watched Movies",
                 watched, "movie",
