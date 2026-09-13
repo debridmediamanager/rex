@@ -6593,9 +6593,12 @@ class PlexSim:
         if refusal:
             return refusal
         offset = query.get("time")
-        offset_ms = int(offset) if str(offset).isdigit() else 0
-        self.library.progress(int(row["ratingKey"]), offset_ms,
-                              state=query.get("state") or "stopped")
+        if not str(offset or "").isdigit():
+            # Measured on a writable copy of the reference: a missing or unparseable
+            # `time` is a 500 here, where plexsim stored 0 and answered 200.
+            return ("error", 500, "plexsim: bad time")
+        self.library.progress(int(row["ratingKey"]), int(offset),
+                              state=query.get("state") or "stopped", completes=False)
         logger.info("PROGRESS %s t=%sms state=%s", row["ratingKey"], offset,
                     query.get("state"))
         return ("empty", 200)

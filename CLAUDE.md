@@ -704,6 +704,8 @@ precisely how the Seasons bug survived a fix attempt.
   list's container names only a CUSTOM season title and carries the season's summary.
 - **An emptied season or episode title is GENERATED** (`Season N`, `Episode N`, and it
   follows the index), and every emptied title keeps the old title's sort form.
+- **`/:/progress` never completes a play**: it stores any position past a minute, even
+  one past the end, and a missing or unparseable `time` is a 500.
 
 ## Conventions
 
