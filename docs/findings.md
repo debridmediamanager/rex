@@ -2831,6 +2831,10 @@ anything changed.
   them, in a container of `size`, `allowSync` true and identifier. A missing or unknown
   identifier is a 404, and so are `tv.inprogress.{id}` and `home.playlists` although the
   hub lists carry them. plexsim 404'd every identifier.
+- **`/sorts` is keyed by the asked `type`, not the library**, as `/filters` is: a movie
+  library answers the episode sorts to `type=4` and the artist sorts to `type=8`, types
+  9, 10, 13, 18 and 20 have lists, other numbers are empty and a non-number a 400.
+  plexsim read the library's own Meta. The lists are `section_sorts.json`.
 
 ### Emulation calibrated against the account's own claimed servers
 

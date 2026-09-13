@@ -5801,6 +5801,21 @@ def main():
     else:
         skip("/hubs/items answers one shelf's rows by identifier, and 404s the rest", "no recently added shelf")
 
+    def sort_keys9(library, spec):
+        status, body, _ = get(base, "/library/sections/%s/sorts?%s" % (library, spec))
+        return status, [d.get("key") for d in body.get("Directory") or []]
+    episode_sorts9 = sort_keys9(movie_lib, "type=4")
+    artist_sorts9 = sort_keys9(movie_lib, "type=8")
+    movie_sorts_on_show9 = sort_keys9(show_lib, "type=1") if show_lib else (200, ["titleSort"] * 9)
+    check("/sorts is the asked TYPE's list on any library, and a non-number is a 400",
+          len(episode_sorts9[1]) == 7 and str(episode_sorts9[1][0]).startswith("show.titleSort,season.index")
+          and artist_sorts9[1][:2] == ["titleSort", "userRating"]
+          and len(movie_sorts_on_show9[1]) == 9
+          and sort_keys9(movie_lib, "type=5") == (200, [])
+          and sort_keys9(movie_lib, "type=movie")[0] == 400,
+          "episode %d, artist %s, movie-on-show %d" % (len(episode_sorts9[1]), artist_sorts9[1][:2],
+                                                       len(movie_sorts_on_show9[1])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
