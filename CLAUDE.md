@@ -575,7 +575,8 @@ precisely how the Seasons bug survived a fix attempt.
   underneath; `Metadata: []` is a shape no real PMS returns.
 - **`PUT .../merge?ids=` on a real library is not reversible.** The `split` that
   undoes it hands the second item back on a NEW ratingKey carrying the first
-  one's metadata, so measuring it costs a re-match. It cost one here.
+  one's metadata, so measuring it costs a re-match. It cost one here. (Cycle 14: a merge
+  whose TARGET has no `Media` -- a season, a show -- absorbs nothing at all. See below.)
 - **`viewMode`: a season list is 65593, an episode list 65592.** Inverted, the
   client is handed the episode layout for a season list and draws no seasons.
 - **An unknown SINGLE-segment path is a 200** (`content="plugins"`, the legacy
@@ -728,9 +729,10 @@ precisely how the Seasons bug survived a fix attempt.
   and key -- so a refusal check that omits the identifier tests the wrong branch.
 - **It is the EPISODE scrobble that counts on its season and show**; scrobbling the season
   or the show leaves its own `viewCount` alone, and unscrobbling it removes it.
-- **On Deck is one row per show**: the lowest-numbered episode in progress, else the one
-  after the last watched; hiding any of its episodes hides the show until its next
-  timeline.
+- **On Deck is one row per show**: its in-progress episode, else the one after the last
+  watched; hiding any of its episodes hides the show until its next timeline. (Cycle 14
+  corrected WHICH in-progress episode -- the most recently viewed, not the
+  lowest-numbered. See the bullet below.)
 - **A client's new play queue retires its older ones** (a 404 afterwards); another client's
   queue does not. A check that creates a second queue cannot read the first.
 - **Deleting a play queue's SELECTED item answers the queue as it stood** (old version,
@@ -1005,6 +1007,41 @@ precisely how the Seasons bug survived a fix attempt.
 - **A sweep must run against a FRESHLY RESTARTED fixture server.** Pointed at one the UI
   suite has finished with -- it deletes a row and a section at the end -- the same probe
   reports `thumb` and `poster` as 404s that both references answer 200.
+
+- **A merge whose target has no `Media` of its own absorbs NOTHING.** Merging one season
+  into another is a 200, no frames, and a tree that is completely unchanged -- both seasons
+  and every episode still there -- and the `split` that would undo it is a no-op too. An
+  EPISODE merge beside it is real (two Media on the survivor, a 404 on the other, the leaf
+  counts dropping). plexsim's `catalog.remove` cascades, so a season merge deleted the
+  season AND its episodes: the programme's one data-loss bug.
+- **On Deck is the MOST RECENTLY VIEWED in-progress episode**, not the lowest-numbered --
+  measured on `long` media, where an episode can actually be left in progress. A beat on
+  episode 8 puts 8 on deck, a progress write on episode 10 moves it to 10, a fresh beat on
+  8 moves it back. Cycle 9 recorded the opposite from ten-second clips.
+- **The prefs cascade belongs to `showOrdering` ALONE.** `showOrdering=dvd` pushes 45
+  frames -- it renumbers the episodes, so the server re-reads the tree -- while
+  `flattenSeasons`, `episodeSort`, `useOriginalTitle` and `subtitleMode` each push ZERO.
+  What those four do instead is change the rows: `flattenSeasons=1` sets `skipChildren` on
+  the show and `skipParent` on every episode while REMOVING their `parentRatingKey` and
+  `parentKey`; `episodeSort=1` puts a season's `/children` newest first while `/allLeaves`
+  keeps broadcast order. plexsim cascaded on every prefs write and changed no row.
+- **An artwork PICK re-versions `thumb`, `art` and `theme` onto ONE stamp**, moves
+  `updatedAt` with them, LOCKS the picked field, pushes one frame (state 5, no
+  `metadataState`) and CASCADES the stamp to the children that borrow it -- a season's
+  `parentThumb`/`art`, an episode's `grandparent*` -- never the season's own `thumb`.
+- **A hub container says `allowSync: true`** on every hub path except
+  `/hubs/metadata/{id}/postplay`, which says false; `/hubs/search` and `/hubs/items` carry
+  none at all. (`postplay` DOES carry `allowSync` -- an older note here said it carried
+  neither that nor the librarySection triple; only the triple half was right.)
+- **On a SEASON listing the leaf-count filters read the SHOW's counts.** zen's
+  `type=3&viewedLeafCount>>0` answers 48 seasons -- every season of the 8 shows with a
+  watched leaf -- and all 48 carry 0 on their own row.
+- **A collection answers `/children` on the METADATA path** (a full secondary container with
+  `key`, `parentIndex` = its TAG id, `parentTitle`, `title2`, `nocache` and the
+  librarySection triple) while `/library/collections/{id}/children` answers the BARE
+  `{size: N}`. A `type=18` listing is a real QUERY (`title=`, `sort=`, default titleSort),
+  a collection row's `index` is its own tag id, and `/library/all?type=18` lists every
+  collection the server holds across libraries in title order.
 
 ## Conventions
 

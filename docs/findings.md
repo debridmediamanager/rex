@@ -4180,6 +4180,179 @@ the references answer 200. They are not: on a freshly restarted server all three
 produced was then proved fail-then-pass on a clean export of its own parent commit,
 which is what the proof driver exists for.
 
+
+##### The write side: the carried cascades, and the collection instrument that had to be built
+
+The write hunt took the three holes cycle 13 named: re-measure the six cascades it had
+recorded and not implemented, build a collection instrument from nothing (neither
+reference holds a single collection), and put a leaf in progress. Every finding below
+was re-measured by the driver on a freshly reset copy before any code changed, and two
+of them came out differently the second time.
+
+**The data-loss bug: a SEASON merge is a 200 that changes nothing.**
+`PUT /library/metadata/7/merge?ids=11` on two seasons of the copy's show answers 200 with
+an empty body, pushes no frames, and leaves the tree exactly as it was — both seasons
+still listed, all six episodes still there, the show's `leafCount` still 6 — and the
+`split` that would undo it is a no-op too. An EPISODE merge beside it, on the same
+server, is completely real: 9 goes into 8, 8 comes back carrying two `Media`, 9 is a 404,
+and the season's and show's counts drop 3→2 and 6→5.
+
+plexsim's `merge` moved the other row's `Media` across and then called `catalog.remove`,
+which **cascades to children** — so merging one season into another deleted the absorbed
+season *and every episode under it*, left the show's `leafCount` stale at the old number,
+and the split did not bring them back. It is the only data-loss bug the programme has
+found in plexsim, and the proof run shows the old code going from eight leaves to six.
+The fix is that a merge whose target has no `Media` of its own absorbs nothing. A SHOW
+has no `Media` either and takes the same branch; the copy holds one show, so that half is
+reasoned rather than measured.
+
+**On Deck is the most recently viewed in-progress episode.** Cycle 9 recorded "the
+in-progress episode with the LOWEST season and episode number (not the one played last)".
+Re-measured on the copy in `long` mode: a beat on episode 8 at 40% puts 8 on deck; a
+`/:/progress` on episode 10 — later, still unwatched — moves the row to **10**; a fresh
+beat on 8 moves it back to **8**. Three transitions, with `/library/onDeck`,
+`/library/sections/{id}/onDeck`, `/hubs/home/onDeck` and `/hubs/continueWatching` agreeing
+each time. Cycle 9 measured this on the copy's TEN-SECOND clips, where every beat crosses
+90% at once and an episode can barely be left in progress at all — the handover's own
+"re-run anything about sessions, completion or resume from cycles 9 or earlier on `long`"
+entry, paying off exactly as written.
+
+**A show's prefs write pushes nothing — except `showOrdering`, which pushes everything.**
+This one is worth recording in full, because the first fix was wrong and the suite caught
+it. The hunt reported that a show's prefs write pushes no frames at all, and the driver
+confirmed it for `flattenSeasons` with a socket open: zero frames in nine seconds, on a
+listener that answered a title edit beside it with the expected `state 3 loading` /
+`state 5` pair. plexsim was pushing a 79-frame refresh cascade for every prefs write, so
+the cascade came out.
+
+The suite's own cycle-13 check — which asserts the cascade for `showOrdering` — then
+failed, and re-measuring one setting at a time settled it: **`showOrdering=dvd` pushes 45
+frames** (it changes how episodes are numbered, so the server really does re-read the
+tree) while `flattenSeasons`, `episodeSort`, `useOriginalTitle` and `subtitleMode` each
+push **zero**. The rule is per setting, not per endpoint. The hunt's report was right
+about the four it tried and wrong as a generalisation, and the check that stood in the
+suite was the thing that said so.
+
+What those writes do instead is change the ROWS, which plexsim did not do at all:
+`flattenSeasons=1` gives the show `skipChildren: true` and every episode
+`skipParent: true` while **removing their `parentRatingKey` and `parentKey`** (keeping
+`parentIndex` and `parentTitle`), and `/children` still answers the seasons either way —
+the client decides to skip the season level on the strength of those fields.
+`episodeSort=1` puts a season's `/children` **newest first** while `/allLeaves` and the
+section listing keep broadcast order.
+
+**An artwork pick re-versions three fields, locks one, and cascades.** Measured on the
+copy with a socket open: `PUT /library/metadata/6/poster?url=` moves `thumb`, `art`,
+`theme` and `updatedAt` onto **one** new stamp even though only the poster was chosen;
+locks the picked field (`Field: [{locked: true, name: thumb}]`); pushes exactly one frame
+(`timeline type=2 state=5`, no `metadataState`); and cascades the new stamp to the
+children that borrow it — the season's `parentThumb` and `art`, the episode's
+`grandparentThumb`, `grandparentArt` and `grandparentTheme` — while leaving the season's
+OWN `thumb` alone. plexsim re-versioned only the field that was picked and left every
+child pointing at the old stamp, which is how a show kept its old poster on every season
+and episode tile after a change.
+
+**A hub container says `allowSync: true`.** The hunt found it on four paths; sweeping
+every hub path sharpened it: `/hubs`, `/hubs/sections/{id}`, `/hubs/promoted`,
+`/hubs/home/recentlyAdded`, `/hubs/home/onDeck`, `/hubs/continueWatching`,
+`/hubs/metadata/{id}/related` and `/library/metadata/{id}/related` all say **true** on
+kids and zen alike; `/hubs/metadata/{id}/postplay` alone says **false**; and
+`/hubs/search` and `/hubs/items` carry no `allowSync` at all. plexsim defaulted to false
+with three call sites putting it back, so eight of the ten said the opposite of a real
+PMS. (This also corrects half a sentence in `item_hubs`'s own docstring, which said
+postplay carries neither the librarySection triple nor `allowSync`: it carries
+`allowSync`, as false.)
+
+**A season listing's leaf-count filters read the SHOW's counts.** On zen,
+`type=3&viewedLeafCount>>0` answers **48** seasons — every season of the eight shows that
+have a watched leaf — and **all 48 carry `viewedLeafCount` 0 on their own row**, so the
+filter cannot be reading the row it returns; `type=3&unviewedLeafCount=0` is 2 there. The
+copy agrees on the two-season tree. plexsim read the season's own counts, so a season grid
+filtered by "watched" answered only the season that happened to hold the watched episode.
+
+**Collections, measured for the first time.** Neither reference holds one, so the
+instrument had to be created on the copy before any of this existed:
+
+- **`/library/metadata/{collection}/children` answers** — with a full secondary container
+  carrying `key` (the bare id), `parentIndex` (the collection's **tag** id),
+  `parentTitle` and `title2` (its title), `title1` (the library), the librarySection
+  triple, `nocache`, `viewGroup` (the member type) and `viewMode` 65592 — while
+  `/library/collections/{id}/children` beside it answers the **bare** `{size: N}`.
+  plexsim 404'd the metadata form, which is the one a collection row's own `key` points
+  at, so a collection page opened empty.
+- **A `type=18` listing is a real query**: `title=aard` answers one of two,
+  `sort=addedAt:desc` reorders, `duplicate=1` answers none, and the default order is
+  `titleSort` like every other listing. plexsim answered the whole collection list to
+  every one of them.
+- **A collection row's `index` is its own TAG id** — the same number its members carry in
+  their `Collection` tag and the same one the `/collection` axis keys on. plexsim sent 1
+  for every collection.
+- **`/library/all?type=18` lists every collection the server holds**, across libraries, in
+  title order. plexsim answered `size 0`, because its collections are not rows in the item
+  catalog and that handler only ever looked there.
+
+
+##### Measured and not acted on
+
+- **The three remaining cascades, re-measured and recorded rather than implemented.**
+  (a) A show REFRESH cascades: the copy answers `PUT /library/metadata/8/refresh` with 7
+  frames, `…/7/refresh` with **18** (season, then each episode's four), and `…/6/refresh`
+  with **40** — show queued/started/processing/loading at +0.02–0.13 s, a **5.3 s gap**,
+  then per season an `activity updated` stepping −1 → 44 → 44 → 89 with the season's frame
+  title as its subtitle, each episode's four, and `activity ended` with the show's
+  `state 5` at +5.57 s. plexsim answers 7 frames at every level and leaves the children's
+  `parentThumb`/`grandparentThumb` at the old stamp. (d) `PUT …/analyze` is 200 with an
+  empty body and then, **per LEAF**, three `state 5` frames carrying `mediaState`
+  `analyzing`, `thumbnailing` and none, followed by one
+  `media.generate.chapter.thumbs` activity whose subtitle is the TARGET's frame title —
+  5 frames for an episode, 11 for a season, 20 for a show, 5 for a movie, and no frame for
+  the season or show row itself. Cycle 13's "per-level triple" was wrong. plexsim pushes
+  nothing. (e) A library create is 201 with a `Location` header and **74** frames inside
+  0.9 s, then one `backgroundProcessingQueue` `queueRegenerated` at **+60.8 s**; it is not
+  periodic (150 s idle produces none, and a plain title edit produces none in 75 s) but it
+  does follow certain writes — it also arrived +2.4 s after a season split and +1.2 s after
+  a collection add. plexsim answers the 201 and the header and pushes nothing.
+- **The rest of the collection surface**, all single-witness on the copy: the
+  `includePreferences=1` block (`collectionMode` with its four enum values and
+  `collectionSort` with two, on the detail and `/library/collections/{id}` paths and never
+  on a listing row); `collectionSort` semantics (1 alphabetical, 2 custom, an unknown
+  NUMBER alphabetical, unknown TEXT by release date, `''` removing the field, and a SMART
+  collection refusing it with a 400 where plexsim stores it); `GET
+  /library/collections/{id}/prefs` being a 404 where plexsim answers an empty container; a
+  `type=18` SECTION-path rename renaming the TAG (the item path does not — cycle 9's rule
+  is the item-path half only) where plexsim never renames it; `/hubs/search` and
+  `/library/search` finding a collection as a `tag` row with `count`, `guid` and
+  `reason`/`reasonID`/`reasonTitle`; a member's `Collection` tag carrying `guid` and
+  `count`; the detail row's `librarySectionID` being a NUMBER where plexsim sends a string;
+  labels on a collection reaching the `/label` axis; and
+  `/library/collections/{id}/posters` answering the `default://` composite row.
+- **Smaller write differences**, each measured once on the copy: a playlist create whose
+  `type` does not match its uri is a **400 that creates the playlist anyway** (with a
+  `type=15 state=0 created` frame) where plexsim refuses and creates nothing;
+  `POST /playlists/upload` is 500 with a path and 400 without, where plexsim 404s both;
+  `DELETE /library/collections/{id}/items/abc` is a 404 where plexsim answers 200; and the
+  copy's `/label` axis is global — it lists labels written in another library and labels no
+  row carries any more, the same list for every `type=` — where plexsim lists the section's
+  live labels under their type only. zen and kids hold no labels, so that last one has the
+  copy as its only witness.
+- **The episode SPLIT.** On the copy a split after an episode merge is a no-op (200, the
+  survivor keeps both `Media`) on the matched and unmatched tree alike, while cycle 4
+  measured a movie split producing a NEW ratingKey on the online lab. The copy cannot
+  re-identify offline, so the two are not comparable and the split half stays unresolved;
+  only the season-merge half, which needs no network, was acted on.
+- **`ratingCount` on a collection row**: the copy sends 1 for a three-member collection
+  where plexsim sends the member count. Nothing in the sample explains the 1, so it is
+  left alone rather than guessed at.
+- **The `/hubs/search` score PROMOTION** (carried from cycle 13, still not implemented),
+  the codec axes' empty-value behaviour (a version difference), and season 0 / specials,
+  which neither reference holds.
+- **Compared and found identical**, so not findings: 59 top-level paths and 48 item leaves
+  across both references; every `include*`/`exclude*` parameter on a movie grid and a
+  detail row (only `includeGuids`, `excludeFields`, `excludeElements` and `includeStorage`
+  change anything, all already implemented); `/media/providers` feature types; the section
+  `/sorts` list on both versions; and the XML element names of every endpoint this cycle
+  added.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
