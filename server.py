@@ -305,6 +305,16 @@ FILTER_FIELD_TYPES.setdefault("file", "string")
 # one column of this family that refuses rather than filters.
 REFUSED_FILTER_FIELDS = {"parentIndex"}
 
+# Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `/query/parse` knows fields a
+# LISTING does not filter on. All eight of these come back as a `Rule` with an EMPTY
+# `fieldTitle` -- the shape cycle 11 recorded for `id` -- where plexsim answered an
+# `Error`, which is what the smart-list builder draws as "that field does not exist".
+# `parentIndex` is a 500 on a listing and still a Rule here, and `guid` is the sharpest
+# of them: plexsim's listing has filtered on `guid=` since cycle 8 while its own
+# `/query/parse` called the field unknown, so the server contradicted itself.
+PARSE_ONLY_FIELD_TYPES = {"parentIndex": "integer", "guid": "string",
+                          "slug": "string", "extraType": "integer"}
+
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
 # are not the same three -- plexsim invented a single `episodeSort` row.
@@ -5182,8 +5192,15 @@ class PlexSim:
         implicit = IMPLICIT_SCOPE.get(type_number, "")
 
         errors = []
+
+        def parse_field_type(name):
+            # Cycle 15: the parse surface is WIDER than the filter surface. See
+            # PARSE_ONLY_FIELD_TYPES -- eight fields echo as Rules here that a
+            # listing either ignores, refuses or (for `guid`) filters by another path.
+            return FILTER_FIELD_TYPES.get(name) or PARSE_ONLY_FIELD_TYPES.get(name)
+
         tree = filters_module.parse(query.get("_pairs") or [],
-                                    FILTER_FIELD_TYPES.get, errors=errors)
+                                    parse_field_type, errors=errors)
         order = filters_module.orders(query.get("sort") or "", self._sortable)
         limit = None
         if query.get("limit"):

@@ -10498,6 +10498,37 @@ def main():
           % (frag_c15p, hit_c15p.get("size"), miss_c15p.get("size"),
              empty_c15p.get("size"), every_c15p.get("size")))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: /query/parse
+    # echoes eight fields as a Rule with an EMPTY fieldTitle that a LISTING does not
+    # filter on -- the parse surface is wider than the filter surface, and the two were
+    # the same map in plexsim. `guid` is the sharpest of them: plexsim's listing has
+    # filtered on `guid=` since cycle 8 while its own /query/parse called the field
+    # unknown, so the server contradicted itself. `parentIndex` is a 500 on a listing
+    # (cycle 14) and still a Rule here.
+    # An Error is what the smart-list builder draws as "that field does not exist".
+    def parsed_c15q(spec_c15q):
+        # The root here is `Query`, not a MediaContainer, so the suite's own `get()`
+        # unwrapper cannot be used -- read the raw body.
+        body_c15q = request(base, "GET", "/library/sections/%s/query/parse?type=1&%s"
+                            % (movie_section, spec_c15q))[1]
+        doc_c15q = json.loads(body_c15q).get("Query") or {}
+        if doc_c15q.get("Rule"):
+            rules_c15q = doc_c15q["Rule"]
+            rules_c15q = rules_c15q if isinstance(rules_c15q, list) else [rules_c15q]
+            return "Rule", rules_c15q[0].get("fieldTitle")
+        return ("Error" if doc_c15q.get("Error") else "?%s" % sorted(doc_c15q)), None
+
+
+    got_c15q = {f_c15q: parsed_c15q("%s=5" % f_c15q) for f_c15q in
+                ("parent", "parentIndex", "audienceRating", "rating", "guid", "slug",
+                 "file", "extraType")}
+    check("/query/parse echoes eight more fields as Rules with an empty fieldTitle",
+          all(v_c15q == ("Rule", "") for v_c15q in got_c15q.values())
+          and parsed_c15q("wibble=5")[0] == "Error"
+          and parsed_c15q("title=x") == ("Rule", "Title"),
+          "%s | wibble %s | title %s"
+          % (got_c15q, parsed_c15q("wibble=5")[0], parsed_c15q("title=x")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
