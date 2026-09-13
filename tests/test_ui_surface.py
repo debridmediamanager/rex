@@ -6108,6 +6108,54 @@ def main():
         skip("a parent's title and studio reach its children, and a season list names a custom title",
              "need a show")
 
+    # Measured on plexscratch: an emptied season title is GENERATED -- `Season N` -- and an
+    # episode's is `Episode N`, following a later index edit; every emptied title keeps
+    # its old title's sort form; and a playlist sorts without its article from creation,
+    # emptied or not. plexsim stored "" and dropped the sort title.
+    if show:
+        season_w9 = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                          if r.get("type") == "season"), {}).get("ratingKey")
+        episode_w9 = (get(base, "/library/metadata/%s/children" % season_w9)[1]
+                      .get("Metadata") or [{}])[0].get("ratingKey")
+        def row_w9(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+        season_was_w9, episode_was_w9 = row_w9(season_w9), row_w9(episode_w9)
+        request(base, "PUT", "/library/metadata/%s?title.value=%s" % (season_w9, quote("The Named Season")))
+        request(base, "PUT", "/library/metadata/%s?title.value=" % season_w9)
+        season_now_w9 = row_w9(season_w9)
+        request(base, "PUT", "/library/metadata/%s?title.value=" % episode_w9)
+        episode_now_w9 = row_w9(episode_w9)
+        request(base, "PUT", "/library/metadata/%s?index.value=42" % episode_w9)
+        reindexed_w9 = row_w9(episode_w9)
+        request(base, "PUT", "/library/metadata/%s?index.value=%s" % (episode_w9, episode_was_w9.get("index")))
+        for key_w9, was_w9 in ((season_w9, season_was_w9), (episode_w9, episode_was_w9)):
+            request(base, "PUT", "/library/metadata/%s?title.value=%s" % (key_w9, quote(str(was_w9.get("title")))))
+        _, made_w9, _ = container(base, "POST", "/playlists?type=video&smart=0&title=%s&uri=%s"
+                                                % (quote("The Sorted List"),
+                                                   quote("server://%s/com.plexapp.plugins.library"
+                                                         "/library/metadata/%s" % (machine, movie))))
+        list_w9 = (made_w9.get("Metadata") or [{}])[0].get("ratingKey")
+        created_w9 = (get(base, "/playlists/%s" % list_w9)[1].get("Metadata") or [{}])[0].get("titleSort")
+        request(base, "PUT", "/playlists/%s?title=" % list_w9)
+        emptied_w9 = (get(base, "/playlists/%s" % list_w9)[1].get("Metadata") or [{}])[0]
+        request(base, "DELETE", "/playlists/%s" % list_w9)
+        sort_form_w9 = re.sub(r"^(The|An|A) ", "", str(episode_was_w9.get("title")))
+        check("an emptied season or episode title is generated, and an emptied title keeps its sort form",
+              season_now_w9.get("title") == "Season %s" % season_now_w9.get("index")
+              and season_now_w9.get("titleSort") == "Named Season"
+              and episode_now_w9.get("title") == "Episode %s" % episode_was_w9.get("index")
+              and episode_now_w9.get("titleSort") == sort_form_w9
+              and reindexed_w9.get("title") == "Episode 42"
+              and created_w9 == "Sorted List" and emptied_w9.get("title") == ""
+              and emptied_w9.get("titleSort") == "Sorted List",
+              "season %r/%r, episode %r/%r, reindexed %r, playlist %r then %r/%r"
+              % (season_now_w9.get("title"), season_now_w9.get("titleSort"), episode_now_w9.get("title"),
+                 episode_now_w9.get("titleSort"), reindexed_w9.get("title"), created_w9,
+                 emptied_w9.get("title"), emptied_w9.get("titleSort")))
+    else:
+        skip("an emptied season or episode title is generated, and an emptied title keeps its sort form",
+             "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

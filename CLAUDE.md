@@ -702,6 +702,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **A parent's title and studio are COPIED onto its children** (`parentTitle`,
   `parentStudio`, `grandparentTitle`) and have to be copied again on every edit; a season
   list's container names only a CUSTOM season title and carries the season's summary.
+- **An emptied season or episode title is GENERATED** (`Season N`, `Episode N`, and it
+  follows the index), and every emptied title keeps the old title's sort form.
 
 ## Conventions
 
