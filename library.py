@@ -1057,6 +1057,30 @@ class Library:
             row.pop(key, None)
         row["summary"] = ""
         row["guid"] = "tv.plex.agents.none://%s" % row["ratingKey"]
+        if row.get("type") == "show":
+            # Re-measured on the copy by snapshotting the show, both seasons and all
+            # six episodes either side of one call: a SHOW unmatch cascades the whole
+            # way down. Every season becomes `local://` and every episode with it, each
+            # season's `parentGuid` and each episode's `grandparentGuid` follow the
+            # show's new `none://` guid, and the artwork the children borrowed from the
+            # show goes with it -- as does the `contentRating` they inherited. plexsim
+            # edited the show row alone, which left matched seasons and episodes under
+            # an unmatched show: a state a real PMS cannot produce, and one where the
+            # client's own Match / Fix Match predicate disagrees from row to row.
+            for season in list(self.catalog.children(row["ratingKey"])):
+                if season.get("type") != "season":
+                    continue
+                self.unmatch(season, identify)
+                season["parentGuid"] = row["guid"]
+                season.pop("parentThumb", None)
+                season.pop("parentStudio", None)
+            for leaf in list(self.catalog.leaves(row["ratingKey"])):
+                leaf["grandparentGuid"] = row["guid"]
+                leaf.pop("grandparentThumb", None)
+                leaf.pop("grandparentArt", None)
+                leaf.pop("contentRating", None)
+            row.pop("art", None)
+
         # The FILE NAME is the only title left that an agent did not supply, so
         # that is what an unmatched row is called -- the same thing a real PMS
         # falls back to. Keeping the agent's title would leave the row claiming

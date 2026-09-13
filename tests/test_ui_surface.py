@@ -9128,6 +9128,49 @@ def main():
                      after_c13q.get("audienceRating"), len(after_c13q.get("Role") or []),
                      after_c13q.get("parentGuid") == before_c13q.get("parentGuid")))
 
+        # Re-measured on the copy by snapshotting the show, both seasons and all six episodes
+    # either side of one `PUT /library/metadata/{show}/unmatch`: it does NOT edit the show
+    # row alone. Every season under it becomes `local://<id>` and every episode too, with
+    # the generated `Episode N` and the same drops a direct episode unmatch makes; each
+    # season's `parentGuid` and each episode's `grandparentGuid` follow the show to its
+    # `tv.plex.agents.none://<id>`, each episode's `parentGuid` follows its season, and the
+    # artwork goes with them -- the show's `art`, the seasons' `thumb`/`art`/`parentThumb`,
+    # the episodes' `art`/`parentThumb`/`grandparentThumb`/`grandparentArt` all removed.
+    # The inherited `contentRating` goes from every descendant as well. plexsim edited the
+    # show row and stopped, leaving matched seasons and episodes under an unmatched show,
+    # which is the state the client's own Match/Fix Match predicate reads per row.
+    if not show:
+        skip("unmatching a show unmatches every season and episode under it", "need a show")
+    else:
+        def row_c13r(key_c13r):
+            return (get(base, "/library/metadata/%s" % key_c13r)[1].get("Metadata") or [{}])[0]
+        seasons_c13r = [r["ratingKey"] for r in
+                        get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or [] if r.get("type") == "season"]
+        leaves_c13r = [r["ratingKey"] for r in
+                       get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+        matched_c13r = [k for k in seasons_c13r
+                        if str(row_c13r(k).get("guid") or "").startswith("plex://")]
+        status_c13r, _, _ = request(base, "PUT", "/library/metadata/%s/unmatch" % show)
+        after_c13r = {k: row_c13r(k) for k in [show] + seasons_c13r + leaves_c13r}
+        check("unmatching a show unmatches every season and episode under it",
+              status_c13r == 200 and bool(matched_c13r) and bool(leaves_c13r)
+              and after_c13r[show].get("guid") == "tv.plex.agents.none://%s" % show
+              and all(after_c13r[k].get("guid") == "local://%s" % k for k in seasons_c13r)
+              and all(after_c13r[k].get("parentGuid") == after_c13r[show].get("guid")
+                      for k in seasons_c13r)
+              and all(after_c13r[k].get("guid") == "local://%s" % k for k in leaves_c13r)
+              and all(after_c13r[k].get("grandparentGuid") == after_c13r[show].get("guid")
+                      for k in leaves_c13r)
+              and all(after_c13r[k].get("parentGuid")
+                      == "local://%s" % after_c13r[k].get("parentRatingKey") for k in leaves_c13r)
+              and all(after_c13r[k].get("summary") == "" for k in leaves_c13r)
+              and all(after_c13r[k].get("contentRating") is None for k in leaves_c13r),
+              "show %s | seasons %s | leaves %s"
+              % (after_c13r[show].get("guid"),
+                 [after_c13r[k].get("guid") for k in seasons_c13r],
+                 [(after_c13r[k].get("guid"), after_c13r[k].get("parentGuid")) for k in leaves_c13r]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
