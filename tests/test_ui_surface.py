@@ -6012,6 +6012,58 @@ def main():
           and order_w6 == list(locked_w6),
           "HTTP %s, thumb %s, key %s, order %s" % (statuses_w6, thumb_w6, key_w6, order_w6))
 
+    # Measured on plexscratch: a frame titles a show with its year, a season `<show> S19`
+    # and an episode `<show> S19 E09`; a section save pushes every row's state 3 before any
+    # state 5, in sort-title order; and renaming a playlist or a collection pushes the
+    # list's own type-15 or type-18 pair. plexsim titled rows by their own title,
+    # interleaved the batch and pushed nothing for a list.
+    def entries_w8(trigger):
+        _, frames = notifications(base, trigger, seconds=3)
+        return [(e.get("type"), e.get("state"), str(e.get("itemID")), e.get("title"))
+                for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    def row_w8(key):
+        return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+    if show and spare:
+        show_row_w8 = row_w8(show)
+        season_key_w8 = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                              if r.get("type") == "season"), {}).get("ratingKey")
+        episode_row_w8 = row_w8((get(base, "/library/metadata/%s/children" % season_key_w8)[1]
+                                 .get("Metadata") or [{}])[0].get("ratingKey"))
+        episode_w8 = entries_w8(lambda: request(base, "PUT", "/library/metadata/%s?summary.value=w8"
+                                                          % episode_row_w8.get("ratingKey")))
+        show_w8 = entries_w8(lambda: request(base, "PUT", "/library/metadata/%s?summary.value=w8" % show))
+        pair_w8 = sorted((row_w8(movie), row_w8(spare)),
+                         key=lambda r: str(r.get("titleSort") or r.get("title") or "").lower())
+        batch_w8 = entries_w8(lambda: request(base, "PUT", "/library/sections/%s/all?type=1&id=%s,%s"
+                                                          "&summary.value=w8"
+                                                          % (movie_section, pair_w8[1]["ratingKey"],
+                                                             pair_w8[0]["ratingKey"])))
+        uri_w8 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
+        _, made_w8, _ = container(base, "POST", "/playlists?type=video&smart=0&title=w8list&uri=%s" % uri_w8)
+        list_w8 = str((made_w8.get("Metadata") or [{}])[0].get("ratingKey"))
+        playlist_w8 = entries_w8(lambda: request(base, "PUT", "/playlists/%s?title=w8renamed" % list_w8))
+        request(base, "DELETE", "/playlists/%s" % list_w8)
+        _, made_w8, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w8coll&uri=%s"
+                                                % (movie_section, uri_w8))
+        coll_w8 = str((made_w8.get("Metadata") or [{}])[0].get("ratingKey"))
+        collection_w8 = entries_w8(lambda: request(base, "PUT", "/library/collections/%s?title=w8collrenamed"
+                                                               % coll_w8))
+        request(base, "DELETE", "/library/collections/%s" % coll_w8)
+        episode_title_w8 = "%s S%02d E%02d" % (show_row_w8.get("title"), int(episode_row_w8.get("parentIndex") or 0),
+                                               int(episode_row_w8.get("index") or 0))
+        show_title_w8 = "%s (%s)" % (show_row_w8.get("title"), show_row_w8.get("year"))
+        keys_w8 = [str(r["ratingKey"]) for r in pair_w8]
+        check("a frame names a show with its year and an episode by S and E; a batch and a list frame as measured",
+              [e[3] for e in episode_w8] == [episode_title_w8] * 2 and [e[3] for e in show_w8] == [show_title_w8] * 2
+              and [(e[1], e[2]) for e in batch_w8] == [(3, keys_w8[0]), (3, keys_w8[1]), (5, keys_w8[0]), (5, keys_w8[1])]
+              and playlist_w8 == [(15, 3, list_w8, "w8renamed"), (15, 5, list_w8, "w8renamed")]
+              and collection_w8 == [(18, 3, coll_w8, "w8collrenamed"), (18, 5, coll_w8, "w8collrenamed")],
+              "%s / %s / %s / %s / %s" % ([e[3] for e in episode_w8][:1], [e[3] for e in show_w8][:1],
+                                         [(e[1], e[2]) for e in batch_w8], playlist_w8, collection_w8))
+    else:
+        skip("a frame names a show with its year and an episode by S and E; a batch and a list frame as measured",
+             "need a show and a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
