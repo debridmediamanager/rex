@@ -7261,6 +7261,33 @@ def main():
         skip("a match needs a name, an empty guid renames, and a guid another row holds merges",
              "need a second movie")
 
+    # Measured on plexscratch: a scan's `updated` frames carry a Context naming the library,
+    # and a SHOW library steps per SEASON ("Scanning <show>/Season 02", subtitle
+    # "<show> - Season 02") where a movie library steps per movie. plexsim sent no Context
+    # and stepped a show library by show.
+    if show_section:
+        _, frames_c10j = notifications(
+            base, lambda: request(base, "GET", "/library/sections/%s/refresh" % show_section),
+            seconds=4)
+        updates_c10j = [(a.get("Activity") or {}) for f in frames_c10j or []
+                        for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []
+                        if a.get("event") == "updated"]
+        messages_c10j = [p.get("message") for f in frames_c10j or []
+                         for p in (f.get("NotificationContainer") or {}).get("ProgressNotification") or []]
+        stepped_c10j = [a for a in updates_c10j if a.get("subtitle")]
+        check("a scan names its library in a Context and steps a show library by season",
+              stepped_c10j
+              and all((a.get("Context") or {}).get("librarySectionID") == str(show_section)
+                      for a in stepped_c10j)
+              and all(" - Season " in (a.get("subtitle") or "") for a in stepped_c10j)
+              and any("/Season " in (m or "") for m in messages_c10j),
+              "subtitles %s, contexts %s, messages %s"
+              % ([a.get("subtitle") for a in stepped_c10j],
+                 [a.get("Context") for a in stepped_c10j], messages_c10j))
+    else:
+        skip("a scan names its library in a Context and steps a show library by season",
+             "need a show library")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
