@@ -8366,31 +8366,91 @@ class PlexSim:
             series = [s for s in series if s["at"] > int(since)]
         return self.bare_container(size=len(series), StatisticsResources=series)
 
+    # What each butler task pushes, measured task by task on a writable copy of the
+    # reference: the message it ends with, and the activity it runs inside (a task with no
+    # activity of its own reports only its message). Every run sits inside ONE `butler`
+    # activity called "Butler tasks", which is what the Dashboard draws while it runs.
+    BUTLER_MESSAGES = {
+        "BackupDatabase": ("The butler backed up your database.",
+                           ("general.db.backup", "Database", "Backing up database")),
+        "OptimizeDatabase": ("The butler optimized your database.",
+                             ("general.db.optimize", "Database", "Optimizing database")),
+        "CleanOldBundles": ("The butler cleaned up your old bundles.",
+                            ("general.bundle.clean", "Bundles", "Cleaning old bundles")),
+        "CleanOldCacheFiles": ("The butler deleted 0 old cache files.", None),
+        "GarbageCollectBlobs": ("The butler collected 0 old blobs.", None),
+        "RefreshLocalMedia": ("The butler refreshed 0 movies.", None),
+        "RefreshPeriodicMetadata": ("The butler refreshed 0 shows.", None),
+        "UpgradeMediaAnalysis": ("The butler upgraded 0 items.", None),
+        "LoudnessAnalysis": ("The butler analyzed the loudness of 0 tracks.", None),
+        "GenerateChapterThumbs": ("The butler generated 0 chapter thumbnails.", None),
+        "DeepMediaAnalysis": ("The butler analyzed 0 items.", None),
+        "GenerateMediaIndexFiles": ("The butler generated 0 index files.", None),
+        "RefreshLibraries": ("The butler refreshed all libraries.", None),
+    }
+
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
         if len(segments) == 1:
+            if method in ("POST", "DELETE"):
+                # Measured on a writable copy of the reference: running every enabled task,
+                # and cancelling the queue, each answer an EMPTY body. plexsim answered the
+                # task list, which a client reads as a listing rather than an acceptance.
+                if method == "POST":
+                    self.run_butler([task["name"] for task in self.BUTLER_TASKS
+                                     if task.get("enabled")])
+                return ("empty", 200)
+            if method != "GET" and method != "HEAD":
+                return ("error", 404, "plexsim: not found")
             # Measured: the ButlerTasks root carries NO size attribute, unlike
             # every MediaContainer on the surface.
             return {"ButlerTasks": {"ButlerTask": self.BUTLER_TASKS}}
         name = segments[1]
         if name not in {task["name"] for task in self.BUTLER_TASKS}:
             return ("error", 404, "plexsim: no such task")
-        if method == "DELETE":
-            # Cancelling a queued task.
-            return ("empty", 200)
         if method != "POST":
-            # Measured: a PUT to a task a real PMS HAS is a 404, not the 405
-            # plexsim answered -- only POST (run now) and DELETE (cancel) exist.
+            # Measured: every verb but POST is a 404 on a task a real PMS HAS -- the DELETE
+            # that cancels is on `/butler` itself, and plexsim answered 200 to a task DELETE,
+            # which tells the page a queued task was cancelled when none was.
             return ("error", 404, "plexsim: not found")
-        if name == "RefreshLibraries":
-            for section in self.catalog.sections:
-                for row in self.catalog.section_items(section["key"]):
-                    self.library.finish_activity(
-                        self.library.add_activity(row.get("title") or "", progress=-1))
-            # The message a real PMS pushes when this task finishes, verbatim.
-            self.notify_progress("The butler refreshed all libraries.")
-        logger.info("BUTLER ran %s", name)
+        self.run_butler([name])
         return ("empty", 200)
+
+    def run_butler(self, names):
+        """Run named butler tasks, with the frames a real PMS pushes.
+
+        Measured on a writable copy of the reference: one `butler` activity ("Butler tasks",
+        started at -1) wraps the whole run; each task with an activity of its own starts,
+        steps and ends inside it; and each task ends with its own `progress` message. plexsim
+        pushed nothing, so the Dashboard showed no task running and no result.
+        """
+        wrapper = {"uuid": str(uuid.uuid4()), "type": "butler", "cancellable": False,
+                   "userID": 1, "title": "Butler tasks", "subtitle": "", "progress": -1}
+        self.notify_activity(wrapper, "started")
+        for name in names:
+            message, inner = self.BUTLER_MESSAGES.get(name, ("", None))
+            if inner:
+                kind, title, subtitle = inner
+                # The task's own activity, measured: started at -1 with its subtitle already
+                # set, stepping to 100, then ended.
+                activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
+                            "userID": 1, "title": title, "subtitle": subtitle, "progress": -1}
+                self.notify_activity(activity, "started")
+                for step in (10, 53, 100):
+                    activity["progress"] = step
+                    self.notify_activity(activity, "updated")
+                self.notify_activity(activity, "ended")
+            if name == "RefreshLibraries":
+                for section in self.catalog.sections:
+                    for row in self.catalog.section_items(section["key"]):
+                        self.library.finish_activity(
+                            self.library.add_activity(row.get("title") or "", progress=-1))
+            if message:
+                self.notify_progress(message)
+            logger.info("BUTLER ran %s", name)
+        wrapper["progress"] = 100
+        self.notify_activity(wrapper, "updated")
+        self.notify_activity(wrapper, "ended")
 
     def updater_status(self):
         """`/updater/status` -- plexsim never has an update to install."""
