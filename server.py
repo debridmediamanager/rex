@@ -7168,7 +7168,18 @@ class PlexSim:
                 # is nothing generating versions; a real PMS 404s this too.
                 return ("error", 404, "plexsim: no version generators")
             if method == "POST":
+                # Measured on a writable copy of the reference: a create needs a
+                # `title`, a `type` and a `uri` (each missing one is a 400), a type
+                # outside video/audio/photo is a 500, and a type that does not fit what
+                # the uri names -- `audio` or `photo` over a movie -- is a 400. plexsim
+                # created an "Untitled" list of whatever it was sent.
+                if any(query.get(name) is None for name in ("title", "type", "uri")):
+                    return ("error", 400, "plexsim: bad request")
+                if query["type"] not in ("video", "audio", "photo"):
+                    return ("error", 500, "plexsim: bad playlist type")
                 rows = self._items_for_uri(query.get("uri", ""))
+                if query["type"] != "video" and rows:
+                    return ("error", 400, "plexsim: bad request")
                 playlist = self.library.create_playlist(
                     query.get("title") or "", query.get("type") or "video", rows,
                     smart=query.get("smart") == "1", uri=query.get("uri"))

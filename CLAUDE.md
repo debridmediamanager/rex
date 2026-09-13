@@ -709,6 +709,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **A timeline refuses a position it cannot place**: a `time` past the `duration` sent
   with it, or a negative or non-numeric `time` or `duration`, is a 400.
 - **A second completion of one play answers `ignore`**, not `complete` again.
+- **Playlist writes validate like the rest**: a create needs `title`, `type` and `uri`
+  and a type that fits the uri, and a smart list refuses item writes.
 
 ## Conventions
 
