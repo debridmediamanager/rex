@@ -5838,7 +5838,20 @@ class PlexSim:
         body.update(fields)
         return {"MediaContainer": self._prune(body)}
 
-    # A hub's default row cap, measured: with no `count=` a shelf carries up to 12.
+    # A shelf's default row cap. Re-measured on zen, the 1.42.2 build plexsim
+    # reports, against a 3887-movie and 507-show library: with no `count=` a SHELF
+    # carries at most SIX rows and says `more: true` -- on the library tab, on /hubs
+    # and on the related shelf alike -- and an explicit `count=` is honoured exactly,
+    # so six is the default rather than a ceiling. The recorded 12 was never
+    # witnessed: kids holds five movies and one show, so no shelf there reaches six.
+    #
+    # It is a separate number from HUB_COUNT because the other two users of that
+    # constant are not shelves and are not capped at six: `/hubs/home/recentlyAdded`
+    # answered all 3887 rows for `type=1` on zen, and the similar-row pool is the
+    # candidate list a shelf is then cut from.
+    SHELF_COUNT = 6
+
+    # The cap on the two lists that are not shelves; see SHELF_COUNT above.
     HUB_COUNT = 12
 
     def hub(self, identifier, title, rows, count=None, **extra):
@@ -5851,7 +5864,7 @@ class PlexSim:
         client asks for `count+1` for exactly this reason -- it wants to know
         whether the row after the last visible one exists.
         """
-        limit = self.HUB_COUNT
+        limit = self.SHELF_COUNT
         if count is not None and str(count).strip().lstrip("-").isdigit():
             limit = max(int(count), 0)
         # Measured: a SHOW on a `mixed` shelf -- Recently Added TV, on the home
