@@ -10169,6 +10169,43 @@ def main():
                  sorted(k_c14z for k_c14z in bare_c14z[1]
                         if not isinstance(bare_c14z[1][k_c14z], (list, dict)))))
 
+
+    # Cycle 14: a `type=18` listing is a real query -- `title=` filters it, `sort=`
+    # orders it, the default order is titleSort -- and a collection row's `index` is its
+    # own TAG id, the number its members carry in their `Collection` tag. Measured on
+    # the copy with two collections. plexsim answered the whole collection list to every
+    # query and sent `index` 1 for all of them.
+    for name_c15a, member_c15a in (("C15 Zulu", movie), ("C15 Alpha", movie)):
+        request(base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (urllib.parse.quote(name_c15a), movie_section, urllib.parse.quote(
+                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                    % (machine, member_c15a), safe="")))
+
+    def colls_c15a(spec_c15a):
+        return [(r_c15a.get("title"), r_c15a.get("index")) for r_c15a in
+                get(base, "/library/sections/%s/all?type=18%s" % (movie_section, spec_c15a))[1]
+                .get("Metadata") or []]
+
+    mine_c15a = [c_c15a for c_c15a in colls_c15a("") if c_c15a[0].startswith("C15 ")]
+    filtered_c15a = [c_c15a for c_c15a in colls_c15a("&title=alpha")
+                     if c_c15a[0].startswith("C15 ")]
+    member_tags_c15a = {t_c15a.get("tag"): t_c15a.get("id") for t_c15a in
+                        (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                         or [{}])[0].get("Collection") or []}
+    for row_c15a in get(base, "/library/sections/%s/collections" % movie_section)[1] \
+            .get("Metadata") or []:
+        if str(row_c15a.get("title") or "").startswith("C15 "):
+            request(base, "DELETE", "/library/collections/%s" % row_c15a["ratingKey"])
+    check("a type=18 listing filters and sorts, and a collection's index is its tag id",
+          [c_c15a[0] for c_c15a in mine_c15a] == ["C15 Alpha", "C15 Zulu"]
+          and [c_c15a[0] for c_c15a in filtered_c15a] == ["C15 Alpha"]
+          and len({c_c15a[1] for c_c15a in mine_c15a}) == 2
+          and all(member_tags_c15a.get(t_c15a) == i_c15a for t_c15a, i_c15a in mine_c15a),
+          "listing %s | filtered %s | member tags %s"
+          % (mine_c15a, filtered_c15a,
+             {k_c15a: v_c15a for k_c15a, v_c15a in member_tags_c15a.items()
+              if str(k_c15a).startswith("C15 ")}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

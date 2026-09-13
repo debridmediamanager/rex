@@ -715,6 +715,12 @@ class Catalog:
                     for stream in part.get("Stream") or []:
                         mediainfo_module.stream_titles(stream)
 
+    def tag_id(self, field, name):
+        """The id the tag table gives one tag name, without needing a row to hang
+        it on. Same seed as `number_tags`, so a collection's `index` and its
+        members' `Collection` tag agree."""
+        return zlib.crc32(("%s:%s" % (field, name)).encode()) % 900000 + 1000
+
     def number_tags(self, row):
         """Give every tag on one row an id and a filter string.
 
@@ -4142,7 +4148,19 @@ class PlexSim:
         if query.get("type") == "18":
             # Plex's collection type. The Collections pivot asks for it here
             # rather than at /library/sections/{id}/collections.
+            #
+            # Cycle 14, measured on the copy with two collections: this is a real
+            # LISTING and takes the grammar -- `type=18&title=aard` answers one row of
+            # the two, `id=` one, `sort=addedAt:desc` reorders, `duplicate=1` none --
+            # and the default order is `titleSort` like every other listing
+            # (`Aardvark` before `C14 Trio`). plexsim answered the whole collection
+            # list to every one of them.
             rows = self.library.collections(section_id)
+            rows, _ = self.apply_filters(rows, query, section)
+            rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            rows = self._limited(rows, query)
             return self.listing_container(section_id, section, rows, query=query)
         self._parsed_type(query)
         source = self.typed_rows(section_id, query)
