@@ -3897,20 +3897,22 @@ class PlexSim:
             return self.secondary_container(section_id, section,
                                             CROSS_TYPE_AXES[leaf], Directory=[])
 
-        if leaf in ("unwatched", "recentlyReleased"):
-            # Listing shortcuts the hub shelves link to. Measured: `/unwatched` is
-            # a LISTING with title2 "Unplayed", not a secondary axis -- the
-            # `/filters` entry beside it advertises a boolean the grid applies.
-            rows = self.typed_rows(section_id, query)
-            extra = {}
-            if leaf == "unwatched":
-                rows = [r for r in rows if not r.get("viewCount")]
-                extra["title2"] = SECONDARY_TITLES["unwatched"]
-            else:
-                rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
-                              reverse=True)
+        if leaf == "unwatched":
+            # Measured: `/unwatched` is a LISTING with title2 "Unplayed", not a
+            # secondary axis -- the `/filters` entry beside it advertises a boolean
+            # the grid applies.
+            #
+            # `/recentlyReleased` used to be answered here beside it. Cycle 14 found
+            # it is a **404** on kids and zen alike, on both library types and with
+            # every `type=`, and that it appears nowhere in docs/findings.md, in
+            # CLAUDE.md or in either suite: it was never measured, only assumed. A
+            # 200 there is fix 4's trap from the inside -- the client reads it as
+            # "this endpoint exists and is empty" -- so it falls through to the 404.
+            rows = [r for r in self.typed_rows(section_id, query)
+                    if not r.get("viewCount")]
             return self.listing_container(
-                section_id, section, [_listing_row(r) for r in rows], **extra)
+                section_id, section, [_listing_row(r) for r in rows],
+                title2=SECONDARY_TITLES["unwatched"])
         if leaf == "search":
             # Measured again, more carefully than the first time: only the form
             # with NO `type` is a 400. With a type this is a real listing, whose

@@ -9753,6 +9753,22 @@ def main():
           "ratings %s | cross-type %s"
           % (rating_rows_c14n, sorted({v_c14n[:2] for v_c14n in cross_c14n.values()})))
 
+
+    # Cycle 14: `/library/sections/{id}/recentlyReleased` is a 404 on kids and zen
+    # alike -- both library types, every `type=`, five library/type combinations -- and
+    # it appears nowhere in findings.md, CLAUDE.md or either suite. plexsim answered a
+    # 200 listing for an endpoint nobody ever measured. `/unwatched` beside it is real
+    # and stays.
+    rr_c14o = request(base, "GET", "/library/sections/%s/recentlyReleased" % movie_section)[0]
+    rr_typed_c14o = request(base, "GET", "/library/sections/%s/recentlyReleased?type=1"
+                            % movie_section)[0]
+    unwatched_c14o = get(base, "/library/sections/%s/unwatched" % movie_section)
+    check("recentlyReleased is a 404, and unwatched beside it is still a listing",
+          rr_c14o == 404 and rr_typed_c14o == 404
+          and unwatched_c14o[0] == 200 and unwatched_c14o[1].get("title2") == "Unplayed",
+          "recentlyReleased %s/%s | unwatched %s %r"
+          % (rr_c14o, rr_typed_c14o, unwatched_c14o[0], unwatched_c14o[1].get("title2")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
