@@ -9411,6 +9411,33 @@ class PlexSim:
         #
         # Note the operators: `viewedAt>=` here is a plain `>=`, NOT the library
         # grammar's `>>`. Two query languages on one server.
+        # Cycle 14, measured case by case on kids (1.43.4) and zen (1.42.2), which
+        # agree on all nineteen: this page VALIDATES its ids. `accountID`,
+        # `librarySectionID` and `metadataItemID` are 400 for anything that is not a
+        # whole number -- `abc`, empty and `1.5` alike -- while `1`, `-1` and `01` are
+        # fine; `metadataItemID` is additionally 404 for a whole number the server
+        # holds no row for, `0` and `99999999` included. An unknown `librarySectionID`
+        # is NOT 404, it is an empty 200. `deviceID` is not validated at all: `abc`
+        # and empty are both 200. `viewedAt>=abc` and an empty one are 400s.
+        #
+        # plexsim answered 200 with `size 0` to every one of them, so a client sending
+        # a malformed accountID read "this user has no history" instead of an error,
+        # and the per-item History link on a row the server does not hold read "never
+        # played" rather than saying so.
+        for name in ("accountID", "librarySectionID", "metadataItemID"):
+            if name not in query:
+                continue
+            value = str(query.get(name) or "")
+            if not (value.lstrip("-").isdigit() and value.lstrip("-")):
+                return ("error", 400, "plexsim: bad request")
+        if "metadataItemID" in query:
+            wanted = str(query["metadataItemID"])
+            if not any(str(r.get("ratingKey")) == wanted for r in rows) \
+                    and self.catalog.items.get(int(wanted)) is None:
+                return ("error", 404, "plexsim: not found")
+        for key in ("viewedAt>", "viewedAt>=", "viewedAt<", "viewedAt<="):
+            if key in query and not str(query.get(key) or "").lstrip("-").isdigit():
+                return ("error", 400, "plexsim: bad request")
         for name, field in (("accountID", "accountID"),
                             ("deviceID", "deviceID"),
                             ("librarySectionID", "librarySectionID"),
