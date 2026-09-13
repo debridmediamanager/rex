@@ -3693,7 +3693,7 @@ Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build plexsim
 reports) over everything about a real library that is not a movie detail row — the
 territory cycle 12 opened and took one pass at. One writing to plexscratch over the
 CASCADE family: what a write to a PARENT row does to its children, which no cycle had
-ever read back. **Twenty-five findings reported, twenty-two acted on**, and for the
+ever read back. **Twenty-eight findings reported, twenty-two acted on**, and for the
 first time in the programme not one of the read hunt's findings was refuted on
 re-measurement.
 

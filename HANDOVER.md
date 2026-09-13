@@ -81,7 +81,7 @@ Coverage, measured from the repository rather than asserted:
 | 10 | 658 | 9,910 | 33 |
 | 11 | 674 | 10,176 | 14 |
 | 12 | 690 | 10,322 | 16 (of 18 reported) |
-| 13 | 899 | 10,509 | 22 (of 25 reported) |
+| 13 | 899 | 10,509 | 22 (of 28 reported) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -94,7 +94,7 @@ Cycle 12 was the first cycle pointed at a real 3,887-row library, and it found *
 things no five-clip library can show at all (tag-list caps, search caps, tag types), and one of
 them was a bug cycle 11 introduced by guessing a frame set instead of measuring it.
 
-Cycle 13 found **25 and acted on 22** — the largest single cycle since the build-out, and the
+Cycle 13 found **28 and acted on 22** — the largest single cycle since the build-out, and the
 same lesson twice over. The read hunt took the rest of zen (show libraries, deep paging, the
 axes, search at scale, the Home screen) and **not one of its fourteen findings was refuted**,
 which has not happened before; the write hunt asked a question no cycle had asked — *what does a
@@ -654,7 +654,7 @@ sent the whole list.
 ### Cycle 13 — the rest of the real library, and the cascade family
 
 Hunters: everything about a real library that is not a movie detail row (opus, read-only on kids
-AND zen); what a write to a PARENT row does to its children (fable, on plexscratch). **25
+AND zen); what a write to a PARENT row does to its children (fable, on plexscratch). **28
 findings, 22 implemented**, and for the first time none of the read hunt's were refuted.
 
 The cycle opened with three revalidations from §3.3 and two of them were findings: the light-row
