@@ -1,5 +1,5 @@
 {
- "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads.",
+ "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys.",
  "machineIdentifier": "f1x7u4e0000000000000000000000000000000f1",
  "friendlyName": "plexsim-ui-fixture",
  "sections": [
@@ -594,8 +594,8 @@
    "librarySectionKey": "/library/sections/2",
    "addedAt": 1789180059,
    "updatedAt": 1789180059,
-   "childCount": 2,
-   "leafCount": 3,
+   "childCount": 4,
+   "leafCount": 5,
    "viewedLeafCount": 0,
    "_poster_url": "https://image.tmdb.org/t/p/w342/uWpG7GqfKGQqX4YMAo3nv5OrglV.jpg",
    "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
@@ -1297,6 +1297,537 @@
    "parentRatingKey": "30002",
    "parentKey": "/library/metadata/30002",
    "parentTitle": "Season 20",
+   "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
+   "grandparentRatingKey": "20001",
+   "grandparentKey": "/library/metadata/20001",
+   "grandparentThumb": "/library/metadata/20001/thumb/33edc963d0",
+   "grandparentArt": "/library/metadata/20001/art/a46fe593d7",
+   "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+   "theme": "/library/metadata/20001/theme/1",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "grandparentSlug": "the-simpsons",
+   "grandparentTheme": "/library/metadata/20001/theme/1",
+   "chapterSource": "media"
+  },
+  {
+   "ratingKey": "30003",
+   "key": "/library/metadata/30003",
+   "type": "season",
+   "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30003",
+   "title": "Season 21",
+   "titleSort": "Season 19",
+   "index": 21,
+   "parentIndex": 1,
+   "year": 2007,
+   "summary": "",
+   "parentRatingKey": "20001",
+   "parentKey": "/library/metadata/20001",
+   "parentTitle": "The Simpsons",
+   "parentThumb": "/library/metadata/20001/thumb/33edc963d0",
+   "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "thumb": "/library/metadata/30001/thumb/b3aeffde16",
+   "art": "/library/metadata/30001/art/a46fe593d7",
+   "librarySectionID": 2,
+   "librarySectionTitle": "Debrid TV",
+   "librarySectionKey": "/library/sections/2",
+   "addedAt": 1789180059,
+   "updatedAt": 1789180059,
+   "leafCount": 1,
+   "viewedLeafCount": 0,
+   "skipCount": 0,
+   "parentStudio": "Gracie Films",
+   "parentYear": 1989,
+   "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+   "theme": "/library/metadata/20001/theme/1",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "parentSlug": "the-simpsons",
+   "parentTheme": "/library/metadata/20001/theme/1"
+  },
+  {
+   "ratingKey": "1004",
+   "key": "/library/metadata/1004",
+   "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1004",
+   "type": "episode",
+   "title": "Fixture Episode 3",
+   "titleSort": "Simpsons",
+   "originalTitle": "The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+   "year": 2007,
+   "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+   "duration": 1311769,
+   "addedAt": 1789180059,
+   "updatedAt": 1789180059,
+   "thumb": "/library/metadata/1004/thumb/b2d1f10c76",
+   "art": "/library/metadata/30001/art/a46fe593d7",
+   "contentRating": "12",
+   "Media": [
+    {
+     "id": 100400,
+     "duration": 1311769,
+     "bitrate": 9428,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "optimizedForStreaming": false,
+     "has64bitOffsets": false,
+     "Part": [
+      {
+       "id": 10040,
+       "key": "/library/parts/10040/1789180064/file.webm",
+       "duration": 1311769,
+       "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "size": 1546039833,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "hasThumbnail": false,
+       "exists": true,
+       "accessible": true,
+       "Stream": [
+        {
+         "id": 1002001,
+         "streamType": 1,
+         "default": true,
+         "codec": "h264",
+         "index": 0,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": "8",
+         "chromaSubsampling": "4:2:0",
+         "colorPrimaries": "bt709",
+         "colorTrc": "bt709",
+         "colorSpace": "bt709",
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "displayTitle": "1080p (H264)"
+        },
+        {
+         "id": 1002002,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "eac3",
+         "index": 1,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "profile": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (Dolby Digital Plus 5.1)"
+        },
+        {
+         "id": 1002003,
+         "streamType": 3,
+         "codec": "srt",
+         "index": 2,
+         "default": false,
+         "forced": false,
+         "embeddedInVideo": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "displayTitle": "English"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "id": 100401,
+     "duration": 1311769,
+     "bitrate": 9428,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "optimizedForStreaming": false,
+     "has64bitOffsets": false,
+     "Part": [
+      {
+       "id": 10041,
+       "key": "/library/parts/10041/1789180064/file.webm",
+       "duration": 1311769,
+       "file": "/plexsim/2/Fixture Episode 3 (second version).webm",
+       "size": 1546039833,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "hasThumbnail": false,
+       "exists": true,
+       "accessible": true,
+       "Stream": [
+        {
+         "id": 1002001,
+         "streamType": 1,
+         "default": true,
+         "codec": "h264",
+         "index": 0,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": "8",
+         "chromaSubsampling": "4:2:0",
+         "colorPrimaries": "bt709",
+         "colorTrc": "bt709",
+         "colorSpace": "bt709",
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "displayTitle": "1080p (H264)"
+        },
+        {
+         "id": 1002002,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "eac3",
+         "index": 1,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "profile": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (Dolby Digital Plus 5.1)"
+        },
+        {
+         "id": 1002003,
+         "streamType": 3,
+         "codec": "srt",
+         "index": 2,
+         "default": false,
+         "forced": false,
+         "embeddedInVideo": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "displayTitle": "English"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+   "originallyAvailableAt": "2007-12-16",
+   "tagline": "Just a product of society that's lost its good manners.",
+   "rating": 8.0,
+   "audienceRating": 8.0,
+   "studio": "Gracie Films",
+   "Genre": [
+    {
+     "tag": "Animation"
+    },
+    {
+     "tag": "Comedy"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Dan Castellaneta",
+     "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg"
+    },
+    {
+     "tag": "Julie Kavner",
+     "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg"
+    },
+    {
+     "tag": "Nancy Cartwright",
+     "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg"
+    },
+    {
+     "tag": "Yeardley Smith",
+     "role": "Lisa Simpson / Maggie Simpson (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg"
+    },
+    {
+     "tag": "Hank Azaria",
+     "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg"
+    },
+    {
+     "tag": "Harry Shearer",
+     "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg"
+    }
+   ],
+   "index": 1,
+   "parentIndex": 21,
+   "grandparentTitle": "The Simpsons",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+   "librarySectionID": 2,
+   "librarySectionTitle": "Debrid TV",
+   "librarySectionKey": "/library/sections/2",
+   "parentRatingKey": "30003",
+   "parentKey": "/library/metadata/30003",
+   "parentTitle": "Season 21",
+   "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
+   "grandparentRatingKey": "20001",
+   "grandparentKey": "/library/metadata/20001",
+   "grandparentThumb": "/library/metadata/20001/thumb/33edc963d0",
+   "grandparentArt": "/library/metadata/20001/art/a46fe593d7",
+   "grandparentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+   "theme": "/library/metadata/20001/theme/1",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "grandparentSlug": "the-simpsons",
+   "grandparentTheme": "/library/metadata/20001/theme/1",
+   "chapterSource": "media"
+  },
+  {
+   "ratingKey": "30004",
+   "key": "/library/metadata/30004",
+   "type": "season",
+   "guid": "plex://season/2319f21a0e7c7cda123bbba3-fixture30004",
+   "title": "Season 22",
+   "titleSort": "Season 19",
+   "index": 22,
+   "parentIndex": 1,
+   "year": 2007,
+   "summary": "",
+   "parentRatingKey": "20001",
+   "parentKey": "/library/metadata/20001",
+   "parentTitle": "The Simpsons",
+   "parentThumb": "/library/metadata/20001/thumb/33edc963d0",
+   "parentGuid": "plex://show/6996d30da8bb2fdf32b8f286",
+   "thumb": "/library/metadata/30001/thumb/b3aeffde16",
+   "art": "/library/metadata/30001/art/a46fe593d7",
+   "librarySectionID": 2,
+   "librarySectionTitle": "Debrid TV",
+   "librarySectionKey": "/library/sections/2",
+   "addedAt": 1789180059,
+   "updatedAt": 1789180059,
+   "leafCount": 1,
+   "viewedLeafCount": 0,
+   "skipCount": 0,
+   "parentStudio": "Gracie Films",
+   "parentYear": 1989,
+   "_poster_url": "https://image.tmdb.org/t/p/w342/nLKZJ1ozVvYFtaOynzkShE8wN4k.jpg",
+   "_art_url": "https://image.tmdb.org/t/p/w1280/jIArNHIekrCSVgdMbKPAXpPY03Y.jpg",
+   "theme": "/library/metadata/20001/theme/1",
+   "UltraBlurColors": {
+    "topLeft": "1a1a1e",
+    "topRight": "24242a",
+    "bottomRight": "15151a",
+    "bottomLeft": "1f1f26"
+   },
+   "parentSlug": "the-simpsons",
+   "parentTheme": "/library/metadata/20001/theme/1"
+  },
+  {
+   "ratingKey": "1005",
+   "key": "/library/metadata/1005",
+   "guid": "plex://episode/a683d9c98b39e2e1915920ed-fixture1005",
+   "type": "episode",
+   "title": "Fixture Episode 4",
+   "titleSort": "Simpsons",
+   "originalTitle": "The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+   "year": 2007,
+   "summary": "Homer loses his memory--and his family--when he drinks Moe's most potent libation, the Forget-Me-Shot, in an episode that spoofs \"Eternal Sunshine of the Spotless Mind\" and \"It's a Wonderful Life.\"",
+   "duration": 1311769,
+   "addedAt": 1789180059,
+   "updatedAt": 1789180059,
+   "thumb": "/library/metadata/1005/thumb/b2d1f10c76",
+   "art": "/library/metadata/30001/art/a46fe593d7",
+   "contentRating": "12",
+   "Media": [
+    {
+     "id": 100500,
+     "duration": 1311769,
+     "bitrate": 9428,
+     "width": 1920,
+     "height": 1080,
+     "aspectRatio": 1.78,
+     "audioChannels": 6,
+     "audioCodec": "eac3",
+     "videoCodec": "h264",
+     "videoResolution": "1080",
+     "container": "mkv",
+     "videoFrameRate": "24p",
+     "videoProfile": "high",
+     "audioProfile": null,
+     "optimizedForStreaming": false,
+     "has64bitOffsets": false,
+     "Part": [
+      {
+       "id": 10050,
+       "key": "/library/parts/10050/1789180064/file.webm",
+       "duration": 1311769,
+       "file": "/plexsim/1/The.Simpsons.S19E09.Eternal.Moonshine.of.the.Simpson.Mind.1080p.AMZN.WEB.DL.DD+5.1.H.264-CtrlHD.mkv",
+       "size": 1546039833,
+       "container": "mkv",
+       "videoProfile": "high",
+       "audioProfile": null,
+       "hasThumbnail": false,
+       "exists": true,
+       "accessible": true,
+       "Stream": [
+        {
+         "id": 1002001,
+         "streamType": 1,
+         "default": true,
+         "codec": "h264",
+         "index": 0,
+         "width": 1920,
+         "height": 1080,
+         "profile": "high",
+         "level": 40,
+         "refFrames": null,
+         "bitDepth": "8",
+         "chromaSubsampling": "4:2:0",
+         "colorPrimaries": "bt709",
+         "colorTrc": "bt709",
+         "colorSpace": "bt709",
+         "frameRate": 23.976,
+         "scanType": "progressive",
+         "displayTitle": "1080p (H264)"
+        },
+        {
+         "id": 1002002,
+         "streamType": 2,
+         "selected": true,
+         "default": true,
+         "codec": "eac3",
+         "index": 1,
+         "channels": 6,
+         "audioChannelLayout": "5.1(side)",
+         "samplingRate": 48000,
+         "profile": null,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "bitrate": 640,
+         "displayTitle": "English (Dolby Digital Plus 5.1)"
+        },
+        {
+         "id": 1002003,
+         "streamType": 3,
+         "codec": "srt",
+         "index": 2,
+         "default": false,
+         "forced": false,
+         "embeddedInVideo": true,
+         "language": "English",
+         "languageCode": "eng",
+         "languageTag": "en",
+         "displayTitle": "English"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "_debrid": "https://real-debrid.com/d/EXAMPLELINKID00000",
+   "originallyAvailableAt": "2007-12-16",
+   "tagline": "Just a product of society that's lost its good manners.",
+   "rating": 8.0,
+   "audienceRating": 8.0,
+   "studio": "Gracie Films",
+   "Genre": [
+    {
+     "tag": "Animation"
+    },
+    {
+     "tag": "Comedy"
+    }
+   ],
+   "Country": [
+    {
+     "tag": "United States of America"
+    }
+   ],
+   "Role": [
+    {
+     "tag": "Dan Castellaneta",
+     "role": "Homer Simpson / Abe Simpson / Barney Gumble / Krusty the Clown / Groundskeeper Willie / Mayor Quimby (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/AmeqWhP4A46AWkM4kVphg6jOTQX.jpg"
+    },
+    {
+     "tag": "Julie Kavner",
+     "role": "Marge Simpson / Patty Bouvier / Selma Bouvier / Jacqueline Bouvier (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/87kSPYlWcHvqOVEkhdqxysiAf6w.jpg"
+    },
+    {
+     "tag": "Nancy Cartwright",
+     "role": "Bart Simpson / Maggie Simpson / Nelson Muntz / Ralph Wiggum (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/kJQEz3NAwHGdb2sQzAnBf1RmMV4.jpg"
+    },
+    {
+     "tag": "Yeardley Smith",
+     "role": "Lisa Simpson / Maggie Simpson (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/9AjPwbb3uz4GfgOPBYsy2ILvwkB.jpg"
+    },
+    {
+     "tag": "Hank Azaria",
+     "role": "Moe Szyslak / Chief Wiggum / Apu / Comic Book Guy / Carl Carlson / Superintendent Chalmers (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/yFDw4b0jucuFWNnGcBPfpYUtn16.jpg"
+    },
+    {
+     "tag": "Harry Shearer",
+     "role": "Ned Flanders / Mr. Burns / Smithers / Principal Skinner / Lenny Leonard (voice)",
+     "thumb": "https://image.tmdb.org/t/p/w185/wZpovXxQQqP7kxXPy2yj6QMbM55.jpg"
+    }
+   ],
+   "index": 1,
+   "parentIndex": 22,
+   "grandparentTitle": "The Simpsons",
+   "_poster_url": "https://image.tmdb.org/t/p/w1280/zxp6Q9XhwvUsC1agsGoYhc9cS0f.jpg",
+   "librarySectionID": 2,
+   "librarySectionTitle": "Debrid TV",
+   "librarySectionKey": "/library/sections/2",
+   "parentRatingKey": "30004",
+   "parentKey": "/library/metadata/30004",
+   "parentTitle": "Season 22",
    "parentThumb": "/library/metadata/30001/thumb/b3aeffde16",
    "grandparentRatingKey": "20001",
    "grandparentKey": "/library/metadata/20001",
