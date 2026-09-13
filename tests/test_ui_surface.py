@@ -9605,6 +9605,34 @@ def main():
              sorted({v_c14j for v_c14j in refused_c14j.values()}),
              sizes_c14j == sorted(sizes_c14j)))
 
+
+    # Cycle 14: /status/sessions/history/all VALIDATES its ids. Measured on kids and
+    # zen across nineteen cases, which agree exactly: a non-integer accountID,
+    # librarySectionID or metadataItemID is 400 (`abc`, empty and `1.5` alike, while
+    # `1`, `-1` and `01` pass); a metadataItemID naming no row is 404, `0` included; an
+    # unknown librarySectionID is an empty 200, not a 404; deviceID is not validated at
+    # all; and `viewedAt>=` refuses a non-integer. plexsim answered 200/size 0 to all
+    # of them, so a bad id read as "no history" rather than as an error.
+    def hstatus_c14k(spec_c14k):
+        return request(base, "GET", "/status/sessions/history/all?" + spec_c14k)[0]
+
+    bad_c14k = {s_c14k: hstatus_c14k(s_c14k) for s_c14k in
+                ("accountID=abc", "accountID=", "accountID=1.5", "librarySectionID=abc",
+                 "librarySectionID=", "metadataItemID=abc", "metadataItemID=",
+                 "viewedAt%3E=abc", "viewedAt%3E=")}
+    ok_c14k = {s_c14k: hstatus_c14k(s_c14k) for s_c14k in
+               ("accountID=1", "accountID=-1", "accountID=01", "librarySectionID=999",
+                "deviceID=abc", "deviceID=", "sort=viewedAt:desc")}
+    missing_c14k = {s_c14k: hstatus_c14k(s_c14k) for s_c14k in
+                    ("metadataItemID=0", "metadataItemID=99999999")}
+    here_c14k = hstatus_c14k("metadataItemID=%s" % movie)
+    check("history/all refuses a malformed id and 404s one it does not hold",
+          set(bad_c14k.values()) == {400} and set(ok_c14k.values()) == {200}
+          and set(missing_c14k.values()) == {404} and here_c14k == 200,
+          "bad %s | ok %s | missing %s | present %s"
+          % (sorted(set(bad_c14k.values())), sorted(set(ok_c14k.values())),
+             sorted(set(missing_c14k.values())), here_c14k))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
