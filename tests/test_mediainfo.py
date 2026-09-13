@@ -100,6 +100,11 @@ def _baseline(fixture):
     return out
 
 
+@check("subtitle-codec-names")
+def _subtitle_codec_names(fixture):
+    return per_stream(3, ("codec",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

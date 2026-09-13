@@ -3149,6 +3149,11 @@ display titles it sends Plex Web, and `tests/test_mediainfo.py` converts every p
 mediainfo.py and compares the result with the real analysis, presence and value. Each rule
 below is one check there, and each check failed against the code before its fix.
 
+- **A bitmap subtitle is `pgs` or `vobsub`.** fun writes `codec: pgs` for every Blu-ray
+  bitmap track (68 in the corpus) and `vobsub` for every DVD one (10), where ffprobe's
+  decoders are `hdmv_pgs_subtitle` and `dvd_subtitle`. plexsim passed ffprobe's names
+  through, and a client decides whether to burn an image subtitle in by that name.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
