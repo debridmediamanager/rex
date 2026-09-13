@@ -5728,6 +5728,29 @@ def main():
           and get(base, "/hubs/metadata/999999999")[0] == 404,
           "HTTP %s, %s" % (status_item_hubs9, [h.get("hubIdentifier") for h in hubs_rows9]))
 
+    movie_leaves9 = get(base, "/library/sections/%s/allLeaves" % movie_lib)[1]
+    movie_all9 = get(base, "/library/sections/%s/all?type=1" % movie_lib)[1].get("Metadata") or []
+    leaf_statuses9 = (get(base, "/library/sections/%s/computePath" % movie_lib)[0],
+                      get(base, "/library/sections/%s/computePath?startID=%s&endID=%s"
+                          % (movie_lib, c5_movie, c5_movie))[0],
+                      get(base, "/library/sections/%s/computePath?startID=%s&endID=999999999"
+                          % (movie_lib, c5_movie))[0],
+                      get(base, "/library/sections/%s/nearest" % movie_lib)[0])
+    albums9 = get(base, "/library/sections/%s/albums" % movie_lib)[1]
+    moment9 = get(base, "/library/sections/%s/moment" % movie_lib)[1]
+    show_leaves9 = get(base, "/library/sections/%s/allLeaves" % show_lib)[1] if show_lib else {}
+    check("a section's allLeaves, albums, moment and computePath answer as a real PMS's",
+          [r.get("ratingKey") for r in movie_leaves9.get("Metadata") or []]
+          == [r.get("ratingKey") for r in movie_all9]
+          and movie_leaves9.get("viewGroup") == "movie" and "librarySectionID" not in movie_leaves9
+          and (not show_lib or ({r.get("type") for r in show_leaves9.get("Metadata") or []} == {"episode"}
+                                and show_leaves9.get("viewGroup") == "show"))
+          and albums9.get("viewGroup") == "album" and albums9.get("size") == 0
+          and moment9.get("clusterZoomLevel") == 1 and moment9.get("content") == "secondary"
+          and leaf_statuses9 == (400, 200, 404, 400),
+          "leaves %d/%d, statuses %s" % (len(movie_leaves9.get("Metadata") or []), len(movie_all9),
+                                         leaf_statuses9))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

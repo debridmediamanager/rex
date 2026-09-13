@@ -2812,6 +2812,12 @@ anything changed.
   show and an episode alike, the four artist shelves (Most Played, Most Popular Tracks,
   Albums, Music Videos), each empty and keyed to the item in its library. An unknown id
   is a 404. plexsim 404'd the path.
+- **Six section leaves.** `allLeaves` lists every movie (sort-title order) or episode
+  (broadcast order) as listing rows, with no librarySection fields and the library's
+  type as viewGroup; `albums` is an empty "By Album" list; `cluster` and `moment` are the
+  empty "By Moment" container with `clusterZoomLevel` 1; `computePath` is a 400 without
+  both ids, a 404 for an unknown one and otherwise an empty path; `nearest` is a 400.
+  All six were 404 on plexsim.
 
 ### Emulation calibrated against the account's own claimed servers
 
