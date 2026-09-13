@@ -2798,6 +2798,9 @@ anything changed.
   `results.search.4` is the episode hub whatever else matched, `type=4` returns it alone,
   and a type with no hub (5, 8, 18) returns none. plexsim ignored `type` and numbered
   hubs by position.
+- **A section listing honours `excludeElements`.** Both servers drop the named
+  children from every row, paged or not, and `Media` becomes `mediaCount` (0 on a show)
+  plus `mediaCountOptimized` 0. plexsim applied the option to detail reads only.
 
 ### Emulation calibrated against the account's own claimed servers
 
