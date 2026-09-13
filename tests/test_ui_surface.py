@@ -9171,6 +9171,28 @@ def main():
                  [after_c13r[k].get("guid") for k in seasons_c13r],
                  [(after_c13r[k].get("guid"), after_c13r[k].get("parentGuid")) for k in leaves_c13r]))
 
+        # Re-measured on the copy: after `PUT /library/metadata/{movie}/unmatch` the server's
+    # `/activities` is EMPTY -- the whole refresh sequence runs and ends (12 frames for a
+    # one-Media row, 18 for a two-Media one). plexsim opened an `Unmatching` activity at
+    # progress 0 and never ended it, so it was still listed minutes later: the Dashboard
+    # spinner then turns for the life of the process, which is the exact failure
+    # docs/findings.md names for an activity that never ends. Cycle 9 fixed this for a
+    # season and an episode -- both go through notify_refreshed -- and left the movie path.
+    before_c13s = len(get(base, "/activities")[1].get("Activity") or [])
+    target_c13s = next((r["ratingKey"] for r in
+                        get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                        .get("Metadata") or []), None)
+    if not target_c13s:
+        skip("an unmatch leaves no activity running", "no movie left in the fixture")
+    else:
+        request(base, "PUT", "/library/metadata/%s/unmatch" % target_c13s)
+        after_c13s = get(base, "/activities")[1].get("Activity") or []
+        check("an unmatch leaves no activity running",
+              before_c13s == 0 and after_c13s == [],
+              "before %s, after %s" % (before_c13s,
+                                       [(a_c13s.get("title"), a_c13s.get("progress"))
+                                        for a_c13s in after_c13s]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

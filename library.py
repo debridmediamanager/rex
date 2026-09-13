@@ -1092,7 +1092,11 @@ class Library:
                     row["title"] = name.rsplit(".", 1)[0]
                     break
         row["updatedAt"] = _now()
-        self.add_activity(row.get("title") or "", title="Unmatching")
+        # Re-measured on the copy: a movie unmatch runs the full refresh sequence and
+        # its activity ENDS -- `/activities` is empty straight afterwards. plexsim
+        # opened an `Unmatching` activity at progress 0 and never closed it, so the
+        # Dashboard spinner turned for the life of the process. The caller pushes the
+        # refresh frames; nothing is left open here.
         return row
 
     # Measured on a writable copy of the reference by diffing the show, the season
