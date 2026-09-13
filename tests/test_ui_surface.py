@@ -6976,6 +6976,26 @@ def main():
         skip("Plex Web gets the codec in a video's and a subtitle's displayTitle, Roku the plain title",
              "need an episode")
 
+    # A catalog built before cycle 10's media rules still loads right: the resolution label and
+    # aspect ratio are recomputed from the Media's own size, a stored `profile: 0` / `level: -99`
+    # is dropped, and the titles are composed after those fields are corrected (the rules are
+    # in tests/test_mediainfo.py). plexsim served a stored 1920x800 row as 720 / 2.4 / 0 / -99.
+    media_c10b = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                  .get("Media") or [{}])[0]
+    video_c10b = next((s for p in media_c10b.get("Part") or [] for s in p.get("Stream") or []
+                       if s.get("streamType") == 1), {})
+    if (media_c10b.get("width"), media_c10b.get("height")) == (1920, 800):
+        check("a stored catalog row's resolution, aspect ratio and unknown markers are corrected at load",
+              media_c10b.get("videoResolution") == "1080" and media_c10b.get("aspectRatio") == 2.35
+              and video_c10b.get("profile") not in ("0",) and video_c10b.get("level") != -99
+              and media_c10b.get("videoProfile") != "0",
+              "videoResolution %r, aspectRatio %r, profile %r, level %r, videoProfile %r"
+              % (media_c10b.get("videoResolution"), media_c10b.get("aspectRatio"), video_c10b.get("profile"),
+                 video_c10b.get("level"), media_c10b.get("videoProfile")))
+    else:
+        skip("a stored catalog row's resolution, aspect ratio and unknown markers are corrected at load",
+             "the fixture movie is not the 1920x800 one")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

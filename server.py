@@ -524,7 +524,6 @@ class Catalog:
                 self._children.setdefault(str(parent), []).append(rating_key)
 
         self._number_tags()
-        self._retitle_streams()
         self._strip_show_fields()
         self._apply_section_defaults()
         # Row and media rules measured after most catalogs were built; see
@@ -533,6 +532,10 @@ class Catalog:
         for row in self.items.values():
             for media in row.get("Media") or []:
                 mediainfo_module.normalize_media(media)
+        # Titles last: they are composed from the codec, language, resolution and flag
+        # fields normalize_media has just corrected. Composed first, a stored `dts` track
+        # kept a DTS title after its codec became `dca` with the `ma` profile.
+        self._retitle_streams()
         # Measured: a show's LISTING row carries `duration` (a typical episode's) and
         # `originallyAvailableAt` (its first air date) exactly as its detail does;
         # plexsim computed them for the detail page only.

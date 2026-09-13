@@ -720,6 +720,17 @@ def normalize_media(media):
         _, profile = audio_codec("dts", media.get("audioProfile"))
         media["audioCodec"] = "dca-ma" if profile == "ma" else "dca"
         media["audioProfile"] = profile
+    # A catalog built before cycle 10 stores the old resolution label, aspect ratio and
+    # profile markers, and each is derivable from the row. The aspect ratio is snapped only
+    # when it is not already one of the six: a stored row has no sample aspect ratio, and a
+    # value built from one is already right.
+    if media.get("width") and media.get("height"):
+        media["videoResolution"] = _video_resolution(media["height"], media["width"])
+        if media.get("aspectRatio") not in _ASPECT_RATIOS:
+            media["aspectRatio"] = _aspect_ratio(media)
+    for holder in [media] + parts:
+        if "videoProfile" in holder:
+            holder["videoProfile"] = _video_profile(holder["videoProfile"])
     for part in parts:
         part.pop("optimizedForStreaming", None)
         part.pop("has64bitOffsets", None)
@@ -736,6 +747,10 @@ def normalize_media(media):
                 stream.update(_language_fields({"language": stream["languageCode"]}))
             if "bitDepth" in stream:
                 stream["bitDepth"] = _int_or(stream["bitDepth"], stream["bitDepth"])
+            if stream.get("streamType") == 1:
+                stream["profile"] = _video_profile(stream.get("profile"))
+                if stream.get("level") == -99:
+                    stream.pop("level")
             if stream.get("streamType") == 2 and stream.get("codec"):
                 stream["codec"], profile = audio_codec(stream["codec"], stream.get("profile"))
                 if profile:
