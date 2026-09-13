@@ -636,6 +636,42 @@ class Catalog:
                 if setting.get("id") == "flattenSeasons":
                     self.apply_flatten_seasons(section["key"], setting.get("value"))
 
+    def apply_show_prefs(self, show):
+        """The row effects of a show's own `flattenSeasons`, measured on the copy.
+
+        `flattenSeasons=1`: the show gains `skipChildren: true` and every episode
+        under it gains `skipParent: true` and **loses `parentRatingKey` and
+        `parentKey`**, keeping `parentIndex` and `parentTitle`. `=0` and `=-1` put all
+        of it back. `/children` still answers the SEASONS either way -- the client
+        decides to skip the season level on the strength of those fields.
+
+        `=2` is "hide for single-season series" at the section level; the item enum is
+        the same three values, and only `1` was exercised on a two-season show, so the
+        `2` branch follows the section rule rather than a measurement of its own.
+        """
+        stored = show.get("_prefs") or {}
+        value = str(stored.get("flattenSeasons", "-1"))
+        seasons = self.children(show["ratingKey"])
+        skip = value == "1" or (value == "2" and len(seasons) <= 1)
+        if skip:
+            show["skipChildren"] = True
+        else:
+            show.pop("skipChildren", None)
+        for leaf in self.leaves(show["ratingKey"]):
+            if skip:
+                # The season key is kept privately so `=0` can put it back: the
+                # child index still knows the parent, but the ROW must not say it.
+                leaf.setdefault("_parentRatingKey", leaf.get("parentRatingKey"))
+                leaf["skipParent"] = True
+                leaf.pop("parentRatingKey", None)
+                leaf.pop("parentKey", None)
+            else:
+                leaf.pop("skipParent", None)
+                season = leaf.pop("_parentRatingKey", None)
+                if season is not None:
+                    leaf["parentRatingKey"] = season
+                    leaf["parentKey"] = "/library/metadata/%s" % season
+
     def apply_flatten_seasons(self, section_id, value):
         """`flattenSeasons` does NOT change what /children returns.
 
@@ -5788,6 +5824,18 @@ class PlexSim:
         if leaf in ("children", "allLeaves"):
             if leaf == "children":
                 rows = self.catalog.children(rating_key)
+                if row.get("type") == "season":
+                    # Cycle 14, measured on the copy: the SHOW's `episodeSort=1` puts a
+                    # season's `/children` NEWEST FIRST (`10, 8` where the default is
+                    # `8, 10`), and `0`/`-1` put it back. `/allLeaves` and the section
+                    # listing keep broadcast order either way, so this is the season
+                    # page's own order and not a catalog-wide sort. plexsim stored the
+                    # setting and never read it.
+                    parent = self.catalog.items.get(int(row["parentRatingKey"])) \
+                        if str(row.get("parentRatingKey") or "").isdigit() else None
+                    if parent and str((parent.get("_prefs") or {})
+                                      .get("episodeSort", "-1")) == "1":
+                        rows = list(reversed(rows))
             elif row.get("type") in ("season", "episode"):
                 # Measured on both servers: `/allLeaves` below the SHOW is empty -- a
                 # season's is `size 0` with its episode-list container, not the season's
@@ -5907,11 +5955,19 @@ class PlexSim:
                     stored[name] = value
                 logger.info("ITEM PREF %s %s = %s", rating_key, name, value)
             if writes and row.get("type") == "show":
-                # Measured on a writable copy of the reference: a setting that changes how a
-                # show is read -- `showOrdering` above all -- re-reads the whole show, and
-                # the cascade is what tells every other client to refetch it. plexsim stored
-                # the value and pushed nothing.
-                self.notify_show_cascade(row)
+                # Cycle 14, re-measured on the copy with a socket open: a show's prefs
+                # write pushes **NOTHING**. Nine seconds of listening after
+                # `PUT /library/metadata/6/prefs?flattenSeasons=1` produced zero frames,
+                # on a socket that answered a title edit beside it with the expected
+                # `state 3 loading` / `state 5` pair -- so it is silence, not a dead
+                # listener. What the write does instead is change the ROWS.
+                #
+                # plexsim pushed a 79-frame refresh cascade for every prefs write and
+                # changed no row at all: it told every client on the socket that the
+                # whole show tree had been re-read, and then did not do the one thing
+                # the setting means. Cycle 9 recorded the cascade from `showOrdering`,
+                # whose own row effects are a re-match this catalog cannot do.
+                self.catalog.apply_show_prefs(row)
             return ("empty", 200)
         if leaf == "subtitles":
             if method == "POST":

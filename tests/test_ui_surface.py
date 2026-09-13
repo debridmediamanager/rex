@@ -9978,6 +9978,62 @@ def main():
                   % (one_c14v, two_c14v, three_c14v,
                      first_c14v["ratingKey"], later_c14v["ratingKey"]))
 
+
+    # Cycle 14: a show's prefs write pushes NOTHING (measured with a socket open on the
+    # copy -- nine seconds, zero frames, on a listener that answered a title edit with
+    # the usual pair) and changes the ROWS instead. `flattenSeasons=1` sets
+    # `skipChildren` on the show and `skipParent` on every episode while removing their
+    # `parentRatingKey`/`parentKey`; `episodeSort=1` puts a season's `/children` newest
+    # first. plexsim pushed a 79-frame cascade and changed nothing.
+    if not show:
+        skip("a show's prefs write changes the rows and pushes no frames", "need a show")
+    else:
+        seasons_c14w = [r.get("ratingKey") for r in
+                        get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or [] if r.get("type") == "season"]
+
+        def leafrow_c14w():
+            rows_c14w = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+            return (get(base, "/library/metadata/%s" % rows_c14w[0]["ratingKey"])[1]
+                    .get("Metadata") or [{}])[0] if rows_c14w else {}
+
+        def showrow_c14w():
+            return (get(base, "/library/metadata/%s" % show)[1].get("Metadata") or [{}])[0]
+
+        before_c14w = (showrow_c14w().get("skipChildren"), leafrow_c14w().get("skipParent"),
+                       "parentRatingKey" in leafrow_c14w())
+        request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=1" % show)
+        flat_c14w = (showrow_c14w().get("skipChildren"), leafrow_c14w().get("skipParent"),
+                     "parentRatingKey" in leafrow_c14w())
+        seasons_still_c14w = [r.get("ratingKey") for r in
+                              get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                              .get("Metadata") or [] if r.get("type") == "season"]
+        request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=0" % show)
+        back_c14w = (showrow_c14w().get("skipChildren"), leafrow_c14w().get("skipParent"),
+                     "parentRatingKey" in leafrow_c14w())
+        order_c14w = []
+        if seasons_c14w:
+            def kids_c14w():
+                return [r.get("ratingKey") for r in
+                        get(base, "/library/metadata/%s/children" % seasons_c14w[-1])[1]
+                        .get("Metadata") or []]
+            plain_c14w = kids_c14w()
+            request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=1" % show)
+            sorted_c14w = kids_c14w()
+            request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=0" % show)
+            restored_c14w = kids_c14w()
+            order_c14w = [plain_c14w, sorted_c14w, restored_c14w]
+    check("a show's prefs write changes the rows and pushes no frames",
+          bool(show) and before_c14w == (None, None, True)
+          and flat_c14w == (True, True, False) and back_c14w == (None, None, True)
+          and seasons_still_c14w == seasons_c14w
+          and (len(order_c14w[0]) < 2
+               or (order_c14w[1] == list(reversed(order_c14w[0]))
+                   and order_c14w[2] == order_c14w[0])),
+          "before %s | flattened %s | back %s | seasons kept %s | order %s"
+          % (before_c14w, flat_c14w, back_c14w, seasons_still_c14w == seasons_c14w,
+             order_c14w))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
