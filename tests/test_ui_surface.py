@@ -10127,6 +10127,48 @@ def main():
               "showOrdering %d | flattenSeasons %d | episodeSort %d | useOriginalTitle %d"
               % (len(ordering_c14y), len(flatten_c14y), len(sortpref_c14y), len(title_c14y)))
 
+
+    # Cycle 14: a collection answers `/children` on the METADATA path -- the path its
+    # own row's `key` points at -- with a full secondary container carrying `key`,
+    # `parentIndex` (its TAG id), `parentTitle`, `title2`, `nocache` and the
+    # librarySection triple, while `/library/collections/{id}/children` beside it stays
+    # the bare `{size: N}`. Measured on the copy. plexsim 404'd the metadata form, so a
+    # collection page drew nothing.
+    made_c14z = request(base, "POST", "/library/collections?type=1&title=C14Kids&smart=0"
+                        "&sectionId=%s&uri=%s"
+                        % (movie_section, urllib.parse.quote(
+                            "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                            % (machine, movie), safe="")))
+    coll_c14z = None
+    for row_c14z in get(base, "/library/sections/%s/collections" % movie_section)[1] \
+            .get("Metadata") or []:
+        if row_c14z.get("title") == "C14Kids":
+            coll_c14z = row_c14z
+    if coll_c14z is None:
+        skip("a collection answers /children on the metadata path", "collection not created")
+    else:
+        meta_c14z = get(base, "/library/metadata/%s/children" % coll_c14z["ratingKey"])
+        bare_c14z = get(base, "/library/collections/%s/children" % coll_c14z["ratingKey"])
+        body_c14z = meta_c14z[1] or {}
+        detail_c14z = (get(base, "/library/metadata/%s" % coll_c14z["ratingKey"])[1]
+                       .get("Metadata") or [{}])[0]
+        request(base, "DELETE", "/library/collections/%s" % coll_c14z["ratingKey"])
+        check("a collection answers /children on the metadata path",
+              meta_c14z[0] == 200 and body_c14z.get("size") == 1
+              and body_c14z.get("key") == str(coll_c14z["ratingKey"])
+              and body_c14z.get("parentTitle") == "C14Kids"
+              and body_c14z.get("title2") == "C14Kids"
+              and body_c14z.get("nocache") is True
+              and body_c14z.get("parentIndex") == detail_c14z.get("index")
+              and bare_c14z[0] == 200
+              and sorted(k_c14z for k_c14z in bare_c14z[1]
+                         if not isinstance(bare_c14z[1][k_c14z], (list, dict))) == ["size"],
+              "metadata %s size=%s key=%r parentIndex=%r nocache=%r | collections form %s"
+              % (meta_c14z[0], body_c14z.get("size"), body_c14z.get("key"),
+                 body_c14z.get("parentIndex"), body_c14z.get("nocache"),
+                 sorted(k_c14z for k_c14z in bare_c14z[1]
+                        if not isinstance(bare_c14z[1][k_c14z], (list, dict)))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

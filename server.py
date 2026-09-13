@@ -5487,6 +5487,31 @@ class PlexSim:
                                    "thumb": "%s?width=200&height=300" % composite,
                                    "selected": True, "provider": "default"}],
                 _xml={"Metadata": "Photo"})
+        if len(segments) == 4 and segments[3] == "children" and collection is not None:
+            # Cycle 14, measured on the copy: a collection answers `/children` on the
+            # METADATA path with a full secondary container -- `key` (the bare id),
+            # `parentIndex` (the collection's TAG id), `parentTitle` and `title2` (its
+            # title), `title1` (the library), the librarySection triple, `nocache`,
+            # `viewGroup` the member type and `viewMode` 65592 -- while
+            # `/library/collections/{id}/children` beside it answers the BARE
+            # `{size: N}` container. plexsim 404'd the metadata form, which is the one
+            # the client builds from a collection row's own `key`, so a collection page
+            # opened empty.
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            rows = self.library.collection_children(collection)
+            section = self.catalog.section(collection.get("librarySectionID")) or {}
+            body = self.secondary_container(
+                collection.get("librarySectionID"), section, collection.get("title"),
+                Metadata=[_listing_row(r) for r in rows],
+                viewGroup=collection.get("subtype") or section.get("type"))
+            container = body["MediaContainer"]
+            container.pop("content", None)
+            container["key"] = str(collection["ratingKey"])
+            container["nocache"] = True
+            container["parentIndex"] = self.library._collection_row(collection).get("index")
+            container["parentTitle"] = collection.get("title")
+            return body
         if len(segments) != 3:
             return ("error", 404, "plexsim: not found")
         if method == "PUT":
