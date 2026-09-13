@@ -232,21 +232,45 @@ def _float_or_none(rate):
         return None
 
 
+# ffprobe's audio codec and profile against the ones a real PMS writes, measured on 141
+# tracks on fun and the reference. Every DTS variant is `dca`, with the profile naming the
+# variant; PCM in Matroska is `pcm` with ffprobe's sample format as its profile, while
+# Blu-ray PCM keeps its own name; and the `+ Dolby Atmos` profile ffprobe gives TrueHD and
+# E-AC-3 is not written at all. plexsim passed ffprobe's names through, and a client's
+# direct-play profile names `dca`: a `dts` track matched nothing in it.
+DTS_PROFILES = {"dts": "dts", "dts-hd ma": "ma", "dts-es": "es", "dts-hd hra": "hra",
+                "dts express": "express"}
+
+
+def audio_codec(codec, profile):
+    """(codec, profile) as a real PMS names them, from ffprobe's or from a stored row's."""
+    codec = (codec or "").lower()
+    profile = (profile or "").lower() or None
+    if codec in ("dts", "dca"):
+        return "dca", DTS_PROFILES.get(profile, profile)
+    if codec.startswith("pcm_") and codec != "pcm_bluray":
+        return "pcm", codec
+    if profile and "atmos" in profile:
+        return codec, None
+    return codec, profile
+
+
 def _audio_stream(stream, stream_id, selected):
     tags = stream.get("tags") or {}
     channels = stream.get("channels") or 2
     codec = stream.get("codec_name") or ""
+    plex_codec, plex_profile = audio_codec(codec, stream.get("profile"))
     row = {
         "id": stream_id,
         "streamType": 2,
         "selected": selected,
         "default": selected,
-        "codec": codec,
+        "codec": plex_codec,
         "index": stream.get("index"),
         "channels": channels,
         "audioChannelLayout": _channel_layout(channels),
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
-        "profile": (stream.get("profile") or "").lower() or None,
+        "profile": plex_profile,
     }
     row.update(_language_fields(tags))
     bitrate = stream.get("bit_rate")
@@ -430,6 +454,12 @@ def normalize_media(media):
         for stream in part.get("Stream") or []:
             if "bitDepth" in stream:
                 stream["bitDepth"] = _int_or(stream["bitDepth"], stream["bitDepth"])
+            if stream.get("streamType") == 2 and stream.get("codec"):
+                stream["codec"], profile = audio_codec(stream["codec"], stream.get("profile"))
+                if profile:
+                    stream["profile"] = profile
+                else:
+                    stream.pop("profile", None)
             if stream.get("streamType") == 3:
                 # The subtitle flag rules, for catalogs built before they were
                 # measured (see _subtitle_stream).
