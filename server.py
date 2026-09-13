@@ -2015,6 +2015,11 @@ class PlexSim:
             if not query.get("identifier"):
                 return ("error", 500, "plexsim: internal error")
             return ("error", 404, "plexsim: not found")
+        if segments[:2] == ["system", "agents"] and len(segments) == 3:
+            # Measured on both servers: one agent by identifier -- a real one or
+            # `nosuch.agent` -- is a 404 with an empty body. plexsim answered the whole
+            # agent list to it, which reads as "this identifier names six agents".
+            return ("error", 404, "plexsim: not found")
         if route.startswith("/system/agents"):
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
