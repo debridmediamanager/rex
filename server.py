@@ -7234,6 +7234,13 @@ class PlexSim:
             return ("empty", 200)
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""), expand=False)
+            if collection.get("smart") or not rows or any(
+                    r.get("type") != collection.get("subtype") for r in rows):
+                # Measured on a writable copy of the reference: a smart collection's
+                # members are its query, and an add with no uri, an unknown key, or a row
+                # of another type -- an episode into a movie collection -- is a 400.
+                # plexsim added whatever the uri named.
+                return ("error", 400, "plexsim: bad request")
             self.library.add_collection_items(collection, rows)
             # Measured: a collection add answers the collection ROW -- with its new
             # childCount and year span -- and not the leafCountAdded/Requested pair a

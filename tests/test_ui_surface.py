@@ -6605,6 +6605,33 @@ def main():
     else:
         skip("a collection over a show or a season holds that row, typed by it", "need a show")
 
+    # Measured on plexscratch: a collection add with no uri, an unknown key, or a row of
+    # another type (an episode into a movie collection) is a 400, and so is any add to a
+    # smart collection. plexsim added whatever the uri named.
+    _, doc_w13b, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13b&uri=%s"
+                                             % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
+    key_w13b = (doc_w13b.get("Metadata") or [{}])[0].get("ratingKey")
+    uri_w13b = lambda k: quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, k))
+    leaves_w13b = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [{}] if show else [{}]
+    statuses_w13b = [container(base, "PUT", "/library/collections/%s/items" % key_w13b)[0],
+                     container(base, "PUT", "/library/collections/%s/items?uri=%s" % (key_w13b, uri_w13b(999999)))[0]]
+    if show:
+        statuses_w13b.append(container(base, "PUT", "/library/collections/%s/items?uri=%s"
+                                                    % (key_w13b, uri_w13b(leaves_w13b[0].get("ratingKey"))))[0])
+    members_w13b = [str(r.get("ratingKey")) for r in get(base, "/library/collections/%s/children" % key_w13b)[1]
+                    .get("Metadata") or []]
+    _, smart_w13b, _ = container(base, "POST", "/library/collections?type=1&smart=1&sectionId=%s&title=w13bs&uri=%s"
+                                               % (movie_section, quote("server://%s/com.plexapp.plugins.library/library"
+                                                                       "/sections/%s/all?type=1" % (machine, movie_section))))
+    smart_key_w13b = (smart_w13b.get("Metadata") or [{}])[0].get("ratingKey")
+    statuses_w13b.append(container(base, "PUT", "/library/collections/%s/items?uri=%s"
+                                                % (smart_key_w13b, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))[0])
+    request(base, "DELETE", "/library/collections/%s" % key_w13b)
+    request(base, "DELETE", "/library/collections/%s" % smart_key_w13b)
+    check("a collection add refuses no uri, an unknown key, another type and a smart collection",
+          statuses_w13b == [400] * len(statuses_w13b) and members_w13b == [str(movie)],
+          "%s, members %s" % (statuses_w13b, members_w13b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

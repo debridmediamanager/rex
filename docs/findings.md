@@ -3042,6 +3042,10 @@ the same parameters, then read back from both.
   `type=2` from a show answers `subtype: show` with one child, `type=3` from a season
   `subtype: season`; plexsim expanded both into episodes (`subtype: episode`, the show's
   three).
+- **A collection add refuses what it cannot hold.** No `uri`, an unknown key, and a row of
+  another type -- an episode into a movie collection -- are each a 400, and so is any add
+  to a smart collection, whose members are its query. plexsim added whatever the uri
+  named, the episode included.
 
 ### Emulation calibrated against the account's own claimed servers
 
