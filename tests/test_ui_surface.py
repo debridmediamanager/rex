@@ -6854,6 +6854,16 @@ def main():
           and deleted_w15g == ["started"] + ["updated"] * 6 + ["ended"],
           "%s / %s" % (bundles_w15g, deleted_w15g))
 
+    # Measured on plexscratch: a merge with no ids is a 400, an unknown id a 404, and a movie
+    # into a show a 400. plexsim answered 200 to all three and moved the movie into the show.
+    unknown_w16a, _, _ = container(base, "PUT", "/library/metadata/%s/merge?ids=999999" % movie)
+    bare_w16a, _, _ = container(base, "PUT", "/library/metadata/%s/merge" % movie)
+    cross_w16a = container(base, "PUT", "/library/metadata/%s/merge?ids=%s" % (show, movie))[0] if show else 400
+    kept_w16a = len((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0].get("Media") or [])
+    check("a merge refuses no ids, an unknown id and a row of another type",
+          (unknown_w16a, bare_w16a, cross_w16a) == (404, 400, 400) and kept_w16a >= 1,
+          "unknown %s, bare %s, cross-type %s, movie media %s" % (unknown_w16a, bare_w16a, cross_w16a, kept_w16a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
