@@ -221,14 +221,22 @@ class Library:
         # unscrobbling that episode left it at 2 (it increments, it does not
         # recompute), and unscrobbling the SHOW removed the field entirely. plexsim
         # emitted neither field on a parent at all, so a TV grid's "Last Played" sort
-        # and its viewCount filter had nothing to read.
-        if row.get("type") in ("show", "season"):
-            if watched:
-                row["viewCount"] = int(row.get("viewCount", 0)) + 1
-                row["lastViewedAt"] = _now()
-            else:
-                row.pop("viewCount", None)
-                row.pop("lastViewedAt", None)
+        # and its viewCount filter had nothing to read -- and then implemented that note
+        # the wrong way round. Re-measured one scrobble at a time on a writable copy of
+        # the reference: it is the EPISODE scrobble that adds one to its season's and
+        # its show's counter (every time, even for an episode already watched), while
+        # scrobbling the season or the show itself adds one to each episode and leaves
+        # its own counter alone; unscrobbling a season or a show removes its own.
+        if watched and row.get("type") == "episode":
+            for key in ("parentRatingKey", "grandparentRatingKey"):
+                parent = self.catalog.items.get(int(row[key])) \
+                    if str(row.get(key) or "").isdigit() else None
+                if parent is not None:
+                    parent["viewCount"] = int(parent.get("viewCount", 0)) + 1
+                    parent["lastViewedAt"] = _now()
+        elif not watched and row.get("type") in ("show", "season"):
+            row.pop("viewCount", None)
+            row.pop("lastViewedAt", None)
         self.recount(row)
         return targets
 

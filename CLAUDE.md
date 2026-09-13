@@ -715,6 +715,8 @@ precisely how the Seasons bug survived a fix attempt.
   rate or progress is a 400 even for an unknown key, and a foreign one is a 404. The
   order is fixed -- key, identifier, the write's own parameter, then identifier value
   and key -- so a refusal check that omits the identifier tests the wrong branch.
+- **It is the EPISODE scrobble that counts on its season and show**; scrobbling the season
+  or the show leaves its own `viewCount` alone, and unscrobbling it removes it.
 
 ## Conventions
 
