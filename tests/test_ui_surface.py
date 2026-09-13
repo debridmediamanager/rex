@@ -5611,6 +5611,21 @@ def main():
           and all_sections == get(base, "/library/sections")[1],
           "HTTP %s" % status_all_sections)
 
+    prefs_all9 = get(base, "/:/prefs")[1].get("Setting") or []
+    _, prefs_page9 = paged("/:/prefs", 2, 2)
+    _, identity_page9 = paged("/identity", 0, 1)
+    _, scanners_page9 = paged("/system/scanners/1", 0, 1)
+    check("every container pages, /:/prefs and /identity included, a plug-in's not",
+          prefs_page9.get("size") == 2 and prefs_page9.get("totalSize") == len(prefs_all9)
+          and prefs_page9.get("offset") == 2
+          and [s.get("id") for s in prefs_page9.get("Setting") or []]
+          == [s.get("id") for s in prefs_all9[2:4]]
+          and identity_page9.get("totalSize") == 0 and identity_page9.get("offset") == 0
+          and scanners_page9.get("Scanner") and "totalSize" not in scanners_page9,
+          "prefs %s/%s, identity %s, scanners %s" % (
+              prefs_page9.get("size"), prefs_page9.get("totalSize"),
+              identity_page9.get("totalSize"), scanners_page9.get("totalSize")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

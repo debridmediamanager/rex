@@ -673,6 +673,12 @@ precisely how the Seasons bug survived a fix attempt.
   Preferences/OnDeck/Extras/Related/Children) and `Meta` precedes a listing's rows. It
   lives in `xmlout._CHILD_ORDER`.
 
+- **Paging is a property of the RESPONSE, not of a listing.** Every MediaContainer a
+  real PMS answers honours `X-Plex-Container-Start/Size` (`/:/prefs`, `/identity`, a
+  detail row), except a plug-in framework one (`noHistory`). plexsim applies it in
+  `_page_container`, after the handler; a handler that pages itself sets `totalSize`
+  and is left alone.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
