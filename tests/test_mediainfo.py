@@ -94,6 +94,37 @@ SKIP = {
     ("kids-3-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
     ("kids-4-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
     ("kids-8-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    # The reference's untagged clips: fun leaves an untagged track without a language.
+    ("kids-1-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
 }
 
 
@@ -118,6 +149,12 @@ def _subtitle_codec_names(fixture):
 @check("audio-codec-names")
 def _audio_codec_names(fixture):
     return per_stream(2, ("codec", "profile"))(fixture)
+
+
+@check("language-fields")
+def _language_field_values(fixture):
+    fields = ("language", "languageCode", "languageTag")
+    return per_stream(2, fields)(fixture) + per_stream(3, fields)(fixture)
 
 
 def load(root):

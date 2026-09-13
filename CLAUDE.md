@@ -48,7 +48,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
 `section_meta.json`, `section_meta_show.json`, `item_prefs.json`, `section_prefs_new.json`,
-`section_filters.json`, `section_sorts.json`, `system_agents.json`) are captured
+`section_filters.json`, `section_sorts.json`, `system_agents.json`, `languages.json`) are captured
 from a real PMS and
 loaded relative to `server.py`. Keep the layout flat — the code resolves them
 with `dirname(__file__)`. A movie library and a show library have **different**
