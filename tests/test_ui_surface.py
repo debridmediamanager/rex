@@ -6508,6 +6508,26 @@ def main():
           == [made_w14e.get("playQueueSelectedItemID")],
           "HTTP %s, %s" % (cleared_status_w14e, [r.get("playQueueItemID") for r in cleared_w14e.get("Metadata") or []]))
 
+    # Measured on plexscratch: deleting a play queue's selected item answers the queue as it
+    # stood -- the old selection and version, no rows -- and the next read has the selection
+    # on the following item. plexsim left the selection on the deleted id.
+    made_w14f = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
+    ids_w14f = [r.get("playQueueItemID") for r in made_w14f.get("Metadata") or []]
+    if len(ids_w14f) >= 2:
+        queue_w14f = made_w14f.get("playQueueID")
+        _, gone_w14f, _ = container(base, "DELETE", "/playQueues/%s/items/%s" % (queue_w14f, ids_w14f[0]))
+        _, after_w14f, _ = get(base, "/playQueues/%s" % queue_w14f)
+        check("deleting the selected queue item answers the old header and moves the selection on",
+              gone_w14f.get("size") == 0 and not gone_w14f.get("Metadata")
+              and gone_w14f.get("playQueueSelectedItemID") == ids_w14f[0]
+              and gone_w14f.get("playQueueVersion") == made_w14f.get("playQueueVersion")
+              and after_w14f.get("playQueueSelectedItemID") == ids_w14f[1],
+              "answer size %s selected %s version %s; then selected %s"
+              % (gone_w14f.get("size"), gone_w14f.get("playQueueSelectedItemID"), gone_w14f.get("playQueueVersion"),
+                 after_w14f.get("playQueueSelectedItemID")))
+    else:
+        skip("deleting the selected queue item answers the old header and moves the selection on", "need two movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
