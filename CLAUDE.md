@@ -402,7 +402,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **`group=` collapses to one row per distinct value and 500s for most fields** —
   a tag, the media and per-user state are all refused, and so are `duration` and
   `userRating`. `group=decade` groups on the YEAR column, so it does not collapse
-  by decade.
+  by decade. (Cycle 14: WHICH row survives is the group's lowest `addedAt`, picked
+  BEFORE the sort, and a type-prefixed key is scoped. See the bullet below.)
 - **The decision container sends ONE pair of codes.** A direct play is only
   `mdeDecisionCode: 1000` / `"Direct play OK."`; the general/directPlay/transcode
   triples appear only when direct play is REFUSED. Sending all of them says a
@@ -466,7 +467,9 @@ precisely how the Seasons bug survived a fix attempt.
   what plexsim did for its whole life, while advertising 40 filterable fields.
   A bare `=` on a string CONTAINS -- except on `title`, where each query word must
   BEGIN a title word in order, and on `titleSort`/`summary`/`tagline`, where it is
-  equality. `==` is the exact one, and it ignores case. See `filters.py`.
+  equality. `==` is the exact one, and it ignores case. See `filters.py`. (Cycle 14:
+  the six-operator restriction is the ADVERTISED FieldType's, so the unlisted
+  `titleSort`/`summary`/`tagline`/`originalTitle` take the ordering keys as well.)
 - **What a bare `=` means depends on the field's advertised TYPE, and three types
   are not strings.** A `tag` field is exact (`contentRating=G` does not match
   `PG`) and an EMPTY value on one means "has no value at all"; a `boolean` is true
@@ -486,9 +489,10 @@ precisely how the Seasons bug survived a fix attempt.
   the field is the tail, the TYPE lookup is global, the VALUE is read from the row the
   prefix names (`type=4&show.title=` tests the show, and a scope below the row matches
   when any child does), and `/query/parse` echoes the scope back as the rule's own `type`.
-- **`/filters` is per library TYPE too** — a movie library lists 28, a show library
+- **`/filters` is per library TYPE too** — a movie library lists 22, a show library
   a different 15 whose keys carry `?type=2` (except `country`, `unmatched` and
-  `editionTitle`). The type SCOPES an axis, so `/genre?type=2` on a movie library
+  `editionTitle`). (Cycle 14: 22 is **1.42.2's**, the build plexsim reports; 1.43.4
+  answers 28. See the per-version bullet below.) The type SCOPES an axis, so `/genre?type=2` on a movie library
   is empty. Seven of the advertised axes **404 on a real PMS as well**, so
   advertising them is the faithful answer, not the bug.
 - **A media axis entry has no `fastKey` and its title is a LABEL** — `1080` prints
@@ -610,7 +614,9 @@ precisely how the Seasons bug survived a fix attempt.
   OBJECT is real (`"Related": {}`).
 - **`titleSort` is the article-stripped title, sent only when it differs, and
   `originalTitle` is never a filename.** Catalogs built earlier carry both wrong, so
-  `hierarchy.normalize_rows` runs at LOAD as well as at build.
+  `hierarchy.normalize_rows` runs at LOAD as well as at build. (Cycle 14 corrected the
+  derivation itself: the title is TRIMMED and combining-mark FOLDED before the article
+  comes off. See the bullet below.)
 - **A grid or hub row is a lighter projection** (`_grid_row`): text-only tags, no
   `Stream`, no `Rating`/`Location`/`Field`. A check that needs streams or tag ids must
   read the DETAIL row.
@@ -919,6 +925,86 @@ precisely how the Seasons bug survived a fix attempt.
   rule is never on the parent row alone.
 - **An unmatch leaves no activity running.** A real PMS runs the refresh sequence and ends
   it; an activity left open turns the Dashboard spinner for the life of the process.
+
+- **`titleSort` is the title TRIMMED and FOLDED and then article-stripped.** Leading
+  whitespace goes, Unicode combining marks are dropped (`Amélie` sorts as `Amelie`,
+  `Señor's` as `Senor's`), and only then the/a/an. Measured on zen over all 5,294 rows:
+  the model reproduces 5,289, all 21 accented rows carry the folded form and none lacks
+  a `titleSort`, and the 51 rows whose non-ASCII survives NFD (CJK, `’`, `–`) carry none
+  at all. The five misses are Spanish `La` and German `Das` -- per-item language, not
+  mechanical, and deliberately not implemented.
+- **The word matcher folds accents and the substring matchers do not.** `/hubs/search`
+  and `/library/search` fold unconditionally -- and it IS a fold, not the fuzzy score:
+  `Amelie` and `Amélie` both answer 0.93095 where `Amlie` and `Amelke` answer 0.33095
+  and `Amelia` answers nothing. `title=` on a listing folds too, but only while the
+  query holds NO SPACE: `title=Bogota` finds the accented row and `title=Bogota City`
+  and `title=Bogota ` find nothing, while every accented spelling does. The section's
+  substring box, `/autocomplete` and `title!=` do not fold at all.
+- **`/filters` and the `Meta` descriptor are PER VERSION.** 1.43.4 advertises 28 movie
+  filters, 17 at `type=4` and 6 at `type=10`; 1.42.2 -- the build plexsim reports --
+  advertises 22, 9 and 5. The difference is the media-codec axes (`hdr10plus`, `atmos`,
+  `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`) everywhere plus `hdr` and
+  `dovi` on the EPISODE list, which the movie list keeps. Types 2, 3, 8, 9, 13 and 20
+  and the Duplicates row are identical on both. `Meta.Type[].Filter` is a separate
+  fixture carrying the same split.
+- **A `group=`'s surviving row is the group's LOWEST `addedAt`, picked BEFORE the sort**
+  -- so the same SET comes back under every `sort=` and only the order changes. Keying
+  on the sort's first row makes changing the sort change which rows the grid shows. And
+  a type-prefixed group key is SCOPED like a filter: `type=4&group=show.title` collapses
+  to the show count, not to the episode-title count.
+- **The `actor` axis is the union of each item's FIRST THREE roles**, not every Role tag
+  in the library -- kids' five movies contribute 0+2+2+2+3 and its axis totalSize is
+  exactly 9; zen's is 3413 against 59,030 actor tags. Every other tag axis carries every
+  tag. The axis's own `title2` says so: "By Starring Actor".
+- **Nine columns filter although no Meta advertises them**: `viewOffset`, `skipCount`,
+  `ratingCount`, `absoluteIndex`, `lastRatedAt`, `updatedAt`, `createdAt`, `mediaCount`
+  and `originalTitle`. `/query/parse` echoes each as a Rule with an EMPTY `fieldTitle`,
+  the shape `id` already had. An unknown field answers EVERY row, which is how a known
+  one is told apart. `parentIndex` is a **500** on a listing instead, and a MOVIE row's
+  `index` column is **1** on every row although the row never emits the attribute.
+- **A string field's six operators are the ADVERTISED FieldType's restriction, not the
+  python type's.** `titleSort`, `summary`, `tagline` and `originalTitle` appear in no
+  Meta and take `>>`/`<<` (`titleSort>>=ZZZZ` is 1 row of zen's 3887), while the
+  advertised `title` and `studio` answer every row to the same key -- an ignored field.
+- **Thirteen more `sort=` keys work than the fifteen `includeAdvanced=1` advertises**:
+  `guid`, `originalTitle`, `contentRatingAge`, `studio`, `skipCount`, `absoluteIndex`,
+  `mediaSize`, `createdAt`, `type`, `viewedLeafCount`, `tagline`, `summary` and
+  `editionTitle`, each a real ordering. `leafCount` is the other direction -- both
+  references 500 it, along with `childCount`, `slug` and `key`.
+- **`/status/sessions/history/all` VALIDATES its ids.** A non-integer `accountID`,
+  `librarySectionID` or `metadataItemID` is a 400 (`abc`, empty and `1.5` alike, while
+  `1`, `-1` and `01` pass); a `metadataItemID` naming no row is a **404**, `0` included;
+  an unknown `librarySectionID` is an empty 200; `deviceID` is not validated at all; and
+  `viewedAt>=` refuses a non-integer. Answering 200/`size 0` to a bad id reads to the
+  client as "no history" rather than as an error.
+- **`group=` reaches the SECTION `allLeaves`** -- the last part of the listing grammar
+  that surface was missing -- while an ITEM's `/allLeaves?group=` is ignored.
+- **`#` is the DIGITS bucket of `firstCharacter`, not the everything-else one**: any
+  other non-letter gets a bucket of its OWN, listed after Z, and every bucket `key` is
+  percent-encoded (`%23`, `%E3%80%8E`). Raw, `#` is a URL fragment and the client's
+  request loses everything after it.
+- **`/library/sections/{id}/userRating` is a real axis with a FIXED six-bucket scale** --
+  `10` "5 stars" down to `2` "1 star" plus `-1` "Not rated", identical on both servers and
+  on both library types whatever the library holds -- and it IGNORES `type=` the way a
+  media axis does. The nine axes of OTHER library types (`mood`, `style`, `format`,
+  `subformat`, `source`, `make`, `model`, `place`, `tag`) answer an EMPTY secondary
+  container with their own `title2`, not a 404, and they VALIDATE `type=` the way `/genre`
+  does. The two families split on that, so neither inherits the other's rule.
+- **`/library/metadata/{id}/banners` and `/thumbs` are candidate lists too** (200 on both
+  versions, `banners` empty on both, `thumbs` from the media bundle). `/squareArts` is
+  **1.43.4 only** -- 404 on zen -- so plexsim, which reports 1.42.2, keeps 404ing it.
+- **`/library/sections/{id}/recentlyReleased` does not exist.** A 404 on both references,
+  every library type, with and without `type=`. plexsim answered a listing there for its
+  whole life; the name appears in no findings document and in no suite, so it was assumed
+  rather than measured. Sweeping a surface path by path against BOTH references is what
+  found it -- 59 top-level paths and 48 item leaves agreed, and this one did not.
+- **`/library/metadata/{id}/background` and `/composite` are 404s on an ITEM**, on every
+  row type, bare and versioned, while `thumb`, `art` and `poster` are 200s. A `composite`
+  is real on a playlist and a collection only; `background` is not a path at all, it is an
+  `Image` element's `type`.
+- **A sweep must run against a FRESHLY RESTARTED fixture server.** Pointed at one the UI
+  suite has finished with -- it deletes a row and a section at the end -- the same probe
+  reports `thumb` and `poster` as 404s that both references answer 200.
 
 ## Conventions
 

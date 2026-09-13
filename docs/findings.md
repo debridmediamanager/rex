@@ -3934,6 +3934,252 @@ it.
 - The codec axes' empty-value behaviour (kids nothing, zen every row) — a version
   difference, not a rule.
 
+#### The fourteenth pass — how a real PMS folds a title, and the query surface nobody had run
+
+Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build plexsim
+reports) over what two passes at a real library still had not reached — grouping,
+the people surface, real watch state, and the listing query at scale. One writing to
+plexscratch over collections, an in-progress leaf, and the six write cascades cycle 13
+measured and recorded rather than implemented.
+
+The cycle opened with two revalidations from the handover's thin-evidence list, and
+both paid: one was the largest finding of the cycle and the other closed a
+single-witness note.
+
+**`titleSort` is not the article-stripped title. It is the title trimmed, folded and
+then stripped.** The recorded rule — `_ARTICLE.sub("", title)` — carried a docstring
+saying "Measured on fun", and fun has been out of scope since cycle 11, so it was a
+single-witness rule with a dead witness. Re-measured on zen across all 5,294 rows of a
+real library (3,887 movies, 507 shows, 800 episodes), three things reproduce 5,289 of
+them exactly:
+
+- **Leading whitespace goes.** 90 rows begin with a space; every one carries a
+  `titleSort` with it removed and not one is missing one.
+- **Combining marks are folded to ASCII** — `Amélie` → `Amelie`, `Bāhubali` →
+  `Bahubali`, `Bogotá` → `Bogota`, `Café` → `Cafe`, `Señor's` → `Senor's`. All 21
+  accented rows across the three types carry the folded form, and **not one lacks a
+  `titleSort`**, which is what makes this the server's own derivation rather than
+  something the agent supplied. The fold is combining marks ONLY: the 51 rows whose
+  non-ASCII survives NFD (CJK, the curly apostrophe, an en dash) carry **no**
+  `titleSort` at all, because for them the derived string equals the title — which is
+  the recorded "sent only when it differs" rule seen from the other side.
+- **Then the article**, as before.
+
+The five rows the model misses are Spanish `La` (4) and German `Das` (1). Those are not
+mechanical — `Les hommes de la baleine`, `Die Die Delta Pi II` and `O Ultimo Portal`
+all keep theirs — so the article list is per-item language, which plexsim's catalog
+cannot express. Left alone deliberately. Only the LEADING half of the whitespace trim
+has a witness (zen holds no title with trailing or doubled whitespace); `.strip()` is
+the symmetric reading and is flagged as such.
+
+It matters because the DEFAULT listing order is `titleSort` and every tie falls back to
+it, `firstCharacter` buckets on it, and `titleSort=` is a case-insensitive equality — so
+an accented row sorted under its raw title, filed itself in the wrong letter bucket, and
+sent no `titleSort` where a real PMS sends one.
+
+**The word matcher folds accents; the substring matchers do not.** Following the fold
+out of the row and into the three matchers that read a title, on zen:
+
+| Matcher | Folds? |
+|---|---|
+| `/hubs/search`, `/library/search` (word prefix, then fuzzy) | **yes**, unconditionally |
+| `title=` on a listing (word prefix) | **yes, but only while the query holds no space** |
+| `/library/sections/{id}/search` (substring) | no |
+| `/library/sections/{id}/autocomplete` (phrase at a word start) | no |
+| `title!=` (substring) | no |
+
+The search half had to be told apart from the fuzzy matcher before it could be called a
+fold, because a one-character difference is exactly what a trigram score forgives. The
+**score** settles it: `Amelie` and `Amélie` both answer 0.93095 — the same number, the
+exact-match tier — while `Amlie`, `Amelke` and `Ameliee` answer 0.33095 and `Amelia`
+answers nothing at all. `Bogota` and `Bogotá` are both 0.53056 and `Bogotb` is 0.33056.
+The accent is invisible to the matcher; a real typo is not.
+
+The filter half is stranger and is recorded as measured rather than explained:
+`title=Bogota` finds "Bogotá: City of the Lost" and `title=Senor` finds the Señor
+episode, while `title=Bogota City`, `title=Manly Senor`, `title=Senor Elegy` and even
+`title=Bogota ` — one trailing space — find nothing, and every accented spelling of
+those finds its row. The trailing-space pair is what pins it: the space does not break
+the match, it turns the fold off. It is consistent with a folded per-word index
+answering a one-word query while a multi-word query is checked as a sequence against the
+raw title, but nothing measured that, so the code follows the observation.
+
+plexsim split its word matcher on `[^0-9a-z]`, which makes an accented letter a
+**separator**: "Amélie" became the two words "am" and "lie", so the quick search never
+found the row by its own name and did find it under a fragment of one.
+
+**`/filters` and the `Meta` descriptor advertise the 1.43.4 lists on a server that
+reports 1.42.2.** kids answers 28 filter fields for a movie library, 17 at `type=4` and
+6 at `type=10`; zen answers **22, 9 and 5**. The difference is exactly the media-codec
+axes — `hdr10plus`, `atmos`, `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`
+everywhere, plus `hdr` and `dovi` on the EPISODE list, which 1.42.2 keeps on the movie
+list only. Types 2, 3, 8, 9, 13 and 20 are identical on both servers, and so is the
+`includeAdvanced` Duplicates row. The same split runs through `Meta.Type[].Filter`,
+which is a separate fixture and is what the grid's own filter bar is built from.
+
+`section_filters.json`'s own provenance note already said "fun (1.42.2) has the same
+types, the same Duplicates rule and **shorter per-version lists**" — recorded, and never
+acted on. The canonical class-C shape: the docs agreed with themselves and the code did
+something else.
+
+##### What a real library's query surface actually does
+
+The read hunt took the parts of zen two passes had not reached: grouping, the people
+surface, real watch state and the listing query at scale. Eight findings, every one
+reproduced by the driver on both references before any code changed.
+
+**A `group=`'s surviving row is the group's lowest `addedAt`, and it is picked BEFORE
+the sort.** The old code's docstring called this an unknowable SQL artifact — "it is not
+the first in sort order, nor the lowest id" — and kept whichever row the sort had just
+put first. On kids, `group=type` (one group, all five movies) answers ratingKey **3**,
+which is the lowest `addedAt` and not the lowest ratingKey, under `sort=titleSort`,
+`titleSort:desc` and `addedAt:desc` alike. On zen the survivor is the group's minimum
+`addedAt` in 88/88 year groups, 1074/1074 studio groups, 1238/1238
+`originallyAvailableAt` groups, 3450/3450 title groups and 3887/3887 guid groups, with
+groups up to 64 members and the survivor's position in sort order ranging 0–7. (Minimum
+`addedAt` and minimum ratingKey coincide on zen, which is why kids is the discriminating
+witness.) Group and Sort are independent controls in the client, so picking the survivor
+after the sort made changing the sort change *which* rows the grid showed — and a smart
+list storing both had contents that depended on its own sort order. A tie on `addedAt`
+inside one group has no witness; the lowest ratingKey breaks it, which at least keeps the
+answer independent of the sort.
+
+**A type-prefixed `group=` is SCOPED, exactly like a filter and like a sort key.**
+`type=4&group=show.title` collapses kids' six episodes to 1 and zen's 9,287 to **505** —
+its show count — where `group=title` gives 4 and 4,443; `group=season.index` gives 2 and
+58 where `group=index` gives 3 and 1,144; `group=season.title` collapses 9,287 episodes
+to 1. plexsim stripped the prefix and read the field off the episode itself, so every
+prefixed group was the unprefixed one. The fix moved the scope resolution into
+`filter_value`, where the prefix was already being thrown away for every other caller.
+
+**`/library/sections/{id}/actor` is the union of each item's FIRST THREE roles.** Not
+every Role tag in the library: kids' five movies carry 0, 2, 2, 2 and 8 roles and its
+axis `totalSize` is exactly **9** — Tears of Steel contributes only its first three. On
+zen the axis is 3,413 while `/library/tags?type=6` is **59,030**, and all 15 sampled
+movies with three or more roles contribute exactly indices 0, 1 and 2. `?actor=<id>`
+still matches a role the axis omits, so the cap is on the AXIS and not on the tag, and it
+is actor-only — `director`, `writer`, `producer`, `genre` and `country` carry every tag.
+The axis's own `title2` says as much: **"By Starring Actor"**.
+
+**Nine columns filter although no `Meta` advertises them**, and plexsim answered the
+whole library to each. `viewOffset`, `skipCount`, `ratingCount`, `absoluteIndex`,
+`lastRatedAt`, `updatedAt`, `createdAt`, `mediaCount` and `originalTitle`. The test that
+tells a known field from an unknown one is that an **unknown** field is ignored and
+answers every row: `viewOffset>>=0` answers 0 rows on both references, while on zen
+`updatedAt>>=1780000000` is 3,861 of 3,887, `mediaCount>>=1` is 214 and
+`originalTitle>>=M` is 393. `/query/parse` echoes each as a Rule with an **empty**
+`fieldTitle`, the shape cycle 11 recorded for `id`. Two more in the same family:
+`parentIndex` is a **500** on a listing on both references rather than a filter, and a
+MOVIE row's `index` **column** is 1 on every row (`index=1` answers all 5 and all 3,887,
+`index=0`, `index=2` and `index>>=1` answer none) although no movie row, grid or detail,
+ever emits the attribute.
+
+Making `originalTitle>>=M` behave forced a smaller correction with it: **the six-operator
+restriction on a string field belongs to the advertised `FieldType` block, not to the
+python type.** `titleSort`, `summary`, `tagline` and `originalTitle` appear in no Meta and
+take the ordering keys — `titleSort>>=ZZZZ` is 0 on kids and 1 row of zen's 3,887,
+`summary>>=A` is 1,493 — while the advertised `title` and `studio` answer **every** row to
+the same key, which is what an ignored unknown field does.
+
+**Thirteen more `sort=` keys order than the fifteen `includeAdvanced=1` advertises**:
+`guid`, `originalTitle`, `contentRatingAge`, `studio`, `skipCount`, `absoluteIndex`,
+`mediaSize`, `createdAt`, `type`, `viewedLeafCount`, `tagline`, `summary` and
+`editionTitle`. They are real orderings checked against the rows zen returns —
+`sort=createdAt` comes back in `addedAt` order, `sort=mediaSize` smallest Part first — and
+plexsim answered **500** to every one, which is a blank page for python-plexapi and for
+any stored smart-list URI naming one. `leafCount` runs the other way: both references
+500 it, along with `childCount`, `slug`, `key` and any unknown key, while plexsim sorted
+by it happily.
+
+**`/status/sessions/history/all` validates its ids**, across nineteen cases on which both
+references agree exactly. A non-integer `accountID`, `librarySectionID` or
+`metadataItemID` is a **400** — `abc`, empty and `1.5` alike, while `1`, `-1` and `01`
+pass — a `metadataItemID` naming no row is a **404** (`0` included), an unknown
+`librarySectionID` is an empty 200 rather than a 404, `deviceID` is not validated at all,
+and `viewedAt>=` refuses a non-integer. plexsim answered 200 with `size 0` to every one,
+so a client sending a malformed `accountID` read "this user has no history" instead of an
+error, and the per-item History link on a row the server does not hold read "never
+played".
+
+**`group=` reaches the SECTION `allLeaves`** — the last part of the listing grammar cycle
+11 left out of it. kids' 6 episodes group to 3 and zen's 9,287 to 1,144, the same number
+as the grid's `type=4&group=index`. An ITEM's `/allLeaves?group=` is ignored on both
+references, so only the section form takes it.
+
+**`#` is the DIGITS bucket of `firstCharacter`, not the everything-else one, and every
+bucket key is percent-encoded.** Reconstructed against zen's own axis over all 3,887
+rows: the 29 rows in `#` are exactly the 29 whose sort title starts with 0–9, and the one
+row whose title starts with `『` gets a bucket of its **own**, key `%E3%80%8E`, listed
+after Z. The `#` bucket's key is `%23`. plexsim folded every non-letter into `#` and
+emitted the key raw — and raw, `#` is a URL fragment, so the client's request for that
+bucket loses everything after it. The encoding convention is corroborated on kids, whose
+other axes encode the same way (`contentRating` key `Not%20Rated`).
+
+##### The axis surface, swept path by path
+
+With the read hunt's findings landed, the driver swept the surface mechanically —
+every secondary axis, every section leaf, every top-level path and every item leaf,
+each fetched from kids and zen and from plexsim, reporting only the paths where **both
+references agree and plexsim differs**. 59 top-level paths and 48 item leaves agreed
+exactly. Four things did not.
+
+**`/library/sections/{id}/userRating` is a real axis, and a FIXED one.** Both servers
+answer the same six rows on a movie library and on a show library, whatever ratings the
+library actually holds: `10`/"5 stars", `8`/"4 stars", `6`/"3 stars", `4`/"2 stars",
+`2`/"1 star" and `-1`/"Not rated", under `title2` "By Rating". It is a scale, not a
+value list — which is why no row carries a `fastKey` and each title is a LABEL, the same
+shape the media axes have. plexsim 404'd it, so the Ratings entry in the filter bar
+opened nothing.
+
+**Nine axes belonging to OTHER library types answer an EMPTY secondary container, not a
+404.** On a movie library, `/mood`, `/style`, `/format`, `/subformat` and `/source`
+(music) and `/make`, `/model`, `/place` and `/tag` (photo) each answer `size` 0 with
+`content: "secondary"` and their own `title2` — "By Mood", "By Style", "By Format", "By
+Type", "By Source", "By Camera Make", "By Camera Model", "By Place", "By Tag". A 404
+there tells the client the endpoint does not exist, which is the opposite of what a real
+PMS says.
+
+**The two families disagree about `type=`, and landing them in one branch got one of
+them wrong.** A cross-type axis VALIDATES it — `?type=abc` and an empty `?type=` are
+500s and `?type=2` is a 200, exactly as `/genre` behaves under cycle 13's rule — while
+`userRating` IGNORES it completely, answering 200 to all three the way `/resolution`
+does. The first version of this fix put both in the same branch, ahead of the type
+check; the driver caught it by running cycle 13's own rule against the new axes rather
+than assuming they inherited it.
+
+**`/library/sections/{id}/recentlyReleased` is a 404 on both references, and plexsim
+invented it.** Five library/type combinations across kids and zen, with and without
+`type=`: 404 every time. The string appears nowhere in `docs/findings.md`, in
+`CLAUDE.md` or in either suite — only in `server.py`, where it had been answered as a
+listing sorted by release date beside the real `/unwatched`. It was never measured, only
+assumed, and a 200 there is fix 4's trap from the inside: the client reads it as "this
+endpoint exists and is empty".
+
+**`/library/metadata/{id}/banners` and `/thumbs` are artwork candidate lists on both
+versions.** Same container shape as `/posters`; `banners` is empty on kids and zen alike
+and `thumbs` lists the media bundle's video thumbnails (3 on kids, 1 on zen). plexsim
+404'd both. It has no banner art and no bundle, so an empty list of the right shape is
+the honest answer — the way `/arts` already answers for a season. `/squareArts` stays a
+404 on purpose: it is 200 on kids and **404 on zen**, so it is 1.43.4-only and plexsim
+reports 1.42.2.
+
+**`/library/metadata/{id}/background` and `/composite` are 404s too.** The same sweep,
+run for a show, a season and an episode as well as a movie: both are 404 on kids and zen
+alike, bare and versioned, on every row type, while `thumb`, `art` and `poster` beside
+them are the 200s they have always been. plexsim served image bytes from both. A
+`composite` is real on a PLAYLIST and a COLLECTION — which is where plexsim's own list
+rows point, and which is served by a different handler that this leaves alone — but on a
+library ITEM there is no such path, and `background` is not a path at all: it is the
+`type` of an `Image` element.
+
+A note on method, because it nearly cost a wrong finding. The first run of this probe
+was pointed at a fixture server the UI suite had already finished writing to — by then
+it has deleted a row and a section — and it reported `thumb` and `poster` as 404s that
+the references answer 200. They are not: on a freshly restarted server all three of
+`thumb`, `art` and `poster` agree. The sweep only says where to look; every finding it
+produced was then proved fail-then-pass on a clean export of its own parent commit,
+which is what the proof driver exists for.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
