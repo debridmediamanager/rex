@@ -8358,6 +8358,37 @@ def main():
                          "POST known": 404, "GET known": 501},
           "%s" % verbs_c12l)
 
+
+    # Measured on the copy: a `server://` uri naming ANOTHER machine adds nothing, and
+    # an add that adds nothing leaves `playQueueVersion` exactly where it was. plexsim
+    # read the ratingKey out of any uri and added the item, and stepped the version on
+    # every no-op -- and the client DISCARDS a queue response whose version it does not
+    # expect, so a no-op add invalidated the queue the player was holding.
+    members_c12m = [r_c12m.get("ratingKey") for r_c12m in
+                    (get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or [])]
+    mine_c12m = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                      % (machine, members_c12m[0]))
+    status_c12m, queue_c12m, _ = container(
+        base, "POST", "/playQueues?type=video&uri=%s&key=%s&shuffle=0&repeat=0&continuous=0"
+        % (mine_c12m, quote("/library/metadata/%s" % members_c12m[0])))
+    id_c12m = queue_c12m.get("playQueueID")
+    start_c12m = (len(queue_c12m.get("Metadata") or []), queue_c12m.get("playQueueVersion"))
+    def add_c12m(uri_c12m):
+        _, body_c12m, _ = container(base, "PUT", "/playQueues/%s?uri=%s" % (id_c12m, uri_c12m))
+        return len(body_c12m.get("Metadata") or []), body_c12m.get("playQueueVersion")
+    foreign_c12m = add_c12m(quote(
+        "server://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef/com.plexapp.plugins.library"
+        "/library/metadata/%s" % members_c12m[-1]))
+    unknown_c12m = add_c12m(quote("server://%s/com.plexapp.plugins.library"
+                                  "/library/metadata/99999999" % machine))
+    real_c12m = add_c12m(quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                               % (machine, members_c12m[-1])))
+    check("another server's uri adds nothing, and a no-op add leaves the version alone",
+          status_c12m == 200 and foreign_c12m == start_c12m and unknown_c12m == start_c12m
+          and real_c12m[0] == start_c12m[0] + 1 and real_c12m[1] != start_c12m[1],
+          "start %s, foreign %s, unknown %s, real %s"
+          % (start_c12m, foreign_c12m, unknown_c12m, real_c12m))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
