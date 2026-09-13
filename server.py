@@ -2721,9 +2721,11 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return ("error", 501, "plexsim: streams are embedded in the part")
 
-        if segments[:2] == ["library", "parts"] and method == "PUT":
+        if segments[:2] == ["library", "parts"] and method in ("PUT", "POST"):
             # Audio/subtitle track selection from the player or the Get Info
             # dialog: PUT /library/parts/{partID}?subtitleStreamID=&allParts=1.
+            # Measured on a writable copy of the reference: the same endpoint answers a
+            # POST identically, where plexsim 404'd it.
             return self.select_stream(segments[2] if len(segments) > 2 else "", query)
 
         if route == "/library/search":
