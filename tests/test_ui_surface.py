@@ -10261,6 +10261,33 @@ def main():
           row_t15.get("titleSort") == "Zeta Art ", repr(row_t15.get("titleSort")))
     request(base, "PUT", "/library/metadata/%s?title=%s" % (movie, quote(trim_before_t15)))
 
+    # Cycle 15: a show whose setting has never been written -- or has just been
+    # CLEARED, which is the same state -- reports `episodeSort` as `-1`, the same as
+    # its `default`. Re-read live on BOTH references while implementing the
+    # inheritance rule: kids (1.43.4) show 6 and zen (1.42.2) show 5189 both answer
+    # `-1`. `item_prefs.json` carried `0`, captured on 2026-09-12 from a show that
+    # had been written, and plexsim served that stale value for every show it holds.
+    # It matters because `-1` is the value that INHERITS the library's setting, so a
+    # captured `0` reads as a per-show refusal of it.
+    #
+    # Clear the settings first: by this point in the suite the show's prefs have been
+    # written several times, and "unwritten" is a state the suite has to restore.
+    request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=&flattenSeasons=&subtitleMode="
+            % show)
+    prefs_e15 = {s_e15.get("id"): s_e15 for s_e15 in
+                 ((get(base, "/library/metadata/%s?includePreferences=1" % show)[1]
+                   .get("Metadata", [{}])[0].get("Preferences") or {}).get("Setting") or [])}
+    check("a cleared show setting reads its own default, and episodeSort's is -1",
+          prefs_e15.get("episodeSort", {}).get("value") == "-1"
+          and prefs_e15.get("episodeSort", {}).get("default") == "-1",
+          "episodeSort=%r" % (prefs_e15.get("episodeSort"),))
+    check("every tri-state show setting reads its own default once cleared",
+          all(prefs_e15[n_e15]["value"] == prefs_e15[n_e15]["default"]
+              for n_e15 in ("episodeSort", "flattenSeasons", "subtitleMode")
+              if n_e15 in prefs_e15),
+          str({n_e15: (v_e15.get("value"), v_e15.get("default"))
+               for n_e15, v_e15 in prefs_e15.items()}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
