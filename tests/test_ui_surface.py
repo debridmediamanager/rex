@@ -3566,23 +3566,35 @@ def main():
                                "&pinnedContentDirectoryID=%s" % (movie_section, movie_section))
     hubs = promoted.get("Hub") or []
     identifiers = [h.get("hubIdentifier") for h in hubs]
+    # RE-MEASURED in cycle 13 on zen, the 1.42.2 build plexsim reports: this call sends
+    # `pinnedContentDirectoryID`, and with it the third shelf is `home.movies.recent.N`,
+    # not `movie.recentlyadded.N`. The bare call still answers the latter, and the check
+    # below covers it. kids (1.43.4) ignores the parameter, which is how the pinned
+    # shape went unnoticed for twelve cycles.
+    _, bare_promoted, _ = get(base, "/hubs/promoted?contentDirectoryID=%s" % movie_section)
+    bare_ids = [h.get("hubIdentifier") for h in bare_promoted.get("Hub") or []]
     check("promoted answers Continue Watching, On Deck and ONE library's shelf",
           identifiers == ["home.continue", "home.ondeck",
-                          "movie.recentlyadded.%s" % movie_section],
-          ", ".join(str(i) for i in identifiers))
+                          "home.movies.recent.%s" % movie_section]
+          and bare_ids == ["home.continue", "home.ondeck",
+                           "movie.recentlyadded.%s" % movie_section],
+          "pinned %s | bare %s" % (", ".join(str(i) for i in identifiers),
+                                   ", ".join(str(i) for i in bare_ids)))
     check("every promoted shelf carries key, context, style and promoted",
           all(h.get("key") and h.get("context") and h.get("style")
               and h.get("promoted") is True for h in hubs),
           ", ".join("%s/%s" % (h.get("context"), h.get("style")) for h in hubs))
     # Measured: the context drops a trailing section id -- it names the KIND of
     # shelf, which is why it is shared across libraries.
-    recent = next((h for h in hubs if "recentlyadded" in (h.get("hubIdentifier") or "")), {})
+    # The pinned form of the shelf, for the reason given above.
+    recent = next((h for h in hubs if "recent" in (h.get("hubIdentifier") or "")), {})
     check("a shelf's context drops the section id and hubKey names its rows",
-          recent.get("context") == "hub.movie.recentlyadded"
+          recent.get("context") == "hub.home.movies.recent"
           and (recent.get("hubKey") or "").startswith("/library/metadata/")
           and "," in (recent.get("hubKey") or ",")
-          and recent.get("key") == "/library/sections/%s/all?sort=addedAt:desc" % movie_section,
-          "%s | %s" % (recent.get("context"), recent.get("hubKey")))
+          and recent.get("key") == ("/hubs/home/recentlyAdded?type=1"
+                                    "&pinnedContentDirectoryID=%s" % movie_section),
+          "%s | %s | %s" % (recent.get("context"), recent.get("hubKey"), recent.get("key")))
     if show_section:
         _, tv_promoted, _ = get(base, "/hubs/promoted?contentDirectoryID=%s" % show_section)
         tv = next((h for h in tv_promoted.get("Hub") or []
@@ -3703,10 +3715,14 @@ def main():
     # Indexed defensively: a server that answers fewer hubs must FAIL this check,
     # not crash the run before the rest of the suite gets to speak.
     second = hubs[1] if len(hubs) > 1 else {}
+    # RE-MEASURED in cycle 13 on four queries that match NOTHING, on both servers:
+    # `movie` is FIFTH and `collection` FOURTEENTH. The order plexsim had -- movie
+    # first, collection seventh -- was never the base order; a query with fuzzy hits
+    # promotes the hubs that scored, which is what an earlier reading picked up.
     check("search answers all seventeen typed hubs, empty ones included",
           len(hubs) == 17 and [h.get("hubIdentifier") for h in hubs][:5]
-          == ["movie", "show", "artist", "album", "episode"]
-          and second.get("title") == "Shows",
+          == ["show", "artist", "album", "episode", "movie"]
+          and second.get("title") == "Artists",
           "%d hub(s), second is %r" % (len(hubs), second.get("title")))
     check("every search hub has an empty context, a shelf style and no hubKey",
           all(h.get("context") == "" and h.get("style") == "shelf"
@@ -3834,9 +3850,16 @@ def main():
         status, hubs, _ = get(base, "/hubs/sections/%s" % section_id)
         shelves = hubs.get("Hub") or []
         identifiers = [h.get("hubIdentifier") for h in shelves]
-        check("section %s offers the five measured shelves" % section_id,
-              status == 200 and len(shelves) == 5
-              and identifiers[0] == "%s.inprogress.%s" % (prefix, section_id),
+        # RE-MEASURED in cycle 13 on zen, the 1.42.2 build plexsim reports: a movie
+        # library carries SIX shelves and a show library SEVEN. kids (1.43.4) builds
+        # neither `movie.topunwatched` nor `tv.startwatching`/`tv.toprated` although
+        # its own rows qualify for all three, so the five were a version difference
+        # read as a complete list.
+        wanted_shelves = 7 if prefix == "tv" else 6
+        check("section %s offers the shelves a 1.42.2 server builds" % section_id,
+              status == 200 and len(shelves) == wanted_shelves
+              and identifiers[0] == "%s.inprogress.%s" % (prefix, section_id)
+              and identifiers[-1] == "%s.recentlyviewed.%s" % (prefix, section_id),
               ", ".join(str(i) for i in identifiers))
         check("every shelf is a shelf with a context and a key",
               all(h.get("style") == "shelf" and h.get("context") and h.get("key")
@@ -9246,13 +9269,19 @@ def main():
         seasons_c13u = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
                         for r in get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
                         .get("Metadata") or [] if r.get("type") == "season"]
-        if not show_rating_c13u or not leaves_c13u:
+        if not leaves_c13u:
             skip("an episode carries its show's content rating and a season carries none",
-                 "the show has no content rating left")
+                 "no episode left under the show")
         else:
+            # The show's CURRENT rating is not the test: an earlier check clears it, and the
+            # episodes took their copy when the catalog loaded. What has to hold is that
+            # every episode carries one and they all carry the same one, that no season
+            # does, and that the show -- while it still has one -- agrees.
+            ratings_c13u = {r_c13u.get("contentRating") for r_c13u in leaves_c13u}
             check("an episode carries its show's content rating and a season carries none",
-                  all(r_c13u.get("contentRating") == show_rating_c13u for r_c13u in leaves_c13u)
-                  and all(r_c13u.get("contentRating") is None for r_c13u in seasons_c13u),
+                  len(ratings_c13u) == 1 and None not in ratings_c13u
+                  and all(r_c13u.get("contentRating") is None for r_c13u in seasons_c13u)
+                  and (not show_rating_c13u or show_rating_c13u in ratings_c13u),
                   "show %r | episodes %s | seasons %s"
                   % (show_rating_c13u, [r_c13u.get("contentRating") for r_c13u in leaves_c13u],
                      [r_c13u.get("contentRating") for r_c13u in seasons_c13u]))
