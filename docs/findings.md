@@ -3076,6 +3076,10 @@ the same parameters, then read back from both.
 - **A movie's written setting shows on its row.** After `PUT
   /library/metadata/{movie}/prefs?useOriginalTitle=1` the movie's detail row carries
   `useOriginalTitle: "1"`, as a show's does for `episodeSort`; plexsim stored it unseen.
+- **A library create applies its `prefs[...]` and answers a bare container.** A TV library
+  created with `prefs[flattenSeasons]=1&prefs[episodeSort]=1` reads both back as 1, and the
+  201's container carries only `size` beside the Directory; plexsim dropped the prefs
+  (-1 and 0) and sent the library container's identifier, media-tag pair and allowSync.
 
 ### Emulation calibrated against the account's own claimed servers
 
