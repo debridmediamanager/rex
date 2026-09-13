@@ -149,7 +149,13 @@ class Sessions:
 
         player = {"address": address or "", "state": state or "playing",
                   "local": _private(address), "relayed": False,
-                  "secure": False, "userID": 1}
+                  "secure": False, "userID": 1,
+                  # The client profile the server picked for this session. Measured on a
+                  # writable copy of the reference, which only ever saw Plex Web: every
+                  # session row's Player carries `profile: "Web"`, and plexsim sent none.
+                  # What another product's profile reads as is not measured, so `Web` is
+                  # what every session says here.
+                  "profile": "Web"}
         for name, field in PLAYER_FROM.items():
             found = value(name)
             if found:
@@ -180,6 +186,11 @@ class Sessions:
         if state == "stopped":
             self._sessions.pop(session_id, None)
         return entry
+
+    # What a session row does NOT carry, measured on a writable copy of the reference
+    # against the same item's detail row: no `Guid` and no `Image`, where plexsim copied the
+    # detail row wholesale -- three `<Image>` children a real PMS never sends there.
+    SESSION_ROW_DROPS = ("Guid", "Image")
 
     def live(self):
         """Sessions that have not expired, oldest first."""
