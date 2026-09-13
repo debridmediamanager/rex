@@ -916,7 +916,16 @@ def _public_row(row):
     return out
 
 
-# Tag lists a grid or hub row carries, each tag reduced to its text.
+# Tag lists a grid or hub row carries, each tag reduced to its text -- and CAPPED.
+# Measured on kids (1.43.4) and zen (1.42.2) against a real library, which is the only
+# place the cap is visible: a light row carries at most 2 Genre, 2 Writer, 2 Country and
+# 3 Role, always the first of the detail row's own order, where the DETAIL row carries
+# the lot (one zen movie has 155 roles on its detail row and 3 on every listing). A
+# five-clip library cannot show this -- no item has enough tags to be truncated -- which
+# is why eleven cycles of row-shape work missed it. `Director` is not capped in any
+# sample available (the richest row in 240 zen movies has two), so it is left alone
+# rather than guessed at; `Collection` and `Label` had no sample either.
+GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3}
 GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
 
 
@@ -1071,7 +1080,7 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     for key in GRID_TAGS:
         if isinstance(out.get(key), list):
             out[key] = [{"tag": tag["tag"]} for tag in out[key]
-                        if isinstance(tag, dict) and tag.get("tag")]
+                        if isinstance(tag, dict) and tag.get("tag")][:GRID_TAG_CAPS.get(key)]
     if out.get("Media"):
         out["Media"] = [dict(media, Part=[{k: v for k, v in part.items() if k != "Stream"}
                                           for part in media.get("Part") or []])

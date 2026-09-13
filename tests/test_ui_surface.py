@@ -8066,6 +8066,30 @@ def main():
           "items %s, children %s, detail %s"
           % (weight_c11o(items_c11o), weight_c11o(children_c11o), weight_c11o(detail_c11o)))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2) against a real library: a LIGHT row
+    # carries at most 2 Genre, 2 Writer, 2 Country and 3 Role -- the first of the detail
+    # row's own order -- where the detail row carries them all (155 roles on one zen
+    # movie, 3 on every listing of it). plexsim sent the whole list on every grid, hub
+    # and search row. Invisible on a five-clip library, which is why eleven cycles
+    # missed it.
+    def tags_c12a(path_c12a, key_c12a=None):
+        status_c12a, body_c12a, _ = get(base, path_c12a)
+        rows_c12a = body_c12a.get("Metadata") or []
+        row_c12a = next((r for r in rows_c12a if str(r.get("ratingKey")) == str(key_c12a or movie)),
+                        rows_c12a[0] if rows_c12a else {})
+        return status_c12a, {el_c12a: len(row_c12a.get(el_c12a) or [])
+                             for el_c12a in ("Genre", "Writer", "Country", "Role")}
+    detail_c12a = tags_c12a("/library/metadata/%s" % movie)
+    grid_c12a = tags_c12a("/library/sections/%s/all" % movie_section)
+    caps_c12a = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3}
+    check("a light row caps its tag lists where the detail row carries them all",
+          detail_c12a[0] == 200 and grid_c12a[0] == 200
+          and any(detail_c12a[1][el_c12a] > caps_c12a[el_c12a] for el_c12a in caps_c12a)
+          and all(grid_c12a[1][el_c12a] == min(detail_c12a[1][el_c12a], caps_c12a[el_c12a])
+                  for el_c12a in caps_c12a),
+          "detail %s, grid %s" % (detail_c12a[1], grid_c12a[1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
