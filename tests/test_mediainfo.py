@@ -251,6 +251,11 @@ def _stream_identifier(fixture):
     return sum((per_stream(kind, ("streamIdentifier",))(fixture) for kind in (1, 2, 3)), [])
 
 
+@check("codec-id")
+def _codec_id(fixture):
+    return sum((per_stream(kind, ("codecID",))(fixture) for kind in (1, 2, 3)), [])
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

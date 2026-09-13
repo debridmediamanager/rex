@@ -3207,6 +3207,9 @@ below is one check there, and each check failed against the code before its fix.
 - **`streamIdentifier` is the container's track id in decimal** -- an mp4 track number, an
   MPEG-TS PID -- and absent in Matroska. plexsim sent none. An AVI track that fun numbers
   with no id in the probe is left alone.
+- **A video stream's `codecID` is its codec tag** where the container has a real one --
+  `hev1`, `hvc1`, `dvhe`, `XVID`, `DX50`, `HDMV` -- but not `avc1`, and no audio or subtitle
+  stream carries one. plexsim sent none.
 
 ### Emulation calibrated against the account's own claimed servers
 
