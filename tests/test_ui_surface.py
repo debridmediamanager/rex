@@ -578,13 +578,13 @@ def main():
                          "&duration=100000" % movie)
     request(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=100000"
                          "&duration=100000" % movie)
-    status, history, _ = get(base, "/status/sessions/history/all")
+    status, history, _ = get(base, "/status/sessions/history/all?type=1")
     rows = history.get("Metadata") or []
     check("a completed play writes a history row", bool(rows), "%d row(s)" % len(rows))
-    _, before_scrobble, _ = get(base, "/status/sessions/history/all")
+    _, before_scrobble, _ = get(base, "/status/sessions/history/all?type=1")
     request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
                          % movie)
-    _, after_scrobble, _ = get(base, "/status/sessions/history/all")
+    _, after_scrobble, _ = get(base, "/status/sessions/history/all?type=1")
     check("a scrobble writes none",
           len(after_scrobble.get("Metadata") or [])
           == len(before_scrobble.get("Metadata") or []),
@@ -601,8 +601,8 @@ def main():
         check("history librarySectionID is a string",
               isinstance(entry.get("librarySectionID"), str),
               repr(entry.get("librarySectionID")))
-    status, paged, _ = get(base, "/status/sessions/history/all"
-                                 "?X-Plex-Container-Start=0&X-Plex-Container-Size=1")
+    status, paged, _ = get(base, "/status/sessions/history/all?type=1"
+                                 "&X-Plex-Container-Start=0&X-Plex-Container-Size=1")
     check("paged history carries totalSize and offset",
           paged.get("totalSize") is not None and paged.get("offset") == 0,
           "totalSize=%s offset=%s" % (paged.get("totalSize"), paged.get("offset")))
@@ -1394,14 +1394,16 @@ def main():
         status, _, _ = container(base, "GET", path_)
         check("refusal: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
     # The History page filters and sorts, and plexsim ignored all of it.
-    _, whole_history, _ = get(base, "/status/sessions/history/all")
+    # Cycle 15: every read here carries `type=1`. A real PMS lists NOTHING
+    # without one, so these checks were reading a page the client never sees.
+    _, whole_history, _ = get(base, "/status/sessions/history/all?type=1")
     rows = whole_history.get("Metadata") or []
     if rows:
         one = rows[0]
-        _, by_item, _ = get(base, "/status/sessions/history/all?metadataItemID=%s"
+        _, by_item, _ = get(base, "/status/sessions/history/all?type=1&metadataItemID=%s"
                                   % one.get("ratingKey"))
-        _, by_account, _ = get(base, "/status/sessions/history/all?accountID=999999")
-        _, since, _ = get(base, "/status/sessions/history/all?viewedAt%%3E=%d"
+        _, by_account, _ = get(base, "/status/sessions/history/all?type=1&accountID=999999")
+        _, since, _ = get(base, "/status/sessions/history/all?type=1&viewedAt%%3E=%d"
                                 % (int(one.get("viewedAt") or 0) + 1))
         check("history filters by item, account and viewedAt",
               all(str(r.get("ratingKey")) == str(one.get("ratingKey"))
@@ -1411,8 +1413,8 @@ def main():
               "item=%s account=%s since=%s" % (by_item.get("size"),
                                                by_account.get("size"),
                                                since.get("size")))
-        _, ascending, _ = get(base, "/status/sessions/history/all?sort=viewedAt")
-        _, descending, _ = get(base, "/status/sessions/history/all?sort=viewedAt:desc")
+        _, ascending, _ = get(base, "/status/sessions/history/all?type=1&sort=viewedAt")
+        _, descending, _ = get(base, "/status/sessions/history/all?type=1&sort=viewedAt:desc")
         up = [r.get("viewedAt") for r in ascending.get("Metadata") or []]
         down = [r.get("viewedAt") for r in descending.get("Metadata") or []]
         check("history sorts by viewedAt either way",
@@ -1427,7 +1429,7 @@ def main():
         key = str(one.get("historyKey") or "").rsplit("/", 1)[-1]
         status, deleted_row, _ = container(base, "DELETE",
                                            "/status/sessions/history/%s" % key)
-        _, left, _ = get(base, "/status/sessions/history/all")
+        _, left, _ = get(base, "/status/sessions/history/all?type=1")
         check("deleting a history row removes it",
               status == 200 and deleted_row.get("size") == 0
               and len(left.get("Metadata") or []) == len(rows) - 1,
@@ -3840,7 +3842,7 @@ def main():
           "HTTP %s" % status)
     _, top, _ = get(base, "/library/all/top?type=1&limit=5")
     rows = top.get("Metadata") or []
-    _, played, _ = get(base, "/status/sessions/history/all")
+    _, played, _ = get(base, "/status/sessions/history/all?type=1")
     history = [h for h in played.get("Metadata") or [] if h.get("type") == "movie"]
     if history:
         check("the top shelf carries globalViewCount, userCount and User",
@@ -4091,7 +4093,7 @@ def main():
           and (deck.get("size") or 0) == (hub_deck.get("size") or 0),
           "%s row(s), hub says %s" % (deck.get("size"), hub_deck.get("size")))
     # A monotonic historyKey: a delete must not make the next play reuse the key.
-    _, current_history, _ = get(base, "/status/sessions/history/all")
+    _, current_history, _ = get(base, "/status/sessions/history/all?type=1")
     keys = [str(r.get("historyKey") or "") for r in current_history.get("Metadata") or []]
     if keys:
         last = keys[-1].rsplit("/", 1)[-1]
@@ -4100,7 +4102,7 @@ def main():
                              "&duration=100000" % movie)
         request(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=100000"
                              "&duration=100000" % movie)
-        _, after_history, _ = get(base, "/status/sessions/history/all")
+        _, after_history, _ = get(base, "/status/sessions/history/all?type=1")
         fresh = [str(r.get("historyKey") or "").rsplit("/", 1)[-1]
                  for r in after_history.get("Metadata") or []]
         check("a historyKey is never reused after a delete",
@@ -4472,7 +4474,7 @@ def main():
     check("one device reads by id, and an unknown id is a 404",
           status_one == 200 and (one.get("Device") or [{}])[0].get("id") == seen.get("id")
           and status_bad == 404, "HTTP %s / %s" % (status_one, status_bad))
-    history = get(base, "/status/sessions/history/all?sort=viewedAt:desc")[1].get("Metadata") or []
+    history = get(base, "/status/sessions/history/all?type=1&sort=viewedAt:desc")[1].get("Metadata") or []
     # The NEWEST row by historyKey: the suite played this movie earlier, and two
     # plays in the same second tie on viewedAt.
     played = sorted((h for h in history if str(h.get("ratingKey")) == str(c5_movie)),
@@ -5779,11 +5781,11 @@ def main():
           and band9["&lan=true"][0] == 400 and band9["&deviceID="][0] == 400,
           "%s lan=%s" % (band_rows9, sorted(band_lan9)))
 
-    history9 = get(base, "/status/sessions/history/all")[1].get("Metadata") or []
+    history9 = get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or []
     if not history9:
         request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=590000&duration=600000"
                 % (c5_movie, quote("/library/metadata/%s" % c5_movie)))
-        history9 = get(base, "/status/sessions/history/all")[1].get("Metadata") or []
+        history9 = get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or []
     if history9:
         status_item9, item9, _ = get(base, history9[0]["historyKey"])
         one9 = (item9.get("Metadata") or [{}])[0]
@@ -6255,10 +6257,10 @@ def main():
     if spare:
         progress_w10d = "/:/progress?key=%s&identifier=com.plexapp.plugins.library" % spare
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
-        history_w10d = len(get(base, "/status/sessions/history/all")[1].get("Metadata") or [])
+        history_w10d = len(get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or [])
         status_w10d, body_w10d, _ = request(base, "GET", progress_w10d + "&time=999999999")
         far_w10d = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata") or [{}])[0]
-        history_after_w10d = len(get(base, "/status/sessions/history/all")[1].get("Metadata") or [])
+        history_after_w10d = len(get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or [])
         missing_w10d, _, _ = container(base, "GET", progress_w10d)
         bad_w10d, _, _ = container(base, "GET", progress_w10d + "&time=abc")
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
@@ -7890,7 +7892,7 @@ def main():
                              "&X-Plex-Session-Identifier=c11j&X-Plex-Client-Identifier=c11j"
                              % (movie, quote("/library/metadata/%s" % movie), state_c11j,
                                 at_c11j, span_c11j))
-    status_c11j, all_c11j, _ = get(base, "/status/sessions/history/all")
+    status_c11j, all_c11j, _ = get(base, "/status/sessions/history/all?type=1")
     rows_c11j = all_c11j.get("Metadata") or []
     if not rows_c11j:
         skip("a single history read is the projection a real PMS answers", "no history row")
@@ -10339,6 +10341,51 @@ def main():
           % (show_row_s15.get("skipChildren"), leaf_row_s15.get("skipParent"), order_over_s15))
     request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=-1&episodeSort=-1" % show)
     request(base, "PUT", "/library/sections/%s/prefs?flattenSeasons=0&episodeSort=-1" % show_section)
+
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: the View
+    # Play History page lists NOTHING without a `type=` -- `size 0`, `totalSize 0`,
+    # on both -- and the `type` it matches is the row's `viewType`, NOT its metadata
+    # type. kids' history is five MOVIES and zen's is 73 EPISODES and BOTH come back
+    # under `type=1`, while `type=2`, `3`, `4`, `5` and `0` answer nothing on either.
+    # `type=abc` and an empty `type=` are 400s, like the ids cycle 14 measured, and
+    # every listing row carries `viewType: 1`.
+    #
+    # This is the answer to the `size 0` that cycle 11 recorded as unexplained and
+    # three cycles carried in the revalidation register: the plain call really does
+    # list nothing, on a server with 73 rows in it. plexsim ignored `type=`
+    # altogether, so it answered its whole history to a request a real PMS answers
+    # nothing to, and answered every row to `type=2` as well.
+    watched_h15 = get(base, "/library/sections/%s/all?type=1" % movie_section)[1] \
+        .get("Metadata") or []
+    row_h15 = watched_h15[0]
+    dur_h15 = int(row_h15.get("duration") or 0) or 1400000
+    for frac_h15, state_h15 in ((0.30, "playing"), (0.95, "playing"), (0.96, "stopped")):
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=%s"
+                             "&time=%d&duration=%d&identifier=com.plexapp.plugins.library"
+                % (row_h15["ratingKey"], row_h15["ratingKey"], state_h15,
+                   int(dur_h15 * frac_h15), dur_h15))
+    none_h15 = get(base, "/status/sessions/history/all")[1]
+    one_h15 = get(base, "/status/sessions/history/all?type=1")[1]
+    four_h15 = get(base, "/status/sessions/history/all?type=4")[1]
+    list_h15 = get(base, "/status/sessions/history/all?type=1,4")[1]
+    check("the history page lists nothing without a type=",
+          (none_h15.get("size") or 0) == 0 and (one_h15.get("size") or 0) > 0,
+          "no type: size=%s | type=1: size=%s" % (none_h15.get("size"), one_h15.get("size")))
+    check("history type= matches the row's viewType, not its metadata type",
+          all(r_h15.get("viewType") == 1 for r_h15 in one_h15.get("Metadata") or [])
+          and (four_h15.get("size") or 0) == 0
+          and (list_h15.get("size") or 0) == (one_h15.get("size") or 0),
+          "type=1 viewTypes=%s | type=4 size=%s | type=1,4 size=%s"
+          % (sorted({r_h15.get("viewType") for r_h15 in one_h15.get("Metadata") or []}),
+             four_h15.get("size"), list_h15.get("size")))
+    check("a history type= that is not a number is a 400",
+          request(base, "GET", "/status/sessions/history/all?type=abc")[0] == 400
+          and request(base, "GET", "/status/sessions/history/all?type=")[0] == 400
+          and request(base, "GET", "/status/sessions/history/all?type=1")[0] == 200,
+          "abc %s empty %s one %s"
+          % (request(base, "GET", "/status/sessions/history/all?type=abc")[0],
+             request(base, "GET", "/status/sessions/history/all?type=")[0],
+             request(base, "GET", "/status/sessions/history/all?type=1")[0]))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

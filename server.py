@@ -9754,7 +9754,10 @@ class PlexSim:
         key/ratingKey/parentKey/grandparent*/index/parentIndex, a movie carries
         title and originallyAvailableAt.
         """
-        rows = self.library.history()
+        # Cycle 15: every listing row carries `viewType: 1`, which is also the
+        # column `type=` matches -- see the gate below. plexsim put `viewType` on
+        # the single read only, so the column `type=` filters on was not on the row.
+        rows = [dict(row, viewType=1) for row in self.library.history()]
         # Measured: this page filters and sorts, and plexsim ignored all of it --
         # so Top Users' "View Play History" link (`accountID=&viewedAt=`) and the
         # per-item history link (`metadataItemID=`) both showed the whole server's
@@ -9789,6 +9792,27 @@ class PlexSim:
         for key in ("viewedAt>", "viewedAt>=", "viewedAt<", "viewedAt<="):
             if key in query and not str(query.get(key) or "").lstrip("-").isdigit():
                 return ("error", 400, "plexsim: bad request")
+        # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: this page
+        # lists NOTHING without a `type=`. Both answer `size 0`/`totalSize 0` to the
+        # plain call -- zen with 73 rows in it -- and that is the whole of the `size 0`
+        # cycle 11 recorded as unexplained and three cycles carried in the register as
+        # "find the parameter or account state that makes a real PMS list history".
+        #
+        # The `type` is the row's `viewType`, NOT its metadata type: kids' history is
+        # five MOVIES and zen's is 73 EPISODES and both answer to `type=1`, while
+        # `type=0`, `2`, `3`, `4` and `5` answer nothing on either. A comma list is an
+        # OR, as everywhere else. `type=abc` and an empty `type=` are 400s -- the same
+        # grammar the ids take, and validated after them.
+        #
+        # plexsim ignored `type=` completely, so it answered its whole history where a
+        # real PMS answers none, and answered every row to `type=2` as well.
+        wanted_types = set()
+        if "type" in query:
+            parts = str(query.get("type") or "").split(",")
+            if not all(p.lstrip("-").isdigit() and p.lstrip("-") for p in parts):
+                return ("error", 400, "plexsim: bad request")
+            wanted_types = {int(p) for p in parts}
+        rows = [r for r in rows if int(r.get("viewType") or 1) in wanted_types]
         for name, field in (("accountID", "accountID"),
                             ("deviceID", "deviceID"),
                             ("librarySectionID", "librarySectionID"),
