@@ -6108,7 +6108,14 @@ class PlexSim:
         if not uri and not playlist_id:
             return ("error", 400, "plexsim: bad request")
         playlist = self.library.playlist(playlist_id) if playlist_id else None
-        if playlist is not None:
+        named = re.match(r"server://([^/]+)/", urllib.parse.unquote(uri or ""))
+        foreign = bool(named) and named.group(1) != self.catalog.machine
+        if foreign and playlist is None:
+            # Measured on a writable copy of the reference: a uri naming ANOTHER server
+            # builds an EMPTY queue that echoes the uri verbatim. plexsim resolved the
+            # path against its own library and queued its own item.
+            rows = []
+        elif playlist is not None:
             # Measured: `playlistID=` ALONE, with no uri at all, builds the same
             # queue -- and the response then names the playlist instead of
             # carrying a source URI.
@@ -6143,7 +6150,8 @@ class PlexSim:
                 selected = next((e["id"] for e in items if str(e["ratingKey"]) == wanted), selected)
             self.play_queues[queue_id] = {
                 "items": items,
-                "source": "" if playlist is not None else self.source_uri(uri, rows),
+                "source": ("" if playlist is not None
+                           else uri if foreign else self.source_uri(uri, rows)),
                 "shuffled": query.get("shuffle") == "1",
                 "client": client,
                 "version": 1,

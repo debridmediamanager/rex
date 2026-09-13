@@ -6563,6 +6563,16 @@ def main():
     else:
         skip("a windowed queue read honours includeBefore and includeAfter", "need three movies")
 
+    # Measured on plexscratch: a play queue uri naming ANOTHER server builds an empty queue
+    # that echoes the uri verbatim; plexsim resolved it against its own library.
+    foreign_w14i = ("server://0123456789abcdef0123456789abcdef01234567/com.plexapp.plugins.library"
+                    "/library/metadata/%s" % movie)
+    status_w14i, made_w14i, _ = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote(foreign_w14i))
+    check("a play queue uri naming another server builds an empty queue echoing it",
+          status_w14i == 200 and not made_w14i.get("Metadata") and made_w14i.get("size") == 0
+          and made_w14i.get("playQueueSourceURI") == foreign_w14i,
+          "HTTP %s size %s source %r" % (status_w14i, made_w14i.get("size"), made_w14i.get("playQueueSourceURI")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

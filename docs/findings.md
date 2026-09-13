@@ -3032,6 +3032,9 @@ the same parameters, then read back from both.
   default; with the first item selected, `window=1&includeBefore=0&includeAfter=1` answers
   only the second row, `includeBefore=1&includeAfter=0` answers none, and the selected
   item comes back only when both are on. plexsim ignored both flags.
+- **A play queue uri naming another server builds an empty queue that echoes it.** The
+  response has no rows and `playQueueSourceURI` is the uri as sent; plexsim resolved the
+  path against its own library and queued its own item.
 
 ### Emulation calibrated against the account's own claimed servers
 
