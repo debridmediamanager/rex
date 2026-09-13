@@ -537,6 +537,39 @@ def _begins_word(text, wanted):
 
 
 # `/playlists/sorts`, from a real PMS.
+# Cycle 15, measured on kids (1.43.4) and zen (1.42.2), byte-identical on both:
+# the `Meta` descriptor `/playlists?includeMeta=1` carries. Its sixth sort is
+# `mediaCount` "Item Count" where `/playlists/sorts` below ends with `updatedAt`
+# "Date Modified" -- the two lists really are different, and each was measured on
+# its own path. The client reads `Meta.Type[].Sort` straight into its sort menu.
+PLAYLIST_META = {"Type": [{
+    "key": "/playlists", "type": "playlist", "title": "All", "active": True,
+    "Sort": [
+        {"active": True, "activeDirection": "asc", "default": "asc",
+         "defaultDirection": "asc", "descKey": "titleSort:desc",
+         "key": "titleSort", "title": "Name"},
+        {"defaultDirection": "desc", "descKey": "viewCount:desc",
+         "key": "viewCount", "title": "Plays"},
+        {"defaultDirection": "desc", "descKey": "lastViewedAt:desc",
+         "key": "lastViewedAt", "title": "Last Played"},
+        {"defaultDirection": "desc", "descKey": "duration:desc",
+         "key": "duration", "title": "Duration"},
+        {"defaultDirection": "desc", "descKey": "addedAt:desc",
+         "key": "addedAt", "title": "Date Added"},
+        {"defaultDirection": "desc", "descKey": "mediaCount:desc",
+         "key": "mediaCount", "title": "Item Count"},
+    ]}]}
+
+# And the one-row descriptor `/hubs/home/recentlyAdded?type=N&includeMeta=1` carries.
+# `active` flips with the type and only these two types have a block at all -- 3, 4,
+# 8, a non-number and no type answer no `Meta` on either reference.
+HOME_RECENT_META = {
+    "1": {"Type": [{"key": "/hubs/home/recentlyAdded?type=1", "type": "movie",
+                    "title": "Recently Added", "active": True}]},
+    "2": {"Type": [{"key": "/hubs/home/recentlyAdded?type=2", "type": "mixed",
+                    "title": "Recently Added", "active": False}]},
+}
+
 PLAYLIST_SORTS = [
     {"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
      "key": "titleSort", "title": "Name"},
@@ -3141,13 +3174,25 @@ class PlexSim:
                 # every show library. plexsim had it the other way round, so the
                 # TV shelf's "see all" opened an empty page.
                 rows = self.recently_added_rows(query.get("type"), query.get("sectionID"))
+                meta = (HOME_RECENT_META.get(str(query.get("type") or ""))
+                        if query.get("includeMeta") == "1" else None)
                 if rows is None:
-                    return self.hub_container(size=0)
+                    answer = self.hub_container(size=0)
+                    if meta:
+                        answer["MediaContainer"]["Meta"] = meta
+                    return answer
                 # Measured: a movie or episode row here is the light projection
                 # (no Guid, text-only tags); a show row is the full one.
                 page = [_listing_row(r) if r.get("type") == "show"
                         else _grid_row(_listing_row(r)) for r in rows[:self.HUB_COUNT]]
-                return self.hub_container(size=len(page), Metadata=page)
+                answer = self.hub_container(size=len(page), Metadata=page)
+                if meta:
+                    # Cycle 15, measured on both references: one `Type` row whose
+                    # `active` flips with the type -- true for `movie` at type=1,
+                    # false for `mixed` at type=2 -- and NO block at all for any
+                    # other type.
+                    answer["MediaContainer"]["Meta"] = meta
+                return answer
             # Measured: a home hub a real PMS does not have is a 404, not the
             # empty container plexsim answered -- which a client reads as "this
             # shelf exists and is empty".
@@ -8816,7 +8861,12 @@ class PlexSim:
             rows, unsupported = self._sorted(rows, query.get("sort") or "")
             if unsupported:
                 return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
-            return self.paged_container(rows, query)
+            answer = self.paged_container(rows, query)
+            if query.get("includeMeta") == "1":
+                # Measured on both references, byte-identical: the playlist page's
+                # own sort menu comes from here, and plexsim sent no Meta at all.
+                answer["MediaContainer"]["Meta"] = PLAYLIST_META
+            return answer
 
         playlist = self.library.playlist(segments[1])
         if playlist is None:

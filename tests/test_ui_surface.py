@@ -10529,6 +10529,43 @@ def main():
           "%s | wibble %s | title %s"
           % (got_c15q, parsed_c15q("wibble=5")[0], parsed_c15q("title=x")))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), whose answers are
+    # byte-identical: `/playlists?includeMeta=1` carries a `Meta` descriptor with one
+    # `Type` row and SIX sorts, and `/hubs/home/recentlyAdded?type=N&includeMeta=1`
+    # carries one `Type` row whose `active` flips with the type -- `movie` true at
+    # type=1, `mixed` false at type=2, and no `Meta` block at all for any other type.
+    # `Meta.Type[].Sort` is what the playlist page reads straight into its sort menu, so
+    # without it the menu is empty. plexsim sent no Meta on either path.
+    #
+    # The sixth sort is `mediaCount` "Item Count" -- NOT the `updatedAt` "Date Modified"
+    # that `/playlists/sorts` ends with. The two lists are different and were measured
+    # separately.
+    meta_c15m = get(base, "/playlists?includeMeta=1")[1].get("Meta") or {}
+    types_c15m = meta_c15m.get("Type") or []
+    sorts_c15m = [(s_c15m.get("key"), s_c15m.get("title"))
+                  for s_c15m in (types_c15m[0].get("Sort") if types_c15m else []) or []]
+    plain_c15m = get(base, "/playlists")[1]
+    check("/playlists?includeMeta=1 carries the Meta descriptor and its six sorts",
+          len(types_c15m) == 1 and types_c15m[0].get("type") == "playlist"
+          and types_c15m[0].get("key") == "/playlists"
+          and types_c15m[0].get("title") == "All" and types_c15m[0].get("active") is True
+          and sorts_c15m == [("titleSort", "Name"), ("viewCount", "Plays"),
+                             ("lastViewedAt", "Last Played"), ("duration", "Duration"),
+                             ("addedAt", "Date Added"), ("mediaCount", "Item Count")]
+          and "Meta" not in plain_c15m,
+          "types %s sorts %s bare-has-Meta %s"
+          % (types_c15m, sorts_c15m, "Meta" in plain_c15m))
+    home_c15m = {t_c15m: (get(base, "/hubs/home/recentlyAdded?type=%s&includeMeta=1" % t_c15m)[1]
+                          .get("Meta") or {}).get("Type")
+                 for t_c15m in ("1", "2", "4", "8")}
+    check("/hubs/home/recentlyAdded carries a one-row Meta whose active flips by type",
+          home_c15m["1"] == [{"key": "/hubs/home/recentlyAdded?type=1", "type": "movie",
+                              "title": "Recently Added", "active": True}]
+          and home_c15m["2"] == [{"key": "/hubs/home/recentlyAdded?type=2", "type": "mixed",
+                                  "title": "Recently Added", "active": False}]
+          and home_c15m["4"] is None and home_c15m["8"] is None,
+          str(home_c15m))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
