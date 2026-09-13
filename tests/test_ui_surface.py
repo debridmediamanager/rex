@@ -190,9 +190,9 @@ def eventsource(base, trigger, seconds=8, spec=""):
     return 200, events
 
 
-def request(base, method, path, want_json=True):
+def request(base, method, path, want_json=True, body=None):
     url = base.rstrip("/") + path
-    req = urllib.request.Request(url, method=method, headers={
+    req = urllib.request.Request(url, method=method, data=body, headers={
         "User-Agent": UA,
         "Accept": "application/json" if want_json else "*/*",
         "X-Plex-Client-Identifier": "plexsim-ui-test",
@@ -7152,6 +7152,67 @@ def main():
           % (status_create_c10g, status_save_c10g, row_c10g.get("ratingKey"), len(items_c10g),
              detail_c10g.get("content"), status_item_c10g, status_none_c10g, status_clear_c10g,
              status_coll_c10g, status_csave_c10g, len(children_c10g)))
+
+    # Measured on plexscratch: an artwork UPLOAD is `POST /library/metadata/{id}/{posters,arts}`
+    # with the image as the body, and it answers an EMPTY 200 -- the uploaded image becomes an
+    # `upload://` candidate, selected, the row's thumb and art both re-version, and one state-5
+    # frame is pushed. Picking a candidate (`PUT .../poster?url=`) answers a NEW versioned path
+    # and stores THAT, never the url itself. plexsim answered the candidate list to the upload
+    # and stored nothing, and wrote the raw url into `thumb` -- so a client set the tile's src
+    # to `upload://posters/...`. A playlist's and a collection's artwork list live under
+    # /library/metadata/{ratingKey} too, which plexsim 404'd.
+    def row_c10h():
+        return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    def posters_c10h():
+        return get(base, "/library/metadata/%s/posters" % movie)[1].get("Metadata") or []
+    before_c10h = row_c10h()
+    png_c10h = (b"\x89PNG\r\n\x1a\n" + b"c10-upload-fixture" * 4)
+    _, frames_c10h = notifications(
+        base, lambda: request(base, "POST", "/library/metadata/%s/posters" % movie, body=png_c10h),
+        seconds=3)
+    status_up_c10h, body_up_c10h, _ = request(base, "POST", "/library/metadata/%s/arts" % movie,
+                                              body=png_c10h + b"art")
+    after_c10h = row_c10h()
+    uploaded_c10h = [p for p in posters_c10h() if str(p.get("ratingKey")).startswith("upload://")]
+    states_c10h = [(e.get("type"), e.get("state"), e.get("metadataState"))
+                   for f in frames_c10h or []
+                   for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    spare_c10h = next((p.get("ratingKey") for p in posters_c10h()
+                       if p.get("ratingKey") != (uploaded_c10h or [{}])[0].get("ratingKey")), None)
+    status_pick_c10h, picked_c10h, _ = request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+                                               % (movie, urllib.parse.quote(spare_c10h or "", safe="")))
+    thumb_c10h = row_c10h().get("thumb")
+    selected_c10h = [p.get("ratingKey") for p in posters_c10h() if p.get("selected")]
+    status_bogus_c10h, bogus_c10h, _ = request(
+        base, "PUT", "/library/metadata/%s/poster?url=%s"
+        % (movie, urllib.parse.quote("upload://posters/nope", safe="")))
+    after_bogus_c10h = row_c10h().get("thumb")
+    lists_c10h = []
+    for path_c10h in ("/playlists?type=video&title=c10+art&uri="
+                      + urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                           % (get(base, "/identity")[1].get("machineIdentifier"), movie),
+                                           safe=""),):
+        created_c10h = (container(base, "POST", path_c10h)[1].get("Metadata") or [{}])[0]
+        if created_c10h.get("ratingKey"):
+            status_list_c10h, list_c10h, _ = get(
+                base, "/library/metadata/%s/posters" % created_c10h["ratingKey"])
+            lists_c10h.append((status_list_c10h, (list_c10h.get("Metadata") or [{}])[0]))
+    check("an artwork upload is an empty 200 that becomes the selected candidate, and a pick is versioned",
+          is_empty_200(status_up_c10h, body_up_c10h)
+          and len(uploaded_c10h) == 1 and uploaded_c10h[0].get("selected") is True
+          and after_c10h.get("thumb") != before_c10h.get("thumb")
+          and after_c10h.get("art") != before_c10h.get("art")
+          and states_c10h == [(1, 5, None)]
+          and status_pick_c10h == 200 and picked_c10h.decode().startswith("/library/metadata/%s/thumb/" % movie)
+          and thumb_c10h == picked_c10h.decode() and selected_c10h == [spare_c10h]
+          and status_bogus_c10h == 200
+          and after_bogus_c10h.startswith("/library/metadata/%s/thumb/" % movie)
+          and lists_c10h and lists_c10h[0][0] == 200
+          and str(lists_c10h[0][1].get("ratingKey")).startswith("default://"),
+          "upload %s %r, candidates %s, thumb %r -> %r, frames %s, pick %s %r -> %r, selected %s, bogus %r, list %s"
+          % (status_up_c10h, body_up_c10h[:40], len(uploaded_c10h), before_c10h.get("thumb"),
+             after_c10h.get("thumb"), states_c10h, status_pick_c10h, picked_c10h[:60], thumb_c10h,
+             selected_c10h, after_bogus_c10h, lists_c10h))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

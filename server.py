@@ -30,6 +30,7 @@ import argparse
 import base64
 import locale
 import io
+import hashlib
 import json
 import logging
 import os
@@ -977,6 +978,17 @@ def _with_client_titles(node, product):
     return node if copy is None else copy
 
 
+def _image_type(body):
+    """The content type of an uploaded image, from its magic bytes."""
+    if body[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if body[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if body[:4] == b"RIFF" and body[8:12] == b"WEBP":
+        return "image/webp"
+    return "application/octet-stream"
+
+
 def _exclude_fields(container, spec):
     """`excludeFields=` applied to a whole response, as a real PMS applies it.
 
@@ -1155,6 +1167,9 @@ class PlexSim:
         # ratingKeys a decision has been made for. The timeline's `Bandwidths`
         # block appears only after one, measured -- not merely while playing.
         self.decided = set()
+        # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
+        # `upload://` id a real PMS mints from the bytes.
+        self.uploads = {}
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
         # collections, play history. In memory only -- catalog.json is input.
@@ -2575,7 +2590,7 @@ class PlexSim:
             return self.library_section(segments, query, method)
 
         if segments[:2] == ["library", "metadata"] and len(segments) >= 3:
-            return self.library_metadata(segments, query, method)
+            return self.library_metadata(segments, query, method, body)
 
         if route == "/library/onDeck":
             # Measured: this is the server-wide Continue Watching list -- every row
@@ -4850,6 +4865,23 @@ class PlexSim:
             logger.info("COLLECTION PREF %s %s", rating_key,
                         ",".join(k for k in query if not k.startswith("X-Plex-")))
             return ("empty", 200)
+        if len(segments) == 4 and segments[3] in ("posters", "arts"):
+            # Measured on a writable copy of the reference: a playlist's and a collection's
+            # artwork list lives under /library/metadata/{ratingKey} like an item's, and
+            # holds one `default://` row -- the composite, at the poster size the dialog
+            # draws. plexsim 404'd it, so the Poster pane of a list's Edit dialog was empty.
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            target = collection if collection is not None else playlist
+            row = (self.library._collection_row(collection) if collection is not None
+                   else self.library._playlist_row(target))
+            composite = (row.get("composite") or row.get("thumb") or "").split("?")[0]
+            return self.tag_container(
+                size=1, Metadata=[{"key": "%s?width=400&height=600" % composite,
+                                   "ratingKey": "default://",
+                                   "thumb": "%s?width=200&height=300" % composite,
+                                   "selected": True, "provider": "default"}],
+                _xml={"Metadata": "Photo"})
         if len(segments) != 3:
             return ("error", 404, "plexsim: not found")
         if method == "PUT":
@@ -5048,7 +5080,7 @@ class PlexSim:
                                          _xml={"Metadata": "Common"})
         return found
 
-    def library_metadata(self, segments, query, method="GET"):
+    def library_metadata(self, segments, query, method="GET", body=b""):
         raw_key = segments[2]
 
         # A comma-joined key list is a real client pattern (plezy batches, and the
@@ -5064,7 +5096,7 @@ class PlexSim:
                 numeric = [part for part in raw_key.split(",") if part.isdigit()]
                 if len(numeric) != 1:
                     return ("error", 404, "plexsim: not found")
-                return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],
+                return self.library_metadata(segments[:2] + [numeric[0]] + segments[3:],  # noqa: E501
                                              query, method)
             keys = [int(p) for p in raw_key.split(",")
                     if p.isdigit() and int(p) in self.catalog.items]
@@ -5238,6 +5270,8 @@ class PlexSim:
             if method == "PUT":
                 # Measured: the plural path is a 404 for a write.
                 return ("error", 404, "plexsim: not found")
+            if method == "POST":
+                return self.upload_artwork(row, leaf, body)
             return self.artwork_list(row, leaf)
         if leaf == "tree":
             # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
@@ -7214,6 +7248,16 @@ class PlexSim:
         entries = []
         field = "thumb" if kind == "posters" else "art"
         stored = row.get("_poster_url") if kind == "posters" else row.get("_art_url")
+        # An uploaded image is a candidate of its own, and stays one after something else
+        # is picked -- measured: the copy's list keeps every upload it has been given.
+        uploads = [key for key in self.uploads
+                   if key.startswith("upload://posters" if kind == "posters" else "upload://art")
+                   and (row.get("type") not in ("season", "episode") or str(row.get("index")) in key)]
+        for key in uploads:
+            entries.append({"key": key, "ratingKey": key, "thumb": key,
+                            "selected": stored == key, "provider": "local"})
+        if stored in uploads:
+            stored = None
         current = row.get(field)
         # `selected` is whichever candidate the row's artwork actually POINTS AT: a
         # versioned `/library/metadata/{id}/thumb/{ver}` means the remote one, a bare
@@ -7242,6 +7286,36 @@ class PlexSim:
         return self.tag_container(size=len(entries), Metadata=entries,
                                   _xml={"Metadata": "Photo"})
 
+    def upload_artwork(self, row, kind, body):
+        """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
+
+        Measured on a writable copy of the reference: the answer is an EMPTY 200, the image
+        becomes an `upload://posters/<sha1 of the bytes>` candidate (an episode's and a
+        season's carry their place in the path) and is selected at once, the row's thumb AND
+        art both re-version, and one timeline frame -- state 5, no metadataState -- is
+        pushed, with no state 3 before it. plexsim answered the candidate LIST and stored
+        nothing, so an upload looked like it worked and changed no artwork.
+        """
+        if not body:
+            return ("error", 400, "plexsim: bad request")
+        prefix = "upload://posters" if kind == "posters" else "upload://art"
+        if row.get("type") == "season":
+            prefix += "/seasons/%s" % row.get("index")
+        elif row.get("type") == "episode":
+            prefix += "/seasons/%s/episodes/%s" % (row.get("parentIndex"), row.get("index"))
+        key = "%s/%s" % (prefix, hashlib.sha1(body).hexdigest())
+        self.uploads[key] = (body, _image_type(body))
+        field = "thumb" if kind == "posters" else "art"
+        row["_poster_url" if kind == "posters" else "_art_url"] = key
+        stamp = int(time.time())
+        for name in ("thumb", "art"):
+            if row.get(name):
+                row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
+        row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
+        logger.info("ARTWORK upload %s %s %d bytes -> %s", row["ratingKey"], kind, len(body), key)
+        self.notify_timeline(row, self.TIMELINE_DONE, None)
+        return ("empty", 200)
+
     def set_artwork(self, row, kind, query):
         """`PUT /library/metadata/{id}/{posters,arts}?url=` -- pick one."""
         chosen = urllib.parse.unquote(query.get("url") or "")
@@ -7249,13 +7323,18 @@ class PlexSim:
             return ("error", 400, "plexsim: no url")
         field = "thumb" if kind == "posters" else "art"
         private = "_poster_url" if kind == "posters" else "_art_url"
-        if chosen.startswith("http"):
-            row[private] = chosen
-            row[field] = "/library/metadata/%s/%s/%d" % (
-                row["ratingKey"], field, int(time.time()))
-        else:
+        # Measured on a writable copy of the reference: whatever is picked -- a remote
+        # candidate, an `upload://` one, even one the server does not have -- the row's
+        # artwork becomes a NEW versioned path of its own and the response body is that
+        # path. plexsim stored the url ITSELF for anything but an http one, so picking an
+        # upload set the row's `thumb` to `upload://posters/...` and the client pointed the
+        # tile's img src at a string no server serves.
+        placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"], field)
+        if chosen == placeholder:
             row.pop(private, None)
-            row[field] = chosen
+        else:
+            row[private] = chosen
+        row[field] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, int(time.time()))
         logger.info("ARTWORK %s %s -> %s", row["ratingKey"], kind, chosen[:80])
         # Measured: the body is the NEW artwork path, bare -- `/library/metadata/1/
         # thumb/1789241428` -- because the client assigns the response straight onto
@@ -8673,7 +8752,7 @@ class PlexSim:
         return None
 
     def artwork_for(self, rating_key, kind):
-        """Absolute image URL for a row's poster/background, if identified."""
+        """The image behind a row's poster/background: an uploaded key, or a remote URL."""
         row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() else None
         if not row:
             return None
@@ -9088,11 +9167,17 @@ class Handler(BaseHTTPRequestHandler):
     _image_lock = threading.Lock()
 
     def _serve_image(self, url):
-        """Fetch and return a remote image, cached in memory.
+        """Serve an uploaded image, or fetch a remote one, cached in memory.
 
         Artwork is requested once per tile per client, so without a cache a
         grid scroll becomes a burst of identical upstream fetches.
         """
+        uploaded = self.server.sim.uploads.get(url)
+        if uploaded is not None:
+            payload, content_type = uploaded
+            self._send(200, content_type, payload,
+                       [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")])
+            return
         with self._image_lock:
             hit = self._image_cache.get(url)
         logger.info("ARTWORK %s %s", "cache" if hit else "fetch", url[:110])

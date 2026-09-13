@@ -755,6 +755,10 @@ precisely how the Seasons bug survived a fix attempt.
   dual-layer Dolby Vision file's enhancement layer IS a second video stream.
 - **Catalog media is corrected at load, and the titles are composed LAST.** Composed before
   `normalize_media`, a stored `dts` track is titled from the codec it no longer has.
+- **An artwork write stores a VERSIONED path, never the url it was given.** `upload://` and
+  remote candidates live beside the row (`_poster_url`, `sim.uploads`); `thumb` and `art`
+  stay `/library/metadata/{id}/{thumb,art}/{ts}`, because that string is what a client puts
+  in an `img src`.
 
 ## Conventions
 
