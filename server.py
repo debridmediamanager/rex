@@ -8235,6 +8235,34 @@ class PlexSim:
         return self.tag_container(size=len(entries), Metadata=entries,
                                   _xml={"Metadata": "Photo"})
 
+    def cascade_artwork(self, row):
+        """Copy a row's re-versioned artwork onto the children that point at it.
+
+        Measured on the copy after a poster pick on a show: the season's
+        `parentThumb` and `art` and the episode's `grandparentThumb`,
+        `grandparentArt` and `grandparentTheme` all move to the show's new stamp,
+        while the season's own `thumb` does not. The same shape one level down for a
+        pick on a SEASON: its episodes' `parentThumb` follows and the show is
+        untouched.
+        """
+        kind = row.get("type")
+        if kind not in ("show", "season"):
+            return
+        for child in self.catalog.children(row["ratingKey"]):
+            if kind == "show":
+                for name in ("thumb", "art", "theme"):
+                    target = "parent" + name.capitalize() if name == "thumb" else name
+                    if row.get(name) and child.get(target) is not None:
+                        child[target] = row[name]
+            else:
+                if row.get("thumb") and child.get("parentThumb") is not None:
+                    child["parentThumb"] = row["thumb"]
+            for leaf in self.catalog.leaves(child["ratingKey"]) if kind == "show" else []:
+                for name in ("thumb", "art", "theme"):
+                    target = "grandparent" + name.capitalize()
+                    if row.get(name) and leaf.get(target) is not None:
+                        leaf[target] = row[name]
+
     def upload_artwork(self, row, kind, body):
         """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
 
@@ -8283,8 +8311,29 @@ class PlexSim:
             row.pop(private, None)
         else:
             row[private] = chosen
-        row[field] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, int(time.time()))
+        # Cycle 14, re-measured on the copy with a socket open: a pick re-versions
+        # `thumb`, `art` AND `theme` together onto ONE new stamp, and moves `updatedAt`
+        # with them, even though only the poster was chosen. The new stamp then
+        # CASCADES: the season's `parentThumb` and `art` and the episode's
+        # `grandparentThumb`, `grandparentArt` and `grandparentTheme` all follow, while
+        # the season's OWN `thumb` is untouched. The picked field is LOCKED
+        # (`Field: [{locked: true, name: thumb}]`), and exactly one frame goes out --
+        # `timeline type=2 state=5`, no `metadataState`.
+        #
+        # plexsim re-versioned only the field that was picked, left the children
+        # pointing at the old stamp -- which is how a show wore its old poster on every
+        # season and episode tile after a change -- locked nothing and pushed nothing.
+        stamp = int(time.time())
+        for name in ("thumb", "art", "theme"):
+            if row.get(name):
+                row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
+        row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
+        row["updatedAt"] = stamp
+        fields = [f for f in row.get("Field") or [] if f.get("name") != field]
+        row["Field"] = fields + [{"locked": True, "name": field}]
+        self.cascade_artwork(row)
         logger.info("ARTWORK %s %s -> %s", row["ratingKey"], kind, chosen[:80])
+        self.notify_timeline(row, self.TIMELINE_DONE, None)
         # Measured: the body is the NEW artwork path, bare -- `/library/metadata/1/
         # thumb/1789241428` -- because the client assigns the response straight onto
         # the model's `thumb`. An empty 200 there blanks the tile.
