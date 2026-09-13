@@ -3160,6 +3160,14 @@ below is one check there, and each check failed against the code before its fix.
   sent `dts` and the Atmos profile, and a client's direct-play profile names `dca`. The
   reference (1.43.4) leaves `lc` off most of its AAC clips where fun writes it; the check
   skips those.
+- **A language is named in itself, coded ISO 639-2/T and tagged ISO 639-1.** `jpn` reads
+  `日本語`/`jpn`/`ja`, ffprobe's `fre` reads `Français`/`fra`/`fr`, `fil` keeps `fil` as its
+  tag, `und` writes nothing, and a tag that is no ISO code (`english`) is both name and tag
+  with an empty code. plexsim printed English names for 15 languages and the raw code
+  otherwise, kept bibliographic codes, and cut the tag to two letters: `jp`, `sp`, and `fi`
+  -- Finnish -- for Filipino. A client picks a track by the tag. `languages.json` holds the
+  62 names and tags fun wrote; a code it lacks keeps the code in all three. The reference
+  (1.43.4) labels an untagged clip English where fun writes nothing; the check skips those.
 
 ### Emulation calibrated against the account's own claimed servers
 

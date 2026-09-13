@@ -10,6 +10,8 @@ makes a client silently ask for a transcode plexsim cannot serve.  So the
 numbers come from a real probe of the real byte stream.
 """
 
+import json
+import os
 from fractions import Fraction
 
 # Plex writes the frame rate as a broadcast-ish token, not a float.
@@ -24,23 +26,24 @@ _FRAME_RATE_TOKENS = [
     (Fraction(60, 1), "60p"),
 ]
 
-_LANGUAGE_NAMES = {
-    "eng": "English",
-    "chi": "Chinese",
-    "zho": "Chinese",
-    "spa": "Spanish",
-    "fra": "French",
-    "fre": "French",
-    "deu": "German",
-    "ger": "German",
-    "jpn": "Japanese",
-    "por": "Portuguese",
-    "ita": "Italian",
-    "rus": "Russian",
-    "kor": "Korean",
-    "nld": "Dutch",
-    "dut": "Dutch",
-}
+# A track's language as a real PMS writes it, measured on every track of 381 rows on fun:
+# `language` is the language's name IN that language (`日本語`, `Español`, `polski`),
+# `languageCode` the ISO 639-2 terminology code (ffprobe's `fre`, `ger`, `cze` and `chi` read
+# back `fra`, `deu`, `ces` and `zho`), and `languageTag` the two-letter ISO 639-1 code, or the
+# three-letter code where a language has none (`fil`, `mul`). plexsim printed English names
+# for 15 languages and the raw code for the rest, kept bibliographic codes, and cut the tag
+# to two letters -- `jp` for Japanese, `sp` for Spanish, `fi` (Finnish) for Filipino -- and a
+# client picks a track by the tag. languages.json holds every name and tag fun wrote.
+LANGUAGES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "languages.json"),
+                           encoding="utf-8"))
+
+# ISO 639-2's bibliographic codes, which Matroska files carry and ffprobe passes through,
+# against the terminology codes a real PMS writes. The first fifteen were each measured on
+# fun; the last four complete the standard's list.
+_TERMINOLOGY = {"alb": "sqi", "baq": "eus", "chi": "zho", "cze": "ces", "dut": "nld",
+                "fre": "fra", "ger": "deu", "gre": "ell", "ice": "isl", "mac": "mkd",
+                "may": "msa", "per": "fas", "rum": "ron", "slo": "slk", "wel": "cym",
+                "arm": "hye", "bur": "mya", "geo": "kat", "tib": "bod"}
 
 # displayTitle for an audio track is what the client's track picker shows.
 _AUDIO_CODEC_LABELS = {
@@ -97,14 +100,18 @@ def _channel_label(channels):
 
 
 def _language_fields(tags):
-    code = (tags.get("language") or "").lower() or None
-    if code in (None, "und"):
+    raw = tags.get("language") or ""
+    code = _TERMINOLOGY.get(raw.lower(), raw.lower())
+    if code in ("", "und"):
         return {}
-    return {
-        "language": _LANGUAGE_NAMES.get(code, code),
-        "languageCode": code,
-        "languageTag": code[:2],
-    }
+    if code in LANGUAGES:
+        name, tag = LANGUAGES[code]
+        return {"language": name, "languageCode": code, "languageTag": tag}
+    if len(code) == 3 and code.isalpha():
+        return {"language": code, "languageCode": code, "languageTag": code}
+    # Not an ISO code at all (`english`, `russian`): measured on three tracks, the text is
+    # both the name and the tag, and the code is empty.
+    return {"language": raw, "languageCode": "", "languageTag": raw}
 
 
 # Codec names as Plex labels them in a track title.
@@ -452,6 +459,8 @@ def normalize_media(media):
         if part.get("hasThumbnail") not in ("1", 1, True):
             part.pop("hasThumbnail", None)
         for stream in part.get("Stream") or []:
+            if stream.get("languageCode"):
+                stream.update(_language_fields({"language": stream["languageCode"]}))
             if "bitDepth" in stream:
                 stream["bitDepth"] = _int_or(stream["bitDepth"], stream["bitDepth"])
             if stream.get("streamType") == 2 and stream.get("codec"):
