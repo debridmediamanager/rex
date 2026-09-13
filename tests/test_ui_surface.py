@@ -8010,6 +8010,44 @@ def main():
               "put %s, delete embedded %s, delete upload %s, left %s"
               % (put_c11n, delete_embedded_c11n, delete_upload_c11n, gone_c11n))
 
+
+    # Measured on a writable copy of the reference: a playlist's items and a
+    # collection's children are the LIGHT grid row -- no Guid, no Rating, no Field, no
+    # Stream under the Part, tags text-only -- while the same item's detail read is
+    # full. plexsim sent the detail row on both, the two list endpoints the grid
+    # projection was never applied to.
+    def weight_c11o(row_c11o):
+        parts_c11o = [p_c11o for m_c11o in (row_c11o.get("Media") or [])
+                      for p_c11o in (m_c11o.get("Part") or [])]
+        return (len(row_c11o.get("Guid") or []), len(row_c11o.get("Rating") or []),
+                len(row_c11o.get("Field") or []),
+                sum(len(p_c11o.get("Stream") or []) for p_c11o in parts_c11o),
+                any("id" in t_c11o for t_c11o in (row_c11o.get("Genre") or [])))
+    members_c11o = [r_c11o.get("ratingKey") for r_c11o in
+                    (get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or [])]
+    uri_c11o = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine, ",".join(members_c11o)))
+    _, list_c11o, _ = container(base, "POST", "/playlists?type=video&title=c11light&smart=0&uri=%s"
+                                % uri_c11o)
+    playlist_c11o = (list_c11o.get("Metadata") or [{}])[0].get("ratingKey")
+    _, coll_c11o, _ = container(base, "POST",
+                                "/library/collections?type=1&title=c11lightc&smart=0&sectionId=%s&uri=%s"
+                                % (movie_section, uri_c11o))
+    collection_c11o = (coll_c11o.get("Metadata") or [{}])[0].get("ratingKey")
+    items_c11o = (get(base, "/playlists/%s/items" % playlist_c11o)[1].get("Metadata") or [{}])[0]
+    children_c11o = (get(base, "/library/collections/%s/children" % collection_c11o)[1]
+                     .get("Metadata") or [{}])[0]
+    detail_c11o = (get(base, "/library/metadata/%s" % members_c11o[0])[1].get("Metadata") or [{}])[0]
+    check("a playlist's items and a collection's children are the light row",
+          weight_c11o(items_c11o) == (0, 0, 0, 0, False)
+          and weight_c11o(children_c11o) == (0, 0, 0, 0, False)
+          and weight_c11o(detail_c11o) != (0, 0, 0, 0, False)
+          and items_c11o.get("playlistItemID")
+          and items_c11o.get("librarySectionID") is not None
+          and children_c11o.get("librarySectionID") is not None,
+          "items %s, children %s, detail %s"
+          % (weight_c11o(items_c11o), weight_c11o(children_c11o), weight_c11o(detail_c11o)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
