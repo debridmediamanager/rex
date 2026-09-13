@@ -2943,6 +2943,11 @@ the same parameters, then read back from both.
   collection created as `The Fresh List` already sorts as `Fresh List`, and
   `PUT /library/collections/{id}?title=` empties the title, where plexsim ignored an empty
   one. plexsim stored "" everywhere else and dropped the sort title.
+- **`/:/progress` stores any position past a minute and never completes a play.**
+  `time=999999999` on a ten-second clip reads back as `viewOffset: 999999999`, with no
+  `viewCount` and no history row, and a missing or unparseable `time` is a 500. plexsim
+  marked the item watched and wrote a history row, and stored 0 with a 200 for a
+  missing time.
 
 ### Emulation calibrated against the account's own claimed servers
 

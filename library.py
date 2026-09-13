@@ -246,8 +246,12 @@ class Library:
         return row
 
     def progress(self, rating_key, offset, state=None, duration=None, device_id=1,
-                 session=""):
+                 session="", completes=True):
         """A timeline update. `stopped` past 90% counts as a view, as PMS does.
+
+        `completes=False` is `/:/progress`, which never completes a play: measured on
+        a writable copy of the reference, `time=999999999` on a ten-second item is
+        stored as the resume point, with no view and no history row.
 
         `device_id` is the client that played: the history row names it, and a
         real PMS lists every such id in the Dashboard's Device block.
@@ -272,7 +276,7 @@ class Library:
             # it, and stopping one near its end marked it watched.
             # A position inside the last 10% is a completion, not a resume point:
             # the reference answers `viewOffset: -1` from there on.
-            near_end = total and int(offset) >= total * 0.9
+            near_end = completes and total and int(offset) >= total * 0.9
             if int(offset) > 60000 and not near_end:
                 row["viewOffset"] = int(offset)
                 row["lastViewedAt"] = _now()
@@ -283,7 +287,7 @@ class Library:
         # twice while another client's play still counts; a beat back under 90% is a
         # new play and clears it.
         position = int(offset) if offset is not None else int(row.get("viewOffset") or 0)
-        if total and position > 60000 and position >= total * 0.9:
+        if completes and total and position > 60000 and position >= total * 0.9:
             if row.get("_completed") != (session or True):
                 row["_completed"] = session or True
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1

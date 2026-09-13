@@ -6168,6 +6168,30 @@ def main():
         skip("an emptied season or episode title is generated, and an emptied title keeps its sort form",
              "need a show")
 
+    # Measured on plexscratch: /:/progress stores ANY position past a minute -- even one past
+    # the end -- without completing the play or writing history, and a missing or
+    # unparseable `time` is a 500. plexsim marked the item watched and answered 200.
+    if spare:
+        progress_w10d = "/:/progress?key=%s&identifier=com.plexapp.plugins.library" % spare
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
+        history_w10d = len(get(base, "/status/sessions/history/all")[1].get("Metadata") or [])
+        status_w10d, body_w10d, _ = request(base, "GET", progress_w10d + "&time=999999999")
+        far_w10d = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata") or [{}])[0]
+        history_after_w10d = len(get(base, "/status/sessions/history/all")[1].get("Metadata") or [])
+        missing_w10d, _, _ = container(base, "GET", progress_w10d)
+        bad_w10d, _, _ = container(base, "GET", progress_w10d + "&time=abc")
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
+        check("progress stores a position past the end without completing, and needs a numeric time",
+              is_empty_200(status_w10d, body_w10d) and far_w10d.get("viewOffset") == 999999999
+              and not far_w10d.get("viewCount") and history_after_w10d == history_w10d
+              and (missing_w10d, bad_w10d) == (500, 500),
+              "HTTP %s viewOffset=%r viewCount=%r history %s->%s, missing %s, abc %s"
+              % (status_w10d, far_w10d.get("viewOffset"), far_w10d.get("viewCount"), history_w10d,
+                 history_after_w10d, missing_w10d, bad_w10d))
+    else:
+        skip("progress stores a position past the end without completing, and needs a numeric time",
+             "need a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
