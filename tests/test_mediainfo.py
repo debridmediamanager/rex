@@ -175,6 +175,20 @@ SKIP = {
     ("kids-9-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
     ("kids-9-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
     ("kids-9-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    # Media bitrates the probe does not give.
+    ("fun-1054688-1", None, "bitrate"): "neither rounded nor truncated: fun's own measure",
+    ("fun-1057221-0", None, "bitrate"): "neither rounded nor truncated: fun's own measure",
+    ("kids-1-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-10-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-12-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-13-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-14-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-17-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-18-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-3-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-4-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-8-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    ("kids-9-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
 }
 
 
@@ -303,6 +317,20 @@ def _unknown_markers(fixture):
     real_part = fixture["Media"]["Part"][0]
     sim_part = (fixture["sim"].get("Part") or [{}])[0]
     return out + compare(fixture, "Part", real_part, sim_part, ("videoProfile",))
+
+
+@check("bitrate-rounding")
+def _bitrate_rounding(fixture):
+    out = per_media(("bitrate",))(fixture)
+    probe = {s["index"]: s for s in fixture["probe"]["streams"]}
+    for kind in (1, 2, 3):
+        for real, sim in paired(fixture, kind):
+            raw = (probe.get(real["index"]) or {}).get("bit_rate")
+            # Only where the probe's rate is the one a real PMS wrote, rounded or truncated;
+            # the rest are the server's own measure.
+            if raw and real.get("bitrate") in (int(int(raw) / 1000), round(int(raw) / 1000)):
+                out += compare(fixture, "stream %s" % real["index"], real, sim, ("bitrate",))
+    return out
 
 
 def load(root):

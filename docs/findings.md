@@ -3217,6 +3217,8 @@ below is one check there, and each check failed against the code before its fix.
   fun); plexsim set neither.
 - **Unknown markers are not written.** ffprobe's `profile: 0` and `level: -99` are absent on
   fun, and `Simple Profile` is `simple`; plexsim wrote them as they came.
+- **Bitrates round to the nearest kbps.** plexsim truncated, so 28 of 35 Media read one
+  short. Two fun files whose bitrate is neither, and the reference's clips, are left alone.
 
 ### Emulation calibrated against the account's own claimed servers
 
