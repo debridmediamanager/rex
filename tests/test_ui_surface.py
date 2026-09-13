@@ -5717,6 +5717,17 @@ def main():
     else:
         skip("one history row reads back by its historyKey", "no history row could be made")
 
+    status_item_hubs9, item_hubs9, _ = get(base, "/hubs/metadata/%s" % c5_movie)
+    hubs_rows9 = item_hubs9.get("Hub") or []
+    check("an item's own hub list is the four empty artist shelves keyed to it",
+          status_item_hubs9 == 200 and item_hubs9.get("allowSync") is True
+          and [h.get("hubIdentifier") for h in hubs_rows9]
+          == ["artist.mostplayedtracks", "artist.mostpopulartracks", "artist.albums",
+              "music.videos.popular.new"]
+          and all(h.get("size") == 0 and "artist.id=%s" % c5_movie in h.get("key", "") for h in hubs_rows9)
+          and get(base, "/hubs/metadata/999999999")[0] == 404,
+          "HTTP %s, %s" % (status_item_hubs9, [h.get("hubIdentifier") for h in hubs_rows9]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

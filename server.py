@@ -2604,6 +2604,8 @@ class PlexSim:
             return self.hubs(query)
         if route == "/hubs/metadata":
             return ("error", 404, "plexsim: not found")
+        if segments[:2] == ["hubs", "metadata"] and len(segments) == 3:
+            return self.item_music_hubs(segments[2])
         if segments[:2] == ["hubs", "metadata"] and len(segments) == 4:
             return self.item_hubs(segments[2], segments[3], query)
         if route == "/hubs/continueWatching":
@@ -5179,6 +5181,36 @@ class PlexSim:
                 scored.append((-shared, -(other.get("addedAt") or 0), other))
         scored.sort(key=lambda entry: entry[:2])
         return [entry[2] for entry in scored[:self.HUB_COUNT]]
+
+    # `/hubs/metadata/{id}`'s four shelves: (key template, title, type, identifier).
+    ITEM_MUSIC_HUBS = (
+        ("/library/sections/%s/all?artist.id=%s&type=10&sort=viewCount:desc&viewCount>=10",
+         "Most Played", "track", "artist.mostplayedtracks"),
+        ("/library/sections/%s/all?artist.id=%s&type=10&sort=ratingCount:desc&group=title",
+         "Most Popular Tracks", "track", "artist.mostpopulartracks"),
+        ("/library/sections/%s/all?artist.id=%s&type=9&sort=year:desc",
+         "Albums", "album", "artist.albums"),
+        ("/library/sections/%s/extras/all?extraType=4&type=8&artist.id=%s",
+         "Music Videos", "clip", "music.videos.popular.new"),
+    )
+
+    def item_music_hubs(self, rating_key):
+        """`/hubs/metadata/{id}` -- an item's own hub list.
+
+        Measured on both servers, for a movie, a show and an episode alike: the four
+        ARTIST shelves (Most Played, Most Popular Tracks, Albums, Music Videos), every
+        one empty, keyed to this item in its own library as if it were an artist. An
+        unknown id is a 404. plexsim 404'd the path, which the community OpenAPI
+        description names `getMetadataHubs`.
+        """
+        row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() else None
+        if row is None:
+            return ("error", 404, "plexsim: no such item")
+        hubs = [{"key": template % (row.get("librarySectionID"), row.get("ratingKey")),
+                 "title": title, "type": kind, "hubIdentifier": identifier,
+                 "context": "hub.%s" % identifier, "size": 0, "more": False, "style": "shelf"}
+                for template, title, kind, identifier in self.ITEM_MUSIC_HUBS]
+        return self.hub_container(Hub=hubs, allowSync=True)
 
     def item_hubs(self, rating_key, leaf, query):
         """`/hubs/metadata/{id}/{related,postplay}` -- the preplay page's shelves.
