@@ -6576,19 +6576,29 @@ class PlexSim:
             rows.append(item)
         return rows
 
-    def _keyed_row(self, query):
+    def _keyed_row(self, query, validate=None):
         """The row a `key=` parameter names, or the refusal a real PMS answers.
 
         Measured on every one of these state writes: a MISSING key is a 400 and a
         key the server does not have is a 404. plexsim answered an empty 200 to
-        both, which tells the client the write landed.
+        both, which tells the client the write landed. Re-measured on a writable copy
+        of the reference with the `identifier` the client always sends taken away:
+        the checks run in a FIXED order -- a missing key is a 400, then a missing
+        identifier is a 400 (even for a key the server does not have), then the
+        write's own parameter (`validate`), and only then is a foreign identifier or
+        an unknown key a 404. plexsim never read the identifier.
         """
         raw = query.get("key")
         if raw is None or raw == "":
             return None, ("error", 400, "plexsim: bad request")
+        if not query.get("identifier"):
+            return None, ("error", 400, "plexsim: bad request")
+        refusal = validate() if validate is not None else None
+        if refusal:
+            return None, refusal
         key = str(raw).rsplit("/", 1)[-1]
         row = self.catalog.items.get(int(key)) if key.isdigit() else None
-        if row is None:
+        if row is None or query.get("identifier") != "com.plexapp.plugins.library":
             return None, ("error", 404, "plexsim: no such item")
         return row, None
 
@@ -6601,14 +6611,13 @@ class PlexSim:
         client that reports progress this way -- plex_debrid, Kodi/PKC, Infuse,
         the older Plex apps -- lost its resume point silently.
         """
-        row, refusal = self._keyed_row(query)
+        offset = query.get("time")
+        # Measured on a writable copy of the reference: a missing or unparseable `time`
+        # is a 500 here, where plexsim stored 0 and answered 200.
+        row, refusal = self._keyed_row(query, validate=lambda: None if str(offset or "").isdigit()
+                                       else ("error", 500, "plexsim: bad time"))
         if refusal:
             return refusal
-        offset = query.get("time")
-        if not str(offset or "").isdigit():
-            # Measured on a writable copy of the reference: a missing or unparseable
-            # `time` is a 500 here, where plexsim stored 0 and answered 200.
-            return ("error", 500, "plexsim: bad time")
         self.library.progress(int(row["ratingKey"]), int(offset),
                               state=query.get("state") or "stopped", completes=False)
         logger.info("PROGRESS %s t=%sms state=%s", row["ratingKey"], offset,
@@ -6635,16 +6644,18 @@ class PlexSim:
 
     def rate(self, query):
         """`/:/rate?key=&identifier=&rating=` -- the star rating. -1 clears."""
-        row, refusal = self._keyed_row(query)
-        if refusal:
-            return refusal
         rating = query.get("rating")
         try:
             value = float(rating)
         except (TypeError, ValueError):
-            # Measured: an unparseable rating is a 400, where plexsim silently
-            # cleared the rating instead.
-            return ("error", 400, "plexsim: bad request")
+            value = None
+        # Measured: an unparseable rating is a 400, where plexsim silently cleared the
+        # rating instead -- and it is refused before a foreign identifier or an unknown
+        # key would be.
+        row, refusal = self._keyed_row(query, validate=lambda: None if value is not None
+                                       else ("error", 400, "plexsim: bad request"))
+        if refusal:
+            return refusal
         self.library.rate(int(row["ratingKey"]), value)
         logger.info("RATE %s -> %s", row["ratingKey"], rating)
         return ("empty", 200)

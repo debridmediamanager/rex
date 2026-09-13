@@ -711,6 +711,10 @@ precisely how the Seasons bug survived a fix attempt.
 - **A second completion of one play answers `ignore`**, not `complete` again.
 - **Playlist writes validate like the rest**: a create needs `title`, `type` and `uri`
   and a type that fits the uri, and a smart list refuses item writes.
+- **A state write needs the library `identifier`**: without it a scrobble, unscrobble,
+  rate or progress is a 400 even for an unknown key, and a foreign one is a 404. The
+  order is fixed -- key, identifier, the write's own parameter, then identifier value
+  and key -- so a refusal check that omits the identifier tests the wrong branch.
 
 ## Conventions
 
