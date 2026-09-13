@@ -307,6 +307,7 @@ class Library:
         if completes and total and position > 60000 and position >= total * 0.9:
             if row.get("_completed") != (session or True):
                 row["_completed"] = session or True
+                row.pop("_completionStopped", None)
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 row.pop("viewOffset", None)
                 self.record_view(row, device_id=device_id)
@@ -320,6 +321,7 @@ class Library:
                 self.recount(row)
         elif offset is not None and total and int(offset) < total * 0.9:
             row.pop("_completed", None)
+            row.pop("_completionStopped", None)
         return row
 
     def remove_from_continue_watching(self, rating_key):

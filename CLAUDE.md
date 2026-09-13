@@ -708,7 +708,8 @@ precisely how the Seasons bug survived a fix attempt.
   one past the end, and a missing or unparseable `time` is a 500.
 - **A timeline refuses a position it cannot place**: a `time` past the `duration` sent
   with it, or a negative or non-numeric `time` or `duration`, is a 400.
-- **A second completion of one play answers `ignore`**, not `complete` again.
+- **A completed play answers `complete` until a `stopped` beat closes it**, and `ignore` to
+  every beat after that -- not to any second beat.
 - **Playlist writes validate like the rest**: a create needs `title`, `type` and `uri`
   and a type that fits the uri, and a smart list refuses item writes.
 - **A state write needs the library `identifier`**: without it a scrobble, unscrobble,

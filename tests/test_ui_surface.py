@@ -6389,6 +6389,24 @@ def main():
         skip("On Deck holds one row per show: the lowest episode in progress, hidden and restored as one",
              "need a show with two episodes")
 
+    # Measured on plexscratch without a session identifier: a completed play answers
+    # `complete` to every beat past 90% until a `stopped` beat closes it -- playing twice,
+    # then stopped, all `complete` -- and `ignore` to every beat after that.
+    if spare:
+        def beat_w11d(state_w11d, time_w11d):
+            return container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&time=%s&duration=600000"
+                                          % (spare, quote("/library/metadata/%s" % spare), state_w11d,
+                                             time_w11d))[1].get("playbackState")
+        beat_w11d("stopped", "120000")
+        sequence_w11d = [beat_w11d(s, t) for s, t in (("playing", "580000"), ("playing", "585000"),
+                                                      ("stopped", "585100"), ("stopped", "585200"),
+                                                      ("playing", "590000"))]
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
+        check("a completed play answers complete until a stopped beat closes it, then ignore",
+              sequence_w11d == ["complete", "complete", "complete", "ignore", "ignore"], str(sequence_w11d))
+    else:
+        skip("a completed play answers complete until a stopped beat closes it, then ignore", "need a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
