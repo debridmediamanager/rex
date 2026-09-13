@@ -256,6 +256,11 @@ def _codec_id(fixture):
     return sum((per_stream(kind, ("codecID",))(fixture) for kind in (1, 2, 3)), [])
 
 
+@check("coded-height")
+def _coded_height(fixture):
+    return per_stream(1, ("codedHeight",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
