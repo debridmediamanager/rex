@@ -2731,7 +2731,7 @@ class PlexSim:
                 if unsupported:
                     return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             rows = []
-            for row in source:
+            for row in self._limited(source, query):
                 entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
                 if not kinds:
                     entry.pop("Media", None)
@@ -3867,6 +3867,7 @@ class PlexSim:
             return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
         if "group" in query:
             source = self.grouped(source, query.get("group"))
+        source = self._limited(source, query)
         rows = [_listing_row(r) for r in source]
         excluded = [e for e in (query.get("excludeElements") or "").split(",") if e]
         if excluded:
@@ -4650,6 +4651,26 @@ class PlexSim:
             return rows
         return [r for r in rows
                 if all(str(r.get("guid") or "").startswith(value) for value in wanted)]
+
+    @staticmethod
+    def _limited(rows, query):
+        """`?limit=N` on a listing -- measured on kids (1.43.4) and zen (1.42.2).
+
+        Not paging: it caps the rows the QUERY returns, before the container's own
+        Start/Size window, and the two edges are the ones autocomplete's limit has --
+        `limit=0` answers ONE row and a negative one every row. `limit=abc` is a 500,
+        the refusal a bad filter value gets. Measured as ignored on `/newest`,
+        `/recentlyAdded` and `/children`, so it belongs to the query grammar rather
+        than to every listing: plexsim read it only in `/query/parse`, so a capped
+        smart list's own preview -- the listing the client builds from the stored
+        query -- was the whole section.
+        """
+        if not query or "limit" not in query:
+            return rows
+        count = int(filters_module.as_number(query["limit"]))
+        if count < 0:
+            return rows
+        return rows[:max(count, 1)]
 
     @staticmethod
     def _guid_gate(rows, query):
