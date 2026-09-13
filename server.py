@@ -3268,11 +3268,34 @@ class PlexSim:
                 # container paging parameters are ignored on a write.
                 if not query.get("type"):
                     return ("error", 400, "plexsim: bad request")
+                for name, _ in query.get("_pairs") or []:
+                    if name.startswith(("X-Plex-", "include", "exclude")) \
+                            or name in ("type", "id") or ".tag.tag" in name \
+                            or name.endswith((".value", ".locked")):
+                        continue
+                    # Measured: a TYPE-SCOPED filter (`show.title=`, `movie.year>>=`,
+                    # even the asked type's own) is a 400 on this path, where an
+                    # unscoped one scopes the edit. plexsim applied it and edited.
+                    try:
+                        field, _ = filters_module.split_key(name)
+                    except filters_module.FilterError as refused:
+                        return ("error", refused.status, "plexsim: %s" % refused.detail)
+                    if filters_module.split_scope(field)[0]:
+                        return ("error", 400, "plexsim: bad request")
+                wanted = {"1": "movie", "2": "show", "3": "season",
+                          "4": "episode"}.get(str(query.get("type")))
                 keys = [int(k) for k in (query.get("id") or "").split(",")
                         if k.strip().isdigit()]
                 if keys:
+                    # Measured: `id=` names rows of the asked TYPE in THIS library. A
+                    # movie id under `type=2`, or on another library's path, is edited
+                    # nowhere -- still a 200 -- and `id=<movie>,<show>` with `type=1`
+                    # edits only the movie. plexsim edited every id it had.
                     rows = [self.catalog.items[k] for k in keys
-                            if k in self.catalog.items]
+                            if k in self.catalog.items
+                            and self.catalog.items[k].get("type") == wanted
+                            and str(self.catalog.items[k].get("librarySectionID"))
+                            == str(section_id)]
                 else:
                     rows = self.typed_rows(section_id, query)
                     rows, _ = self.apply_filters(rows, query, section)

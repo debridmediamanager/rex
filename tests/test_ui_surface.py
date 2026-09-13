@@ -5888,6 +5888,33 @@ def main():
           derived_w2 == "Sorted One" and kept_w2 == "kept" and unlocked_w2 == "Sorted Two",
           "%r / %r / %r" % (derived_w2, kept_w2, unlocked_w2))
 
+    # Measured on plexscratch: the save path edits only rows of the asked TYPE in ITS
+    # library -- a movie id under `type=2`, or on another library's path, is a 200 that
+    # edits nothing -- and a type-scoped filter there is a 400. plexsim edited every id
+    # it had and applied the filter.
+    if show and show_section:
+        status_type_w3, _, _ = request(base, "PUT", "/library/sections/%s/all?type=2&id=%s"
+                                                   "&tagline.value=w3a" % (movie_section, movie))
+        status_lib_w3, _, _ = request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                                                  "&tagline.value=w3b" % (show_section, movie))
+        request(base, "PUT", "/library/sections/%s/all?type=1&id=%s,%s&summary.value=w3c"
+                             % (movie_section, movie, show))
+        status_scope_w3, _, _ = container(base, "PUT", "/library/sections/%s/all?type=1"
+                                                      "&movie.year%%3E%%3E=1900&id=%s&tagline.value=w3d"
+                                                      % (movie_section, movie))
+        movie_w3 = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+        show_w3 = (get(base, "/library/metadata/%s" % show)[1].get("Metadata") or [{}])[0]
+        check("the save path edits only its own type and library, and refuses a type-scoped filter",
+              (status_type_w3, status_lib_w3, status_scope_w3) == (200, 200, 400)
+              and movie_w3.get("tagline") not in ("w3a", "w3b", "w3d")
+              and movie_w3.get("summary") == "w3c" and show_w3.get("summary") != "w3c",
+              "HTTP %s/%s/%s, tagline %r, show summary %r"
+              % (status_type_w3, status_lib_w3, status_scope_w3, movie_w3.get("tagline"),
+                 show_w3.get("summary")))
+    else:
+        skip("the save path edits only its own type and library, and refuses a type-scoped filter",
+             "need a show library")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

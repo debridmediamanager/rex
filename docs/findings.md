@@ -2885,6 +2885,12 @@ the same parameters, then read back from both.
   or earlier -- keeps what was typed, and an empty title leaves it alone. A collection and
   a playlist edited through `/library/metadata/{key}` follow the same rule, and a
   collection records the lock. plexsim stored every value it was sent.
+- **The save path edits only rows of the asked type in its own library.** A movie id
+  under `type=2`, or on the TV library's path, is a 200 that edits nothing, and
+  `id=<movie>,<show>` with `type=1` edits only the movie. A type-SCOPED filter on that
+  path -- `show.title=`, `show.year>>=`, even `movie.year>>=` with `type=1` -- is a 400,
+  where an unscoped `year>>=` still scopes the edit. plexsim edited every id it had and
+  applied the filter.
 
 ### Emulation calibrated against the account's own claimed servers
 
