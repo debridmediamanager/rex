@@ -774,6 +774,22 @@ precisely how the Seasons bug survived a fix attempt.
 - **A suite check that MERGES or deletes a fixture row starves the checks after it.** The
   match check absorbs the spare movie for that reason; cycle 9's Delete Version check was
   broken the same way, twice.
+- **A play is watched only when a beat CROSSES 90% inside its own session.** The session must
+  have reported a position under 90% of the duration THAT BEAT carries -- a single beat at the
+  end, five climbing beats from 95%, another client's earlier position and a stored
+  `/:/progress` offset all complete nothing. Past 90% the answer is `complete` or `ignore`,
+  never `progress`. A suite check that wants a completion has to earn it with a beat below the
+  threshold first.
+- **A timeline beat's own `duration` is the only one that counts**: with none, or with
+  `duration=0` (a 200, not a 400), nothing is stored and nothing completes, and the answer
+  carries the item's stored offset. `/:/progress` is the exception -- it never sends one and
+  still stores any position past a minute.
+- **A beat at or under 60 000 ms DELETES the stored resume point** rather than being ignored,
+  and a progress beat stamps `lastViewedAt` on the season and the show.
+- **Restart a test server by waiting for the PORT to be free**, then check the new pid holds
+  it: a kill plus a `/identity` poll can be answered by the process you just killed, and the
+  suite then runs against a server it has already written to. The suite's own gate checks bind
+  **32599** -- leave it free, or they measure whatever else is listening there.
 
 ## Conventions
 
