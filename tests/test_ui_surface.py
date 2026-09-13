@@ -10421,6 +10421,27 @@ def main():
           and ("Guid" in grow_c15s) == ("Guid" in srow_c15s),
           "search keys %s" % sorted(srow_c15s))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `includeChildren=1` inlines
+    # a `Children` block on a SHOW and on nothing else. Neither reference puts one on a
+    # season, and neither is silent for want of children -- kids' season 7 holds three
+    # episodes and zen's season 17201 holds twenty-two. plexsim inlined a season's
+    # episodes too, so a season detail read carried a list the client had not asked for
+    # and would fetch again from /children.
+    show_row_c15c = (get(base, "/library/metadata/%s?includeChildren=1" % show)[1]
+                     .get("Metadata") or [{}])[0]
+    seasons_c15c = get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+    season_row_c15c = (get(base, "/library/metadata/%s?includeChildren=1"
+                           % seasons_c15c[0]["ratingKey"])[1].get("Metadata") or [{}])[0]
+    movie_row_c15c = (get(base, "/library/metadata/%s?includeChildren=1" % movie)[1]
+                      .get("Metadata") or [{}])[0]
+    check("includeChildren inlines a Children block on a show and not on a season",
+          isinstance(show_row_c15c.get("Children"), dict)
+          and (show_row_c15c["Children"].get("size") or 0) > 0
+          and "Children" not in season_row_c15c and "Children" not in movie_row_c15c,
+          "show %s | season %s | movie %s"
+          % (show_row_c15c.get("Children", {}).get("size"),
+             season_row_c15c.get("Children"), movie_row_c15c.get("Children")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
