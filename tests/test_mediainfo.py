@@ -139,6 +139,8 @@ SKIP = {
     ("kids-3-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     ("kids-4-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     ("kids-8-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    # TrueHD in an mp4.
+    ("fun-1051324-2", 5, "bitDepth"): "TrueHD in mp4: fun writes no bit depth",
 }
 
 
@@ -234,6 +236,11 @@ def _color_range(fixture):
 @check("channel-layout")
 def _channel_layout(fixture):
     return per_stream(2, ("audioChannelLayout",))(fixture)
+
+
+@check("audio-bitdepth")
+def _audio_bit_depth(fixture):
+    return per_stream(2, ("bitDepth",))(fixture)
 
 
 def load(root):

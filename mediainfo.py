@@ -306,6 +306,18 @@ def _bit_depth(stream):
     return int(match.group(1)) if match else 8
 
 
+def _audio_bit_depth(stream):
+    """Measured on 42 lossless and DTS tracks on fun: ffprobe's `bits_per_raw_sample`, and 24
+    for a DTS track without it (DTS Express excepted); a lossy codec carries none. plexsim
+    never sent an audio bit depth."""
+    raw = _int_or(stream.get("bits_per_raw_sample"), None)
+    if raw:
+        return raw
+    if stream.get("codec_name") == "dts" and stream.get("profile") != "DTS Express":
+        return 24
+    return None
+
+
 def _scan_type(field_order):
     """Measured on 47 video streams: absent where ffprobe reports no field order (19),
     `interlaced` for a field-ordered stream (`tt`), `progressive` otherwise. plexsim wrote
@@ -369,6 +381,7 @@ def _audio_stream(stream, stream_id, selected):
         # `5.1(side)` and a 3-, 4-, 5- or 7-channel one had no layout.
         "audioChannelLayout": stream.get("channel_layout") or None,
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
+        "bitDepth": _audio_bit_depth(stream),
         "profile": plex_profile,
     }
     # Measured on 130 audio tracks on fun: every flag is ffprobe's disposition and appears

@@ -3201,6 +3201,9 @@ below is one check there, and each check failed against the code before its fix.
   plexsim derived it from the channel count, so a `5.1` track was `5.1(side)` and 3, 4, 5
   and 7 channels had none. Left alone: E-AC-3 with Atmos in an mp4, which fun reads as its
   5.1 core; one DTS Express track; and the reference's mono AAC clips.
+- **Audio `bitDepth` is `bits_per_raw_sample`, and 24 for DTS without it** (DTS Express
+  excepted); lossy codecs carry none. plexsim sent no audio bit depth. Left alone: TrueHD in
+  an mp4, which fun leaves without one.
 
 ### Emulation calibrated against the account's own claimed servers
 
