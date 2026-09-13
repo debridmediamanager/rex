@@ -3062,6 +3062,14 @@ the same parameters, then read back from both.
   still carried its original Collection tag; plexsim renamed the tag with the collection.
   (The reference spelled that tag `C13` for a collection created as `c13`, which was not
   pinned down.)
+- **A library edit applies the whole form, and scans.** `PUT /library/sections/1?...&language=de-DE
+  &prefs[enableBIFGeneration]=0` reads back `language: de-DE` and the setting false, and
+  pushes the scan: a `library.update.section` activity started as `Scanning`, a status
+  `Scanning the "Movies" section`, the activity retitled `Scanning Movies` and stepped
+  through every item with a `progress` frame (`Scanning Cosmos Laundromat (2015)`) and an
+  `updated` frame at `round(n * 99 / count)` percent, then 100, `ended`, and the status
+  `Library scan complete`. Hunter A's "a type change is a 400" did not reproduce: both
+  servers answer 200. plexsim renamed the library and dropped the rest.
 
 ### Emulation calibrated against the account's own claimed servers
 

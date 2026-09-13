@@ -729,6 +729,9 @@ precisely how the Seasons bug survived a fix attempt.
   custom at 2 -- and a move starts from the order SHOWN, then switches to custom.
 - **Renaming a collection leaves its members' tag alone**: the collection keeps the tag it
   was created under and finds, removes and untags members by it.
+- **A library edit applies the whole form and scans**: `language` and `prefs[...]` apply,
+  and a scan is ONE `library.update.section` activity stepping through the items, not an
+  activity per row.
 
 ## Conventions
 

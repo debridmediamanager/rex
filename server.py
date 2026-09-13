@@ -1263,12 +1263,44 @@ class PlexSim:
         self.notify("activity", "ActivityNotification",
                     [{"event": event, "uuid": activity["uuid"], "Activity": activity}])
 
-    def notify_status(self, title, name="LIBRARY_UPDATE"):
+    def notify_status(self, title, name="LIBRARY_UPDATE", description=""):
         self.notify("status", "StatusNotification",
-                    [{"title": title, "description": "", "notificationName": name}])
+                    [{"title": title, "description": description, "notificationName": name}])
 
     def notify_progress(self, message):
         self.notify("progress", "ProgressNotification", [{"message": message}])
+
+    def notify_section_scan(self, section_id, section):
+        """The frames a library scan pushes, measured on a writable copy of the reference.
+
+        One `library.update.section` activity starts as `Scanning`, a status names the
+        section, the activity is retitled `Scanning <library>` and steps through the
+        items -- a `progress` frame and an `updated` frame each, the subtitle the item's
+        `title (year)`, the percentage `round(n * 99 / count)` -- to 100, then it ends
+        and a status says the scan is complete. plexsim started and ended a metadata
+        activity per row instead, which no scan on a real server does.
+        """
+        title = section.get("title") or ""
+        activity = {"uuid": str(uuid.uuid4()), "type": "library.update.section",
+                    "cancellable": False, "userID": 1, "title": "Scanning", "subtitle": "",
+                    "progress": 0}
+        self.notify_activity(activity, "started")
+        self.notify_status('Scanning the "%s" section' % title)
+        activity["title"] = "Scanning %s" % title
+        self.notify_activity(activity, "updated")
+        rows = [r for r in self.catalog.section_items(section_id)
+                if r.get("type") in ("movie", "show")]
+        for number, row in enumerate(rows, 1):
+            label = ("%s (%s)" % (row.get("title") or "", row["year"]) if row.get("year")
+                     else row.get("title") or "")
+            self.notify_progress("Scanning %s" % label)
+            activity.update(subtitle=label, progress=int(round(number * 99.0 / len(rows))))
+            self.notify_activity(activity, "updated")
+        activity["progress"] = 100
+        self.notify_activity(activity, "updated")
+        self.notify_activity(activity, "ended")
+        self.notify_status("Library scan complete",
+                           description="Extra information may still be downloading from the Internet")
 
     # Plex's numeric type codes, as a TimelineEntry carries them.
     # A playlist is 15 and a collection 18 on the wire -- measured -- and the client
@@ -1778,7 +1810,7 @@ class PlexSim:
             "title": section.get("title"),
             "agent": "tv.plex.agents.series" if is_show else "tv.plex.agents.movie",
             "scanner": "Plex TV Series" if is_show else "Plex Movie",
-            "language": "en-US",
+            "language": section.get("language") or "en-US",
             "metadataAgentProviderGroupId": 2 if is_show else 1,
             "uuid": section.get("uuid"),
             "updatedAt": newest,
@@ -3043,7 +3075,7 @@ class PlexSim:
                 {
                     "agent": ("tv.plex.agents.series" if section["type"] == "show"
                               else "tv.plex.agents.movie"),
-                    "language": "en-US",
+                    "language": section.get("language") or "en-US",
                     "refreshing": False,
                     "scanner": ("Plex TV Series" if section["type"] == "show"
                                 else "Plex Movie"),
@@ -3181,6 +3213,17 @@ class PlexSim:
                 if query.get("language") and query["language"] not in KNOWN_LANGUAGES:
                     return ("error", 400, "plexsim: bad request")
                 section["title"] = query["name"]
+                # Measured on a writable copy of the reference: the edit APPLIES the rest
+                # of the form -- `language=de-DE` reads back on the section and
+                # `prefs[enableBIFGeneration]=0` in its settings -- and runs a scan.
+                # plexsim renamed the library and dropped the rest.
+                if query.get("language"):
+                    section["language"] = query["language"]
+                prefs = {match.group(1): value for name, value in query.items()
+                         for match in [re.match(r"^prefs\[(\w+)\]$", name)] if match}
+                if prefs:
+                    self.library_section(list(segments) + ["prefs"], prefs, "PUT")
+                self.notify_section_scan(section_id, section)
                 logger.info("SECTION edit %s -> %s", section_id, query["name"])
                 return ("empty", 200)
             return self.section_pivots(section_id, section, query)
