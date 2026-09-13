@@ -7687,6 +7687,37 @@ def main():
                for r in rules_c11e] == [("id", "!=", "", "1")],
           "%s %s" % (status_c11e, parsed_c11e[-120:]))
 
+
+    # Re-measured on kids (1.43.4) and zen (1.42.2), correcting cycle 9's reading:
+    # `viewGroup`/`viewMode` on /library/people/{id}/media belong to an ACTOR's list
+    # (tagType 6) only -- a Director, Writer or Producer list carries neither -- and
+    # the list is a QUERY, so the library filters narrow it. plexsim sent the actor
+    # container for every tag type and answered every row to every filter.
+    row_c11f = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    actor_c11f = next((t.get("id") for t in (row_c11f.get("Role") or []) if t.get("id")), None)
+    director_c11f = next((t.get("id") for t in (row_c11f.get("Director") or []) if t.get("id")), None)
+    year_c11f = row_c11f.get("year")
+    def media_c11f(person_c11f, query_c11f=""):
+        status, body, _ = get(base, "/library/people/%s/media%s" % (person_c11f, query_c11f))
+        return (status, body.get("viewGroup"), body.get("viewMode"),
+                len(body.get("Metadata") or []))
+    if not actor_c11f or not director_c11f:
+        skip("a person's media list is typed by its tag and filters like a listing",
+             "the fixture has no person tags")
+    else:
+        plain_c11f = media_c11f(actor_c11f)
+        dir_c11f = media_c11f(director_c11f)
+        narrow_c11f = media_c11f(actor_c11f, "?year=%s" % year_c11f)
+        none_c11f = media_c11f(actor_c11f, "?year=1899")
+        check("a person's media list is typed by its tag and filters like a listing",
+              plain_c11f[0] == 200 and plain_c11f[1] == "movie" and plain_c11f[2] == 65592
+              and dir_c11f[0] == 200 and dir_c11f[1] is None and dir_c11f[2] is None
+              and dir_c11f[3] > 0
+              and narrow_c11f[3] > 0 and narrow_c11f[3] <= plain_c11f[3]
+              and none_c11f[3] == 0,
+              "actor %s, director %s, year %s, none %s"
+              % (plain_c11f, dir_c11f, narrow_c11f, none_c11f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
