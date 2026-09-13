@@ -7614,6 +7614,37 @@ def main():
           "allLeaves plain %s excluded %s, hub %s, person %s %s"
           % (leaves_plain_c11c, leaves_c11c, hub_c11c, person_c11c, people_c11c))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): a section's `allLeaves` is a full
+    # query surface like `/all` -- `type=`, the filters, `sort=` and `limit=` all
+    # apply, an unknown sort key and an unparseable type are 500s. plexsim answered
+    # its whole leaf list to every one of them.
+    def leaves_c11d(query_c11d=""):
+        status, body, _ = get(base, "/library/sections/%s/allLeaves%s" % (movie_section, query_c11d))
+        return status, [r.get("ratingKey") for r in (body.get("Metadata") or [])]
+    plain_c11d = leaves_c11d()
+    year_c11d = leaves_c11d("?year=%s" % ((get(base, "/library/metadata/%s" % movie)[1]
+                                           .get("Metadata") or [{}])[0].get("year") or 0))
+    nothing_c11d = leaves_c11d("?year=1899")
+    typed_c11d = leaves_c11d("?type=1")
+    wrong_type_c11d = leaves_c11d("?type=4")
+    limit_c11d = leaves_c11d("?limit=1")
+    desc_c11d = leaves_c11d("?sort=titleSort:desc")
+    bad_sort_c11d = request(base, "GET", "/library/sections/%s/allLeaves?sort=nope" % movie_section)[0]
+    bad_type_c11d = request(base, "GET", "/library/sections/%s/allLeaves?type=abc" % movie_section)[0]
+    check("a section's allLeaves filters, sorts, caps and types like a listing",
+          plain_c11d[0] == 200 and len(plain_c11d[1]) >= 2
+          and nothing_c11d == (200, []) and len(year_c11d[1]) >= 1
+          and len(year_c11d[1]) <= len(plain_c11d[1])
+          and typed_c11d == plain_c11d and wrong_type_c11d == (200, [])
+          and limit_c11d == (200, plain_c11d[1][:1])
+          and desc_c11d == (200, list(reversed(plain_c11d[1])))
+          and bad_sort_c11d == 500 and bad_type_c11d == 500,
+          "plain %s, year %s, none %s, type1 %s, type4 %s, limit %s, desc %s, "
+          "bad sort %s, bad type %s"
+          % (plain_c11d[1], year_c11d[1], nothing_c11d[1], typed_c11d[1], wrong_type_c11d[1],
+             limit_c11d[1], desc_c11d[1], bad_sort_c11d, bad_type_c11d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

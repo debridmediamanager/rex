@@ -4098,9 +4098,28 @@ class PlexSim:
             fields["nocache"] = True
         fields["viewMode"] = 65592
         if leaf == "allLeaves":
+            # Measured on kids (1.43.4) and zen (1.42.2): a section's `allLeaves` is a
+            # full QUERY surface, exactly like `/all` -- filters, `sort=`, `limit=` and
+            # `type=` all apply, an unknown sort key and an unparseable type are 500s,
+            # and a type the leaves are not selects nothing. plexsim answered the whole
+            # leaf list to every one of them, so the filter bar and the sort menu over
+            # an "All episodes" view silently did nothing: a 200 that looks like it
+            # worked, which is fix 4's failure mode from the inside.
+            self._parsed_type(query)
             rows = self.typed_rows(section_id, {"type": "4" if is_show else "1"})
-            if not is_show:
+            asked = str(query.get("type") or "")
+            if asked:
+                rows = [r for r in rows
+                        if r.get("type") == {"1": "movie", "2": "show", "3": "season",
+                                             "4": "episode"}.get(asked)]
+            rows, _ = self.apply_filters(rows, query, section)
+            if query.get("sort"):
+                rows, unsupported = self._sorted(rows, query["sort"])
+                if unsupported:
+                    return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            elif not is_show:
                 rows, _ = self._sorted(rows, "titleSort")
+            rows = self._limited(rows, query)
             shown = self._excluded_elements(
                 [_grid_row(r, keep_section=False, keep_guid=True)
                  for r in self._guid_gate([_listing_row(r) for r in rows], query)], query)
