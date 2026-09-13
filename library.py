@@ -269,6 +269,10 @@ class Library:
             row["lastRatedAt"] = _now()
         return row
 
+    # What each playback session last reported for an item, keyed (session, ratingKey).
+    # A completion is a CROSSING, so the previous position is the whole state it needs.
+    _reported = {}
+
     def progress(self, rating_key, offset, state=None, duration=None, device_id=1,
                  session="", completes=True):
         """A timeline update. `stopped` past 90% counts as a view, as PMS does.
@@ -283,7 +287,12 @@ class Library:
         row = self.catalog.items.get(rating_key)
         if row is None:
             return None
-        total = duration or row.get("duration") or 0
+        # The duration the BEAT carries, and nothing else: measured on a writable copy of
+        # the reference with half-hour media, a beat with no `duration` stores nothing and
+        # completes nothing, however far along it says it is -- 95% of the item's own length
+        # included. plexsim fell back to the row's duration, so a player that omits it (and
+        # `/:/progress` never sends one) drove the whole watched-state machine.
+        total = int(duration) if duration else 0
         if offset is not None:
             # A timeline puts the row back in Continue Watching, whatever the menu
             # entry did before -- measured on the reference. For an episode that row is
@@ -309,6 +318,20 @@ class Library:
             if int(offset) > 60000 and not near_end:
                 row["viewOffset"] = int(offset)
                 row["lastViewedAt"] = _now()
+                # Measured: a progress beat stamps `lastViewedAt` on the SEASON and the SHOW
+                # as well, before anything is watched -- plexsim touched the parents only on
+                # a completion, so a show part-way through an episode sorted as never played.
+                for name in ("parentRatingKey", "grandparentRatingKey"):
+                    parent = self.catalog.items.get(int(row[name])) \
+                        if str(row.get(name) or "").isdigit() else None
+                    if parent is not None:
+                        parent["lastViewedAt"] = row["lastViewedAt"]
+            elif total and int(offset) <= 60000:
+                # Measured: a beat at or under a minute DELETES the stored resume point,
+                # rather than being ignored -- starting a title again from the beginning is
+                # exactly this sequence, and plexsim kept the old position in Continue
+                # Watching. `lastViewedAt` is left alone.
+                row.pop("viewOffset", None)
         # A play COMPLETES past 90% on any state -- measured: a `playing` beat at 95%
         # answers `complete` and sets viewCount, and the `stopped` beat after it
         # counts nothing again. Nothing under a minute ever completes. `_completed`
@@ -316,7 +339,17 @@ class Library:
         # twice while another client's play still counts; a beat back under 90% is a
         # new play and clears it.
         position = int(offset) if offset is not None else int(row.get("viewOffset") or 0)
-        if completes and total and position > 60000 and position >= total * 0.9:
+        # The crossing rule, measured on half-hour media: a play is watched only when THIS
+        # session's previous position for the item was under 90% of the duration this beat
+        # carries. A cold item beaten once at 95% records nothing, and five climbing beats
+        # from 95% record nothing either; another client's earlier position does not count,
+        # and neither does an offset stored by `/:/progress`. plexsim completed on the
+        # position alone.
+        seen = self._reported.get((session or "", int(rating_key)))
+        if offset is not None and total:
+            self._reported[(session or "", int(rating_key))] = position
+        crossed = seen is not None and total and seen < total * 0.9
+        if completes and crossed and total and position > 60000 and position >= total * 0.9:
             if row.get("_completed") != (session or True):
                 row["_completed"] = session or True
                 row.pop("_completionStopped", None)

@@ -3367,6 +3367,22 @@ Measured in the tenth pass's write batch and not acted on:
 - **`POST /library/parts/{id}` was implemented**, but no client sends it: the web bundle's
   track selection is a PUT. It is here because the endpoint answers, not because anything
   asks.
+#### The tenth pass, third batch: the playback surface, on media long enough to drive it
+
+Cycle 9 left two instrument limits open because plexscratch's clips were ten seconds long. The
+copy now has a `long` mode -- the same files at thirty minutes and twenty-two -- and the two
+limits turn out to be one rule:
+
+- **A play is marked watched only when a beat CROSSES 90% inside its own session.** The
+  session must have reported a position under 90% of the duration THAT BEAT carries. A cold
+  item beaten once at 95% records nothing; five climbing beats from 95% to 99% record nothing
+  either; another client's earlier position does not enable it, and neither does an offset
+  stored by `/:/progress`. Eleven cases, each on an item untouched since a reset. plexsim
+  completed on the position alone, so dragging the scrubber to the end, or a second client
+  joining near the end, silently marked the item watched, cleared its resume point, wrote a
+  history row and bumped the season and show counters. What cycle 9 recorded as "a
+  session-bound timeline is ignored outright" was this rule, not the session header: a
+  session-bound beat behaves exactly like a bare one.
 
 ### Emulation calibrated against the account's own claimed servers
 
