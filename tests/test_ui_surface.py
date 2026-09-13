@@ -8598,6 +8598,45 @@ def main():
               and asc_c13c[-1][1] is not None and desc_c13c[0][1] is not None,
               "asc %s | desc %s" % (asc_c13c, desc_c13c))
 
+        # Measured on zen (1.42.2), which holds 214 duplicated movies of 3887 and 504
+    # duplicated episodes of 9287: `duplicate=1` is "this row has more than one Media"
+    # -- 60 sampled movie rows carried 2 to 15 and 60 `duplicate=0` rows exactly one,
+    # with no violation either way, and the two halves add up to the library. For a SHOW
+    # or a SEASON, which have no Media of their own, it is "a leaf under it has more
+    # than one" -- 44 shows and 74 seasons on zen, and three sampled `duplicate=1` shows
+    # each had a multi-Media episode where three `duplicate=0` shows had none. kids holds
+    # no multi-Media item at all, so it answers 0 and is consistent rather than
+    # contradicting. plexsim returned 0 for every row, so the Duplicates control that
+    # `includeAdvanced=1` puts in the filter bar was advertised and permanently empty.
+    if not show_section:
+        skip("the Duplicates filter selects the rows with more than one version",
+             "need a show library")
+    else:
+        def dupes_c13d(type_c13d, value_c13d):
+            body_c13d = get(base, "/library/sections/%s/all?type=%s&duplicate=%s"
+                            % (show_section, type_c13d, value_c13d))[1]
+            return [r["ratingKey"] for r in body_c13d.get("Metadata") or []]
+        leaves_c13d = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+        dupe_c13d = next((r["ratingKey"] for r in leaves_c13d if len(r.get("Media") or []) > 1), None)
+        if dupe_c13d is None:
+            skip("the Duplicates filter selects the rows with more than one version",
+                 "no two-version episode left in the fixture")
+        else:
+            parent_c13d = str((get(base, "/library/metadata/%s" % dupe_c13d)[1]
+                               .get("Metadata") or [{}])[0].get("parentRatingKey"))
+            every_c13d = [r["ratingKey"] for r in leaves_c13d]
+            check("the Duplicates filter selects the rows with more than one version",
+                  dupes_c13d(4, 1) == [dupe_c13d]
+                  and dupe_c13d not in dupes_c13d(4, 0)
+                  and sorted(dupes_c13d(4, 1) + dupes_c13d(4, 0)) == sorted(every_c13d)
+                  # A show and a season carry no Media, so theirs is about their leaves.
+                  and dupes_c13d(3, 1) == [parent_c13d]
+                  and parent_c13d not in dupes_c13d(3, 0)
+                  and len(dupes_c13d(2, 1)) == 1,
+                  "episodes %s of %s, season %s of %s, shows %s"
+                  % (dupes_c13d(4, 1), len(every_c13d), dupes_c13d(3, 1), parent_c13d,
+                     dupes_c13d(2, 1)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
