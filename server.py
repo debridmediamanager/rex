@@ -3558,6 +3558,20 @@ class PlexSim:
         if "group" in query:
             source = self.grouped(source, query.get("group"))
         rows = [_listing_row(r) for r in source]
+        excluded = [e for e in (query.get("excludeElements") or "").split(",") if e]
+        if excluded:
+            # Measured on both servers, paged and not: a LISTING drops the named child
+            # elements as a detail read does, and dropping Media substitutes the counts
+            # -- `mediaCount` (0 on a show) and `mediaCountOptimized` 0. plexsim applied
+            # it to detail reads and child lists only.
+            trimmed = []
+            for row in rows:
+                out = {k: v for k, v in row.items() if k not in excluded}
+                if "Media" in excluded:
+                    out["mediaCount"] = len(row.get("Media") or [])
+                    out["mediaCountOptimized"] = 0
+                trimmed.append(out)
+            rows = trimmed
         if query.get("type") == "3":
             # Measured on both servers: a season in a LISTING carries no leaf
             # counts, where its /children row does.

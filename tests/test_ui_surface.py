@@ -5681,6 +5681,16 @@ def main():
               "%s / %s / %d" % ([h.get("hubIdentifier") for h in voice_all9],
                                 [h.get("hubIdentifier") for h in voice_shows9], len(voice_music9)))
 
+    trimmed9 = (get(base, "/library/sections/%s/all?type=1&excludeElements=Media,Genre" % movie_lib)[1]
+                .get("Metadata") or [])
+    shows_trimmed9 = (get(base, "/library/sections/%s/all?type=2&excludeElements=Media" % show_lib)[1]
+                      .get("Metadata") or []) if show_lib else [{"mediaCount": 0}]
+    check("a section listing drops excluded elements, counting Media instead",
+          trimmed9 and all("Media" not in r and "Genre" not in r and r.get("mediaCount", 0) >= 1
+                           and r.get("mediaCountOptimized") == 0 for r in trimmed9)
+          and shows_trimmed9 and all(r.get("mediaCount") == 0 for r in shows_trimmed9),
+          "%d movie row(s), %d show row(s)" % (len(trimmed9), len(shows_trimmed9)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
