@@ -4824,7 +4824,13 @@ class PlexSim:
                    else "/:/resources/movie-fanart.jpg",
             "thumb": "/:/resources/show.png" if section.get("type") == "show"
                      else "/:/resources/movie.png",
-            "allowSync": False,
+            # Measured on kids (1.43.4) and zen (1.42.2): the section GRID says
+            # `allowSync: true`, and so do the hub containers. plexsim said false here
+            # while already saying true on /newest, /recentlyAdded, /onDeck, /folder,
+            # /children and a detail row -- so the single most-requested container on
+            # the surface disagreed with every other one, and it is an attribute
+            # python-plexapi reads off every section listing.
+            "allowSync": True,
         }
         # Measured: a paged listing carries offset and totalSize, an unpaged one
         # carries `nocache` instead. The same rule child_container() follows --

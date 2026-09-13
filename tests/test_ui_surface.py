@@ -8113,6 +8113,24 @@ def main():
               % (row_c12b.get("parentGuid"), season_c12b.get("guid"),
                  row_c12b.get("grandparentGuid")))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): the section grid answers
+    # `allowSync: true`. plexsim answered false on the grid while already answering
+    # true on /newest, /recentlyAdded, /onDeck, /folder, /children and a detail row --
+    # the most-requested container on the surface, and an attribute python-plexapi
+    # reads off every section listing.
+    sync_c12c = {}
+    for path_c12c in ("/library/sections/%s/all" % movie_section,
+                      "/library/sections/%s/all?type=1" % movie_section,
+                      "/library/sections/%s/newest" % movie_section,
+                      "/library/sections/%s/collections" % movie_section):
+        sync_c12c[path_c12c] = get(base, path_c12c)[1].get("allowSync")
+    bare_c12c = get(base, "/library/sections")[1].get("allowSync")
+    check("the section grid says allowSync, and the section list still does not",
+          all(value_c12c is True for value_c12c in sync_c12c.values())
+          and bare_c12c is False,
+          "%s, /library/sections %s" % (sync_c12c, bare_c12c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
