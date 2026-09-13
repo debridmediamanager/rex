@@ -8312,9 +8312,16 @@ class PlexSim:
         naming the field the id came from (`actor=47`, `director=213`), tag, tagType,
         and tagKey and thumb where it has them -- in a container of identifier and the
         media-tag pair. `/media` lists the items that person is on, as listing rows that
-        name their library by id, key and title, with viewGroup `movie` and viewMode
-        65592 even when the rows are shows. A non-numeric or unknown id is a 404.
+        name their library by id, key and title. A non-numeric or unknown id is a 404.
         plexsim 404'd both, although every Role it serves carries the id to ask with.
+
+        Re-measured in cycle 11 on kids (1.43.4) and zen (1.42.2), correcting the line
+        above: `viewGroup`/`viewMode` belong to an ACTOR's media list only. Measured
+        across eight people on the two servers, a Role (tagType 6) carries both -- even
+        when its rows are shows, which is where the earlier reading came from -- and a
+        Director, Writer or Producer list carries neither. And the list is a QUERY: the
+        library filters apply to it, so `?year=` narrows it where plexsim answered every
+        row the person is on.
         """
         if not str(person_id).isdigit():
             return ("error", 404, "plexsim: not found")
@@ -8340,8 +8347,11 @@ class PlexSim:
                   "mediaTagPrefix": "/system/bundle/media/flags/", "mediaTagVersion": 1655122614}
         if not media:
             return self.bare_container(size=1, Directory=[found], **common)
+        rows, _ = self.apply_filters(rows, query or {})
         rows, _ = self._sorted(rows, "titleSort")
         shown = self._excluded_elements([_grid_row(_listing_row(r)) for r in rows], query)
+        if found.get("tagType") != 6:
+            return self.bare_container(size=len(shown), Metadata=shown, **common)
         return self.bare_container(size=len(shown), viewGroup="movie", viewMode=65592,
                                    Metadata=shown, **common)
 
