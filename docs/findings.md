@@ -2981,6 +2981,14 @@ the same parameters, then read back from both.
   missing key, a missing identifier, the write's own parameter (an unparseable rating is
   still a 400 with a bogus identifier), then a foreign identifier or an unknown key.
   plexsim never read the identifier.
+- **An episode scrobble counts on its season and show; a parent's own scrobble does not.**
+  One scrobble at a time: each episode scrobble added one to the season's and the show's
+  `viewCount`, a second scrobble of an episode already watched included; scrobbling the
+  season, and the show, added one to each episode and left the season's and the show's
+  own count unchanged; unscrobbling a season or a show removed its own count, and
+  unscrobbling an episode left the parents alone. plexsim counted on a parent only when
+  the parent itself was scrobbled -- the earlier note ("scrobbling one episode twice took
+  the show to viewCount 2") implemented the wrong way round.
 
 ### Emulation calibrated against the account's own claimed servers
 

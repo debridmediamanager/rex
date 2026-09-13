@@ -6325,6 +6325,35 @@ def main():
           "%s, unknown key %s, bad rating with a foreign identifier %s" % (statuses_w10a, unknown_w10a,
                                                                           bad_rating_w10a))
 
+    # Measured on plexscratch: an EPISODE scrobble adds one to its season's and its show's
+    # own viewCount -- every time -- while scrobbling the show itself leaves the show's own
+    # count alone, and unscrobbling the show removes it. plexsim did the reverse.
+    if show:
+        def count_w10b(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0].get("viewCount")
+        season_w10b = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                            if r.get("type") == "season"), {}).get("ratingKey")
+        episode_w10b = (get(base, "/library/metadata/%s/children" % season_w10b)[1]
+                        .get("Metadata") or [{}])[0].get("ratingKey")
+        scrobble_w10b = "/:/%sscrobble?key=%s&identifier=com.plexapp.plugins.library"
+        request(base, "GET", scrobble_w10b % ("un", show))
+        season_before_w10b = count_w10b(season_w10b) or 0
+        request(base, "GET", scrobble_w10b % ("", episode_w10b))
+        request(base, "GET", scrobble_w10b % ("", episode_w10b))
+        season_after_w10b, show_after_w10b = count_w10b(season_w10b) or 0, count_w10b(show)
+        request(base, "GET", scrobble_w10b % ("", show))
+        show_marked_w10b = count_w10b(show)
+        request(base, "GET", scrobble_w10b % ("un", show))
+        show_cleared_w10b = count_w10b(show)
+        check("an episode scrobble counts on its season and show; a show scrobble does not count on the show",
+              season_after_w10b - season_before_w10b == 2 and show_after_w10b == 2
+              and show_marked_w10b == 2 and show_cleared_w10b is None,
+              "season %s -> %s, show %r, after the show's own scrobble %r, after unscrobble %r"
+              % (season_before_w10b, season_after_w10b, show_after_w10b, show_marked_w10b, show_cleared_w10b))
+    else:
+        skip("an episode scrobble counts on its season and show; a show scrobble does not count on the show",
+             "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
