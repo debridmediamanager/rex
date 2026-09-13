@@ -5139,7 +5139,20 @@ class PlexSim:
             key = SECONDARY_TAGS[leaf]
             seen = {}
             for row in rows:
-                for tag in row.get(key) or []:
+                # Cycle 14, measured on kids and zen: the ACTOR axis is the union of
+                # each item's FIRST THREE roles, not every Role tag in the library.
+                # kids' five movies contribute 0+2+2+2+3 = 9 and the axis totalSize is
+                # exactly 9 -- Tears of Steel has eight roles and only its first three
+                # are there. On zen the axis is 3413 where `/library/tags?type=6` is
+                # 59030, and all 15 sampled movies with three or more roles contribute
+                # exactly indices 0, 1 and 2. `?actor=<id>` still matches a role the
+                # axis omits, so the cap is on the AXIS and not on the tag.
+                #
+                # It is actor-only: director, writer, producer, genre and country
+                # carry every tag (7 producers, 5 writers, 7 genres, all present).
+                # The axis's own title2 says as much -- "By Starring Actor".
+                tags = row.get(key) or []
+                for tag in (tags[:3] if leaf == "actor" else tags):
                     name = tag.get("tag")
                     if not name or name in seen:
                         continue
