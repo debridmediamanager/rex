@@ -8086,10 +8086,21 @@ class PlexSim:
                 if query.get("next") == "1":
                     at = current + 1
                 else:
-                    # Skip past the items already queued up behind the current one.
+                    # Skip past the items ALREADY ADDED behind the current one -- the Up
+                    # Next block. Re-measured on a writable copy of the reference: a
+                    # create of [A, B, C] with A playing, then a plain add of D, answers
+                    # [A, D, B, C]; a second plain add of E answers [A, D, E, B, C], and a
+                    # `next=1` add goes in front of that block. plexsim tested
+                    # `id > selected` as a proxy for "added", but every ORIGINAL member
+                    # also has an id above the first item's, so it skipped the whole queue
+                    # and appended at the very end -- Add to Queue from a grid dropped the
+                    # row at the bottom instead of into Up Next. The flag is internal:
+                    # play_queue_container copies only `playQueueItemID` onto a row.
                     at = current + 1
-                    while at < len(items) and items[at]["id"] > queue["selected"]:
+                    while at < len(items) and items[at].get("added"):
                         at += 1
+                for item in new:
+                    item["added"] = True
                 items[at:at] = new
                 queue["version"] += 1
                 if new and query.get("next") != "1":
