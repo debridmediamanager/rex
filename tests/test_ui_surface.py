@@ -5691,6 +5691,17 @@ def main():
           and shows_trimmed9 and all(r.get("mediaCount") == 0 for r in shows_trimmed9),
           "%d movie row(s), %d show row(s)" % (len(trimmed9), len(shows_trimmed9)))
 
+    band9 = {q: get(base, "/statistics/bandwidth?timespan=6%s" % q)
+             for q in ("", "&accountID=999", "&deviceID=999", "&lan=0", "&lan=1", "&lan=true", "&deviceID=")}
+    band_rows9 = {q: len(body.get("StatisticsBandwidth") or []) for q, (_, body, _) in band9.items()}
+    band_lan9 = {bool(r.get("lan")) for r in band9[""][1].get("StatisticsBandwidth") or []}
+    check("bandwidth statistics filter by account, device and lan, and refuse bad values",
+          band_rows9[""] > 0 and band_rows9["&accountID=999"] == 0 and band_rows9["&deviceID=999"] == 0
+          and band_rows9["&lan=1"] == sum(1 for r in band9[""][1].get("StatisticsBandwidth") or [] if r.get("lan"))
+          and band_rows9["&lan=0"] == sum(1 for r in band9[""][1].get("StatisticsBandwidth") or [] if not r.get("lan"))
+          and band9["&lan=true"][0] == 400 and band9["&deviceID="][0] == 400,
+          "%s lan=%s" % (band_rows9, sorted(band_lan9)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

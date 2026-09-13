@@ -7435,6 +7435,20 @@ class PlexSim:
         if which == "bandwidth":
             rows = self.sessions.bandwidth(timespan, since)
             element = "StatisticsBandwidth"
+            # Measured on both servers: the Dashboard's per-account and per-device
+            # graphs filter the series -- `accountID` and `deviceID` keep matching rows
+            # (an id with none answers `size 0`), `lan=0|1` keeps remote or local
+            # traffic -- and an empty or non-numeric id, or any other `lan`, is a 400.
+            # plexsim ignored all three, so every filtered graph drew the whole server.
+            for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
+                if name in query:
+                    if not str(query[name]).isdigit():
+                        return ("error", 400, "plexsim: bad request")
+                    rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
+            if "lan" in query:
+                if query["lan"] not in ("0", "1"):
+                    return ("error", 400, "plexsim: bad request")
+                rows = [r for r in rows if bool(r.get("lan")) == (query["lan"] == "1")]
         else:
             rows = self.sessions.media_statistics(timespan)
             element = "StatisticsMedia"

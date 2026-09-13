@@ -2801,6 +2801,10 @@ anything changed.
 - **A section listing honours `excludeElements`.** Both servers drop the named
   children from every row, paged or not, and `Media` becomes `mediaCount` (0 on a show)
   plus `mediaCountOptimized` 0. plexsim applied the option to detail reads only.
+- **Bandwidth statistics filter.** `accountID` and `deviceID` keep matching rows (an id
+  with none is `size 0`), `lan=0|1` keeps remote or local traffic, and an empty or
+  non-numeric id or any other `lan` value is a 400, on both servers. plexsim ignored all
+  three, so the Dashboard's per-account and per-device graphs drew the whole server.
 
 ### Emulation calibrated against the account's own claimed servers
 
