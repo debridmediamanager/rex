@@ -9466,6 +9466,31 @@ def main():
               "asc %s | desc %s | addedAt %s | want %s"
               % (asc_c14f, desc_c14f, added_c14f, sorted(want_c14f)))
 
+
+    # Cycle 14: a type-prefixed `group=` is SCOPED like a filter and like a sort key.
+    # On kids `type=4&group=show.title` is 1 and `group=title` is 4; `group=season.index`
+    # is 2 and `group=index` is 3. On zen they are 505 vs 4443 and 58 vs 1144, and
+    # `group=season.title` collapses 9287 episodes to 1. plexsim stripped the prefix and
+    # read the field off the episode itself, so the two always agreed.
+    def gtotal_c14g(spec):
+        body_c14g = get(base, "/library/sections/%s/all?type=4&%s" % (show_section, spec))[1]
+        return body_c14g.get("totalSize", body_c14g.get("size"))
+
+    if not show_section:
+        skip("a prefixed group= is scoped to the row the prefix names", "need a show")
+    else:
+        bare_c14g = gtotal_c14g("group=title")
+        show_c14g = gtotal_c14g("group=show.title")
+        idx_c14g = gtotal_c14g("group=index")
+        season_c14g = gtotal_c14g("group=season.index")
+        shows_c14g = len(get(base, "/library/sections/%s/all?type=2" % show_section)[1]
+                         .get("Metadata") or [])
+        check("a prefixed group= is scoped to the row the prefix names",
+              show_c14g == shows_c14g and show_c14g < bare_c14g
+              and season_c14g < idx_c14g,
+              "title %s vs show.title %s (shows %s) | index %s vs season.index %s"
+              % (bare_c14g, show_c14g, shows_c14g, idx_c14g, season_c14g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
