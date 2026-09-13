@@ -3210,6 +3210,9 @@ below is one check there, and each check failed against the code before its fix.
 - **A video stream's `codecID` is its codec tag** where the container has a real one --
   `hev1`, `hvc1`, `dvhe`, `XVID`, `DX50`, `HDMV` -- but not `avc1`, and no audio or subtitle
   stream carries one. plexsim sent none.
+- **An H.264 stream's `codedHeight` is whole macroblocks** (1080 is 1088, 436 is 448, 536
+  is 544; 12 streams on fun and 11 on the reference), where ffprobe 8.1 reports the cropped
+  height. Other codecs take ffprobe's value.
 
 ### Emulation calibrated against the account's own claimed servers
 

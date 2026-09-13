@@ -246,7 +246,7 @@ def _video_stream(stream, stream_id):
         # reads it out of the H.264 bitstream and ffprobe does not report it, so
         # there is nothing to derive it from.
         "chromaLocation": stream.get("chroma_location"),
-        "codedHeight": stream.get("coded_height"),
+        "codedHeight": _coded_height(stream),
         "codedWidth": stream.get("coded_width"),
         "codecID": _codec_id(stream),
         "colorPrimaries": stream.get("color_primaries"),
@@ -306,6 +306,16 @@ def _bit_depth(stream):
         return raw
     match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
     return int(match.group(1)) if match else 8
+
+
+def _coded_height(stream):
+    """An H.264 stream's coded height is whole macroblocks: 1080 is 1088, 436 is 448 and 536
+    is 544, measured on 12 streams on fun and 11 on the reference, while ffprobe 8.1 reports
+    the cropped height. HEVC and the rest match ffprobe as it is."""
+    height = stream.get("coded_height")
+    if height and stream.get("codec_name") == "h264":
+        return (height + 15) // 16 * 16
+    return height
 
 
 def _codec_id(stream):
