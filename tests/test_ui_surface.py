@@ -5751,6 +5751,23 @@ def main():
           "leaves %d/%d, statuses %s" % (len(movie_leaves9.get("Metadata") or []), len(movie_all9),
                                          leaf_statuses9))
 
+    role9 = next((t for t in detail_of(c5_movie).get("Role") or [] if t.get("id")), {})
+    if role9:
+        _, person9, _ = get(base, "/library/people/%s" % role9["id"])
+        _, person_media9, _ = get(base, "/library/people/%s/media" % role9["id"])
+        person_row9 = (person9.get("Directory") or [{}])[0]
+        check("a person reads back as its tag row, and /media lists what they are on",
+              person_row9.get("tag") == role9.get("tag") and person_row9.get("tagType") == 6
+              and person_row9.get("filter") == "actor=%s" % role9["id"]
+              and str(c5_movie) in [str(r.get("ratingKey")) for r in person_media9.get("Metadata") or []]
+              and person_media9.get("viewGroup") == "movie"
+              and all(r.get("librarySectionID") for r in person_media9.get("Metadata") or [])
+              and get(base, "/library/people/999999999")[0] == 404,
+              "%s: %r, %d item(s)" % (role9["id"], person_row9.get("filter"),
+                                      len(person_media9.get("Metadata") or [])))
+    else:
+        skip("a person reads back as its tag row, and /media lists what they are on", "no role on the movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

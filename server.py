@@ -2422,6 +2422,9 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         if route == "/library/people":
             return ("error", 404, "plexsim: not found")
+        if (segments[:2] == ["library", "people"] and method in ("GET", "HEAD")
+                and (len(segments) == 3 or (len(segments) == 4 and segments[3] == "media"))):
+            return self.person(segments[2], len(segments) == 4)
 
         if segments[:2] == ["library", "collections"]:
             return self.collections_route(method, segments, query)
@@ -7370,6 +7373,50 @@ class PlexSim:
                  "4": ("Director", "director"), "5": ("Writer", "writer"),
                  "6": ("Role", "actor"), "7": ("Producer", "producer"),
                  "8": ("Country", "country"), "319": ("Network", "network")}
+
+    # A person's tag element, the filter field it answers with, and its tagType.
+    PERSON_TAGS = (("Role", "actor", 6), ("Director", "director", 4),
+                   ("Writer", "writer", 5), ("Producer", "producer", 7))
+
+    def person(self, person_id, media):
+        """`/library/people/{id}` and `/library/people/{id}/media`.
+
+        Measured on both servers. The person is one `Directory` row -- id, a `filter`
+        naming the field the id came from (`actor=47`, `director=213`), tag, tagType,
+        and tagKey and thumb where it has them -- in a container of identifier and the
+        media-tag pair. `/media` lists the items that person is on, as listing rows that
+        name their library by id, key and title, with viewGroup `movie` and viewMode
+        65592 even when the rows are shows. A non-numeric or unknown id is a 404.
+        plexsim 404'd both, although every Role it serves carries the id to ask with.
+        """
+        if not str(person_id).isdigit():
+            return ("error", 404, "plexsim: not found")
+        wanted = str(int(person_id))
+        found, rows, seen = None, [], set()
+        for row in self.catalog.items.values():
+            for element, field, tag_type in self.PERSON_TAGS:
+                for tag in row.get(element) or []:
+                    if not isinstance(tag, dict) or str(tag.get("id")) != wanted:
+                        continue
+                    if found is None:
+                        found = {"id": tag.get("id"), "filter": "%s=%s" % (field, tag.get("id")),
+                                 "tag": tag.get("tag"), "tagType": tag_type}
+                        for extra in ("tagKey", "thumb"):
+                            if tag.get(extra):
+                                found[extra] = tag[extra]
+                    if row.get("ratingKey") not in seen:
+                        seen.add(row.get("ratingKey"))
+                        rows.append(row)
+        if found is None:
+            return ("error", 404, "plexsim: not found")
+        common = {"identifier": "com.plexapp.plugins.library",
+                  "mediaTagPrefix": "/system/bundle/media/flags/", "mediaTagVersion": 1655122614}
+        if not media:
+            return self.bare_container(size=1, Directory=[found], **common)
+        rows, _ = self._sorted(rows, "titleSort")
+        shown = [_grid_row(_listing_row(r)) for r in rows]
+        return self.bare_container(size=len(shown), viewGroup="movie", viewMode=65592,
+                                   Metadata=shown, **common)
 
     def library_tags(self, query):
         """Every tag of one type the server knows, ordered by id.

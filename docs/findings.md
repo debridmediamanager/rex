@@ -2818,6 +2818,10 @@ anything changed.
   empty "By Moment" container with `clusterZoomLevel` 1; `computePath` is a 400 without
   both ids, a 404 for an unknown one and otherwise an empty path; `nearest` is a 400.
   All six were 404 on plexsim.
+- **`/library/people/{id}`** reads a person back as one `Directory` row whose `filter`
+  names the field the id came from (`actor=47`, `director=213`), and `/media` lists the
+  items they are on as listing rows naming their library, with viewGroup `movie` even for
+  shows. An unknown id is a 404. plexsim 404'd both, though every Role carries the id.
 
 ### Emulation calibrated against the account's own claimed servers
 
