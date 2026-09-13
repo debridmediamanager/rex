@@ -9078,6 +9078,56 @@ def main():
                   and cases_c13p[(seasons_c13p - 1, 2)] == (1, 1, 0),
                   "%s" % cases_c13p)
 
+        # Re-measured on the copy, field by field either side of one call, after cycle 13's
+    # season cascade raised the question: `PUT /library/metadata/{episode}/unmatch` on an
+    # episode whose SEASON is still matched drops exactly what the cascade drops --
+    # `Director`, `Writer`, `Producer`, `Role` and `audienceRating` removed, `summary`
+    # emptied, `year` removed (and `parentYear` appearing in its place, from the season
+    # that still has one), `titleSort` removed where there was one, the thumb re-versioned
+    # and every `Image.alt` following the new title. The two things the cascade does that
+    # this does not -- `parentGuid` moving to `local://` and `parentThumb` going null --
+    # are consequences of the SEASON changing, not of the episode write. plexsim changed
+    # the guid and the title and left the rest, so an unmatched episode kept the agent's
+    # summary, rating and cast under a `local://` guid: a state a real PMS cannot produce.
+    if not show:
+        skip("unmatching an episode alone drops what the cascade drops", "need a show")
+    else:
+        leaf_c13q = next((r["ratingKey"] for r in
+                          get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                          .get("Metadata") or []
+                          if not str((get(base, "/library/metadata/%s" % r["ratingKey"])[1]
+                                      .get("Metadata") or [{}])[0].get("guid") or "").startswith("local://")),
+                         None)
+        if not leaf_c13q:
+            skip("unmatching an episode alone drops what the cascade drops",
+                 "every episode in the fixture is already unmatched")
+        else:
+            def leaf_row_c13q():
+                return (get(base, "/library/metadata/%s" % leaf_c13q)[1].get("Metadata") or [{}])[0]
+            before_c13q = leaf_row_c13q()
+            season_before_c13q = (get(base, "/library/metadata/%s"
+                                      % before_c13q.get("parentRatingKey"))[1].get("Metadata") or [{}])[0]
+            status_c13q, _, _ = request(base, "PUT", "/library/metadata/%s/unmatch" % leaf_c13q)
+            after_c13q = leaf_row_c13q()
+            season_after_c13q = (get(base, "/library/metadata/%s"
+                                     % before_c13q.get("parentRatingKey"))[1].get("Metadata") or [{}])[0]
+            check("unmatching an episode alone drops what the cascade drops",
+                  status_c13q == 200
+                  and after_c13q.get("guid") == "local://%s" % leaf_c13q
+                  and after_c13q.get("summary") == ""
+                  and after_c13q.get("year") is None
+                  and after_c13q.get("audienceRating") is None
+                  and not after_c13q.get("Role") and not after_c13q.get("Director")
+                  and not after_c13q.get("Writer") and not after_c13q.get("Producer")
+                  # the SEASON is untouched, so the parent links stay where they were
+                  and after_c13q.get("parentGuid") == before_c13q.get("parentGuid")
+                  and after_c13q.get("parentThumb") == before_c13q.get("parentThumb")
+                  and season_after_c13q.get("guid") == season_before_c13q.get("guid"),
+                  "guid %s, summary %r, year %s, rating %s, Role %s | parent %s"
+                  % (after_c13q.get("guid"), after_c13q.get("summary"), after_c13q.get("year"),
+                     after_c13q.get("audienceRating"), len(after_c13q.get("Role") or []),
+                     after_c13q.get("parentGuid") == before_c13q.get("parentGuid")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

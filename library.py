@@ -1039,6 +1039,17 @@ class Library:
                 row.pop("titleSort", None)
             self._follow_parent(row, {"title"})
             row["updatedAt"] = _now()
+            if row["type"] == "episode":
+                # Re-measured on the copy against a DIRECT episode unmatch, with the
+                # season left matched: the same field set goes as in a season's
+                # cascade -- the four people lists, `audienceRating`, `year`, and
+                # `summary` emptied -- so these belong to "unmatch an episode" rather
+                # than to the cascade. plexsim changed the guid and the title and kept
+                # the rest, which left an unmatched episode carrying the agent's
+                # summary, rating and cast under a `local://` guid.
+                for field in self.EPISODE_UNMATCH_DROPS:
+                    row.pop(field, None)
+                row["summary"] = ""
             if row["type"] == "season":
                 self._unmatch_season_children(row, identify)
             return row
@@ -1070,12 +1081,11 @@ class Library:
     # poster of its own. kids shows the same end state from the other side: its
     # unmatched season 11 carries the show's thumb, no `year` and `parentYear`.
     #
-    # The episode drops here are the ones that cascade measured -- the four people
-    # lists, `audienceRating`, `year` and the emptied `summary`. A DIRECT
-    # `unmatch` on an episode whose season is still matched was never diffed field
-    # for field (cycle 9 recorded only its guid and title), so the same drops are
-    # deliberately NOT applied there; see HANDOVER.md §3.3.
-    EPISODE_CASCADE_DROPS = ("Director", "Writer", "Producer", "Role",
+    # What an episode unmatch drops, by either path. Re-measured on the copy against a
+    # DIRECT unmatch with the season left matched: the field set is the same one the
+    # season cascade produces, so it belongs to the episode write itself. `parentGuid`
+    # and `parentThumb` are NOT in it -- those move only because the season moved.
+    EPISODE_UNMATCH_DROPS = ("Director", "Writer", "Producer", "Role",
                              "audienceRating", "year")
 
     def _unmatch_season_children(self, season, identify=None):
@@ -1092,9 +1102,6 @@ class Library:
                     or str(leaf.get("parentRatingKey")) != str(season["ratingKey"]):
                 continue
             self.unmatch(leaf, identify)
-            for field in self.EPISODE_CASCADE_DROPS:
-                leaf.pop(field, None)
-            leaf["summary"] = ""
             leaf["parentGuid"] = season["guid"]
             leaf.pop("parentThumb", None)
 
