@@ -141,6 +141,9 @@ SKIP = {
     ("kids-8-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
     # TrueHD in an mp4.
     ("fun-1051324-2", 5, "bitDepth"): "TrueHD in mp4: fun writes no bit depth",
+    # AVI tracks the probe gives no id.
+    ("fun-1057221-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
+    ("fun-1150826-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
 }
 
 
@@ -241,6 +244,11 @@ def _channel_layout(fixture):
 @check("audio-bitdepth")
 def _audio_bit_depth(fixture):
     return per_stream(2, ("bitDepth",))(fixture)
+
+
+@check("stream-identifier")
+def _stream_identifier(fixture):
+    return sum((per_stream(kind, ("streamIdentifier",))(fixture) for kind in (1, 2, 3)), [])
 
 
 def load(root):

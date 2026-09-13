@@ -231,6 +231,7 @@ def _video_stream(stream, stream_id):
         "streamType": 1,
         "codec": stream.get("codec_name"),
         "index": stream.get("index"),
+        "streamIdentifier": _stream_identifier(stream),
         "width": width,
         "height": height,
         "profile": (stream.get("profile") or "").lower() or None,
@@ -306,6 +307,16 @@ def _bit_depth(stream):
     return int(match.group(1)) if match else 8
 
 
+def _stream_identifier(stream):
+    """The container's own track id in decimal, measured on 79 streams: an mp4 track number
+    (`0x2` is `"2"`), an MPEG-TS PID (`0x1011` is `"4113"`), and absent in Matroska, where
+    ffprobe reports no id. A string, as a real PMS sends it. plexsim sent none."""
+    try:
+        return str(int(stream["id"], 16))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _audio_bit_depth(stream):
     """Measured on 42 lossless and DTS tracks on fun: ffprobe's `bits_per_raw_sample`, and 24
     for a DTS track without it (DTS Express excepted); a lossy codec carries none. plexsim
@@ -375,6 +386,7 @@ def _audio_stream(stream, stream_id, selected):
         "streamType": 2,
         "codec": plex_codec,
         "index": stream.get("index"),
+        "streamIdentifier": _stream_identifier(stream),
         "channels": channels,
         # ffprobe's layout verbatim, measured on 126 of 130 tracks on fun, and absent where
         # it has none. plexsim derived it from the channel count, so a `5.1` track was
@@ -430,6 +442,7 @@ def _subtitle_stream(stream, stream_id):
         "canAutoSync": False,
         "codec": codec,
         "index": stream.get("index"),
+        "streamIdentifier": _stream_identifier(stream),
     }
     row.update(_disposition(stream, TRACK_FLAGS))
     bitrate = stream.get("bit_rate")

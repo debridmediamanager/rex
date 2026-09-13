@@ -3204,6 +3204,9 @@ below is one check there, and each check failed against the code before its fix.
 - **Audio `bitDepth` is `bits_per_raw_sample`, and 24 for DTS without it** (DTS Express
   excepted); lossy codecs carry none. plexsim sent no audio bit depth. Left alone: TrueHD in
   an mp4, which fun leaves without one.
+- **`streamIdentifier` is the container's track id in decimal** -- an mp4 track number, an
+  MPEG-TS PID -- and absent in Matroska. plexsim sent none. An AVI track that fun numbers
+  with no id in the probe is left alone.
 
 ### Emulation calibrated against the account's own claimed servers
 
