@@ -7223,33 +7223,35 @@ def main():
     # ended -- one per match, for the life of the process.
     spare_c10i = spare if spare and spare != movie else None
     if spare_c10i:
+        # The row that gets ABSORBED is the spare, not `movie`: a merge deletes it, and the
+        # checks after this block still need `movie`.
         def titles_c10i(key):
             return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
-        target_c10i = titles_c10i(spare_c10i)
+        target_c10i = titles_c10i(movie)
         status_noname_c10i, _, _ = request(base, "PUT", "/library/metadata/%s/match?guid=%s"
-                                           % (movie, urllib.parse.quote(target_c10i.get("guid") or "", safe="")))
+                                           % (spare_c10i, urllib.parse.quote(target_c10i.get("guid") or "", safe="")))
         status_empty_c10i, body_empty_c10i, _ = request(
-            base, "PUT", "/library/metadata/%s/match?guid=&name=c10+renamed" % movie)
-        renamed_c10i = titles_c10i(movie)
+            base, "PUT", "/library/metadata/%s/match?guid=&name=c10+renamed" % spare_c10i)
+        renamed_c10i = titles_c10i(spare_c10i)
         _, frames_c10i = notifications(
             base, lambda: request(base, "PUT", "/library/metadata/%s/match?guid=%s&name=%s&year=%s"
-                                  % (movie, urllib.parse.quote(target_c10i.get("guid") or "", safe=""),
+                                  % (spare_c10i, urllib.parse.quote(target_c10i.get("guid") or "", safe=""),
                                      "c10+matched", target_c10i.get("year") or 2000)), seconds=3)
         states_c10i = [(e.get("type"), e.get("state"), e.get("metadataState"), str(e.get("itemID")))
                        for f in frames_c10i or []
                        for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
         events_c10i = [a.get("event") for f in frames_c10i or []
                        for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
-        gone_c10i, _, _ = request(base, "GET", "/library/metadata/%s" % movie)
-        survivor_c10i = titles_c10i(spare_c10i)
+        gone_c10i, _, _ = request(base, "GET", "/library/metadata/%s" % spare_c10i)
+        survivor_c10i = titles_c10i(movie)
         activities_c10i = [a.get("title") for a in get(base, "/activities")[1].get("Activity") or []]
         check("a match needs a name, an empty guid renames, and a guid another row holds merges",
               status_noname_c10i == 400
               and is_empty_200(status_empty_c10i, body_empty_c10i)
               and renamed_c10i.get("title") == "c10 renamed"
-              and states_c10i[:2] == [(1, 3, None, str(movie)), (1, 9, "deleted", str(movie))]
-              and (-1, 3, None, str(spare_c10i)) in states_c10i
-              and states_c10i[-1] == (1, 5, None, str(spare_c10i))
+              and states_c10i[:2] == [(1, 3, None, str(spare_c10i)), (1, 9, "deleted", str(spare_c10i))]
+              and (-1, 3, None, str(movie)) in states_c10i
+              and states_c10i[-1] == (1, 5, None, str(movie))
               and events_c10i[:1] == ["started"] and events_c10i[-1:] == ["ended"]
               and gone_c10i == 404
               and len(survivor_c10i.get("Media") or []) == 2
