@@ -7520,6 +7520,38 @@ def main():
              status_acct_c10p, acct_c10p.get("size"), status_mine_c10p, mine_c10p.get("size"),
              status_empty_c10p, status_word_c10p))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): `?limit=N` caps a listing's rows.
+    # `limit=0` answers ONE row, a negative one every row, and `limit=abc` is a 500 --
+    # and it is a property of the QUERY grammar, so /newest and /children ignore it.
+    # plexsim read `limit` only in /query/parse, so every capped list was the whole
+    # section: a smart list saved with a limit previewed as if it had none.
+    def rows_c11a(path):
+        status, body, _ = get(base, path)
+        return status, len(body.get("Metadata") or [])
+    section_c11a = "/library/sections/%s/all" % movie_section
+    # Counted live rather than assumed: by this point in the suite the match check
+    # has merged the spare movie away, so the section holds two rows, not three.
+    total_c11a = rows_c11a(section_c11a)[1]
+    one_c11a = rows_c11a(section_c11a + "?limit=1")
+    zero_c11a = rows_c11a(section_c11a + "?limit=0")
+    neg_c11a = rows_c11a(section_c11a + "?limit=-1")
+    word_c11a = request(base, "GET", section_c11a + "?limit=abc")[0]
+    lib_c11a = rows_c11a("/library/all?type=1&limit=1")
+    newest_c11a = rows_c11a("/library/sections/%s/newest?limit=1" % movie_section)
+    newest_plain_c11a = rows_c11a("/library/sections/%s/newest" % movie_section)
+    kids_c11a = rows_c11a("/library/metadata/%s/children?limit=1" % show)
+    kids_plain_c11a = rows_c11a("/library/metadata/%s/children" % show)
+    check("a listing caps at its limit, 0 answers one row and a negative one all",
+          total_c11a >= 2 and one_c11a == (200, 1) and zero_c11a == (200, 1)
+          and neg_c11a == (200, total_c11a) and word_c11a == 500
+          and lib_c11a == (200, 1)
+          and newest_c11a == newest_plain_c11a and kids_c11a == kids_plain_c11a,
+          "total %s, limit1 %s, limit0 %s, limit-1 %s, abc %s, library %s, "
+          "newest %s vs %s, children %s vs %s"
+          % (total_c11a, one_c11a, zero_c11a, neg_c11a, word_c11a, lib_c11a,
+             newest_c11a, newest_plain_c11a, kids_c11a, kids_plain_c11a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
