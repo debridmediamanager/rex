@@ -7857,7 +7857,14 @@ class PlexSim:
             # Measured: `/items` answers the same members as `/children` -- plexsim
             # answered an empty container to it, so the Edit Collection dialog's
             # member list was blank.
-            rows = [_listing_row(r) for r in self.library.collection_children(collection)]
+            # Measured on a writable copy of the reference: a collection's members come
+            # back as the LIGHT grid row -- no Guid, no Rating, no Field, a Part with no
+            # Stream list and text-only tags -- while the same item's detail read is
+            # full. plexsim sent the detail row here and on a playlist's items, the two
+            # list endpoints the grid projection was never applied to, so every Edit
+            # Collection dialog and every playlist page carried the whole stream table.
+            rows = [_grid_row(_listing_row(r))
+                    for r in self.library.collection_children(collection)]
             return self.bare_container(size=len(rows), Metadata=rows)
         # Measured: `/children/{ratingKey}` removes a member exactly as `/items/` does;
         # plexsim answered it with an empty 200 and removed nothing.
@@ -8043,7 +8050,9 @@ class PlexSim:
                     Metadata=[self.library._playlist_row(playlist)])
             rows = []
             for row, item_id in self.library.playlist_items(playlist):
-                entry = _listing_row(row)
+                # The light grid row, as measured on the copy -- see the collection's
+                # children above; a playlist item keeps its librarySection fields.
+                entry = _grid_row(_listing_row(row))
                 entry["playlistItemID"] = item_id
                 rows.append(entry)
             summary = self.library._playlist_row(playlist)
