@@ -2835,6 +2835,10 @@ anything changed.
   library answers the episode sorts to `type=4` and the artist sorts to `type=8`, types
   9, 10, 13, 18 and 20 have lists, other numbers are empty and a non-number a 400.
   plexsim read the library's own Meta. The lists are `section_sorts.json`.
+- **`/library/randomArtwork?sections=` and `/library/sections/{id}/arts`** list one
+  `<Photo>` row per movie or show with a backdrop -- title and art key, every other field
+  blank or -1 -- the first shuffled on each request and capped at 100 in a bare `size`
+  container, the second in ratingKey order in the library's container. plexsim 404'd both.
 
 ### Emulation calibrated against the account's own claimed servers
 

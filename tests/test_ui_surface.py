@@ -5816,6 +5816,25 @@ def main():
           "episode %d, artist %s, movie-on-show %d" % (len(episode_sorts9[1]), artist_sorts9[1][:2],
                                                        len(movie_sorts_on_show9[1])))
 
+    with_art9 = [r for r in get(base, "/library/sections/%s/all?type=1" % movie_lib)[1].get("Metadata") or []
+                 if r.get("art")]
+    random9 = get(base, "/library/randomArtwork?sections=%s" % movie_lib)[1].get("Metadata") or []
+    arts9 = get(base, "/library/sections/%s/arts" % movie_lib)[1]
+    _, arts_xml9 = fetch_as("/library/sections/%s/arts" % movie_lib, {}, want_json=False)
+    try:
+        arts_tags9 = {child.tag for child in ET.fromstring(arts_xml9)}
+    except ET.ParseError:
+        arts_tags9 = set()
+    art_keys9 = [int(str(r.get("key", "")).split("/")[3]) for r in arts9.get("Metadata") or []
+                 if str(r.get("key", "")).startswith("/library/metadata/")]
+    check("randomArtwork and a library's arts list one Photo per backdrop",
+          len(random9) == len(with_art9) and with_art9
+          and all(r.get("type") == "image" and r.get("rating") == -1 for r in random9)
+          and get(base, "/library/randomArtwork")[1].get("size") == 0
+          and len(art_keys9) == len(with_art9) and art_keys9 == sorted(art_keys9)
+          and arts_tags9 == {"Photo"},
+          "random %d, arts %d of %d, xml %s" % (len(random9), len(art_keys9), len(with_art9), sorted(arts_tags9)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
