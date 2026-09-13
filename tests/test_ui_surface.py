@@ -6064,6 +6064,50 @@ def main():
         skip("a frame names a show with its year and an episode by S and E; a batch and a list frame as measured",
              "need a show and a second movie")
 
+    # Measured on plexscratch: a parent's title and studio are COPIED onto its children --
+    # a season's onto its episodes' parentTitle/parentStudio, a show's onto its seasons'
+    # parentTitle/parentStudio and every episode's grandparentTitle, an emptied show title
+    # dropping them -- and a season's episode list names a custom season title and carries
+    # the season's summary. plexsim copied them once, when the catalog loaded.
+    if show:
+        def row_w7(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+        season_w7 = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                          if r.get("type") == "season"), {}).get("ratingKey")
+        episode_w7 = (get(base, "/library/metadata/%s/children" % season_w7)[1]
+                      .get("Metadata") or [{}])[0].get("ratingKey")
+        show_was_w7, season_was_w7 = row_w7(show), row_w7(season_w7)
+        request(base, "PUT", "/library/metadata/%s?title.value=%s&studio.value=%s&summary.value=%s"
+                             % (season_w7, quote("Named Season"), quote("Season Studio"), quote("Season words")))
+        request(base, "PUT", "/library/metadata/%s?title.value=%s&studio.value=%s"
+                             % (show, quote("Renamed Show"), quote("Show Studio")))
+        episode_now_w7, season_now_w7 = row_w7(episode_w7), row_w7(season_w7)
+        children_w7 = get(base, "/library/metadata/%s/children" % season_w7)[1]
+        request(base, "PUT", "/library/metadata/%s?title.value=" % show)
+        episode_bare_w7, season_bare_w7 = row_w7(episode_w7), row_w7(season_w7)
+        request(base, "PUT", "/library/metadata/%s?title.value=%s&studio.value=%s"
+                             % (show, quote(str(show_was_w7.get("title"))), quote(str(show_was_w7.get("studio") or ""))))
+        request(base, "PUT", "/library/metadata/%s?title.value=%s&studio.value=%s&summary.value=%s"
+                             % (season_w7, quote(str(season_was_w7.get("title"))),
+                                quote(str(season_was_w7.get("studio") or "")),
+                                quote(str(season_was_w7.get("summary") or ""))))
+        check("a parent's title and studio reach its children, and a season list names a custom title",
+              episode_now_w7.get("parentTitle") == "Named Season"
+              and episode_now_w7.get("parentStudio") == "Season Studio"
+              and episode_now_w7.get("grandparentTitle") == "Renamed Show"
+              and season_now_w7.get("parentTitle") == "Renamed Show"
+              and season_now_w7.get("parentStudio") == "Show Studio"
+              and children_w7.get("parentTitle") == "Named Season" and children_w7.get("summary") == "Season words"
+              and "grandparentTitle" not in episode_bare_w7 and "parentTitle" not in season_bare_w7,
+              "episode %r/%r/%r, season %r/%r, list %r/%r, emptied %r/%r"
+              % (episode_now_w7.get("parentTitle"), episode_now_w7.get("parentStudio"),
+                 episode_now_w7.get("grandparentTitle"), season_now_w7.get("parentTitle"),
+                 season_now_w7.get("parentStudio"), children_w7.get("parentTitle"), children_w7.get("summary"),
+                 episode_bare_w7.get("grandparentTitle"), season_bare_w7.get("parentTitle")))
+    else:
+        skip("a parent's title and studio reach its children, and a season list names a custom title",
+             "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

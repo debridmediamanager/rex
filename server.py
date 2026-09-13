@@ -1618,19 +1618,23 @@ class PlexSim:
             # An episode list is presented as the SHOW's, with the season as
             # the parent -- hence grandparent* on the container. Measured on both
             # servers: `title1` is the SHOW's title, not the library's;
-            # `parentTitle` is the EMPTY string; `grandparentRatingKey` is a
-            # number; and there is no `summary` or `grandparentYear`. `parentYear` is
-            # the SEASON's own year when it has one -- re-measured in cycle 8 on both
-            # servers; the first reading was taken on seasons without a year.
+            # `grandparentRatingKey` is a number; and there is no `grandparentYear`.
+            # `parentYear` is the SEASON's own year when it has one -- re-measured in
+            # cycle 8 on both servers; the first reading was taken on seasons without a
+            # year. The same trap twice more, measured on a writable copy in cycle 9:
+            # `parentTitle` is "" only while the season keeps its generated `Season N`
+            # title, and `summary` is absent only while the season has none.
             show_key = parent.get("parentRatingKey")
             show = self.catalog.items.get(int(show_key)) if show_key else None
-            fields.pop("summary", None)
+            if not parent.get("summary"):
+                fields.pop("summary", None)
             fields.update(
                 {
                     "title1": show.get("title") if show else parent.get("parentTitle"),
                     "title2": parent.get("title"),
                     "parentIndex": parent.get("index"),
-                    "parentTitle": "",
+                    "parentTitle": ("" if parent.get("title") in ("", "Season %s" % parent.get("index"))
+                                    else parent.get("title")),
                     "parentYear": parent.get("year"),
                     "thumb": parent.get("thumb"),
                     "art": parent.get("art"),

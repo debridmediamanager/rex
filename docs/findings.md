@@ -2925,6 +2925,16 @@ the same parameters, then read back from both.
   `/library/metadata/{id}`, pushes its own type-15 pair with sectionID -1, and a
   collection's rename its type-18 pair. plexsim sent every row's own title, interleaved
   the batch, and pushed nothing for a list.
+- **A parent's title and studio are copied onto the rows beneath it.** Retitling a season
+  changes its episodes' `parentTitle`, and its studio their `parentStudio`; retitling a
+  show changes its seasons' `parentTitle` and every episode's `grandparentTitle`, and its
+  studio the seasons' `parentStudio` -- on the detail row, the child list and the grid.
+  An emptied show title removes those fields rather than sending "". A season's episode
+  list names a custom season title in `parentTitle` and carries the season's `summary`
+  when it has one: every season the earlier reading saw, on kids and on fun, had a
+  generated `Season N` title and no summary, which is why it recorded "" and no summary
+  -- re-read on both servers here, and it still holds for those seasons. plexsim copied
+  the fields once, at load, and updated only the containers.
 
 ### Emulation calibrated against the account's own claimed servers
 
