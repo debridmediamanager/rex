@@ -1240,15 +1240,21 @@ class Library:
         """
         items = collection["items"]
         try:
-            moving = next(k for k in items if int(k) == int(rating_key))
+            moving = int(next(k for k in items if int(k) == int(rating_key)))
         except (StopIteration, TypeError, ValueError):
             return False
+        # Measured on a writable copy of the reference: a move starts from the order the
+        # collection is SHOWN in -- by release date unless a custom order is set -- and
+        # switches the collection to its custom order, `collectionSort` 2.
+        shown = [int(r["ratingKey"]) for r in self.collection_children(collection)]
+        items[:] = shown + [int(k) for k in items if int(k) not in shown]
         items.remove(moving)
         if after is None:
             items.insert(0, moving)
         else:
             index = next((n for n, k in enumerate(items) if str(k) == str(after)), None)
             items.insert(len(items) if index is None else index + 1, moving)
+        collection["collectionSort"] = "2"
         collection["updatedAt"] = _now()
         return True
 
@@ -1488,7 +1494,24 @@ class Library:
         if collection.get("smart"):
             return self.smart_rows(collection.get("uri"))
         rows = [self.catalog.items.get(int(k)) for k in collection["items"]]
-        return [r for r in rows if r]
+        return self._collection_order(collection, [r for r in rows if r])
+
+    @staticmethod
+    def _collection_order(collection, rows):
+        """A collection's children in the order its `collectionSort` names.
+
+        Measured on a writable copy of the reference: with no sort set, or `0`, the
+        members come back by RELEASE DATE, oldest first, whatever order they were added
+        in; `2` is the custom order a move writes. `1` gave the same order on members
+        whose release order and titles agree, and is alphabetical by python-plexapi's
+        mapping (0 release, 1 alpha, 2 custom). plexsim listed insertion order.
+        """
+        sort = str(collection.get("collectionSort") or "0")
+        if sort == "2":
+            return rows
+        if sort == "1":
+            return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or "").lower())
+        return sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""))
 
     def _collection_row(self, collection):
         """Field set measured on a real PMS's POST /library/collections."""

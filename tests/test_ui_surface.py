@@ -1649,8 +1649,11 @@ def main():
                 now = [r.get("ratingKey") for r in children.get("Metadata") or []]
                 # Keyed by the member's own ratingKey here, unlike a playlist's
                 # move, which uses the playlistItemID.
+                # Measured: the move answers the collection row and switches the
+                # collection to its custom order.
                 check("a collection member can be reordered",
-                      is_empty_200(status, body) and now and now[0] == order[-1],
+                      status == 200 and json.loads(body or b"{}").get("MediaContainer", {}).get("size") == 1
+                      and now and now[0] == order[-1],
                       "%s -> %s" % (order, now))
             else:
                 skip("a collection member can be reordered", "need two members")
@@ -6631,6 +6634,51 @@ def main():
     check("a collection add refuses no uri, an unknown key, another type and a smart collection",
           statuses_w13b == [400] * len(statuses_w13b) and members_w13b == [str(movie)],
           "%s, members %s" % (statuses_w13b, members_w13b))
+
+    # Measured on plexscratch: a collection's children come back by RELEASE DATE unless a
+    # custom order is set; a move starts from that order, answers the collection row and
+    # switches the collection to custom (collectionSort 2), and collectionSort 0 goes back
+    # to release date. plexsim listed insertion order and answered the move with nothing.
+    listing_w13c = (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])[:3]
+    if len(listing_w13c) == 3:
+        keys_w13c = [str(r["ratingKey"]) for r in listing_w13c]
+        def date_w13c(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0].get("originallyAvailableAt")
+        kept_w13c = [date_w13c(k) for k in keys_w13c]
+        for key_w13c, day_w13c in zip(keys_w13c, ("2012-01-03", "2012-01-01", "2012-01-02")):
+            request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s" % (key_w13c, day_w13c))
+        _, doc_w13c, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13c&uri=%s"
+                                                 % (movie_section, quote("server://%s/com.plexapp.plugins.library"
+                                                                         "/library/metadata/%s" % (machine, keys_w13c[0]))))
+        coll_w13c = (doc_w13c.get("Metadata") or [{}])[0].get("ratingKey")
+        for key_w13c in keys_w13c[1:]:
+            request(base, "PUT", "/library/collections/%s/items?uri=%s"
+                                 % (coll_w13c, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                                     % (machine, key_w13c))))
+        def children_w13c():
+            return [str(r.get("ratingKey")) for r in get(base, "/library/collections/%s/children"
+                                                              % coll_w13c)[1].get("Metadata") or []]
+        dated_w13c = children_w13c()
+        moved_status_w13c, moved_w13c, _ = container(base, "PUT", "/library/collections/%s/items/%s/move"
+                                                                  % (coll_w13c, keys_w13c[0]))
+        custom_w13c = children_w13c()
+        sort_w13c = (get(base, "/library/collections/%s" % coll_w13c)[1].get("Metadata") or [{}])[0].get("collectionSort")
+        request(base, "PUT", "/library/metadata/%s/prefs?collectionSort=0" % coll_w13c)
+        back_w13c = children_w13c()
+        request(base, "DELETE", "/library/collections/%s" % coll_w13c)
+        for key_w13c, day_w13c in zip(keys_w13c, kept_w13c):
+            if day_w13c:
+                request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s" % (key_w13c, day_w13c))
+        by_date_w13c = [keys_w13c[1], keys_w13c[2], keys_w13c[0]]
+        check("a collection lists by release date, and a move starts from that order and switches to custom",
+              dated_w13c == by_date_w13c and moved_status_w13c == 200 and moved_w13c.get("size") == 1
+              and custom_w13c == [keys_w13c[0], keys_w13c[1], keys_w13c[2]] and sort_w13c == "2"
+              and back_w13c == by_date_w13c,
+              "%s -> move %s %s -> %s sort %r -> %s" % (dated_w13c, moved_status_w13c, moved_w13c.get("size"),
+                                                         custom_w13c, sort_w13c, back_w13c))
+    else:
+        skip("a collection lists by release date, and a move starts from that order and switches to custom",
+             "need three movies")
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
