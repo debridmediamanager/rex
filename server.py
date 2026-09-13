@@ -1351,13 +1351,33 @@ class PlexSim:
         self.notify_status('Scanning the "%s" section' % title)
         activity["title"] = "Scanning %s" % title
         self.notify_activity(activity, "updated")
-        rows = [r for r in self.catalog.section_items(section_id)
-                if r.get("type") in ("movie", "show")]
-        for number, row in enumerate(rows, 1):
+        # Measured on a writable copy of the reference: a MOVIE library steps per movie,
+        # and a SHOW library per SEASON -- the progress line is `Scanning <show>/Season 02`
+        # and the activity's subtitle `<show> - Season 02`, deepest season first. plexsim
+        # stepped a show library by show, so a scan of a library of long shows reported one
+        # step per series.
+        steps = []
+        for row in self.catalog.section_items(section_id):
             label = ("%s (%s)" % (row.get("title") or "", row["year"]) if row.get("year")
                      else row.get("title") or "")
-            self.notify_progress("Scanning %s" % label)
-            activity.update(subtitle=label, progress=int(round(number * 99.0 / len(rows))))
+            if row.get("type") == "movie":
+                steps.append((label, label))
+            elif row.get("type") == "show":
+                seasons = sorted(self.catalog.children(row["ratingKey"]),
+                                 key=lambda s: -int(s.get("index") or 0))
+                for season in seasons:
+                    name = "Season %02d" % int(season.get("index") or 0)
+                    steps.append(("%s/%s" % (label, name), "%s - %s" % (label, name)))
+                if not seasons:
+                    steps.append((label, label))
+        for number, (message, subtitle) in enumerate(steps, 1):
+            self.notify_progress("Scanning %s" % message)
+            # The Context names the library the activity belongs to -- measured on every
+            # `updated` frame of a scan, and the client keys the Libraries page's progress
+            # bar on it. plexsim sent none, so a scan showed no progress against a library.
+            activity.update(subtitle=subtitle,
+                            progress=int(round(number * 99.0 / len(steps))),
+                            Context={"librarySectionID": str(section_id)})
             self.notify_activity(activity, "updated")
         activity["progress"] = 100
         self.notify_activity(activity, "updated")

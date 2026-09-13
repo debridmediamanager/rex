@@ -3336,6 +3336,10 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   type -1 state 3 and 5) followed by the survivor's own refresh. Every match runs that refresh
   sequence and ENDS its activity: plexsim started a `Matching` activity per match and never
   finished one, so the Dashboard's spinner never stopped.
+- **A scan's `updated` frames carry a `Context` naming the library, and a show library steps
+  per SEASON** -- `Scanning <show>/Season 02`, subtitle `<show> - Season 02`, deepest season
+  first -- where a movie library steps per movie. plexsim sent no Context and stepped a show
+  library by show.
 
 ### Emulation calibrated against the account's own claimed servers
 
