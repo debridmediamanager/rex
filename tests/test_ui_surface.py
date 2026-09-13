@@ -7020,6 +7020,39 @@ def main():
           % (status_c10c, status_all_c10c, status_deep_c10c, status_hub_c10c, status_item_c10c,
              extras_c10c, all_c10c, hub_c10c))
 
+    # Measured on plexscratch: a settings save pushes one `preference` frame per written id,
+    # in ASCII order of the id, whether or not the value changed -- and FriendlyName is the
+    # server's name everywhere, with an empty one falling back to the host name. plexsim
+    # stored the values, pushed nothing, and kept its old name on /, /media/providers and
+    # /servers.
+    def prefs_c10d(query):
+        return request(base, "PUT", "/:/prefs?" + query)[0]
+    def name_c10d():
+        return (get(base, "/")[1].get("friendlyName"), get(base, "/media/providers")[1].get("friendlyName"),
+                [s.get("name") for s in get(base, "/servers")[1].get("Server") or []])
+    before_c10d = name_c10d()
+    _, frames_c10d = notifications(base, lambda: prefs_c10d(
+        "FriendlyName=c10%20name&ButlerStartHour=4&ButlerEndHour=6"), seconds=3)
+    settings_c10d = [s for f in frames_c10d or []
+                     for s in (f.get("NotificationContainer") or {}).get("Setting") or []]
+    kinds_c10d = [(f.get("NotificationContainer") or {}).get("type") for f in frames_c10d or []]
+    named_c10d = name_c10d()
+    prefs_c10d("FriendlyName=")
+    empty_c10d = get(base, "/")[1].get("friendlyName")
+    value_c10d = next((s.get("value") for s in get(base, "/:/prefs")[1].get("Setting") or []
+                       if s.get("id") == "FriendlyName"), None)
+    check("a settings save pushes a preference frame per id and FriendlyName names the server",
+          [s.get("id") for s in settings_c10d] == ["ButlerEndHour", "ButlerStartHour", "FriendlyName"]
+          and set(kinds_c10d) == {"preference"}
+          and all(s.get("label") == "" and s.get("summary") == "" and "enumValues" not in s
+                  for s in settings_c10d)
+          and [s.get("value") for s in settings_c10d] == [6, 4, "c10 name"]
+          and named_c10d == ("c10 name", "c10 name", ["c10 name"])
+          and empty_c10d not in ("", None, before_c10d[0], "c10 name") and value_c10d == "",
+          "frames %s, names %s -> %s, empty -> %r (pref %r)"
+          % ([(s.get("id"), s.get("value")) for s in settings_c10d], before_c10d, named_c10d,
+             empty_c10d, value_c10d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

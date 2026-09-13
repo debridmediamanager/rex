@@ -7872,6 +7872,24 @@ class PlexSim:
         for name, value in typed:
             self.pref_overrides[name] = value
             logger.info("PREF %s = %s", name, value)
+        if "FriendlyName" in dict(typed):
+            # Measured on a writable copy of the reference: the name written here is the
+            # server's name on `/`, `/media/providers` and `/servers` at once, and an EMPTY
+            # one is kept as the preference's value while the displayed name falls back to
+            # the host name. plexsim stored the preference and kept its old name everywhere,
+            # so renaming the server in Settings changed nothing the client draws.
+            self.catalog.friendly = dict(typed)["FriendlyName"] or socket.gethostname()
+        # One `preference` frame per written id, in ASCII order of the id, whether or not
+        # the value changed -- the shape `/:/prefs/get` answers, label and summary emptied.
+        # The client's alerts list and the Console consume these; plexsim pushed none.
+        current = {s.get("id"): s for s in self.server_prefs()}
+        for name, _value in sorted(typed):
+            setting = current.get(name)
+            if setting is None:
+                continue
+            setting = {k: v for k, v in setting.items() if k != "enumValues"}
+            setting.update(label="", summary="")
+            self.notify("preference", "Setting", [setting])
         return ("empty", 200)
 
     def new_section_prefs(self, query):
