@@ -10034,6 +10034,59 @@ def main():
           % (before_c14w, flat_c14w, back_c14w, seasons_still_c14w == seasons_c14w,
              order_c14w))
 
+
+    # Cycle 14: a poster pick re-versions `thumb`, `art` and `theme` onto ONE stamp,
+    # moves `updatedAt` with them, LOCKS the picked field and CASCADES the new stamp
+    # onto the children that point at the row -- a season's `parentThumb`/`art` and an
+    # episode's `grandparent*`, never the season's own `thumb`. One frame goes out.
+    # Measured on the copy with a socket open. plexsim re-versioned one field and left
+    # every child tile pointing at the old stamp.
+    if not show:
+        skip("an artwork pick re-versions all three and cascades to the children",
+             "need a show")
+    else:
+        def detail_c14x(key_c14x):
+            return (get(base, "/library/metadata/%s" % key_c14x)[1].get("Metadata") or [{}])[0]
+
+        showrow_c14x = detail_c14x(show)
+        seasons_c14x = [r.get("ratingKey") for r in
+                        get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or [] if r.get("type") == "season"]
+        leaves_c14x = [r.get("ratingKey") for r in
+                       get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+        before_season_c14x = detail_c14x(seasons_c14x[0]) if seasons_c14x else {}
+        candidates_c14x = get(base, "/library/metadata/%s/posters" % show)[1].get("Metadata") or []
+        pickable_c14x = next((c_c14x.get("key") for c_c14x in candidates_c14x
+                              if not str(c_c14x.get("key") or "").endswith("/thumb/1")), None)
+        if not pickable_c14x or not seasons_c14x or not leaves_c14x:
+            skip("an artwork pick re-versions all three and cascades to the children",
+                 "no remote candidate to pick")
+        else:
+            status_c14x, body_c14x, _ = request(
+                base, "PUT", "/library/metadata/%s/poster?url=%s"
+                % (show, urllib.parse.quote(pickable_c14x, safe="")))
+            after_c14x = detail_c14x(show)
+            stamp_c14x = str(after_c14x.get("thumb") or "").rsplit("/", 1)[-1]
+            season_c14x = detail_c14x(seasons_c14x[0])
+            leaf_c14x = detail_c14x(leaves_c14x[0])
+            locked_c14x = {f_c14x.get("name") for f_c14x in after_c14x.get("Field") or []
+                           if f_c14x.get("locked")}
+            moved_c14x = [name_c14x for name_c14x in ("thumb", "art", "theme")
+                          if after_c14x.get(name_c14x)
+                          and str(after_c14x[name_c14x]).rsplit("/", 1)[-1] != stamp_c14x]
+            check("an artwork pick re-versions all three and cascades to the children",
+                  status_c14x == 200 and body_c14x.decode() == after_c14x.get("thumb")
+                  and not moved_c14x and "thumb" in locked_c14x
+                  and season_c14x.get("parentThumb") == after_c14x.get("thumb")
+                  and leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb")
+                  and season_c14x.get("thumb") == before_season_c14x.get("thumb"),
+                  "stamp %s | unmoved-of-three %s | locked %s | season.parentThumb %s | "
+                  "leaf.grandparentThumb %s | season.thumb kept %s"
+                  % (stamp_c14x, moved_c14x, sorted(locked_c14x),
+                     season_c14x.get("parentThumb") == after_c14x.get("thumb"),
+                     leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb"),
+                     season_c14x.get("thumb") == before_season_c14x.get("thumb")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
