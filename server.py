@@ -2608,6 +2608,8 @@ class PlexSim:
             return self.item_music_hubs(segments[2])
         if segments[:2] == ["hubs", "metadata"] and len(segments) == 4:
             return self.item_hubs(segments[2], segments[3], query)
+        if route == "/hubs/items":
+            return self.hub_items(query)
         if route == "/hubs/continueWatching":
             # Measured: this hub's own identifier is `continueWatching` (not the
             # home screen's `home.continue`), its key is its OWN items endpoint,
@@ -5268,6 +5270,35 @@ class PlexSim:
                  "context": "hub.%s" % identifier, "size": 0, "more": False, "style": "shelf"}
                 for template, title, kind, identifier in self.ITEM_MUSIC_HUBS]
         return self.hub_container(Hub=hubs, allowSync=True)
+
+    def hub_items(self, query):
+        """`/hubs/items?identifier=` -- one shelf's rows, uncapped.
+
+        Measured on both servers: the shelf a library or Home hub list names by
+        `hubIdentifier` (`movie.recentlyadded.1`, `home.ondeck`), with all its rows --
+        `count` caps them -- in a container of `size`, `allowSync` true and identifier;
+        the rows name their library as the shelf's do. A missing or unknown identifier
+        is a 404, and so, measured, are `tv.inprogress.{id}` and `home.playlists`, which
+        the hub lists do carry. plexsim 404'd every identifier.
+        """
+        identifier = query.get("identifier") or ""
+        count = query.get("count") or "100000"
+        if not identifier or identifier.startswith("tv.inprogress.") or identifier == "home.playlists":
+            return ("error", 404, "plexsim: not found")
+        built = None
+        head, _, tail = identifier.rpartition(".")
+        if identifier.startswith(("movie.", "tv.")) and tail.isdigit() \
+                and self.catalog.section(tail) is not None:
+            built = self.section_hubs(tail, count)
+        elif identifier.startswith("home."):
+            built = self.hubs({"identifier": identifier, "count": count})
+        hubs = ((built or {}).get("MediaContainer") or {}).get("Hub") or [] \
+            if isinstance(built, dict) else []
+        hub = next((h for h in hubs if h.get("hubIdentifier") == identifier), None)
+        if hub is None:
+            return ("error", 404, "plexsim: not found")
+        rows = hub.get("Metadata") or []
+        return self.hub_container(size=len(rows), allowSync=True, Metadata=rows)
 
     def item_hubs(self, rating_key, leaf, query):
         """`/hubs/metadata/{id}/{related,postplay}` -- the preplay page's shelves.
