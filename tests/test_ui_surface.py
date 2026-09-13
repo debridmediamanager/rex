@@ -822,12 +822,13 @@ def main():
     if ckey:
         status, body, _ = request(base, "PUT", "/library/metadata/%s?title.value=%s"
                                               "&titleSort.value=zz&contentRating.value=PG"
-                                              % (ckey, quote("renamed here")))
+                                              % (ckey, quote("The renamed here")))
         _, one, _ = get(base, "/library/metadata/%s" % ckey)
         crow = (one.get("Metadata") or [{}])[0]
         check("a collection is editable through /library/metadata/{key}",
-              is_empty_200(status, body) and crow.get("title") == "renamed here"
-              and crow.get("titleSort") == "zz" and crow.get("contentRating") == "PG",
+              is_empty_200(status, body) and crow.get("title") == "The renamed here"
+              # Measured: an UNLOCKED Sort Title does not stick; the title re-derives it.
+              and crow.get("titleSort") == "renamed here" and crow.get("contentRating") == "PG",
               json.dumps({k: crow.get(k) for k in ("title", "titleSort",
                                                    "contentRating")}))
         status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs"
@@ -5866,6 +5867,26 @@ def main():
           and removed_w1 == ["First", "Second", "Keep Two"] and empty_w1 == removed_w1
           and replaced_w1 == ["Eta", "Zeta"],
           "%s / %s / %s / %s" % (merged_w1, removed_w1, empty_w1, replaced_w1))
+
+    # Measured on plexscratch: a Sort Title that is not LOCKED does not stick -- a title
+    # write, a sort-title write and an unlock all re-derive it from the title, article
+    # stripped -- and only a lock keeps what was typed. plexsim stored whatever came.
+    def row_w2(key):
+        return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+    title_w2 = row_w2(movie).get("title")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&titleSort.value=zz"
+                         % (movie, quote("The Sorted One")))
+    derived_w2 = row_w2(movie).get("titleSort")
+    request(base, "PUT", "/library/metadata/%s?titleSort.value=kept&titleSort.locked=1" % movie)
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&title.value=%s"
+                         % (movie_section, movie, quote("An Sorted Two")))
+    kept_w2 = row_w2(movie).get("titleSort")
+    request(base, "PUT", "/library/metadata/%s?titleSort.locked=0" % movie)
+    unlocked_w2 = row_w2(movie).get("titleSort")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s" % (movie, quote(str(title_w2))))
+    check("an unlocked Sort Title is re-derived from the title; only a lock keeps it",
+          derived_w2 == "Sorted One" and kept_w2 == "kept" and unlocked_w2 == "Sorted Two",
+          "%r / %r / %r" % (derived_w2, kept_w2, unlocked_w2))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

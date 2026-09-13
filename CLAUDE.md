@@ -681,6 +681,10 @@ precisely how the Seasons bug survived a fix attempt.
   detail row), except a plug-in framework one (`noHistory`). plexsim applies it in
   `_page_container`, after the handler; a handler that pages itself sets `totalSize`
   and is left alone.
+- **An unlocked Sort Title does not stick.** A title write, a sort-title write and an
+  unlock each re-derive it from the title, article stripped, on items, collections and
+  playlists alike; only a lock keeps what was typed. A check that writes `titleSort`
+  without `titleSort.locked=1` is testing a value a real PMS throws away.
 
 ## Conventions
 

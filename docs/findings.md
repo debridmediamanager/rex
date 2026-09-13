@@ -2878,6 +2878,13 @@ the same parameters, then read back from both.
   repeat is one tag and `Qx&qx` is the first spelling twice. Both order by the INDEX
   (`genre[1]=Second&genre[0]=First` is First, Second); plexsim replaced on both paths, in
   parameter order.
+- **An unlocked Sort Title does not stick.** A title write, a sort-title write and a
+  sort-title unlock each re-derive it from the title with the article stripped:
+  `title.value=The Thing&titleSort.value=zzz` reads back `titleSort: Thing`, and a season
+  retitled `The Season Name` sorts as `Season Name`. Only a lock -- sent with the value,
+  or earlier -- keeps what was typed, and an empty title leaves it alone. A collection and
+  a playlist edited through `/library/metadata/{key}` follow the same rule, and a
+  collection records the lock. plexsim stored every value it was sent.
 
 ### Emulation calibrated against the account's own claimed servers
 
