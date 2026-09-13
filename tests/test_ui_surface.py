@@ -7452,6 +7452,25 @@ def main():
           and playing_c10n[0].get("playQueueID") == id_c10n,
           "queue %s item %s, frame %s" % (id_c10n, item_c10n, playing_c10n[0] if playing_c10n else None))
 
+    # Measured on plexscratch: a /status/sessions row does NOT carry `Guid` or `Image`, which
+    # the item's own detail row does, and its `Player` carries a `profile`. plexsim copied the
+    # detail row wholesale and sent no profile.
+    span_c10o = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&hasMDE=1&time=300000&duration=%s"
+                         "&X-Plex-Session-Identifier=c10o" % (
+                             movie, urllib.parse.quote("/library/metadata/%s" % movie, safe=""), span_c10o))
+    live_c10o = next((r for r in get(base, "/status/sessions")[1].get("Metadata") or []
+                      if str(r.get("ratingKey")) == str(movie)), {})
+    detail_c10o = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("a session row drops Guid and Image and its Player names a profile",
+          live_c10o and "Guid" not in live_c10o and "Image" not in live_c10o
+          and ("Guid" in detail_c10o or "Image" in detail_c10o)
+          and (live_c10o.get("Player") or {}).get("profile"),
+          "session-only %s, detail-only %s, profile %r"
+          % (sorted(set(live_c10o) - set(detail_c10o)), sorted(set(detail_c10o) - set(live_c10o)),
+             (live_c10o.get("Player") or {}).get("profile")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

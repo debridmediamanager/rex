@@ -3398,6 +3398,14 @@ limits turn out to be one rule:
   `playQueueItemID` and `playQueueID` ride beside the recorded eight fields, on the playing,
   paused, seek and stop frames alike, and a session with no queue carries neither. plexsim
   sent neither ever, and the Now Playing panel ties a frame to its queue item by them.
+- **A `/status/sessions` row carries no `Guid` and no `Image`**, where the same item's detail
+  row carries both; plexsim copied the detail row wholesale, so its XML session rows had three
+  `<Image>` children a real PMS never sends. Its `Player` also names a `profile` (`Web`),
+  which plexsim omitted -- the copy only ever saw Plex Web, so what another product's profile
+  reads as is not measured and every session says `Web`. **Not reproduced:** the hunt reported that the `Session` block
+  appears only once a DECISION has been made. Re-measured with a decision that answers 200,
+  the copy carries no `Session` block at all, before or after -- it is unclaimed, and the
+  block is the one that holds the measured bandwidth. Left as it is.
 
 ### Emulation calibrated against the account's own claimed servers
 

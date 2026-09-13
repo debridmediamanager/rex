@@ -6930,6 +6930,8 @@ class PlexSim:
         for entry in self.sessions.live():
             row = entry.get("row") or {}
             item = _full(row)
+            for name in self.sessions.SESSION_ROW_DROPS:
+                item.pop(name, None)
             item["sessionKey"] = entry["sessionKey"]
             item["viewOffset"] = entry["viewOffset"]
             # The selected flags a real session row carries on its own media -- set on
