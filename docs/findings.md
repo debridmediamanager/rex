@@ -3192,6 +3192,9 @@ below is one check there, and each check failed against the code before its fix.
   no flag is ever `false`, `selected` included. plexsim marked the first audio track default,
   sent `false` on the rest, and none of the other flags. Which track is `selected` follows
   the account's language settings, which plexsim does not have; the first still is.
+- **`scanType` follows the field order**: absent where ffprobe reports none (19 streams),
+  `interlaced` for a field-ordered stream, `progressive` otherwise. plexsim wrote
+  `progressive` everywhere.
 
 ### Emulation calibrated against the account's own claimed servers
 
