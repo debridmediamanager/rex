@@ -3687,6 +3687,253 @@ Measured and not acted on:
   already covered, 7 measured this cycle, 4 groups unreachable or out of scope (Optimize
   generators, Live TV, plex.tv, telemetry).
 
+#### The thirteenth pass — the rest of the real library, and the write cascades
+
+Two hunts. One read-only across kids (1.43.4) and zen (1.42.2, the build plexsim
+reports) over everything about a real library that is not a movie detail row — the
+territory cycle 12 opened and took one pass at. One writing to plexscratch over the
+CASCADE family: what a write to a PARENT row does to its children, which no cycle had
+ever read back. **Twenty-five findings reported, twenty-two acted on**, and for the
+first time in the programme not one of the read hunt's findings was refuted on
+re-measurement.
+
+The cycle opened with three revalidations from the handover's own thin-evidence list,
+and two of them were findings in their own right.
+
+**`Director` caps at THREE on a light row, and `Producer` is not on one at all.**
+Cycle 12 pinned the light-row caps at 2 `Genre`, 2 `Writer`, 2 `Country`, 3 `Role` and
+recorded `Director` as "only known to be above 2", because the richest Director row in
+its 240-movie sample had two. zen has a movie with **seventeen** (`Minions & More 1`),
+a show with four and an episode with four: every listing of them carries three. And
+`Producer` is absent from a light row however many the detail row holds — 22 on one
+zen movie, none on any listing of it. The same caps hold on a section grid, on
+`/library/all` and on a `/hubs/search` row, which is the whole of `_grid_row`'s reach.
+
+**Unmatching a SEASON unmatches every episode under it.** Measured by diffing the
+show, the season and all three episodes field by field either side of one call. The
+season takes `local://<id>`, loses its own `year` — so the show's shows through as
+`parentYear` — and falls its `thumb` back to the SHOW's, keeping its `parentGuid` and
+its external `Guid` array. Every episode goes with it: `local://<id>`, the generated
+`Episode N`, `summary` emptied, `year`, `audienceRating` and all four people lists
+dropped, `titleSort` removed, `parentThumb` nulled, and `parentGuid` following the
+season to its new `local://` guid. kids corroborates the season half from the other
+side — its unmatched season 11 carries the show's thumb, no `year` and `parentYear:
+2002`, where its matched season 7 carries its own. plexsim edited the one row, which
+left matched episodes under an unmatched parent: a state a real PMS cannot produce,
+and one where the client's own `local://` menu predicate answers differently per row.
+
+**The `<CODEC> External` subtitle label now has two witnesses.** Uploaded a sidecar to
+a freshly reset copy (`cycle13 (English SRT External)`, with `displayTitle` the plain
+`English`) and found eleven real sidecar subtitles on zen carrying the same form —
+`English (SRT External)`, `Deutsch (SRT External)`, `Unknown (TXT External)`.
+plexsim's implementation already matched; the single-witness note in the handover is
+closed.
+
+##### What a real library shows and a five-clip one cannot
+
+- **A row with NO value for the sort key sorts BELOW every row that has one** — first
+  ascending, last descending. Measured on `audienceRating`, `rating`, `userRating`,
+  `contentRating`, `year`, `originallyAvailableAt`, `viewCount`, `viewOffset`,
+  `lastViewedAt`, `mediaHeight` and `mediaBitrate`, on both servers, and on a show
+  library at types 2, 3 and 4. plexsim keyed on `(value is None, value)`, which puts
+  the missing rows ABOVE every value — and twelve of the fifteen sorts a section
+  advertises default to `desc`, so Rating, Plays, Date Viewed, Critic Rating and
+  Bitrate all opened the grid on the rows with no value at all. On zen that is the
+  entire first page.
+- **The seventeen search hubs come back in an order plexsim had wrong in two places.**
+  `movie` is FIFTH, not first, and `collection` is FOURTEENTH, between genre and
+  playlist, not seventh. This has to be measured on a query that matches NOTHING:
+  a query with fuzzy hits promotes the hubs that scored, which is what made an earlier
+  reading of `zzqqxx` disagree between the two servers. On four genuine no-match
+  queries each they answer the identical list. The client lays the results page out
+  from it.
+- **`/hubs/search` returns the ITEMS a matched tag is on**, each carrying `reason` (the
+  tag kind), `reasonID` (the tag id) and `reasonTitle` (its name); a title-matched row
+  carries none of the three. kids `colin` answers the two tag rows AND Firefly
+  (reasoned on its actor) and Sintel (on its director); zen `tom hanks` answers eleven
+  movies all reasoned on the actor, and across ten zen queries **53 of 81 item rows
+  carried a `reason`** — most search hits on a real library are tag hits.
+  `/library/search` does NOT carry them (kids `colin` is two `Directory` rows and
+  nothing else), so this is the hubs endpoint alone. plexsim matched titles only, so
+  searching an actor, a director or a genre drew the tag row with an empty Movies
+  shelf beside it, and its own `reason` code could never fire.
+- **The "All episodes" row follows the PAGE's row count, not the offset.** On One
+  Piece, 24 seasons: `Start=0 Size=10` and `Start=10 Size=10` both answer `size 11`
+  with the row, `Start=5 Size=3` answers 4 with it, and `Start=23 Size=2`,
+  `Start=3 Size=1` and `Start=0 Size=1` — every one-row page — answer 1 without it.
+  kids agrees on all six cases it can express. **This corrects cycle 8**, which read
+  kids as dropping the row past `Start=0` and recorded the servers as disagreeing:
+  kids has two seasons, so every page past the first there IS a one-row page. The
+  disagreement was a two-season library, not a version difference, and fun was right.
+- **The Duplicates filter is "more than one Media on the row"** — zen holds 214
+  duplicated movies of 3,887 and 504 episodes of 9,287, and 60 sampled `duplicate=1`
+  rows carried 2 to 15 Media against 60 `duplicate=0` rows carrying exactly one, with
+  the two halves adding up to the library. For a SHOW or a SEASON, which have no Media
+  of their own, it is "a leaf under it has more than one": 44 shows and 74 seasons,
+  each sampled one holding a multi-Media episode where each `duplicate=0` show held
+  none. plexsim answered 0 for every row, so the control `includeAdvanced=1` puts in
+  the filter bar was advertised and permanently empty.
+- **A bare `<field>=` means THREE different things, by field**, and both servers agree
+  exactly. A tag-TABLE field matches NOTHING — 37 of 600 zen movies carry no `Genre`
+  and all 600 carry no `Label`, yet `genre=` and `label=` answer 0 rows. `studio` and
+  `editionTitle` match EVERY row — 5 of 5 and 3,887 of 3,887, though 14 of 200 sampled
+  zen movies have no studio. Everything else of that kind — `contentRating`,
+  `audioLanguage`, `subtitleLanguage` — matches the rows with NO value. plexsim applied
+  the third rule to all of them, so `genre=` selected the whole library and `studio=`
+  selected only the rows that had none. The codec axes DISAGREE across the two versions
+  (kids nothing, zen every row), so they are a version difference and are left alone.
+- **The `contentRating` axis ends with a `None` bucket**, after the alphabetical
+  entries and on that axis alone — `{"fastKey": ".../all?contentRating=None", "key":
+  "None", "title": "None"}`. `contentRating=None` in that exact spelling selects the
+  rows with no rating (2,864 on zen, 3 on kids, the same as `contentRating=`), while
+  `none` and `NONE` match nothing. No other field axis has such a bucket, and plexsim
+  offered no way to reach those rows from the filter bar at all.
+- **A tag or field axis REFUSES a `type=` it cannot parse; a media axis ignores it.**
+  Across seven values on both servers: `genre`, `studio`, `actor`, `contentRating`,
+  `firstCharacter`, `decade` and `country` answer 500 to `abc`, `1.5` and an empty
+  one, `year` answers 400 to the same three, and `-1`, `99`, `2` and `04` are 200
+  everywhere. `resolution`, `audioLanguage` and the codecs answer 200 to all seven and
+  the identical list for every one — they neither validate the type nor scope by it,
+  on a movie library and a show library alike. And `firstCharacter` IS scoped: on
+  zen's show library `#`/`A` are 13/40 shows at `type=2`, 13/64 seasons at `type=3`
+  and 185/207 episodes at `type=4`, and empty for a type the library has no rows of.
+  plexsim answered 200 to every axis whatever the type said, scoped `resolution` by
+  type and counted `firstCharacter` over the whole section.
+- **An EPISODE with an `audienceRating` carries `audienceRatingImage` and a `Rating`
+  element.** 60 of 60 One Piece episodes and 3 of 3 on the lab, with no exception,
+  while the unmatched episodes with no rating carry none of the three and a SEASON
+  never carries any of them (0 of 12 sampled). plexsim built both for a show and a
+  movie only, so its own episode rows contradicted its own movie rows and no episode
+  page or listing row drew a rating badge. `rating` — the CRITIC rating — is dropped
+  from an episode for the same reason it is dropped from a movie: no episode on either
+  reference carries one.
+- **A show's `/allLeaves` gives every episode row the SHOW's `studio`**, and nothing
+  else does. 20 rows across five shows on two servers: "Mutant Enemy Productions" on
+  all six of Firefly's, "Toei Animation" on One Piece's, "20th Century Fox Television"
+  on The Simpsons'. The episode's own detail row, the season's `/children` and the
+  SECTION's `allLeaves` all answer none on both servers, so it is a property of the
+  list rather than of the row.
+- **A season row of `/library/recentlyAdded` carries `parentSummary`**, the show's own
+  summary, and only on that endpoint. 2 of 2 season rows on kids and 3 of 3 zen rows
+  whose show has a summary; the 4 zen rows whose show has an empty one carry no field
+  at all, and a movie row never carries it. Swept across
+  `/library/sections/{id}/recentlyAdded`, `/newest`, `/hubs/home/recentlyAdded`,
+  `/hubs/sections/{id}`, `/hubs/promoted`, a `type=3` listing, `/children` and
+  `/library/onDeck`: every other season row on both servers carries none.
+- **`viewedLeafCount`, `viewedOrInProgressLeafCount` and `unviewedLeafCount` filter a
+  show listing** although no Meta advertises them: on zen's 507 shows
+  `viewedOrInProgressLeafCount=0` is 499 and `=1` is 4, `viewedLeafCount>>0` is exactly
+  the 8 shows with a watched episode, and `unviewedLeafCount>>0` is 505. `leafCount`
+  and `childCount` are genuinely unknown fields — both answer the whole library — which
+  is what plexsim already did with all five. Neither server holds a leaf that is in
+  progress and unwatched, so the "or in progress" half of the first one's name could
+  not be separated from the viewed half on either; it is read as the name says.
+
+##### The Home screen and the library tab, on the version plexsim reports
+
+- **A shelf with no `count=` carries at most SIX rows and says `more: true`.** Measured
+  on zen against a 3,887-movie and 507-show library: `movie.recentlyreleased`,
+  `movie.recentlyadded`, `movie.topunwatched`, `tv.recentlyaired`, `tv.startwatching`
+  and `tv.toprated` are all size 6 with `more`, and `/hubs` does the same. `?count=3`,
+  `?count=12` and `?count=20` are honoured exactly, so six is the DEFAULT and not a
+  ceiling; the related shelf caps at six too. plexsim used 12, a number no reference has
+  ever answered — kids cannot witness it either way, because with five movies and one
+  show no shelf there can reach even six, which is how the recorded "up to 12" survived
+  twelve cycles. It is a separate constant from the cap on the two lists that are not
+  shelves: `/hubs/home/recentlyAdded?type=1` answered all 3,887 rows on zen.
+- **Three shelves a 1.42.2 library tab carries and plexsim never built**:
+  `movie.topunwatched` between the genre shelf and Recently Watched, and
+  `tv.startwatching` after Recently Added and `tv.toprated` after Rediscover on a show
+  library. Each is `style: shelf`, `random: true`, and each key is the listing its "see
+  all" opens. kids (1.43.4) emits none of the three although it HAS qualifying rows —
+  all three keys answer `size 1` there — so this is a version difference and zen is the
+  witness that matters.
+- **`pinnedContentDirectoryID` reshapes the promoted Recently Added shelf on 1.42.2.**
+  Bare, `/hubs/promoted?contentDirectoryID=1` answers `movie.recentlyadded.1` /
+  "Recently Added in Zen Movies", keyed on the section listing; with the parameter
+  beside it the same shelf is `home.movies.recent.1` / "Recently Added Movies", context
+  `hub.home.movies.recent`, keyed on
+  `/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=1`. A show library gives
+  `home.television.recent.N` / "Recently Added TV". kids ignores the parameter
+  entirely. The web client does send it — its Promoted fetch builds
+  `{contentDirectoryID, pinnedContentDirectoryID, includeMeta, excludeFields}`, and the
+  name occurs fourteen times in the bundle — so a pinned library's Home row was titled
+  and keyed as the unpinned one.
+
+##### The cascade family: what a write to a parent does to its children
+
+Measured on plexscratch by snapshotting the parent AND every descendant field by field
+either side of one call. Every rule here has that one witness, which is what a write
+rule can have; the read side of each was checked on kids and zen where a read can show
+it.
+
+- **Unmatching an EPISODE alone drops what the season cascade drops.** With the season
+  left matched: the four people lists and `audienceRating` removed, `summary` emptied,
+  `year` removed and `parentYear` appearing in its place from the season that still has
+  one, `titleSort` removed where there was one, the thumb re-versioned and every
+  `Image.alt` following the new title. The two things the cascade does that this does
+  not — `parentGuid` moving to `local://` and `parentThumb` going null — are
+  consequences of the SEASON changing, not of the episode write. So the field set
+  belongs to "unmatch an episode", by either path. plexsim changed the guid and the
+  title and kept the rest, leaving an unmatched episode carrying the agent's summary,
+  rating and cast under a `local://` guid.
+- **Unmatching a SHOW cascades the whole way down.** Every season becomes `local://`
+  and every episode with it; each season's `parentGuid` and each episode's
+  `grandparentGuid` follow the show to its `tv.plex.agents.none://<id>`; each episode's
+  `parentGuid` follows its own season; and the artwork the children borrowed from the
+  show goes with it — the show's `art`, the seasons' `thumb`/`art`/`parentThumb`, the
+  episodes' `art`/`parentThumb`/`grandparentThumb`/`grandparentArt`. The inherited
+  `contentRating` goes from every descendant too. plexsim edited the show row and
+  stopped.
+- **An unmatch leaves NO activity running.** After a movie unmatch the copy's
+  `/activities` is empty — the whole refresh sequence runs and ends. plexsim opened an
+  `Unmatching` activity at progress 0 and never closed it, so it was still listed
+  minutes later and the Dashboard spinner turned for the life of the process. Cycle 9
+  fixed this for a season and an episode, both of which go through `notify_refreshed`,
+  and left the movie path.
+- **A season's `index` lands on its episodes' `parentIndex`** — on the detail row and in
+  the season's `/children` alike. It is the same rule cycle 9 measured for a parent's
+  `title` and `studio`, which plexsim already copies; `index` was missed, so an episode
+  kept pointing at a season number that no longer existed.
+- **An episode carries its SHOW's `contentRating`, and a season carries none.** All six
+  of Firefly's say TV-14 like the show, the three unmatched ones included although they
+  have no agent metadata at all, and 18 of 18 episodes across three zen shows carry
+  their show's (TV-14, TV-Y, TV-PG). The write side agrees: on the copy, editing the
+  show's rating moved it on the episodes that had none of their own, and the show
+  unmatch removed it from all of them. plexsim left an episode with no certificate at
+  all.
+
+##### Measured and not acted on
+
+- **Six write cascades the hunt measured and the driver did not re-measure**, so they
+  are recorded rather than implemented and lead cycle 14: a show or season REFRESH
+  cascading through the tree (40 and 20 frames against plexsim's 7); `flattenSeasons`
+  and `episodeSort` pushing NOTHING while changing the rows (`skipChildren` on the show,
+  `skipParent` and no `parentRatingKey` on every episode; the season's `/children`
+  newest-first), where plexsim pushes a 36-frame cascade for every prefs write and
+  changes nothing; an artwork PICK re-versioning `thumb`, `art` and `theme` together,
+  cascading to the children, LOCKING the field and pushing one frame at +5 s; `analyze`
+  pushing a per-level triple plus a `media.generate.chapter.thumbs` activity; the
+  74-frame library-create sequence over real files with its `backgroundProcessingQueue`
+  regeneration at +60 s (which also appears 8 s after an unrelated edit, so it is
+  periodic and not create-specific); and the merge/split arithmetic on a show tree,
+  where plexsim's season merge deletes the season's EPISODE as well. Each is
+  single-witness on the copy and unverified by the driver — the two conditions this
+  file's own revalidation register says to record rather than build on.
+- The score PROMOTION `/hubs/search` applies when a query has fuzzy hits: a hub whose
+  best row scores above ~0.5 moves to the front, and four of five zen queries fit that
+  exactly while `comedy` also demotes `episode` from 4th to 13th, which nothing
+  predicts. The base order is implemented; the promotion is not.
+- Collections have **no instrument**: `/library/sections/{1,2,4}/collections` is `size
+  0` on zen and on kids, so `collectionSort`, `collectionMode`, `minYear`/`maxYear`,
+  `subtype`, member order and the collection hubs stayed unmeasured. zen has no season 0
+  and nothing in progress, so specials and the `inProgress` filter have no witness
+  either.
+- A two-`Media` row's decision and play queue: both are write-shaped paths the read
+  guard refuses on a shared reference, so which Media a decision picks is unmeasured.
+- The codec axes' empty-value behaviour (kids nothing, zen every row) — a version
+  difference, not a rule.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

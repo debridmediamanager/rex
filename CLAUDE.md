@@ -874,6 +874,52 @@ precisely how the Seasons bug survived a fix attempt.
 - **A stream path tells a malformed id from a missing one**: `DELETE .../abc` is a 400 and
   `DELETE .../999999` a 404; a POST to a stream that exists is a 404, not the 501 its GET answers.
 
+- **A row with NO value sorts BELOW every value** -- first ascending, last descending, on
+  every sort key and every row type. Twelve of the fifteen sorts a section advertises
+  default to `desc`, so keying on `(value is None, value)` opens Rating, Plays, Date
+  Viewed and Critic Rating on the rows that have no value at all.
+- **A light row caps `Director` at THREE and carries no `Producer`** however many the
+  detail row holds (17 directors and 22 producers on one zen movie). Only a real library
+  can show it: no lab item has more than one director.
+- **`/hubs/search` returns the ITEMS behind a matched tag**, each naming it in
+  `reason`/`reasonID`/`reasonTitle` -- 53 of 81 item rows across ten zen queries -- while
+  `/library/search` carries the tag rows and the title hits only. And the seventeen hubs'
+  base ORDER has `movie` fifth and `collection` fourteenth; it is visible only on a query
+  that matches nothing, because hits PROMOTE the hubs that scored.
+- **The "All episodes" row follows the PAGE's row count, not the offset.** It is there
+  whenever the page returns more than one season row, wherever the page starts, and gone
+  on a one-row page even at `Start=0`. Cycle 8's "the servers disagree past Start=0" was a
+  two-season library, not a version difference.
+- **`duplicate=1` is "more than one Media"**, and on a SHOW or SEASON "a leaf has more
+  than one" (214 movies, 504 episodes, 44 shows and 74 seasons on zen).
+- **A bare `<field>=` means three different things.** A tag-TABLE field matches NOTHING
+  (37 of 600 zen movies have no Genre and `genre=` still answers none); `studio` and
+  `editionTitle` match EVERY row; everything else of that kind matches the rows with no
+  value. `contentRating=None`, in that spelling only, is the empty synonym and the key of
+  the axis's own trailing bucket -- the one axis that has one.
+- **A tag or field axis REFUSES an unparseable `type=`** -- 500, or 400 on `year` alone --
+  where a MEDIA axis ignores `type=` completely and answers the same list to `abc`.
+  `firstCharacter` is scoped by the type and its counts follow.
+- **An EPISODE with an `audienceRating` carries `audienceRatingImage` and a `Rating`
+  row**, a SEASON never does, and an episode carries its SHOW's `contentRating`. A show's
+  `/allLeaves` -- and no other list -- stamps the show's `studio` on every episode row,
+  and a season row of `/library/recentlyAdded` alone carries `parentSummary`.
+- **`viewedLeafCount`, `viewedOrInProgressLeafCount` and `unviewedLeafCount` filter a show
+  listing** although no Meta advertises them; `leafCount` and `childCount` do not.
+- **A shelf with no `count=` carries SIX rows and says `more`**, not twelve -- and 1.42.2
+  builds three shelves 1.43.4 does not (`movie.topunwatched`, `tv.startwatching`,
+  `tv.toprated`), so zen is the witness. `pinnedContentDirectoryID` reshapes the promoted
+  Recently Added shelf into `home.movies.recent.N` / "Recently Added Movies" on 1.42.2 and
+  changes nothing on 1.43.4.
+- **A write to a PARENT cascades.** Unmatching a season unmatches its episodes; unmatching
+  a show unmatches its seasons AND episodes, and every descendant's `parentGuid` /
+  `grandparentGuid` follows; an episode unmatch drops the people lists, `audienceRating`
+  and `year` and empties `summary` whichever path reaches it; a season's `index` lands on
+  its episodes' `parentIndex`. **Read the children back after every parent write** -- the
+  rule is never on the parent row alone.
+- **An unmatch leaves no activity running.** A real PMS runs the refresh sequence and ends
+  it; an activity left open turns the Dashboard spinner for the life of the process.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
