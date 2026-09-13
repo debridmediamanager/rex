@@ -6718,6 +6718,42 @@ def main():
     check("renaming a collection leaves its members' tag, and deleting it still untags them",
           renamed_w13e == ["w13e"] and deleted_w13e == [], "%s then %s" % (renamed_w13e, deleted_w13e))
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: a full library edit APPLIES its language and prefs[...] -- they
+    # read back on the section and in its settings -- and runs a scan: one
+    # library.update.section activity and a status naming the section. plexsim renamed the
+    # library and dropped the rest.
+    section_w15a = next((d for d in get(base, "/library/sections")[1].get("Directory") or []
+                         if str(d.get("key")) == str(movie_section)), {})
+    form_w15a = ("/library/sections/%s?name=%s&type=movie&agent=%s&scanner=%s&location=%s"
+                 % (movie_section, quote(section_w15a.get("title") or ""), quote(section_w15a.get("agent") or ""),
+                    quote(section_w15a.get("scanner") or ""),
+                    quote(((section_w15a.get("Location") or [{}])[0]).get("path") or "/")))
+    holder_w15a = []
+    _, frames_w15a = notifications(base, lambda: holder_w15a.append(
+        request(base, "PUT", form_w15a + "&language=de-DE&prefs%5BenableBIFGeneration%5D=0")[0]), seconds=3)
+    language_w15a = next((d.get("language") for d in get(base, "/library/sections")[1].get("Directory") or []
+                          if str(d.get("key")) == str(movie_section)), None)
+    bif_w15a = next((s.get("value") for s in get(base, "/library/sections/%s/prefs" % movie_section)[1]
+                     .get("Setting") or [] if s.get("id") == "enableBIFGeneration"), None)
+    request(base, "PUT", form_w15a + "&language=en-US&prefs%5BenableBIFGeneration%5D=1")
+    runs_w15a = activities_w15(frames_w15a)
+    check("a library edit applies its language and prefs and runs a scan",
+          holder_w15a == [200] and language_w15a == "de-DE" and str(bif_w15a) in ("false", "0")
+          and ("started", "library.update.section", 0) in runs_w15a
+          and ("ended", "library.update.section", 100) in runs_w15a
+          and 'Scanning the "%s" section' % section_w15a.get("title") in statuses_w15(frames_w15a),
+          "HTTP %s language %r bif %r, %d activity frame(s), statuses %s"
+          % (holder_w15a, language_w15a, bif_w15a, len(runs_w15a), statuses_w15(frames_w15a)[:2]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
