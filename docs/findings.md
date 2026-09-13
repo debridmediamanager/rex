@@ -3432,6 +3432,145 @@ Measured in the tenth pass's third batch and not acted on:
 - **`/statistics/resources`** answers per-second host samples on both references and one row
   with no memory figures here: a stdlib server on another machine has no such numbers.
 
+#### The eleventh pass: the query grammar the listings never ran, and the XML path of the writes
+
+Two hunts, both without fun: its Plex was stopped mid-deploy by another session, and the user
+asked that testing stay on kids and zen. That turned out to be an improvement rather than a
+loss. **zen runs Plex 1.42.2.10156 -- the exact build plexsim reports** -- so every rule below
+has two witnesses, one of them the version plexsim claims to be, which is a sharper test than
+fun's 1.42.2 against kids' 1.43.4 ever was: a field kids sends and zen does not is a version
+difference, and a rule both answer is not.
+
+Read-only on kids and zen throughout, writes on plexscratch. The kids snapshot was identical
+before and after both hunts.
+
+**The listings ran none of the query grammar they advertise.**
+
+- **`?limit=N` caps a listing's rows**, and plexsim read it only in `/query/parse`. `limit=0`
+  answers ONE row and a negative one every row -- the two edges autocomplete's limit already
+  had -- and `limit=abc` is a 500. It belongs to the query grammar rather than to every
+  listing: `/newest`, `/recentlyAdded` and `/children` ignore it on both servers. A smart list
+  saved with a limit therefore previewed as the whole section.
+- **A `type=` that does not parse is refused, and the status differs by path.** A section
+  listing answers 500 to `type=abc`, `type=1.5` and an empty `type=`; `/library/all` answers
+  **400** to the first two and keeps 500 for the empty one. A type NUMBER the library holds no
+  rows of -- 8, 9, 10, 12, 13, 19, 99, -1 -- is a 200 with no rows. plexsim answered the whole
+  unfiltered grid to all of them, so a client that sent a malformed type read the library as
+  if it had matched.
+- **`id` is a real filter field on every listing**, echoed by `/query/parse` as a Rule with an
+  EMPTY `fieldTitle` because no Meta advertises it. `=` is exact, a comma list is an OR,
+  `>>`/`<<`/`>=`/`<=` compare numerically, and `==`/`!==` -- the exact-string pair -- never
+  match a number at all. A value that is not a number sorts ABOVE every id, exactly as an
+  integer column compares against text: `id=abc` matches nothing, `id!=abc` everything,
+  `id>>=abc` nothing and `id<<=abc` everything. plexsim reported it as an unknown field, so
+  python-plexapi's `editions()` -- which asks `guid=<x>&id!=<self>` -- called every item its
+  own duplicate.
+- **A section's `allLeaves` is a full query surface, not a dump.** Filters, `sort=`, `limit=`
+  and `type=` all apply; an unknown sort key and an unparseable type are 500s. plexsim
+  answered its whole leaf list to every one of them, so the filter bar and the sort menu over
+  an "All episodes" view did nothing and said 200.
+- **`excludeElements=` applies to the three listings cycles 9 and 10 added** -- the section's
+  `allLeaves`, `/library/people/{id}/media` and `/hubs/items` -- where plexsim kept the Media
+  children and sent no `mediaCount`. The client asks for the cheap list to lay a page out and
+  was handed the expensive one with no count to draw the badge from.
+- **`includeStorage=1` adds `durationTotal` and `storageTotal` to a section grid row**, at the
+  library's own top-level type ONLY: a show carries the sums over its episodes (Firefly:
+  60186 ms and 37683488 bytes, exactly its six episodes), a movie its own, and `?type=3`,
+  `?type=4`, `allLeaves`, `/library/all`, `/newest`, `/children` and a detail read carry
+  neither. plexsim sent neither, although the row already holds both numbers.
+- **`/library/people/{id}/media` is typed by the TAG, not by its rows.** `viewGroup` and
+  `viewMode` belong to an ACTOR's list (tagType 6) -- even when its rows are shows, which is
+  where cycle 9's reading came from -- and a Director, Writer or Producer list carries
+  neither. The list is also a query: the library filters narrow it, where plexsim answered
+  every row the person is on.
+
+**The Dashboard's numbers.**
+
+- **A statistics container pages its SERIES only.** `Device` and `Account` are a lookup for
+  the rows on the page, and the answer carries exactly the ones its rows name -- a window over
+  two devices carries both, a window past the end carries neither, and `totalSize` counts the
+  series alone while `size` counts every element. plexsim sliced all three lists with the same
+  offset, so the second page of a graph named a device it had not sent and lost the Account
+  row entirely.
+- **`timespan` has to parse as a whole number**, on all three statistics endpoints: `abc`,
+  `1.5`, an empty value and one with a leading space are 400s, where `0`, `-1` and `06` are
+  200s. plexsim ran an unguarded `int()` on it -- a 500 on two endpoints and a silently
+  ignored parameter on `/statistics/resources`.
+
+**The transport.**
+
+- **A real PMS gzips every compressible body whenever the client offers gzip**, even when
+  compressing makes it LARGER: an 83-byte `/livetv/dvrs` comes back gzipped at 90 bytes, with
+  `X-Plex-Content-Original-Length: 83` and `-Compressed-Length: 90`. `Accept-Encoding:
+  identity` is the only thing that stops it. plexsim had an 860-byte floor and an "only if it
+  shrinks" test, both inferred from what happened to be seen rather than measured, and
+  seventeen of the endpoints cycles 9 and 10 added answered plain and without the length pair.
+
+**The writes.**
+
+- **A plain "Add to Queue" lands in Up Next, not at the bottom.** Measured on the copy: a
+  queue created over [A, B, C] with A playing, then a plain add of D, answers [A, D, B, C]; a
+  second plain add of E answers [A, D, E, B, C]; a `next=1` add goes in FRONT of that block.
+  Cycle 4 recorded this rule and implemented it as "skip while the item id is above the
+  selected id" -- but every ORIGINAL member also has an id above the first item's, so plexsim
+  skipped the whole queue and appended at the very end. Add to Queue from a grid dropped the
+  row at the bottom of the queue for seven cycles.
+- **The Upload Subtitle modal's request is accepted.** The client (bundle module 90487) sends
+  `POST /library/metadata/{id}/subtitles?title=<name>&format=<ext>` with the file as the body;
+  a real PMS answers 200 with an EMPTY body and leaves a new subtitle `Stream` -- streamType
+  3, the format as both `codec` and `format`, the name with its extension stripped as `title`,
+  a `key` of `/library/streams/{id}`, `transient: "0"` -- which becomes the SELECTED subtitle.
+  The refusals are their own grammar: no `title`, and a title with no extension, are **500**s;
+  `srt`, `ass`, `ssa`, `smi` and `txt` are accepted where `vtt`, `sub`, `idx`, `sup` and `pgs`
+  are **400**s; an empty body is a **406**; an unknown item a 404. plexsim fell through to the
+  subtitle SEARCH branch and answered 400 to every one of them, so the modal always reported
+  "Unable to upload subtitle file". This **overturns cycle 10's instrument limit** -- "POST
+  subtitles is a 500 on the copy with nothing in its log" -- which was measured from a request
+  shape the client does not send.
+- **A sidecar subtitle labels its codec `<CODEC> External`** in both titles: `Unknown (SRT
+  External)` plainly and `<name> (SRT External)` extended. One witness only -- no sidecar
+  subtitle exists on the 1.42.2 server to confirm it against -- but it is the only kind of
+  subtitle stream plexsim can create, so the label is reachable only through the upload above.
+- **A stream PUT is accepted and stores nothing**: `PUT /library/streams/{id}` on a stream the
+  server HAS is 200 with an empty body, with or without parameters, and the track's title is
+  unchanged afterwards. A **DELETE of an embedded track is 403** -- it is part of the file --
+  and a DELETE of an uploaded sidecar really removes it (200). An unknown id keeps cycle 6's
+  refusals (PUT 400, DELETE 404, GET 404), and the GET of a real stream stays the 501 cycle 6
+  measured. plexsim answered 501 to every verb.
+- **A playlist's items and a collection's children are the LIGHT grid row** -- no `Guid`, no
+  `Rating`, no `Field`, no `Stream` under the Part, tags text-only -- while the same item's
+  detail read is full. They keep their librarySection fields and a playlist item keeps its
+  `playlistItemID`. These are the two list endpoints the grid projection, measured in cycles 5
+  and 7, was never applied to, so every Edit Collection dialog and every playlist page carried
+  the whole stream table.
+
+**A single history read is a projection, not the stored row.** `/status/sessions/history/{id}`
+answers nine attributes -- `historyKey`, `librarySectionID`, `title`, `type`,
+`originallyAvailableAt`, `viewedAt`, `accountID`, `deviceID` and `viewType: 1` -- with an
+episode adding `grandparentTitle`, `index` and `parentIndex`, and with no `key`, no
+`ratingKey` and no artwork. Identical on both servers, against every readable row on each.
+plexsim answered its stored listing row, advertising links this endpoint does not carry.
+
+Measured and not acted on:
+
+- **`/status/sessions/history/all` answers `size 0` on BOTH servers** while single reads by
+  key work, through every combination of `accountID`, `librarySectionID`, `sort` and paging.
+  Recorded in cycle 9 as a kids oddity; it is not one, and it is not reproduced -- plexsim's
+  listing is what fun's 3879 rows were measured against.
+- `includeBandwidths=1` adds `deepAnalysisVersion` and `requiredBandwidths` to every `Part`.
+  The bandwidth ladder needs Plex's own deep analysis, which puts it beside `thumbBlurHash`.
+- `/library/people/{id}` answers any TAG id, not only a person: kids' id 1 is a
+  `mediaProcessingTarget` (tagType 42) and renders as `<Tag>` with `MediaSettings` and
+  `Device` children. No plexsim catalog holds such a tag.
+- A detail row's tags carry `count` (how many items in the library share the tag) on both
+  servers and none of plexsim's do. Pervasive across every detail read rather than specific to
+  anything this cycle measured; left for a cycle that can measure it as a row-shape rule.
+- `playQueueLastAddedItemID` appears to re-anchor when an item is MOVED, not only when one is
+  added. Seen on the copy, not pinned to a rule.
+- The subtitle SEARCH path (`GET .../subtitles?language=`) answers 503 on the isolated copy: it
+  needs OpenSubtitles. An instrument limit, and plexsim's empty-container answer stands.
+- fun was out of scope for the whole cycle, so nothing here rests on a third server.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
