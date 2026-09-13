@@ -8815,6 +8815,43 @@ def main():
                   "%s | count=1 %s | count=3 %s | count=8 %s"
                   % (shelves_c13h, counted_c13h[1], counted_c13h[3], counted_c13h[8]))
 
+        # Measured on zen (1.42.2 -- plexsim's own reported build): a movie library's
+    # Recommended tab carries `movie.topunwatched` between the genre shelf and Recently
+    # Watched, and a show library carries `tv.startwatching` after Recently Added and
+    # `tv.toprated` after Rediscover. Each is `style: shelf`, `random: true`, and each
+    # key is the listing its "see all" opens. kids (1.43.4) emits none of the three
+    # although it HAS qualifying rows -- all three keys answer `size 1` there -- so this
+    # is a version difference and zen is the witness that matters. plexsim built six
+    # shelves where 1.42.2 builds eight.
+    shelves_c13i = {h_c13i.get("hubIdentifier"): h_c13i for h_c13i in
+                    get(base, "/hubs/sections/%s" % movie_section)[1].get("Hub") or []}
+    order_c13i = list(shelves_c13i)
+    top_c13i = shelves_c13i.get("movie.topunwatched.%s" % movie_section) or {}
+    tv_c13i = {h_c13i.get("hubIdentifier"): h_c13i for h_c13i in
+               get(base, "/hubs/sections/%s" % show_section)[1].get("Hub") or []} if show_section else {}
+    start_c13i = tv_c13i.get("tv.startwatching.%s" % show_section) or {}
+    rated_c13i = tv_c13i.get("tv.toprated.%s" % show_section) or {}
+    check("the library tab carries the three shelves a 1.42.2 server builds",
+          top_c13i.get("title") == "Top Unwatched Movies"
+          and top_c13i.get("context") == "hub.movie.topunwatched"
+          and top_c13i.get("type") == "movie" and top_c13i.get("random") is True
+          and top_c13i.get("key") == ("/library/sections/%s/all?unwatched=1"
+                                      "&audienceRating>=7.0&sort=audienceRating:desc" % movie_section)
+          and order_c13i.index("movie.topunwatched.%s" % movie_section)
+              == len(order_c13i) - 2
+          and (not show_section or (
+              start_c13i.get("title") == "Start Watching"
+              and start_c13i.get("context") == "hub.tv.startwatching"
+              and start_c13i.get("type") == "show"
+              and start_c13i.get("key") == ("/library/sections/%s/all?type=2"
+                                            "&viewedOrInProgressLeafCount=0" % show_section)
+              and rated_c13i.get("title") == "Top Rated TV"
+              and rated_c13i.get("context") == "hub.tv.toprated"
+              and rated_c13i.get("key") == ("/library/sections/%s/all?type=2&unwatchedLeaves=1"
+                                            "&audienceRating>=7.0&sort=audienceRating:desc"
+                                            % show_section))),
+          "movies %s | tv %s" % (order_c13i, list(tv_c13i)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
