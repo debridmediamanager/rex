@@ -5825,13 +5825,15 @@ def main():
         arts_tags9 = {child.tag for child in ET.fromstring(arts_xml9)}
     except ET.ParseError:
         arts_tags9 = set()
-    art_keys9 = [int(str(r.get("key", "")).split("/")[3]) for r in arts9.get("Metadata") or []
-                 if str(r.get("key", "")).startswith("/library/metadata/")]
+    # The order is the ROWS' ratingKey order. The id inside an art URL is not the row's:
+    # after a Change Art write a row can point at another item's image.
+    art_keys9 = [r.get("key") for r in arts9.get("Metadata") or []]
+    expected_art9 = [r.get("art") for r in sorted(with_art9, key=lambda r: int(r.get("ratingKey")))]
     check("randomArtwork and a library's arts list one Photo per backdrop",
           len(random9) == len(with_art9) and with_art9
           and all(r.get("type") == "image" and r.get("rating") == -1 for r in random9)
           and get(base, "/library/randomArtwork")[1].get("size") == 0
-          and len(art_keys9) == len(with_art9) and art_keys9 == sorted(art_keys9)
+          and art_keys9 == expected_art9
           and arts_tags9 == {"Photo"},
           "random %d, arts %d of %d, xml %s" % (len(random9), len(art_keys9), len(with_art9), sorted(arts_tags9)))
 
