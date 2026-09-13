@@ -3249,6 +3249,12 @@ below is one check there, and each check failed against the code before its fix.
   Xbox One`, `Plex Desktop`, Roku, HTPC, Kodi, PlexAPI or no product. The extended title does
   not vary. The recorded `displayTitle` of `1080p` was the no-product answer, and plexsim
   sent it to Plex Web itself.
+- **A catalog built before this pass loads with the corrected fields.** The resolution
+  label, and an aspect ratio that is not one of the six, are recomputed from the Media's own
+  size; the unknown profile markers are dropped; the codec, language and flag renames above
+  apply to stored rows; and the titles are composed after all of them, where plexsim had
+  composed them first. `tests/catalog_ui.json`'s 1920x800 rows were served as `720`, 2.4 and
+  `profile: 0`.
 
 ### Emulation calibrated against the account's own claimed servers
 
