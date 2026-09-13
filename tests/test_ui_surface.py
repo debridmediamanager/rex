@@ -1170,6 +1170,11 @@ def main():
         skip("Shuffle changes the queue order", "only one item in the section")
 
     if queue_id and spare:
+        # Measured on a writable copy of the reference: a client's new queue RETIRES its
+        # older ones, so Play Next works on a queue built after the Play All and Shuffle
+        # queues above rather than on the first one.
+        queue_id = container(base, "POST", "/playQueues?type=video&shuffle=0&repeat=0&own=1&uri=%s"
+                                           % quote(uri))[1].get("playQueueID")
         next_uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" \
                    % (machine, spare)
         status, after, _ = container(base, "PUT", "/playQueues/%s?uri=%s&next=1&type=video"
@@ -1332,6 +1337,9 @@ def main():
     else:
         skip("a playlist queue names the playlist and omits the source uri",
              "could not create a playlist")
+    # A queue of our own for the refusals below: the checks above built newer ones, and a
+    # client's new queue retires its older ones.
+    qid = container(base, "POST", "/playQueues?type=video&uri=%s" % quote(add_uri))[1].get("playQueueID")
     # Every refusal measured on the reference, each of which plexsim answered 200 to.
     for method, path_, want, why in (
             ("POST", "/playQueues?type=video", 400, "a create with no uri"),
