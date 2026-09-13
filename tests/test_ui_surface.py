@@ -8782,6 +8782,39 @@ def main():
                   % (every_c13g, key_c13g, shows_c13g("viewedLeafCount%3E%3E=0"),
                      shows_c13g("viewedOrInProgressLeafCount=0"), shows_c13g("leafCount%3E%3E=0")))
 
+        # Measured on zen (1.42.2 -- the build plexsim reports), against a 3887-movie and
+    # 507-show library: with no `count=` every library shelf carries at most SIX rows and
+    # sets `more: true` -- movie.recentlyreleased, movie.recentlyadded, movie.topunwatched,
+    # tv.recentlyaired, tv.startwatching and tv.toprated are all size 6, more true -- and
+    # `/hubs` does the same (home.television.recent size 6, more true). `?count=3`,
+    # `?count=12` and `?count=20` are honoured exactly, so six is the DEFAULT, not a
+    # ceiling; the related shelf caps at six too (`movie.similar` size 6, more true).
+    # plexsim used 12, a number no reference has ever answered. kids cannot witness it
+    # either way: with five movies and one show, no shelf there can reach even six, which
+    # is how the recorded "up to 12" survived twelve cycles unmeasured.
+    if not show_section:
+        skip("a shelf with no count carries at most six rows", "need a show library")
+    else:
+        shelves_c13h = [(h_c13h.get("hubIdentifier"), h_c13h.get("size"), h_c13h.get("more"))
+                        for h_c13h in get(base, "/hubs/sections/%s" % show_section)[1].get("Hub") or []]
+        deep_c13h = [row_c13h for row_c13h in shelves_c13h if (row_c13h[1] or 0) > 3]
+        counted_c13h = {n_c13h: [h_c13h.get("size") for h_c13h in
+                                 get(base, "/hubs/sections/%s?count=%s" % (show_section, n_c13h))[1]
+                                 .get("Hub") or [] if h_c13h.get("size")]
+                        for n_c13h in (1, 3, 8)}
+        if not deep_c13h:
+            skip("a shelf with no count carries at most six rows",
+                 "no shelf in the fixture holds enough rows to overflow")
+        else:
+            check("a shelf with no count carries at most six rows and says there are more",
+                  all(size_c13h == 6 and more_c13h is True
+                      for _name_c13h, size_c13h, more_c13h in deep_c13h)
+                  and all(size_c13h <= 1 for size_c13h in counted_c13h[1])
+                  and all(size_c13h <= 3 for size_c13h in counted_c13h[3])
+                  and max(counted_c13h[8] or [0]) > 6,
+                  "%s | count=1 %s | count=3 %s | count=8 %s"
+                  % (shelves_c13h, counted_c13h[1], counted_c13h[3], counted_c13h[8]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
