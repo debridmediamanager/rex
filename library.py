@@ -699,7 +699,7 @@ class Library:
             row["title"] = "%s %s" % ("Season" if row.get("type") == "season" else "Episode",
                                       row.get("index"))
             written = written | {"title"}
-        if written & {"title", "studio", "index"}:
+        if written & {"title", "studio", "index", "contentRating"}:
             self._follow_parent(row, written)
         if changed:
             row["updatedAt"] = _now()
@@ -863,6 +863,17 @@ class Library:
             elif kind == "show" and str(child.get("grandparentRatingKey")) == key \
                     and "title" in written:
                 carry(child, "grandparentTitle", row.get("title"))
+            if kind == "show" and "contentRating" in written \
+                    and str(child.get("grandparentRatingKey")) == key:
+                # Measured on the copy: a show's `contentRating` moves onto the
+                # episodes beneath it, and clearing it clears theirs. The read side on
+                # kids and zen is the same rule seen from the other end -- every
+                # episode of a show carries the show's certificate, a season carries
+                # none. plexsim derived it only at load, so a show edited afterwards
+                # left its episodes showing a certificate it no longer had. A real PMS
+                # keeps an episode's OWN agent rating separate and moves only the
+                # inherited ones; plexsim's catalog has one column for both.
+                carry(child, "contentRating", row.get("contentRating"))
 
     def _empty_title(self, row, old_title):
         """An EMPTIED title, measured on a writable copy of the reference.

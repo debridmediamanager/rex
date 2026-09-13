@@ -9249,42 +9249,39 @@ def main():
                   "season %s, detail %s, children %s"
                   % (season_index_c13t, detail_c13t, listed_c13t))
 
-        # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE carries its SHOW's
-    # `contentRating` -- all six of Firefly's say TV-14 like the show, the three unmatched
-    # ones among them included although they have no agent metadata at all, and 18 of 18
-    # episodes across three zen shows carry their show's (TV-14, TV-Y, TV-PG). A SEASON
-    # carries none on either server. The write side agrees: on the copy, editing the show's
-    # rating moved it on the episodes that had no rating of their own, and the show unmatch
-    # removed it from all of them. plexsim left an episode with no rating at all, so every
-    # episode page and every episode row showed no certificate.
-    if not show_section:
-        skip("an episode carries its show's content rating and a season carries none",
-             "need a show library")
+        # Measured on a writable copy: editing a SHOW's `contentRating` moves it on the
+    # episodes beneath it -- the write side of the rule kids and zen show from the read
+    # side, where every episode of a show carries the show's certificate and no season
+    # carries one. plexsim derived it once, when the catalog loaded, so a show edited
+    # afterwards left its episodes showing the old certificate, and a show whose rating was
+    # cleared left them showing one it no longer had.
+    #
+    # The copy distinguishes an episode's OWN agent rating from an inherited one and moves
+    # only the inherited ones; plexsim's catalog has one column for both, so it moves all
+    # of them. That divergence is named here rather than guessed around.
+    if not show or not show_section:
+        skip("a show's content rating follows onto its episodes when it is edited",
+             "need a show")
     else:
-        show_rating_c13u = (get(base, "/library/metadata/%s" % show)[1]
-                            .get("Metadata") or [{}])[0].get("contentRating")
-        leaves_c13u = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
-                       for r in get(base, "/library/metadata/%s/allLeaves" % show)[1]
-                       .get("Metadata") or []]
-        seasons_c13u = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=TV-C13" % show)
+        after_c13v = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+                      .get("contentRating")
+                      for r in get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                      .get("Metadata") or []]
+        seasons_c13v = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+                        .get("contentRating")
                         for r in get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
                         .get("Metadata") or [] if r.get("type") == "season"]
-        if not leaves_c13u:
-            skip("an episode carries its show's content rating and a season carries none",
-                 "no episode left under the show")
-        else:
-            # The show's CURRENT rating is not the test: an earlier check clears it, and the
-            # episodes took their copy when the catalog loaded. What has to hold is that
-            # every episode carries one and they all carry the same one, that no season
-            # does, and that the show -- while it still has one -- agrees.
-            ratings_c13u = {r_c13u.get("contentRating") for r_c13u in leaves_c13u}
-            check("an episode carries its show's content rating and a season carries none",
-                  len(ratings_c13u) == 1 and None not in ratings_c13u
-                  and all(r_c13u.get("contentRating") is None for r_c13u in seasons_c13u)
-                  and (not show_rating_c13u or show_rating_c13u in ratings_c13u),
-                  "show %r | episodes %s | seasons %s"
-                  % (show_rating_c13u, [r_c13u.get("contentRating") for r_c13u in leaves_c13u],
-                     [r_c13u.get("contentRating") for r_c13u in seasons_c13u]))
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=" % show)
+        cleared_c13v = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+                        .get("contentRating")
+                        for r in get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                        .get("Metadata") or []]
+        check("a show's content rating follows onto its episodes when it is edited",
+              bool(after_c13v) and set(after_c13v) == {"TV-C13"}
+              and all(r_c13v is None for r_c13v in seasons_c13v)
+              and all(r_c13v is None for r_c13v in cleared_c13v),
+              "set %s | seasons %s | cleared %s" % (after_c13v, seasons_c13v, cleared_c13v))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
