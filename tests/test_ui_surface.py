@@ -2606,11 +2606,13 @@ def main():
     streams = root.findall(".//Stream") if root is not None else []
     video = [s for s in streams if s.get("streamType") == "1"]
     if video:
-        # Measured on two real servers: the codec belongs in the EXTENDED title.
-        # plexsim had `1080p (H.264)` in displayTitle, which is the string the
-        # quality picker prints.
-        check("a video stream's displayTitle is the resolution alone",
-              "(" not in (video[0].get("displayTitle") or ""),
+        # Measured on two real servers: the codec belongs in the EXTENDED title for most
+        # clients. Re-measured in cycle 10: this request says `X-Plex-Product: Plex Web`,
+        # one of the thirteen products that get the codec in displayTitle too, so an
+        # untitled video stream's two titles are the same string.
+        check("a video stream's displayTitle carries the codec for Plex Web",
+              "(" in (video[0].get("displayTitle") or "")
+              and video[0].get("displayTitle") == video[0].get("extendedDisplayTitle"),
               video[0].get("displayTitle"))
         check("a video stream carries an extendedDisplayTitle with the codec",
               "(" in (video[0].get("extendedDisplayTitle") or ""),
@@ -6940,6 +6942,39 @@ def main():
     else:
         skip("unmatching an episode or a season gives a local guid and a generated title, keeping the Guids",
              "need a show")
+
+    # Measured on both servers: a video's and a subtitle's displayTitle carries the codec only
+    # for Plex Web and the twelve other products named in mediainfo.CODEC_TITLE_PRODUCTS, in
+    # the X-Plex-Product header or the query alike; any other product gets the plain title,
+    # and the extended title is the same for everyone. plexsim sent every client the plain one.
+    episodes_c10a = (get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+                     if show_section else [])
+    if episodes_c10a:
+        def titles_c10a(product, query=""):
+            headers_c10a = {"User-Agent": UA, "Accept": "application/json", "X-Plex-Platform": "Chrome",
+                            "X-Plex-Client-Identifier": "plexsim-ui-test"}
+            if product:
+                headers_c10a["X-Plex-Product"] = product
+            url_c10a = base.rstrip("/") + "/library/metadata/%s%s" % (episodes_c10a[0]["ratingKey"], query)
+            with urllib.request.urlopen(urllib.request.Request(url_c10a, headers=headers_c10a), timeout=30) as reply:
+                row_c10a = json.loads(reply.read())["MediaContainer"]["Metadata"][0]
+            return [(s.get("streamType"), s.get("displayTitle"), s.get("extendedDisplayTitle"))
+                    for m in row_c10a.get("Media") or [] for p in m.get("Part") or [] for s in p.get("Stream") or []]
+        web_c10a = titles_c10a("Plex Web")
+        roku_c10a = titles_c10a("Plex for Roku")
+        query_c10a = titles_c10a(None, "?X-Plex-Product=Plex%20Web")
+        coded_c10a = [t for t in web_c10a if t[0] in (1, 3)]
+        plain_c10a = [t for t in roku_c10a if t[0] in (1, 3)]
+        check("Plex Web gets the codec in a video's and a subtitle's displayTitle, Roku the plain title",
+              coded_c10a and all(t[1] == t[2] and t[1].endswith(")") for t in coded_c10a)
+              and all("(" not in t[1] for t in plain_c10a)
+              and [t[2] for t in web_c10a] == [t[2] for t in roku_c10a]
+              and [t for t in web_c10a if t[0] == 2] == [t for t in roku_c10a if t[0] == 2]
+              and query_c10a == web_c10a,
+              "Plex Web %s / Roku %s / query %s" % (web_c10a, roku_c10a, query_c10a))
+    else:
+        skip("Plex Web gets the codec in a video's and a subtitle's displayTitle, Roku the plain title",
+             "need an episode")
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

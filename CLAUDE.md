@@ -548,10 +548,13 @@ precisely how the Seasons bug survived a fix attempt.
 - **The eventsource channel is a DIFFERENT wire format from the websocket**, for
   the same events: `event: <type>` plus a `data:` line holding one bare row, with
   no NotificationContainer and no size.
-- **`displayTitle` is the plain label and `extendedDisplayTitle` carries the
-  codec** — not the other way round — and a subtitle with a track title shows its
-  LANGUAGE plainly, the track name only in the extended title. These two strings
-  are what the quality and track pickers print.
+- **`displayTitle` is the plain label and `extendedDisplayTitle` carries the codec** --
+  not the other way round -- and a track title never enters `displayTitle`. Except that
+  thirteen products (Plex Web; Plex for iOS, Apple TV, Android (TV), Android (Mobile), LG,
+  Samsung, Windows, Mac, Xbox, PlayStation 4, PlayStation 5 and Vizio -- exact names,
+  header or query) get ` (<CODEC>)` in a video's and a subtitle's `displayTitle` too. The
+  server adds it on the way out (`_with_client_titles`), never into the catalog. These are
+  the strings the quality and track pickers print.
 - **`filters=` on the notification channels is a whitelist, and `log` is opt-in.**
   An earlier note here said the Console's log stream is not fed by that socket —
   measured WITHOUT the `filters=log` the client's own log connection passes. With it
