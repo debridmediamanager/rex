@@ -247,6 +247,10 @@ for _meta in SECTION_META.values():
 # Measured: `index` filters an episode or season listing (`type=4&index=2` is every
 # episode 2, `season.index=2` every episode of season 2) although no captured Meta
 # lists it as a field -- so plexsim ignored it and answered every row.
+# Cycle 14: a MOVIE row has an index too, and it is 1 on every one of them --
+# `index=1` and `index>>=0` answer all 5 on kids and all 3887 on zen, while `index=0`,
+# `index=2` and `index>>=1` answer none. plexsim's movie rows carry no index at all,
+# so all three answered zero rows where a real PMS answers the whole library.
 FILTER_FIELD_TYPES.setdefault("index", "integer")
 # And `id` filters every listing although no Meta advertises it: `/query/parse` echoes
 # it as a Rule with an empty `fieldTitle`. See filters.py for the comparison rules.
@@ -262,6 +266,24 @@ for _bare in ("viewedLeafCount", "viewedOrInProgressLeafCount", "unviewedLeafCou
 # is one row, `summary=e` none) without appearing in a Meta. See filters.py for how.
 for _bare in ("titleSort", "summary", "tagline"):
     FILTER_FIELD_TYPES.setdefault(_bare, "string")
+# Cycle 14, measured field by field on kids (1.43.4) and zen (1.42.2), which agree:
+# nine MORE columns filter without appearing in any Meta. Each is a real constraint
+# and not a tolerated no-op -- `viewOffset>>=0` answers 0 rows on both where an
+# unknown field answers every row, and on zen `updatedAt>>=1780000000` is 3861 of
+# 3887, `mediaCount>>=1` is 214, `originalTitle>>=M` is 393 and `createdAt>>=1786000000`
+# is 2437. `/query/parse` echoes each as a Rule with an EMPTY `fieldTitle`, the shape
+# cycle 11 recorded for `id`. plexsim reported them as an unknown FIELD and answered
+# the whole library, so each was a filter that silently did nothing.
+for _bare in ("viewOffset", "skipCount", "ratingCount", "absoluteIndex"):
+    FILTER_FIELD_TYPES.setdefault(_bare, "integer")
+for _bare in ("updatedAt", "createdAt", "lastRatedAt"):
+    FILTER_FIELD_TYPES.setdefault(_bare, "date")
+FILTER_FIELD_TYPES.setdefault("mediaCount", "integer")
+FILTER_FIELD_TYPES.setdefault("originalTitle", "string")
+# And `parentIndex` is a 500 on a listing on BOTH references -- on a movie library, on
+# a show library and at type=4 alike -- where plexsim filtered on it happily. It is the
+# one column of this family that refuses rather than filters.
+REFUSED_FILTER_FIELDS = {"parentIndex"}
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
@@ -4037,6 +4059,12 @@ class PlexSim:
         # Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100` because The 100's titleSort
         # is "100". plexsim answered catalog order, so an edited Sort Title never
         # moved a row and the grid's own default disagreed with its sort control.
+        for _refused in REFUSED_FILTER_FIELDS:
+            # Measured on both references: a listing answers 500 to this field rather
+            # than filtering on it, whatever the operator key.
+            if any(key == _refused or key.startswith(_refused) and
+                   not key[len(_refused):].isalnum() for key in query):
+                return ("error", 500, "plexsim: cannot filter on %s" % _refused)
         source, unsupported = self._sorted(source, query.get("sort") or "titleSort")
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
@@ -4747,6 +4775,11 @@ class PlexSim:
             # A row omits titleSort when it equals the title; the value is still
             # there to compare (`titleSort=sintel` finds Sintel, measured).
             return row.get("titleSort") or row.get("title")
+        if field == "index" and row.get("type") == "movie" and "index" not in row:
+            # Measured: neither reference emits `index` on a movie row, and `index=1`
+            # still matches every movie on both while `index=0` and `index=2` match
+            # none. The column is there; the attribute is not.
+            return 1
         if field == "decade":
             year = row.get("year")
             return (int(year) // 10 * 10) if year else None
