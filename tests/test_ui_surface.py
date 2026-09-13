@@ -3499,13 +3499,21 @@ def main():
               "HTTP %s" % status)
 
     print("\n=== /filters is per library TYPE ===")
-    # A movie library advertises 28 filters and a show library a DIFFERENT 15 --
-    # the same lesson as the two Meta sidecars. plexsim served one trimmed list
-    # for both, so a show grid's filter bar could only talk about movies.
+    # A movie library advertises a different list from a show library -- the same
+    # lesson as the two Meta sidecars. plexsim served one trimmed list for both, so
+    # a show grid's filter bar could only talk about movies.
+    #
+    # Cycle 14 re-measured the COUNT: this check said 28, which is kids' answer
+    # (1.43.4). zen -- 1.42.2, the build plexsim reports -- answers 22, and the six
+    # it drops are the media-codec axes. plexsim was advertising a newer server's
+    # filter bar than the version it claims to be. See docs/findings.md.
     _, movie_filters, _ = get(base, "/library/sections/%s/filters" % movie_section)
     movie_names = [e.get("filter") for e in movie_filters.get("Directory") or []]
-    check("a movie library advertises the reference's 28 filters",
-          len(movie_names) == 28 and movie_names[0] == "genre"
+    check("a movie library advertises its own version's 22 filters",
+          len(movie_names) == 22 and movie_names[0] == "genre"
+          and not {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
+                   "audioLayout"} & set(movie_names)
+          and "hdr" in movie_names and "dovi" in movie_names
           and "resolution" in movie_names and "location" in movie_names
           and "network" not in movie_names,
           "%d: %s" % (len(movie_names), ",".join(movie_names[:6])))
@@ -5369,8 +5377,11 @@ def main():
     advanced_filters = (get(base, "/library/sections/%s/filters?includeAdvanced=1" % movie_lib)[1]
                         .get("Directory") or [])
     season_filters = get(base, "/library/sections/%s/filters?type=3" % movie_lib)[1].get("Directory")
+    # Cycle 14: the episode list is 17 on kids (1.43.4) and 9 on zen (1.42.2, the
+    # build plexsim reports) -- it drops the six codec axes AND `hdr`/`dovi`, which
+    # the movie list keeps. The type-keying and the Duplicates rule are unchanged.
     check("/filters is the asked TYPE's list, and includeAdvanced adds Duplicates",
-          len(episode_filters) == 17
+          len(episode_filters) == 9
           and episode_filters[0].get("key") == "/library/sections/%s/year?type=4" % movie_lib
           and not season_filters
           and get(base, "/library/sections/%s/filters?type=movie" % movie_lib)[0] == 400
