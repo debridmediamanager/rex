@@ -6528,6 +6528,24 @@ def main():
     else:
         skip("deleting the selected queue item answers the old header and moves the selection on", "need two movies")
 
+    # Measured on plexscratch: a play queue move with an `after` the queue does not hold --
+    # `0`, an unknown id -- goes to the front; plexsim answered 404.
+    made_w14g = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
+    ids_w14g = [r.get("playQueueItemID") for r in made_w14g.get("Metadata") or []]
+    if len(ids_w14g) >= 3:
+        queue_w14g = made_w14g.get("playQueueID")
+        zero_status_w14g, zero_w14g, _ = container(base, "PUT", "/playQueues/%s/items/%s/move?after=0"
+                                                                % (queue_w14g, ids_w14g[-1]))
+        unknown_status_w14g, unknown_w14g, _ = container(base, "PUT", "/playQueues/%s/items/%s/move?after=999999"
+                                                                      % (queue_w14g, ids_w14g[1]))
+        check("a play queue move after nothing it holds goes to the front",
+              (zero_status_w14g, unknown_status_w14g) == (200, 200)
+              and [r.get("playQueueItemID") for r in zero_w14g.get("Metadata") or []][:1] == [ids_w14g[-1]]
+              and [r.get("playQueueItemID") for r in unknown_w14g.get("Metadata") or []][:1] == [ids_w14g[1]],
+              "HTTP %s/%s" % (zero_status_w14g, unknown_status_w14g))
+    else:
+        skip("a play queue move after nothing it holds goes to the front", "need three movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

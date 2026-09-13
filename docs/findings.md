@@ -3026,6 +3026,8 @@ the same parameters, then read back from both.
 - **Deleting a play queue's selected item answers the queue as it stood.** The response
   carries the old version, selection and total with no rows, and the next read has the
   selection on the item that followed it; plexsim left the selection on the deleted id.
+- **A play queue move after an item the queue does not hold goes to the front.** `after=0`
+  and an unknown id both send the item first, as `after=-1` does; plexsim answered 404.
 
 ### Emulation calibrated against the account's own claimed servers
 

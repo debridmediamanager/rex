@@ -7534,10 +7534,10 @@ class PlexSim:
             else:
                 target = next((i for i, e in enumerate(items)
                                if str(e["id"]) == str(after)), None)
-                if target is None:
-                    items.insert(index, moving)
-                    return ("error", 404, "plexsim: no such play queue item")
-                items.insert(target + 1, moving)
+                # Measured on a writable copy of the reference: an `after` the queue does
+                # not hold -- `0`, an unknown id -- moves the item to the FRONT, as `-1`
+                # does. plexsim answered 404 and left it where it was.
+                items.insert(0 if target is None else target + 1, moving)
             queue["version"] += 1
         return self.play_queue_container(queue_id, query)
 
