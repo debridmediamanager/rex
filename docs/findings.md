@@ -3136,6 +3136,19 @@ Measured in the ninth pass's second batch and not acted on:
   agree, so its alphabetical meaning comes from python-plexapi's mapping, not from a
   measurement here.
 
+#### The tenth pass: what a real PMS writes for a real file
+
+plexsim builds every `Media`, `Part` and `Stream` from an ffprobe probe, and every official
+client runs its own direct-play gate and draws its quality and track pickers from those
+attributes before it asks the server anything. Until this pass the conversion had been
+compared with a real server on two display titles and one subtitle-flag sweep. The tenth
+pass probed 35 real files on fun -- over fun's own part URL, with the invocation
+build_catalog.py uses -- and the reference's 11 clips. Each probe is now checked in under
+`tests/fixtures/media/` beside the Media element that server wrote for the same file and the
+display titles it sends Plex Web, and `tests/test_mediainfo.py` converts every probe with
+mediainfo.py and compares the result with the real analysis, presence and value. Each rule
+below is one check there, and each check failed against the code before its fix.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
