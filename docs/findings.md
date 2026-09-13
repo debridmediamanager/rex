@@ -3108,6 +3108,34 @@ the same parameters, then read back from both.
   applied the movie rule to both, dropped the Guids, and left an `Unmatching` activity that
   never ended.
 
+Measured in the ninth pass's second batch and not acted on:
+
+- **Instrument limits on plexscratch.** Its clips are ten seconds long. A timeline
+  carrying `X-Plex-Session-Identifier` was ignored outright -- every beat `ignore`, nothing
+  counted -- which a session-bound timeline appears to judge against the clip, and a
+  timeline with no `duration` cannot be told apart from a position past the clip. Both
+  need a copy with longer media before they can be measured.
+- **Not reproduced when re-measured:** `/:/progress?state=playing` opening a
+  `/status/sessions` row; a timeline with an unknown `playQueueItemID` moving the queue's
+  selection to the item its ratingKey names; a library edit that changes `type` being a
+  400 (a 200 on both servers); a collection create with no `uri` being a 400 (a 200 on
+  both); a smart collection tagging its members; a whole-library playlist add adding
+  nothing; `continuous=1` stopping at one episode (plexsim's fixture season holds one).
+- **Captured only in part:** the database optimize's `general.db.optimize` activity and
+  the burst of type-12 state-9 frames inside it; the refresh cascade a show's
+  `showOrdering` write pushes; a library create's scan, with a created-and-titled frame
+  pair per item; the per-season subtitles a TV library's scan steps through.
+- **Oddities on the reference, left alone:** `studio[0].tag.tag=X` lands in Director and
+  `contentRating[0].tag.tag=R` in Country; `similar[0].tag.tag=x` is stored as `X`; a
+  collection created as `c13` tagged its members `C13`; `merge?ids=<itself>` deletes the
+  item; a movie unmatched offline is missing from `unmatched=1`.
+- **The copy, not the server:** `DELETE /library/metadata/{id}` is a 400 on plexscratch
+  for every type (its media mount is read-only), `editionTitle` is a 403 (Plex Pass), and
+  the `collectionMode` library setting is absent from the copy's settings list.
+- `collectionSort=1` gave release-date order on members whose release order and titles
+  agree, so its alphabetical meaning comes from python-plexapi's mapping, not from a
+  measurement here.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
