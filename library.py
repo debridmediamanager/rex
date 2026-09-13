@@ -967,6 +967,22 @@ class Library:
         Either way the guid is what flips the menu from "Fix Match..." to
         "Match...", because both predicates test it for `local://` or `none://`.
         """
+        if row.get("type") in ("episode", "season"):
+            # Re-measured on a writable copy of the reference for an EPISODE and a
+            # SEASON: the guid becomes `local://<ratingKey>`, the title the generated
+            # `Episode N` / `Season N`, and the external Guid array is kept. The
+            # filename title and the `none://` guid below were read off a movie.
+            row["guid"] = "local://%s" % row["ratingKey"]
+            row["_generatedTitle"] = True
+            row["title"] = "%s %s" % ("Season" if row["type"] == "season" else "Episode",
+                                      row.get("index"))
+            if row["type"] == "season":
+                row["titleSort"] = row["title"]
+            else:
+                row.pop("titleSort", None)
+            self._follow_parent(row, {"title"})
+            row["updatedAt"] = _now()
+            return row
         for key in self.UNMATCH_DROPS:
             row.pop(key, None)
         row["summary"] = ""
