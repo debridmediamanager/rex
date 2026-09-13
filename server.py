@@ -1396,9 +1396,24 @@ class PlexSim:
             self.notify_activity(activity, "updated")
         activity["progress"] = 100
         self.notify_activity(activity, "updated")
+        # Measured on the copy, in this exact interleaving: a scan ends inside a NESTED
+        # pair of `provider.subscriptions.process` activities. The outer one starts
+        # between the section activity's last `updated` and its `ended`; the inner one
+        # runs after the completion status; then the inner ends and the outer ends. Four
+        # frames plexsim pushed none of, and the Activity pane draws a row for each.
+        outer = {"uuid": str(uuid.uuid4()), "type": "provider.subscriptions.process",
+                 "cancellable": False, "userID": 1, "title": "Processing subscriptions",
+                 "subtitle": "", "progress": 0}
+        self.notify_activity(outer, "started")
         self.notify_activity(activity, "ended")
         self.notify_status("Library scan complete",
                            description="Extra information may still be downloading from the Internet")
+        inner = dict(outer, uuid=str(uuid.uuid4()))
+        self.notify_activity(inner, "started")
+        inner["progress"] = 100
+        self.notify_activity(inner, "ended")
+        outer["progress"] = 100
+        self.notify_activity(outer, "ended")
 
     # Plex's numeric type codes, as a TimelineEntry carries them.
     # A playlist is 15 and a collection 18 on the wire -- measured -- and the client
@@ -3491,9 +3506,13 @@ class PlexSim:
             self.refreshing.add(str(section_id))
             rows = self.catalog.section_items(section_id)
             if query.get("force") == "1":
-                # Measured title, verbatim: it is what the header's activity spinner
-                # shows while a scan runs.
-                self.notify_status('Scanning the "%s" section' % (section.get("title") or ""))
+                # Measured on the copy: "Refresh All Metadata" runs the WHOLE scan
+                # sequence first -- the same `library.update.section` activity, its
+                # per-item progress, the subscriptions pair and the completion status --
+                # and only then refreshes each item. plexsim pushed a bare status frame
+                # and went straight to the per-item half, so the Libraries page showed no
+                # scan and no progress for the one operation that takes longest.
+                self.notify_section_scan(section_id, section)
                 for row in rows:
                     self.library.refresh(row)
                     self.notify_refreshed(row)
@@ -9203,7 +9222,7 @@ class PlexSim:
             contentChangedAt=0,
             hidden=0,
             Location=[{"id": 1, "path": query.get("location") or "/plexsim"}],
-        )]))
+        )]), "/library/sections/%s" % section["key"])
 
     # -- the stream ------------------------------------------------------
 
@@ -9585,12 +9604,16 @@ class Handler(BaseHTTPRequestHandler):
                            [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")])
                 return
             if kind == "created":
-                # POST /library/sections answers 201 with the created Directory.
+                # POST /library/sections answers 201 with the created Directory -- and,
+                # measured on the copy, a `Location` header naming the new library
+                # (`/library/sections/6`). plexsim sent the body alone, so a client that
+                # follows the header rather than parsing the row had nowhere to go.
                 payload = json_body(result[1])
+                created = [("Location", result[2])] if len(result) > 2 and result[2] else []
                 if self._wants_xml():
-                    self._send(201, "text/xml;charset=utf-8", to_xml(result[1]))
+                    self._send(201, "text/xml;charset=utf-8", to_xml(result[1]), created)
                 else:
-                    self._send(201, "application/json", payload)
+                    self._send(201, "application/json", payload, created)
                 return
             if kind == "zip":
                 self._send(200, "application/zip", result[1],
