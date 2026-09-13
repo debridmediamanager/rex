@@ -4193,6 +4193,11 @@ def main():
               is_empty_200(status, body) and len(row.get("Media") or []) == 1
               and len(listing.get("Metadata") or []) == len(movies),
               "%d row(s) in the section" % len(listing.get("Metadata") or []))
+        # Measured on a writable copy of the reference: the split hands the second item back
+        # on a NEW ratingKey, so every later check meaning "the second movie" uses that key
+        # rather than the one the merge absorbed.
+        spare = next((r.get("ratingKey") for r in listing.get("Metadata") or []
+                      if str(r.get("ratingKey")) not in {str(m.get("ratingKey")) for m in movies}), spare)
 
     # ------------------------------------------------------------------
     # Cycle 5: the settings forms, agents, devices, the wire format, the hubs
