@@ -6364,8 +6364,17 @@ class PlexSim:
         """
         return "%.5f" % max(0.0, min(1.0, rank))
 
-    def search_matches(self, text, limit):
-        """(typed row lists, tag hits) for one query, both ranked."""
+    def search_matches(self, text, limit, tagged_items=False):
+        """(typed row lists, tag hits) for one query, both ranked.
+
+        `tagged_items` adds the ITEMS a matched tag is on to the typed lists.
+        Measured on both servers: `/hubs/search` carries them -- kids `colin`
+        answers Firefly reasoned on its actor and Sintel on its director, and 53 of
+        81 item rows across ten zen queries carried a `reason` -- while
+        `/library/search` carries the tag rows and the title hits only. So it is
+        the hubs endpoint that asks for them, not the matcher that always finds
+        them.
+        """
         rows = self.catalog.search(text)
         needle = (text or "").strip().lower()
 
@@ -6383,6 +6392,19 @@ class PlexSim:
         typed = {}
         for row in rows:
             typed.setdefault(row.get("type"), []).append(row)
+        if tagged_items:
+            seen_keys = {str(r.get("ratingKey")) for r in rows}
+            for row in self.catalog.items.values():
+                if str(row.get("ratingKey")) in seen_keys:
+                    continue
+                for field in self.SEARCH_TAG_HUBS.values():
+                    if any(any(w.startswith(needle)
+                               for w in re.split(r"[^0-9a-z]+", str(tag.get("tag") or "").lower())
+                               if w)
+                           for tag in row.get(field) or []) and len(needle) >= 2:
+                        typed.setdefault(row.get("type"), []).append(row)
+                        seen_keys.add(str(row.get("ratingKey")))
+                        break
         for kind in typed:
             typed[kind].sort(key=lambda r: (-rank(r), str(r.get("title") or "")))
             typed[kind] = typed[kind][:limit]
@@ -6421,7 +6443,7 @@ class PlexSim:
         # that omits `limit` -- a results page many times the size a real PMS sends,
         # which changes how the search page lays its shelves out.
         limit = int(query.get("limit", 3) or 3)
-        typed, tags = self.search_matches(text, limit)
+        typed, tags = self.search_matches(text, limit, tagged_items=True)
         needle = text.strip().lower()
 
         hubs = []
