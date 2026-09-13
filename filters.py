@@ -255,7 +255,24 @@ def _word_prefixes(wanted, text):
     return True
 
 
-def _exact(operator, actual, wanted):
+# What a BARE `<field>=` selects, measured on kids (1.43.4) and zen (1.42.2), which
+# agree exactly. Three behaviours, by field:
+#   TAG_TABLE_FIELDS      match nothing            (genre= is 0 of 5 and 0 of 3887)
+#   EMPTY_MATCHES_EVERY   match every row          (studio= is 5 of 5 and 3887 of 3887,
+#                                                   though 14 of 200 zen movies have none)
+#   everything else       match the valueless rows (contentRating= is 3 and 2864)
+# The codec axes disagree across the two versions (kids nothing, zen everything), so
+# they are a version difference rather than a rule and keep the middle behaviour.
+EMPTY_MATCHES_EVERY = {"studio", "editionTitle"}
+
+# `contentRating=None`, in that exact spelling, is a synonym for the empty value on
+# both servers (2864 and 3 rows, the same as `contentRating=`), while `none` and
+# `NONE` match nothing. It is the key of the axis own trailing bucket, and no other
+# field axis has one.
+EMPTY_SYNONYM = {"contentRating": "None"}
+
+
+def _exact(operator, actual, wanted, field=""):
     """Exact set membership: tag, language and resolution fields.
 
     Three measurements shape this. `contentRating=G` matches the row rated `G`
@@ -268,7 +285,17 @@ def _exact(operator, actual, wanted):
     """
     values = _values(actual)
     wanted = str(wanted)
-    hit = (not values) if wanted == "" else (wanted in values)
+    if wanted == EMPTY_SYNONYM.get(field):
+        wanted = ""
+    if wanted == "":
+        if field in TAG_TABLE_FIELDS:
+            hit = False
+        elif field in EMPTY_MATCHES_EVERY:
+            hit = True
+        else:
+            hit = not values
+    else:
+        hit = wanted in values
     if operator == "!=":
         return not hit
     if operator == "=":
@@ -305,7 +332,7 @@ def compare(kind, operator, actual, wanted, field=""):
         return _exact(operator, actual, wanted)
 
     if kind in ("tag", "audioLanguage", "subtitleLanguage"):
-        return _exact(operator, actual, wanted)
+        return _exact(operator, actual, wanted, field)
 
     if kind == "date":
         if actual is None:

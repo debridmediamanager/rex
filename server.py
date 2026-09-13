@@ -5065,6 +5065,13 @@ class PlexSim:
                     "key": urllib.parse.quote(once) if leaf == "studio" else once,
                     "title": (value + "s") if leaf == "decade" else value,
                 })
+        if leaf == "contentRating" and any(not row.get("contentRating") for row in rows):
+            # Measured on both servers: the contentRating axis -- and only that axis --
+            # ends with a `None` bucket, after the alphabetical entries, whose fastKey
+            # is `?contentRating=None`. It selects exactly the rows with no rating, and
+            # plexsim offered no way to reach them from the filter bar at all.
+            entries.append({"fastKey": "/library/sections/%s/all?contentRating=None" % section_id,
+                            "key": "None", "title": "None"})
         container = self.secondary_container(section_id, section,
                                              SECONDARY_TITLES.get(leaf), Directory=entries)
         if leaf in self.CONTENTLESS_AXES:
