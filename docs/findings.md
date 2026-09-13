@@ -3195,6 +3195,8 @@ below is one check there, and each check failed against the code before its fix.
 - **`scanType` follows the field order**: absent where ffprobe reports none (19 streams),
   `interlaced` for a field-ordered stream, `progressive` otherwise. plexsim wrote
   `progressive` everywhere.
+- **`colorRange` is ffprobe's `color_range`** (22 streams carry it, 25 do not); plexsim
+  never sent it.
 
 ### Emulation calibrated against the account's own claimed servers
 

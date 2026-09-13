@@ -213,6 +213,11 @@ def _scan_type_value(fixture):
     return per_stream(1, ("scanType",))(fixture)
 
 
+@check("color-range")
+def _color_range(fixture):
+    return per_stream(1, ("colorRange",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

@@ -254,6 +254,8 @@ def _video_stream(stream, stream_id):
         "colorPrimaries": stream.get("color_primaries"),
         "colorTrc": stream.get("color_transfer"),
         "colorSpace": stream.get("color_space"),
+        # Measured: ffprobe's `color_range` as it is, and absent where it has none.
+        "colorRange": stream.get("color_range"),
         "frameRate": _float_or_none(stream.get("r_frame_rate")),
         "scanType": _scan_type(stream.get("field_order")),
     }
