@@ -2962,6 +2962,9 @@ the same parameters, then read back from both.
 - **Remove from Continue Watching is a PUT that needs its `ratingKey`.** A GET is a 404
   and a PUT with no `ratingKey` a 400; plexsim hid the row on a GET and 404'd the bare
   PUT.
+- **A playlist create validates its form.** No `title`, no `type` or no `uri` is a 400,
+  a type outside video/audio/photo a 500, and `type=audio` or `type=photo` over a movie a
+  400. plexsim created an `Untitled` list of whatever it was sent, typed `bogus` if asked.
 
 ### Emulation calibrated against the account's own claimed servers
 

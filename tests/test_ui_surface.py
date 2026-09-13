@@ -6247,6 +6247,20 @@ def main():
     check("Remove from Continue Watching is a PUT that needs a ratingKey",
           (get_w11c, bare_w11c) == (404, 400), "GET %s, bare PUT %s" % (get_w11c, bare_w11c))
 
+    # Measured on plexscratch: a playlist create needs a title, a type and a uri (each a 400
+    # when missing), a type outside video/audio/photo is a 500, and audio over a movie is a
+    # 400. plexsim created an "Untitled" list of whatever it was sent.
+    uri_w12a = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
+    results_w12a = [container(base, "POST", "/playlists?" + spec)
+                    for spec in ("type=video&smart=0&uri=%s" % uri_w12a, "title=w12a&smart=0&uri=%s" % uri_w12a,
+                                 "type=video&title=w12a&smart=0", "type=bogus&title=w12a&smart=0&uri=%s" % uri_w12a,
+                                 "type=audio&title=w12a&smart=0&uri=%s" % uri_w12a)]
+    for _, made_w12a, _ in results_w12a:
+        for row_w12a in made_w12a.get("Metadata") or []:
+            request(base, "DELETE", "/playlists/%s" % row_w12a.get("ratingKey"))
+    check("a playlist create needs a title, a type and a uri, and a type that fits it",
+          [r[0] for r in results_w12a] == [400, 400, 400, 500, 400], str([r[0] for r in results_w12a]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
