@@ -3409,11 +3409,15 @@ def main():
             ok = ok and bool(rows)
             if axis in TAG_AXES:
                 field = TAG_AXES[axis]
-                ok = ok and all(any(t.get("tag") == entry["title"]
-                                    for t in row.get(field) or []) for row in rows)
-                expected = [m for m in present
-                            if any(t.get("tag") == entry["title"]
-                                   for t in m.get(field) or [])]
+                # Measured in cycle 12 against a real library: a LISTING row CAPS its tag
+                # lists (2 Genre, 2 Writer, 2 Country, 3 Role), so membership has to be
+                # read off the DETAIL row. This check used to compare listing rows with
+                # listing rows, which agreed only because plexsim sent the whole list.
+                def carries(key):
+                    _, _, full = detail_of("x=1", key)
+                    return any(t.get("tag") == entry["title"] for t in full.get(field) or [])
+                ok = ok and all(carries(row.get("ratingKey")) for row in rows)
+                expected = [m for m in present if carries(m.get("ratingKey"))]
                 ok = ok and len(rows) == len(expected)
                 detail += " of %d that carry it" % len(expected)
             elif axis in FIELD_AXES:
@@ -8080,12 +8084,17 @@ def main():
                         rows_c12a[0] if rows_c12a else {})
         return status_c12a, {el_c12a: len(row_c12a.get(el_c12a) or [])
                              for el_c12a in ("Genre", "Writer", "Country", "Role")}
+    caps_c12a = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3}
+    # The condition is BUILT rather than hoped for: by this point the suite's own edits
+    # have emptied the fixture's tag lists, and an indexed tag write replaces the list on
+    # the item path, so this leaves exactly three genres to truncate.
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=c12capa"
+                         "&genre[1].tag.tag=c12capb&genre[2].tag.tag=c12capc" % movie)
     detail_c12a = tags_c12a("/library/metadata/%s" % movie)
     grid_c12a = tags_c12a("/library/sections/%s/all" % movie_section)
-    caps_c12a = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3}
     check("a light row caps its tag lists where the detail row carries them all",
           detail_c12a[0] == 200 and grid_c12a[0] == 200
-          and any(detail_c12a[1][el_c12a] > caps_c12a[el_c12a] for el_c12a in caps_c12a)
+          and detail_c12a[1]["Genre"] == 3 and grid_c12a[1]["Genre"] == 2
           and all(grid_c12a[1][el_c12a] == min(detail_c12a[1][el_c12a], caps_c12a[el_c12a])
                   for el_c12a in caps_c12a),
           "detail %s, grid %s" % (detail_c12a[1], grid_c12a[1]))
@@ -8100,10 +8109,17 @@ def main():
     if not episodes_c12b:
         skip("an episode's parentGuid is the season's own guid", "no episode in the fixture")
     else:
-        row_c12b = (get(base, "/library/metadata/%s" % episodes_c12b[0]["ratingKey"])[1]
-                    .get("Metadata") or [{}])[0]
-        season_c12b = (get(base, "/library/metadata/%s" % row_c12b.get("parentRatingKey"))[1]
-                       .get("Metadata") or [{}])[0]
+        # Picked from an episode whose season is still MATCHED: the suite unmatches one
+        # later on, and an unmatched season's guid is a `local://` one whose effect on a
+        # child's parentGuid has never been measured.
+        row_c12b, season_c12b = {}, {}
+        for candidate_c12b in episodes_c12b:
+            row_c12b = (get(base, "/library/metadata/%s" % candidate_c12b["ratingKey"])[1]
+                        .get("Metadata") or [{}])[0]
+            season_c12b = (get(base, "/library/metadata/%s" % row_c12b.get("parentRatingKey"))[1]
+                           .get("Metadata") or [{}])[0]
+            if str(season_c12b.get("guid") or "").startswith("plex://season/"):
+                break
         check("an episode's parentGuid is the season's own guid",
               row_c12b.get("parentGuid")
               and row_c12b.get("parentGuid") == season_c12b.get("guid")
@@ -8143,26 +8159,27 @@ def main():
                                                        or hub_c12d.get("Directory") or [])
                              for hub_c12d in (body_c12d.get("Hub") or [])
                              if (hub_c12d.get("Metadata") or hub_c12d.get("Directory"))}
-    query_c12d = next((candidate_c12d for candidate_c12d in ("ha", "the", "sim", "tea")
-                       if any(count_c12d > 3 for count_c12d
-                              in hubs_c12d(candidate_c12d, "&limit=50")[1].values())), None)
-    if not query_c12d:
-        skip("a search caps at the rows a real PMS sends when no limit is asked for",
-             "no query overflows a hub on this fixture")
-    else:
-        wide_c12d = hubs_c12d(query_c12d, "&limit=50")
-        plain_c12d = hubs_c12d(query_c12d)
-        lib_wide_c12d = len(get(base, "/library/search?query=%s&limit=50" % query_c12d)[1]
-                            .get("SearchResult") or [])
-        lib_plain_c12d = len(get(base, "/library/search?query=%s" % query_c12d)[1]
-                             .get("SearchResult") or [])
-        check("a search caps at the rows a real PMS sends when no limit is asked for",
-              plain_c12d[0] == 200 and wide_c12d[0] == 200
-              and all(plain_c12d[1].get(hub_c12d) == min(count_c12d, 3)
-                      for hub_c12d, count_c12d in wide_c12d[1].items())
-              and lib_plain_c12d == min(lib_wide_c12d, 10),
-              "query %r -- hubs: no limit %s, limit=50 %s | /library/search %s vs %s"
-              % (query_c12d, plain_c12d[1], wide_c12d[1], lib_plain_c12d, lib_wide_c12d))
+    # Four genres sharing a word prefix, written onto one row: the fixture has nothing
+    # that overflows a search hub by itself, and without an overflow the check cannot
+    # tell a cap of 3 from a cap of 30.
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=c12hita"
+                         "&genre[1].tag.tag=c12hitb&genre[2].tag.tag=c12hitc"
+                         "&genre[3].tag.tag=c12hitd" % movie)
+    query_c12d = "c12hit"
+    wide_c12d = hubs_c12d(query_c12d, "&limit=50")
+    plain_c12d = hubs_c12d(query_c12d)
+    lib_wide_c12d = len(get(base, "/library/search?query=%s&limit=50" % query_c12d)[1]
+                        .get("SearchResult") or [])
+    lib_plain_c12d = len(get(base, "/library/search?query=%s" % query_c12d)[1]
+                         .get("SearchResult") or [])
+    check("a search caps at the rows a real PMS sends when no limit is asked for",
+          plain_c12d[0] == 200 and wide_c12d[0] == 200
+          and wide_c12d[1].get("genre") == 4 and plain_c12d[1].get("genre") == 3
+          and all(plain_c12d[1].get(hub_c12d) == min(count_c12d, 3)
+                  for hub_c12d, count_c12d in wide_c12d[1].items())
+          and lib_plain_c12d == min(lib_wide_c12d, 10),
+          "query %r -- hubs: no limit %s, limit=50 %s | /library/search %s vs %s"
+          % (query_c12d, plain_c12d[1], wide_c12d[1], lib_plain_c12d, lib_wide_c12d))
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): an actor tag row in search is

@@ -3571,6 +3571,122 @@ Measured and not acted on:
   needs OpenSubtitles. An instrument limit, and plexsim's empty-container answer stands.
 - fun was out of scope for the whole cycle, so nothing here rests on a third server.
 
+#### The twelfth pass: what a real library shows, and what the writes really push
+
+The first cycle with a **real library** as a routine instrument. Eleven cycles measured row
+shapes against ten synthetic ten-second clips; zen has 3,887 movies, two show libraries and real
+agent metadata, on Plex 1.42.2 — the exact build plexsim reports. Hunt A was read-only across
+kids and zen; hunt B measured writes on plexscratch, its only possible witness. It found MORE
+than the cycle before it, not fewer, which is the instrument catching up rather than a
+regression in the work.
+
+**What only a real library could show.**
+
+- **A light row CAPS its tag lists**: at most 2 `Genre`, 2 `Writer`, 2 `Country` and 3 `Role`,
+  always the first of the detail row's own order, where the DETAIL row carries the lot. One zen
+  movie has 155 roles on its detail row and exactly 3 on every listing of it; the richest genre
+  row (7) prints 2. Confirmed on kids too (Sintel 7 genres → 2; episode 8's 24 roles → 3 in a
+  child list). `Director` is uncapped in every sample available — the richest row in 240 zen
+  movies has two — so it is left alone rather than guessed at. plexsim sent the whole list on
+  every grid, hub and search row. **A five-clip library cannot show this**: no item has enough
+  tags to be truncated, which is exactly why eleven cycles of row-shape work missed it.
+- **An episode's `parentGuid` is the SEASON's guid**, not the show's. plexsim copied the
+  season's own `parentGuid` — which is the show, correct on the season row and wrong on the leaf
+  — so every episode of a show claimed one and the same parent, and a client keying per-season
+  artwork or state off it could not tell the seasons apart. Corrected at LOAD as well as at
+  build, because every catalog built so far carries the wrong value baked in.
+- **The section grid says `allowSync: true`.** plexsim said false there while already saying
+  true on `/newest`, `/recentlyAdded`, `/onDeck`, `/folder`, `/children` and a detail row — the
+  most-requested container on the surface disagreeing with every other one, and an attribute
+  python-plexapi reads off every section listing.
+- **A search caps at 3 rows per hub with no `limit`, and `/library/search` at 10 in all.** A zen
+  search answering 6 movies, 26 directors, 11 episodes and 50 actors under `limit=50` answers
+  three of each with none, and `more` stays false either way. plexsim defaulted both to 30.
+- **An actor tag row is `tagType: 6`** and a director row 4 — different tag types, not one
+  "person" type. plexsim called both 4 while `/library/people/{id}` already answered 6 for the
+  same person, so the server contradicted itself.
+- **`group=type`, `group=guid` and `group=id` are 200**, where plexsim answered 500. Exercised
+  against all 27 candidate fields: the other 24 agree, including the 11 that are 500 everywhere.
+  `id` became a filter field in cycle 11 and was still not a group field.
+- **An EPISODE's title is compared by `/common` and a SEASON's is not**, and `titleSort` is `""`
+  only when it is genuinely mixed — a single row answers its own sort title (`The Train Job` →
+  `Train Job`, derived where the row stores none; a season answers `Season 1`). plexsim dropped
+  `title` for both types and hardcoded `titleSort` to `""`, so the Edit dialog opened on an
+  episode with the Title and Sort Title boxes blank and a save could overwrite them.
+- **`/library/sections/{id}/actor` carries no `content`**, where all 25 other secondary axes
+  carry `content: "secondary"`. No rule explains it; both servers agree, so it is emulated as
+  measured — a field invented is as wrong as one missing.
+
+**What the writes really push.** One witness only: these are writes, so plexscratch (1.43.4) is
+the only server that can answer them.
+
+- **A subtitle upload pushes NO frames.** 0 in a 15-second watch and 0 in a 60-second one,
+  `/activities` stays empty, the item's `updatedAt` does not move, and the client refetches the
+  row itself with `?skipRefresh=1`. **Cycle 11 added an edit pair here without measuring it** —
+  this project's own class-C mistake, told to every other client on the socket.
+- **A library edit needs an `agent`, not a `name`.** The client's library-upgrade handler (the
+  one whose failure the bundle reports as "There was a problem upgrading the library") sends
+  `agent` and `scanner` and nothing else; `agent` alone is a 200 too, while `name` alone,
+  `scanner` alone, `language` alone and an empty form are 400. plexsim demanded `name` and
+  refused the upgrade form every time. This corrects cycle 4's reading.
+- **The subtitle upload takes `psb` as well, and the format check is CASE-SENSITIVE**: `SRT` is
+  a 400 where `srt` is a 200. plexsim lowercased the value, so it accepted uploads a real PMS
+  refuses and refused one it takes. (The modal's own allowed list is wider than the server's —
+  `aqt jss rt utf utf-8 utf8 sub idx vtt` are offered by the client and refused by the server.)
+- **A stream path tells a malformed id from a missing one**: `DELETE /library/streams/abc` is a
+  400 and `DELETE /library/streams/999999` a 404. A POST to a stream the server HAS is a 404,
+  not the 501 its GET answers.
+- **A queue add that adds nothing changes nothing.** A `server://` uri naming another MACHINE
+  adds nothing at all, and every no-op add leaves `playQueueVersion` exactly where it was.
+  plexsim read the ratingKey out of any uri and added the item whoever it belonged to, and
+  stepped the version on every no-op — and the client DISCARDS a queue response whose version it
+  does not expect, so a no-op add invalidated the queue the player was holding.
+- **Optimize Database runs an activity**: `general.db.optimize`, started at 0 with an empty
+  subtitle, updated at 0, 10, 40 and 60 with the subtitle `Optimizing Database`, ended at 100.
+  plexsim answered its empty 200 and pushed nothing, so the Settings page's progress bar never
+  moved.
+- **A refresh's `updated 49` frame comes SECOND**, before the processing timeline — which is the
+  order this file already recorded and `notify_refreshed`'s own docstring already stated. plexsim
+  emitted it inside `finish_activity`, after `loading`: the rule was right and the implementation
+  was something else. The activity's subtitle is the row's `title (year)`, not the bare title.
+- **A scan ends inside a NESTED pair of `provider.subscriptions.process` activities** — the
+  outer starts between the section activity's last `updated` and its `ended`, the inner runs
+  after the completion status, then inner ends and outer ends. **"Refresh All Metadata"
+  (`?force=1`) runs that whole scan sequence first** and only then refreshes each item; plexsim
+  pushed a bare status frame and went straight to the per-item half, so the Libraries page showed
+  no scan for the operation that takes longest. And **a library create answers a `Location`
+  header** naming the new library.
+
+Measured and not acted on:
+
+- **Refuted: "a detail row's tags carry `count`".** Recorded in cycle 11 as a boundary note from
+  a hunter's report and written into the handover as this cycle's lead territory **without being
+  verified**. Searched here across the raw JSON and XML of the detail row (plain and with the
+  full preplay `include*` set), every listing, `/library/tags` for nine types and all 26 secondary
+  axes on both servers: `count` appears in exactly one place, the tag `Directory` rows of
+  `/hubs/search` and `/library/search`, where plexsim already emits it with the right value. The
+  cheapest possible instance of taking a report at face value.
+- A library create over real files pushes 74 frames plus a `backgroundProcessingQueue`
+  `queueRegenerated` about a minute later, with a per-item `created`/`analyzing`/`thumbnailing`
+  sequence. That half depends on files plexsim does not own; the empty-folder sequence is what it
+  can push and now does.
+- The 201 row's `metadataAgentProviderGroupId`, `updatedAt`, `createdAt` and
+  `contentChangedAt: -1`, and a globally numbered `Location.id`: still catalog-shaped values
+  plexsim has no source for.
+- The download queue answers 404 to every form on the copy — no account — so nothing new is
+  measurable there. Plex Web never builds a `downloadQueue` path at all (0 occurrences in the
+  bundle).
+- The subtitle SEARCH and the apply-a-search-result PUT both need OpenSubtitles and answer 503
+  on the isolated copy.
+- `/search` (the legacy endpoint) ignores `limit` entirely on both references, where plexsim caps
+  at 30. Below 30 matches it never shows; left alone.
+- `titleSort` article stripping beyond the/a/an: zen strips `Das` (1/1) and `La` (2/2) but not
+  `Die` (0/2) or `Les` (0/1), on samples far too small to be a rule — it points at agent-supplied
+  sort titles rather than a local one.
+- 112 non-GET template occurrences in the bundle resolve to 37 distinct request templates: 26
+  already covered, 7 measured this cycle, 4 groups unreachable or out of scope (Optimize
+  generators, Live TV, plex.tv, telemetry).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
