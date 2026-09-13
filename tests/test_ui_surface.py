@@ -7816,6 +7816,43 @@ def main():
           % (movies_c11i[1], own_c11i, plain_c11i[1], shows_c11i[1], leaf_total_c11i,
              episodes_c11i[1], leaves_c11i[1], detail_c11i[1]))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2), identical on both across every
+    # readable row: a SINGLE history read is a nine-attribute row -- no `key`, no
+    # `ratingKey`, no artwork -- with `viewType` 1, and an episode adds
+    # grandparentTitle, index and parentIndex. plexsim answered its stored listing
+    # row, which advertises links this endpoint does not have.
+    span_c11j = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    for state_c11j, at_c11j in (("playing", 30000), ("playing", int(span_c11j * 0.95)),
+                                ("stopped", int(span_c11j * 0.96))):
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&hasMDE=1&time=%s&duration=%s"
+                             "&X-Plex-Session-Identifier=c11j&X-Plex-Client-Identifier=c11j"
+                             % (movie, quote("/library/metadata/%s" % movie), state_c11j,
+                                at_c11j, span_c11j))
+    status_c11j, all_c11j, _ = get(base, "/status/sessions/history/all")
+    rows_c11j = all_c11j.get("Metadata") or []
+    if not rows_c11j:
+        skip("a single history read is the projection a real PMS answers", "no history row")
+    else:
+        key_c11j = (rows_c11j[-1].get("historyKey") or "").rsplit("/", 1)[-1]
+        one_status_c11j, one_c11j, _ = get(base, "/status/sessions/history/%s" % key_c11j)
+        row_c11j = (one_c11j.get("Metadata") or [{}])[0]
+        allowed_c11j = {"historyKey", "librarySectionID", "title", "grandparentTitle", "type",
+                        "index", "parentIndex", "originallyAvailableAt", "viewedAt",
+                        "accountID", "deviceID", "viewType"}
+        check("a single history read is the projection a real PMS answers",
+              one_status_c11j == 200 and row_c11j.get("viewType") == 1
+              and set(row_c11j) <= allowed_c11j
+              and {"historyKey", "title", "type", "viewedAt", "accountID",
+                   "deviceID"} <= set(row_c11j)
+              and "key" not in row_c11j and "ratingKey" not in row_c11j
+              and "thumb" not in row_c11j
+              and "ratingKey" in rows_c11j[-1],
+              "single %s, extra %s, listing keeps ratingKey %s"
+              % (sorted(row_c11j), sorted(set(row_c11j) - allowed_c11j),
+                 "ratingKey" in rows_c11j[-1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
