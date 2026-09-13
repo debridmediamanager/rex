@@ -9368,6 +9368,38 @@ def main():
           "one %s | one-acc %s | two %s | two-acc %s | trailing-space %s"
           % (one_c14c, onedot_c14c, two_c14c, twodot_c14c, trail_c14c))
 
+
+    # Cycle 14: `/filters` is the list the server's OWN VERSION advertises. kids
+    # (1.43.4) answers 28 for a movie library, 17 at type=4 and 6 at type=10; zen
+    # (1.42.2 -- the build plexsim reports) answers 22, 9 and 5, and the difference
+    # is exactly the media-codec axes: `hdr10plus`, `atmos`, `videoCodec`,
+    # `audioCodec`, `subtitleCodec`, `audioLayout` everywhere, plus `hdr` and `dovi`
+    # on the EPISODE list, which keeps them on the movie list. Types 2, 3, 8, 9, 13
+    # and 20 are identical on both, and so is the advanced Duplicates row. plexsim
+    # shipped kids' lists, so its filter bar offered a 1.42.2 client six axes that
+    # build's own libraries do not have.
+    codec_c14d = {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
+                  "audioLayout"}
+
+    def filt_c14d(spec):
+        return [d.get("filter") for d in
+                get(base, "/library/sections/%s/filters%s" % (movie_section, spec))[1]
+                .get("Directory") or []]
+
+    movie_c14d = filt_c14d("")
+    ep_c14d = filt_c14d("?type=4")
+    show_c14d = filt_c14d("?type=2")
+    ten_c14d = filt_c14d("?type=10")
+    adv_c14d = filt_c14d("?includeAdvanced=1")
+    check("/filters advertises the 1.42.2 lists plexsim's version reports",
+          len(movie_c14d) == 22 and len(ep_c14d) == 9 and len(show_c14d) == 15
+          and len(ten_c14d) == 5 and len(adv_c14d) == 23
+          and not codec_c14d & set(movie_c14d) and not codec_c14d & set(ep_c14d)
+          and "hdr" in movie_c14d and "hdr" not in ep_c14d and "dovi" not in ep_c14d
+          and "duplicate" in adv_c14d,
+          "movie %d | episode %d | show %d | type10 %d | advanced %d"
+          % (len(movie_c14d), len(ep_c14d), len(show_c14d), len(ten_c14d), len(adv_c14d)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
