@@ -791,6 +791,56 @@ precisely how the Seasons bug survived a fix attempt.
   suite then runs against a server it has already written to. The suite's own gate checks bind
   **32599** -- leave it free, or they measure whatever else is listening there.
 
+- **zen runs Plex 1.42.2 — the exact build plexsim reports — and kids 1.43.4.** With both, a
+  field only kids sends is a version difference and a rule both answer is not; fun is a third
+  opinion, not the only second one. zen is production: GET and HEAD only, like fun.
+- **A listing runs a QUERY, and four parts of it were never run.** `?limit=N` caps the rows
+  (0 answers ONE row, a negative one every row, `abc` a 500) and `/newest`, `/recentlyAdded`
+  and `/children` ignore it; a `type=` that does not parse is a **500** on a section listing
+  and a **400** on `/library/all`, an empty one a 500 on both, and a type number the library
+  holds no rows of is an empty 200; `id` filters every listing although no Meta advertises it;
+  and a section's `allLeaves` takes all of it -- filters, sort, limit and type -- where it used
+  to answer its whole leaf list to everything.
+- **`id` compares like the column it is.** `=` exact, a comma list an OR, `>>`/`<<`/`>=`/`<=`
+  numeric, and `==`/`!==` never match a number. A value that is not a number sorts ABOVE every
+  id: `id=abc` matches nothing and `id!=abc` everything. `/query/parse` echoes it as a Rule
+  with an EMPTY `fieldTitle`. It is what `guid=<x>&id!=<self>` -- the client's and
+  python-plexapi's "another copy?" probe -- rests on.
+- **`excludeElements=` reaches the section `allLeaves`, `/library/people/{id}/media` and
+  `/hubs/items`** as well as the grid, and **`includeStorage=1`** adds `durationTotal` and
+  `storageTotal` to a section grid row at the library's OWN top-level type only -- a show's are
+  the sums over its episodes.
+- **`/library/people/{id}/media` is typed by the TAG, not by its rows**: `viewGroup` and
+  `viewMode` belong to an ACTOR's list (tagType 6), even when its rows are shows, and a
+  Director, Writer or Producer list carries neither. The library filters narrow it too.
+- **A statistics container pages its SERIES only.** `Device` and `Account` are a lookup: the
+  page carries exactly the ones its own rows name, `totalSize` counts the series and `size`
+  counts every element. And `timespan` has to parse as a whole number on all three endpoints
+  (`0`, `-1` and `06` are fine; `abc`, `1.5`, empty and a leading space are 400s).
+- **A real PMS gzips every compressible body the client offers to take compressed**, even when
+  that makes it larger (83 bytes in, 90 out) -- `Accept-Encoding: identity` is the only thing
+  that stops it. The old 860-byte floor and the "only if it shrinks" test were inferred, not
+  measured.
+- **A plain queue add lands in Up Next**, after the block of items ALREADY ADDED behind the
+  current one and in front of the queue's original members; `next=1` goes ahead of that block.
+  Testing "id greater than the selected id" reads every original member as already-added and
+  appends to the very end.
+- **The Upload Subtitle modal really uploads.** `POST /library/metadata/{id}/subtitles?title=&
+  format=` with the file as the body is a 200 with an EMPTY body and leaves a new sidecar
+  `Stream` that becomes the SELECTED subtitle; no `title` and a title with no extension are
+  **500**s, an unaccepted format a 400 (`srt`/`ass`/`ssa`/`smi`/`txt` pass; `vtt`, `sub`,
+  `idx`, `sup`, `pgs` do not), an empty body a **406**. A sidecar subtitle labels its codec
+  `<CODEC> External` in both titles.
+- **A stream PUT is accepted and stores nothing** (200, empty body, the title unchanged), a
+  DELETE of an embedded track is **403**, and a DELETE of an uploaded sidecar really removes
+  it. The GET of a real stream stays the 501.
+- **A playlist's items and a collection's children are the LIGHT grid row**, like every other
+  list -- no `Guid`, `Rating`, `Field` or `Stream`, tags text-only -- while keeping their
+  librarySection fields and the `playlistItemID`.
+- **A single history read is a projection**: nine attributes with `viewType: 1`, an episode
+  adding `grandparentTitle`/`index`/`parentIndex`, and no `key`, `ratingKey` or artwork. It is
+  not the row `/status/sessions/history/all` lists.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
