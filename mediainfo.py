@@ -288,7 +288,7 @@ def _video_stream(stream, stream_id):
         row["displayTitle"] = "%s (%s)" % (label, codec)
     bitrate = stream.get("bit_rate")
     if bitrate:
-        row["bitrate"] = int(int(bitrate) / 1000)
+        row["bitrate"] = round(int(bitrate) / 1000)
     return stream_titles(row)
 
 
@@ -444,7 +444,7 @@ def _audio_stream(stream, stream_id, selected):
     row.update(_language_fields(tags))
     bitrate = stream.get("bit_rate")
     if bitrate:
-        row["bitrate"] = int(int(bitrate) / 1000)
+        row["bitrate"] = round(int(bitrate) / 1000)
     # Prefer the container's own track title; it is what a real PMS surfaces.
     label = _AUDIO_CODEC_LABELS.get(codec, codec.upper())
     row["displayTitle"] = tags.get("title") or "%s (%s %s)" % (
@@ -484,7 +484,7 @@ def _subtitle_stream(stream, stream_id):
     row.update(_disposition(stream, TRACK_FLAGS))
     bitrate = stream.get("bit_rate")
     if bitrate:
-        row["bitrate"] = int(int(bitrate) / 1000)
+        row["bitrate"] = round(int(bitrate) / 1000)
     row.update(_language_fields(tags))
     if tags.get("title"):
         row["title"] = tags["title"]
@@ -516,7 +516,9 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     subtitles = [s for s in streams if s.get("codec_type") == "subtitle"]
 
     duration_ms = int(float(fmt.get("duration") or 0) * 1000)
-    bitrate_kbps = int(int(fmt.get("bit_rate") or 0) / 1000) or None
+    # Rounded, not truncated: measured on 33 of 35 files on fun, where plexsim read one short
+    # on 28 of them. Stream bitrates round the same way.
+    bitrate_kbps = round(int(fmt.get("bit_rate") or 0) / 1000) or None
 
     rows = []
     next_id = part_id * 100
