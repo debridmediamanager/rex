@@ -206,6 +206,23 @@ def _video_stream(stream, stream_id):
         "frameRate": _float_or_none(stream.get("r_frame_rate")),
         "scanType": "progressive",
     }
+    # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
+    # eight DOVI attributes are ffprobe's DOVI configuration record, field for field. They
+    # are what tells a client a Dolby Vision stream it can play from one it cannot, and
+    # plexsim sent none of them.
+    dovi = next((data for data in stream.get("side_data_list") or []
+                 if data.get("side_data_type") == "DOVI configuration record"), None)
+    if dovi:
+        row.update({
+            "DOVIPresent": True,
+            "DOVIProfile": dovi.get("dv_profile"),
+            "DOVILevel": dovi.get("dv_level"),
+            "DOVIBLCompatID": dovi.get("dv_bl_signal_compatibility_id"),
+            "DOVIBLPresent": bool(dovi.get("bl_present_flag")),
+            "DOVIELPresent": bool(dovi.get("el_present_flag")),
+            "DOVIRPUPresent": bool(dovi.get("rpu_present_flag")),
+            "DOVIVersion": "%s.%s" % (dovi.get("dv_version_major", 1), dovi.get("dv_version_minor", 0)),
+        })
     codec = (stream.get("codec_name") or "").upper()
     resolution = _video_resolution(height, width)
     if resolution and codec:
@@ -346,7 +363,13 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     fmt = probe.get("format") or {}
     streams = probe.get("streams") or []
 
-    video = next((s for s in streams if s.get("codec_type") == "video"), None)
+    # Every video stream, not only the first -- a dual-layer Dolby Vision file carries its
+    # enhancement layer as a second one, and a real PMS lists it -- except an attached
+    # picture: ffprobe lists a Matroska file's cover art as a video stream, and a real PMS
+    # lists none (7 covers in 4 files on fun).
+    videos = [s for s in streams if s.get("codec_type") == "video"
+              and not (s.get("disposition") or {}).get("attached_pic")]
+    video = videos[0] if videos else None
     audios = [s for s in streams if s.get("codec_type") == "audio"]
     subtitles = [s for s in streams if s.get("codec_type") == "subtitle"]
 
@@ -355,9 +378,10 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
 
     rows = []
     next_id = part_id * 100
-    if video is not None:
+
+    for each in videos:
         next_id += 1
-        rows.append(_video_stream(video, next_id))
+        rows.append(_video_stream(each, next_id))
     for position, audio in enumerate(audios):
         next_id += 1
         rows.append(_audio_stream(audio, next_id, selected=(position == 0)))

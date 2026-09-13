@@ -157,6 +157,22 @@ def _language_field_values(fixture):
     return per_stream(2, fields)(fixture) + per_stream(3, fields)(fixture)
 
 
+DOVI_FIELDS = ("DOVIPresent", "DOVIProfile", "DOVILevel", "DOVIBLCompatID", "DOVIBLPresent",
+               "DOVIELPresent", "DOVIRPUPresent", "DOVIVersion")
+
+
+@check("video-streams")
+def _video_stream_indexes(fixture):
+    return [("%s video stream indexes" % fixture["name"],
+             sorted(s["index"] for s in streams(fixture["Media"], 1) if "index" in s),
+             sorted(s.get("index") for s in streams(fixture["sim"], 1)))]
+
+
+@check("dovi")
+def _dovi(fixture):
+    return per_stream(1, DOVI_FIELDS)(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

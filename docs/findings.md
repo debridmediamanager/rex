@@ -3168,6 +3168,12 @@ below is one check there, and each check failed against the code before its fix.
   -- Finnish -- for Filipino. A client picks a track by the tag. `languages.json` holds the
   62 names and tags fun wrote; a code it lacks keeps the code in all three. The reference
   (1.43.4) labels an untagged clip English where fun writes nothing; the check skips those.
+- **Every video stream is listed, and Dolby Vision is described.** A dual-layer Dolby Vision
+  file's enhancement layer is a second video stream on fun; plexsim built only the first. A
+  Matroska cover image, which ffprobe also lists as a video stream, is not one.
+  The eight `DOVI*` attributes are ffprobe's DOVI configuration record field for field (6
+  of 6 files, profiles 5, 7, 8 and 10), and plexsim sent none of them -- they are what tells
+  a client a Dolby Vision stream it can play from one it cannot.
 
 ### Emulation calibrated against the account's own claimed servers
 
