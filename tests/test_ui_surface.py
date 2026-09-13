@@ -2995,16 +2995,20 @@ def main():
     else:
         skip("filter: a tag field's = is EXACT, not contains",
              "no multi-character contentRating in the catalog")
-    # Measured: an EMPTY tag value matches the rows that have NO value -- on the
-    # reference `?contentRating=` returned exactly the two rows without one, and
-    # `?genre=` returned none because every row has a genre.
-    # The counts come off the rows rather than being assumed: earlier checks in
-    # this suite edit tags, so a hard-coded expectation here reads as a filter bug.
+    # RE-MEASURED in cycle 13 on zen, and this check had it wrong: an empty value on a
+    # tag-TABLE field matches NOTHING, not the rows that have no value. 37 of 600 zen
+    # movies carry no Genre and all 600 carry no Label, yet `genre=` and `label=` both
+    # answer 0 rows there and on kids. The older reading -- "`genre=` returned none
+    # because every row has a genre" -- was an inference from a five-movie library that
+    # this data disproves. The rows-with-no-value rule is real, but it belongs to
+    # `contentRating` and the language fields; `studio` and `editionTitle` are a third
+    # case again and match every row. See the cycle-13 check further down.
     unlabelled = len([r for r in rows if not (r.get("Label") or [])])
     ungenred = len([r for r in rows if not (r.get("Genre") or [])])
-    check("filter: an empty tag value matches the rows with no tag",
-          filtered("?label=") == unlabelled and filtered("?genre=") == ungenred,
-          "label= -> %d of %d, genre= -> %d of %d"
+    check("filter: an empty tag-table value matches nothing, however many rows have none",
+          filtered("?label=") == 0 and filtered("?genre=") == 0
+          and (unlabelled > 0 or ungenred > 0),
+          "label= -> %d (%d rows have none), genre= -> %d (%d have none)"
           % (filtered("?label="), unlabelled, filtered("?genre="), ungenred))
     # Measured: `?unwatched=2` returns the same rows as `?unwatched=0`, so a
     # boolean value is true only when it is exactly `1`.
