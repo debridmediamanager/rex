@@ -90,6 +90,13 @@ TAG_TABLE_FIELDS = {"genre", "collection", "director", "writer", "producer",
 STRING_OPERATORS = {"=", "!=", "==", "!==", "<=", ">="}
 TAG_OPERATORS = {"=", "!="}
 
+# ...except that the restriction is the advertised FieldType's, not the python type's.
+# Cycle 14, on kids and zen: `titleSort>>=ZZZZ` answers 0 and 1 row, `summary>>=A` 4
+# and 1493, `tagline>>=A` 2 and 977, `originalTitle>>=M` 0 and 393 -- real orderings --
+# while the Meta-ADVERTISED strings `title` and `studio` answer every row to the same
+# key, which is what an ignored unknown field does. These four appear in no Meta.
+UNLISTED_STRING_FIELDS = {"titleSort", "summary", "tagline", "originalTitle"}
+
 # The `resolution` values a real PMS accepts, probed value by value against a
 # 6000-item production library. It is a closed enum, not a continuum: `240`,
 # `360`, `400`, `1081`, `1440`, `2160`, `3k`, `9k`, `10k`, `SD`, `hd` and `1080p`
@@ -169,7 +176,7 @@ def operator_allowed(kind, field, operator):
     if field in TAG_TABLE_FIELDS:
         return operator in TAG_OPERATORS
     if kind == "string":
-        return operator in STRING_OPERATORS
+        return field in UNLISTED_STRING_FIELDS or operator in STRING_OPERATORS
     return True
 
 

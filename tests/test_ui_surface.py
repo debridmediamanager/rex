@@ -9532,6 +9532,46 @@ def main():
               % (len(axis_c14h), len(want_c14h), not (set(axis_c14h) & beyond_c14h),
                  alldirs_c14h <= set(dirs_c14h)))
 
+
+    # Cycle 14: nine columns filter on a real PMS without appearing in any Meta, and
+    # plexsim answered the whole library to each. Measured on kids and zen, which
+    # agree: `viewOffset>>=0` is 0 rows on both (an UNKNOWN field answers every row,
+    # which is how the two are told apart), and on zen `updatedAt>>=1780000000` is
+    # 3861/3887 and `originalTitle>>=M` is 393. `parentIndex` is a 500 on a listing on
+    # both. A movie row's `index` is 1 on every row, so `index=1` is the whole library
+    # and `index=2` is none -- plexsim's movie rows carry no index and answered zero.
+    def ftotal_c14i(spec):
+        path_c14i = "/library/sections/%s/all?type=1" % movie_section
+        if spec:
+            path_c14i += "&" + spec
+        body_c14i = get(base, path_c14i)[1]
+        return body_c14i.get("totalSize", body_c14i.get("size"))
+
+    all_c14i = ftotal_c14i("")
+    known_c14i = {spec_c14i: ftotal_c14i(spec_c14i) for spec_c14i in
+                  ("viewOffset%3E%3E=0", "skipCount%3E%3E=0", "ratingCount%3E%3E=0",
+                   "absoluteIndex%3E%3E=0", "lastRatedAt%3E%3E=9999999999")}
+    wide_c14i = ftotal_c14i("updatedAt%3E%3E=1")
+    orig_c14i = ftotal_c14i("originalTitle%3E%3E=%7B")
+    pstatus_c14i, pbody_c14i, _ = request(
+        base, "GET", "/library/sections/%s/query/parse?viewOffset%%3E%%3E=1" % movie_section)
+    try:
+        rule_c14i = json.loads(pbody_c14i).get("Query", {}).get("Rule") or {}
+    except ValueError:
+        rule_c14i = {}
+    refused_c14i = request(base, "GET", "/library/sections/%s/all?type=1&parentIndex%%3E%%3E=0"
+                           % movie_section)[0]
+    idx_c14i = (ftotal_c14i("index=1"), ftotal_c14i("index=2"), ftotal_c14i("index%3E%3E=1"))
+    check("the nine unadvertised filter columns constrain, and parentIndex refuses",
+          all(v_c14i == 0 for v_c14i in known_c14i.values()) and all_c14i > 0
+          and wide_c14i == all_c14i and orig_c14i == 0
+          and rule_c14i.get("field") == "viewOffset" and rule_c14i.get("fieldTitle") == ""
+          and refused_c14i == 500 and idx_c14i == (all_c14i, 0, 0),
+          "all %s | zero-matchers %s | updatedAt %s | originalTitle %s | parse %r | "
+          "parentIndex %s | index %s"
+          % (all_c14i, sorted(known_c14i.values()), wide_c14i, orig_c14i,
+             rule_c14i.get("fieldTitle"), refused_c14i, idx_c14i))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
