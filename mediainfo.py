@@ -81,15 +81,31 @@ def _frame_rate_token(rate):
     return "%gp" % round(float(value))
 
 
+# The resolution label, measured on all 4947 Media of fun's movie libraries with no
+# exception: the larger of a WIDTH bucket and a HEIGHT bucket, with `2k` and `2.7k` between
+# 1080 and 4k. plexsim read the height alone, so a cropped 1080p release (1920x800) was
+# `720`, and both a client's quality gate and the Resolution filter read the label. Each
+# threshold is the smallest dimension fun has in its bucket; the largest it has in the
+# bucket below is in the comment, and nothing between the two has been seen.
+_WIDTH_BUCKETS = ((2876, "4k"),    # 2560 is 2k
+                  (2048, "2k"),    # 1998 is 1080
+                  (1908, "1080"),  # 1424 is 720
+                  (1276, "720"),   # 1024 is 576
+                  (1024, "576"))   # 768 is below
+_HEIGHT_BUCKETS = ((1600, "2.7k"),  # 1376 is 1080
+                   (1072, "1080"),  # 960 is 720
+                   (714, "720"),    # 648 is 576
+                   (572, "576"),    # 552 is 480
+                   (480, "480"))    # 432 is below
+_RESOLUTION_ORDER = ("sd", "480", "576", "720", "1080", "2k", "2.7k", "4k")
+
+
 def _video_resolution(height, width):
     if not height:
         return None
-    if width and width >= 3000:
-        return "4k"
-    for cutoff, label in ((1080, "1080"), (720, "720"), (576, "576"), (480, "480")):
-        if height >= cutoff - 8:
-            return label
-    return "sd"
+    by_width = next((label for cutoff, label in _WIDTH_BUCKETS if (width or 0) >= cutoff), "sd")
+    by_height = next((label for cutoff, label in _HEIGHT_BUCKETS if height >= cutoff), "sd")
+    return max(by_width, by_height, key=_RESOLUTION_ORDER.index)
 
 
 def _channel_layout(channels):

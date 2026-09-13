@@ -3177,6 +3177,11 @@ below is one check there, and each check failed against the code before its fix.
 - **A ten-bit stream is ten-bit.** ffprobe leaves `bits_per_raw_sample` out for HEVC and
   AV1, where the depth is only in the pixel format; all 16 such streams read `bitDepth: 10`
   on fun. plexsim defaulted them to 8.
+- **The resolution label is the larger of a width bucket and a height bucket.** Measured on
+  all 4947 Media of fun's movie libraries with no exception, `2k` and `2.7k` included. plexsim
+  read the height alone, so a cropped 1920x800 release was `720`. Each threshold is the
+  smallest dimension fun has in its bucket; `tests/fixtures/media-resolutions.json` holds
+  every size fun has and its label.
 
 ### Emulation calibrated against the account's own claimed servers
 
