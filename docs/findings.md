@@ -3054,6 +3054,10 @@ the same parameters, then read back from both.
   date. (`1` gave the same order on these members, and is alphabetical by
   python-plexapi's mapping.) plexsim listed insertion order, answered the move with an
   empty body, and never changed the sort.
+- **A collection takes a Label, and a `type=18` section save edits it.**
+  `PUT /library/metadata/{collection}?label[0].tag.tag=` stores the label, and `PUT
+  /library/sections/1/all?type=18&id={collection}&summary.value=` edits the collection;
+  plexsim ignored both.
 
 ### Emulation calibrated against the account's own claimed servers
 
