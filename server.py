@@ -2808,6 +2808,14 @@ class PlexSim:
                      "promotedToSharedHome": home}
                     for identifier, title, home in MANAGED_HUBS[kind]]
             return self.bare_container(size=len(rows), Hub=rows)
+        if segments[:2] == ["hubs", "sections"] and len(segments) == 4 and segments[3] == "extras":
+            # Measured on both servers: an empty hub list -- `size 0`, `allowSync` and the
+            # identifier, nothing else -- for a movie library, a show library and a section id
+            # the server does not have alike. plexsim 404'd it.
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.bare_container(size=0, allowSync=True,
+                                       identifier="com.plexapp.plugins.library")
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
             return self.section_hubs(segments[2], query.get("count"),
                                      query.get("includeLibraryPlaylists") == "1")
@@ -3487,6 +3495,8 @@ class PlexSim:
             return self.section_leaf(section_id, section, leaf, query)
         if leaf == "arts":
             return self.section_arts(section_id, section)
+        if leaf == "extras":
+            return self.section_extras(section, segments[4:])
         if leaf == "collections":
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
@@ -3925,6 +3935,33 @@ class PlexSim:
             fields["nocache"] = True
         return self.bare_container(size=len(rows), Metadata=[self._artwork_row(r) for r in rows],
                                    _xml={"Metadata": "Photo"}, **fields)
+
+    def section_extras(self, section, rest):
+        """`/library/sections/{id}/extras` and its one view, `/extras/all`.
+
+        Measured on both servers: `/extras` is the library's container naming a single `all`
+        view ("All Movies", "All TV Shows"), and `/extras/all` lists the library's trailers
+        and other clips in the same container -- `size 0` and no rows for a library with none,
+        which is every plexsim library. Anything deeper is a 404, and a show library's
+        container carries `nocache`. plexsim 404'd both.
+        """
+        if rest not in ([], ["all"]):
+            return ("error", 404, "plexsim: not found")
+        is_show = section.get("type") == "show"
+        fields = {
+            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "title1": section.get("title"),
+        }
+        if is_show:
+            fields["nocache"] = True
+        if not rest:
+            return self.bare_container(size=1, Directory=[
+                {"key": "all", "title": "All %s" % (section.get("title") or "")}], **fields)
+        return self.bare_container(size=0, **fields)
 
     def section_leaf(self, section_id, section, leaf, query):
         """Six section leaves the community OpenAPI description names, all 404 on plexsim.
@@ -5260,6 +5297,10 @@ class PlexSim:
             # no banner artwork, no chapter thumbnails, no preview index.
             return ("error", 404, "plexsim: not found")
         if leaf == "extras":
+            if len(segments) > 4:
+                # Measured on both servers: `/extras/{n}` is a 404, even for an extra the
+                # item has. plexsim answered the extras container at any depth.
+                return ("error", 404, "plexsim: not found")
             return self.tag_container(size=0)
         if leaf == "related":
             # NOTE: this is NOT /hubs/metadata/{id}/related -- the client rewrites

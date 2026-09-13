@@ -6996,6 +6996,30 @@ def main():
         skip("a stored catalog row's resolution, aspect ratio and unknown markers are corrected at load",
              "the fixture movie is not the 1920x800 one")
 
+    # Measured on both servers: a library's extras are a section leaf -- `/extras` names its one
+    # `all` view, `/extras/all` lists the library's clips (none here) in the library's container,
+    # anything deeper is a 404 -- and `/hubs/sections/{id}/extras` is an empty hub list; an
+    # item's `/extras/{n}` is a 404. plexsim 404'd the first three and answered the last.
+    titles_c10c = {str(d.get("key")): d.get("title") for d in get(base, "/library/sections")[1].get("Directory") or []}
+    status_c10c, extras_c10c, _ = get(base, "/library/sections/%s/extras" % movie_section)
+    status_all_c10c, all_c10c, _ = get(base, "/library/sections/%s/extras/all" % movie_section)
+    status_deep_c10c, _, _ = get(base, "/library/sections/%s/extras/bogus" % movie_section)
+    status_hub_c10c, hub_c10c, _ = get(base, "/hubs/sections/%s/extras" % movie_section)
+    status_item_c10c, _, _ = get(base, "/library/metadata/%s/extras/1" % movie)
+    show_extras_c10c = get(base, "/library/sections/%s/extras/all" % show_section)[1] if show_section else {}
+    check("a library's extras are a section leaf and a hub, and an item's extras/{n} is a 404",
+          (status_c10c, status_all_c10c, status_deep_c10c, status_hub_c10c, status_item_c10c)
+          == (200, 200, 404, 200, 404)
+          and extras_c10c.get("Directory") == [{"key": "all", "title": "All %s" % titles_c10c.get(str(movie_section))}]
+          and extras_c10c.get("title1") == titles_c10c.get(str(movie_section)) and "nocache" not in extras_c10c
+          and all_c10c.get("size") == 0 and not all_c10c.get("Metadata")
+          and all_c10c.get("thumb") == extras_c10c.get("thumb")
+          and hub_c10c == {"size": 0, "allowSync": True, "identifier": "com.plexapp.plugins.library"}
+          and (not show_section or show_extras_c10c.get("nocache") is True),
+          "HTTP %s/%s/%s/%s/%s, extras %s, all %s, hub %s"
+          % (status_c10c, status_all_c10c, status_deep_c10c, status_hub_c10c, status_item_c10c,
+             extras_c10c, all_c10c, hub_c10c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
