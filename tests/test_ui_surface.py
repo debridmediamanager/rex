@@ -5604,6 +5604,13 @@ def main():
           and len(set(ranked8)) == len(ranked8) and first_child8 == "Meta",
           "%s; listing starts %s" % (",".join(tags8), first_child8))
 
+    # -- cycle 9: the community OpenAPI description, every GET in it ----------------
+    status_all_sections, all_sections, _ = get(base, "/library/sections/all")
+    check("/library/sections/all is /library/sections",
+          status_all_sections == 200 and all_sections
+          and all_sections == get(base, "/library/sections")[1],
+          "HTTP %s" % status_all_sections)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

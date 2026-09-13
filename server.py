@@ -2301,6 +2301,11 @@ class PlexSim:
             return ("error", 404, "plexsim: no database")
 
         # -- library -----------------------------------------------------
+        if route == "/library/sections/all" and method in ("GET", "HEAD"):
+            # Measured on both servers: the same document as /library/sections, row for
+            # row. The community OpenAPI description names this path `getSections`, so
+            # every SDK generated from it asks here -- and plexsim 404'd it.
+            route = "/library/sections"
         if route == "/library/sections":
             if method in ("PUT", "DELETE"):
                 # Measured: 404 for both, where a POST with a bad form is a 400.
