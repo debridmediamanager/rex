@@ -841,6 +841,39 @@ precisely how the Seasons bug survived a fix attempt.
   adding `grandparentTitle`/`index`/`parentIndex`, and no `key`, `ratingKey` or artwork. It is
   not the row `/status/sessions/history/all` lists.
 
+- **A five-clip library cannot show a row-shape rule that needs real content.** zen's 3,887
+  movies are the instrument for those: a LIGHT row caps its tag lists (2 `Genre`, 2 `Writer`,
+  2 `Country`, 3 `Role`, always the first of the detail row's order) where the DETAIL row carries
+  all 155 of a movie's roles; the search hubs cap at 3 rows with no `limit` and
+  `/library/search` at 10; an actor tag row is `tagType: 6` and a director row 4. None of that is
+  visible on a library where nothing is long enough to truncate.
+- **An episode's `parentGuid` is the SEASON's guid**, not the show's — the season's own
+  `parentGuid` is the show, which is right on the season row and wrong copied onto the leaf. A
+  catalog built before this was measured carries the wrong value, so `hierarchy.normalize_rows`
+  corrects it at LOAD.
+- **The section grid says `allowSync: true`**, like every other listing container; only
+  `/library/sections`, `/library/all`, the secondary axes and a few subsets say false.
+- **`group=` takes `type`, `guid` and `id`** as well as the scalar columns; only tag joins, media
+  and per-user state are 500. **`/library/sections/{id}/actor` is the one secondary axis that
+  carries no `content`.**
+- **`/common` compares an EPISODE's title and not a SEASON's**, and `titleSort` is `""` only when
+  genuinely mixed — a single row answers its own sort title, derived where it stores none.
+- **A write's frames are their own measurement, and guessing them is a real bug.** A subtitle
+  upload pushes NOTHING (cycle 11 added an edit pair without measuring, and told every client on
+  the socket that an unchanged item had changed). A refresh's `updated 49` comes SECOND, before
+  the processing timeline. A scan ends inside a NESTED pair of `provider.subscriptions.process`
+  activities, and `?force=1` runs that whole scan before it refreshes anything. Optimize Database
+  runs a `general.db.optimize` activity at 0/10/40/60.
+- **A library edit needs an `agent`, not a `name`** — the client's upgrade form sends `agent` and
+  `scanner` and nothing else — and a create answers a `Location` header naming the new library.
+- **A queue add that adds nothing changes nothing**: a `server://` uri naming another MACHINE
+  adds no rows, and no no-op add steps `playQueueVersion`. The client discards a queue response
+  whose version it did not expect, so stepping it on a no-op throws away the player's queue.
+- **The subtitle upload's format check is CASE-SENSITIVE and takes `psb`**: `SRT` is a 400 where
+  `srt` is a 200, and the client's modal offers extensions the server refuses.
+- **A stream path tells a malformed id from a missing one**: `DELETE .../abc` is a 400 and
+  `DELETE .../999999` a 404; a POST to a stream that exists is a 404, not the 501 its GET answers.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

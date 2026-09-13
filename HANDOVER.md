@@ -62,10 +62,10 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | `74c77e7` (cycle 11 merged), equal to `origin/main`, clean tree |
-| Cycles complete | **11**. Cycle 12 is **running**. |
-| Worktrees and stashes | cycle 12's worktree only; every earlier one removed |
-| Work half-done | cycle 12's two hunts are out |
+| `main` | cycle 12 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **12**. Cycle 12 had findings, so **cycle 13 is due**. |
+| Worktrees and stashes | none |
+| Work half-done | **none** |
 
 Coverage, measured from the repository rather than asserted:
 
@@ -80,6 +80,7 @@ Coverage, measured from the repository rather than asserted:
 | 9 | 642 | 9,502 | ~63 |
 | 10 | 658 | 9,910 | 33 |
 | 11 | 674 | 10,176 | 14 |
+| 12 | 690 | 10,322 | 16 (of 18 reported) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -87,14 +88,16 @@ work at a steady ~33 checks a cycle, with findings per hunt now trending down (�
 instrument improved, a batch of findings appeared that no amount of re-hunting the old one
 would have produced — real media files gave cycle 10 sixteen media rules, thirty-minute media
 gave it the completion-crossing rule, and a 1.42.2 server gave cycle 11 its version oracle.
-Cycle 12 is the first cycle pointed at a real 3,887-row library. Expect it to find *more* than
-cycle 11, not fewer.
+Cycle 12 was the first cycle pointed at a real 3,887-row library, and it found **18 where cycle
+11 found 14** — the instrument catching up, exactly as predicted. Seven of its findings are
+things no five-clip library can show at all (tag-list caps, search caps, tag types), and one of
+them was a bug cycle 11 introduced by guessing a frame set instead of measuring it.
 
-Suite results at `74c77e7`, all run 2026-09-13:
+Suite results at the head of cycle 12, all run 2026-09-13:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **861/861**, 4 skipped | the skips need a TMDB key or real RD links |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **877/877**, 5 skipped | the skips need a TMDB key or real RD links |
 | `tests/test_mediainfo.py` | **27/27** | offline |
 | `tests/test_navigation.py` on the full catalog | **46/46** | |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); expected |
@@ -152,6 +155,12 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | A real PMS announces itself with `PUT /devices/{numeric id}` | It announces with `PUT /devices/{machineIdentifier}`. **The numeric form resolves to a pre-existing row and silently overwrites it** | F | cycle 10 |
 | `/system/agents` has the wrong shape | The six modern `tv.plex.*` rows match exactly; the `primary`/`MediaType` shape is the legacy plug-ins | F | cycle 7 |
 | `title!=` is the negation of the word match; a double space never matches; a yearless season lacks year/titleSort | All three refuted on re-measurement | F | cycles 7–8 |
+| A listing row carries its whole tag list | It CAPS them: 2 `Genre`, 2 `Writer`, 2 `Country`, 3 `Role`. Never visible on a library where nothing is long enough to truncate | B | cycle 12 |
+| `/hubs/search` and `/library/search` default to 30 rows | 3 per hub and 10 in total. Same cause: a five-clip library never overflows either | B | cycle 12 |
+| An actor tag row is `tagType: 4` ("4 is a person") | An actor is 6 and a director 4. plexsim's own `/library/people/{id}` already said 6, so the server contradicted itself | B | cycle 12 |
+| A subtitle upload pushes an edit frame pair | It pushes NOTHING. **Cycle 11 invented this** while implementing the upload, without measuring the socket — this project's own class-D/F mistake, one cycle old when cycle 12 caught it | D | cycle 12 |
+| A library edit needs a `name`, and a form with no `scanner` is 400 | It needs an `agent`; `agent` alone is a 200. plexsim refused the client's own library-upgrade form every time | F | cycle 12 |
+| `notify_refreshed` emits its `updated 49` after `loading` | It comes SECOND, before `processing` — **which the function's own docstring already said**. The canonical class-C shape: the docs agreed with themselves and the code did something else | C | cycle 12 |
 | A detail row's tags carry `count` (items in the library sharing the tag) | They carry none, on either server. `count` appears only on the tag `Directory` rows of `/hubs/search` and `/library/search`, where plexsim already emits it with the right value. Recorded in cycle 11 as a "boundary note" from a hunter's report and written into this file as cycle 12's lead territory **without being verified first** — the cheapest possible instance of class F | F | cycle 12 |
 | Seven more write rules reported in cycle 9 | Refuted: progress `state=playing` opening a session; a bogus `playQueueItemID` selecting by ratingKey; a library type change being a 400; a collection create with no uri being a 400; smart collections tagging members; a whole-library playlist add adding nothing; `continuous=1` stopping at one episode | F | cycle 9 |
 
@@ -159,12 +168,15 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| The `<CODEC> External` subtitle codec label | **One witness.** Measured on plexscratch only; no sidecar subtitle exists on zen to confirm it | Upload one to the copy on a fresh reset and read it back; look for a sidecar on any real library |
-| `/status/sessions/history/all` answering `size 0` | Reproduced on both servers and unexplained; plexsim's listing was built against fun's 3,879 rows, which are no longer readable | Find the parameter or account state that makes a real PMS list history, or record it as a genuine reference behaviour |
-| Every rule measured before cycle 10's `long` mode | plexscratch's clips were **ten seconds**, so any timeline rule measured on them crossed 90% instantly | Anything about sessions, completion or resume measured in cycles 9 or earlier deserves a re-run on `long` |
-| Every row-shape rule measured before cycle 12 | Eleven cycles used a five-movie, one-show library. Tag counts, collections with members, multi-edition items, deep listings and real search were all unmeasurable | zen's 3,887-row library on 1.42.2 is now the instrument for this |
-| Anything whose only second witness was fun | fun is out of scope (production, and stopped mid-deploy in cycle 11). Its `newest` bound, its Recently Viewed order and its postplay shelves are unverifiable now | Re-measure on zen, or mark the rule single-witness |
-| Rules measured on kids alone | kids is **1.43.4** and plexsim reports **1.42.2** | zen answers 1.42.2: one request settles whether a field is version-only |
+| **Every write rule from cycles 9–12** | plexscratch is their ONLY possible witness: kids is read-only and zen cannot answer a write at all. That includes all of cycle 12's frame sequences, the upload grammar and the queue rules | Nothing settles it short of a second writable copy. Treat "measured on the copy" as one witness and say so in every write rule you record |
+| The `<CODEC> External` subtitle codec label | One witness, and no sidecar subtitle exists on zen to confirm it against | Upload one to the copy on a fresh reset and read it back |
+| `Director`'s tag-list cap | Every other light-row cap is pinned (2/2/2/3), but the richest Director row in 240 zen movies has two, so the cap is only known to be above 2 | Find an item with 4+ directors on a real library and read its listing row |
+| An unmatched season's effect on its episodes' `parentGuid` | Cycle 12 made an episode's `parentGuid` the season's guid. What happens to it when the season is unmatched to a `local://` guid was never measured — the cycle-12 check deliberately skips that case | Unmatch a season on the copy and read the episodes back |
+| `/status/sessions/history/all` answering `size 0` | Reproduced on both servers and still unexplained; plexsim's listing was built against fun's 3,879 rows, which are no longer readable | Find the parameter or account state that makes a real PMS list history |
+| Every rule measured before cycle 10's `long` mode | plexscratch's clips were **ten seconds**, so any timeline rule measured on them crossed 90% instantly | Re-run anything about sessions, completion or resume from cycles 9 or earlier on `long` |
+| Every row-shape rule measured before cycle 12 | Eleven cycles used a five-movie, one-show library. Cycle 12 found seven rules invisible there and there are certainly more | Keep pointing hunts at zen's 3,887 rows |
+| Anything whose only second witness was fun | fun is out of scope. Its `newest` bound, its Recently Viewed order and its postplay shelves are unverifiable now | Re-measure on zen, or mark the rule single-witness |
+| Rules measured on kids alone | kids is **1.43.4** and plexsim reports **1.42.2** | zen answers 1.42.2: one request settles it |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -595,13 +607,53 @@ people/media `viewGroup`; cycle 10's subtitle-upload "instrument limit"; the inf
 the single-history-read belief; and cycle 9's "history/all `size 0` is a kids oddity" (both
 servers do it).
 
-### Cycle 12 — in progress
+### Cycle 12 — the first real library, and the frames the writes really push
 
 Hunters: every row shape a REAL library shows and a five-clip library cannot (opus, read-only on
 kids AND zen); the writes cycles 9–11 could not reach plus the frames cycle 11's new writes push
-(fable, on plexscratch).
+(fable, on plexscratch). **18 findings, 16 implemented** — more than cycle 11, because the
+instrument finally matched the question.
+
+What a real library showed: a light row **caps** its tag lists (2 Genre, 2 Writer, 2 Country,
+3 Role) where the detail row carries all 155 of a movie's roles; `/hubs/search` caps at 3 rows
+per hub with no `limit` and `/library/search` at 10; an actor tag row is `tagType: 6`, not 4; an
+episode's `parentGuid` is the SEASON's guid; the section grid says `allowSync: true`;
+`group=type|guid|id` are 200; `/common` compares an episode's title and not a season's, and
+answers a real sort title; the `actor` axis alone carries no `content`.
+
+What the writes push: a subtitle upload pushes **nothing** (cycle 11 had invented an edit pair);
+a refresh's `updated 49` comes before the processing timeline, with the year in its subtitle; a
+scan ends inside a nested `provider.subscriptions.process` pair and `?force=1` runs the whole
+scan first; Optimize Database runs a `general.db.optimize` activity; a library edit needs an
+`agent`, not a `name`, and a create answers a `Location` header; the upload format check is
+case-sensitive and takes `psb`; a stream path tells a malformed id from a missing one; a queue
+add that adds nothing changes nothing, and another machine's uri adds nothing at all.
+
+**Corrected here:** cycle 11's tag-`count` note (refuted outright — it was never verified before
+being written into this file); cycle 11's subtitle-upload frames; cycle 4's library-edit form;
+`notify_refreshed`'s frame order, which its own docstring had right all along; and the suite's
+tag-axis check, which compared listing rows with listing rows and agreed only because plexsim
+sent the whole list.
 
 ---
+
+### Next: cycle 13
+
+Cycle 12 is complete. Territories worth taking next, in order of expected yield:
+
+1. **Keep pointing hunts at zen.** Cycle 12 barely scratched a 3,887-row library: it took one
+   pass at row shapes and found seven rules invisible on the lab. The show libraries, the
+   collections with real members, the multi-edition items, deep listings, `group=` over thousands
+   of rows and search with many matches are all still unmeasured.
+2. **The write rules' second witness.** Everything from cycles 9–12 about writes rests on
+   plexscratch alone (§3.3). A second writable copy — or a claimed one — would let a whole class
+   of rules be confirmed rather than trusted.
+3. **Terminate and `/statistics/*` on a CLAIMED copy.** Still blocked on the user's decision:
+   claiming needs plex.tv, and past claim exchanges reset account-wide tokens.
+4. **The per-item scan frames** a library create pushes over real files (74 of them), and the
+   `backgroundProcessingQueue` regeneration. plexsim owns no files, so this may be out of reach.
+5. **`Director`'s tag cap and the unmatched-season `parentGuid`** — the two loose ends in §3.3
+   that one measurement each would close.
 
 ## 8. Measured and deliberately NOT implemented
 
@@ -644,6 +696,14 @@ provider match search); a library create's per-item `created` frames and the
 `backgroundProcessingQueue` frame; the copy's timezone artefacts; an unclaimed copy's 401 on
 terminate and 404 on `/statistics/*`; `Player.profile` only ever `Web`;
 `/statistics/resources` per-second host samples.
+
+**Cycle 12:** the tag `count` on a detail row (refuted — it exists only on search tag rows, where
+plexsim already emits it); a library create's per-item frames over real files and the
+`backgroundProcessingQueue` regeneration; the 201 row's `metadataAgentProviderGroupId`,
+`updatedAt`, `createdAt` and `contentChangedAt: -1`; the download queue (404 everywhere on the
+copy, and Plex Web never builds the path); the subtitle SEARCH and apply-a-result PUT (503, no
+OpenSubtitles); `/search` ignoring `limit` entirely; `titleSort` article stripping beyond
+the/a/an (agent-supplied, samples far too small).
 
 **Cycle 11:** `/status/sessions/history/all` answering `size 0` on both servers;
 `includeBandwidths=1`; `/library/people/{id}` answering any TAG id;
