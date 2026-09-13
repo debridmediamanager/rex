@@ -3182,6 +3182,10 @@ below is one check there, and each check failed against the code before its fix.
   read the height alone, so a cropped 1920x800 release was `720`. Each threshold is the
   smallest dimension fun has in its bucket; `tests/fixtures/media-resolutions.json` holds
   every size fun has and its label.
+- **The aspect ratio is one of six values.** Every Media on fun carries 1.33, 1.66, 1.78,
+  1.85, 2.2 or 2.35: the display aspect, sample aspect ratio included, snapped to the
+  nearest. plexsim wrote the raw quotient without the sample aspect ratio, so 1920x800 read
+  2.4 and an anamorphic 3840x2160 1.78 where fun says 1.85.
 
 ### Emulation calibrated against the account's own claimed servers
 
