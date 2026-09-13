@@ -14,18 +14,18 @@ is run. Those two record what was measured.
 
 | | |
 |---|---|
-| `main` | cycle 10's work, merged from `cycle10` |
-| Worktrees and stashes from this work | none once cycle 10's `wt10` is removed |
-| Cycles completed | 10, in three batches, all three implemented. Cycle 10 had findings, so **cycle 11 is due**. |
+| `main` | `dd52196`, equal to `origin/main`, clean tree (cycle 10 = `b3dd23f..dd52196`, 49 commits) |
+| Worktrees and stashes from this work | none; both cycle-10 worktrees and their branches, local and remote, are gone |
+| Cycles completed | 10, in three batches, all three implemented and merged. Cycle 10 had findings, so **cycle 11 is due**. |
 | Work half-done | **none**. |
 
 Cycle 10 ran as three batches:
 
 | Batch | Territory | Outcome |
 |---|---|---|
-| 1 (opus) | `mediainfo.py` against fun's own analysis of the same real files | 16 rules, all re-measured; 22 commits; corpus in `tests/fixtures/media/` and `tests/test_mediainfo.py` |
-| 2 (fable) | the writes cycle 9 did not reach, on plexscratch | 9 findings, all re-measured on the copy; 10 commits |
-| 3 (opus) | the playback and session surface, on plexscratch's long media | 8 findings; 7 implemented, 1 refuted on re-measurement. The first attempt died on a model weekly limit and was relaunched against the merged head |
+| 1 (opus) | `mediainfo.py` against fun's own analysis of the same real files | 16 rules, all re-measured; 29 commits (`b3dd23f..a7b3b77`); corpus in `tests/fixtures/media/` and the new `tests/test_mediainfo.py` |
+| 2 (fable) | the writes cycle 9 did not reach, on plexscratch | 9 findings, all re-measured on the copy; 8 implemented, 1 recorded (no client sends it); 12 commits (`a7b3b77..173305c`) |
+| 3 (opus) | the playback and session surface, on plexscratch's long media | 8 findings; 7 implemented, 1 **refuted** on re-measurement; 8 commits (`173305c..dd52196`). The first attempt died on a model weekly limit and was relaunched against the merged head |
 
 Suite results at the end of cycle 10, all run on 2026-09-13:
 
@@ -37,12 +37,19 @@ Suite results at the end of cycle 10, all run on 2026-09-13:
 | `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). They are expected. |
 | `tests/test_all.py --skip-decode` | playQueue and decision PASS, output identical to `b3dd23f` | Byte reads fail with 502 for the same reason |
 
-Proof for cycle 10. Every commit was proven one at a time against ITS OWN parent commit:
+Proof for cycle 10. Every fix was proven one at a time against ITS OWN parent commit:
 `c10/mdrive.py` for the media rules (the parent tree exported per patch, the offline check run
-against both) and `c10/sdrive.py` for the write rules (the parent commit exported and served,
-the patch's suite block run against both, committed only on fail-then-pass). The parent server
-is re-exported per patch, so "fails on the parent" means the commit's own parent rather than
-some older tree.
+against both) and `c10/sdrive.py` for the write and session rules (the parent commit exported
+and served, the patch's suite block run against both, committed only on fail-then-pass). The
+parent is re-exported per patch, so "fails on the parent" means the commit's own parent rather
+than some older tree -- the first run of batch 1 had to be re-proven because the parent tree
+was missing a sidecar and died at import. The kids snapshot was byte-identical before and after
+each batch.
+
+Cycle 10 also corrected three OLDER checks whose beliefs it overturned: two completed a play
+with a single beat at the end (the crossing rule), and one asserted that a video's
+`displayTitle` never carries the codec -- thirteen products get it, Plex Web among them, and
+the suite's own client says `X-Plex-Product: Plex Web`.
 
 Proof for cycle 9. Batch 1 (hunter B, `985293a`..`ae19756`) added 17 checks, all failing
 against `a7c3408` (768/784). Batch 2 (hunter A, `7589e32`..`4f2bb31`) was proven one check
@@ -163,9 +170,14 @@ RD_TOKEN=dummy exec python3 server.py --port 32541 --catalog tests/catalog_ui.js
 RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog /Users/bensarmiento/debridmediamanager/plexsim/catalog.json --assert-claimed
 ```
 
-From an agent tool, start servers as **background tasks** (Claude Code:
-`run_in_background: true`). `nohup … &` dies with the tool call. `RD_TOKEN` must
-be set or startup fails.
+From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as
+a background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool
+call. `RD_TOKEN` must be set or startup fails.
+
+**Ports.** Pick freely EXCEPT: `32400`, `32502`, `32511`, `32512`, `32595`, `32596` and `8787`
+belong to other sessions -- a server started on one of those silently fails to bind and every
+request then goes to somebody else's plexsim, which reads as a wildly failing suite. `32599`
+is `test_ui_surface.py`'s own gated server. Cycle 10 used 32583–32599 around those.
 
 `tests/catalog_ui.json` holds:
 
@@ -187,6 +199,21 @@ python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 
 python3 tests/test_mediainfo.py        # no server: mediainfo.py against real files' probes and a real PMS's analysis
 ```
 
+Restart the fixture server BETWEEN runs, and restart it **by waiting for the port to be
+free** -- a kill plus a `/identity` poll can be answered by the process you just killed, and
+the suite then runs against a server it has already written to. Check that the new pid holds
+the port:
+
+```python
+for pid in lsof_pids(port): os.kill(int(pid), signal.SIGTERM)
+while lsof_pids(port): time.sleep(0.5)          # the PORT, not a health check
+proc = subprocess.Popen([...], start_new_session=True)
+while str(proc.pid) not in lsof_pids(port): time.sleep(0.5)
+```
+
+`test_ui_surface.py`'s own gate checks start a **token-gated server on 32599**. Leave that
+port free or they measure whatever else is listening on it and report six false failures.
+
 Suite conventions:
 
 - **Where new checks go.** The newest block of `test_ui_surface.py` sits right
@@ -201,67 +228,72 @@ Suite conventions:
   the detail row.
 - **Wrong beliefs.** When a re-measurement shows an existing check encoded a
   wrong belief, **update the check**, with a comment saying what was re-measured.
-  Never delete it.
+  Never delete it. Cycle 10 did this four times: two checks completed a play with a
+  single beat at the end (the crossing rule), and two more assumed the old display-title
+  and artwork behaviour.
+- **A check that MERGES or deletes a fixture row starves every check after it.** The suite
+  is one long sequence against one server: by the anchor there are two movies, not three.
+  The match check absorbs the SPARE row for that reason, and a check that needs unwatched
+  rows has to count views rather than assume none.
 
 ---
 
 ## 5. The cycle procedure
 
-One cycle, as run for cycles 5–7:
+One cycle, as run for cycles 8–10:
 
-1. **Snapshot the reference.** Run `refcheck7.py` against the baseline, which
-   is read-only, and note that it matches.
-2. **Start a plexsim** for the hunters on a free port.
-   - 32541, 32542 and 32543 were used last.
-   - Do not use 32511 or 32512, which an old agent's parent process keeps
-     restarting.
-3. **Launch two hunters in parallel** with the Agent tool, `model: "fable"` and
-   `model: "opus"`. Each gets a distinct territory. The prompt template is in
-   `handover/tools/hunt_prompts.md`: the verbatim cycle-7 prompts, tokens
-   replaced. For the next cycle, update:
+1. **Snapshot the reference.** Run `refcheck7.py` against the baseline, which is read-only,
+   and keep the output to diff at the end.
+2. **Prepare the instruments.** Write a fresh mode-600 `tokens.env` in the scratch directory,
+   reset plexscratch (`./scratch.sh short` unless the territory wants the long media), and
+   export the current `main` into a frozen tree the hunters talk to:
+   `git archive main | tar -x -C <scratch>/headN`, served on a port of its own.
+3. **Launch the hunters** with the Agent tool, one territory each. The prompt is assembled
+   from `handover/tools/hunt_prompts.md`, which holds the shared preamble and the last
+   cycle's territories verbatim. For a new cycle update:
    - the cycle number and "Verify against the CURRENT plexsim (commit …)";
-   - **Already fixed**: add the cycle-7 items in §7;
-   - **Deliberately NOT implemented**: add the cycle-7 items in §9;
-   - the SAFETY section: keep it read-only on kids, and keep the snapshot
-     before and after;
-   - the territory (suggestions in §10);
-   - the report format ending in *If you find nothing, say exactly "no findings"*.
-4. **Triage and re-measure every finding yourself** before touching code: GET
-   on kids, GET on fun. Hunters are often partly wrong. In cycle 7 batch 2 alone:
-   - `/system/agents` "wrong shape": false for the modern agents. The shape
-     described belongs to the legacy plug-ins.
-   - "`title!=` is the negation of the word match": false. `!=` is still a
-     substring.
-   - "a double space never matches": false. Empty words are allowed.
-5. **Implement in an isolated worktree:**
-   `git worktree add -b cycleN <scratch>/wtN origin/main`.
-6. **Add checks** in a new block, and update any old checks the measurement
-   overturns.
-7. **Prove it.**
-   - Extract the unfixed code: `git archive <previous commit> | tar -x -C <scratch>/baseN`.
-   - Run it on another port.
-   - Run the **new** suite against both servers. Every new check must fail on the
-     old server, and the whole suite must pass on the new one.
-8. **Run the other three suites** on the full catalog.
-9. **Document.**
-   - Add a `#### The Nth pass …` section to `docs/findings.md`, inserted just
-     before `### Emulation calibrated against the account's own claimed servers`.
-     Include a "Measured and not acted on" list.
+   - **Already fixed**: the previous cycle's items from §7 -- a hunt against an un-updated
+     list re-reports what just landed;
+   - **Deliberately NOT implemented** and **Refuted**: the items in §9;
+   - the SAFETY section (kids and fun GET-only, the snapshot before and after);
+   - the ports, the scratch paths, and the report format ending in
+     *If you find nothing, say exactly "no findings"*.
+   A long prompt is easier to hand over as a FILE: write it to the scratch directory and give
+   the agent one line telling it to read that file and follow it.
+4. **Re-measure every finding yourself** before touching code, against the same instrument the
+   hunter used. Hunters are often partly wrong, and one finding per cycle is typically
+   refuted outright -- cycle 10's "the Session block appears only after a decision" did not
+   reproduce with a decision that answers 200.
+5. **Implement in an isolated worktree:** `git worktree add -b cycleN <scratch>/wtN origin/main`.
+6. **One commit per finding**, each with its check, proven **against its own parent commit**:
+   - `c10/sdrive.py` does this for a check that needs a server: export HEAD, serve it, apply
+     the patch, serve that, run the patch's block against both, require fail-then-pass, commit.
+   - `c10/mdrive.py` does the same for an offline check (`tests/test_mediainfo.py`).
+   - Re-exporting the parent per patch is the point: proving against an older tree proves less
+     than it looks, and a parent tree missing a sidecar dies at import and reads as a failure.
+7. **Run every suite** on the fixture and on the full catalog, from a freshly restarted server.
+8. **Document.**
+   - Add a `#### The Nth pass …` section to `docs/findings.md`, inserted just before
+     `### Emulation calibrated against the account's own claimed servers`, ending with a
+     "Measured and not acted on" list that includes what was REFUTED.
    - Add trap bullets to `CLAUDE.md`, just before `## Conventions`.
    - If a sidecar fixture was added, list it in CLAUDE.md's Layout paragraph.
-10. **Commit and push.**
-    - Scan the staged diff for secrets: both tokens, `X-Plex-Token=…`,
-      real-debrid `/d/` links.
-    - Commit with
-      `git -c user.name="Ben Adrian Sarmiento" -c user.email="me@bensarmiento.com" commit`,
-      a semantic single-line message and **no attribution lines**.
-    - `git merge --ff-only cycleN` on `main`, then `git push origin main`.
-    - Remove the worktree, `git branch -d cycleN`, `git worktree prune`, and
-      confirm `HEAD == origin/main`.
-11. **Snapshot the reference again** and compare.
+   - Update this file: §1, §6, §7, §9 and §12.
+9. **Commit and push.**
+   - Scan the whole branch diff for secrets: both tokens, `X-Plex-Token=…`, real-debrid
+     `/d/` links.
+   - Commit as `Ben Adrian Sarmiento <me@bensarmiento.com>`, a semantic single-line message,
+     **no attribution lines**.
+   - `git merge --ff-only cycleN` on `main`, then `git push origin main`.
+   - Remove the worktree, `git branch -d cycleN`, `git worktree prune`, delete the remote
+     backup branch, and confirm `HEAD == origin/main`.
+10. **Snapshot the reference again** and diff it against step 1.
 
-Large cycles were split into batches: cycle 7 batch 1 came from the probe/replay
-hunter and batch 2 from the python-plexapi hunter.
+Push the work branch to `origin` as you go: it is the only backup of a cycle's commits while
+the scratch directory holds the worktree.
+
+Large cycles are split into batches, one per hunt: cycle 10 ran three (media analysis,
+writes, the session surface), each merged to `main` on its own once its suites passed.
 
 ---
 
@@ -280,11 +312,15 @@ The hunter runs (from the session transcript):
 | 7 | probe table + corpus replay diffed mechanically (opus) | python-plexapi as a third-party client (fable) |
 | 8 | every URL template in the web bundle, three servers, JSON and XML (opus) | the XML path, four client families, plexapi extended (fable hit a session rate limit; re-run on opus) |
 | 9 | write semantics on plexscratch: edits, play state, playlists, collections, queues, libraries, merge (fable) | the community OpenAPI description, every GET, three servers (fable hit a rate limit; re-run on opus) |
-| 10 | the writes cycle 9 did not reach, on plexscratch (fable) | `mediainfo.py` against fun's analysis of 35 real files (opus); a third batch, the session surface on long media, died on a rate limit |
+| 10 | the writes cycle 9 did not reach, on plexscratch (fable) | `mediainfo.py` against fun's analysis of 35 real files (opus) |
+| 10 batch 3 | the playback and session surface on plexscratch's long media (opus; the first attempt died on a model weekly limit and was relaunched against the merged head) | — |
 
 Commits of the loop era, newest first:
 
 ```
+dd52196 docs: hand over the finished cycle 10 and point the loop at cycle 11                             (cycle 10 batch 3: 8 commits from e8af2b5)
+173305c docs: hand over cycle 10 and point the loop at its unfinished third batch                        (cycle 10 batch 2: 12 commits from c318783)
+a7b3b77 docs: record what the tenth pass's media batch measured and did not act on                       (cycle 10 batch 1: 24 commits from 02af369)
 4f2bb31 fix: unmatch an episode or a season to a local guid and its generated title, keeping its Guids   (cycle 9 batch 2: 49 commits from 7589e32)
 ae19756 test: expect a library's albums leaf to answer, as both servers do                               (cycle 9 batch 1: 17 commits from 985293a)
 c8c072a fix: keep session flags out of the catalog, carry full related rows, ...                           (cycle 8 batch 2)
@@ -304,14 +340,18 @@ ea98659 feat: refuse the artwork requests a real PMS refuses, and route by verb
 
 Cycles 1–4 are recorded in `docs/findings.md` from "The filter query language"
 (about line 748) through "A negative result worth keeping" (about line 2039).
-Cycles 5–7 start at "#### The fifth pass" (about line 2067).
+Cycles 5–7 start at "#### The fifth pass" (about line 2067); cycle 10's three batches are
+"#### The tenth pass: what a real PMS writes for a real file", "#### The tenth pass, second
+batch: the writes cycle 9 did not reach" and "#### The tenth pass, third batch: the playback
+surface, on media long enough to drive it".
 
 ---
 
-## 7. What cycles 5–7 changed
+## 7. What cycles 5–10 changed
 
-Add these to the hunt prompt's "Already fixed" list. Cycles 1–6 are already
-there, verbatim, in `hunt_prompts.md`.
+Add these to the hunt prompt's "Already fixed" list. Cycles 1–10 are already there,
+verbatim, in `hunt_prompts.md` -- a hunt launched against a list that stops a cycle short
+spends itself re-reporting what just landed.
 
 **Cycle 5 (`daf88c8`)**
 
@@ -640,6 +680,47 @@ Added in cycle 9:
 - Reference oddities (tag types landing in other columns, `merge?ids=<self>`, the
   `C13` capitalisation) and copy artefacts (item DELETE 400, `editionTitle` 403).
 
+Added in cycle 10, batch 1 (media analysis):
+
+- What the probe cannot give: `refFrames` (ffprobe 8.1 no longer prints `refs`); a Matroska
+  video stream's bitrate, and DTS-HD, TrueHD, FLAC, Opus and subtitle bitrates (the server's
+  own analysis); `headerCompression`; Part `packetLength`; `hasThumbnail`, `indexes` and the
+  `failureBIF*` fields; `eia_608` captions.
+- Which audio track is `selected` (it follows the account's language settings).
+- Counterexamples left alone: E-AC-3 with Atmos in an mp4 (fun reads its 5.1 core where
+  ffprobe says 7.1); DTS Express has no channel layout; TrueHD in an mp4 has no bit depth.
+- Version, not rule: 1.43.4 labels an untagged track English, omits `lc` and the mono layout
+  on most AAC clips, and writes its clips' Media bitrates about 8 kbps under the probe's.
+- Leads with one sample each: a `.webm` reported as container `mkv`; `anamorphic: false` on a
+  333:320 sample aspect ratio; an AVI audio track numbered with no id in the probe; a forced
+  track with no linguistic content leaving `Forced` out of its extended title; `AVC` standing
+  in for H.264 in a title.
+
+Added in cycle 10, batch 2 (writes):
+
+- What the copy cannot do: the download queue (no account), `POST .../posters?url=` to an
+  external image (406, it is offline), a provider match search, and
+  `POST /library/metadata/{id}/subtitles` (a 500 with nothing in its log).
+- Captured and not reproduced: a library create's per-item `created` frames and the
+  `backgroundProcessingQueue` frame a minute later; the 201 row's
+  `metadataAgentProviderGroupId`, `uuid`, `createdAt` and `contentChangedAt: -1`; the
+  `provider.subscriptions.process` activity pairs a scan ends with.
+- Copy oddities: the artwork write's response body and the row's `thumb` differ by the
+  copy's timezone offset; a smart collection's `childCount` goes stale where its `/children`
+  does not; fun's largest library times out on `/extras/all`.
+
+Added in cycle 10, batch 3 (the session surface):
+
+- **Refuted:** the `Session` block appearing only after a DECISION. Re-measured with a
+  decision that answers 200, the copy carries no `Session` block at all.
+- An unclaimed copy 401s `/status/sessions/terminate` in every form and 404s `/statistics/*`,
+  so neither could be measured there; the statistics rules came from kids and fun instead.
+- Only Plex Web was ever seen, so `Player.profile` is `Web` for every session.
+- An unmatched row's timeline answer carries no `skipCount`, `viewCount` or `viewOffset`; no
+  plexsim catalog has a row without an identity.
+- `/statistics/resources` per-second host samples (a stdlib server on another machine has no
+  such numbers).
+
 ---
 
 ## 10. Next: cycle 11
@@ -657,9 +738,17 @@ worth taking next:
    `/status/sessions/terminate` and 404s `/statistics/*`, so neither could be measured there;
    both are recorded as instrument limits rather than as findings.
 
-Before launching: refresh `hunt_prompts.md`, write a fresh `tokens.env`, pick ports, snapshot
-kids, and reset plexscratch (`./scratch.sh short` first unless the territory wants long media --
-it is left in `long` mode). One hunter writes to plexscratch per cycle.
+Before launching: refresh `hunt_prompts.md` (§5 step 3 lists what), write a fresh
+`tokens.env`, pick ports clear of the reserved ones (§3), snapshot kids, serve the current
+`main` from a frozen tree, and reset plexscratch -- `./scratch.sh short` first unless the
+territory wants the long media, which is the mode it is left in. **One hunter writes to
+plexscratch per cycle**; a second one measuring writes at the same time reads the first one's
+state as the server's.
+
+A note on hunts that die. Two of the last three cycles lost a hunter to a model rate limit.
+The prompt file survives, so a relaunch is cheap -- but relaunch it against the CURRENT head,
+with the Already-fixed list extended by whatever landed in the meantime, or the second run
+re-reports the first batch's work.
 
 ## 11. Tooling and environment gotchas
 
@@ -724,6 +813,22 @@ it is left in `long` mode). One hunter writes to plexscratch per cycle.
 - **ffprobe lists a Matroska cover image as a video stream** (`disposition.attached_pic`).
 - **plexscratch in `long` mode**: switch back with `./scratch.sh short` before re-measuring
   something the short clips measured, and remember `reset` stays in the current mode.
+- **Restarting a test server is not a kill plus a health check.** The poll can be answered by
+  the process you are killing, or by something else already on the port: wait for the PORT to
+  be free, start the new one, and confirm the new pid holds it. A whole suite run once went to
+  a server that had already been written to, and read as twelve regressions.
+- **`test_ui_surface.py` starts its own gated server on 32599.** A proof server there makes its
+  six gate checks measure the ungated one and report 401s that never happened.
+- **A `git checkout -- <file>` throws away every uncommitted edit in it**, including the ones
+  made earlier in the same session for a different reason. Two check updates had to be redone
+  that way; commit a fix before restoring a file beside it.
+- **A replacement that leaves the old block behind DUPLICATES it.** A suite edit that replaced
+  a region but not its `if` header ran the whole tail twice -- 882 checks instead of 845, with
+  failures caused by the first copy's writes. Assert the occurrence count after the edit, not
+  just before.
+- **An assertion in an edit script is the cheap half.** Assert what the file should look like
+  AFTERWARDS (`count == 1`, the old text gone), or a "successful" edit can leave a `if False:`
+  branch and dead code in a commit.
 
 ---
 
@@ -737,7 +842,7 @@ session scratch directory and had hunters `source` it; extract them again from
 
 | File | What it does |
 |---|---|
-| `hunt_prompts.md` | The two cycle-7 hunter prompts, verbatim. This is the template. |
+| `hunt_prompts.md` | The shared preamble and every cycle's territories, verbatim, newest last (cycle 10's three are at the end). This is the template: copy the preamble, refresh the lists named in §5 step 3, and write the whole prompt to a file for the agent to read. |
 | `refcheck7.py` + `ref_cycle5_before.json` | Read-only comparison of kids' library state against the baseline: `python3 refcheck7.py ref_cycle5_before.json`. Item prefs must be read via `?includePreferences=1` (see §11). |
 | `probe.py`, `diff.py` | The python-plexapi sweep. `probe.py` drives one PMS through ~460 plexapi read calls behind a session that refuses writes and off-host URLs, and writes `out_<name>.json`. `diff.py` compares `out_sim/ref/fun.json` in its working directory. |
 | `ui_ro.py` | `probes/ui_surface.py` with every non-GET/HEAD refused locally, so it is safe against kids |
@@ -746,6 +851,10 @@ session scratch directory and had hunters `source` it; extract them again from
 | `m.py` | Cycle 8's triage fetcher: one path (or a per-server path each) to kids, fun and plexsim, summarised; refuses write-shaped GETs on kids and fun |
 | `xdiff.py` | XML structure diff (attrs and child order per path) |
 | `territory_a.py`, `territory_b.py` | The cycle-6 notification-frame and malformed-identifier sweeps, aimed at plexsim |
+| `sdrive.py` | **The proof driver for a check that needs a server.** Per patch: export and serve the worktree's HEAD, apply, serve the fix, run the patch's suite block against both, commit only on fail-then-pass. `WT=<worktree> WORK=<scratch> OLD_PORT= NEW_PORT= python3 sdrive.py <patches.py> NAME …` |
+| `mdrive.py` | The same for an OFFLINE check (`tests/test_mediainfo.py`): copies every tracked sidecar into the parent tree and refuses a parent run that raised |
+| `runblock.py` | Runs one patch's check block against one or more servers, in the suite's own namespace. Both drivers call it |
+| `guarded.py` | The write hunt's HTTP client: writes only to plexscratch and the plexsim named by `PLEXSIM_BASE`, GET/HEAD only to kids and fun, and a `WRITE_GET` refusal list for the GETs that write. Also the frame listener and the JSON/XML diffs the hunts use. Reads plexscratch's token from a `scratch.token` beside it |
 
 Everything else from the session is in the scratch directory, which is
 ephemeral:
@@ -765,15 +874,28 @@ plexsim, both read back), the patch modules `p_w*.py`, `drive.py` (apply one nam
 prove its check fails on the unfixed server and passes on the fixed one, commit) and
 `runblock.py` (run one check block against servers), plus the unfixed tree `old9b/`.
 
-Cycle 10 ran in session `ebe127ef-5796-499a-9bac-d61169c66fc8`; its scratch directory's `c10/`
-holds hunter B's media corpus inputs (`media/`), hunter A's write logs and guarded client
-(`writes/`, `w10.py`), `mdrive.py` (apply one media patch, prove its offline check fails on the
-parent commit and passes on the fix, commit), `drive.py` + `runblock.py` (the same for a UI-surface
-block against an unfixed server), the patch modules `p_media.py`, `p_media2.py` and `p_srv.py`,
-`candidates.py` (every claimed media rule as a check), `remeasure_a.py` (hunter A's write findings
-sent to plexscratch and plexsim), and the hunter C prompt `prompt_C.md`.
+The four scripts at the bottom of that table were written for cycle 10 and are now tracked,
+because they are what enforces "every fix proven against its own parent". Everything else from
+cycle 10 stayed in its scratch directory (session `ebe127ef-5796-499a-9bac-d61169c66fc8`,
+`c10/`), which is ephemeral:
 
-The full session transcript, including every hunter's report, is at:
+| Path | What it is |
+|---|---|
+| `media/` | Hunter B's inputs: 46 ffprobe probes (`probes_fun/`, `probes_kids/`), 381 detail rows from fun, and the survey scripts the resolution and aspect rules came from |
+| `writes/`, `sessions/` | Hunter A's and hunter C's logs and guarded clients (`w10.py`: writes only to plexscratch and the local plexsim, GET-only to kids and fun, and a `WRITE_GET` refusal list) |
+| `drive.py` | Cycle 9's driver, which proves against ONE fixed unfixed server rather than a per-patch parent. `sdrive.py` in `handover/tools/` supersedes it |
+| `p_media.py`, `p_media2.py` | The media patches: codecs, languages, DOVI, resolution, aspect ratio, flags, titles, per-product titles |
+| `p_srv.py`, `p_writes.py`, `p_art.py`, `p_match.py`, `p_cascade.py` | The write patches: served titles, stored-catalog normalisation, extras, settings frames, butler, smart saves, artwork, match, the scan Context, the refresh cascade |
+| `p_session.py` | The session patches: the crossing rule, duration handling, queue frames, session rows, media statistics |
+| `candidates.py` | Every rule a hunter claimed, as a check, before any of it was implemented |
+| `remeasure_a.py`, `remeasure_c.py` | Each finding sent to plexscratch AND to a plexsim, both read back -- the re-measurement step, reusable next cycle |
+| `prompt_C.md` | The session hunt's full prompt, as an agent-readable file |
+| `parent_srv/`, `head10/`, `base10/` | The exported trees the drivers served |
+| `lang_table.json`, `survey_res.json` | The language names and the 177 width/height pairs the corpus fixtures were built from |
 
-- `~/.claude/projects/-Users-bensarmiento-debridmediamanager-plexsim/2bf061c1-6eb4-40e8-82db-c501ea893af5.jsonl`
-- `…/2bf061c1-6eb4-40e8-82db-c501ea893af5/subagents/agent-*.jsonl`
+The full session transcripts, including every hunter's report, are at:
+
+- `~/.claude/projects/-Users-bensarmiento-debridmediamanager-plexsim/2bf061c1-6eb4-40e8-82db-c501ea893af5.jsonl` (cycles 5–8)
+- `…/5e5b69a0-29b2-4bf9-9163-a14559c47805.jsonl` (cycle 9)
+- `…/ebe127ef-5796-499a-9bac-d61169c66fc8.jsonl` (cycle 10), plus its
+  `…/ebe127ef-5796-499a-9bac-d61169c66fc8/subagents/agent-*.jsonl`
