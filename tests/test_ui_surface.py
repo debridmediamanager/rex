@@ -5668,6 +5668,19 @@ def main():
                   season_leaves9.get("size"), season_leaves9.get("viewGroup"),
                   episode_leaves9.get("viewGroup"), episode_leaves9.get("title1")))
 
+    if c5_show:
+        word9 = str(detail_of(c5_show).get("title") or "").split()[-1][:4]
+        voice_all9 = get(base, "/hubs/search/voice?query=%s" % quote(word9))[1].get("Hub") or []
+        voice_shows9 = get(base, "/hubs/search/voice?type=2&query=%s" % quote(word9))[1].get("Hub") or []
+        voice_music9 = get(base, "/hubs/search/voice?type=8&query=%s" % quote(word9))[1].get("Hub") or []
+        check("voice search keeps the asked type's hub, identified by its type number",
+              any(h.get("type") == "show" and h.get("hubIdentifier") == "results.search.2"
+                  for h in voice_all9)
+              and [h.get("hubIdentifier") for h in voice_shows9] == ["results.search.2"]
+              and not voice_music9,
+              "%s / %s / %d" % ([h.get("hubIdentifier") for h in voice_all9],
+                                [h.get("hubIdentifier") for h in voice_shows9], len(voice_music9)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

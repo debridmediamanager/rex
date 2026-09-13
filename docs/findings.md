@@ -2794,6 +2794,10 @@ anything changed.
   (title1 the season, an empty grandparentTitle, the episode layout). plexsim returned
   the season's episodes and the season layout. Every child list also carries
   `allowSync: true` on both servers, where plexsim sent false.
+- **Voice search honours `type`** and numbers each hub by the type it holds:
+  `results.search.4` is the episode hub whatever else matched, `type=4` returns it alone,
+  and a type with no hub (5, 8, 18) returns none. plexsim ignored `type` and numbered
+  hubs by position.
 
 ### Emulation calibrated against the account's own claimed servers
 

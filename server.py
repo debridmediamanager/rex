@@ -5661,10 +5661,19 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         limit = int(query.get("limit", 30) or 30)
         typed, _tags = self.search_matches(text, limit)
+        # Measured on both servers: `type=N` keeps only that type's hub (`type=4` is the
+        # episode hub alone, and a type with no hub -- 5, 8, 18 -- answers none), and a
+        # hub's identifier is `results.search.<type number>`, not its position. plexsim
+        # ignored `type` and numbered hubs 1, 2, ... so a show hub came out as the movie
+        # identifier.
+        wanted_type = query.get("type")
         hubs = []
         for kind, _title in self.SEARCH_HUBS:
             rows = typed.get(kind)
             if not rows:
+                continue
+            number = TYPE_NUMBERS.get(kind)
+            if wanted_type is not None and str(number) != wanted_type:
                 continue
             # The reference's distance is its own fuzzy-match cost; plexsim reports
             # the query's length, which is what an exact word-prefix hit costs it.
@@ -5675,7 +5684,7 @@ class PlexSim:
                 entry["distance"] = distance
                 entries.append(entry)
             hubs.append(self.home_hub(
-                "results.search.%d" % (len(hubs) + 1), kind, None,
+                "results.search.%s" % number, kind, None,
                 entries, query, kind=kind, distance=distance))
             # Measured: a voice hub carries `hubKey` and NO `key`, and its context
             # is the shared `hub.results.search` rather than one per hub.
