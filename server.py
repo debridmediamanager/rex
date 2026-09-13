@@ -3727,8 +3727,15 @@ class PlexSim:
             return self.secondary_container(section_id, section, None,
                                             Directory=filters)
         if leaf == "firstCharacter":
+            # Measured on zen's show library: this axis IS scoped by `?type=`, and its
+            # counts follow -- 13 `#` and 40 `A` for the shows at type 2, 13 and 64 for
+            # the seasons at type 3, 185 and 207 for the episodes at type 4, and empty
+            # for a type the library holds no rows of. plexsim counted the whole
+            # section whatever the type said, so a show library's letter bar reported
+            # show counts on an episode grid.
+            self._parsed_type(query, 500)
             counts = {}
-            for row in self.catalog.section_items(section_id):
+            for row in self.typed_rows(section_id, query):
                 title = str(row.get("titleSort") or row.get("title") or "")
                 first = (title[:1] or "#").upper()
                 if not first.isalpha():
@@ -3768,9 +3775,18 @@ class PlexSim:
                                 "active": True}]})
 
         if leaf in SECONDARY_TAGS or leaf in SECONDARY_FIELDS:
+            # Measured on both servers: an axis over the rows refuses a `type=` it
+            # cannot parse, exactly as a listing does -- 500 everywhere, and 400 on
+            # `year` alone, which is the same split `/library/all` has against a
+            # section listing. plexsim answered 200 to all of them.
+            refusal = 400 if leaf == "year" else 500
+            self._parsed_type(query, refusal, refusal)
             return self.secondary_directory(section_id, section, leaf, query)
         if leaf in SECONDARY_MEDIA:
-            return self.media_axis(section_id, section, leaf, query)
+            # And the MEDIA axes ignore `type=` completely -- the same list for every
+            # value including `abc`, on a movie library and a show library alike --
+            # so they neither validate it nor scope by it.
+            return self.media_axis(section_id, section, leaf)
         if leaf == "location":
             return self.location_axis(section_id, section)
 
@@ -3937,7 +3953,7 @@ class PlexSim:
         return body
 
     @staticmethod
-    def _parsed_type(query, status=500):
+    def _parsed_type(query, status=500, empty_status=None):
         """`type=` has to PARSE as a whole number, or the listing is refused.
 
         Measured on kids (1.43.4) and zen (1.42.2), identically: a section listing
@@ -3951,7 +3967,10 @@ class PlexSim:
         if raw is None:
             return None
         if str(raw).strip() == "":
-            raise filters_module.FilterError(500, "bad type %r" % raw)
+            # A listing answers 500 to an empty `type=` whatever its refusal status for
+            # a non-number is -- but the `year` AXIS answers 400 to both, measured on
+            # kids and zen alike, so the empty case takes its own status here.
+            raise filters_module.FilterError(empty_status or 500, "bad type %r" % raw)
         if not str(raw).lstrip("-").isdigit():
             raise filters_module.FilterError(status, "bad type %r" % raw)
         return int(raw)
