@@ -3174,6 +3174,9 @@ below is one check there, and each check failed against the code before its fix.
   The eight `DOVI*` attributes are ffprobe's DOVI configuration record field for field (6
   of 6 files, profiles 5, 7, 8 and 10), and plexsim sent none of them -- they are what tells
   a client a Dolby Vision stream it can play from one it cannot.
+- **A ten-bit stream is ten-bit.** ffprobe leaves `bits_per_raw_sample` out for HEVC and
+  AV1, where the depth is only in the pixel format; all 16 such streams read `bitDepth: 10`
+  on fun. plexsim defaulted them to 8.
 
 ### Emulation calibrated against the account's own claimed servers
 

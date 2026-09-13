@@ -12,6 +12,7 @@ numbers come from a real probe of the real byte stream.
 
 import json
 import os
+import re
 from fractions import Fraction
 
 # Plex writes the frame rate as a broadcast-ish token, not a float.
@@ -191,7 +192,7 @@ def _video_stream(stream, stream_id):
         "refFrames": stream.get("refs"),
         # ffprobe reports this as a STRING; a real PMS sends an integer, and a
         # typed client decoding `"8"` into an int field fails the whole row.
-        "bitDepth": _int_or(stream.get("bits_per_raw_sample"), 8),
+        "bitDepth": _bit_depth(stream),
         "chromaSubsampling": stream.get("pix_fmt") and _chroma(stream["pix_fmt"]),
         # ffprobe has all three of these and a real PMS carries them; Get Info
         # prints them. `hasScalingMatrix` is NOT here on purpose: a real PMS
@@ -239,6 +240,21 @@ def _int_or(value, default):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _bit_depth(stream):
+    """A video stream's bit depth.
+
+    ffprobe reports `bits_per_raw_sample` for H.264 and leaves it out for HEVC and AV1,
+    where the depth is only in the pixel format. Measured on fun: all 16 ten-bit streams
+    probed without it (`yuv420p10le`, `yuv444p10le`) read `bitDepth: 10`. plexsim defaulted
+    every one to 8, and ten-bit is a direct-play gate on many clients.
+    """
+    raw = _int_or(stream.get("bits_per_raw_sample"), None)
+    if raw:
+        return raw
+    match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
+    return int(match.group(1)) if match else 8
 
 
 def _chroma(pix_fmt):
