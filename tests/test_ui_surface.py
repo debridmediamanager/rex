@@ -10056,13 +10056,23 @@ def main():
                         .get("Metadata") or [] if r.get("type") == "season"]
         leaves_c14x = [r.get("ratingKey") for r in
                        get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+        # Pick children that STILL carry the borrowed field: by this point the suite's
+        # unmatch checks have nulled `parentThumb`/`grandparentThumb` on some rows, and
+        # the cascade deliberately only moves a field a child already has (whether a
+        # real PMS would CREATE one where there was none is unmeasured).
+        seasons_c14x = [k_c14x for k_c14x in seasons_c14x
+                        if detail_c14x(k_c14x).get("parentThumb")] or seasons_c14x
+        leaves_c14x = [k_c14x for k_c14x in leaves_c14x
+                       if detail_c14x(k_c14x).get("grandparentThumb")] or leaves_c14x
         before_season_c14x = detail_c14x(seasons_c14x[0]) if seasons_c14x else {}
         candidates_c14x = get(base, "/library/metadata/%s/posters" % show)[1].get("Metadata") or []
         pickable_c14x = next((c_c14x.get("key") for c_c14x in candidates_c14x
                               if not str(c_c14x.get("key") or "").endswith("/thumb/1")), None)
-        if not pickable_c14x or not seasons_c14x or not leaves_c14x:
+        if (not pickable_c14x or not seasons_c14x or not leaves_c14x
+                or not before_season_c14x.get("parentThumb")
+                or not detail_c14x(leaves_c14x[0]).get("grandparentThumb")):
             skip("an artwork pick re-versions all three and cascades to the children",
-                 "no remote candidate to pick")
+                 "no remote candidate, or no child still carrying the borrowed artwork")
         else:
             status_c14x, body_c14x, _ = request(
                 base, "PUT", "/library/metadata/%s/poster?url=%s"
