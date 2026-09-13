@@ -1803,6 +1803,14 @@ class PlexSim:
         section = self.catalog.section(parent.get("librarySectionID")) or {}
         is_episode_list = ((bool(rows) and rows[0].get("type") == "episode")
                            or (leaf == "allLeaves" and parent.get("type") in ("season", "episode")))
+        # Measured on kids (1.43.4) and zen (1.42.2), 20 rows across five shows: a
+        # SHOW's `/allLeaves` -- and only that list -- gives every episode row the
+        # SHOW's `studio`. The episode's own detail row, the season's `/children` and
+        # the SECTION's allLeaves all answer none on both servers, so it is a property
+        # of this list rather than of the row, and it is stamped on the projection
+        # rather than written into the catalog.
+        carry_studio = (parent.get("studio")
+                        if leaf == "allLeaves" and parent.get("type") == "show" else None)
 
         fields = {
             # Measured on both servers: a child row is the light projection -- text
@@ -1920,6 +1928,9 @@ class PlexSim:
                                        mediaCount=len(r.get("Media") or []),
                                        mediaCountOptimized=0)
                                   for r in fields["Metadata"]]
+        if carry_studio:
+            fields["Metadata"] = [dict(r, studio=carry_studio)
+                                  for r in fields.get("Metadata") or []]
         fields.update(extra)
         if extra.get("Directory"):
             # Measured: the container's `size` counts the "All episodes" Directory
