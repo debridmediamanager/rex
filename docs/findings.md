@@ -2808,6 +2808,10 @@ anything changed.
 - **`/status/sessions/history/{id}`** reads one history row back: the row history/all
   lists, alone in a container of `size` 1; an unknown or non-numeric key is a 404. plexsim
   listed the key and 404'd it.
+- **`/hubs/metadata/{id}`** is an item's own hub list: on both servers, for a movie, a
+  show and an episode alike, the four artist shelves (Most Played, Most Popular Tracks,
+  Albums, Music Videos), each empty and keyed to the item in its library. An unknown id
+  is a 404. plexsim 404'd the path.
 
 ### Emulation calibrated against the account's own claimed servers
 
