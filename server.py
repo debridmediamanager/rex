@@ -6990,6 +6990,19 @@ class PlexSim:
         if not text:
             # Measured: a missing or empty query is a 400, not an empty result.
             return ("error", 400, "plexsim: bad request")
+        # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `contentDirectoryID`
+        # SCOPES this endpoint to one library and VALIDATES its value -- `abc`, `99`,
+        # `1.5` and `-1` are all 404s, an EMPTY value is a 200 that scopes nothing,
+        # and a real section id keeps that library's hubs alone. It belongs to
+        # `/hubs/search` only: `/hubs`, `/hubs/promoted` and `/hubs/sections/{id}`
+        # ignore it on both references. plexsim ignored it everywhere, so "search in
+        # this library" answered the whole server and a bad id read as "no results".
+        wanted_section = query.get("contentDirectoryID")
+        if wanted_section:
+            if self.catalog.section(wanted_section) is None:
+                return ("error", 404, "plexsim: not found")
+        else:
+            wanted_section = None
         # Measured on kids (1.43.4) and zen (1.42.2): the DEFAULT cap is 3 PER HUB, not
         # 30. A zen search answering 6 movies, 26 directors, 11 episodes and 50 actors
         # under `limit=50` answers three of each with no limit at all, and `more` stays
@@ -6998,6 +7011,13 @@ class PlexSim:
         # which changes how the search page lays its shelves out.
         limit = int(query.get("limit", 3) or 3)
         typed, tags = self.search_matches(text, limit, tagged_items=True)
+        if wanted_section is not None:
+            typed = {kind: [r for r in rows
+                            if str(r.get("librarySectionID")) == str(wanted_section)]
+                     for kind, rows in typed.items()}
+            tags = {hub: [t for t in rows
+                          if str(t.get("librarySectionID")) == str(wanted_section)]
+                    for hub, rows in tags.items()}
         needle = text.strip().lower()
 
         hubs = []
