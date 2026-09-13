@@ -2901,6 +2901,12 @@ the same parameters, then read back from both.
   order), removes both on an empty date, and removes an empty year where the item path
   500s. A year of 0 is removed and `+2000` is 2000. plexsim stored dates verbatim and left
   the year alone.
+- **The section path stores a userRating, and every rating is a number.**
+  `userRating.value=8.5` there reads back `userRating: 8.5` with `lastRatedAt`, -1 or an
+  empty value clear both, and `abc` is a 500 -- where the item path still discards it.
+  `audienceRating.value=5.5` and `rating.value=5.5` read back as numbers on both paths,
+  `abc` is a 500 on both, and an empty value is a 500 on the item path and removes the
+  field on the section path. plexsim stored the strings and discarded userRating.
 
 ### Emulation calibrated against the account's own claimed servers
 

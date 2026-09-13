@@ -5953,6 +5953,41 @@ def main():
           "%s %s %s HTTP %s %s %s %s" % (section_w4, rolled_w4, epoch_w4, bad_w4, cleared_w4,
                                          plus_w4, zero_w4))
 
+    # Measured on plexscratch: the section save path STORES a userRating, stamping
+    # lastRatedAt (-1 clears both), where the item path discards it; audienceRating and
+    # rating are numbers, and an empty one is a 500 on the item path and removed on the
+    # section path. plexsim kept the strings and discarded userRating on both paths.
+    def rated_w5():
+        return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    audience_w5 = rated_w5().get("audienceRating")
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1" % movie)
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&userRating.value=8.5"
+                         % (movie_section, movie))
+    stored_w5 = rated_w5()
+    request(base, "PUT", "/library/metadata/%s?userRating.value=3" % movie)
+    ignored_w5 = rated_w5().get("userRating")
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&userRating.value=-1"
+                         % (movie_section, movie))
+    cleared_w5 = rated_w5()
+    request(base, "PUT", "/library/metadata/%s?audienceRating.value=5.5" % movie)
+    number_w5 = rated_w5().get("audienceRating")
+    empty_item_w5, _, _ = container(base, "PUT", "/library/metadata/%s?audienceRating.value=" % movie)
+    bad_w5, _, _ = container(base, "PUT", "/library/sections/%s/all?type=1&id=%s&userRating.value=abc"
+                                          % (movie_section, movie))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&audienceRating.value="
+                         % (movie_section, movie))
+    removed_w5 = "audienceRating" not in rated_w5()
+    if audience_w5 is not None:
+        request(base, "PUT", "/library/metadata/%s?audienceRating.value=%s" % (movie, audience_w5))
+    check("the section save path stores a userRating; a rating is a number, empty a 500 on the item path",
+          stored_w5.get("userRating") == 8.5 and stored_w5.get("lastRatedAt") is not None
+          and ignored_w5 == 8.5 and "userRating" not in cleared_w5
+          and "lastRatedAt" not in cleared_w5 and isinstance(number_w5, float) and number_w5 == 5.5
+          and empty_item_w5 == 500 and bad_w5 == 500 and removed_w5,
+          "stored %r/%r, item write %r, cleared %r, number %r, empty %s, abc %s, removed %s"
+          % (stored_w5.get("userRating"), stored_w5.get("lastRatedAt"), ignored_w5,
+             cleared_w5.get("userRating"), number_w5, empty_item_w5, bad_w5, removed_w5))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
