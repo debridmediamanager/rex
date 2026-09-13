@@ -252,29 +252,71 @@ def _word_prefixes(wanted, text):
     more, and `Tears%20%20Steel` still finds Tears of Steel. Only `=` works this
     way; `title!=ears` excludes Tears of Steel, so `!=` still reads a substring.
 
-    Cycle 14, on zen's accented rows: this matcher folds combining marks -- but
-    ONLY while the query holds no space. `title=Bogota` finds "Bogota: City of the
-    Lost" and `title=Senor` finds the Senor episode, while `title=Bogota City`,
-    `title=Manly Senor` and even `title=Bogota ` (one trailing space) find nothing
-    and their accented spellings all find their row. The trailing-space pair is
-    what pins it: the space alone does not break the match, it turns the fold off.
+    A row matches if EITHER of two passes does, which is cycle 15's correction of
+    cycle 14. Cycle 14 measured that `title=Bogota` finds "Bogotá: City of the Lost"
+    while `title=Bogota City` finds nothing, and read the SPACE as the switch that
+    turns folding off. It is not: `title=Adoravel Trapalhao` finds "Adorável
+    Trapalhão" and `title=Sex and Lucia`, `title=and Lucia` and `title=Dire a Lamine`
+    all find their accented rows. What breaks the Bogotá query is the COLON.
 
-    That asymmetry is the rule as measured, not a mechanism this code knows. It is
-    consistent with a folded per-word index answering a one-word query while a
-    multi-word query is checked as a sequence against the raw title, but nothing
-    here tested that, so the code follows the observation. `!=` is a substring and
-    does not fold at all (`title!=Amelie` excludes nothing; `title!=Amelie` with
-    the accent excludes exactly its one row), which is why this is the only place
-    the fold goes.
+    Measured over 52 queries on zen (1.42.2) -- 27 to build the model and 25 more on
+    rows it had never seen, which it reproduced exactly:
+
+    * The RAW pass is the old matcher with no folding at all: each query word begins
+      a title word, in order, on the raw spellings. `title=Bogot City` matches
+      because `Bogot` is a prefix of `Bogotá` before any folding.
+    * The FOLDED pass folds both sides, splits the query on SINGLE spaces and the
+      title on whitespace, and then -- this is the part nothing predicted -- every
+      query term but the LAST must equal a whole title word, not merely begin one.
+      The last may begin one. So `Bogota` alone matches (it is the last term, and
+      `bogota` begins `bogota:`), `Bogota City` does not (`bogota` is not the whole
+      word `bogota:`), and `Bogota: City` does. `Adoravel Trapalhao` matches because
+      both folded terms are whole words. A query holding an empty term -- a trailing
+      or doubled space -- fails this pass, which is what cycle 14's trailing-space
+      pair was really showing.
+
+    Punctuation rides along in a folded term, so `tournee` does NOT find
+    "Compilation Pyroman (tournée 2018-2022)" -- the word there is `(tournee` -- while
+    `Pyroman (tournee` does. That case is the clearest proof the folded pass compares
+    whitespace words rather than an alphanumeric tokenisation.
+
+    `!=` is a substring and does not fold at all (`title!=Amelie` excludes nothing;
+    `title!=Amelie` with the accent excludes exactly its one row), which is why this
+    is the only place the fold goes.
     """
+    return _raw_word_prefixes(wanted, text) or _folded_word_run(wanted, text)
+
+
+def _raw_word_prefixes(wanted, text):
+    """The unfolded pass: each query word BEGINS a title word, in order."""
     words = wanted.replace(",", "").replace(".", "").lower().split(" ")
     title_words = text.lower().split()
-    if len(words) == 1:
-        words = [fold_marks(words[0])]
-        title_words = [fold_marks(w) for w in title_words]
     position = 0
     for word in words:
         while position < len(title_words) and not title_words[position].startswith(word):
+            position += 1
+        if position == len(title_words):
+            return False
+        position += 1
+    return True
+
+
+def _folded_word_run(wanted, text):
+    """The folded pass: whole words but the last, which may be a prefix.
+
+    An empty term fails outright -- that is `title=Bogota ` and `title=Bogota:  City`,
+    both of which a real PMS answers nothing to while the raw pass also misses them.
+    """
+    words = fold_marks(wanted).lower().split(" ")
+    if any(word == "" for word in words):
+        return False
+    title_words = fold_marks(text).lower().split()
+    position = 0
+    for index, word in enumerate(words):
+        last = index == len(words) - 1
+        while position < len(title_words) and not (
+                title_words[position].startswith(word) if last
+                else title_words[position] == word):
             position += 1
         if position == len(title_words):
             return False
