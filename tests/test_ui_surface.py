@@ -8263,6 +8263,25 @@ def main():
                  one_c12g[1].get("titleSort"), season_c12g[1].get("titleSort"),
                  season_row_c12g.get("titleSort")))
 
+
+    # Measured on the copy: a subtitle upload pushes NO notification frames -- the
+    # client refetches the row itself. Cycle 11 added an edit pair here without
+    # measuring it, so every other client was told the item had changed when nothing
+    # about it had.
+    _, upload_frames_c12i = notifications(
+        base,
+        lambda: request(base, "POST", "/library/metadata/%s/subtitles?title=c12frames.srt&format=srt"
+                        % movie, body=b"1\n00:00:00,000 --> 00:00:02,000\nc12\n\n"),
+        seconds=6)
+    check("a subtitle upload pushes no frames",
+          not [f_c12i for f_c12i in upload_frames_c12i
+               if (f_c12i.get("NotificationContainer", f_c12i) or {}).get("type")
+               in ("timeline", "activity")],
+          "%d frame(s): %s"
+          % (len(upload_frames_c12i),
+             [(f_c12i.get("NotificationContainer", f_c12i) or {}).get("type")
+              for f_c12i in upload_frames_c12i]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

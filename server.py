@@ -7350,7 +7350,12 @@ class PlexSim:
             parts[0].setdefault("Stream", []).append(stream)
             self.uploaded_subtitles[stream_id] = body
         logger.info("SUBTITLE upload %s -> stream %d (%s)", row.get("ratingKey"), stream_id, fmt)
-        self.notify_edited(row)
+        # Measured on the copy: an upload pushes NO frames at all -- 0 in a 15-second
+        # watch and 0 in a 60-second one, `/activities` stays empty and the item's
+        # `updatedAt` does not move. The client refetches the row itself afterwards with
+        # `?skipRefresh=1`. Cycle 11 added an edit pair here without measuring it, which
+        # is this project's own class-C mistake: every other client on the socket was
+        # told the item had been edited when nothing about it had changed.
         return ("empty", 200)
 
     def select_stream(self, part_id, query):
