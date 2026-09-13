@@ -6573,6 +6573,17 @@ def main():
           and made_w14i.get("playQueueSourceURI") == foreign_w14i,
           "HTTP %s size %s source %r" % (status_w14i, made_w14i.get("size"), made_w14i.get("playQueueSourceURI")))
 
+    # Measured on plexscratch: a collection create needs a title and a sectionId -- each
+    # missing one is a 400 -- where plexsim made an "Untitled" collection anyway.
+    results_w13a = [container(base, "POST", "/library/collections?" + spec)
+                    for spec in ("type=1&sectionId=%s&uri=%s" % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))),
+                                 "type=1&title=w13a&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie)))]
+    for _, made_w13a, _ in results_w13a:
+        for row_w13a in made_w13a.get("Metadata") or []:
+            request(base, "DELETE", "/library/collections/%s" % row_w13a.get("ratingKey"))
+    check("a collection create needs a title and a sectionId",
+          [r[0] for r in results_w13a] == [400, 400], str([r[0] for r in results_w13a]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -7115,6 +7115,12 @@ class PlexSim:
         """
         if len(segments) == 2:
             if method == "POST":
+                if query.get("title") is None or not query.get("sectionId"):
+                    # Measured on a writable copy of the reference: a collection create
+                    # needs a `title` and a `sectionId` -- each missing one is a 400 --
+                    # where plexsim made an "Untitled" collection in the first row's
+                    # library. A missing `uri` is a 200 on both servers.
+                    return ("error", 400, "plexsim: bad request")
                 rows = self._items_for_uri(query.get("uri", ""))
                 section = query.get("sectionId") or (
                     rows[0].get("librarySectionID") if rows else None)
