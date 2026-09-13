@@ -582,6 +582,8 @@ class Library:
                 self._set_tags(row, tag_type, list(dict.fromkeys(wanted)))
         if sort_touched:
             self._derive_title_sort(row)
+        if written & {"title", "studio"}:
+            self._follow_parent(row, written)
         if changed:
             row["updatedAt"] = _now()
         return changed
@@ -703,6 +705,35 @@ class Library:
                 self._sync_collection_tag(row, entry["tag"])
             for gone in before - {str(t["tag"]) for t in fresh}:
                 self._untag_collection(row, gone)
+
+    def _follow_parent(self, row, written):
+        """Copy a show's or a season's title and studio onto the rows beneath it.
+
+        Measured on a writable copy of the reference: a season's title and studio land
+        on its episodes' `parentTitle` and `parentStudio`, and a show's on its seasons'
+        `parentTitle` and `parentStudio` and every episode's `grandparentTitle` -- on
+        the detail row, the child list and the grid alike. An EMPTY show title removes
+        them rather than sending "". plexsim copied these once, when the catalog
+        loaded, so a renamed show kept its old name on every episode.
+        """
+        kind, key = row.get("type"), str(row.get("ratingKey"))
+        if kind not in ("show", "season"):
+            return
+
+        def carry(child, name, value):
+            if value:
+                child[name] = value
+            else:
+                child.pop(name, None)
+        for child in self.catalog.items.values():
+            if str(child.get("parentRatingKey")) == key:
+                if "title" in written:
+                    carry(child, "parentTitle", row.get("title"))
+                if "studio" in written:
+                    carry(child, "parentStudio", row.get("studio"))
+            elif kind == "show" and str(child.get("grandparentRatingKey")) == key \
+                    and "title" in written:
+                carry(child, "grandparentTitle", row.get("title"))
 
     def _derive_title_sort(self, row):
         """Measured on a writable copy of the reference: a Sort Title that is not

@@ -699,6 +699,9 @@ precisely how the Seasons bug survived a fix attempt.
 - **A frame's title is not the row's title**: a show is `Title (year)`, a season
   `<show> S01`, an episode `<show> S01 E07`. A section-path save frames every row's
   state 3 first, in sort-title order, and a list edit pushes its own type-15/18 pair.
+- **A parent's title and studio are COPIED onto its children** (`parentTitle`,
+  `parentStudio`, `grandparentTitle`) and have to be copied again on every edit; a season
+  list's container names only a CUSTOM season title and carries the season's summary.
 
 ## Conventions
 
