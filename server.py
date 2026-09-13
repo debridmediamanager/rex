@@ -364,6 +364,11 @@ CONTENT_TYPES = {
 # The secondary filter axes a section offers, and where each one reads from. A
 # TAG axis keys its entries by tag id and a FIELD axis by the value itself --
 # measured against a real PMS: `?genre=24` but `?contentRating=PG`.
+# The three leaf-count filters that read a SHOW's counts even on a season listing.
+# Measured on zen (48 seasons for `type=3&viewedLeafCount>>0`, every one of them with a
+# count of 0 on its own row) and on the copy.
+LEAF_COUNT_FILTERS = ("viewedLeafCount", "unviewedLeafCount", "viewedOrInProgressLeafCount")
+
 SECONDARY_TAGS = {
     "genre": "Genre",
     "collection": "Collection",
@@ -4880,6 +4885,20 @@ class PlexSim:
         if field == "unmatched":
             guid = str(row.get("guid") or "")
             return 1 if (guid.startswith("local://") or "none://" in guid) else 0
+        if field in LEAF_COUNT_FILTERS and row.get("type") == "season":
+            # Cycle 14, measured on zen: on a SEASON listing these three read the
+            # SHOW's counts, not the season's. `type=3&viewedLeafCount>>0` answers 48
+            # seasons -- every season of the eight shows that have a watched leaf --
+            # and ALL 48 carry `viewedLeafCount` 0 of their own, so the filter cannot
+            # be reading the row it returns. `type=3&unviewedLeafCount=0` is 2 there.
+            # The copy agrees on the two-season tree: with one episode of season 1
+            # watched, `type=3&viewedLeafCount=1` answers season 1 AND season 2.
+            #
+            # It is the same shape as the scoped filters: the value is read from the
+            # row the FIELD belongs to, and these three belong to a show.
+            parent = self.scope_rows("show", row)
+            if parent:
+                row = parent[0]
         if field == "unwatchedLeaves":
             leaves = (row.get("leafCount") or 0) - (row.get("viewedLeafCount") or 0)
             return 1 if leaves > 0 else 0

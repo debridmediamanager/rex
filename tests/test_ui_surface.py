@@ -9899,6 +9899,37 @@ def main():
           "true-paths %s | postplay %r | absent %s"
           % (sorted({str(v_c14t) for v_c14t in true_c14t.values()}), post_c14t, absent_c14t))
 
+
+    # Cycle 14: on a SEASON listing the three leaf-count filters read the SHOW's
+    # counts. Measured on zen -- `type=3&viewedLeafCount>>0` answers 48 seasons, every
+    # season of the 8 shows with a watched leaf, and all 48 carry 0 on their own row --
+    # and on the copy. plexsim read the season's own counts, so a season grid filtered
+    # by "watched" answered only the seasons that happened to hold the watched episode.
+    if not show or not show_section:
+        skip("a season listing's leaf-count filters read the show's counts", "need a show")
+    else:
+        leaves_c14u = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+        seasons_c14u = [r.get("ratingKey") for r in
+                        get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or [] if r.get("type") == "season"]
+        if len(seasons_c14u) < 2 or not leaves_c14u:
+            skip("a season listing's leaf-count filters read the show's counts",
+                 "need two seasons and a leaf")
+        else:
+            request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % leaves_c14u[0]["ratingKey"])
+            watched_c14u = [r.get("ratingKey") for r in
+                            get(base, "/library/sections/%s/all?type=3&viewedLeafCount%%3E%%3E=0"
+                                % show_section)[1].get("Metadata") or []]
+            own_c14u = [(get(base, "/library/metadata/%s" % k_c14u)[1].get("Metadata")
+                         or [{}])[0].get("viewedLeafCount") or 0 for k_c14u in watched_c14u]
+            request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % leaves_c14u[0]["ratingKey"])
+            check("a season listing's leaf-count filters read the show's counts",
+                  sorted(watched_c14u) == sorted(seasons_c14u) and 0 in own_c14u,
+                  "seasons %s | filtered %s | their own counts %s"
+                  % (seasons_c14u, watched_c14u, own_c14u))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
