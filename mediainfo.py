@@ -275,6 +275,12 @@ def _video_stream(stream, stream_id):
             "DOVIVersion": "%s.%s" % (dovi.get("dv_version_major", 1), dovi.get("dv_version_minor", 0)),
         })
     row.update(_disposition(stream, ("default", "forced", "original")))
+    # A video stream carries its own language and title from its tags, measured on 17 and
+    # 10 streams on fun; plexsim set neither.
+    tags = stream.get("tags") or {}
+    row.update(_language_fields(tags))
+    if tags.get("title"):
+        row["title"] = tags["title"]
     codec = (stream.get("codec_name") or "").upper()
     resolution = _video_resolution(height, width)
     if resolution and codec:
