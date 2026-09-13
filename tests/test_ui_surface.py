@@ -10239,6 +10239,28 @@ def main():
           and set(section18_c15b) <= set(all18_c15b),
           "library/all %s | section %s" % (all18_c15b, section18_c15b))
 
+    # Cycle 15: `titleSort` trims the LEFT only. Measured on the copy -- zen holds no
+    # row with trailing or doubled whitespace, so cycle 14 could witness only the
+    # leading half and read `.strip()` into the gap. A trailing space SURVIVES into
+    # the sort title, which is why a title written with one carries no `titleSort` at
+    # all: the derived string equals the title, and a real PMS omits it then.
+    trim_before_t15 = get(base, "/library/metadata/%s" % movie)[1].get("Metadata", [{}])[0].get("title")
+    request(base, "PUT", "/library/metadata/%s?title=%s" % (movie, quote("  Zeta Both  ")))
+    row_t15 = get(base, "/library/metadata/%s" % movie)[1].get("Metadata", [{}])[0]
+    check("titleSort keeps trailing whitespace and drops leading",
+          row_t15.get("titleSort") == "Zeta Both  ",
+          "title=%r titleSort=%r" % (row_t15.get("title"), row_t15.get("titleSort")))
+    request(base, "PUT", "/library/metadata/%s?title=%s" % (movie, quote("Zeta Trail ")))
+    row_t15 = get(base, "/library/metadata/%s" % movie)[1].get("Metadata", [{}])[0]
+    check("a trailing-space title derives a titleSort equal to it, so none is sent",
+          row_t15.get("titleSort") is None and row_t15.get("title") == "Zeta Trail ",
+          "title=%r titleSort=%r" % (row_t15.get("title"), row_t15.get("titleSort")))
+    request(base, "PUT", "/library/metadata/%s?title=%s" % (movie, quote("The Zeta Art ")))
+    row_t15 = get(base, "/library/metadata/%s" % movie)[1].get("Metadata", [{}])[0]
+    check("the article still comes off a title with trailing whitespace",
+          row_t15.get("titleSort") == "Zeta Art ", repr(row_t15.get("titleSort")))
+    request(base, "PUT", "/library/metadata/%s?title=%s" % (movie, quote(trim_before_t15)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
