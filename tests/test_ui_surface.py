@@ -6285,6 +6285,31 @@ def main():
           "unknown %s, ratingKey %s, clear %s leaving %d, smart add %s drop %s"
           % (unknown_w12b, by_key_w12b, clear_w12b, len(left_w12b), smart_add_w12b, smart_drop_w12b))
 
+    # Measured on plexscratch: a playlist move with an `after` the list does not hold -- an
+    # unknown id, `abc` -- sends the item to the FRONT, and `after` naming the item itself
+    # changes nothing. plexsim appended to the end.
+    _, made_w12c, _ = container(base, "POST", "/playlists?type=video&title=w12c&smart=0&uri=%s"
+                                              % quote("server://%s/com.plexapp.plugins.library/library/sections/%s"
+                                                      "/all?type=1" % (machine, movie_section)))
+    list_w12c = (made_w12c.get("Metadata") or [{}])[0].get("ratingKey")
+    def order_w12c():
+        return [r.get("playlistItemID") for r in get(base, "/playlists/%s/items" % list_w12c)[1].get("Metadata") or []]
+    ids_w12c = order_w12c()
+    if len(ids_w12c) >= 3:
+        request(base, "PUT", "/playlists/%s/items/%s/move?after=999999" % (list_w12c, ids_w12c[-1]))
+        unknown_w12c = order_w12c()
+        request(base, "PUT", "/playlists/%s/items/%s/move?after=%s" % (list_w12c, ids_w12c[1], ids_w12c[1]))
+        itself_w12c = order_w12c()
+        request(base, "PUT", "/playlists/%s/items/%s/move?after=abc" % (list_w12c, ids_w12c[0]))
+        abc_w12c = order_w12c()
+        check("a playlist move after nothing it holds goes to the front, and after itself stays",
+              unknown_w12c[0] == ids_w12c[-1] and itself_w12c == unknown_w12c and abc_w12c[0] == ids_w12c[0],
+              "%s -> %s -> %s -> %s" % (ids_w12c, unknown_w12c, itself_w12c, abc_w12c))
+    else:
+        skip("a playlist move after nothing it holds goes to the front, and after itself stays",
+             "need three movies")
+    request(base, "DELETE", "/playlists/%s" % list_w12c)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
