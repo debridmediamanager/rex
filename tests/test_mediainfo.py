@@ -30,9 +30,10 @@ FIXTURES = os.path.join(HERE, "fixtures", "media")
 CHECKS = []
 
 
-def check(name):
+def check(name, once=False):
+    """Register a check. A `once` check is called once, not per fixture."""
     def register(function):
-        CHECKS.append((name, function))
+        CHECKS.append((name, function, once))
         return function
     return register
 
@@ -178,6 +179,19 @@ def _video_bit_depth(fixture):
     return per_stream(1, ("bitDepth",))(fixture)
 
 
+@check("video-resolution")
+def _video_resolution_label(fixture):
+    return per_media(("videoResolution",))(fixture)
+
+
+@check("video-resolution-survey", once=True)
+def _video_resolution_survey(mediainfo):
+    survey = json.load(open(os.path.join(HERE, "fixtures", "media-resolutions.json")))
+    return [("%dx%d (%d Media on fun)" % (width, height, count), label,
+             mediainfo._video_resolution(height, width))
+            for width, height, label, count in survey["rows"]]
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
@@ -211,20 +225,23 @@ def main():
     parser.add_argument("--examples", type=int, default=6)
     args = parser.parse_args()
     if args.list:
-        print("\n".join(name for name, _ in CHECKS))
+        print("\n".join(name for name, _, _ in CHECKS))
         return 0
     mediainfo = load(args.root)
     corpus = fixtures(mediainfo)
     wanted = set(args.only.split(",")) if args.only else None
     passed = total = 0
-    for name, function in CHECKS:
+    for name, function, once in CHECKS:
         if wanted and name not in wanted:
             continue
         total += 1
+        code = function.__code__
+        extra = {"mediainfo": mediainfo} if "mediainfo" in code.co_varnames[:code.co_argcount] else {}
         try:
-            rows = [row for fixture in corpus for row in function(fixture, **(
-                {"mediainfo": mediainfo} if "mediainfo" in function.__code__.co_varnames[
-                    :function.__code__.co_argcount] else {}))]
+            if once:
+                rows = function(**extra)
+            else:
+                rows = [row for fixture in corpus for row in function(fixture, **extra)]
         except Exception as error:  # a check that cannot run on a tree fails there
             print("FAIL %s: raised %s: %s" % (name, type(error).__name__, error))
             continue
