@@ -947,6 +947,33 @@ SUBTITLE_LANGUAGES = frozenset(
     if len(code) == 2 and code.isalpha())
 
 
+def _with_client_titles(node, product):
+    """A response with every Stream's displayTitle as `product` is sent it.
+
+    Measured on both servers: Plex Web and twelve other products get the codec in a video's
+    and a subtitle's displayTitle (mediainfo.CODEC_TITLE_PRODUCTS). Only the dicts and lists
+    on the way to a changed Stream are copied: responses hand back the catalog's own
+    Media/Part/Stream dicts, and a title written into one would reach every other client.
+    """
+    if isinstance(node, list):
+        items = [_with_client_titles(item, product) for item in node]
+        return items if any(new is not old for new, old in zip(items, node)) else node
+    if not isinstance(node, dict):
+        return node
+    copy = None
+    if node.get("streamType") in (1, 3) and node.get("displayTitle"):
+        title = mediainfo_module.client_display_title(node, product)
+        if title != node["displayTitle"]:
+            copy = dict(node, displayTitle=title)
+    for key, value in node.items():
+        if isinstance(value, (dict, list)):
+            changed = _with_client_titles(value, product)
+            if changed is not value:
+                copy = dict(node) if copy is None else copy
+                copy[key] = changed
+    return node if copy is None else copy
+
+
 def _exclude_fields(container, spec):
     """`excludeFields=` applied to a whole response, as a real PMS applies it.
 
@@ -1998,6 +2025,9 @@ class PlexSim:
             result = self._route(method, route, segments, query, body, headers, address)
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
+            product = query.get("X-Plex-Product") or (headers or {}).get("X-Plex-Product")
+            if isinstance(result, dict) and product in mediainfo_module.CODEC_TITLE_PRODUCTS:
+                result = _with_client_titles(result, product)
             return result
         except filters_module.FilterError as refused:
             # A query a real PMS refuses, with the status IT answers: 400 for a
