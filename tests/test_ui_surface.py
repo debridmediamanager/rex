@@ -1841,7 +1841,10 @@ def main():
             ("PUT", "/library/metadata/%s/move?after=1" % movie, 404, "moving an item"),
             ("GET", "/library/sections/%s/search?query=a" % movie_section, 400,
              "section search"),
-            ("GET", "/library/sections/%s/albums" % movie_section, 404, "a music leaf"),
+            # Re-measured in cycle 9 on both servers: `/albums` is NOT refused -- it is
+            # an empty "By Album" list, on a movie and a show library alike. This entry
+            # had wanted a 404.
+            ("GET", "/library/sections/%s/albums" % movie_section, 200, "a music leaf"),
             ("GET", "/library/streams/99999999", 404, "an unknown sidecar stream"),
             ("GET", "/video/:/transcode/universal/subtitles?session=x", 400,
              "a subtitle request with no transcode session"),
