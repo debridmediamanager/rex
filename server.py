@@ -6466,6 +6466,19 @@ class PlexSim:
             hubs[-1]["context"] = "hub.results.search"
         return self.bare_container(size=len(hubs), Hub=hubs)
 
+    def _foreign_uri(self, uri):
+        """Whether a `server://` uri names a machine that is not this one.
+
+        Measured on the copy: `server://<other machine>/com.plexapp.plugins.library/...`
+        adds nothing at all, where a uri with the same machine and a different PROVIDER
+        segment is added normally. plexsim read the ratingKey out of any uri shaped like
+        one and added the item whoever it belonged to.
+        """
+        if not str(uri).startswith("server://"):
+            return False
+        machine = str(uri)[len("server://"):].split("/", 1)[0]
+        return bool(machine) and machine != self.catalog.machine
+
     def _items_for_uri(self, uri, continuous=False, expand=True):
         """Resolve a playQueue `uri` to the rows it should enqueue.
 
@@ -8230,14 +8243,24 @@ class PlexSim:
             if not query.get("uri") and not query.get("playlistID"):
                 # Measured: a bare refresh PUT with no uri is a 400.
                 return ("error", 400, "plexsim: bad request")
-            rows = self._items_for_uri(query.get("uri", ""),
-                                      continuous=query.get("continuous") == "1")
+            rows = ([] if self._foreign_uri(query.get("uri", ""))
+                    else self._items_for_uri(query.get("uri", ""),
+                                             continuous=query.get("continuous") == "1"))
             if not query.get("uri") and query.get("playlistID"):
                 # Measured on a writable copy of the reference: `playlistID=` adds that
                 # playlist's items as a plain add. plexsim stepped the version and added
                 # nothing.
                 playlist = self.library.playlist(query["playlistID"])
                 rows = [row for row, _item in self.library.playlist_items(playlist)] if playlist else []
+            if not rows:
+                # Measured on the copy: an add that adds NOTHING leaves the queue exactly
+                # as it was -- `playQueueVersion` does not move, and neither does
+                # `playQueueLastAddedItemID`. plexsim stepped the version on every no-op,
+                # and the client DISCARDS a queue response whose version it does not
+                # expect, so a no-op add invalidated the queue the player was holding.
+                # The return sits OUTSIDE the lock: play_queue_container takes the same
+                # one and it is not reentrant.
+                return self.play_queue_container(queue_id, query)
             with self.lock:
                 items = queue["items"]
                 new = self._queue_items(rows)
