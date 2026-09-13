@@ -9491,6 +9491,47 @@ def main():
               "title %s vs show.title %s (shows %s) | index %s vs season.index %s"
               % (bare_c14g, show_c14g, shows_c14g, idx_c14g, season_c14g))
 
+
+    # Cycle 14: the actor axis is the union of each item's FIRST THREE roles. kids'
+    # five movies contribute 0+2+2+2+3 and the axis totalSize is exactly 9; zen's is
+    # 3413 against 59030 actor tags. Every other tag axis carries every tag. plexsim
+    # listed all of them, so on a real library it would hold 155 names per movie.
+    roles_c14h = []
+    for row_c14h in get(base, "/library/sections/%s/all" % movie_section)[1] \
+            .get("Metadata") or []:
+        detail_c14h = (get(base, "/library/metadata/%s" % row_c14h["ratingKey"])[1]
+                       .get("Metadata") or [{}])[0]
+        roles_c14h.append([t.get("tag") for t in detail_c14h.get("Role") or []])
+    axis_c14h = [d.get("title") for d in
+                 get(base, "/library/sections/%s/actor" % movie_section)[1]
+                 .get("Directory") or []]
+    want_c14h = set()
+    for names_c14h in roles_c14h:
+        want_c14h |= set(names_c14h[:3])
+    beyond_c14h = set()
+    for names_c14h in roles_c14h:
+        beyond_c14h |= set(names_c14h[3:])
+    beyond_c14h -= want_c14h
+    dirs_c14h = [d.get("title") for d in
+                 get(base, "/library/sections/%s/director" % movie_section)[1]
+                 .get("Directory") or []]
+    alldirs_c14h = set()
+    for row_c14h in get(base, "/library/sections/%s/all" % movie_section)[1] \
+            .get("Metadata") or []:
+        detail_c14h = (get(base, "/library/metadata/%s" % row_c14h["ratingKey"])[1]
+                       .get("Metadata") or [{}])[0]
+        alldirs_c14h |= {t.get("tag") for t in detail_c14h.get("Director") or []}
+    if not beyond_c14h:
+        skip("the actor axis carries each item's first three roles only",
+             "no fixture row has more than three roles")
+    else:
+        check("the actor axis carries each item's first three roles only",
+              set(axis_c14h) == want_c14h and not (set(axis_c14h) & beyond_c14h)
+              and alldirs_c14h <= set(dirs_c14h),
+              "axis %d, first-three %d, beyond-three omitted %s, directors all present %s"
+              % (len(axis_c14h), len(want_c14h), not (set(axis_c14h) & beyond_c14h),
+                 alldirs_c14h <= set(dirs_c14h)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
