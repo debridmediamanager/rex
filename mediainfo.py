@@ -255,7 +255,7 @@ def _video_stream(stream, stream_id):
         "colorTrc": stream.get("color_transfer"),
         "colorSpace": stream.get("color_space"),
         "frameRate": _float_or_none(stream.get("r_frame_rate")),
-        "scanType": "progressive",
+        "scanType": _scan_type(stream.get("field_order")),
     }
     # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
     # eight DOVI attributes are ffprobe's DOVI configuration record, field for field. They
@@ -306,6 +306,15 @@ def _bit_depth(stream):
         return raw
     match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
     return int(match.group(1)) if match else 8
+
+
+def _scan_type(field_order):
+    """Measured on 47 video streams: absent where ffprobe reports no field order (19),
+    `interlaced` for a field-ordered stream (`tt`), `progressive` otherwise. plexsim wrote
+    `progressive` on every one."""
+    if not field_order:
+        return None
+    return "progressive" if field_order == "progressive" else "interlaced"
 
 
 def _chroma(pix_fmt):
