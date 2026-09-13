@@ -2840,6 +2840,28 @@ anything changed.
   blank or -1 -- the first shuffled on each request and capped at 100 in a bare `size`
   container, the second in ratingKey order in the library's container. plexsim 404'd both.
 
+Measured in the ninth pass and not acted on:
+
+- `/services/ultrablur/image` renders a four-colour PNG and `/colors?url=` decodes an
+  image into its corner colours (both 400 without parameters). plexsim's server path is
+  stdlib only, with no image encoder or decoder -- the same limit as `thumbBlurHash`.
+- `/library/metadata/{id}/file?url=` is a 400 on the reference and a 404 on fun; only
+  the bare form, which both refuse with 400, is implemented.
+- An episode's `/allLeaves` container disagrees between the servers on `parentTitle`,
+  `parentYear` and `art`; only the fields both send were changed.
+- The reference's `/status/sessions/history/all` lists nothing while
+  `/status/sessions/history/1` still reads back; the two servers' history filtering by
+  account was not pinned down.
+- `/hubs/items` answers the genre and actor shelves (`movie.genre.1.23`,
+  `movie.by.actor.or.director.1.215`) that plexsim's library hubs do not build.
+- `/library/matches` options that consult a metadata provider
+  (`includeAlternateMetadataSources`, `agent=`) change nothing on either server's local
+  matches and are ignored.
+- Paging on the write-shaped reads (play queues, decisions, timelines) could not be
+  measured on the read-only reference; `_page_container` leaves them to their handlers
+  only where those already page.
+
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
