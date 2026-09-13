@@ -9283,6 +9283,36 @@ def main():
               and all(r_c13v is None for r_c13v in cleared_c13v),
               "set %s | seasons %s | cleared %s" % (after_c13v, seasons_c13v, cleared_c13v))
 
+
+    # Cycle 14: a real PMS derives titleSort by trimming whitespace and folding
+    # combining marks BEFORE stripping the article. Measured on zen over 5,294 rows
+    # -- all 21 accented rows carry the folded form and all 90 leading-space rows
+    # carry the trimmed one, with no counterexample, which is what makes it the
+    # server's derivation and not agent metadata. plexsim stripped the article only,
+    # so an accented row sorted under its raw title and sent no titleSort at all.
+    orig_c14a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("title") or "Movie")
+    request(base, "PUT", "/library/metadata/%s?titleSort.locked=0" % movie)
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("Amélie Café")))
+    fold_c14a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("titleSort"))
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("  Zebra Test")))
+    ws_c14a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+               .get("titleSort"))
+    # A title whose non-ASCII does not decompose is left alone, so it sends none.
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("Zoro’s Swords")))
+    keep_c14a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("titleSort"))
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote(orig_c14a)))
+    check("titleSort trims whitespace and folds combining marks before the article",
+          fold_c14a == "Amelie Cafe" and ws_c14a == "Zebra Test" and keep_c14a is None,
+          "accented %r | leading-space %r | undecomposable %r"
+          % (fold_c14a, ws_c14a, keep_c14a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

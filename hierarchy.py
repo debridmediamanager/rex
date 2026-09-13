@@ -16,6 +16,7 @@ honest answer for a file nothing could be matched to.
 
 import hashlib
 import re
+import unicodedata
 
 # ratingKey ranges, kept disjoint so a key identifies its own row type on sight.
 SHOW_BASE = 20000
@@ -100,14 +101,41 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
                      ".wmv", ".flv", ".mpg", ".mpeg")
 
 
-def sort_title(title):
-    """The title a real PMS sorts by: the leading English article stripped.
+def _fold_marks(text):
+    """Drop Unicode combining marks, leaving everything NFD does not decompose."""
+    return "".join(ch for ch in unicodedata.normalize("NFD", text)
+                   if not unicodedata.combining(ch))
 
-    Measured on fun: all 850 "The", 79 "A" and 6 "An" titles lose it (`The 'Burbs`
-    sorts as `'Burbs`), an episode strips its OWN title (`The Train Job` is
-    `Train Job`), and nothing else changes.
+
+def sort_title(title):
+    """The title a real PMS sorts by: whitespace trimmed, combining marks folded
+    away, then the leading English article stripped.
+
+    Cycle 14 re-measured this on zen (1.42.2, the build plexsim reports) over all
+    5,294 rows of a real library, because the old rule had only fun -- now out of
+    scope -- as its witness and a five-clip lab has no title that can show the rest.
+    Three things, in this order, reproduce 5,289 of those rows exactly:
+
+    * Leading whitespace goes. 90 rows begin with a space and every one carries a
+      `titleSort` with it removed; none is missing one.
+    * Combining marks are folded to ASCII: `Amelie`, `Bahubali`, `Bogota`, `Cafe`,
+      `Senor's`. All 21 accented rows across movies, shows and episodes carry the
+      folded form and not one lacks a titleSort -- which is what makes this the
+      server's own derivation rather than something an agent supplied. The fold is
+      combining marks ONLY: the 51 rows whose non-ASCII survives NFD (CJK, the
+      curly apostrophe, an en dash) carry NO titleSort at all, because for them the
+      derived string equals the title.
+    * Then the article, as before.
+
+    The five rows this misses are Spanish `La` (4) and German `Das` (1). Those are
+    NOT mechanical -- `Les hommes de la baleine`, `Die Die Delta Pi II` and
+    `O Ultimo Portal` keep theirs -- so the article list is per-item language, which
+    plexsim's catalog does not carry. Left alone deliberately; see docs/findings.md.
+
+    Only the LEADING half of the whitespace trim has a witness (zen holds no title
+    with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
     """
-    return _ARTICLE.sub("", title or "")
+    return _ARTICLE.sub("", _fold_marks(title or "").strip())
 
 
 def normalize_rows(rows):
