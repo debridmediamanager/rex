@@ -3799,10 +3799,21 @@ class PlexSim:
             for row in self.typed_rows(section_id, query):
                 title = str(row.get("titleSort") or row.get("title") or "")
                 first = (title[:1] or "#").upper()
-                if not first.isalpha():
+                # Cycle 14, reconstructed from zen's 3887 rows against its own axis:
+                # `#` is the DIGITS bucket, not the everything-else one. The 29 rows
+                # in `#` are exactly the 29 whose sort title starts with 0-9, and the
+                # one row starting with a bracket gets a bucket of its OWN, listed
+                # after Z. plexsim folded every non-letter into `#`, so a library of
+                # CJK or punctuation-led titles collapsed to one bucket.
+                if first.isdigit():
                     first = "#"
                 counts[first] = counts.get(first, 0) + 1
-            entries = [{"size": counts[k], "key": k, "title": k} for k in sorted(counts)]
+            # ...and the bucket KEY is percent-encoded, which `#` needs most of all --
+            # raw, it is a URL fragment and the client's request loses everything after
+            # it. Corroborated on kids, whose other axes encode the same way
+            # (`contentRating` key `Not%20Rated`).
+            entries = [{"size": counts[k], "key": urllib.parse.quote(k), "title": k}
+                       for k in sorted(counts)]
             return self.secondary_container(section_id, section, "By First Letter",
                                             Directory=entries)
         if leaf == "categories":

@@ -9657,6 +9657,36 @@ def main():
               "section %s -> %s (grid %s) | item %s -> %s"
               % (plain_c14l, grouped_c14l, grid_c14l, item_plain_c14l, item_c14l))
 
+
+    # Cycle 14: `#` is the DIGITS bucket only -- any other non-letter gets a bucket of
+    # its own -- and every bucket key is percent-encoded. Reconstructed from zen's 3887
+    # rows against its own axis (29 digit-led rows = the `#` bucket's 29; one
+    # bracket-led row in a bucket of its own, key `%E3%80%8E`, listed after Z), with
+    # the encoding corroborated on kids' other axes (`contentRating` key `Not%20Rated`).
+    # plexsim folded every non-letter into `#` and emitted the key raw, so `#` was a URL
+    # fragment the client's request threw away.
+    orig_c14m = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("title") or "Movie")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("300 Spartans")))
+    buckets_c14m = [(d.get("title"), d.get("key")) for d in
+                    get(base, "/library/sections/%s/firstCharacter" % movie_section)[1]
+                    .get("Directory") or []]
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("『Bracket』 Movie")))
+    odd_c14m = [(d.get("title"), d.get("key")) for d in
+                get(base, "/library/sections/%s/firstCharacter" % movie_section)[1]
+                .get("Directory") or []]
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote(orig_c14m)))
+    check("# is the digits bucket, any other non-letter gets its own, keys encoded",
+          ("#", "%23") in buckets_c14m
+          and ("『", "%E3%80%8F") not in odd_c14m
+          and ("『", urllib.parse.quote("『")) in odd_c14m
+          and not any(t_c14m == "#" for t_c14m, _k in odd_c14m)
+          and odd_c14m[-1][0] == "『",
+          "digits %s | bracket %s" % (buckets_c14m, odd_c14m))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
