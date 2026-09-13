@@ -3038,6 +3038,10 @@ the same parameters, then read back from both.
 - **A collection create needs a `title` and a `sectionId`.** Each missing one is a 400;
   plexsim made an `Untitled` collection in the first row's library. A missing `uri` is a
   200 on both servers.
+- **A collection over a show holds the show, and one over a season holds the season.**
+  `type=2` from a show answers `subtype: show` with one child, `type=3` from a season
+  `subtype: season`; plexsim expanded both into episodes (`subtype: episode`, the show's
+  three).
 
 ### Emulation calibrated against the account's own claimed servers
 
