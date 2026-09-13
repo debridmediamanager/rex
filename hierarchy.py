@@ -141,6 +141,7 @@ def normalize_rows(rows):
       without a theme carries none of the three, on itself or its children, and the
       web client asks for whichever it finds when theme music is on.
     """
+    by_key = {str(row.get("ratingKey")): row for row in rows}
     for row in rows:
         kind = row.get("type")
         title = row.get("title") or ""
@@ -179,6 +180,13 @@ def normalize_rows(rows):
         if kind == "show":
             for location in row.get("Location") or []:
                 location.pop("id", None)
+        if kind == "episode" and row.get("parentGuid") == row.get("grandparentGuid"):
+            # Measured on kids (1.43.4) and zen (1.42.2): an episode's parentGuid is the
+            # SEASON's guid. A catalog built before that was measured carries the show's
+            # guid in both, so the season's own guid is looked up here at load.
+            season_row = by_key.get(str(row.get("parentRatingKey")))
+            if season_row and season_row.get("guid"):
+                row["parentGuid"] = season_row["guid"]
         if kind == "episode":
             if not row.get("Chapter"):
                 row.pop("chapterSource", None)
@@ -367,7 +375,13 @@ def build(leaves):
         leaf["grandparentThumb"] = show["thumb"]
         leaf["grandparentArt"] = show["art"]
         leaf["grandparentGuid"] = show.get("guid")
-        leaf["parentGuid"] = season.get("parentGuid")
+        # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
+        # SEASON's own guid (`plex://season/...`), not the show's. plexsim copied the
+        # season's `parentGuid` -- which is the show, correct for the season row itself
+        # and wrong on the leaf -- so every episode of a show claimed to belong to one
+        # and the same "season", and a client that keys per-season artwork or state off
+        # it had nothing to tell the seasons apart with.
+        leaf["parentGuid"] = season.get("guid") or season.get("parentGuid")
         # Verified against a real episode: `art` points at the SEASON.
         leaf["art"] = season["art"]
         if show.get("contentRating") and not leaf.get("contentRating"):
