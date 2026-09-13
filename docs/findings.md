@@ -2779,6 +2779,8 @@ anything changed.
   lists slices each and counts `size` over them. Only a plug-in framework container
   (`noHistory`, e.g. `/system/scanners/1`) and a non-MediaContainer root are left
   alone. plexsim paged seven listings; the rule now lives in the response path.
+- **`/system/agents/{identifier}` is a 404** with an empty body on both servers, for a
+  real agent and an unknown one alike. plexsim answered the whole list.
 
 ### Emulation calibrated against the account's own claimed servers
 

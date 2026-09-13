@@ -5626,6 +5626,12 @@ def main():
               prefs_page9.get("size"), prefs_page9.get("totalSize"),
               identity_page9.get("totalSize"), scanners_page9.get("totalSize")))
 
+    agent_statuses9 = [get(base, "/system/agents/%s" % name)[0]
+                       for name in ("tv.plex.agents.movie", "nosuch.agent")]
+    check("one agent by identifier is a 404, the agent list a 200",
+          agent_statuses9 == [404, 404] and get(base, "/system/agents")[0] == 200,
+          str(agent_statuses9))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
