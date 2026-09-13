@@ -101,7 +101,7 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
                      ".wmv", ".flv", ".mpg", ".mpeg")
 
 
-def _fold_marks(text):
+def fold_marks(text):
     """Drop Unicode combining marks, leaving everything NFD does not decompose."""
     return "".join(ch for ch in unicodedata.normalize("NFD", text)
                    if not unicodedata.combining(ch))
@@ -135,7 +135,7 @@ def sort_title(title):
     Only the LEADING half of the whitespace trim has a witness (zen holds no title
     with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
     """
-    return _ARTICLE.sub("", _fold_marks(title or "").strip())
+    return _ARTICLE.sub("", fold_marks(title or "").strip())
 
 
 def normalize_rows(rows):

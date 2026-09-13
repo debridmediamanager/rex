@@ -9313,6 +9313,33 @@ def main():
           "accented %r | leading-space %r | undecomposable %r"
           % (fold_c14a, ws_c14a, keep_c14a))
 
+
+    # Cycle 14: the word-prefix matcher folds combining marks, the section's
+    # substring box does not -- both measured on zen, which holds real accented
+    # titles. Give a fixture row an accented name and ask for the plain spelling.
+    orig_c14b = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("title") or "Movie")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("Amélie Café")))
+    hub_c14b = []
+    for hub_row_c14b in get(base, "/hubs/search?query=Amelie")[1].get("Hub") or []:
+        hub_c14b += [r.get("title") for r in hub_row_c14b.get("Metadata") or []]
+    flat_c14b = [(r.get("Metadata") or {}).get("title")
+                 for r in get(base, "/library/search?query=Amelie")[1].get("SearchResult") or []]
+    plain_c14b = [r.get("title") for r in
+                  get(base, "/library/sections/%s/search?type=1&query=Amelie"
+                      % movie_section)[1].get("Metadata") or []]
+    acc_c14b = [r.get("title") for r in
+                get(base, "/library/sections/%s/search?type=1&query=%s"
+                    % (movie_section, urllib.parse.quote("Amélie")))[1].get("Metadata") or []]
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote(orig_c14b)))
+    check("the word matcher folds accents and the substring box does not",
+          "Amélie Café" in hub_c14b and "Amélie Café" in flat_c14b
+          and plain_c14b == [] and "Amélie Café" in acc_c14b,
+          "hubs %s | flat %s | plain %s | accented %s"
+          % (hub_c14b[:2], flat_c14b[:2], plain_c14b, acc_c14b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

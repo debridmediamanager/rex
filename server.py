@@ -769,12 +769,23 @@ class Catalog:
         called "Halina Reijn" -- which is a trigram score plexsim does not try to
         reproduce, and says so rather than approximating it badly.
         """
-        needle = query.lower().strip()
+        # Cycle 14, on zen: the word matcher folds combining marks on BOTH sides.
+        # `Amelie` finds "Amelie" and `Bogota` finds "Bogota: City of the Lost" --
+        # and so does the accented spelling of either, on /hubs/search and on
+        # /library/search alike (same 0.93095 score for both spellings). The
+        # section's substring box does NOT: there `Amelie` finds nothing and only
+        # the accented spelling hits, so that one is left alone below.
+        #
+        # plexsim split on [^0-9a-z], which makes an accented letter a SEPARATOR:
+        # "Amelie" became the two words "am" and "lie", so the quick search never
+        # found the row by its own name and did find it under a fragment of one.
+        needle = hierarchy_module.fold_marks(query).lower().strip()
         if len(needle) < 2:
             return []
 
         def hit(text):
-            words = re.split(r"[^0-9a-z]+", str(text or "").lower())
+            words = re.split(r"[^0-9a-z]+",
+                             hierarchy_module.fold_marks(str(text or "")).lower())
             return any(word.startswith(needle) for word in words if word) \
                 or " ".join(w for w in words if w).startswith(needle)
 
