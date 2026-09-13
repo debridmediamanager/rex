@@ -9791,6 +9791,32 @@ def main():
           and art_c14p["arts"][0] == 200 and writes_c14p == (404, 404),
           "%s | writes %s" % (art_c14p, writes_c14p))
 
+
+    # Cycle 14: the two families of axis added above disagree about `type=`, and both
+    # disagreements are measured on kids and zen. A cross-type axis VALIDATES it --
+    # `?type=abc` and an empty `?type=` are 500s, `?type=2` a 200 -- exactly as `/genre`
+    # does; `userRating` IGNORES it completely, answering 200 to all three the way
+    # `/resolution` does. Landing them in one branch got `userRating` right and the
+    # cross-type axes wrong.
+    def axstatus_c14q(axis_c14q, spec_c14q):
+        return request(base, "GET", "/library/sections/%s/%s%s"
+                       % (movie_section, axis_c14q, spec_c14q))[0]
+
+    cross_c14q = {spec_c14q: [axstatus_c14q(a_c14q, spec_c14q)
+                              for a_c14q in ("mood", "tag", "style", "make")]
+                  for spec_c14q in ("", "?type=2", "?type=abc", "?type=")}
+    rating_c14q = [axstatus_c14q("userRating", s_c14q)
+                   for s_c14q in ("", "?type=2", "?type=abc", "?type=")]
+    genre_c14q = [axstatus_c14q("genre", s_c14q)
+                  for s_c14q in ("?type=abc", "?type=")]
+    check("a cross-type axis validates type= and userRating ignores it",
+          cross_c14q[""] == [200] * 4 and cross_c14q["?type=2"] == [200] * 4
+          and cross_c14q["?type=abc"] == [500] * 4 and cross_c14q["?type="] == [500] * 4
+          and rating_c14q == [200] * 4 and genre_c14q == [500, 500],
+          "cross %s | userRating %s | genre %s"
+          % ({k_c14q: sorted(set(v_c14q)) for k_c14q, v_c14q in cross_c14q.items()},
+             sorted(set(rating_c14q)), genre_c14q))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
