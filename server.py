@@ -6292,8 +6292,13 @@ class PlexSim:
             "id": tag.get("id"),
             "filter": "%s=%s" % (field, tag.get("id")),
             "tag": tag.get("tag"),
-            # Plex's own tagType codes: 4 is a person, 1 a genre.
-            "tagType": 4 if hub in ("actor", "director") else 1,
+            # Plex's own tagType codes, re-measured on kids (1.43.4) and zen (1.42.2):
+            # an ACTOR row is 6 and a DIRECTOR row is 4 -- they are different tag types,
+            # not one "person" type. plexsim called both 4, while `/library/people/{id}`
+            # already answered 6 for the same person, so the server contradicted itself
+            # and a client keying artwork or a filter off the search row's tagType built
+            # the wrong link.
+            "tagType": {"actor": 6, "director": 4}.get(hub, 1),
             "count": len(entry["rows"]),
         }
         if tag.get("thumb"):
