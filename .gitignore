@@ -17,3 +17,4 @@ webclient
 webclient_fun/
 __pycache__/
 *.pyc
+handover/tools/scratch.token
