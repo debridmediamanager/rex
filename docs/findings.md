@@ -3221,6 +3221,10 @@ below is one check there, and each check failed against the code before its fix.
   short. Two fun files whose bitrate is neither, and the reference's clips, are left alone.
 - **The frame rate is the average one.** The reference's mp4 clip with a nominal 48 fps
   reads `23.947` and `24p`, ffprobe's `avg_frame_rate`; plexsim used `r_frame_rate`.
+- **The Media's audio fields name the track with the most channels**, the first on a tie
+  (35 of 35 files; the first track was the wrong one in 9), and a DTS-HD MA track is
+  `dca-ma` there, as on 2,075 of fun's 4,951 Media, while every other DTS variant stays
+  `dca`. plexsim named the first track, and a client gates direct play on these fields.
 
 ### Emulation calibrated against the account's own claimed servers
 
