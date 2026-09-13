@@ -116,8 +116,15 @@ def sort_title(title):
     scope -- as its witness and a five-clip lab has no title that can show the rest.
     Three things, in this order, reproduce 5,289 of those rows exactly:
 
-    * Leading whitespace goes. 90 rows begin with a space and every one carries a
-      `titleSort` with it removed; none is missing one.
+    * Leading whitespace goes, and ONLY leading whitespace. 90 rows of zen begin
+      with a space and every one carries a `titleSort` with it removed; none is
+      missing one. Cycle 14 read that as `.strip()` and recorded the symmetric
+      half as unwitnessed, because zen holds no row with trailing or doubled
+      whitespace at all. Cycle 15 settled it by writing one on the copy:
+      `'  Zeta Both  '` sorts as `'Zeta Both  '`, and `'Zeta Trail '` carries NO
+      `titleSort`, because the derived string still equals the title. The trailing
+      space survives, so this is an `lstrip`; `'The Zeta Art '` gives `'Zeta Art '`,
+      so the article still comes off afterwards.
     * Combining marks are folded to ASCII: `Amelie`, `Bahubali`, `Bogota`, `Cafe`,
       `Senor's`. All 21 accented rows across movies, shows and episodes carry the
       folded form and not one lacks a titleSort -- which is what makes this the
@@ -135,7 +142,7 @@ def sort_title(title):
     Only the LEADING half of the whitespace trim has a witness (zen holds no title
     with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
     """
-    return _ARTICLE.sub("", fold_marks(title or "").strip())
+    return _ARTICLE.sub("", fold_marks(title or "").lstrip())
 
 
 def normalize_rows(rows):
