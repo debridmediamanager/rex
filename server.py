@@ -4701,7 +4701,20 @@ class PlexSim:
                     if s.get("streamType") == wanted
                     for code in (s.get("languageTag"), s.get("languageCode"))
                     if code]
-        if field in ("hdr", "dovi", "hdr10plus", "atmos", "duplicate", "trash"):
+        if field == "duplicate":
+            # Measured on zen, which has 214 duplicated movies of 3887 and 504 episodes
+            # of 9287: the Duplicates filter is "more than one Media on the row", and for
+            # a SHOW or SEASON -- neither of which has Media of its own -- it is "a leaf
+            # under it has more than one" (44 shows and 74 seasons there, each sampled
+            # one holding a multi-Media episode). plexsim returned 0 here, so a filter
+            # its own `includeAdvanced` Meta advertises could never select anything.
+            if len(row.get("Media") or []) > 1:
+                return 1
+            if row.get("type") in ("show", "season"):
+                return 1 if any(len(leaf.get("Media") or []) > 1
+                                for leaf in self.catalog.leaves(row.get("ratingKey"))) else 0
+            return 0
+        if field in ("hdr", "dovi", "hdr10plus", "atmos", "trash"):
             # plexsim's probe data carries no HDR or Atmos flag and it keeps no
             # trash, so these are honestly false rather than guessed.
             return 0
