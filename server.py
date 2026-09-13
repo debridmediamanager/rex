@@ -1861,9 +1861,16 @@ class PlexSim:
         a valid detail document that simply lacks the block the client asked for,
         so the page renders with a section missing rather than with an error.
         """
-        if query.get("includeChildren") == "1":
+        if query.get("includeChildren") == "1" and row.get("type") == "show":
             # A show gains its seasons INLINE, as a `Children` block with its own
             # size -- not a second request to /children.
+            #
+            # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): a SHOW and
+            # nothing else. Neither reference inlines a season's episodes, and
+            # neither is silent for want of them -- kids' season 7 holds three and
+            # zen's season 17201 holds twenty-two. plexsim inlined them, so a season
+            # page was handed an episode list it had not asked for and then fetched
+            # the same list again from /children.
             children = self.catalog.children(row["ratingKey"])
             if children:
                 detail["Children"] = {"size": len(children),
