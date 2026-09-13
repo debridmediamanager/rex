@@ -5744,11 +5744,19 @@ def main():
         history9 = get(base, "/status/sessions/history/all")[1].get("Metadata") or []
     if history9:
         status_item9, item9, _ = get(base, history9[0]["historyKey"])
-        check("one history row reads back by its historyKey",
+        one9 = (item9.get("Metadata") or [{}])[0]
+        # Re-measured in cycle 11 on kids (1.43.4) and zen (1.42.2), against every
+        # readable row on each: the single read is NOT the row history/all lists. It is a
+        # nine-attribute projection carrying `viewType: 1` and no `key`, `ratingKey` or
+        # artwork. This check asserted the two were equal.
+        check("one history row reads back by its historyKey, as a projection",
               status_item9 == 200 and item9.get("size") == 1
-              and (item9.get("Metadata") or [{}])[0] == history9[0]
+              and one9.get("historyKey") == history9[0]["historyKey"]
+              and one9.get("viewType") == 1
+              and one9.get("title") == history9[0].get("title")
+              and not {"key", "ratingKey", "thumb"} & set(one9)
               and get(base, "/status/sessions/history/999999999")[0] == 404,
-              "HTTP %s for %s" % (status_item9, history9[0]["historyKey"]))
+              "HTTP %s for %s -> %s" % (status_item9, history9[0]["historyKey"], sorted(one9)))
     else:
         skip("one history row reads back by its historyKey", "no history row could be made")
 
@@ -7619,31 +7627,32 @@ def main():
     # query surface like `/all` -- `type=`, the filters, `sort=` and `limit=` all
     # apply, an unknown sort key and an unparseable type are 500s. plexsim answered
     # its whole leaf list to every one of them.
-    def leaves_c11d(query_c11d=""):
-        status, body, _ = get(base, "/library/sections/%s/allLeaves%s" % (movie_section, query_c11d))
+    # Stated as "allLeaves answers the same query the grid answers" rather than against a
+    # hand-computed order: on a movie library the two are over the same rows, and by this
+    # point in the suite the fixture's titles have been edited into ties, which an
+    # asserted `desc == reversed(plain)` cannot survive.
+    def leaves_c11d(query_c11d="", leaf_c11d="allLeaves"):
+        status, body, _ = get(base, "/library/sections/%s/%s%s" % (movie_section, leaf_c11d, query_c11d))
         return status, [r.get("ratingKey") for r in (body.get("Metadata") or [])]
-    plain_c11d = leaves_c11d()
-    year_c11d = leaves_c11d("?year=%s" % ((get(base, "/library/metadata/%s" % movie)[1]
-                                           .get("Metadata") or [{}])[0].get("year") or 0))
-    nothing_c11d = leaves_c11d("?year=1899")
-    typed_c11d = leaves_c11d("?type=1")
-    wrong_type_c11d = leaves_c11d("?type=4")
-    limit_c11d = leaves_c11d("?limit=1")
-    desc_c11d = leaves_c11d("?sort=titleSort:desc")
+    year_c11d = ((get(base, "/library/metadata/%s" % movie)[1]
+                  .get("Metadata") or [{}])[0].get("year") or 0)
+    queries_c11d = ("", "?year=%s" % year_c11d, "?year=1899", "?type=1", "?type=4",
+                    "?limit=1", "?sort=titleSort:desc", "?sort=year:desc,titleSort:asc")
+    same_c11d = {q_c11d: (leaves_c11d(q_c11d), leaves_c11d(q_c11d, "all")) for q_c11d in queries_c11d}
+    plain_c11d = same_c11d[""][0]
     bad_sort_c11d = request(base, "GET", "/library/sections/%s/allLeaves?sort=nope" % movie_section)[0]
     bad_type_c11d = request(base, "GET", "/library/sections/%s/allLeaves?type=abc" % movie_section)[0]
     check("a section's allLeaves filters, sorts, caps and types like a listing",
           plain_c11d[0] == 200 and len(plain_c11d[1]) >= 2
-          and nothing_c11d == (200, []) and len(year_c11d[1]) >= 1
-          and len(year_c11d[1]) <= len(plain_c11d[1])
-          and typed_c11d == plain_c11d and wrong_type_c11d == (200, [])
-          and limit_c11d == (200, plain_c11d[1][:1])
-          and desc_c11d == (200, list(reversed(plain_c11d[1])))
+          and all(leaf_c11d == grid_c11d for leaf_c11d, grid_c11d in same_c11d.values())
+          and same_c11d["?year=1899"][0] == (200, [])
+          and same_c11d["?type=4"][0] == (200, [])
+          and same_c11d["?limit=1"][0] == (200, plain_c11d[1][:1])
           and bad_sort_c11d == 500 and bad_type_c11d == 500,
-          "plain %s, year %s, none %s, type1 %s, type4 %s, limit %s, desc %s, "
-          "bad sort %s, bad type %s"
-          % (plain_c11d[1], year_c11d[1], nothing_c11d[1], typed_c11d[1], wrong_type_c11d[1],
-             limit_c11d[1], desc_c11d[1], bad_sort_c11d, bad_type_c11d))
+          "%s, bad sort %s, bad type %s"
+          % ({q_c11d: (leaf_c11d[1], grid_c11d[1])
+              for q_c11d, (leaf_c11d, grid_c11d) in same_c11d.items()},
+             bad_sort_c11d, bad_type_c11d))
 
 
     # Measured on kids (1.43.4) and zen (1.42.2): `id` filters every listing although
@@ -7693,10 +7702,19 @@ def main():
     # (tagType 6) only -- a Director, Writer or Producer list carries neither -- and
     # the list is a QUERY, so the library filters narrow it. plexsim sent the actor
     # container for every tag type and answered every row to every filter.
-    row_c11f = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    actor_c11f = next((t.get("id") for t in (row_c11f.get("Role") or []) if t.get("id")), None)
-    director_c11f = next((t.get("id") for t in (row_c11f.get("Director") or []) if t.get("id")), None)
-    year_c11f = row_c11f.get("year")
+    # Scanned across the whole section rather than off one row: by this point the suite
+    # has replaced that row's tag lists, and a check that skips is a check that never runs.
+    actor_c11f = director_c11f = year_c11f = None
+    for listed_c11f in (get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []):
+        row_c11f = (get(base, "/library/metadata/%s" % listed_c11f.get("ratingKey"))[1]
+                    .get("Metadata") or [{}])[0]
+        # Both ids have to come from the SAME row, or the year below narrows a list the
+        # other person is not on.
+        mine_c11f = next((t.get("id") for t in (row_c11f.get("Role") or []) if t.get("id")), None)
+        theirs_c11f = next((t.get("id") for t in (row_c11f.get("Director") or []) if t.get("id")), None)
+        if mine_c11f and theirs_c11f:
+            actor_c11f, director_c11f, year_c11f = mine_c11f, theirs_c11f, row_c11f.get("year")
+            break
     def media_c11f(person_c11f, query_c11f=""):
         status, body, _ = get(base, "/library/people/%s/media%s" % (person_c11f, query_c11f))
         return (status, body.get("viewGroup"), body.get("viewMode"),
