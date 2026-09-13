@@ -10087,6 +10087,34 @@ def main():
                      leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb"),
                      season_c14x.get("thumb") == before_season_c14x.get("thumb")))
 
+
+    # Cycle 14: the refresh cascade belongs to `showOrdering` alone. Measured on the
+    # copy one setting at a time with a socket open: `showOrdering=dvd` pushes 45
+    # frames, while `flattenSeasons`, `episodeSort`, `useOriginalTitle` and
+    # `subtitleMode` each push zero. plexsim pushed the cascade for every prefs write.
+    if not show:
+        skip("only showOrdering pushes the prefs cascade", "need a show")
+    else:
+        def prefframes_c14y(spec_c14y):
+            _, frames_c14y = notifications(
+                base, lambda: request(base, "PUT", "/library/metadata/%s/prefs?%s"
+                                      % (show, spec_c14y)), seconds=3)
+            return [e_c14y for f_c14y in frames_c14y or []
+                    for e_c14y in (f_c14y.get("NotificationContainer") or {})
+                    .get("TimelineEntry") or []]
+
+        ordering_c14y = prefframes_c14y("showOrdering=dvd")
+        flatten_c14y = prefframes_c14y("flattenSeasons=1")
+        sortpref_c14y = prefframes_c14y("episodeSort=1")
+        title_c14y = prefframes_c14y("useOriginalTitle=1")
+        request(base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=-1" % show)
+        request(base, "PUT", "/library/metadata/%s/prefs?episodeSort=-1" % show)
+        check("only showOrdering pushes the prefs cascade",
+              len(ordering_c14y) > 6 and not flatten_c14y and not sortpref_c14y
+              and not title_c14y,
+              "showOrdering %d | flattenSeasons %d | episodeSort %d | useOriginalTitle %d"
+              % (len(ordering_c14y), len(flatten_c14y), len(sortpref_c14y), len(title_c14y)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
