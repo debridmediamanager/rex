@@ -1552,7 +1552,7 @@ class Library:
             # well as the single read -- measured at both
             # /library/sections/{id}/collections and /library/collections/{id}.
             row["content"] = urllib.parse.unquote(collection["uri"])
-        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Field"):
+        for name in ("titleSort", "contentRating", "collectionSort", "collectionMode", "Field", "Label"):
             # Whatever the Edit Collection dialog and its prefs wrote. Measured: the
             # sort and mode come back as STRING attributes on the row, which is what
             # the dialog reads to show the current selection.

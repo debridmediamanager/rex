@@ -3313,6 +3313,18 @@ class PlexSim:
                         return ("error", refused.status, "plexsim: %s" % refused.detail)
                     if filters_module.split_scope(field)[0]:
                         return ("error", 400, "plexsim: bad request")
+                if str(query.get("type")) == "18":
+                    # Measured on a writable copy of the reference: `type=18` edits the
+                    # COLLECTIONS `id=` names. plexsim found no row of that type and
+                    # edited nothing.
+                    edits = {k: v for k, v in query.items() if k not in ("type", "id")}
+                    edits["_pairs"] = [(k, v) for k, v in query.get("_pairs") or []
+                                       if k not in ("type", "id")]
+                    for key in (query.get("id") or "").split(","):
+                        if key.strip().isdigit() and self.library.collection(key.strip()):
+                            self.library_list_item(int(key), ["library", "metadata", key.strip()],
+                                                   edits, "PUT")
+                    return ("empty", 200)
                 wanted = {"1": "movie", "2": "show", "3": "season",
                           "4": "episode"}.get(str(query.get("type")))
                 keys = [int(k) for k in (query.get("id") or "").split(",")
@@ -4689,6 +4701,13 @@ class PlexSim:
                 if query.get("titleSort.locked") is not None:
                     self.library._set_lock(collection, "titleSort",
                                            query["titleSort.locked"] == "1")
+                labels = sorted(((name, value) for name, value in query.get("_pairs") or []
+                                 if re.match(r"^label\[\d+\]\.tag\.tag$", name)),
+                                key=lambda pair: int(pair[0][6:].split("]", 1)[0]))
+                if labels:
+                    # Measured on a writable copy of the reference: a collection takes a
+                    # Label like any item. plexsim ignored the tag.
+                    self.library._set_tags(collection, "label", [value for _, value in labels if value])
             else:
                 self.library.edit_playlist(playlist, title=title, summary=summary)
             if any(name in query for name in ("title", "title.value", "titleSort.value",

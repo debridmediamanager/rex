@@ -6680,6 +6680,19 @@ def main():
         skip("a collection lists by release date, and a move starts from that order and switches to custom",
              "need three movies")
 
+    # Measured on plexscratch: a collection takes a Label like any item, and the section save
+    # with type=18 edits the collection its id names. plexsim ignored both.
+    _, doc_w13d, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13d&uri=%s"
+                                             % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
+    key_w13d = (doc_w13d.get("Metadata") or [{}])[0].get("ratingKey")
+    request(base, "PUT", "/library/metadata/%s?label[0].tag.tag=W13d" % key_w13d)
+    request(base, "PUT", "/library/sections/%s/all?type=18&id=%s&summary.value=w13d" % (movie_section, key_w13d))
+    row_w13d = (get(base, "/library/metadata/%s" % key_w13d)[1].get("Metadata") or [{}])[0]
+    request(base, "DELETE", "/library/collections/%s" % key_w13d)
+    check("a collection takes a label, and a type=18 section save edits it",
+          [t.get("tag") for t in row_w13d.get("Label") or []] == ["W13d"] and row_w13d.get("summary") == "w13d",
+          "labels %s summary %r" % ([t.get("tag") for t in row_w13d.get("Label") or []], row_w13d.get("summary")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
