@@ -2965,6 +2965,11 @@ the same parameters, then read back from both.
 - **A playlist create validates its form.** No `title`, no `type` or no `uri` is a 400,
   a type outside video/audio/photo a 500, and `type=audio` or `type=photo` over a movie a
   400. plexsim created an `Untitled` list of whatever it was sent, typed `bogus` if asked.
+- **A playlist's item writes refuse what they cannot do, and DELETE on the items clears
+  it.** An item id the list does not hold -- including a ratingKey, which is not an item
+  id -- is a 404; `DELETE /playlists/{id}/items` empties the list; and a smart playlist
+  refuses an add or a removal with 400. plexsim answered 200 to all of them and cleared
+  nothing.
 
 ### Emulation calibrated against the account's own claimed servers
 

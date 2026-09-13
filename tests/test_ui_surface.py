@@ -6261,6 +6261,30 @@ def main():
     check("a playlist create needs a title, a type and a uri, and a type that fits it",
           [r[0] for r in results_w12a] == [400, 400, 400, 500, 400], str([r[0] for r in results_w12a]))
 
+    # Measured on plexscratch: deleting an item id a playlist does not hold is a 404 (a
+    # ratingKey is not an item id), DELETE on the items clears the list, and a smart
+    # playlist refuses an add or a removal with 400. plexsim answered 200 to all of them.
+    uri_w12b = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
+    _, made_w12b, _ = container(base, "POST", "/playlists?type=video&title=w12b&smart=0&uri=%s" % uri_w12b)
+    list_w12b = (made_w12b.get("Metadata") or [{}])[0].get("ratingKey")
+    unknown_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items/999999" % list_w12b)
+    by_key_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items/%s" % (list_w12b, movie))
+    clear_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items" % list_w12b)
+    left_w12b = get(base, "/playlists/%s/items" % list_w12b)[1].get("Metadata") or []
+    _, smart_w12b, _ = container(base, "POST", "/playlists?type=video&title=w12bs&smart=1&uri=%s"
+                                               % quote("server://%s/com.plexapp.plugins.library/library/sections/%s"
+                                                       "/all?type=1" % (machine, movie_section)))
+    smart_key_w12b = (smart_w12b.get("Metadata") or [{}])[0].get("ratingKey")
+    smart_add_w12b, _, _ = container(base, "PUT", "/playlists/%s/items?uri=%s" % (smart_key_w12b, uri_w12b))
+    smart_drop_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items/1" % smart_key_w12b)
+    request(base, "DELETE", "/playlists/%s" % list_w12b)
+    request(base, "DELETE", "/playlists/%s" % smart_key_w12b)
+    check("a playlist 404s an item it does not hold, clears on DELETE, and a smart one refuses item writes",
+          (unknown_w12b, by_key_w12b, clear_w12b) == (404, 404, 200) and not left_w12b
+          and (smart_add_w12b, smart_drop_w12b) == (400, 400),
+          "unknown %s, ratingKey %s, clear %s leaving %d, smart add %s drop %s"
+          % (unknown_w12b, by_key_w12b, clear_w12b, len(left_w12b), smart_add_w12b, smart_drop_w12b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
