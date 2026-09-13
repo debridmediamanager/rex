@@ -46,18 +46,6 @@ _TERMINOLOGY = {"alb": "sqi", "baq": "eus", "chi": "zho", "cze": "ces", "dut": "
                 "may": "msa", "per": "fas", "rum": "ron", "slo": "slk", "wel": "cym",
                 "arm": "hye", "bur": "mya", "geo": "kat", "tib": "bod"}
 
-# displayTitle for an audio track is what the client's track picker shows.
-_AUDIO_CODEC_LABELS = {
-    "ac3": "Dolby Digital",
-    "eac3": "Dolby Digital Plus",
-    "truehd": "Dolby TrueHD",
-    "dts": "DTS",
-    "aac": "AAC",
-    "opus": "Opus",
-    "flac": "FLAC",
-    "mp3": "MP3",
-}
-
 _CONTAINER_ALIASES = {
     "matroska,webm": "mkv",
     "matroska": "mkv",
@@ -130,10 +118,6 @@ def _aspect_ratio(stream):
     return min(_ASPECT_RATIOS, key=lambda value: abs(value - shape))
 
 
-def _channel_label(channels):
-    return {1: "Mono", 2: "Stereo", 6: "5.1", 8: "7.1"}.get(channels, "%dch" % channels)
-
-
 def _language_fields(tags):
     raw = tags.get("language") or ""
     code = _TERMINOLOGY.get(raw.lower(), raw.lower())
@@ -149,64 +133,145 @@ def _language_fields(tags):
     return {"language": raw, "languageCode": "", "languageTag": raw}
 
 
-# Codec names as Plex labels them in a track title.
-_CODEC_LABELS = {"h264": "H.264", "hevc": "HEVC", "mpeg4": "MPEG-4", "vp8": "VP8",
-                 "vp9": "VP9", "av1": "AV1", "eac3": "EAC3", "ac3": "AC3",
-                 "aac": "AAC", "dts": "DTS", "opus": "OPUS", "flac": "FLAC",
-                 "truehd": "TRUEHD", "mp3": "MP3", "vorbis": "VORBIS",
-                 "srt": "SRT", "ass": "ASS", "subrip": "SRT", "pgs": "PGS"}
+# The track titles a real PMS writes, measured on every stream of 35 files on fun:
+#
+#   video     displayTitle  <resolution>[ <range>]              4K DoVi/HDR10
+#             extended      <displayTitle> (<CODEC>[ <Profile>]) 4K DoVi/HDR10 (HEVC Main 10)
+#   audio     displayTitle  <language> (<CODEC> <channels>)     English (DTS-HD MA 7.1)
+#   subtitle  displayTitle  <language>[ Forced][ SDH]           English SDH
+#             extended      <displayTitle> (<CODEC>)            English SDH (SRT)
+#
+# A track TITLE never enters displayTitle. It leads the extended title, followed in brackets
+# by the label parts it does not already carry -- `BTM TrueHD Atmos 7.1 (English)`,
+# `SDH (English SRT)` -- and by nothing when it carries every one (`English DTS Express 5.1`).
+# plexsim printed the track title as an audio title, `sdp` for SD video, `Dolby Digital Plus`
+# and `3ch`, and never named a profile.
+
+# Resolution buckets as a title prints them: five labels, so a 576 or 2k stream reads as its
+# neighbour (1024x436 is `480p`, 1920x1600 `1080p`).
+_TITLE_RESOLUTIONS = {"4k": "4K", "2.7k": "1080", "2k": "1080", "1080": "1080", "720": "720",
+                      "576": "480", "480": "480", "sd": "SD"}
+_VIDEO_CODEC_LABELS = {"h264": "H.264", "hevc": "HEVC"}
+_DTS_LABELS = {"ma": "DTS-HD MA", "es": "DTS-ES", "hra": "DTS-HD HRA", "express": "DTS Express"}
+
+# How a track title is split into words, and how a word is compared: the separators are
+# whitespace and `- / ( ) [ ] + , | : ; &` but not the dot (`Baby.2004.1080p` carries no
+# `1080p`), and only ASCII letters fold case (`Қазақ` does not carry `қазақ`).
+_TITLE_SEPARATORS = re.compile(r"[\s\-/()\[\]+,|:;&]+")
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
+def _video_resolution_label(row):
+    label = _TITLE_RESOLUTIONS.get(_video_resolution(row.get("height"), row.get("width")))
+    if label and label not in ("4K", "SD"):
+        label += "i" if row.get("scanType") == "interlaced" else "p"
+    return label
+
+
+def _dynamic_range(row):
+    if row.get("DOVIPresent"):
+        if not row.get("DOVIBLPresent"):
+            return "DoVi Enhancement Layer"
+        return "DoVi/HDR10" if row.get("DOVIBLCompatID") in (1, 6) else "DoVi"
+    return "HDR10" if row.get("colorTrc") == "smpte2084" else None
+
+
+def _video_codec_label(row):
+    """HEVC always names its profile, H.264 any profile but High and Main, and every other
+    codec none (`MPEG4`, `AV1`, `VP8`)."""
+    codec = str(row.get("codec") or "").lower()
+    if not codec:
+        return None
+    label = _VIDEO_CODEC_LABELS.get(codec, codec.upper())
+    profile = row.get("profile")
+    if profile and (codec == "hevc" or (codec == "h264" and profile not in ("high", "main"))):
+        label += " " + profile.title()
+    return label
+
+
+def _audio_codec_label(row):
+    codec = str(row.get("codec") or "").lower()
+    if codec == "dca":
+        return _DTS_LABELS.get(row.get("profile"), "DTS")
+    if codec == "aac" and row.get("profile") == "he-aac":
+        return "HE-AAC"
+    return codec.upper()
+
+
+def _channel_label(row):
+    """The layout's own name (`5.1(side)` prints `5.1`, `2.1` stays `2.1`), else the count."""
+    layout = row.get("audioChannelLayout")
+    if layout:
+        base = layout.split("(")[0]
+        return {"mono": "Mono", "stereo": "Stereo"}.get(base, base)
+    channels = row.get("channels")
+    if not channels:
+        return None
+    return {1: "Mono", 2: "Stereo", 6: "5.1", 8: "7.1"}.get(channels, "%dch" % channels)
+
+
+def _extended_title(title, parts):
+    """`title (parts it does not carry)`. A part is carried when its FIRST word, or one of
+    its stand-ins, is one of the title's words: a language's two-letter tag (`BTM ES` carries
+    Español), `2.0` for Stereo and `AVC` for H.264."""
+    words = {word.translate(_ASCII_LOWER) for word in _TITLE_SEPARATORS.split(title) if word}
+    left = []
+    for part, stand_ins in parts:
+        if not part:
+            continue
+        first = next((word for word in _TITLE_SEPARATORS.split(part) if word), "")
+        if any(word and word.translate(_ASCII_LOWER) in words for word in (first,) + stand_ins):
+            continue
+        left.append(part)
+    return "%s (%s)" % (title, " ".join(left)) if left else title
 
 
 def stream_titles(row):
-    """Set `displayTitle` and `extendedDisplayTitle` on one built Stream row.
+    """Set `displayTitle` and `extendedDisplayTitle` on one Stream row, from its own fields.
 
-    These two are what the client's quality and track pickers print, and the
-    split between them is not the obvious one. Measured on two real servers:
-
-      video     displayTitle `1080p`              extended `1080p (H.264)`
-      audio     displayTitle `日本語 (OPUS 5.1)`   extended the same
-      subtitle  displayTitle `English`            extended `English (ASS)`
-      subtitle  displayTitle `English (Weeb)`     extended `Honorifics (English (Weeb) ASS)`
-                with a track title
-
-    So the codec belongs in the EXTENDED title, not the plain one -- plexsim had
-    it the other way round for video -- and a subtitle with a track title shows
-    its LANGUAGE as the plain title, with the track name only in the extended
-    one. plexsim showed the track name, which is a different string in the
-    picker from what every real client shows.
-
-    One measured difference is deliberately not reproduced: a 10-bit HEVC track
-    on fun extends to `1080p (HEVC Main 10)` while an 8-bit H.264 one on the
-    reference extends to `1080p (H.264)` with no profile at all. Two samples do
-    not give the rule for when the profile is appended, so it is left off.
+    Called when a stream is built and again when a catalog loads, so a catalog built before
+    a rule was measured is corrected rather than needing a rebuild.
     """
-    codec = str(row.get("codec") or "")
-    label = _CODEC_LABELS.get(codec.lower(), codec.upper())
     kind = row.get("streamType")
-    language = row.get("language")
     title = row.get("title")
     if kind == 1:
-        resolution = row.get("displayTitle")
-        # A previously built row may already carry the codec; take the plain
-        # resolution back off it so this stays idempotent.
-        if resolution and " (" in resolution:
-            resolution = resolution.split(" (")[0]
+        resolution = _video_resolution_label(row)
         if not resolution:
             return row
-        row["displayTitle"] = resolution
-        row["extendedDisplayTitle"] = ("%s (%s)" % (resolution, label) if label
-                                       else resolution)
+        dynamic = _dynamic_range(row)
+        codec = _video_codec_label(row)
+        plain = " ".join(part for part in (resolution, dynamic) if part)
+        row["displayTitle"] = plain
+        if title:
+            avc = ("AVC",) if str(row.get("codec") or "").lower() == "h264" else ()
+            row["extendedDisplayTitle"] = _extended_title(
+                title, [(resolution, ()), (dynamic, ()), (codec, avc)])
+        else:
+            row["extendedDisplayTitle"] = "%s (%s)" % (plain, codec) if codec else plain
     elif kind == 2:
-        if row.get("displayTitle"):
+        language = row.get("language")
+        codec = _audio_codec_label(row)
+        channels = _channel_label(row)
+        row["displayTitle"] = "%s (%s)" % (language or "Unknown",
+                                           " ".join(part for part in (codec, channels) if part))
+        if title:
+            row["extendedDisplayTitle"] = _extended_title(title, [
+                (language, (row.get("languageTag") or "",)), (codec, ()),
+                (channels, ("2.0",) if channels == "Stereo" else ())])
+        else:
             row["extendedDisplayTitle"] = row["displayTitle"]
     elif kind == 3:
-        plain = language or title or "Unknown"
+        language = row.get("language")
+        forced = "Forced" if row.get("forced") else None
+        sdh = "SDH" if row.get("hearingImpaired") else None
+        codec = str(row.get("codec") or "").upper()
+        plain = " ".join(part for part in (language or "Unknown", forced, sdh) if part)
         row["displayTitle"] = plain
-        if title and title != plain:
-            row["extendedDisplayTitle"] = "%s (%s %s)" % (title, plain, label)
+        if title:
+            row["extendedDisplayTitle"] = _extended_title(title, [
+                (language, (row.get("languageTag") or "",)), (forced, ()), (sdh, ()), (codec, ())])
         else:
-            row["extendedDisplayTitle"] = ("%s (%s)" % (plain, label) if label
-                                           else plain)
+            row["extendedDisplayTitle"] = "%s (%s)" % (plain, codec) if codec else plain
     return row
 
 
@@ -281,11 +346,6 @@ def _video_stream(stream, stream_id):
     row.update(_language_fields(tags))
     if tags.get("title"):
         row["title"] = tags["title"]
-    codec = (stream.get("codec_name") or "").upper()
-    resolution = _video_resolution(height, width)
-    if resolution and codec:
-        label = "4K" if resolution == "4k" else resolution + "p"
-        row["displayTitle"] = "%s (%s)" % (label, codec)
     bitrate = stream.get("bit_rate")
     if bitrate:
         row["bitrate"] = round(int(bitrate) / 1000)
@@ -455,13 +515,6 @@ def _audio_stream(stream, stream_id, selected):
     bitrate = stream.get("bit_rate")
     if bitrate:
         row["bitrate"] = round(int(bitrate) / 1000)
-    # Prefer the container's own track title; it is what a real PMS surfaces.
-    label = _AUDIO_CODEC_LABELS.get(codec, codec.upper())
-    row["displayTitle"] = tags.get("title") or "%s (%s %s)" % (
-        row.get("language", "Unknown"),
-        label,
-        _channel_label(channels),
-    )
     if tags.get("title"):
         row["title"] = tags["title"]
     return stream_titles(row)

@@ -3225,6 +3225,21 @@ below is one check there, and each check failed against the code before its fix.
   (35 of 35 files; the first track was the wrong one in 9), and a DTS-HD MA track is
   `dca-ma` there, as on 2,075 of fun's 4,951 Media, while every other DTS variant stays
   `dca`. plexsim named the first track, and a client gates direct play on these fields.
+- **Track titles are composed, and a track title never enters `displayTitle`.** Video reads
+  `<resolution>[ <range>]` -- `4K`, `1080p`, `720p`, `480p` or `SD`, with `i` for an interlaced
+  stream, and `HDR10`, `DoVi/HDR10`, `DoVi` or `DoVi Enhancement Layer` -- and extends with
+  `(<CODEC>[ <Profile>])`, where HEVC always names its profile and H.264 any but High and
+  Main. Audio reads `<language> (<CODEC> <channels>)` with `DTS-HD MA`, `DTS-ES`, `TRUEHD`,
+  `EAC3` and the layout's own channel label. A subtitle reads `<language>[ Forced][ SDH]` and
+  extends with `(<CODEC>)`. A track title leads the extended title, followed in brackets by
+  the parts it does not already carry: a part is carried when its first word is one of the
+  title's words -- split on whitespace and `- / ( ) [ ] + , | : ; &` but not on dots, folding
+  ASCII case only -- and a language's two-letter tag, `2.0` for Stereo and `AVC` for H.264
+  count too (`BTM TrueHD Atmos 7.1 (English)`, `BTM ES (SRT)`, `English DTS Express 5.1`).
+  plexsim printed `sdp`, `Dolby Digital Plus`, `3ch`, English language names and the track
+  title as an audio title, and never named a profile -- which answers cycle 4's open question
+  of when a profile is appended. Left alone: a forced track with no linguistic content, whose
+  extended title leaves `Forced` out (one track).
 
 ### Emulation calibrated against the account's own claimed servers
 
