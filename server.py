@@ -7432,6 +7432,12 @@ class PlexSim:
                 return ("error", 400, "plexsim: bad request")
             rows = self._items_for_uri(query.get("uri", ""),
                                       continuous=query.get("continuous") == "1")
+            if not query.get("uri") and query.get("playlistID"):
+                # Measured on a writable copy of the reference: `playlistID=` adds that
+                # playlist's items as a plain add. plexsim stepped the version and added
+                # nothing.
+                playlist = self.library.playlist(query["playlistID"])
+                rows = [row for row, _item in self.library.playlist_items(playlist)] if playlist else []
             with self.lock:
                 items = queue["items"]
                 new = self._queue_items(rows)

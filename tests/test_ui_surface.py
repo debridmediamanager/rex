@@ -6484,6 +6484,20 @@ def main():
           "other %s, first after it %s, first after our second %s, second %s"
           % (other_status_w14c, survives_w14c, retired_w14c, current_w14c))
 
+    # Measured on plexscratch: `PUT /playQueues/{id}?playlistID=` adds that playlist's items;
+    # plexsim stepped the version and added nothing.
+    _, list_w14d, _ = container(base, "POST", "/playlists?type=video&title=w14d&smart=0&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))
+    list_key_w14d = (list_w14d.get("Metadata") or [{}])[0].get("ratingKey")
+    list_size_w14d = len(get(base, "/playlists/%s/items" % list_key_w14d)[1].get("Metadata") or [])
+    queue_w14d = container(base, "POST", "/playQueues?type=video&own=1&uri=%s"
+                                         % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                                 % (machine, movie)))[1].get("playQueueID")
+    added_w14d = container(base, "PUT", "/playQueues/%s?playlistID=%s" % (queue_w14d, list_key_w14d))[1]
+    request(base, "DELETE", "/playlists/%s" % list_key_w14d)
+    check("a play queue PUT with playlistID adds the playlist's items",
+          list_size_w14d > 0 and len(added_w14d.get("Metadata") or []) == 1 + list_size_w14d,
+          "%d row(s) after adding a %d-item playlist" % (len(added_w14d.get("Metadata") or []), list_size_w14d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

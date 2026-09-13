@@ -3019,6 +3019,8 @@ the same parameters, then read back from both.
 - **A client's new play queue retires its older ones.** Client A's queue was still
   readable after client B created one, and a 404 once A created another. plexsim kept
   every queue it had ever built.
+- **`PUT /playQueues/{id}?playlistID=` adds the playlist's items**, as a plain add;
+  plexsim stepped the version and added nothing.
 
 ### Emulation calibrated against the account's own claimed servers
 
