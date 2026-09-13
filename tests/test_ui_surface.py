@@ -6828,6 +6828,32 @@ def main():
           and states_w15f.count("thumbnailing") == len(movies_w15f),
           "HTTP %s, %d movie(s), states %s" % (holder_w15f, len(movies_w15f), states_w15f[:6]))
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: cleaning bundles runs a general.bundle.clean activity and
+    # deleting a library a library.delete one, each started, six updates, ended. plexsim
+    # pushed nothing for either.
+    def run_w15g(trigger, kind):
+        _, frames = notifications(base, trigger, seconds=3)
+        return [event for event, found, _ in activities_w15(frames) if found == kind]
+    bundles_w15g = run_w15g(lambda: request(base, "PUT", "/library/clean/bundles"), "general.bundle.clean")
+    _, made_w15g, _ = container(base, "POST", "/library/sections?name=W15g&type=movie&agent=tv.plex.agents.movie"
+                                              "&scanner=%s&language=en-US&location=%s"
+                                              % (quote("Plex Movie"), quote("/data/w15g")))
+    key_w15g = ((made_w15g.get("Directory") or [{}])[0]).get("key")
+    deleted_w15g = run_w15g(lambda: request(base, "DELETE", "/library/sections/%s" % key_w15g), "library.delete")
+    check("cleaning bundles and deleting a library each run their activity",
+          bundles_w15g == ["started"] + ["updated"] * 6 + ["ended"]
+          and deleted_w15g == ["started"] + ["updated"] * 6 + ["ended"],
+          "%s / %s" % (bundles_w15g, deleted_w15g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
