@@ -3153,6 +3153,13 @@ below is one check there, and each check failed against the code before its fix.
   bitmap track (68 in the corpus) and `vobsub` for every DVD one (10), where ffprobe's
   decoders are `hdmv_pgs_subtitle` and `dvd_subtitle`. plexsim passed ffprobe's names
   through, and a client decides whether to burn an image subtitle in by that name.
+- **Audio codecs carry Plex's names.** Every DTS variant is `dca`, with the variant as the
+  profile -- `dts`, `ma`, `es`, `hra`, `express` (34 tracks); PCM in Matroska is `pcm` with
+  ffprobe's sample format as the profile, while Blu-ray PCM stays `pcm_bluray`; and the
+  `+ Dolby Atmos` profile ffprobe gives TrueHD and E-AC-3 is not written (11 tracks). plexsim
+  sent `dts` and the Atmos profile, and a client's direct-play profile names `dca`. The
+  reference (1.43.4) leaves `lc` off most of its AAC clips where fun writes it; the check
+  skips those.
 
 ### Emulation calibrated against the account's own claimed servers
 

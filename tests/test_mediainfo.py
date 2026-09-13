@@ -84,6 +84,16 @@ SKIP = {
     # produce, the real server the 5.1 independent substream it indexed.
     ("fun-1051324-2", 2, "channels"): "E-AC-3 JOC in mp4",
     ("fun-1051324-2", 4, "channels"): "E-AC-3 JOC in mp4",
+    # The reference's AAC clips: fun writes `lc` for the same profile.
+    ("kids-1-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-12-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-13-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-14-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-17-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-18-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-3-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-4-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-8-0", 1, "profile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
 }
 
 
@@ -103,6 +113,11 @@ def _baseline(fixture):
 @check("subtitle-codec-names")
 def _subtitle_codec_names(fixture):
     return per_stream(3, ("codec",))(fixture)
+
+
+@check("audio-codec-names")
+def _audio_codec_names(fixture):
+    return per_stream(2, ("codec", "profile"))(fixture)
 
 
 def load(root):
