@@ -717,6 +717,9 @@ precisely how the Seasons bug survived a fix attempt.
   and key -- so a refusal check that omits the identifier tests the wrong branch.
 - **It is the EPISODE scrobble that counts on its season and show**; scrobbling the season
   or the show leaves its own `viewCount` alone, and unscrobbling it removes it.
+- **On Deck is one row per show**: the lowest-numbered episode in progress, else the one
+  after the last watched; hiding any of its episodes hides the show until its next
+  timeline.
 
 ## Conventions
 

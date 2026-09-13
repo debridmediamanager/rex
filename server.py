@@ -6682,11 +6682,37 @@ class PlexSim:
         return self.bare_container(size=0)
 
     def continue_watching(self):
-        """Rows with a resume point, newest first -- the Continue Watching hub."""
+        """Rows for Continue Watching and On Deck, newest first.
+
+        A movie is there while it has a resume point. A SHOW contributes one row --
+        measured on a writable copy of the reference, one timeline at a time: its
+        in-progress episode with the LOWEST season and episode number (not the one
+        played last), or with none in progress the episode after the highest-numbered
+        one watched. Removing any of its episodes from Continue Watching hides the
+        show's row, and a timeline on any of them brings it back. plexsim listed every
+        episode with a resume point, and never the next one.
+        """
         rows = [r for r in self.catalog.items.values()
-                if r.get("viewOffset") and r.get("type") in ("movie", "episode")
+                if r.get("viewOffset") and r.get("type") == "movie"
                 and not r.get("_hiddenFromContinueWatching")]
-        return sorted(rows, key=lambda r: -(r.get("lastViewedAt") or 0))
+        shows = {}
+        for row in self.catalog.items.values():
+            if row.get("type") == "episode":
+                shows.setdefault(str(row.get("grandparentRatingKey")), []).append(row)
+        stamps = {}
+        for episodes in shows.values():
+            if any(e.get("_hiddenFromContinueWatching") for e in episodes):
+                continue
+            episodes.sort(key=lambda e: (e.get("parentIndex") or 0, e.get("index") or 0))
+            chosen = next((e for e in episodes if e.get("viewOffset")), None)
+            if chosen is None:
+                watched = [n for n, e in enumerate(episodes) if e.get("viewCount")]
+                chosen = next((e for e in episodes[watched[-1] + 1:] if not e.get("viewCount")),
+                              None) if watched else None
+            if chosen is not None:
+                rows.append(chosen)
+                stamps[id(chosen)] = max(e.get("lastViewedAt") or 0 for e in episodes)
+        return sorted(rows, key=lambda r: -stamps.get(id(r), r.get("lastViewedAt") or 0))
 
     def select_stream(self, part_id, query):
         """`PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`.
