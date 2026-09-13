@@ -8164,6 +8164,33 @@ def main():
               "query %r -- hubs: no limit %s, limit=50 %s | /library/search %s vs %s"
               % (query_c12d, plain_c12d[1], wide_c12d[1], lib_plain_c12d, lib_wide_c12d))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): an actor tag row in search is
+    # `tagType: 6` and a director row 4. plexsim sent 4 for both, while
+    # /library/people/{id} already answered 6 for the same person -- the server
+    # contradicted itself.
+    def tag_rows_c12e(path_c12e):
+        status_c12e, body_c12e, _ = get(base, path_c12e)
+        out_c12e = {}
+        for hub_c12e in (body_c12e.get("Hub") or []):
+            rows_c12e = hub_c12e.get("Directory") or hub_c12e.get("Metadata") or []
+            if rows_c12e and hub_c12e.get("type") in ("actor", "director", "genre"):
+                out_c12e[hub_c12e["type"]] = (rows_c12e[0].get("tagType"), rows_c12e[0].get("id"))
+        return status_c12e, out_c12e
+    # 'ha' matches four of the fixture's actors by word prefix; a single letter finds
+    # nothing at all, which is the search matcher's own measured rule.
+    status_c12e, hubs_c12e = tag_rows_c12e("/hubs/search?query=ha&limit=6")
+    person_c12e = None
+    if hubs_c12e.get("actor"):
+        person_c12e = (get(base, "/library/people/%s" % hubs_c12e["actor"][1])[1]
+                       .get("Directory") or [{}])[0].get("tagType")
+    check("an actor search row is tagType 6, and agrees with the person row",
+          status_c12e == 200 and hubs_c12e.get("actor", (None,))[0] == 6
+          and hubs_c12e.get("director", (4,))[0] == 4
+          and hubs_c12e.get("genre", (1,))[0] == 1
+          and person_c12e == 6,
+          "hubs %s, /library/people tagType %s" % (hubs_c12e, person_c12e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
