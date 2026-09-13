@@ -10566,6 +10566,40 @@ def main():
           and home_c15m["4"] is None and home_c15m["8"] is None,
           str(home_c15m))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: on
+    # `/hubs/search` -- and on no other hub path -- `contentDirectoryID` SCOPES the
+    # search to one library and VALIDATES its value. zen's `?query=the` answers show
+    # and movie hubs; with `contentDirectoryID=1` only the movie library's, with `=2`
+    # only the show library's. `abc`, `99`, `1.5` and `-1` -- anything that does not
+    # name a section -- are 404s on both, while an EMPTY value is a 200 that scopes
+    # nothing. plexsim ignored the parameter and 200'd every value, so search-within-
+    # this-library returned hits from every library and a bad id read as "no results
+    # here" rather than as an error.
+    sm_c15h = {cd_c15h: get(base, "/hubs/search?query=%s%s" % (quote("Tears"), cd_c15h))
+               for cd_c15h in ("", "&contentDirectoryID=%s" % movie_section,
+                               "&contentDirectoryID=%s" % show_section,
+                               "&contentDirectoryID=abc", "&contentDirectoryID=99",
+                               "&contentDirectoryID=")}
+
+
+    def hits_c15h(key_c15h):
+        return sum(h_c15h.get("size") or 0
+                   for h_c15h in (sm_c15h[key_c15h][1].get("Hub") or []))
+
+
+    check("contentDirectoryID scopes /hubs/search and 404s an id that names no section",
+          sm_c15h[""][0] == 200 and sm_c15h["&contentDirectoryID="][0] == 200
+          and sm_c15h["&contentDirectoryID=abc"][0] == 404
+          and sm_c15h["&contentDirectoryID=99"][0] == 404
+          and hits_c15h("&contentDirectoryID=%s" % movie_section) == hits_c15h("")
+          and hits_c15h("&contentDirectoryID=%s" % show_section) == 0
+          and hits_c15h("&contentDirectoryID=") == hits_c15h(""),
+          "statuses %s | hits none=%s movie=%s show=%s empty=%s"
+          % ({k_c15h: v_c15h[0] for k_c15h, v_c15h in sm_c15h.items()}, hits_c15h(""),
+             hits_c15h("&contentDirectoryID=%s" % movie_section),
+             hits_c15h("&contentDirectoryID=%s" % show_section),
+             hits_c15h("&contentDirectoryID=")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
