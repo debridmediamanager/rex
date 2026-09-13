@@ -3320,6 +3320,15 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   are 400s, and a smart playlist's items cannot be cleared (`DELETE` is a 400 where plexsim
   emptied a list it never reads). plexsim refused every uri on a smart list, so Save answered
   "There was a problem updating this item."
+- **An artwork upload is `POST /library/metadata/{id}/{posters,arts}` with the image as the
+  body, and it answers an EMPTY 200.** The image becomes an `upload://posters/<sha1 of the
+  bytes>` candidate -- a season's and an episode's carrying their place in the path -- and is
+  selected at once; the row's `thumb` AND `art` both re-version; and one timeline frame,
+  state 5 with no `metadataState`, is pushed with no state 3 before it. **And picking any
+  candidate stores a NEW versioned path**, never the url picked: plexsim wrote the raw value
+  into `thumb`, so choosing an upload set the tile's img src to `upload://posters/...`.
+  A playlist's and a collection's artwork list lives under `/library/metadata/{ratingKey}`
+  too and holds one `default://` composite row; plexsim 404'd it.
 
 ### Emulation calibrated against the account's own claimed servers
 
