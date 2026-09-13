@@ -3021,6 +3021,8 @@ the same parameters, then read back from both.
   every queue it had ever built.
 - **`PUT /playQueues/{id}?playlistID=` adds the playlist's items**, as a plain add;
   plexsim stepped the version and added nothing.
+- **DELETE on a play queue's items clears it down to the selected item**, stepping the
+  version; plexsim answered 404.
 
 ### Emulation calibrated against the account's own claimed servers
 
