@@ -104,13 +104,13 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 14, all run 2026-09-13:
+Suite results at the head of cycle 15, all run 2026-09-14:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **899/899**, 5 skipped | the skips need a TMDB key or real RD links |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **927/927**, 5 skipped | the skips need a TMDB key or real RD links |
 | `tests/test_mediainfo.py` | **27/27** | offline |
-| `tests/test_navigation.py` on the full catalog | **46/46** | |
+| `tests/test_navigation.py` on the full catalog | **46/46** | 27/27 on the UI fixture |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); expected |
 | `tests/test_all.py --skip-decode` | playQueue and decision PASS | byte reads 502 for the same reason |
 
