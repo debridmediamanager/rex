@@ -8698,6 +8698,42 @@ def main():
               and "None" not in studio_axis_c13e,
               "contentRating %s | None row %s | studio %s" % (axis_c13e, none_c13e, studio_axis_c13e))
 
+        # Measured on kids (1.43.4) and zen (1.42.2), identically, across seven values:
+    # a tag or field axis REFUSES a `type=` it cannot parse -- `abc`, `1.5` and an empty
+    # one are all 500 on genre, studio, actor, contentRating, firstCharacter, decade and
+    # country, and 400 on `year` alone -- while `-1`, `99`, `2` and `04` are 200. The
+    # MEDIA axes (resolution, audioLanguage, subtitleLanguage and the codecs) ignore
+    # `type=` completely: the same list comes back for every value including `abc`, on a
+    # movie library and a show library alike. And `firstCharacter` IS scoped by the type,
+    # its counts following it (zen's show library: 13/40 shows at type=2, 13/64 seasons at
+    # type=3, 185/207 episodes at type=4, empty at type=1). plexsim answered 200 to every
+    # axis whatever the type said, scoped `resolution` by type, and read firstCharacter off
+    # the whole section.
+    codes_c13f = {}
+    for axis_c13f in ("genre", "studio", "actor", "contentRating", "firstCharacter",
+                      "decade", "country", "year", "resolution", "audioLanguage"):
+        codes_c13f[axis_c13f] = [request(base, "GET", "/library/sections/%s/%s?type=%s"
+                                         % (movie_section, axis_c13f, value_c13f))[0]
+                                 for value_c13f in ("abc", "", "1.5", "-1", "99")]
+    first_c13f = {value_c13f: get(base, "/library/sections/%s/firstCharacter?type=%s"
+                                  % (show_section, value_c13f))[1].get("size")
+                  for value_c13f in ("2", "3", "4", "1", "99")} if show_section else {}
+    media_c13f = {value_c13f: [d_c13f.get("title") for d_c13f in
+                               get(base, "/library/sections/%s/resolution?type=%s"
+                                   % (movie_section, value_c13f))[1].get("Directory") or []]
+                  for value_c13f in ("", "1", "4", "abc")}
+    check("a tag or field axis refuses an unparseable type where a media axis ignores it",
+          all(codes_c13f[axis_c13f] == [500, 500, 500, 200, 200]
+              for axis_c13f in ("genre", "studio", "actor", "contentRating",
+                                "firstCharacter", "decade", "country"))
+          and codes_c13f["year"] == [400, 400, 400, 200, 200]
+          and codes_c13f["resolution"] == [200] * 5
+          and codes_c13f["audioLanguage"] == [200] * 5
+          and len({tuple(v_c13f) for v_c13f in media_c13f.values()}) == 1
+          and (not first_c13f or (first_c13f["1"] == 0 and first_c13f["99"] == 0
+                                  and first_c13f["4"] > 0)),
+          "%s | firstCharacter %s | resolution %s" % (codes_c13f, first_c13f, media_c13f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
