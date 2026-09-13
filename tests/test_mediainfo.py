@@ -192,6 +192,11 @@ def _video_resolution_survey(mediainfo):
             for width, height, label, count in survey["rows"]]
 
 
+@check("aspect-ratio")
+def _aspect_ratio_value(fixture):
+    return per_media(("aspectRatio",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

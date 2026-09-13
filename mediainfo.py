@@ -112,6 +112,28 @@ def _channel_layout(channels):
     return {1: "mono", 2: "stereo", 6: "5.1(side)", 8: "7.1"}.get(channels)
 
 
+# The aspect ratio a real PMS writes is one of six values -- 1.33, 1.66, 1.78, 1.85, 2.2 and
+# 2.35 -- on every Media of fun's movie libraries: the DISPLAY aspect (width times the sample
+# aspect ratio, over height) snapped to the nearest. plexsim wrote the raw quotient and
+# ignored the sample aspect ratio, so a 1920x800 release read 2.4 where a real server says
+# 2.35, and an anamorphic 3840x2160 (SAR 333:320) 1.78 where it says 1.85.
+_ASPECT_RATIOS = (1.33, 1.66, 1.78, 1.85, 2.2, 2.35)
+
+
+def _aspect_ratio(stream):
+    width, height = stream.get("width"), stream.get("height")
+    if not width or not height:
+        return None
+    try:
+        sar = Fraction((stream.get("sample_aspect_ratio") or "1:1").replace(":", "/"))
+    except (ValueError, ZeroDivisionError):
+        sar = Fraction(1)
+    if sar <= 0:
+        sar = Fraction(1)
+    shape = float(width * sar / height)
+    return min(_ASPECT_RATIOS, key=lambda value: abs(value - shape))
+
+
 def _channel_label(channels):
     return {1: "Mono", 2: "Stereo", 6: "5.1", 8: "7.1"}.get(channels, "%dch" % channels)
 
@@ -459,7 +481,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "bitrate": bitrate_kbps,
         "width": width,
         "height": height,
-        "aspectRatio": round(width / height, 2) if width and height else None,
+        "aspectRatio": _aspect_ratio(video) if video else None,
         "audioChannels": first_audio.get("channels"),
         "audioCodec": first_audio.get("codec_name"),
         "videoCodec": video.get("codec_name") if video else None,
