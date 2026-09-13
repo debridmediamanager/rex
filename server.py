@@ -8476,6 +8476,17 @@ class PlexSim:
         else:
             rows = self.sessions.media_statistics(timespan)
             element = "StatisticsMedia"
+            # Measured on both servers: this one filters like /statistics/bandwidth, which
+            # cycle 8 implemented and left this out -- an `accountID` or `deviceID` the
+            # server does not have answers `size 0` with no Device and no Account row, and
+            # an empty or non-numeric `accountID` is a 400. plexsim answered the whole
+            # server to every one of them, so the Dashboard's per-user and per-device views
+            # showed everyone's plays.
+            for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
+                if name in query:
+                    if not str(query[name]).isdigit():
+                        return ("error", 400, "plexsim: bad request")
+                    rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
         if not rows:
             # Measured on a real server with no rows for the window: nothing but
             # `size`. The Device and Account blocks only appear with a series.

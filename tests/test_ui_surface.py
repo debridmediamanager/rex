@@ -7471,6 +7471,41 @@ def main():
           % (sorted(set(live_c10o) - set(detail_c10o)), sorted(set(detail_c10o) - set(live_c10o)),
              (live_c10o.get("Player") or {}).get("profile")))
 
+    # Measured on both reference servers: /statistics/media takes `accountID` and `deviceID`
+    # like /statistics/bandwidth does -- an id neither has answers `size 0` with no Device and
+    # no Account row, the account that played keeps its rows, and an empty or non-numeric
+    # `accountID` is a 400. plexsim answered the whole server to every one of them.
+    span_c10p = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    for state_c10p, position_c10p in (("playing", 300000), ("stopped", 400000)):
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&hasMDE=1&time=%s&duration=%s"
+                             "&X-Plex-Session-Identifier=c10p&X-Plex-Client-Identifier=c10p"
+                             % (movie, urllib.parse.quote("/library/metadata/%s" % movie, safe=""),
+                                state_c10p, position_c10p, span_c10p))
+    def media_stats_c10p(query):
+        status, body, _ = request(base, "GET", "/statistics/media" + query)
+        try:
+            return status, json.loads(body).get("MediaContainer", {})
+        except ValueError:
+            return status, {}
+    status_all_c10p, all_c10p = media_stats_c10p("")
+    status_dev_c10p, dev_c10p = media_stats_c10p("?deviceID=99999")
+    status_acct_c10p, acct_c10p = media_stats_c10p("?accountID=99999")
+    status_mine_c10p, mine_c10p = media_stats_c10p("?accountID=1")
+    status_empty_c10p, _ = media_stats_c10p("?accountID=")
+    status_word_c10p, _ = media_stats_c10p("?accountID=abc")
+    check("media statistics filter by account and device, and refuse an unparseable account",
+          status_all_c10p == 200 and (all_c10p.get("size") or 0) > 0
+          and (status_dev_c10p, dev_c10p.get("size")) == (200, 0)
+          and not dev_c10p.get("Device") and not dev_c10p.get("Account")
+          and (status_acct_c10p, acct_c10p.get("size")) == (200, 0)
+          and status_mine_c10p == 200 and mine_c10p.get("size") == all_c10p.get("size")
+          and status_empty_c10p == 400 and status_word_c10p == 400,
+          "all %s/%s, device %s/%s, account %s/%s, mine %s/%s, empty %s, word %s"
+          % (status_all_c10p, all_c10p.get("size"), status_dev_c10p, dev_c10p.get("size"),
+             status_acct_c10p, acct_c10p.get("size"), status_mine_c10p, mine_c10p.get("size"),
+             status_empty_c10p, status_word_c10p))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

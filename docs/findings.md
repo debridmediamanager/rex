@@ -3406,6 +3406,10 @@ limits turn out to be one rule:
   appears only once a DECISION has been made. Re-measured with a decision that answers 200,
   the copy carries no `Session` block at all, before or after -- it is unclaimed, and the
   block is the one that holds the measured bandwidth. Left as it is.
+- **`/statistics/media` filters by `accountID` and `deviceID`** exactly as
+  `/statistics/bandwidth` does (implemented in cycle 8, and this one was left out): an id the
+  server does not have answers `size 0` with no `Device` and no `Account` row, and an empty or
+  non-numeric `accountID` is a 400. plexsim answered the whole server to all of them.
 
 ### Emulation calibrated against the account's own claimed servers
 
