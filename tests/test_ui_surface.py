@@ -8569,6 +8569,35 @@ def main():
                      [(k, after_c13b[k].get("guid"), after_c13b[k].get("parentGuid"),
                        after_c13b[k].get("title")) for k in eps_c13b]))
 
+        # Measured on kids (1.43.4) and zen (1.42.2), on audienceRating, rating,
+    # userRating, contentRating, year, originallyAvailableAt, viewCount, viewOffset,
+    # lastViewedAt, mediaHeight and mediaBitrate, and on a show library at type 2, 3
+    # and 4: a row with NO value for the sort key sorts BELOW every row that has one
+    # -- first ascending, last descending. plexsim keyed on `(value is None, value)`,
+    # which puts it above instead. Twelve of the fifteen sorts a section advertises
+    # default to `desc`, so Rating, Plays, Date Viewed, Critic Rating and the rest all
+    # opened the grid on the rows with no value at all.
+    rows_c13c = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    keys_c13c = [r["ratingKey"] for r in rows_c13c]
+    if len(keys_c13c) < 2:
+        skip("a row with no value sorts below every row that has one",
+             "need two movies left in the fixture")
+    else:
+        # Built rather than hoped for: a negative year REMOVES the field (measured in
+        # cycle 9), so this leaves exactly one row without one.
+        request(base, "PUT", "/library/metadata/%s?year.value=2001" % keys_c13c[0])
+        request(base, "PUT", "/library/metadata/%s?year.value=-1" % keys_c13c[-1])
+        def sorted_c13c(spec_c13c):
+            body_c13c = get(base, "/library/sections/%s/all?type=1&sort=%s" % (movie_section, spec_c13c))[1]
+            return [(r["ratingKey"], r.get("year")) for r in body_c13c.get("Metadata") or []]
+        asc_c13c, desc_c13c = sorted_c13c("year:asc"), sorted_c13c("year:desc")
+        check("a row with no value sorts below every row that has one",
+              asc_c13c and desc_c13c
+              and asc_c13c[0] == (keys_c13c[-1], None)
+              and desc_c13c[-1] == (keys_c13c[-1], None)
+              and asc_c13c[-1][1] is not None and desc_c13c[0][1] is not None,
+              "asc %s | desc %s" % (asc_c13c, desc_c13c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
