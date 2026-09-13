@@ -56,8 +56,12 @@ EDITABLE_FIELDS = {
     "userRating", "audienceRating", "rating", "duration",
 }
 
-# Accepted, locked, and DISCARDED: the star rating is written through /:/rate.
+# Accepted, locked, and DISCARDED on the ITEM path: the star rating is written
+# through /:/rate there. The section path stores it (see `_set_field`).
 IGNORED_EDIT_FIELDS = {"userRating"}
+
+# Stored as NUMBERS. Measured: `audienceRating.value=5.5` reads back 5.5, not "5.5".
+FLOAT_FIELDS = {"audienceRating", "rating", "userRating"}
 
 # The only two fields an empty value STORES as "" rather than removing. Measured
 # one field at a time; everything else falls back to what the agent supplies.
@@ -464,7 +468,8 @@ class Library:
           * an UNKNOWN field is a 400, not a silently stored attribute;
           * `year.value=abc` is a 500, and `year.value=-5` REMOVES the year;
           * an unparseable date removes the field rather than storing the text;
-          * `userRating` is accepted and IGNORED (the star rating is /:/rate);
+          * `userRating` is accepted and IGNORED on the item path (the star rating
+            is /:/rate) and STORED on the section path;
           * only `.locked=1` locks -- `true`, `false` and an empty value all
             UNLOCK, where plexsim locked on anything non-empty;
           * on the ITEM path an indexed tag list REPLACES the whole list rather
@@ -562,9 +567,30 @@ class Library:
 
     def _set_field(self, row, field, value, section=False):
         """One scalar field, with the coercions a real PMS applies."""
-        if field in IGNORED_EDIT_FIELDS:
+        if field in IGNORED_EDIT_FIELDS and not section:
             # Measured: accepted, lock recorded, value discarded -- the star
-            # rating is written through /:/rate, not through the Edit dialog.
+            # rating is written through /:/rate, not through the item path.
+            return
+        if field in FLOAT_FIELDS:
+            # Measured on a writable copy of the reference: a rating is a number (`abc`
+            # is a 500 on both paths), and an EMPTY one is a 500 on the item path and
+            # removes the field on the section path. The section path STORES a
+            # userRating, stamping lastRatedAt, and -1 or empty clears both -- the Edit
+            # dialog's own save is a rating write. plexsim kept every rating as the
+            # string it was sent and discarded userRating on both paths.
+            text = str(value).strip()
+            if (text == "" and not section) \
+                    or (text and not re.fullmatch(r"[+-]?\d+(\.\d+)?", text)):
+                raise EditError(500, "unparseable %s %r" % (field, value))
+            number = float(text) if text else None
+            if number is None or (field == "userRating" and number < 0):
+                row.pop(field, None)
+                if field == "userRating":
+                    row.pop("lastRatedAt", None)
+            else:
+                row[field] = number
+                if field == "userRating":
+                    row["lastRatedAt"] = _now()
             return
         if value == "":
             if field == "year" and section:

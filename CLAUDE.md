@@ -354,6 +354,9 @@ precisely how the Seasons bug survived a fix attempt.
   cannot read is a 500, a date also sets the year (an empty one clears both), and an
   empty year is removed rather than refused. Both parse a date the same way --
   `2007-02-30` rolls over, a bare integer is epoch seconds -- and 0 removes a year.
+  The section path also STORES `userRating` (stamping `lastRatedAt`), and every
+  rating is a number: an empty one is a 500 on the item path and removed on the
+  section path.
 - **The UI draws a menu entry from what the server *advertises*, not from
   whether the write behind it works.** `/media/providers` decides whether Edit,
   Delete, Download, Optimize and Mark as Played exist at all; an unimplemented
