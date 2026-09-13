@@ -727,6 +727,8 @@ precisely how the Seasons bug survived a fix attempt.
   selection and total, no rows); the next read has the selection on the following item.
 - **A collection's children follow its `collectionSort`**: by release date when unset or 0,
   custom at 2 -- and a move starts from the order SHOWN, then switches to custom.
+- **Renaming a collection leaves its members' tag alone**: the collection keeps the tag it
+  was created under and finds, removes and untags members by it.
 
 ## Conventions
 
