@@ -9354,32 +9354,43 @@ def main():
           % (hub_c14b[:2], flat_c14b[:2], plain_c14b, acc_c14b))
 
 
-    # Cycle 14: `title=` folds combining marks for a ONE-WORD query and not once the
-    # query holds a space -- measured on zen, where `title=Bogota` finds the accented
-    # row, `title=Bogota City` finds nothing, and `title=Bogota ` (trailing space)
-    # finds nothing while its accented spelling still does.
+    # Cycle 14 read the SPACE as what turns the fold off; cycle 15 re-measured it over
+    # 52 queries on zen and the space is not the rule -- the COLON is. The fixture row
+    # cycle 14 used dropped the colon from zen's actual title, so the check asserted a
+    # shape zen was never asked for. Both of zen's titles are used verbatim here now:
+    # `Bogotá: City of the Lost`, where `Bogota City` really does find nothing, and
+    # `Adorável Trapalhão`, where the folded TWO-WORD query finds the row.
     orig_c14c = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                  .get("title") or "Movie")
     request(base, "PUT", "/library/metadata/%s?title.value=%s"
-            % (movie, urllib.parse.quote("Bogotá City")))
+            % (movie, urllib.parse.quote("Bogotá: City of the Lost")))
 
     def titles_c14c(spec):
         return [r.get("title") for r in
                 get(base, "/library/sections/%s/all?type=1&title=%s"
                     % (movie_section, urllib.parse.quote(spec)))[1].get("Metadata") or []]
 
-    one_c14c = titles_c14c("Bogota")
-    onedot_c14c = titles_c14c("Bogotá")
-    two_c14c = titles_c14c("Bogota City")
-    twodot_c14c = titles_c14c("Bogotá City")
-    trail_c14c = titles_c14c("Bogota ")
+    want_c14c = ["Bogotá: City of the Lost"]
+    colon_c14c = {spec_c14c: titles_c14c(spec_c14c) == want_c14c for spec_c14c in (
+        "Bogota", "Bogotá", "Bogota City", "Bogotá City", "Bogot City",
+        "Bogota: City", "Bogota: City of the Lost", "Bogota ", "Bogota:  City")}
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("Adorável Trapalhão")))
+    want2_c14c = ["Adorável Trapalhão"]
+    plain_c14c = {spec_c14c: titles_c14c(spec_c14c) == want2_c14c for spec_c14c in (
+        "Adoravel Trapalhao", "Adoravel Trap", "Adoravel", "Adorave Trapalhao",
+        "Adoravel Trapalhão")}
     request(base, "PUT", "/library/metadata/%s?title.value=%s"
             % (movie, urllib.parse.quote(orig_c14c)))
-    check("title= folds a one-word query and stops folding once it has a space",
-          one_c14c == ["Bogotá City"] and onedot_c14c == ["Bogotá City"]
-          and two_c14c == [] and twodot_c14c == ["Bogotá City"] and trail_c14c == [],
-          "one %s | one-acc %s | two %s | two-acc %s | trailing-space %s"
-          % (one_c14c, onedot_c14c, two_c14c, twodot_c14c, trail_c14c))
+    check("title= folds across a space, and a whole word is what a folded term needs",
+          colon_c14c == {"Bogota": True, "Bogotá": True, "Bogota City": False,
+                         "Bogotá City": True, "Bogot City": True,
+                         "Bogota: City": True, "Bogota: City of the Lost": True,
+                         "Bogota ": False, "Bogota:  City": False}
+          and plain_c14c == {"Adoravel Trapalhao": True, "Adoravel Trap": True,
+                             "Adoravel": True, "Adorave Trapalhao": False,
+                             "Adoravel Trapalhão": True},
+          "colon %s | plain %s" % (colon_c14c, plain_c14c))
 
 
     # Cycle 14: `/filters` is the list the server's OWN VERSION advertises. kids
