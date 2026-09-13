@@ -173,6 +173,11 @@ def _dovi(fixture):
     return per_stream(1, DOVI_FIELDS)(fixture)
 
 
+@check("video-bitdepth")
+def _video_bit_depth(fixture):
+    return per_stream(1, ("bitDepth",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
