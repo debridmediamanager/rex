@@ -10206,6 +10206,31 @@ def main():
              {k_c15a: v_c15a for k_c15a, v_c15a in member_tags_c15a.items()
               if str(k_c15a).startswith("C15 ")}))
 
+
+    # Cycle 14: `/library/all?type=18` lists every collection the server holds, across
+    # libraries, in title order. Measured on the copy (two collections, `Aardvark`
+    # before `C14 Trio`). plexsim answered `size 0` because its collections are not
+    # rows in the item catalog and that handler only looked there.
+    for name_c15b in ("C15b Zulu", "C15b Alpha"):
+        request(base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (urllib.parse.quote(name_c15b), movie_section, urllib.parse.quote(
+                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                    % (machine, movie), safe="")))
+    all18_c15b = [r_c15b.get("title") for r_c15b in
+                  get(base, "/library/all?type=18")[1].get("Metadata") or []]
+    section18_c15b = [r_c15b.get("title") for r_c15b in
+                      get(base, "/library/sections/%s/all?type=18" % movie_section)[1]
+                      .get("Metadata") or []]
+    mine_c15b = [t_c15b for t_c15b in all18_c15b if str(t_c15b).startswith("C15b ")]
+    for row_c15b in get(base, "/library/sections/%s/collections" % movie_section)[1] \
+            .get("Metadata") or []:
+        if str(row_c15b.get("title") or "").startswith("C15b "):
+            request(base, "DELETE", "/library/collections/%s" % row_c15b["ratingKey"])
+    check("/library/all?type=18 lists the collections in title order",
+          mine_c15b == ["C15b Alpha", "C15b Zulu"]
+          and set(section18_c15b) <= set(all18_c15b),
+          "library/all %s | section %s" % (all18_c15b, section18_c15b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
