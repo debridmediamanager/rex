@@ -1708,7 +1708,15 @@ class Library:
             "title": collection["title"],
             "subtype": collection["subtype"],
             "summary": collection["summary"],
-            "index": 1,
+            # Cycle 14, measured on the copy: a collection row's `index` is its own
+            # TAG id -- the same number its members carry in their `Collection` tag and
+            # the same one the `/collection` axis keys on (235 and 236 for two
+            # collections made in order). plexsim sent 1 for every collection, so the
+            # number the client uses to tie a row to its tag was the same on all of
+            # them. The tag id comes from the catalog's own allocator, so a rename
+            # follows the tag the collection was created under.
+            "index": self.catalog.tag_id("Collection",
+                                         collection.get("tag", collection["title"])),
             "ratingCount": len(rows),
             "thumb": "/library/collections/%s/composite/%d?width=400&height=600"
                      % (collection["ratingKey"], stamp),
