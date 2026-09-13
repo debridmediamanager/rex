@@ -3256,6 +3256,32 @@ below is one check there, and each check failed against the code before its fix.
   composed them first. `tests/catalog_ui.json`'s 1920x800 rows were served as `720`, 2.4 and
   `profile: 0`.
 
+Measured in the tenth pass's media batch and not acted on:
+
+- **What the probe cannot give.** `refFrames`, which every real stream carries and ffprobe
+  8.1 no longer prints; a Matroska video stream's bitrate, which is the server's own analysis
+  (it matches the stream's BPS tag on 3 of 25 files); DTS-HD, TrueHD, FLAC, Opus and subtitle
+  bitrates; `headerCompression`; Part `packetLength` (188 on fun where ffprobe reports 192);
+  Media durations a millisecond apart; two Media bitrates that are neither rounded nor
+  truncated; `hasThumbnail`, `indexes` and the `failureBIF*` fields; and `eia_608` captions,
+  whose only sample failed to probe.
+- **Which audio track is `selected`** follows the account's language settings, which plexsim
+  does not have; the first track stays selected.
+- **Leads, one sample each:** a `.webm` file reported as container `mkv` (plexsim keeps
+  `webm`, which Plex Web's direct-play rule depends on); `anamorphic: false` on a 333:320
+  sample aspect ratio; an AVI audio track numbered `1` with no id in the probe; a forced track
+  with no linguistic content leaving `Forced` out of its extended title; and `AVC` standing in
+  for H.264 in a video track's title.
+- **Counterexamples left alone:** E-AC-3 with Atmos in an mp4 is its 5.1 core to a real PMS
+  where ffprobe says 7.1 (channels, layout, titles and the Media's audio track all follow);
+  DTS Express has no layout; TrueHD in an mp4 has no bit depth.
+- **The reference's version, not a rule:** 1.43.4 labels an untagged track English, leaves
+  `lc` and the mono layout off most AAC clips, and writes its clips' Media bitrates about
+  8 kbps under the probe's. fun writes none of that.
+- **Not sampled, so not named:** an HLG range, and Dolby Vision compatibility ids other than
+  0, 1 and 6 in a title. Two of the 37 probes on fun failed on fun's side (an I/O error at
+  byte 0, and a raw VC-1 stream in a `.mkv`).
+
 #### The tenth pass, second batch: the writes cycle 9 did not reach
 
 The write hunt went back to plexscratch for what cycle 9 did not reach -- smart-list edits,
