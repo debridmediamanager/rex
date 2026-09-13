@@ -452,6 +452,18 @@ class Library:
         self._history.append(entry)
         return entry
 
+    def delete_stream(self, stream_id):
+        """Remove one uploaded sidecar stream from wherever it sits."""
+        for row in self.catalog.items.values():
+            for media in row.get("Media") or []:
+                for part in media.get("Part") or []:
+                    streams = part.get("Stream") or []
+                    kept = [s for s in streams if int(s.get("id") or 0) != int(stream_id)]
+                    if len(kept) != len(streams):
+                        part["Stream"] = kept
+                        return True
+        return False
+
     def _forget_item(self, rating_key):
         """Strip a removed row's keys from its history rows, as a real PMS does.
 

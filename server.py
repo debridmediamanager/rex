@@ -2805,6 +2805,21 @@ class PlexSim:
                 # Measured on both servers: the loudness levels of a stream the server
                 # has not analysed are a 404, where the stream itself is the 501.
                 return ("error", 404, "plexsim: not found")
+            if method == "PUT" and len(segments) == 3:
+                # Measured on a writable copy of the reference: a PUT to a stream it HAS
+                # is 200 with an empty body -- and stores nothing, the track's title is
+                # unchanged afterwards, with or without parameters. plexsim answered the
+                # 501 the GET answers, so python-plexapi's stream edit read a refusal
+                # where a real PMS reads an acceptance.
+                return ("empty", 200)
+            if method == "DELETE" and len(segments) == 3:
+                # And a DELETE removes an uploaded SIDECAR (200) while refusing an
+                # embedded track with 403 -- it is part of the file. plexsim 501'd both.
+                if int(stream_id) not in self.uploaded_subtitles:
+                    return ("error", 403, "plexsim: the stream is embedded in the part")
+                self.library.delete_stream(int(stream_id))
+                self.uploaded_subtitles.pop(int(stream_id), None)
+                return ("empty", 200)
             return ("error", 501, "plexsim: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method in ("PUT", "POST"):

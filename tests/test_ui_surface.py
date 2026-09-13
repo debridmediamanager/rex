@@ -7971,6 +7971,45 @@ def main():
              [(s_c11m.get("title"), s_c11m.get("displayTitle"), s_c11m.get("selected"))
               for s_c11m in subs_c11m]))
 
+
+    # Measured on a writable copy of the reference: a PUT to a stream the server HAS is
+    # 200 with an empty body (and stores nothing -- the title is unchanged after it),
+    # a DELETE of an embedded track is 403 because it is part of the file, and a DELETE
+    # of an uploaded sidecar really removes it (200). An unknown id keeps cycle 6's
+    # refusals: PUT 400, DELETE 404, GET 404. plexsim answered 501 to every verb.
+    row_c11n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    streams_c11n = [s_c11n for m_c11n in (row_c11n.get("Media") or [])
+                    for p_c11n in (m_c11n.get("Part") or []) for s_c11n in (p_c11n.get("Stream") or [])]
+    embedded_c11n = next((s_c11n.get("id") for s_c11n in streams_c11n
+                          if not str(s_c11n.get("key") or "").startswith("/library/streams/")), None)
+    request(base, "POST", "/library/metadata/%s/subtitles?title=c11del.srt&format=srt" % movie,
+            body=b"1\n00:00:00,000 --> 00:00:02,000\nc11\n\n")
+    row_c11n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    uploaded_c11n = next((s_c11n.get("id") for m_c11n in (row_c11n.get("Media") or [])
+                          for p_c11n in (m_c11n.get("Part") or [])
+                          for s_c11n in (p_c11n.get("Stream") or [])
+                          if s_c11n.get("title") == "c11del"), None)
+    if embedded_c11n is None or uploaded_c11n is None:
+        skip("a stream PUT is accepted and only an uploaded sidecar can be deleted",
+             "no stream to write to")
+    else:
+        put_c11n = request(base, "PUT", "/library/streams/%s?title=c11new" % embedded_c11n)[:2]
+        delete_embedded_c11n = request(base, "DELETE", "/library/streams/%s" % embedded_c11n)[0]
+        delete_upload_c11n = request(base, "DELETE", "/library/streams/%s" % uploaded_c11n)[:2]
+        gone_c11n = [s_c11n.get("title")
+                     for m_c11n in ((get(base, "/library/metadata/%s" % movie)[1]
+                                     .get("Metadata") or [{}])[0].get("Media") or [])
+                     for p_c11n in (m_c11n.get("Part") or [])
+                     for s_c11n in (p_c11n.get("Stream") or [])]
+        check("a stream PUT is accepted and only an uploaded sidecar can be deleted",
+              put_c11n == (200, b"") and delete_embedded_c11n == 403
+              and delete_upload_c11n == (200, b"") and "c11del" not in gone_c11n
+              and request(base, "GET", "/library/streams/%s" % embedded_c11n)[0] == 501
+              and request(base, "PUT", "/library/streams/99999999")[0] == 400
+              and request(base, "DELETE", "/library/streams/99999999")[0] == 404,
+              "put %s, delete embedded %s, delete upload %s, left %s"
+              % (put_c11n, delete_embedded_c11n, delete_upload_c11n, gone_c11n))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
