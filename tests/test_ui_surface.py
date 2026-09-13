@@ -9876,6 +9876,29 @@ def main():
                   % (status_c14s, before_s_c14s, after_s_c14s,
                      len(before_l_c14s), len(after_l_c14s), gone_c14s))
 
+
+    # Cycle 14: a hub container says `allowSync: true` on kids and zen alike -- every
+    # hub path except `/hubs/metadata/{id}/postplay`, which says false, and
+    # `/hubs/search` and `/hubs/items`, which carry none at all. plexsim defaulted to
+    # false with three call sites putting it back, so eight of the ten said the opposite.
+    def sync_c14t(path_c14t):
+        body_c14t = get(base, path_c14t)[1]
+        return body_c14t.get("allowSync", "<absent>")
+
+    true_c14t = {p_c14t: sync_c14t(p_c14t) for p_c14t in (
+        "/hubs", "/hubs/sections/%s" % movie_section, "/hubs/promoted?contentDirectoryID=%s"
+        % movie_section, "/hubs/home/recentlyAdded?type=1", "/hubs/home/onDeck",
+        "/hubs/continueWatching", "/hubs/metadata/%s/related" % movie,
+        "/library/metadata/%s/related" % movie)}
+    post_c14t = sync_c14t("/hubs/metadata/%s/postplay" % movie)
+    absent_c14t = (sync_c14t("/hubs/search?query=a"),
+                   sync_c14t("/hubs/items?identifier=com.plexapp.plugins.library"))
+    check("a hub container says allowSync true, and only postplay says false",
+          set(true_c14t.values()) == {True} and post_c14t is False
+          and absent_c14t == ("<absent>", "<absent>"),
+          "true-paths %s | postplay %r | absent %s"
+          % (sorted({str(v_c14t) for v_c14t in true_c14t.values()}), post_c14t, absent_c14t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
