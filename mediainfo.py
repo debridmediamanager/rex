@@ -226,6 +226,23 @@ def _extended_title(title, parts):
     return "%s (%s)" % (title, " ".join(left)) if left else title
 
 
+def _subtitle_codec_label(row):
+    """The codec part of a subtitle's titles.
+
+    Measured on a writable copy of the reference: a SIDECAR subtitle -- one uploaded
+    through the client's Upload Subtitle modal, which is the only kind plexsim can
+    hold -- labels itself `<CODEC> External`, so its plain title reads
+    `Unknown (SRT External)` and its extended one `<name> (SRT External)`. An embedded
+    track keeps the bare codec. The tell is the sidecar `key`: an embedded stream has
+    none. One witness only (the copy is a real PMS 1.43.4; no sidecar subtitle was
+    found on the 1.42.2 server to confirm it against).
+    """
+    codec = str(row.get("codec") or "").upper()
+    if codec and str(row.get("key") or "").startswith("/library/streams/"):
+        return "%s External" % codec
+    return codec
+
+
 def stream_titles(row):
     """Set `displayTitle` and `extendedDisplayTitle` on one Stream row, from its own fields.
 
@@ -264,7 +281,7 @@ def stream_titles(row):
         language = row.get("language")
         forced = "Forced" if row.get("forced") else None
         sdh = "SDH" if row.get("hearingImpaired") else None
-        codec = str(row.get("codec") or "").upper()
+        codec = _subtitle_codec_label(row)
         plain = " ".join(part for part in (language or "Unknown", forced, sdh) if part)
         row["displayTitle"] = plain
         if title:
@@ -299,7 +316,7 @@ def client_display_title(row, product):
     if kind == 1:
         codec = _video_codec_label(row)
     elif kind == 3:
-        codec = str(row.get("codec") or "").upper()
+        codec = _subtitle_codec_label(row)
     else:
         return title
     return "%s (%s)" % (title, codec) if codec else title
