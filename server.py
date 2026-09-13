@@ -2538,6 +2538,10 @@ class PlexSim:
             fields = {"offset": start, "totalSize": total} if paged else {}
             return self.container(Metadata=page, mixedParents=True, **fields)
 
+        if route == "/library/all" and method not in ("GET", "HEAD"):
+            # Measured: `/library/all` is read-only -- a PUT there is a 404, where
+            # plexsim answered the listing to what looks like an edit.
+            return ("error", 404, "plexsim: not found")
         if route == "/library/all":
             # Measured: a real query endpoint, not a dump. `type=` selects the rows,
             # filters and `sort=` apply as on a section, the default order is the
@@ -4927,6 +4931,10 @@ class PlexSim:
                 self.notify_deleted(row)
                 logger.info("DELETE %s (%s)", rating_key, row.get("title"))
                 return ("empty", 200)
+            if method not in ("GET", "HEAD"):
+                # Measured on a writable copy of the reference: a POST to an item is a
+                # 404 -- edits are PUTs -- where plexsim answered the detail row.
+                return ("error", 404, "plexsim: not found")
             section = self.catalog.section(row["librarySectionID"]) or {}
             detail = _full(row)
             if row.get("type") in ("show", "season"):

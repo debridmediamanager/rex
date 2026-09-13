@@ -3003,6 +3003,9 @@ the same parameters, then read back from both.
   of the show's episodes from Continue Watching hides the show's row, even when the row
   names another episode, and a timeline on any of them brings it back. plexsim listed
   every episode with a resume point, and never the next one.
+- **An item takes no POST, and `/library/all` takes no write.** `POST
+  /library/metadata/{id}?summary.value=` and `PUT /library/all?type=1&tagline.value=` are
+  404s; plexsim answered the detail row and the listing.
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -6407,6 +6407,13 @@ def main():
     else:
         skip("a completed play answers complete until a stopped beat closes it, then ignore", "need a second movie")
 
+    # Measured on plexscratch: an item takes no POST (edits are PUTs) and /library/all takes
+    # no write -- both are 404s, where plexsim answered the detail row and the listing.
+    post_w17a, _, _ = container(base, "POST", "/library/metadata/%s?summary.value=w17a" % movie)
+    all_w17a, _, _ = container(base, "PUT", "/library/all?type=1&tagline.value=w17a")
+    check("an item takes no POST and /library/all takes no write",
+          (post_w17a, all_w17a) == (404, 404), "POST %s, PUT /library/all %s" % (post_w17a, all_w17a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
