@@ -8869,6 +8869,44 @@ def main():
                          "genre", "collection", "playlist", "shared", "place"],
           "%s" % order_c13j)
 
+        # Measured on kids (1.43.4) and zen (1.42.2): `/hubs/search` returns the ITEMS a
+    # matched tag is on, not just the tag row. kids `colin` answers the two tag rows AND
+    # Firefly (`reason: actor, reasonID 105, reasonTitle "Colin Patrick Lynch"`) and
+    # Sintel (`reason: director, reasonTitle "Colin Levy"`); zen `tom hanks` answers
+    # eleven movie rows all reasoned on the actor, and across ten zen queries 53 of 81
+    # item rows carried a `reason` -- most search hits on a real library are tag hits.
+    # `/library/search` does NOT carry them (kids `colin` is two Directory rows and
+    # nothing else, zen `spielberg` five), so this is the hubs endpoint alone. plexsim
+    # matched titles only, so searching an actor, a director or a genre drew the tag row
+    # with an empty Movies shelf beside it -- and its `reason` code could never fire.
+    # One WORD of a director's name, because plexsim's tag matcher is a word-prefix
+    # matcher and a two-word needle never begins a single word.
+    person_c13k = next((t_c13k.get("tag") for t_c13k in
+                        (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                        .get("Director") or [] if t_c13k.get("tag")), None)
+    word_c13k = (person_c13k or "").split()[-1] if person_c13k else None
+    if not word_c13k:
+        skip("a search returns the items behind a matched tag, and only in the hubs form",
+             "no director left on the fixture movie")
+    else:
+        hubs_c13k = {h_c13k.get("type"): h_c13k for h_c13k in
+                     get(base, "/hubs/search?query=%s" % quote(word_c13k))[1].get("Hub") or []}
+        hit_c13k = next((r_c13k for r_c13k in (hubs_c13k.get("movie") or {}).get("Metadata") or []
+                         if str(r_c13k.get("ratingKey")) == str(movie)), None)
+        tag_c13k = (hubs_c13k.get("director") or {}).get("Directory") or []
+        flat_c13k = get(base, "/library/search?query=%s" % quote(word_c13k))[1]
+        items_c13k = [r_c13k for r_c13k in flat_c13k.get("SearchResult") or [] if r_c13k.get("Metadata")]
+        check("a search returns the items behind a matched tag, and only in the hubs form",
+              hit_c13k is not None
+              and hit_c13k.get("reason") == "director"
+              and hit_c13k.get("reasonTitle") == person_c13k
+              and hit_c13k.get("reasonID") is not None
+              and len(tag_c13k) == 1
+              and not items_c13k,
+              "hub row %s | tag rows %s | /library/search items %s"
+              % ({k_c13k: hit_c13k.get(k_c13k) for k_c13k in ("ratingKey", "reason", "reasonTitle")}
+                 if hit_c13k else None, len(tag_c13k), len(items_c13k)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
