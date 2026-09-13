@@ -6124,12 +6124,20 @@ class PlexSim:
             queue_id = self.next_play_queue
             self.next_play_queue += 1
             items = self._queue_items(rows)
+            selected = items[0]["id"] if items else None
+            wanted = str(query.get("key") or "").rsplit("/", 1)[-1]
+            if wanted.isdigit():
+                # Measured on a writable copy of the reference: `key=` names the item the
+                # queue starts ON -- a queue over a whole library with
+                # `key=/library/metadata/3` selects that movie, where plexsim selected
+                # the first row and the player started the wrong film.
+                selected = next((e["id"] for e in items if str(e["ratingKey"]) == wanted), selected)
             self.play_queues[queue_id] = {
                 "items": items,
                 "source": "" if playlist is not None else self.source_uri(uri, rows),
                 "shuffled": query.get("shuffle") == "1",
                 "version": 1,
-                "selected": items[0]["id"] if items else None,
+                "selected": selected,
                 "last_added": None,
                 "playlist": (int(playlist["ratingKey"]), playlist["title"])
                             if playlist is not None else None,

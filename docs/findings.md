@@ -3014,6 +3014,8 @@ the same parameters, then read back from both.
   `actor[0].tagRole=` is stored with `role: ""`, the field every actor added by an edit
   carries. plexsim refused most of them as unknown fields and stored the movie's
   duration and index.
+- **A play queue starts on the item its `key` names.** A queue over a whole library with
+  `key=/library/metadata/3` selects that movie (offset 3); plexsim selected the first row.
 
 ### Emulation calibrated against the account's own claimed servers
 

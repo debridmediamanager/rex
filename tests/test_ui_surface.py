@@ -6447,6 +6447,24 @@ def main():
           and roles_w17b == [{"tag": "Actor W17b", "role": ""}],
           "%s %s role %s %s" % (statuses_w17b, extra_w17b, role_w17b, roles_w17b))
 
+    # Measured on plexscratch: `key=` names the item a play queue starts on -- a queue over
+    # the whole library selects that movie -- where plexsim selected the first row.
+    listing_w14a = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    if len(listing_w14a) >= 2:
+        last_w14a = str(listing_w14a[-1]["ratingKey"])
+        made_w14a = container(base, "POST", "/playQueues?type=video&own=1&uri=%s&key=%s"
+                                            % (quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)), quote("/library/metadata/%s" % last_w14a)))[1]
+        rows_w14a = made_w14a.get("Metadata") or []
+        chosen_w14a = [n for n, r in enumerate(rows_w14a)
+                       if r.get("playQueueItemID") == made_w14a.get("playQueueSelectedItemID")]
+        check("a play queue starts on the item its key names",
+              chosen_w14a and str(rows_w14a[chosen_w14a[0]].get("ratingKey")) == last_w14a
+              and made_w14a.get("playQueueSelectedItemOffset") == chosen_w14a[0],
+              "selected %s at offset %s, wanted %s" % ([rows_w14a[n].get("ratingKey") for n in chosen_w14a],
+                                                       made_w14a.get("playQueueSelectedItemOffset"), last_w14a))
+    else:
+        skip("a play queue starts on the item its key names", "need two movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
