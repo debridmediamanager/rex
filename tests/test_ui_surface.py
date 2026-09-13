@@ -8637,6 +8637,67 @@ def main():
                   % (dupes_c13d(4, 1), len(every_c13d), dupes_c13d(3, 1), parent_c13d,
                      dupes_c13d(2, 1)))
 
+        # Measured on kids (1.43.4) and zen (1.42.2), which agree exactly: a bare `<field>=`
+    # on a `tag` field means THREE different things, by field.
+    #   a tag-TABLE field (genre, country, director, writer, producer, actor, label,
+    #     collection, network, similar) matches NOTHING -- 0 of 5 and 0 of 3887;
+    #   `studio` and `editionTitle` match EVERY row -- 5 of 5 and 3887 of 3887, even
+    #     though 14 of 200 sampled zen movies carry no studio at all;
+    #   everything else of that kind (contentRating, audioLanguage, subtitleLanguage)
+    #     matches the rows with NO value -- contentRating= is 3 of 5 and 2864 of 3887.
+    # And `contentRating=None`, in that exact spelling, is a synonym for the empty value
+    # (2864 on zen, 3 on kids) where `none` and `NONE` match nothing; no other field has
+    # such a synonym. The codec axes disagree between the two servers (kids 0, zen every
+    # row), so they are a version difference and are left alone. plexsim applied the
+    # valueless-row rule to all of them, so a bare `genre=` selected the whole library
+    # and `studio=` selected only the rows that had none.
+    def sized_c13e(query_c13e):
+        path_c13e = "/library/sections/%s/all?type=1" % movie_section
+        if query_c13e:
+            path_c13e += "&" + query_c13e
+        return len(get(base, path_c13e)[1].get("Metadata") or [])
+    rows_c13e = [r["ratingKey"] for r in
+                 get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []]
+    every_c13e = len(rows_c13e)
+    if every_c13e < 2:
+        skip("an empty tag value means nothing, everything or 'has no value', by field",
+             "need two movies left in the fixture")
+    else:
+        # Built rather than hoped for: one row with a studio and a rating, one with
+        # neither, so each of the three behaviours has something to tell apart. An empty
+        # value REMOVES a field that is not title or summary (measured in cycle 9).
+        request(base, "PUT", "/library/metadata/%s?studio.value=c13studio"
+                             "&contentRating.value=PG&genre[0].tag.tag=c13genre" % rows_c13e[0])
+        request(base, "PUT", "/library/metadata/%s?studio.value=&contentRating.value="
+                             % rows_c13e[-1])
+        empty_c13e = {name_c13e: sized_c13e("%s=" % name_c13e)
+                      for name_c13e in ("genre", "director", "actor", "label", "studio",
+                                        "editionTitle", "contentRating")}
+        upper_c13e = sized_c13e("contentRating=None")
+        lower_c13e = sized_c13e("contentRating=none")
+        check("an empty tag value means nothing, everything or 'has no value', by field",
+              all(empty_c13e[name_c13e] == 0
+                  for name_c13e in ("genre", "director", "actor", "label"))
+              and empty_c13e["studio"] == every_c13e
+              and empty_c13e["editionTitle"] == every_c13e
+              and 0 < empty_c13e["contentRating"] < every_c13e
+              and upper_c13e == empty_c13e["contentRating"]
+              and lower_c13e == 0,
+              "%s of %s rows | contentRating=None %s, =none %s"
+              % (empty_c13e, every_c13e, upper_c13e, lower_c13e))
+        # The axis itself carries the bucket, LAST, after the alphabetical entries.
+        axis_rows_c13e = get(base, "/library/sections/%s/contentRating" % movie_section)[1].get("Directory") or []
+        axis_c13e = [d_c13e.get("title") for d_c13e in axis_rows_c13e]
+        none_c13e = next((d_c13e for d_c13e in axis_rows_c13e if d_c13e.get("key") == "None"), None)
+        studio_axis_c13e = [d_c13e.get("title") for d_c13e in
+                            get(base, "/library/sections/%s/studio" % movie_section)[1].get("Directory") or []]
+        check("the contentRating axis ends with a None bucket, and no other axis has one",
+              len(axis_c13e) >= 2 and axis_c13e[-1] == "None" and "None" not in axis_c13e[:-1]
+              and none_c13e == {"fastKey": "/library/sections/%s/all?contentRating=None" % movie_section,
+                                "key": "None", "title": "None"}
+              and "None" not in studio_axis_c13e,
+              "contentRating %s | None row %s | studio %s" % (axis_c13e, none_c13e, studio_axis_c13e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
