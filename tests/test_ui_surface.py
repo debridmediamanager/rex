@@ -1662,7 +1662,9 @@ def main():
         status, body, _ = request(base, "PUT", "/library/collections/%s?title=%s"
                                               % (collection_key, quote("plexsim renamed")))
         _, one, _ = get(base, "/library/collections/%s" % collection_key)
-        check("renaming a collection retags its members",
+        # Measured on a writable copy of the reference: the rename changes the title and
+        # leaves the members' tag as it was.
+        check("renaming a collection renames it",
               is_empty_200(status, body)
               and (one.get("Metadata") or [{}])[0].get("title") == "plexsim renamed",
               (one.get("Metadata") or [{}])[0].get("title"))
@@ -6692,6 +6694,21 @@ def main():
     check("a collection takes a label, and a type=18 section save edits it",
           [t.get("tag") for t in row_w13d.get("Label") or []] == ["W13d"] and row_w13d.get("summary") == "w13d",
           "labels %s summary %r" % ([t.get("tag") for t in row_w13d.get("Label") or []], row_w13d.get("summary")))
+
+    # Measured on plexscratch: renaming a collection leaves its members' Collection tag as
+    # it was, and deleting it still untags them. plexsim renamed the tag with the collection.
+    _, doc_w13e, _ = container(base, "POST", "/library/collections?type=1&sectionId=%s&title=w13e&uri=%s"
+                                             % (movie_section, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))
+    key_w13e = (doc_w13e.get("Metadata") or [{}])[0].get("ratingKey")
+    def tags_w13e():
+        return [t.get("tag") for t in (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                .get("Collection") or [] if str(t.get("tag")).startswith("w13e")]
+    request(base, "PUT", "/library/collections/%s?title=w13erenamed" % key_w13e)
+    renamed_w13e = tags_w13e()
+    request(base, "DELETE", "/library/collections/%s" % key_w13e)
+    deleted_w13e = tags_w13e()
+    check("renaming a collection leaves its members' tag, and deleting it still untags them",
+          renamed_w13e == ["w13e"] and deleted_w13e == [], "%s then %s" % (renamed_w13e, deleted_w13e))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

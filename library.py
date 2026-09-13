@@ -916,7 +916,7 @@ class Library:
         if len(collection["items"]) != before:
             collection["updatedAt"] = _now()
         tags = [t for t in row.get("Collection") or []
-                if str(t.get("tag")) != str(collection["title"])]
+                if str(t.get("tag")) != str(collection.get("tag", collection["title"]))]
         if tags:
             row["Collection"] = tags
         else:
@@ -1407,7 +1407,7 @@ class Library:
             collection["items"].append(int(row["ratingKey"]))
             # A collection is a tag on its members, and the item detail page
             # reads it from the row rather than from /library/collections.
-            self._add_tag(row, "collection", collection["title"])
+            self._add_tag(row, "collection", collection.get("tag", collection["title"]))
             added += 1
         if added:
             collection["updatedAt"] = _now()
@@ -1418,7 +1418,7 @@ class Library:
 
     def find_collection(self, title, section_id=None):
         for collection in self._collections.values():
-            if collection["title"] == title and (
+            if collection.get("tag", collection["title"]) == title and (
                     section_id is None
                     or str(collection["librarySectionID"]) == str(section_id)):
                 return collection
@@ -1451,14 +1451,12 @@ class Library:
             collection["updatedAt"] = _now()
 
     def edit_collection(self, collection, title=None, summary=None):
-        """Rename or re-summarise a collection, members included.
+        """Rename or re-summarise a collection.
 
-        The tag is renamed in PLACE rather than removed and re-added. Going
-        through the tag helpers instead looks equivalent and is not: removing
-        the old tag drops the member from this collection's own item list (that
-        is how "Add to Collection" and its reverse work), and adding the new one
-        then creates a SECOND collection under the new name -- leaving the
-        original empty, so deleting it afterwards untags nobody.
+        Measured on a writable copy of the reference: renaming a collection leaves its
+        members' Collection TAG as it was. plexsim renamed the tag in place; now the
+        collection keeps the tag it was created under (`tag`) and finds, removes and
+        untags its members by that, so the rename changes the title alone.
         """
         if title == "" and collection["title"]:
             # Measured: an emptied collection title is stored as "" and keeps its old
@@ -1466,16 +1464,9 @@ class Library:
             self._empty_title(collection, collection["title"])
             collection["title"] = ""
         if title and title != collection["title"]:
-            old_title = collection["title"]
+            collection.setdefault("tag", collection["title"])
             collection["title"] = title
             self._derive_title_sort(collection)
-            for key in collection["items"]:
-                row = self.catalog.items.get(int(key))
-                if row is None:
-                    continue
-                for tag in row.get("Collection") or []:
-                    if tag.get("tag") == old_title:
-                        tag["tag"] = title
         if summary is not None:
             collection["summary"] = summary
         collection["updatedAt"] = _now()
@@ -1487,7 +1478,7 @@ class Library:
         for member in collection["items"]:
             row = self.catalog.items.get(int(member))
             if row is not None:
-                self._remove_tags(row, "collection", [collection["title"]])
+                self._remove_tags(row, "collection", [collection.get("tag", collection["title"])])
         return True
 
     def collection_children(self, collection):

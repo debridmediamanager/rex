@@ -3058,6 +3058,10 @@ the same parameters, then read back from both.
   `PUT /library/metadata/{collection}?label[0].tag.tag=` stores the label, and `PUT
   /library/sections/1/all?type=18&id={collection}&summary.value=` edits the collection;
   plexsim ignored both.
+- **Renaming a collection leaves its members' tag alone.** After renaming `c13` a member
+  still carried its original Collection tag; plexsim renamed the tag with the collection.
+  (The reference spelled that tag `C13` for a collection created as `c13`, which was not
+  pinned down.)
 
 ### Emulation calibrated against the account's own claimed servers
 
