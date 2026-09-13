@@ -696,6 +696,9 @@ precisely how the Seasons bug survived a fix attempt.
 - **The section save path is scoped by `type` AND by library**: an `id` of another type
   or library is silently not edited, and a type-scoped filter (`show.title=`) there is a
   400 even though the same key filters a listing.
+- **A frame's title is not the row's title**: a show is `Title (year)`, a season
+  `<show> S01`, an episode `<show> S01 E07`. A section-path save frames every row's
+  state 3 first, in sort-title order, and a list edit pushes its own type-15/18 pair.
 
 ## Conventions
 

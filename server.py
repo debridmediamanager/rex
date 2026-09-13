@@ -1306,10 +1306,22 @@ class PlexSim:
         `metadata_state=None` omits the field, which is what state 5 does.
         """
         title = row.get("title") or ""
-        if row.get("type") == "movie" and title and row.get("year"):
-            # Measured: a movie's frames title it with its year, `Elephants Dream
-            # (2006)`, which the Activity pane prints.
+        kind = row.get("type")
+        if kind in ("movie", "show") and row.get("year"):
+            # Measured: a movie's and a show's frames title them with the year,
+            # `Elephants Dream (2006)`, `Firefly (2002)` -- an emptied title still gets
+            # it, ` (2010)` -- which the Activity pane prints.
             title = "%s (%s)" % (title, row["year"])
+        elif kind in ("season", "episode"):
+            # Measured on a writable copy of the reference: a season's frames say
+            # `Firefly S01` and an episode's `Firefly S01 E07`, from the SHOW's title and
+            # the current indexes, where plexsim sent the row's own title.
+            show_key = str(row.get("parentRatingKey" if kind == "season" else "grandparentRatingKey") or "")
+            show = self.catalog.items.get(int(show_key)) if show_key.isdigit() else None
+            season_index = row.get("index") if kind == "season" else row.get("parentIndex")
+            title = "%s S%02d" % ((show or {}).get("title") or "", int(season_index or 0))
+            if kind == "episode":
+                title += " E%02d" % int(row.get("index") or 0)
         entry = {
             "identifier": "com.plexapp.plugins.library",
             "sectionID": str(row.get("librarySectionID", "")),
@@ -1367,6 +1379,17 @@ class PlexSim:
         `queued` for one saved through `/library/sections/{id}/all`."""
         self.notify_timeline(row, self.TIMELINE_QUEUED, metadata_state)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
+
+    def notify_list_edited(self, target, kind):
+        """A playlist's or a collection's own edit pair. Measured on a writable copy of
+        the reference: a rename or a summary edit -- through `/playlists/{id}`,
+        `/library/collections/{id}` or `/library/metadata/{id}` -- pushes state 3
+        `loading` then 5 for the list itself, type 15 with sectionID -1 for a playlist
+        and type 18 with its library for a collection. plexsim pushed nothing, so a
+        list renamed in one client kept its old name in every other."""
+        self.notify_edited({"ratingKey": target["ratingKey"], "type": kind,
+                            "title": target.get("title") or "",
+                            "librarySectionID": target.get("librarySectionID", -1)}, "loading")
 
     def notify_created(self, row):
         self.notify_timeline(row, self.TIMELINE_CREATED, "created")
@@ -4664,6 +4687,7 @@ class PlexSim:
                                               "titleSort.locked")):
                 # Measured: a list's Sort Title follows an item's rule.
                 self.library._derive_title_sort(target)
+            self.notify_list_edited(target, "collection" if collection is not None else "playlist")
             logger.info("EDIT list %s <- %s", rating_key,
                         ",".join(k for k in query if not k.startswith("X-Plex-")
                                  and k != "_pairs"))
@@ -4696,10 +4720,22 @@ class PlexSim:
         nothing, which is the quietest failure on the whole surface.
         """
         try:
-            for row in rows:
-                self.library.edit(row, query, pairs=query.get("_pairs"),
-                                  section=section)
-                self.notify_edited(row, metadata_state)
+            if section:
+                for row in rows:
+                    self.library.edit(row, query, pairs=query.get("_pairs"), section=True)
+                # Measured: a save through the section path frames its rows in LISTING
+                # order -- the sort title, whatever order `id=` named them in -- and
+                # sends every row's state 3 before any row's state 5. A comma-joined key
+                # list keeps the per-row pair, in the order it was given.
+                ordered = sorted(rows, key=self._sort_key("titleSort"))
+                for row in ordered:
+                    self.notify_timeline(row, self.TIMELINE_QUEUED, metadata_state)
+                for row in ordered:
+                    self.notify_timeline(row, self.TIMELINE_DONE, None)
+            else:
+                for row in rows:
+                    self.library.edit(row, query, pairs=query.get("_pairs"))
+                    self.notify_edited(row, metadata_state)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
@@ -7017,6 +7053,7 @@ class PlexSim:
                 self.library.edit_collection(
                     collection, title=query.get("title.value") or query.get("title"),
                     summary=query.get("summary.value") or query.get("summary"))
+                self.notify_list_edited(collection, "collection")
                 return ("empty", 200)
             section = self.catalog.section(collection["librarySectionID"]) or {}
             # Measured: this container carries `allowSync` TRUE, the identifier and
@@ -7153,6 +7190,7 @@ class PlexSim:
                 if summary is None:
                     summary = query.get("summary")
                 self.library.edit_playlist(playlist, title=title, summary=summary)
+                self.notify_list_edited(playlist, "playlist")
                 return ("empty", 200)
             return self.bare_container(
                 size=1,

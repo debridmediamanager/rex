@@ -2915,6 +2915,16 @@ the same parameters, then read back from both.
   are 400), and `Field` lists in the metadata table's column order -- `rating` after
   `studio`, the artwork after `contentRating`, the tag columns among the scalars --
   where plexsim filed everything it did not know last.
+- **Frames title a row the way the Activity pane names it, and a batch frames in listing
+  order.** A show's frames say `Firefly (2002)` (a movie's already carried the year, and
+  an emptied movie title still does: ` (2010)`), a season's `Firefly S01` and an
+  episode's `Firefly S01 E07` -- the show's title and the current indexes. A save through
+  the section path pushes every row's state 3 before any state 5, ordered by sort title
+  whatever order `id=` named them in, where a comma-joined key list keeps the per-row
+  pair. Renaming a playlist or editing its summary, through `/playlists/{id}` or
+  `/library/metadata/{id}`, pushes its own type-15 pair with sectionID -1, and a
+  collection's rename its type-18 pair. plexsim sent every row's own title, interleaved
+  the batch, and pushed nothing for a list.
 
 ### Emulation calibrated against the account's own claimed servers
 
