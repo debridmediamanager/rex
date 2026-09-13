@@ -3186,6 +3186,12 @@ below is one check there, and each check failed against the code before its fix.
   1.85, 2.2 or 2.35: the display aspect, sample aspect ratio included, snapped to the
   nearest. plexsim wrote the raw quotient without the sample aspect ratio, so 1920x800 read
   2.4 and an anamorphic 3840x2160 1.78 where fun says 1.85.
+- **Track flags are the disposition, and only when true.** `default`, `forced`,
+  `hearingImpaired`, `original`, `dub` and `comment` on audio and subtitles, and `default`,
+  `forced` and `original` on video, follow ffprobe's disposition on every probed track, and
+  no flag is ever `false`, `selected` included. plexsim marked the first audio track default,
+  sent `false` on the rest, and none of the other flags. Which track is `selected` follows
+  the account's language settings, which plexsim does not have; the first still is.
 
 ### Emulation calibrated against the account's own claimed servers
 
