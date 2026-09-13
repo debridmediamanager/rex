@@ -1,0 +1,906 @@
+{
+ "_provenance": "GET /library/sections/1/sorts?type=N[&includeAdvanced=1] on the plexlab reference (1.43.4), 2026-09-13. The list is the TYPE's, identical on a movie and a show library, and fun (1.42.2) agrees for types 1-4 and 8. `{section}` is the library id.",
+ "plain": {
+  "1": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "duration:desc",
+    "key": "duration",
+    "title": "Duration"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "asc",
+    "descKey": "mediaHeight:desc",
+    "key": "mediaHeight",
+    "title": "Resolution"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "2": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "unviewedLeafCount:desc",
+    "key": "unviewedLeafCount",
+    "title": "Unwatched"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "episode.addedAt:desc",
+    "key": "episode.addedAt",
+    "title": "Last Episode Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "3": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "show.titleSort:desc,index",
+    "key": "show.titleSort,index",
+    "title": "Show"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "4": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "show.titleSort:desc,season.index:nullsLast,episode.index:nullsLast,episode.originallyAvailableAt:nullsLast,episode.titleSort,episode.id",
+    "key": "show.titleSort,season.index:nullsLast,episode.index:nullsLast,episode.originallyAvailableAt:nullsLast,episode.titleSort,episode.id",
+    "title": "Show"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "8": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "9": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=9",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "artist.titleSort:desc,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=9",
+    "key": "artist.titleSort,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+    "title": "Album Artist"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "10": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=10",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "artist.titleSort:desc,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=10",
+    "key": "artist.titleSort,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+    "title": "Album Artist"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastRatedAt:desc",
+    "key": "lastRatedAt",
+    "title": "Date Rated"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "ratingCount:desc",
+    "key": "ratingCount",
+    "title": "Popularity"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "mediaBitrate:desc",
+    "key": "mediaBitrate",
+    "title": "Bitrate"
+   }
+  ],
+  "13": [
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Date Taken"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+    "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+    "title": "Name"
+   },
+   {
+    "defaultDirection": "asc",
+    "descKey": "mediaCount:desc,titleSort:asc",
+    "key": "mediaCount,titleSort",
+    "title": "Album"
+   }
+  ],
+  "18": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=18",
+    "key": "titleSort",
+    "title": "Title"
+   }
+  ],
+  "20": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=20",
+    "key": "titleSort",
+    "title": "Title"
+   }
+  ]
+ },
+ "advanced": {
+  "1": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "year:desc",
+    "key": "year",
+    "title": "Year"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "contentRating:desc",
+    "key": "contentRating",
+    "title": "Content Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "duration:desc",
+    "key": "duration",
+    "title": "Duration"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewOffset:desc",
+    "key": "viewOffset",
+    "title": "Progress"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "asc",
+    "descKey": "mediaHeight:desc",
+    "key": "mediaHeight",
+    "title": "Resolution"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "mediaBitrate:desc",
+    "key": "mediaBitrate",
+    "title": "Bitrate"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "2": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "year:desc",
+    "key": "year",
+    "title": "Year"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "contentRating:desc",
+    "key": "contentRating",
+    "title": "Content Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "unviewedLeafCount:desc",
+    "key": "unviewedLeafCount",
+    "title": "Unwatched"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "episode.addedAt:desc",
+    "key": "episode.addedAt",
+    "title": "Last Episode Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "3": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "season.index:desc,season.titleSort",
+    "key": "season.index,season.titleSort",
+    "title": "Season"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "show.titleSort:desc,index",
+    "key": "show.titleSort,index",
+    "title": "Show"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "4": [
+   {
+    "defaultDirection": "desc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=4",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "show.titleSort:desc,season.index:nullsLast,episode.index:nullsLast,episode.originallyAvailableAt:nullsLast,episode.titleSort,episode.id",
+    "key": "show.titleSort,season.index:nullsLast,episode.index:nullsLast,episode.originallyAvailableAt:nullsLast,episode.titleSort,episode.id",
+    "title": "Show"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "year:desc",
+    "key": "year",
+    "title": "Year"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "rating:desc",
+    "key": "rating",
+    "title": "Critic Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "audienceRating:desc",
+    "key": "audienceRating",
+    "title": "Audience Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "duration:desc",
+    "key": "duration",
+    "title": "Duration"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewOffset:desc",
+    "key": "viewOffset",
+    "title": "Progress"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Viewed"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "mediaHeight:desc",
+    "key": "mediaHeight",
+    "title": "Resolution"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "mediaBitrate:desc",
+    "key": "mediaBitrate",
+    "title": "Bitrate"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "8": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "9": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=9",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "artist.titleSort:desc,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=9",
+    "key": "artist.titleSort,album.titleSort,album.index,album.id,album.originallyAvailableAt",
+    "title": "Album Artist"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "year:desc",
+    "key": "year",
+    "title": "Year"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Release Date"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   }
+  ],
+  "10": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=10",
+    "key": "titleSort",
+    "title": "Title"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "artist.titleSort:desc,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=10",
+    "key": "artist.titleSort,album.titleSort,album.year,track.absoluteIndex,track.index,track.titleSort,track.id",
+    "title": "Album Artist"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originalTitle:desc",
+    "key": "originalTitle",
+    "title": "Artist"
+   },
+   {
+    "defaultDirection": "asc",
+    "descKey": "album.titleSort:desc",
+    "key": "album.titleSort",
+    "title": "Album"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "userRating:desc",
+    "key": "userRating",
+    "title": "Rating"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "duration:desc",
+    "key": "duration",
+    "title": "Duration"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "viewCount:desc",
+    "key": "viewCount",
+    "title": "Plays"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastViewedAt:desc",
+    "key": "lastViewedAt",
+    "title": "Date Played"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "lastRatedAt:desc",
+    "key": "lastRatedAt",
+    "title": "Date Rated"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "random:desc",
+    "key": "random",
+    "title": "Randomly"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "ratingCount:desc",
+    "key": "ratingCount",
+    "title": "Popularity"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "mediaBitrate:desc",
+    "key": "mediaBitrate",
+    "title": "Bitrate"
+   }
+  ],
+  "13": [
+   {
+    "defaultDirection": "desc",
+    "descKey": "addedAt:desc",
+    "key": "addedAt",
+    "title": "Date Added"
+   },
+   {
+    "defaultDirection": "desc",
+    "descKey": "originallyAvailableAt:desc",
+    "key": "originallyAvailableAt",
+    "title": "Date Taken"
+   },
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "photo.titleSort:desc,photo.originallyAvailableAt,photo.id",
+    "key": "photo.titleSort,photo.originallyAvailableAt,photo.id",
+    "title": "Name"
+   },
+   {
+    "defaultDirection": "asc",
+    "descKey": "mediaCount:desc,titleSort:asc",
+    "key": "mediaCount,titleSort",
+    "title": "Album"
+   }
+  ],
+  "18": [
+   {
+    "default": "asc",
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=18",
+    "key": "titleSort",
+    "title": "Title"
+   }
+  ],
+  "20": [
+   {
+    "defaultDirection": "asc",
+    "descKey": "titleSort:desc",
+    "firstCharacterKey": "/library/sections/{section}/firstCharacter?type=20",
+    "key": "titleSort",
+    "title": "Title"
+   }
+  ]
+ }
+}

@@ -429,6 +429,15 @@ try:
 except OSError:
     SECTION_FILTERS = {"plain": {}, "advanced": {}}
 
+# `/library/sections/{id}/sorts`, per requested TYPE, captured like the filters above.
+_SECTION_SORTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "section_sorts.json")
+try:
+    with open(_SECTION_SORTS_PATH) as _handle:
+        SECTION_SORTS = json.load(_handle)
+except OSError:
+    SECTION_SORTS = {"plain": {}, "advanced": {}}
+
 
 def _begins_word(text, wanted):
     """True when `wanted` (lowercase) starts at the beginning of a word of `text`.
@@ -3304,22 +3313,24 @@ class PlexSim:
 
         # -- the filter and sort descriptors the legacy UI reads -----------
         if leaf == "sorts":
-            # Measured: the list is the TYPE's -- `?type=3` on a show library is the
-            # two season sorts, `?type=4` the episode list -- and `includeAdvanced=1`
-            # adds the advanced ones in their interleaved places, exactly as the
-            # section's Meta carries them minus its `active` markers. plexsim
-            # answered the movie list to every library and ignored both parameters.
-            meta = self.section_meta(section_id, section.get("type"),
-                                     advanced=query.get("includeAdvanced") == "1") or {}
-            names = {"1": "movie", "2": "show", "3": "season", "4": "episode"}
-            wanted = names.get(query.get("type") or "",
-                               "show" if section.get("type") == "show" else "movie")
-            sorts = []
-            for entry in meta.get("Type") or []:
-                if entry.get("type") == wanted:
-                    sorts = [{k: v for k, v in s.items()
-                              if k not in ("active", "activeDirection")}
-                             for s in entry.get("Sort") or []]
+            # Re-measured in cycle 9, which corrects how this was keyed: like /filters,
+            # the list belongs to the `?type=` asked for, not to the library. A movie
+            # library answers the 7 episode sorts to `type=4` and the artist sorts to
+            # `type=8`; a show library the 9 movie sorts to `type=1`; types 9, 10, 13, 18
+            # and 20 have lists of their own, every other number is empty and a
+            # non-number a 400. plexsim read the library's own Meta, so a movie library
+            # had no sorts for any type but its own and answered the movie list to
+            # `type=8`. The lists are `section_sorts.json`, captured from the reference.
+            raw = query.get("type")
+            if raw in (None, ""):
+                wanted = "2" if section.get("type") == "show" else "1"
+            elif raw.lstrip("-").isdigit():
+                wanted = str(int(raw))
+            else:
+                return ("error", 400, "plexsim: bad request")
+            variant = "advanced" if query.get("includeAdvanced") == "1" else "plain"
+            sorts = json.loads(json.dumps(SECTION_SORTS[variant].get(wanted) or [])
+                               .replace("{section}", str(section_id)))
             return self.secondary_container(section_id, section, None,
                                             Directory=sorts)
         if leaf == "filters":
