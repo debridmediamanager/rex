@@ -1,4 +1,4 @@
-# plexsim handover — 2026-09-13 (refreshed after cycle 10)
+# plexsim handover — 2026-09-13 (refreshed after cycle 11)
 
 This file hands over the "implement everything the Plex UI asks of the server"
 programme: the measurement-cycle loop, how it is run, where it stands, and what bit
@@ -14,52 +14,40 @@ is run. Those two record what was measured.
 
 | | |
 |---|---|
-| `main` | `dd52196`, equal to `origin/main`, clean tree (cycle 10 = `b3dd23f..dd52196`, 49 commits) |
-| Worktrees and stashes from this work | none; both cycle-10 worktrees and their branches, local and remote, are gone |
-| Cycles completed | 10, in three batches, all three implemented and merged. Cycle 10 had findings, so **cycle 11 is due**. |
+| `main` | cycle 11 merged: the 19 commits after `0494996`, equal to `origin/main`, clean tree |
+| Worktrees and stashes from this work | none; the cycle-11 worktree and its branch are gone |
+| Cycles completed | 11. Cycle 11 had findings, so **cycle 12 is due**. |
 | Work half-done | **none**. |
 
-Cycle 10 ran as three batches:
+Cycle 11 ran as one batch with two hunts, both merged together:
 
-| Batch | Territory | Outcome |
+| Hunt | Territory | Outcome |
 |---|---|---|
-| 1 (opus) | `mediainfo.py` against fun's own analysis of the same real files | 16 rules, all re-measured; 29 commits (`b3dd23f..a7b3b77`); corpus in `tests/fixtures/media/` and the new `tests/test_mediainfo.py` |
-| 2 (fable) | the writes cycle 9 did not reach, on plexscratch | 9 findings, all re-measured on the copy; 8 implemented, 1 recorded (no client sends it); 12 commits (`a7b3b77..173305c`) |
-| 3 (opus) | the playback and session surface, on plexscratch's long media | 8 findings; 7 implemented, 1 **refuted** on re-measurement; 8 commits (`173305c..dd52196`). The first attempt died on a model weekly limit and was relaunched against the merged head |
+| A (fable) | the XML path of every write and session beat, and the writes cycle 10 could not reach, on plexscratch | 4 findings, all re-measured and implemented; one of them **overturns a cycle-10 instrument limit** (the subtitle upload) |
+| B (opus) | the XML path of everything cycles 9 and 10 added, and the transport around it, read-only | 10 findings, all re-measured and implemented; both it flagged as version-risky turned out to hold on 1.42.2 |
 
-Suite results at the end of cycle 10, all run on 2026-09-13:
+**fun was out of scope for the whole cycle** — its Plex was stopped mid-deploy by another
+session, and the user asked that testing stay on kids and zen. That cost nothing and gained
+something: **zen runs Plex 1.42.2.10156, the exact build plexsim reports**, so every rule was
+measured against 1.43.4 AND against plexsim's own version. See §3.
+
+Suite results at the end of cycle 11, all run on 2026-09-13:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **846/846**, 4 skipped | The skips need a TMDB key or real RD links. Restart the server between runs -- it writes, and the match check now merges a row away |
-| `tests/test_mediainfo.py` | **27/27** | Offline: 46 recorded probes against what fun and the reference wrote for the same files |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **861/861**, 4 skipped | 15 checks added (846 -> 861). The skips need a TMDB key or real RD links |
+| `tests/test_mediainfo.py` | **27/27** | Offline |
 | `tests/test_navigation.py` on the full catalog | **46/46** | |
-| `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). They are expected. |
-| `tests/test_all.py --skip-decode` | playQueue and decision PASS, output identical to `b3dd23f` | Byte reads fail with 502 for the same reason |
+| `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). Expected, and identical to the pre-cycle baseline |
+| `tests/test_all.py --skip-decode` | playQueue and decision PASS | Byte reads fail with 502 for the same reason |
 
-Proof for cycle 10. Every fix was proven one at a time against ITS OWN parent commit:
-`c10/mdrive.py` for the media rules (the parent tree exported per patch, the offline check run
-against both) and `c10/sdrive.py` for the write and session rules (the parent commit exported
-and served, the patch's suite block run against both, committed only on fail-then-pass). The
-parent is re-exported per patch, so "fails on the parent" means the commit's own parent rather
-than some older tree -- the first run of batch 1 had to be re-proven because the parent tree
-was missing a sidecar and died at import. The kids snapshot was byte-identical before and after
-each batch.
+Proof for cycle 11. Every one of the 15 fixes was proven one at a time against ITS OWN parent
+commit with `handover/tools/sdrive.py`: export HEAD, serve it, apply the patch, serve that, run
+the patch's own check block against both, commit only on fail-then-pass. The kids snapshot was
+identical before and after both hunts.
 
-Cycle 10 also corrected three OLDER checks whose beliefs it overturned: two completed a play
-with a single beat at the end (the crossing rule), and one asserted that a video's
-`displayTitle` never carries the codec -- thirteen products get it, Plex Web among them, and
-the suite's own client says `X-Plex-Product: Plex Web`.
-
-Proof for cycle 9. Batch 1 (hunter B, `985293a`..`ae19756`) added 17 checks, all failing
-against `a7c3408` (768/784). Batch 2 (hunter A, `7589e32`..`4f2bb31`) was proven one check
-at a time: `c9/drive.py` applied each patch, ran its check against an unfixed server
-started from `ae19756` and against the fixed one, and committed only on fail-then-pass.
-The whole final suite against that unfixed tree: 781/829, the 46 new checks and the 2 re-measured collection checks failing (plus Delete Version, whose movie the old code's cross-type merge had already moved into the show). Old checks re-measured and updated in
-this cycle: a collection's unlocked Sort Title, the collection reorder response, the
-"renames its members' tag" label, the state-write refusals (now sent with the identifier),
-the play-queue checks that build a second queue (a client's new queue retires its older
-one), and the frame-batch order. The kids snapshot was identical before and after.
+Cycle 11 also corrected an OLDER check whose belief it overturned: a single history read was
+asserted to equal the row `/status/sessions/history/all` lists, and it is a projection.
 
 ---
 
@@ -147,6 +135,21 @@ Why it is built the way it is (all measured while setting it up):
   therefore always reads 127.0.0.1 on the copy.
 - `make` paused the lab's PMS for the seconds the copy took (its database writes its
   WAL continuously); the kids snapshot matched before and after.
+
+### Second witness — `zen` (READ ONLY), and the version that matters
+
+| | |
+|---|---|
+| URL | `http://zen:32400` (`100.64.196.40`) |
+| Token | its own `PlexOnlineToken`, read from `/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Preferences.xml` with `sudo -n` over ssh |
+| Version | **1.42.2.10156 — the exact build plexsim reports** |
+| Sections | 1 "Zen Movies" (3887 rows), 2 "Zen Shows", 4 "Bench TV" |
+| Rule | **GET and HEAD only, ever.** Its zurg feeds Plex and Jellyfin. Always page a listing. |
+
+This is the better second witness, and cycle 11's whole cycle rested on it: kids answers
+1.43.4 and zen answers what plexsim claims to be, so "a field kids sends and zen does not" is a
+version difference by construction, and a rule both answer is not. Two of cycle 11's findings
+were flagged version-risky by the hunter and settled in one request each against zen.
 
 ### Production PMS — `fun` (READ ONLY)
 
@@ -314,10 +317,12 @@ The hunter runs (from the session transcript):
 | 9 | write semantics on plexscratch: edits, play state, playlists, collections, queues, libraries, merge (fable) | the community OpenAPI description, every GET, three servers (fable hit a rate limit; re-run on opus) |
 | 10 | the writes cycle 9 did not reach, on plexscratch (fable) | `mediainfo.py` against fun's analysis of 35 real files (opus) |
 | 10 batch 3 | the playback and session surface on plexscratch's long media (opus; the first attempt died on a model weekly limit and was relaunched against the merged head) | — |
+| 11 | the XML path of every write and session beat, and the writes cycle 10 could not reach, on plexscratch (fable) | the XML path of everything cycles 9 and 10 added, and the transport around it (opus) |
 
 Commits of the loop era, newest first:
 
 ```
+812be3a docs: record what the eleventh pass measured, and the traps it leaves                              (cycle 11: 19 commits from 0494996, this file last)
 dd52196 docs: hand over the finished cycle 10 and point the loop at cycle 11                             (cycle 10 batch 3: 8 commits from e8af2b5)
 173305c docs: hand over cycle 10 and point the loop at its unfinished third batch                        (cycle 10 batch 2: 12 commits from c318783)
 a7b3b77 docs: record what the tenth pass's media batch measured and did not act on                       (cycle 10 batch 1: 24 commits from 02af369)
@@ -568,6 +573,29 @@ spends itself re-reporting what just landed.
 - A `/status/sessions` row drops `Guid` and `Image`, and its `Player` names a `profile`.
 - `/statistics/media` filters by `accountID` and `deviceID`.
 
+**Cycle 11**, the query grammar and the XML/transport path (kids 1.43.4 + zen 1.42.2)
+
+- The listing query grammar that never ran: `?limit=N` (0 answers one row, a negative one all,
+  `abc` a 500; `/newest`, `/recentlyAdded` and `/children` ignore it); a `type=` that does not
+  parse (500 on a section listing, 400 on `/library/all`, 500 for an empty one on both) and a
+  type number the library has no rows of (empty 200); `id` as a filter field with its
+  integer-versus-text comparison rules and its empty `fieldTitle` in `/query/parse`; a
+  section's `allLeaves` taking the whole grammar.
+- `excludeElements=` on the section leaves, `/library/people/{id}/media` and `/hubs/items`;
+  `includeStorage=1` adding `durationTotal`/`storageTotal` at the library's own type.
+- `/library/people/{id}/media` typed by the TAG (viewGroup/viewMode for an actor only) and
+  filtered like a listing.
+- A statistics container paging its series and selecting its Device/Account rows by content;
+  `timespan` validated as a whole number on all three endpoints.
+- gzip whenever the client offers it, with no size floor and no "only if it shrinks" test.
+- A plain queue add landing in Up Next after the already-added block.
+- The Upload Subtitle modal's `POST .../subtitles` with its 200/400/406/500 grammar, the
+  sidecar `Stream` it leaves, the selection it takes, and the `<CODEC> External` codec label.
+- `PUT /library/streams/{id}` accepted (200, stores nothing); `DELETE` 403 for an embedded
+  track and 200 for an uploaded sidecar.
+- A playlist's items and a collection's children as the light grid row.
+- A single history read projected onto the nine fields a real PMS answers.
+
 ## 8. Safety rules and incidents
 
 The rules:
@@ -721,33 +749,61 @@ Added in cycle 10, batch 3 (the session surface):
 - `/statistics/resources` per-second host samples (a stdlib server on another machine has no
   such numbers).
 
+Added in cycle 11:
+
+- **`/status/sessions/history/all` answers `size 0` on BOTH kids and zen** while single reads
+  by key work, through every combination of `accountID`, `librarySectionID`, `sort` and paging.
+  Cycle 9 recorded this as a kids oddity; it is not one. Not reproduced -- plexsim's listing is
+  what fun's 3879 rows were measured against.
+- `includeBandwidths=1` (`deepAnalysisVersion`, `requiredBandwidths`): the ladder needs Plex's
+  own deep analysis, beside `thumbBlurHash`.
+- `/library/people/{id}` answering any TAG id (kids' id 1 is a `mediaProcessingTarget`,
+  tagType 42, rendering as `<Tag>` with `MediaSettings` and `Device` children). No plexsim
+  catalog holds such a tag.
+- A detail row's tags carrying `count` (items in the library sharing the tag). Pervasive across
+  every detail read on both servers; left for a cycle that can measure it as a row-shape rule
+  rather than as a write-surface one.
+- `playQueueLastAddedItemID` re-anchoring on a MOVE as well as an add: seen on the copy, not
+  pinned.
+- The subtitle SEARCH path (`GET .../subtitles?language=`) answers 503 on the isolated copy --
+  it needs OpenSubtitles. plexsim's empty-container answer stands.
+- The `<CODEC> External` subtitle label has ONE witness (no sidecar subtitle exists on zen to
+  confirm it against); it is reachable only through plexsim's own upload path.
+
 ---
 
-## 10. Next: cycle 11
+## 10. Next: cycle 12
 
-Cycle 10 is complete: all three batches are measured, implemented and merged. Territories
-worth taking next:
+Cycle 11 is complete: both hunts measured, implemented and merged. Territories worth taking
+next:
 
-1. **The writes this cycle could not reach**: the download queue (it needs a claimed copy),
-   a subtitle upload, and the library-create frames recorded in findings.md as captured only
-   in part.
-2. **The XML path of cycle 10's writes and session beats**, which were compared as JSON.
-3. **A second media corpus**: music and photo libraries are wholly unmeasured, and every media
-   rule in this cycle came from video.
-4. **Terminate and the statistics surface on a CLAIMED copy.** An unclaimed plexscratch 401s
-   `/status/sessions/terminate` and 404s `/statistics/*`, so neither could be measured there;
-   both are recorded as instrument limits rather than as findings.
+1. **A detail row's tag `count`** -- both servers put the number of library items sharing a tag
+   on every Genre, Director, Writer, Role and Collection of a detail read, and plexsim puts none.
+   Measured as a boundary note in cycle 11, never as a rule: it needs a sweep of every row shape
+   that carries tags, and `/library/tags` beside it.
+2. **The writes still out of reach**: the download queue (it needs a claimed copy) and the
+   library-create frames recorded in findings.md as captured only in part.
+3. **Terminate and the statistics surface on a CLAIMED copy.** An unclaimed plexscratch 401s
+   `/status/sessions/terminate` and 404s `/statistics/*`. Claiming the copy needs the user's
+   explicit approval -- it must never reach plex.tv on the lab's identity, and past claim
+   exchanges reset account-wide tokens -- so this stays an instrument limit until then.
+4. **A second media corpus**: music and photo libraries are wholly unmeasured, and every media
+   rule so far came from video. Lower value while plexsim's catalog can only hold video.
+5. **zen's real library as a third corpus for the READ surface.** Cycle 11 used it as a version
+   oracle only; it has 3887 movies and three sections, which is a far wider sample of row shapes
+   than the lab's five clips.
 
-Before launching: refresh `hunt_prompts.md` (§5 step 3 lists what), write a fresh
-`tokens.env`, pick ports clear of the reserved ones (§3), snapshot kids, serve the current
+Before launching: refresh `hunt_prompts.md` (§5 step 3 lists what; cycle 11's two prompts are
+appended to it verbatim as the worked example), write a fresh `tokens.env` (cycle 11 added
+`ZEN_TOKEN`), pick ports clear of the reserved ones (§3), snapshot kids, serve the current
 `main` from a frozen tree, and reset plexscratch -- `./scratch.sh short` first unless the
 territory wants the long media, which is the mode it is left in. **One hunter writes to
 plexscratch per cycle**; a second one measuring writes at the same time reads the first one's
 state as the server's.
 
-A note on hunts that die. Two of the last three cycles lost a hunter to a model rate limit.
-The prompt file survives, so a relaunch is cheap -- but relaunch it against the CURRENT head,
-with the Already-fixed list extended by whatever landed in the meantime, or the second run
+A note on hunts that die. Two of the last four cycles lost a hunter to a model rate limit. The
+prompt file survives, so a relaunch is cheap -- but relaunch it against the CURRENT head, with
+the Already-fixed list extended by whatever landed in the meantime, or the second run
 re-reports the first batch's work.
 
 ## 11. Tooling and environment gotchas
@@ -835,6 +891,16 @@ re-reports the first batch's work.
   AFTERWARDS (`count == 1`, the old text gone), or a "successful" edit can leave a `if False:`
   branch and dead code in a commit.
 
+- **A check block runs in `runblock.py`'s namespace, which holds the suite MODULE only.** A
+  block that calls `detail_of()` -- defined inside `main()` -- proves nothing, because it raises
+  before it can fail. Read the row in the block.
+- **A new check has to survive the END of the suite, not just its own proof.** Three of cycle
+  11's did not: by the insertion point the match check has merged a fixture movie away (two
+  rows, not three), the fixture's titles have been edited into sort ties, and the movie's tag
+  lists have been replaced. Count rows live, compare a leaf against the grid's own answer
+  rather than against a hand-computed order, and scan the section for a person rather than
+  reading one row.
+
 ---
 
 ## 12. Artifacts
@@ -879,9 +945,22 @@ plexsim, both read back), the patch modules `p_w*.py`, `drive.py` (apply one nam
 prove its check fails on the unfixed server and passes on the fixed one, commit) and
 `runblock.py` (run one check block against servers), plus the unfixed tree `old9b/`.
 
-The four scripts at the bottom of that table were written for cycle 10 and are now tracked,
-because they are what enforces "every fix proven against its own parent". Everything else from
-cycle 10 stayed in its scratch directory (session `ebe127ef-5796-499a-9bac-d61169c66fc8`,
+Cycle 11's scratch directory is session `778e8a59-81ef-4a89-a46b-16ef32b5343d`, `c11/`:
+
+| Path | What it is |
+|---|---|
+| `prompt_A.md`, `prompt_B.md`, `preamble.md` | The two hunts' full prompts, as agent-readable files. Both are appended verbatim to `hunt_prompts.md` |
+| `rb.py` | The read-only re-measurement client: GET/HEAD only to kids and zen, a `WRITE_GET` refusal list, gzip-aware |
+| `ra.py` | The write re-measurement client: writes to plexscratch and the local plexsim only |
+| `pb.py` | **All 15 patches**, each with its `apply`, its commit message and its check block; `_with_check` makes every patch commit its check beside its fix |
+| `restart.py` | Restart a plexsim by waiting for the PORT, then confirming the new pid holds it |
+| `head11/`, `wt11/`, `parent_srv/` | The frozen head the hunters talked to, the cycle worktree, and the per-patch parent tree `sdrive.py` exports |
+| `hunt_A/`, `hunt_B/` | The hunters' own outputs and guarded clients |
+| `base_*.log`, `ui_final*.log` | The pre-cycle suite baseline and the final runs |
+
+The four proof scripts at the bottom of the table above were written for cycle 10 and are now
+tracked, because they are what enforces "every fix proven against its own parent". Everything
+else from cycle 10 stayed in its scratch directory (session `ebe127ef-5796-499a-9bac-d61169c66fc8`,
 `c10/`), which is ephemeral:
 
 | Path | What it is |
