@@ -1249,6 +1249,25 @@ class Library:
         carrying the first one's metadata, so a merge on a library you care
         about costs a re-match. plexsim's is in memory, so a restart undoes it.
         """
+        # Cycle 14, measured on the copy and re-measured by the driver: a merge whose
+        # target has no `Media` of its OWN absorbs nothing. `PUT /library/metadata/7/
+        # merge?ids=11` on two seasons is a 200 with an empty body, NO frames, and a
+        # tree that is completely unchanged -- both seasons still there, all six
+        # episodes still there, the show's `leafCount` still 6 -- and the `split` that
+        # would undo it is a no-op too. An EPISODE merge beside it is real on the same
+        # server: 9 goes into 8, 8 carries two Media, 9 is a 404, and the season's and
+        # show's leaf counts drop 3->2 and 6->5.
+        #
+        # This was plexsim's one DATA-LOSS bug. `catalog.remove` cascades to children,
+        # so merging one season into another deleted the absorbed season AND every
+        # episode under it, leaving the show's `leafCount` stale and the episodes gone
+        # from every listing. The split does not bring them back.
+        #
+        # The witness is a SEASON. A show has no Media of its own either and takes the
+        # same branch here, but the copy holds ONE show, so that half is reasoned and
+        # not measured -- see HANDOVER.md 3.3.
+        if not row.get("Media"):
+            return []
         merged = []
         for key in other_keys:
             other = self.catalog.items.get(int(key)) if str(key).isdigit() else None

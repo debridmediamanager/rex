@@ -9840,6 +9840,42 @@ def main():
           "item gone %s | kept %s | show %s | playlist composite %s"
           % (gone_c14r, kept_c14r, show_gone_c14r, list_composite_c14r))
 
+
+    # Cycle 14, the cycle's one DATA-LOSS bug: merging one SEASON into another deleted
+    # the absorbed season AND every episode under it, because `catalog.remove` cascades.
+    # On the copy the same request is a 200 that changes NOTHING -- both seasons still
+    # there, every leaf still there, the show's leafCount unmoved -- while an EPISODE
+    # merge beside it really does absorb (two Media on the survivor, a 404 on the other,
+    # the leaf counts dropping). Re-measured by the driver on a freshly reset copy.
+    if not show:
+        skip("merging a season absorbs nothing and loses no episodes", "need a show")
+    else:
+        def seasons_c14s():
+            return [r.get("ratingKey") for r in
+                    get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                    .get("Metadata") or [] if r.get("type") == "season"]
+
+        def leaves_c14s():
+            return sorted(r.get("ratingKey") for r in
+                          get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                          .get("Metadata") or [])
+
+        before_s_c14s, before_l_c14s = seasons_c14s(), leaves_c14s()
+        if len(before_s_c14s) < 2:
+            skip("merging a season absorbs nothing and loses no episodes",
+                 "need two seasons")
+        else:
+            status_c14s = request(base, "PUT", "/library/metadata/%s/merge?ids=%s"
+                                  % (before_s_c14s[0], before_s_c14s[1]))[0]
+            after_s_c14s, after_l_c14s = seasons_c14s(), leaves_c14s()
+            gone_c14s = request(base, "GET", "/library/metadata/%s" % before_s_c14s[1])[0]
+            check("merging a season absorbs nothing and loses no episodes",
+                  status_c14s == 200 and after_s_c14s == before_s_c14s
+                  and after_l_c14s == before_l_c14s and gone_c14s == 200,
+                  "HTTP %s | seasons %s -> %s | leaves %d -> %d | absorbed row %s"
+                  % (status_c14s, before_s_c14s, after_s_c14s,
+                     len(before_l_c14s), len(after_l_c14s), gone_c14s))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
