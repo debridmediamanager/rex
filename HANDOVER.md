@@ -826,6 +826,11 @@ re-reports the first batch's work.
   a region but not its `if` header ran the whole tail twice -- 882 checks instead of 845, with
   failures caused by the first copy's writes. Assert the occurrence count after the edit, not
   just before.
+- **The secret scan must GATE the commit, not merely precede it.** Its exit status stopped
+  nothing when the `git commit` sat on its own line after it, and a scan that printed `LEAK`
+  was followed by a commit anyway. Put the scan and the commit in one `&&` chain, and make the
+  scan ignore its own redaction marker: `X-Plex-Token=REDACTED` inside `guarded.py` matches the
+  naive `X-Plex-Token=\S+` pattern and cried wolf on the commit that tracked it.
 - **An assertion in an edit script is the cheap half.** Assert what the file should look like
   AFTERWARDS (`count == 1`, the old text gone), or a "successful" edit can leave a `if False:`
   branch and dead code in a commit.
