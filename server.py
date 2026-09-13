@@ -1263,6 +1263,18 @@ class PlexSim:
         self.notify("activity", "ActivityNotification",
                     [{"event": event, "uuid": activity["uuid"], "Activity": activity}])
 
+    def notify_activity_run(self, kind, title, steps):
+        """One activity from `started` to `ended`, with the measured `updated` steps --
+        (progress, subtitle) pairs -- between. The end keeps the last subtitle."""
+        activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
+                    "userID": 1, "title": title, "subtitle": "", "progress": 0}
+        self.notify_activity(activity, "started")
+        for progress, subtitle in steps:
+            activity.update(progress=progress, subtitle=subtitle)
+            self.notify_activity(activity, "updated")
+        activity["progress"] = 100
+        self.notify_activity(activity, "ended")
+
     def notify_status(self, title, name="LIBRARY_UPDATE", description=""):
         self.notify("status", "StatusNotification",
                     [{"title": title, "description": description, "notificationName": name}])
@@ -2483,6 +2495,12 @@ class PlexSim:
         if route == "/library/clean/bundles":
             if method != "PUT":
                 return ("error", 404, "plexsim: not found")
+            # Measured on a writable copy of the reference, frame for frame. plexsim has
+            # no bundles, so both counts are 0.
+            self.notify_activity_run("general.bundle.clean", "Cleaning bundles", [
+                (0, "Analyzing metadata bundles"), (25, "Deleting 0 metadata bundles"),
+                (50, "Deleting 0 metadata bundles"), (50, "Analyzing media bundles"),
+                (75, "Deleting 0 media bundles"), (100, "Deleting 0 media bundles")])
             return ("empty", 200)
 
         if route == "/library/tags":
@@ -3207,6 +3225,11 @@ class PlexSim:
                 # every row in it, in memory: catalog.json is untouched.
                 if self.catalog.remove_section(section_id) is None:
                     return ("error", 404, "plexsim: no such section")
+                # Measured on a writable copy of the reference, frame for frame.
+                self.notify_activity_run("library.delete", "Deleting Library", [
+                    (0, "Deleting section %s" % section_id), (50, "Optimizing Database"),
+                    (0, "Optimizing Database"), (10, "Optimizing Database"),
+                    (40, "Optimizing Database"), (60, "Optimizing Database")])
                 logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
                 return ("empty", 200)
             if method == "PUT":

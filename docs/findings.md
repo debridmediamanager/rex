@@ -3083,6 +3083,14 @@ the same parameters, then read back from both.
 - **A library analyze pushes three frames per movie.** For each movie in title order: state
   5 with `mediaState: analyzing`, state 5 with `thumbnailing`, and a plain state 5.
   plexsim pushed nothing.
+- **Cleaning bundles and deleting a library each run an activity.** `PUT
+  /library/clean/bundles` runs `general.bundle.clean` -- started, updated at 0 (`Analyzing
+  metadata bundles`), 25 and 50 (`Deleting N metadata bundles`), 50 (`Analyzing media
+  bundles`), 75 and 100 (`Deleting N media bundles`), ended -- and a library delete
+  `library.delete` (`Deleting section N`, then `Optimizing Database` at 50, 0, 10, 40,
+  60, ended). plexsim pushed nothing. Measured and not acted on: optimize's
+  `general.db.optimize` run (its last frames and a burst of type-12 deletes were not fully
+  captured) and the refresh cascade a show's `showOrdering` write pushes.
 
 ### Emulation calibrated against the account's own claimed servers
 
