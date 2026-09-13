@@ -3903,6 +3903,11 @@ class PlexSim:
             source = self.grouped(source, query.get("group"))
         source = self._limited(source, query)
         rows = self._excluded_elements([_listing_row(r) for r in source], query)
+        if query.get("includeStorage") == "1" and str(query.get("type") or "") in (
+                "", str(TYPE_NUMBERS.get(section.get("type") or "movie", 1))):
+            # Measured: the pair is on the library's OWN top-level type only -- a show
+            # library's `?type=3` and `?type=4` listings carry neither.
+            rows = [self._with_storage(row) for row in rows]
         if query.get("type") == "3":
             # Measured on both servers: a season in a LISTING carries no leaf
             # counts, where its /children row does.
@@ -4695,6 +4700,24 @@ class PlexSim:
             return rows
         return [r for r in rows
                 if all(str(r.get("guid") or "").startswith(value) for value in wanted)]
+
+    def _with_storage(self, row):
+        """`includeStorage=1` adds `durationTotal` and `storageTotal` to a grid row.
+
+        Measured on kids (1.43.4) and zen (1.42.2): the pair appears ONLY on
+        `/library/sections/{id}/all` and only at the library's own top-level type -- a
+        show carries the sum over its episodes (Firefly: 60186 ms and 37683488 bytes,
+        exactly its six episodes' durations and part sizes), a movie its own, and
+        `?type=3` or `?type=4` on the same library carries neither, as do allLeaves,
+        `/library/all`, `/newest`, `/children` and a detail read. It is what the
+        library's storage column prints, and plexsim sent neither, so the column was
+        empty on a server that has both numbers on the row already.
+        """
+        leaves = [row] if row.get("Media") else self.catalog.leaves(row.get("ratingKey"))
+        duration = sum(int(leaf.get("duration") or 0) for leaf in leaves)
+        storage = sum(int(part.get("size") or 0) for leaf in leaves
+                      for media in leaf.get("Media") or [] for part in media.get("Part") or [])
+        return dict(row, durationTotal=duration, storageTotal=storage)
 
     @staticmethod
     def _excluded_elements(rows, query):
