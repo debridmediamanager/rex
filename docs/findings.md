@@ -3006,6 +3006,14 @@ the same parameters, then read back from both.
 - **An item takes no POST, and `/library/all` takes no write.** `POST
   /library/metadata/{id}?summary.value=` and `PUT /library/all?type=1&tagline.value=` are
   404s; plexsim answered the detail row and the listing.
+- **The Edit dialog's value-less columns, and a few others, are accepted and discarded.**
+  `thumb.value=`, `art.value=`, `addedAt.value=`, `guid.value=`, `lastViewedAt.value=`
+  and `viewCount.value=` are 200s that change nothing, and so are a movie's
+  `duration.value=` and `index.value=`, an episode's `parentIndex.value=`, a show's
+  `network[0].tag.tag=` and a bare `genre=Drama` on the item path; an actor written with
+  `actor[0].tagRole=` is stored with `role: ""`, the field every actor added by an edit
+  carries. plexsim refused most of them as unknown fields and stored the movie's
+  duration and index.
 
 ### Emulation calibrated against the account's own claimed servers
 
