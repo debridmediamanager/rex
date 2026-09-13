@@ -7288,6 +7288,43 @@ def main():
         skip("a scan names its library in a Context and steps a show library by season",
              "need a show library")
 
+    # Measured on plexscratch: writing a show's `showOrdering` re-reads the whole show --
+    # the show's own refresh sequence, then each SEASON (state 5 `processing`, 4 `loading`)
+    # and each EPISODE inside it (5 `processing`, 4 `loading` twice, 5), the episodes again
+    # with `mediaState` analyzing then thumbnailing, and the activity stepping per season --
+    # and ends with the show at state 5. plexsim stored the value and pushed nothing, so a
+    # re-ordering made in one client was invisible in every other until a reload.
+    if show:
+        _, frames_c10k = notifications(
+            base, lambda: request(base, "PUT", "/library/metadata/%s/prefs?showOrdering=dvd" % show),
+            seconds=4)
+        entries_c10k = [e for f in frames_c10k or []
+                        for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+        states_c10k = [(e.get("type"), e.get("state"), e.get("metadataState"), e.get("mediaState"))
+                       for e in entries_c10k]
+        seasons_c10k = {str(r.get("ratingKey")) for r in
+                        get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []}
+        episodes_c10k = {str(r.get("ratingKey")) for r in
+                         get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []}
+        touched_c10k = {str(e.get("itemID")) for e in entries_c10k}
+        subtitles_c10k = [(a.get("Activity") or {}).get("subtitle")
+                          for f in frames_c10k or []
+                          for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+        check("a show's prefs write pushes the refresh cascade of its seasons and episodes",
+              states_c10k[:2] == [(2, 3, "queued", None), (2, 3, "processing", None)]
+              and states_c10k[-1] == (2, 5, None, None)
+              and seasons_c10k and seasons_c10k <= touched_c10k
+              and episodes_c10k and episodes_c10k <= touched_c10k
+              and (4, 5, None, "analyzing") in states_c10k
+              and (4, 5, None, "thumbnailing") in states_c10k
+              and any(s and " S" in s for s in subtitles_c10k),
+              "%d frames %s, seasons %s, episodes %s, touched %s, subtitles %s"
+              % (len(states_c10k), states_c10k[:6], seasons_c10k, episodes_c10k, touched_c10k,
+                 subtitles_c10k))
+    else:
+        skip("a show's prefs write pushes the refresh cascade of its seasons and episodes",
+             "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

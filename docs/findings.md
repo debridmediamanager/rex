@@ -3340,6 +3340,12 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   per SEASON** -- `Scanning <show>/Season 02`, subtitle `<show> - Season 02`, deepest season
   first -- where a movie library steps per movie. plexsim sent no Context and stepped a show
   library by show.
+- **A show's prefs write re-reads the whole show, and says so.** `showOrdering` pushes the
+  show's own refresh sequence, then each season (5 `processing`, 4 `loading`) with its
+  episodes inside it (5 `processing`, 4 `loading` twice, 5), the episodes again with
+  `mediaState` analyzing and thumbnailing, the activity stepping per season, and the show's
+  state 5 last -- forty frames for a two-season show. plexsim stored the value and pushed
+  nothing, so a re-ordering was invisible to every other client until a reload.
 
 ### Emulation calibrated against the account's own claimed servers
 
