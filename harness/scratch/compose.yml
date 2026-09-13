@@ -26,7 +26,10 @@ services:
     volumes:
       - ./config:/config
       - ./transcode:/transcode
-      - ${PLEXLAB_DIR:-../plexlab}/media:/data:ro
+      # The lab's own media by default. `./scratch.sh long` sets SCRATCH_MEDIA to media-long/,
+      # the same files at real lengths (make-long-media.sh). Read-only either way: an item
+      # delete must never be able to remove a file.
+      - ${SCRATCH_MEDIA:-${PLEXLAB_DIR:-../plexlab}/media}:/data:ro
     networks: [inside]
 
   # Measured on this PMS (1.43.4): an UNCLAIMED server lets only LOOPBACK in without

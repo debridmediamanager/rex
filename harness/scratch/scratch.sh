@@ -7,6 +7,8 @@
 #   ./scratch.sh status   containers, identity, and proof it cannot reach plex.tv
 #   ./scratch.sh token    the token clients send (the copy's own .LocalAdminToken)
 #   ./scratch.sh down     stop
+#   ./scratch.sh long     switch to media-long/ (real lengths) and its own baseline
+#   ./scratch.sh short    switch back to the lab's ten-second clips
 #
 # `make` is the only command that reads the lab, and it writes nothing there: it
 # pauses the lab's PMS for the seconds the copy takes -- the database is in WAL mode
@@ -21,6 +23,16 @@ IMAGE=plexinc/pms-docker@sha256:e0ab27395614a8e1a4fdf84c6bc60ac664915cfdde70c52d
 BIND=${SCRATCH_BIND:-100.85.222.1}
 PORT=${SCRATCH_PORT:-32410}
 URL="http://$BIND:$PORT"
+
+# The media the copy runs on, kept in .mode so every later up and reset stays on it. The
+# long media needs its own baseline: the copied database describes ten-second clips, and a
+# baseline taken after the files were re-analysed is what makes a reset land on real lengths.
+if [ "$(cat .mode 2>/dev/null)" = long ]; then
+  export SCRATCH_MEDIA=./media-long
+  PRISTINE=pristine-long
+else
+  PRISTINE=pristine
+fi
 
 wait_up() {
   for _ in $(seq 1 60); do
@@ -97,8 +109,8 @@ PY
     done
     ;;
   up)
-    [ -e pristine/config ] || { echo "run ./scratch.sh make first" >&2; exit 1; }
-    [ -e config ] || cp -a pristine/config config
+    [ -e $PRISTINE/config ] || { echo "no $PRISTINE/config: run ./scratch.sh make (or long) first" >&2; exit 1; }
+    [ -e config ] || cp -a $PRISTINE/config config
     mkdir -p transcode
     # --force-recreate keeps the namespace-sharing hop inside the CURRENT plex container.
     docker compose up -d --force-recreate
@@ -112,6 +124,59 @@ PY
     ;;
   down)
     docker compose down
+    ;;
+  long)
+    [ -d media-long ] || { echo "run ./make-long-media.sh first" >&2; exit 1; }
+    if [ ! -e pristine-long/config ]; then
+      docker compose down >/dev/null 2>&1 || true
+      rm -rf config transcode pristine-long
+      cp -a pristine/config config
+      mkdir -p transcode
+      SCRATCH_MEDIA=./media-long docker compose up -d --force-recreate
+      wait_up
+      # A section refresh sees each file's new size and re-analyses it. Every leaf must
+      # report a duration over a minute before the result becomes the baseline; if the scan
+      # alone does not get there, an analyze of each section does.
+      python3 - "$URL" "$("$0" token)" <<'PY'
+import json, sys, time, urllib.request
+url, token = sys.argv[1], sys.argv[2]
+def call(path, method="GET"):
+    req = urllib.request.Request(url + path, method=method,
+                                 headers={"X-Plex-Token": token, "Accept": "application/json"})
+    body = urllib.request.urlopen(req, timeout=30).read()
+    return json.loads(body) if body.strip() else {}
+def short_leaves():
+    rows = []
+    for kind in (1, 4):
+        rows += call("/library/all?type=%d" % kind)["MediaContainer"].get("Metadata", [])
+    return [r["ratingKey"] for r in rows
+            if any(m.get("duration", 0) < 60000 for m in r.get("Media", []))], len(rows)
+for section in (1, 2):
+    call("/library/sections/%d/refresh" % section)
+started, analysed = time.time(), False
+while True:
+    pending, total = short_leaves()
+    if not pending:
+        print("  re-analysed: %d leaves report their real length" % total)
+        break
+    if time.time() - started > 120 and not analysed:
+        for section in (1, 2):
+            call("/library/sections/%d/analyze" % section, "PUT")
+        analysed = True
+    if time.time() - started > 900:
+        sys.exit("still ten seconds long after 15 minutes: %s" % pending)
+    time.sleep(10)
+PY
+      docker compose down
+      mkdir -p pristine-long
+      cp -a config pristine-long/config
+    fi
+    echo long > .mode
+    exec "$0" reset
+    ;;
+  short)
+    rm -f .mode
+    exec "$0" reset
     ;;
   token)
     cat "config/$PMS/.LocalAdminToken"
