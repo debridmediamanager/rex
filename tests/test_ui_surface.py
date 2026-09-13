@@ -8221,6 +8221,48 @@ def main():
                   for axis_c12h in ("genre", "director", "writer", "year", "collection")),
           "%s" % {a_c12h: b_c12h.get("content") for a_c12h, b_c12h in axes_c12h.items()})
 
+
+    # Re-measured on kids (1.43.4) and zen (1.42.2), correcting a lab-only reading: an
+    # EPISODE's title IS compared by /common (several differently titled episodes list
+    # `title` in mixedFields, a single one sends its title) where a SEASON's is not, and
+    # `titleSort` is "" only when it is genuinely mixed -- a single row answers its own
+    # sort title. plexsim dropped `title` for both and hardcoded `titleSort` to "", so
+    # the Edit dialog opened with the Title and Sort Title boxes blank on an episode.
+    def common_c12g(query_c12g):
+        status_c12g, body_c12g, _ = get(base, "/library/sections/%s/common?%s"
+                                        % (show_section, query_c12g))
+        return status_c12g, (body_c12g.get("Metadata") or [{}])[0]
+    episodes_c12g = [r_c12g.get("ratingKey") for r_c12g in
+                     (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                      .get("Metadata") or [])]
+    seasons_c12g = [r_c12g.get("ratingKey") for r_c12g in
+                    (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                     .get("Metadata") or [])]
+    if len(episodes_c12g) < 2 or not seasons_c12g:
+        skip("an episode's title is compared by /common and a season's is not",
+             "the fixture has too few rows")
+    else:
+        many_c12g = common_c12g("type=4")
+        one_c12g = common_c12g("type=4&id=%s" % episodes_c12g[0])
+        season_c12g = common_c12g("type=3&id=%s" % seasons_c12g[0])
+        episode_row_c12g = (get(base, "/library/metadata/%s" % episodes_c12g[0])[1]
+                            .get("Metadata") or [{}])[0]
+        season_row_c12g = (get(base, "/library/metadata/%s" % seasons_c12g[0])[1]
+                           .get("Metadata") or [{}])[0]
+        check("an episode's title is compared by /common and a season's is not",
+              "title" in (many_c12g[1].get("mixedFields") or "").split(",")
+              and many_c12g[1].get("titleSort") == ""
+              and one_c12g[1].get("title") == episode_row_c12g.get("title")
+              and one_c12g[1].get("titleSort")
+              and "title" not in (season_c12g[1].get("mixedFields") or "").split(",")
+              and "title" not in season_c12g[1]
+              and season_c12g[1].get("titleSort") == (season_row_c12g.get("titleSort")
+                                                      or season_row_c12g.get("title")),
+              "many %r, one title=%r sort=%r, season sort=%r (row %r)"
+              % (many_c12g[1].get("mixedFields"), one_c12g[1].get("title"),
+                 one_c12g[1].get("titleSort"), season_c12g[1].get("titleSort"),
+                 season_row_c12g.get("titleSort")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
