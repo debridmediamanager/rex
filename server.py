@@ -4926,6 +4926,12 @@ class PlexSim:
         body.setdefault("size", 0)
         return {"MediaContainer": self._prune(body)}
 
+    # Measured across all 26 secondary axes on kids (1.43.4) and zen (1.42.2): every
+    # axis carries `content: "secondary"` EXCEPT `actor`, which carries `viewGroup`
+    # without it. No rule explains it and both servers agree, so it is emulated as
+    # measured -- a field invented is as wrong as one missing.
+    CONTENTLESS_AXES = ("actor",)
+
     def secondary_directory(self, section_id, section, leaf, query=None):
         """`/library/sections/{id}/{genre,year,director,...}`.
 
@@ -4981,8 +4987,11 @@ class PlexSim:
                     "key": urllib.parse.quote(once) if leaf == "studio" else once,
                     "title": (value + "s") if leaf == "decade" else value,
                 })
-        return self.secondary_container(section_id, section,
-                                        SECONDARY_TITLES.get(leaf), Directory=entries)
+        container = self.secondary_container(section_id, section,
+                                             SECONDARY_TITLES.get(leaf), Directory=entries)
+        if leaf in self.CONTENTLESS_AXES:
+            container["MediaContainer"].pop("content", None)
+        return container
 
     def media_axis(self, section_id, section, leaf, query=None):
         """`/library/sections/{id}/{resolution,videoCodec,audioLanguage,...}`.
