@@ -4487,10 +4487,15 @@ class PlexSim:
     # (`viewCount`, `lastViewedAt`, `unwatched`) -- is a 500. `duration` and
     # `userRating` are 500 too, which no rule about the schema predicts, so the
     # set is the measurement rather than a rule.
+    # Re-measured on kids (1.43.4) and zen (1.42.2) across all 27 candidates: `type`,
+    # `guid` and `id` group too, and plexsim answered 500 to all three. They are the
+    # row's own identity columns, which is consistent with the rest of the set; the
+    # earlier probe simply did not try them. `id` became a FILTER field in cycle 11 and
+    # was still not a group field.
     GROUPABLE = {"title", "titleSort", "studio", "contentRating", "year", "decade",
                  "addedAt", "updatedAt", "originallyAvailableAt", "audienceRating",
                  "rating", "editionTitle", "index", "summary", "tagline",
-                 "contentRatingAge"}
+                 "contentRatingAge", "type", "guid", "id"}
 
     def grouped(self, rows, field):
         """`group=<field>` -- one row per distinct value of that field.

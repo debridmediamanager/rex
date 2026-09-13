@@ -8191,6 +8191,22 @@ def main():
           and person_c12e == 6,
           "hubs %s, /library/people tagType %s" % (hubs_c12e, person_c12e))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): `group=type`, `group=guid` and
+    # `group=id` all answer 200 where plexsim answered 500. Exercised against all 27
+    # candidate fields -- the other 24 agree, including the 11 that are 500 everywhere.
+    # `id` became a filter field in cycle 11 and was still not a group field.
+    groups_c12f = {field_c12f: request(base, "GET", "/library/sections/%s/all?group=%s"
+                                       % (movie_section, field_c12f))[0]
+                   for field_c12f in ("type", "guid", "id", "year", "decade", "titleSort",
+                                      "genre", "duration", "userRating")}
+    check("a listing groups by type, guid and id, and still refuses the rest",
+          all(groups_c12f[good_c12f] == 200
+              for good_c12f in ("type", "guid", "id", "year", "decade", "titleSort"))
+          and all(groups_c12f[bad_c12f] == 500
+                  for bad_c12f in ("genre", "duration", "userRating")),
+          "%s" % groups_c12f)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
