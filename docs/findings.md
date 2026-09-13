@@ -3296,6 +3296,12 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   `/hubs/sections/{id}/extras` is `size 0`, `allowSync` and the identifier, even for a
   section id the server does not have. An item's `/extras/{n}` is a 404 on both servers, even
   for an extra it has. plexsim 404'd the first three and answered the last.
+- **A settings save pushes a `preference` frame per written id**, in ASCII order of the id and
+  whether or not the value changed, carrying the `/:/prefs/get` shape with `label` and
+  `summary` emptied. **And `FriendlyName` is the server's name everywhere** -- `/`,
+  `/media/providers` and `/servers` -- with an empty one kept as the preference's value while
+  the displayed name falls back to the host name. plexsim stored the values, pushed nothing,
+  and kept its old name, so renaming the server in Settings changed nothing on screen.
 
 ### Emulation calibrated against the account's own claimed servers
 
