@@ -3383,6 +3383,17 @@ limits turn out to be one rule:
   history row and bumped the season and show counters. What cycle 9 recorded as "a
   session-bound timeline is ignored outright" was this rule, not the session header: a
   session-bound beat behaves exactly like a bare one.
+- **A beat with no `duration` stores nothing, and `duration=0` is a 200.** Without one the
+  answer is `ignore` and the row is untouched, at 130 s and at 95% alike; after a beat that
+  did carry one, a duration-less beat answers the STORED offset unchanged. `duration=0` is
+  the same 200 -- a real PMS reads it as "no usable duration" -- where plexsim's `time >
+  duration` refusal caught it as a 400. An empty `duration` and a `time` past a real one
+  stay 400s.
+- **A beat at or under a minute DELETES the stored resume point.** plexsim ignored the beat
+  and kept the old position, so starting a title again from the beginning left the previous
+  resume point in Continue Watching. `lastViewedAt` is left alone.
+- **A progress beat stamps `lastViewedAt` on the season and the show**, before anything is
+  watched; plexsim touched the parents only on a completion.
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -7377,6 +7377,57 @@ def main():
         skip("a play completes only when a beat crosses 90% inside its own session",
              "need three unwatched movies")
 
+    # Measured on plexscratch: a beat with NO `duration` stores nothing and completes nothing,
+    # and answers the offset the item already has; `duration=0` is a 200 that stores nothing,
+    # where an empty one and a `time` past the duration stay 400s. plexsim fell back to the
+    # item's own duration -- so a player that omits it drove the whole watched-state machine --
+    # and 400'd `duration=0`.
+    bare_c10m = [r["ratingKey"] for r in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
+                 if not r.get("viewCount") and not r.get("viewOffset")]
+    if bare_c10m:
+        key_c10m = bare_c10m[-1]
+        span_c10m = int((get(base, "/library/metadata/%s" % key_c10m)[1]
+                         .get("Metadata") or [{}])[0].get("duration") or 0)
+        def timeline_c10m(position, duration, session="c10m"):
+            path = ("/:/timeline?ratingKey=%s&key=%s&state=playing&hasMDE=1&time=%s"
+                    % (key_c10m, urllib.parse.quote("/library/metadata/%s" % key_c10m, safe=""), position))
+            if duration is not None:
+                path += "&duration=%s" % duration
+            status, body, _ = request(base, "GET", path + "&X-Plex-Session-Identifier=" + session)
+            try:
+                return status, json.loads(body).get("MediaContainer", {})
+            except ValueError:
+                return status, {}
+        def stored_c10m():
+            row = (get(base, "/library/metadata/%s" % key_c10m)[1].get("Metadata") or [{}])[0]
+            return (row.get("viewCount"), row.get("viewOffset"))
+        status_none_c10m, answer_none_c10m = timeline_c10m(130000, None)
+        cold_c10m = stored_c10m()
+        status_high_c10m, answer_high_c10m = timeline_c10m(int(span_c10m * 0.95), None)
+        high_c10m = stored_c10m()
+        timeline_c10m(200000, span_c10m)
+        status_after_c10m, answer_after_c10m = timeline_c10m(210000, None)
+        status_zero_c10m, answer_zero_c10m = timeline_c10m(230000, 0)
+        status_empty_c10m, _ = timeline_c10m(230000, "")
+        status_past_c10m, _ = timeline_c10m(span_c10m + 10000, span_c10m)
+        check("a beat with no duration stores nothing, and duration=0 is a 200",
+              status_none_c10m == 200 and answer_none_c10m.get("playbackState") == "ignore"
+              and cold_c10m == (None, None)
+              and answer_high_c10m.get("playbackState") == "ignore" and high_c10m == (None, None)
+              and status_after_c10m == 200 and answer_after_c10m.get("viewOffset") == 200000
+              and stored_c10m()[1] == 200000
+              and status_zero_c10m == 200 and answer_zero_c10m.get("viewOffset") == 200000
+              and status_empty_c10m == 400 and status_past_c10m == 400,
+              "none %s %r %s, 95%% %r %s, after %s %r, zero %s %r, empty %s, past %s"
+              % (status_none_c10m, answer_none_c10m.get("playbackState"), cold_c10m,
+                 answer_high_c10m.get("playbackState"), high_c10m, status_after_c10m,
+                 answer_after_c10m.get("viewOffset"), status_zero_c10m,
+                 answer_zero_c10m.get("viewOffset"), status_empty_c10m, status_past_c10m))
+    else:
+        skip("a beat with no duration stores nothing, and duration=0 is a 200",
+             "need an unwatched movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
