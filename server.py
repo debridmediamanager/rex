@@ -6984,6 +6984,17 @@ class PlexSim:
             logger.info("SPLIT %s -> %d new row(s)", row["ratingKey"], len(created))
         elif action == "merge":
             ids = [i for i in (query.get("ids") or "").split(",") if i]
+            others = [self.catalog.items.get(int(i)) if i.isdigit() else None for i in ids]
+            # Measured on a writable copy of the reference: a merge with no `ids` is a
+            # 400, an id the server does not have a 404, and a row of another type -- a
+            # movie into a show -- a 400. plexsim answered 200 to all three, and moved
+            # the movie's media into the show.
+            if not ids:
+                return ("error", 400, "plexsim: bad request")
+            if any(other is None for other in others):
+                return ("error", 404, "plexsim: no such item")
+            if any(other.get("type") != row.get("type") for other in others):
+                return ("error", 400, "plexsim: bad request")
             merged = self.library.merge(row, ids)
             logger.info("MERGE %s <- %s (%d row(s) absorbed)",
                         row["ratingKey"], ids, len(merged))

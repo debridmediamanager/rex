@@ -3091,6 +3091,9 @@ the same parameters, then read back from both.
   60, ended). plexsim pushed nothing. Measured and not acted on: optimize's
   `general.db.optimize` run (its last frames and a burst of type-12 deletes were not fully
   captured) and the refresh cascade a show's `showOrdering` write pushes.
+- **A merge refuses what it cannot merge.** No `ids` is a 400, an id the server does not
+  have a 404, and a movie into a show a 400. plexsim answered 200 to all three -- and the
+  last one moved the movie's media into the show.
 
 ### Emulation calibrated against the account's own claimed servers
 
