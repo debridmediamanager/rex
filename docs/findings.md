@@ -3256,6 +3256,21 @@ below is one check there, and each check failed against the code before its fix.
   composed them first. `tests/catalog_ui.json`'s 1920x800 rows were served as `720`, 2.4 and
   `profile: 0`.
 
+#### The tenth pass, second batch: the writes cycle 9 did not reach
+
+The write hunt went back to plexscratch for what cycle 9 did not reach -- smart-list edits,
+settings saves, butler runs, stream selection, artwork uploads, Fix Match, extras -- and for
+the frames cycle 9 caught only in part. Every finding was re-measured before it was
+implemented: the writes on plexscratch, and anything a read can show on both servers.
+
+- **A library's extras are a section leaf and a hub.** `GET /library/sections/{id}/extras`
+  is the library's container naming one `all` view ("All Movies"; a show library's adds
+  `nocache`), `/extras/all` lists the library's trailers and clips in that container --
+  `size 0` for a library with none -- and anything deeper is a 404.
+  `/hubs/sections/{id}/extras` is `size 0`, `allowSync` and the identifier, even for a
+  section id the server does not have. An item's `/extras/{n}` is a 404 on both servers, even
+  for an extra it has. plexsim 404'd the first three and answered the last.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
