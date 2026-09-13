@@ -9432,6 +9432,40 @@ def main():
               % (len(mv_c14e.get("movie") or []), len(sh_c14e.get("episode") or []),
                  len(sh_c14e.get("show") or [])))
 
+
+    # Cycle 14: the row that survives a `group=` is the group's MINIMUM addedAt,
+    # picked before the sort -- so the same SET comes back under every sort and only
+    # the order changes. Measured on kids (group=type answers the lowest-addedAt row,
+    # not the lowest ratingKey, under three different sorts) and on zen (the minimum
+    # addedAt in 88/88 year groups and 3450/3450 title groups). plexsim kept the first
+    # row the sort produced, so changing the sort changed which rows the grid showed.
+    def grouped_c14f(spec):
+        return [r.get("ratingKey") for r in
+                get(base, "/library/sections/%s/all?type=4&%s" % (show_section, spec))[1]
+                .get("Metadata") or []]
+
+    if not show_section:
+        skip("a group's survivor is its lowest addedAt, chosen before the sort",
+             "need a show")
+    else:
+        asc_c14f = grouped_c14f("group=index")
+        desc_c14f = grouped_c14f("group=index&sort=titleSort:desc")
+        added_c14f = grouped_c14f("group=index&sort=addedAt:desc")
+        leaves_c14f = {r.get("ratingKey"): r.get("addedAt") for r in
+                       get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                       .get("Metadata") or []}
+        idx_c14f = {}
+        for row_c14f in get(base, "/library/sections/%s/all?type=4" % show_section)[1] \
+                .get("Metadata") or []:
+            idx_c14f.setdefault(row_c14f.get("index"), []).append(row_c14f.get("ratingKey"))
+        want_c14f = {min(members_c14f, key=lambda k: (leaves_c14f.get(k) or 0, int(k)))
+                     for members_c14f in idx_c14f.values()}
+        check("a group's survivor is its lowest addedAt, chosen before the sort",
+              set(asc_c14f) == set(desc_c14f) == set(added_c14f) == want_c14f
+              and asc_c14f != desc_c14f,
+              "asc %s | desc %s | addedAt %s | want %s"
+              % (asc_c14f, desc_c14f, added_c14f, sorted(want_c14f)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

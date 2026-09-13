@@ -4624,23 +4624,47 @@ class PlexSim:
         """`group=<field>` -- one row per distinct value of that field.
 
         Measured: `?group=studio` on five movies that share a studio answers ONE
-        row, and an empty, unknown or non-scalar field is a 500. Which row of a
-        group survives is a SQL artifact on the reference (it is not the first in
-        sort order, nor the lowest id); plexsim keeps the first in the order the
-        sort just produced, which is at least deterministic.
+        row, and an empty, unknown or non-scalar field is a 500.
+
+        WHICH row survives was recorded as an unknowable SQL artifact and
+        implemented as "the first in the order the sort just produced". Cycle 14
+        measured it: it is the group's **minimum `addedAt`**, and it is chosen
+        BEFORE the sort, so the surviving SET is the same under every `sort=` and
+        only the order changes. On kids `group=type` answers ratingKey 3 (the
+        lowest addedAt) and not 1 (the lowest ratingKey), under `sort=titleSort`,
+        `titleSort:desc` and `addedAt:desc` alike. On zen the survivor is the
+        group's minimum addedAt in 88/88 year groups, 1074/1074 studio groups,
+        1238/1238 originallyAvailableAt groups, 3450/3450 title groups and
+        3887/3887 guid groups, with groups up to 64 members and the survivor's
+        index in sort order ranging 0-7. (min addedAt and min ratingKey coincide
+        on zen, which is why kids is the discriminating witness.)
+
+        It matters because Group and Sort are independent controls in the client:
+        picking the survivor after the sort makes changing the sort change WHICH
+        rows the grid shows, and a smart list storing both has contents that
+        depend on its own sort.
+
+        A tie on `addedAt` inside one group has no witness -- kids' two equal rows
+        never form a group of their own -- so the lowest ratingKey breaks it here,
+        which at least keeps the answer independent of the sort. See HANDOVER.md 3.3.
         """
-        bare = field.split(".", 1)[1] if field and "." in field else field
+        bare = self.group_field(field)
         if not bare or bare not in self.GROUPABLE:
             raise filters_module.FilterError(500, "cannot group by %r" % field)
-        seen, kept = set(), []
+        best = {}
         for row in rows:
-            value = self.filter_value(bare, row)
-            marker = str(value)
-            if marker in seen:
-                continue
-            seen.add(marker)
-            kept.append(row)
-        return kept
+            marker = str(self.filter_value(field, row))
+            rank = (row.get("addedAt") or 0, int(row.get("ratingKey") or 0))
+            if marker not in best or rank < best[marker][0]:
+                best[marker] = (rank, id(row))
+        chosen = {entry[1] for entry in best.values()}
+        # The survivors come back in the order the sort produced, which is what a
+        # real PMS does: same set, re-ordered.
+        return [row for row in rows if id(row) in chosen]
+
+    def group_field(self, field):
+        """The column a `group=` key names. Overridden by the scope patch."""
+        return field.split(".", 1)[1] if field and "." in field else field
 
     def _sortable(self, key):
         """Whether a `sort=` key is one this server can order by.
