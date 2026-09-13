@@ -6498,6 +6498,16 @@ def main():
           list_size_w14d > 0 and len(added_w14d.get("Metadata") or []) == 1 + list_size_w14d,
           "%d row(s) after adding a %d-item playlist" % (len(added_w14d.get("Metadata") or []), list_size_w14d))
 
+    # Measured on plexscratch: DELETE on a play queue's items clears it down to the selected
+    # item; plexsim answered 404.
+    made_w14e = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
+    cleared_status_w14e, cleared_w14e, _ = container(base, "DELETE", "/playQueues/%s/items" % made_w14e.get("playQueueID"))
+    check("DELETE on a play queue's items keeps only the selected item",
+          len(made_w14e.get("Metadata") or []) > 1 and cleared_status_w14e == 200
+          and [r.get("playQueueItemID") for r in cleared_w14e.get("Metadata") or []]
+          == [made_w14e.get("playQueueSelectedItemID")],
+          "HTTP %s, %s" % (cleared_status_w14e, [r.get("playQueueItemID") for r in cleared_w14e.get("Metadata") or []]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

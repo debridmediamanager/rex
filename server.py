@@ -7412,6 +7412,15 @@ class PlexSim:
             return self.move_play_queue_item(queue_id, segments[3],
                                             query.get("after"), query)
 
+        if len(segments) == 3 and segments[2] == "items" and method == "DELETE":
+            # Measured on a writable copy of the reference: DELETE on the items clears
+            # the queue down to its SELECTED item -- the one playing -- and steps the
+            # version. plexsim answered 404.
+            with self.lock:
+                queue["items"] = [e for e in queue["items"] if e["id"] == queue["selected"]]
+                queue["version"] += 1
+            return self.play_queue_container(queue_id, query)
+
         if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
             with self.lock:
                 items = queue["items"]
