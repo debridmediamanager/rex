@@ -7757,6 +7757,26 @@ def main():
           and past_c11g[0] == 0,
           "whole %s, first page %s, past the end %s" % (whole_c11g, first_c11g, past_c11g))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): every statistics endpoint refuses a
+    # `timespan` that is not a whole number with 400 -- `abc`, `1.5`, an empty value,
+    # a leading space -- and answers 200 to `0`, `-1` and `06`. plexsim ran an
+    # unguarded int() on it: a 500 on two endpoints, and an ignored parameter on the
+    # third.
+    spans_c11h = {}
+    for leaf_c11h in ("media", "bandwidth", "resources"):
+        for value_c11h in ("abc", "1.5", "", "%206", "6", "0", "-1"):
+            spans_c11h[(leaf_c11h, value_c11h)] = request(
+                base, "GET", "/statistics/%s?timespan=%s" % (leaf_c11h, value_c11h))[0]
+    check("every statistics endpoint refuses a timespan that is not a whole number",
+          all(spans_c11h[(leaf_c11h, bad_c11h)] == 400
+              for leaf_c11h in ("media", "bandwidth", "resources")
+              for bad_c11h in ("abc", "1.5", "", "%206"))
+          and all(spans_c11h[(leaf_c11h, good_c11h)] == 200
+                  for leaf_c11h in ("media", "bandwidth", "resources")
+                  for good_c11h in ("6", "0", "-1")),
+          "%s" % sorted((k[0], k[1] or "(empty)", v) for k, v in spans_c11h.items()))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
