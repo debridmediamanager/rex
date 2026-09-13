@@ -275,6 +275,36 @@ def stream_titles(row):
     return row
 
 
+# The products whose `displayTitle` carries the codec, measured on both servers against 38
+# product names, in the header and in the query alike: a video's and a subtitle's plain
+# title gains ` (<CODEC>...)` -- `1080p (H.264)`, `English SDH (SRT)` -- for exactly these,
+# case-sensitively, and for no other (`Apple TV`, `Plex for Android`, `Plex for Xbox One`,
+# `Plex Desktop`, Roku, HTPC, Kodi, PlexAPI and no product at all get the plain title). An
+# audio title and every extended title are the same for everyone. The recorded rule, a
+# video `displayTitle` of `1080p`, was the no-product answer, and plexsim sent it to Plex
+# Web itself.
+CODEC_TITLE_PRODUCTS = frozenset((
+    "Plex Web", "Plex for iOS", "Plex for Apple TV", "Plex for Android (TV)",
+    "Plex for Android (Mobile)", "Plex for LG", "Plex for Samsung", "Plex for Windows",
+    "Plex for Mac", "Plex for Xbox", "Plex for PlayStation 4", "Plex for PlayStation 5",
+    "Plex for Vizio"))
+
+
+def client_display_title(row, product):
+    """The `displayTitle` one client is sent for a Stream row."""
+    title = row.get("displayTitle")
+    if product not in CODEC_TITLE_PRODUCTS or not title:
+        return title
+    kind = row.get("streamType")
+    if kind == 1:
+        codec = _video_codec_label(row)
+    elif kind == 3:
+        codec = str(row.get("codec") or "").upper()
+    else:
+        return title
+    return "%s (%s)" % (title, codec) if codec else title
+
+
 # ffprobe's disposition keys against a real PMS's attribute names. Measured on every
 # probed track on fun: each flag is written only when TRUE, on audio, subtitles and video
 # alike, and a real PMS never sends `default: false` or `selected: false`.

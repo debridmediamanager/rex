@@ -3240,6 +3240,15 @@ below is one check there, and each check failed against the code before its fix.
   title as an audio title, and never named a profile -- which answers cycle 4's open question
   of when a profile is appended. Left alone: a forced track with no linguistic content, whose
   extended title leaves `Forced` out (one track).
+- **Plex Web and twelve other products get the codec in `displayTitle` too.** On both
+  servers a video's and a subtitle's plain title carries ` (<CODEC>...)` only when
+  `X-Plex-Product` is exactly Plex Web, Plex for iOS, Plex for Apple TV, Plex for Android
+  (TV), Plex for Android (Mobile), Plex for LG, Plex for Samsung, Plex for Windows, Plex for
+  Mac, Plex for Xbox, Plex for PlayStation 4, Plex for PlayStation 5 or Plex for Vizio, in the
+  header or the query, case-sensitively -- not for `Apple TV`, `Plex for Android`, `Plex for
+  Xbox One`, `Plex Desktop`, Roku, HTPC, Kodi, PlexAPI or no product. The extended title does
+  not vary. The recorded `displayTitle` of `1080p` was the no-product answer, and plexsim
+  sent it to Plex Web itself.
 
 ### Emulation calibrated against the account's own claimed servers
 
