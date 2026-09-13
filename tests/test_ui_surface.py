@@ -7929,6 +7929,48 @@ def main():
               % ([k for _, k in created_c11l], [k for _, k in first_c11l],
                  [k for _, k in second_c11l], [k for _, k in ahead_c11l]))
 
+
+    # Measured on a writable copy of the reference with the client's own request
+    # (bundle module 90487): `POST /library/metadata/{id}/subtitles?title=&format=`
+    # with the file as the body answers 200 and an EMPTY body, and leaves a new
+    # subtitle Stream that becomes the selected one. No title, and a title with no
+    # extension, are 500s; a format it does not take is a 400; an empty body is a 406.
+    # plexsim fell through to the subtitle SEARCH branch and answered 400 to all of
+    # them, so the modal always said "Unable to upload subtitle file".
+    def upload_c11m(query_c11m, body_c11m=b"1\n00:00:00,000 --> 00:00:02,000\nc11\n\n"):
+        return request(base, "POST", "/library/metadata/%s/subtitles%s" % (movie, query_c11m),
+                       body=body_c11m)[:2]
+    ok_c11m = upload_c11m("?title=c11sub.srt&format=srt")
+    inferred_c11m = upload_c11m("?title=c11sub2.srt")
+    no_title_c11m = upload_c11m("?format=srt")
+    no_extension_c11m = upload_c11m("?title=c11sub3&format=srt")
+    bad_format_c11m = upload_c11m("?title=c11sub4.bin&format=bin")
+    empty_c11m = upload_c11m("?title=c11sub5.srt&format=srt", b"")
+    missing_c11m = request(base, "POST", "/library/metadata/99999999/subtitles?title=x.srt&format=srt",
+                           body=b"x")[0]
+    row_c11m = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    subs_c11m = [s_c11m for m_c11m in (row_c11m.get("Media") or [])
+                 for p_c11m in (m_c11m.get("Part") or [])
+                 for s_c11m in (p_c11m.get("Stream") or []) if s_c11m.get("streamType") == 3]
+    mine_c11m = [s_c11m for s_c11m in subs_c11m if s_c11m.get("title") in ("c11sub", "c11sub2")]
+    check("the Upload Subtitle modal's request is accepted, and its refusals match",
+          ok_c11m == (200, b"") and inferred_c11m == (200, b"")
+          and no_title_c11m[0] == 500 and no_extension_c11m[0] == 500
+          and bad_format_c11m[0] == 400 and empty_c11m[0] == 406 and missing_c11m == 404
+          and len(mine_c11m) == 2
+          and all(s_c11m.get("codec") == "srt" and s_c11m.get("format") == "srt"
+                  and str(s_c11m.get("key") or "").startswith("/library/streams/")
+                  and s_c11m.get("transient") == "0"
+                  and s_c11m.get("displayTitle") == "Unknown (SRT External)"
+                  for s_c11m in mine_c11m)
+          and [s_c11m.get("title") for s_c11m in subs_c11m if s_c11m.get("selected")] == ["c11sub2"],
+          "ok %s, inferred %s, no title %s, no extension %s, bad format %s, empty %s, "
+          "missing %s, streams %s"
+          % (ok_c11m, inferred_c11m, no_title_c11m[0], no_extension_c11m[0], bad_format_c11m[0],
+             empty_c11m[0], missing_c11m,
+             [(s_c11m.get("title"), s_c11m.get("displayTitle"), s_c11m.get("selected"))
+              for s_c11m in subs_c11m]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -1167,6 +1167,9 @@ class PlexSim:
         self.play_queues = {}
         self.next_play_queue = 1
         self.next_play_queue_item = 1
+        # Sidecar subtitles the Upload modal has sent, by stream id: the bytes are kept
+        # so a DELETE of one can tell an uploaded stream from an embedded track.
+        self.uploaded_subtitles = {}
         # ratingKeys a decision has been made for. The timeline's `Bandwidths`
         # block appears only after one, measured -- not merely while playing.
         self.decided = set()
@@ -5493,6 +5496,8 @@ class PlexSim:
                 self.notify_show_cascade(row)
             return ("empty", 200)
         if leaf == "subtitles":
+            if method == "POST":
+                return self.upload_subtitle(row, query, body)
             # The Search Subtitles dialog. A real PMS answers with `Stream` rows
             # from its subtitle agent; plexsim has no subtitle source, so the
             # honest answer is that shape with nothing in it rather than a
@@ -7228,6 +7233,62 @@ class PlexSim:
         if kind == "playlist":
             return self.bare_container(size=1, Metadata=[self.library._playlist_row(target)])
         return self.bare_container(size=1, Metadata=[self.library._collection_row(target)])
+
+    # What the Upload Subtitle modal is allowed to send, measured one extension at a
+    # time on a writable copy of the reference: these five are accepted and `vtt`,
+    # `sub`, `idx`, `sup`, `pgs`, an unknown extension and an empty one are 400s.
+    SUBTITLE_UPLOAD_FORMATS = ("srt", "ass", "ssa", "smi", "txt")
+
+    def upload_subtitle(self, row, query, body):
+        """`POST /library/metadata/{id}/subtitles?title=&format=` -- the Upload modal.
+
+        The client (bundle module 90487) sends the file's name as `title`, its extension
+        as `format` and the bytes as the body. Measured on a writable copy of the
+        reference: a well-formed upload answers 200 with an EMPTY body and leaves a new
+        subtitle `Stream` on the item -- streamType 3, the format as both `codec` and
+        `format`, the name with its extension stripped as `title`, a `key` of
+        `/library/streams/{id}`, `transient: "0"` -- and that new track becomes the
+        SELECTED subtitle, deselecting the one before it. The refusals are their own
+        grammar: no `title` at all, and a title with no extension, are 500s; a format
+        the server does not take is a 400; an empty body is a 406; an unknown item is a
+        404. plexsim fell through to the subtitle SEARCH branch and answered 400 to
+        every one of them, so the modal always reported "Unable to upload subtitle file"
+        -- and cycle 10 recorded the endpoint as unmeasurable on the copy, from a
+        request shape the client does not send.
+        """
+        title = str(query.get("title") or "")
+        if not title or "." not in title:
+            return ("error", 500, "plexsim: internal error")
+        stem, _, extension = title.rpartition(".")
+        fmt = str(query.get("format") or extension).lower()
+        if fmt not in self.SUBTITLE_UPLOAD_FORMATS:
+            return ("error", 400, "plexsim: bad request")
+        if not body:
+            return ("error", 406, "plexsim: not acceptable")
+        with self.lock:
+            used = [int(stream.get("id") or 0)
+                    for item in self.catalog.items.values()
+                    for media in item.get("Media") or []
+                    for part in media.get("Part") or []
+                    for stream in part.get("Stream") or []]
+            stream_id = max(used or [0]) + 1
+            parts = [part for media in row.get("Media") or []
+                     for part in media.get("Part") or []]
+            if not parts:
+                return ("error", 404, "plexsim: not found")
+            stream = {"id": stream_id, "streamType": 3, "codec": fmt, "format": fmt,
+                      "title": stem, "key": "/library/streams/%d" % stream_id,
+                      "transient": "0", "selected": True}
+            mediainfo_module.stream_titles(stream)
+            for part in parts:
+                for other in part.get("Stream") or []:
+                    if other.get("streamType") == 3:
+                        other.pop("selected", None)
+            parts[0].setdefault("Stream", []).append(stream)
+            self.uploaded_subtitles[stream_id] = body
+        logger.info("SUBTITLE upload %s -> stream %d (%s)", row.get("ratingKey"), stream_id, fmt)
+        self.notify_edited(row)
+        return ("empty", 200)
 
     def select_stream(self, part_id, query):
         """`PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`.
