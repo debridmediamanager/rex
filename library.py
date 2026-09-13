@@ -69,10 +69,20 @@ KEEP_EMPTY_FIELDS = {"title", "summary"}
 
 # The order a real PMS lists locks in -- a fixed column order, not the order the
 # client happened to write them. plexsim appended, so re-locking a field moved it
-# to the end and the dialog's checkbox order shuffled.
-FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "tagline",
-               "summary", "contentRating", "originallyAvailableAt", "year",
-               "collection", "editionTitle", "userRating"]
+# to the end and the dialog's checkbox order shuffled. Measured with every lockable
+# field locked in reverse, on a movie and on an episode.
+FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagline",
+               "summary", "contentRating", "thumb", "art", "banner", "theme",
+               "originallyAvailableAt", "year", "genre", "collection", "director",
+               "writer", "actor", "duration", "producer", "country", "index", "label",
+               "audienceRating", "guid", "editionTitle", "slug", "addedAt", "network",
+               "viewCount", "userRating", "parentIndex"]
+
+# Columns that take a LOCK without being editable fields. Measured: each is a 200 and
+# recorded in `Field`, where plexsim answered 400 "unknown field"; `key`, `ratingImage`
+# and `audienceRatingImage` stay a 400.
+LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt",
+                    "viewCount", "network", "parentIndex"}
 
 
 class EditError(Exception):
@@ -470,8 +480,9 @@ class Library:
           * an unparseable date removes the field rather than storing the text;
           * `userRating` is accepted and IGNORED on the item path (the star rating
             is /:/rate) and STORED on the section path;
-          * only `.locked=1` locks -- `true`, `false` and an empty value all
-            UNLOCK, where plexsim locked on anything non-empty;
+          * on the item path only `.locked=1` locks -- `true`, `false` and an empty
+            value all UNLOCK, where plexsim locked on anything non-empty; the
+            section path 400s anything but an integer 0 or 1;
           * on the ITEM path an indexed tag list REPLACES the whole list rather
             than appending, and a `tag-` removal with any value CLEARS it; on the
             SECTION path (`section=True`, the Edit dialog's own save) the list
@@ -525,10 +536,20 @@ class Library:
                 changed = True
             elif name.endswith(".locked"):
                 field = name[: -len(".locked")]
-                if field not in EDITABLE_FIELDS and field not in TAG_KEYS:
+                if field not in EDITABLE_FIELDS and field not in TAG_KEYS \
+                        and field not in LOCK_ONLY_FIELDS:
                     raise EditError(400, "unknown field %r" % field)
-                # Measured: `1` is the only value that locks.
-                self._set_lock(row, field, str(value) == "1")
+                if section:
+                    # Measured: the section path PARSES the lock as an integer that must
+                    # be 0 or 1 -- `01` and `001` lock, `00` unlocks, and `true`, `2`,
+                    # `-1`, ` 1` and an empty value are all a 400.
+                    if not re.fullmatch(r"[0-9]+", str(value)) or int(value) > 1:
+                        raise EditError(400, "bad lock %r" % value)
+                    self._set_lock(row, field, int(value) == 1)
+                else:
+                    # Measured: on the item path `1` is the only value that locks, and
+                    # `01`, `true` and an empty value unlock.
+                    self._set_lock(row, field, str(value) == "1")
                 changed = True
             else:
                 field = name[: -len(".value")] if name.endswith(".value") else name
@@ -732,10 +753,9 @@ class Library:
     def _set_lock(self, row, field, locked):
         """A real PMS reports locks as a `Field` array on the row, in COLUMN order.
 
-        Measured: the order is fixed (title, titleSort, originalTitle, studio,
-        tagline, summary, contentRating, originallyAvailableAt, year, collection,
-        editionTitle, userRating), not the order the client wrote them -- plexsim
-        appended, so re-locking a field moved it to the end.
+        Measured: the order is fixed (`FIELD_ORDER`, the metadata table's columns),
+        not the order the client wrote them -- plexsim appended, so re-locking a
+        field moved it to the end.
         """
         fields = [f for f in row.get("Field", []) if f.get("name") != field]
         if locked:

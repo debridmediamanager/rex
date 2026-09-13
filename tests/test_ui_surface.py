@@ -5988,6 +5988,30 @@ def main():
           % (stored_w5.get("userRating"), stored_w5.get("lastRatedAt"), ignored_w5,
              cleared_w5.get("userRating"), number_w5, empty_item_w5, bad_w5, removed_w5))
 
+    # Measured on plexscratch: the section path parses a lock as an integer 0 or 1 (`01`
+    # locks; `true` and `2` are a 400), `thumb` and the other artwork and identity
+    # columns take a lock (`key` does not), and `Field` lists in the metadata table's
+    # column order. plexsim unlocked on anything and 400'd `thumb`.
+    statuses_w6 = [container(base, "PUT", "/library/sections/%s/all?type=1&id=%s&studio.locked=%s"
+                                          % (movie_section, movie, value))[0]
+                   for value in ("true", "2")]
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&studio.locked=01"
+                         % (movie_section, movie))
+    thumb_w6, _, _ = request(base, "PUT", "/library/metadata/%s?thumb.locked=1" % movie)
+    key_w6, _, _ = container(base, "PUT", "/library/metadata/%s?key.locked=1" % movie)
+    request(base, "PUT", "/library/metadata/%s?userRating.locked=1&genre.locked=1"
+                         "&rating.locked=1&title.locked=1" % movie)
+    locked_w6 = ("title", "studio", "rating", "thumb", "genre", "userRating")
+    order_w6 = [f.get("name") for f in (get(base, "/library/metadata/%s" % movie)[1]
+                                        .get("Metadata") or [{}])[0].get("Field") or []
+                if f.get("locked") and f.get("name") in locked_w6]
+    request(base, "PUT", "/library/metadata/%s?%s"
+                         % (movie, "&".join("%s.locked=0" % name for name in locked_w6)))
+    check("a section-path lock is an integer 0 or 1, thumb takes a lock, and locks list in column order",
+          statuses_w6 == [400, 400] and thumb_w6 == 200 and key_w6 == 400
+          and order_w6 == list(locked_w6),
+          "HTTP %s, thumb %s, key %s, order %s" % (statuses_w6, thumb_w6, key_w6, order_w6))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

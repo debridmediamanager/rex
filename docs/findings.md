@@ -2907,6 +2907,14 @@ the same parameters, then read back from both.
   `audienceRating.value=5.5` and `rating.value=5.5` read back as numbers on both paths,
   `abc` is a 500 on both, and an empty value is a 500 on the item path and removes the
   field on the section path. plexsim stored the strings and discarded userRating.
+- **A lock on the section path is an integer 0 or 1, and more columns take one.** There
+  `01` and `001` lock, `00` unlocks, and `true`, `false`, `2`, `-1`, ` 1` and an empty
+  value are a 400; the item path keeps its rule that only `1` locks. `thumb`, `art`,
+  `theme`, `banner`, `guid`, `slug`, `addedAt`, `viewCount`, `network`, `parentIndex`,
+  `duration` and `index` all take a lock (`key`, `ratingImage` and `audienceRatingImage`
+  are 400), and `Field` lists in the metadata table's column order -- `rating` after
+  `studio`, the artwork after `contentRating`, the tag columns among the scalars --
+  where plexsim filed everything it did not know last.
 
 ### Emulation calibrated against the account's own claimed servers
 
