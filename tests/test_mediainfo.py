@@ -202,6 +202,32 @@ SKIP = {
     ("kids-3-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
     ("kids-4-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
     ("kids-8-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    # Titles built from a field the probe does not give.
+    ("fun-1051324-2", 2, "displayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
+    ("fun-1051324-2", 2, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
+    ("fun-1051324-2", 4, "displayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
+    ("fun-1051324-2", 4, "extendedDisplayTitle"): "E-AC-3 JOC in mp4: fun prints its 5.1 core",
+    ("fun-1061845-0", 3, "extendedDisplayTitle"): "a forced track with no linguistic content leaves Forced out; one track",
+    ("kids-1-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 1, "displayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 1, "extendedDisplayTitle"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
 }
 
 
@@ -357,6 +383,21 @@ def _media_audio_track(fixture):
     real_part = fixture["Media"]["Part"][0]
     sim_part = (fixture["sim"].get("Part") or [{}])[0]
     return out + compare(fixture, "Part", real_part, sim_part, ("audioProfile",))
+
+
+@check("video-titles")
+def _video_titles(fixture):
+    return per_stream(1, ("displayTitle", "extendedDisplayTitle"))(fixture)
+
+
+@check("audio-titles")
+def _audio_titles(fixture):
+    return per_stream(2, ("displayTitle", "extendedDisplayTitle"))(fixture)
+
+
+@check("subtitle-titles")
+def _subtitle_titles(fixture):
+    return per_stream(3, ("displayTitle", "extendedDisplayTitle"))(fixture)
 
 
 def load(root):
