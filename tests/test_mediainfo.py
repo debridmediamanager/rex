@@ -297,6 +297,14 @@ def _video_language_title(fixture):
     return per_stream(1, ("language", "languageCode", "languageTag", "title"))(fixture)
 
 
+@check("unknown-markers")
+def _unknown_markers(fixture):
+    out = per_stream(1, ("profile", "level"))(fixture) + per_media(("videoProfile",))(fixture)
+    real_part = fixture["Media"]["Part"][0]
+    sim_part = (fixture["sim"].get("Part") or [{}])[0]
+    return out + compare(fixture, "Part", real_part, sim_part, ("videoProfile",))
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
