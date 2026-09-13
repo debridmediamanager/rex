@@ -3276,6 +3276,8 @@ class PlexSim:
             return self.section_subset(section_id, section, leaf, query)
         if leaf == "autocomplete":
             return self.autocomplete(section_id, section, query)
+        if leaf in ("allLeaves", "albums", "cluster", "moment", "computePath", "nearest"):
+            return self.section_leaf(section_id, section, leaf, query)
         if leaf == "collections":
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
@@ -3663,6 +3665,61 @@ class PlexSim:
             extra["totalSize"] = len(rows)
         return self.listing_container(section_id, section, [_listing_row(r) for r in rows],
                                       view_group=view_group, query=query, **extra)
+
+    def section_leaf(self, section_id, section, leaf, query):
+        """Six section leaves the community OpenAPI description names, all 404 on plexsim.
+
+        Measured on both servers, on a movie and a show library alike:
+
+        - `allLeaves` is every leaf the library holds -- its movies in sort-title order,
+          or its episodes in broadcast order -- as listing rows, in a container with no
+          librarySection fields and no title2, whose viewGroup names the LIBRARY's type.
+        - `albums` is an empty album list titled "By Album", with `mixedParents`.
+        - `cluster` and `moment` are the same empty "By Moment" secondary container with
+          `clusterZoomLevel` 1, `clusteringActive` false and a key onto `/all`.
+        - `computePath` needs `startID` and `endID` (400 without), 404s an id the server
+          does not have, and otherwise answers an empty path; `nearest` is a 400 however
+          it is asked, here and on the reference alike.
+        """
+        is_show = section.get("type") == "show"
+        fields = {
+            "allowSync": False,
+            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "title1": section.get("title"),
+        }
+        if leaf == "nearest":
+            return ("error", 400, "plexsim: bad request")
+        if leaf == "computePath":
+            start, end = query.get("startID") or "", query.get("endID") or ""
+            if not start or not end:
+                return ("error", 400, "plexsim: bad request")
+            if not (start.isdigit() and end.isdigit() and int(start) in self.catalog.items
+                    and int(end) in self.catalog.items):
+                return ("error", 404, "plexsim: not found")
+            fields.pop("allowSync")
+            return self.bare_container(size=0, **fields)
+        if is_show:
+            fields["nocache"] = True
+        fields["viewMode"] = 65592
+        if leaf == "allLeaves":
+            rows = self.typed_rows(section_id, {"type": "4" if is_show else "1"})
+            if not is_show:
+                rows, _ = self._sorted(rows, "titleSort")
+            shown = [_grid_row(r, keep_section=False, keep_guid=True)
+                     for r in self._guid_gate([_listing_row(r) for r in rows], query)]
+            return self.bare_container(size=len(shown), viewGroup="show" if is_show else "movie",
+                                       Metadata=shown, **fields)
+        if leaf == "albums":
+            return self.bare_container(size=0, mixedParents=True, title2="By Album",
+                                       viewGroup="album", **fields)
+        return self.bare_container(size=0, clusterZoomLevel=1, clusteringActive=False,
+                                   content="secondary",
+                                   key="/library/sections/%s/all?clusterZoomLevel=1" % section_id,
+                                   title2="By Moment", viewGroup="secondary", **fields)
 
     def _last_viewed(self, row):
         """When a row was last watched -- for a show, its most recent episode."""
