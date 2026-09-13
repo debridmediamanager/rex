@@ -2730,7 +2730,7 @@ class PlexSim:
 
         # -- playback ----------------------------------------------------
         if route == "/playQueues" and method == "POST":
-            return self.create_play_queue(query)
+            return self.create_play_queue(query, headers)
         if route == "/playQueues":
             # Re-measured, and it splits on ONE parameter: a bare GET (or one with
             # any parameter but `type`) is an empty 200, and `?type=` is a 400 --
@@ -6094,7 +6094,7 @@ class PlexSim:
                           "ratingKey": int(row["ratingKey"])})
         return items
 
-    def create_play_queue(self, query):
+    def create_play_queue(self, query, headers=None):
         """`POST /playQueues` -- every client builds a queue before playing.
 
         `shuffle=1` is the Shuffle context-menu entry. Measured refusals: a POST
@@ -6120,7 +6120,16 @@ class PlexSim:
             # the order changed without asserting which order.
             rows = list(reversed(rows))
 
+        client = (query.get("X-Plex-Client-Identifier")
+                  or (headers or {}).get("X-Plex-Client-Identifier") or "")
         with self.lock:
+            if client:
+                # Measured on a writable copy of the reference: a client's new queue
+                # RETIRES its older ones -- reading one afterwards is a 404 -- while a
+                # queue from another client leaves them alone. plexsim kept every queue.
+                for old in [key for key, known in self.play_queues.items()
+                            if known.get("client") == client]:
+                    del self.play_queues[old]
             queue_id = self.next_play_queue
             self.next_play_queue += 1
             items = self._queue_items(rows)
@@ -6136,6 +6145,7 @@ class PlexSim:
                 "items": items,
                 "source": "" if playlist is not None else self.source_uri(uri, rows),
                 "shuffled": query.get("shuffle") == "1",
+                "client": client,
                 "version": 1,
                 "selected": selected,
                 "last_added": None,

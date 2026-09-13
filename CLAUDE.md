@@ -721,6 +721,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **On Deck is one row per show**: the lowest-numbered episode in progress, else the one
   after the last watched; hiding any of its episodes hides the show until its next
   timeline.
+- **A client's new play queue retires its older ones** (a 404 afterwards); another client's
+  queue does not. A check that creates a second queue cannot read the first.
 
 ## Conventions
 
