@@ -250,6 +250,32 @@ settling. A larger number than that means the harness, not the target.
 
 `harness/README.md` carries the same list with the measurements behind it.
 
+### The disposable write reference: plexscratch
+
+The lab is read-only for hunts. **Writes are measured on `plexscratch`**, a sanitised
+copy of the lab's config on kids (`harness/scratch/`, deployed to `/home/ben/plexscratch`),
+answering at `http://100.101.10.1:32410`:
+
+```bash
+./scratch.sh make     # once: pause the lab for the copy, sanitise it into pristine/
+./scratch.sh up       # start from config/ (created from pristine/)
+./scratch.sh reset    # throw the writes away; never reads the lab again
+./scratch.sh token    # the token clients send -- it CHANGES on every start
+```
+
+- **It must never reach plex.tv.** The copied config names the lab's machine and held its
+  token; a second server announcing that identity would rewrite the lab's registration.
+  `make` strips the token, account and certificate, skips Logs and Cache (the only other
+  places they appear) and mints new machine identifiers, and PMS sits on an
+  `internal: true` network with no route out. `status` proves the isolation each time.
+- **An unclaimed PMS admits only loopback, and only with a local `Host`.** A request from
+  an allowed network is logged "Allowed Network (Subnet)" and still 401s; so is loopback
+  with `Host: 100.101.10.1:32410`, and any `X-Forwarded-For` makes it WAN. So a socat hop
+  inside PMS's namespace makes every request loopback, and clients send the copy's own
+  `.LocalAdminToken`. A session's client address therefore reads 127.0.0.1 there.
+- **Do not put the hop on 32401.** PMS binds that port itself and exits at start with
+  "Error binding acceptor: Address in use".
+
 ## Testing
 
 Run both against a live server. Neither needs network beyond RD and TMDB.
