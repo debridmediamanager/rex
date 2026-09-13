@@ -2772,6 +2772,13 @@ anything changed.
 - **`/library/sections/all`** is the section list itself, identical to
   `/library/sections` on both servers. The spec calls it `getSections`, so generated
   SDKs ask there; plexsim 404'd it.
+- **Every MediaContainer pages.** With both container parameters present -- headers
+  or query -- both servers slice and add `offset`/`totalSize` on `/`, `/library`,
+  `/:/prefs`, `/devices`, detail rows, trees, every hub list and the tag table, and an
+  empty container such as `/identity` gains `totalSize: 0`. A container of several
+  lists slices each and counts `size` over them. Only a plug-in framework container
+  (`noHistory`, e.g. `/system/scanners/1`) and a non-MediaContainer root are left
+  alone. plexsim paged seven listings; the rule now lives in the response path.
 
 ### Emulation calibrated against the account's own claimed servers
 

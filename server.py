@@ -8037,7 +8037,53 @@ class Handler(BaseHTTPRequestHandler):
                              "attachment; filename=\"plexsim-logs.zip\"")])
                 return
 
+        if method in ("GET", "HEAD"):
+            try:
+                result = self._page_container(result)
+            except filters_module.FilterError as refused:
+                self._send(refused.status, "text/plain",
+                           ("plexsim: %s" % refused.detail).encode())
+                return
         self._send_container(result)
+
+    def _page_container(self, result):
+        """Apply the client's container paging to any MediaContainer not yet paged.
+
+        Measured on both servers: EVERY MediaContainer pages when both
+        `X-Plex-Container-Start` and `X-Plex-Container-Size` are present, as headers or
+        query parameters -- `/`, `/library`, `/:/prefs` (all 174 Settings), `/devices`,
+        a detail row, a tree, every hub list, the tag table -- and even an empty one
+        gains `totalSize: 0` and `offset: 0` (`/identity`). A container holding several
+        lists (`/statistics/bandwidth`: Device, Account, StatisticsBandwidth) slices
+        each, counts `size` over all of them and takes `totalSize` from the longest.
+        plexsim paged only the handful of listings that called page_window themselves,
+        so a client asking for a page got every row and no total to stop at. The
+        exceptions are measured too: a plug-in framework container (`noHistory`,
+        `/system/scanners/{type}`) ignores paging, and a root that is not a
+        MediaContainer (`ButlerTasks`, `MyPlex`) has nothing to page.
+        """
+        if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
+            return result
+        body = result["MediaContainer"]
+        if not isinstance(body, dict) or "totalSize" in body or "noHistory" in body:
+            return result
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
+                                            keep_blank_values=True))
+        for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
+            if name not in query and self.headers.get(name) is not None:
+                query[name] = self.headers.get(name)
+        lists = [key for key, value in body.items() if isinstance(value, list)]
+        total = max([len(body[key]) for key in lists] or [int(body.get("size") or 0)])
+        _, paged, start, _ = self.server.sim.page_window(range(total), query)
+        if not paged:
+            return result
+        size = int(query["X-Plex-Container-Size"])
+        sliced = {key: value[start:start + size] for key, value in body.items()
+                  if key in lists}
+        count = sum(len(rows) for rows in sliced.values()) if lists else int(body.get("size") or 0)
+        out = {"size": count, "totalSize": total, "offset": start}
+        out.update({key: sliced.get(key, value) for key, value in body.items() if key != "size"})
+        return {"MediaContainer": out}
 
     STATIC_TYPES = {
         ".html": "text/html;charset=utf-8",
