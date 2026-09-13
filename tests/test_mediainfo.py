@@ -400,6 +400,22 @@ def _subtitle_titles(fixture):
     return per_stream(3, ("displayTitle", "extendedDisplayTitle"))(fixture)
 
 
+@check("client-titles")
+def _client_titles(fixture, mediainfo):
+    """`webDisplayTitles` is each stream's displayTitle as read with `X-Plex-Product: Plex Web`."""
+    out = []
+    for real, sim in paired(fixture, None):
+        if skipped(fixture, real["index"], "displayTitle"):
+            continue
+        out.append(("%s stream %s Plex Web displayTitle" % (fixture["name"], real["index"]),
+                    fixture["webDisplayTitles"].get(str(real["index"])),
+                    mediainfo.client_display_title(sim, "Plex Web") if sim else None))
+        out.append(("%s stream %s Plex for Roku displayTitle" % (fixture["name"], real["index"]),
+                    real.get("displayTitle"),
+                    mediainfo.client_display_title(sim, "Plex for Roku") if sim else None))
+    return out
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
