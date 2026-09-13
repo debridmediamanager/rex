@@ -2137,6 +2137,14 @@ class PlexSim:
                 return self.delete_history(segments[3])
             if segments[3] == "all":
                 return self.history(query)
+            if segments[3].isdigit() and method in ("GET", "HEAD"):
+                # Measured on both servers: one history row by its key -- the same row
+                # history/all lists, alone in a container carrying only `size`. plexsim
+                # listed `/status/sessions/history/1` in history/all and 404'd that key.
+                wanted = "/status/sessions/history/%s" % int(segments[3])
+                found = [r for r in self.library.history() if r.get("historyKey") == wanted]
+                if found:
+                    return self.bare_container(size=1, Metadata=found[:1])
             # Measured: only `all` and a numeric historyKey exist here.
             return ("error", 404, "plexsim: not found")
         if route == "/status/sessions/terminate":

@@ -5702,6 +5702,21 @@ def main():
           and band9["&lan=true"][0] == 400 and band9["&deviceID="][0] == 400,
           "%s lan=%s" % (band_rows9, sorted(band_lan9)))
 
+    history9 = get(base, "/status/sessions/history/all")[1].get("Metadata") or []
+    if not history9:
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=590000&duration=600000"
+                % (c5_movie, quote("/library/metadata/%s" % c5_movie)))
+        history9 = get(base, "/status/sessions/history/all")[1].get("Metadata") or []
+    if history9:
+        status_item9, item9, _ = get(base, history9[0]["historyKey"])
+        check("one history row reads back by its historyKey",
+              status_item9 == 200 and item9.get("size") == 1
+              and (item9.get("Metadata") or [{}])[0] == history9[0]
+              and get(base, "/status/sessions/history/999999999")[0] == 404,
+              "HTTP %s for %s" % (status_item9, history9[0]["historyKey"]))
+    else:
+        skip("one history row reads back by its historyKey", "no history row could be made")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
