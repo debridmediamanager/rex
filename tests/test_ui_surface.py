@@ -9507,6 +9507,12 @@ def main():
     # five movies contribute 0+2+2+2+3 and the axis totalSize is exactly 9; zen's is
     # 3413 against 59030 actor tags. Every other tag axis carries every tag. plexsim
     # listed all of them, so on a real library it would hold 155 names per movie.
+    # Five roles have to be WRITTEN here: by this point the suite has replaced every
+    # fixture tag list, so a check that waited for a row with more than three would
+    # skip itself and quietly measure nothing.
+    request(base, "PUT", "/library/metadata/%s?%s" % (movie, "&".join(
+        "role[%d].tag.tag=%s" % (i_c14h, urllib.parse.quote("C14 Actor %d" % i_c14h))
+        for i_c14h in range(5))))
     roles_c14h = []
     for row_c14h in get(base, "/library/sections/%s/all" % movie_section)[1] \
             .get("Metadata") or []:
@@ -9559,9 +9565,19 @@ def main():
         return body_c14i.get("totalSize", body_c14i.get("size"))
 
     all_c14i = ftotal_c14i("")
-    known_c14i = {spec_c14i: ftotal_c14i(spec_c14i) for spec_c14i in
-                  ("viewOffset%3E%3E=0", "skipCount%3E%3E=0", "ratingCount%3E%3E=0",
-                   "absoluteIndex%3E%3E=0", "lastRatedAt%3E%3E=9999999999")}
+    # The expectation is computed from the rows, not hard-coded: by this point in the
+    # suite a movie HAS a viewOffset and a rating, and a check that assumed none would
+    # be measuring the fixture's history rather than the filter.
+    detail_c14i = [(get(base, "/library/metadata/%s" % r_c14i["ratingKey"])[1]
+                    .get("Metadata") or [{}])[0]
+                   for r_c14i in get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                   .get("Metadata") or []]
+    known_c14i = {}
+    for field_c14i in ("viewOffset", "skipCount", "ratingCount", "absoluteIndex"):
+        known_c14i["%s>>0" % field_c14i] = (
+            ftotal_c14i("%s%%3E%%3E=0" % field_c14i)
+            == sum(1 for d_c14i in detail_c14i if (d_c14i.get(field_c14i) or 0) > 0))
+    known_c14i["lastRatedAt>>far"] = ftotal_c14i("lastRatedAt%3E%3E=9999999999") == 0
     wide_c14i = ftotal_c14i("updatedAt%3E%3E=1")
     orig_c14i = ftotal_c14i("originalTitle%3E%3E=%7B")
     pstatus_c14i, pbody_c14i, _ = request(
@@ -9574,13 +9590,14 @@ def main():
                            % movie_section)[0]
     idx_c14i = (ftotal_c14i("index=1"), ftotal_c14i("index=2"), ftotal_c14i("index%3E%3E=1"))
     check("the nine unadvertised filter columns constrain, and parentIndex refuses",
-          all(v_c14i == 0 for v_c14i in known_c14i.values()) and all_c14i > 0
+          all(known_c14i.values()) and all_c14i > 0
           and wide_c14i == all_c14i and orig_c14i == 0
           and rule_c14i.get("field") == "viewOffset" and rule_c14i.get("fieldTitle") == ""
           and refused_c14i == 500 and idx_c14i == (all_c14i, 0, 0),
-          "all %s | zero-matchers %s | updatedAt %s | originalTitle %s | parse %r | "
+          "all %s | per-column %s | updatedAt %s | originalTitle %s | parse %r | "
           "parentIndex %s | index %s"
-          % (all_c14i, sorted(known_c14i.values()), wide_c14i, orig_c14i,
+          % (all_c14i, sorted(k_c14i for k_c14i, ok_c14i in known_c14i.items() if not ok_c14i)
+             or "all match the rows", wide_c14i, orig_c14i,
              rule_c14i.get("fieldTitle"), refused_c14i, idx_c14i))
 
 
