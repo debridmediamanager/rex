@@ -2805,6 +2805,9 @@ anything changed.
   with none is `size 0`), `lan=0|1` keeps remote or local traffic, and an empty or
   non-numeric id or any other `lan` value is a 400, on both servers. plexsim ignored all
   three, so the Dashboard's per-account and per-device graphs drew the whole server.
+- **`/status/sessions/history/{id}`** reads one history row back: the row history/all
+  lists, alone in a container of `size` 1; an unknown or non-numeric key is a 404. plexsim
+  listed the key and 404'd it.
 
 ### Emulation calibrated against the account's own claimed servers
 
