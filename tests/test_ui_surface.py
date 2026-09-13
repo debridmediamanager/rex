@@ -7105,6 +7105,54 @@ def main():
           % (events_c10f, messages_c10f, after_c10f, status_run_c10f, status_all_c10f,
              status_del_c10f, status_task_c10f))
 
+    # Measured on plexscratch: the Edit-smart-list Save is `PUT {list}/items?uri=<listing>`,
+    # which REPLACES the stored query and answers the list ROW -- for a playlist and a
+    # collection alike -- while an ITEM uri and no uri stay 400s and `DELETE` on a smart
+    # playlist's items is a 400. plexsim refused every uri on a smart list, so Save showed
+    # "There was a problem updating this item.", and cleared a smart playlist on a DELETE.
+    machine_c10g = get(base, "/identity")[1].get("machineIdentifier")
+    def uri_c10g(query):
+        return "server://%s/com.plexapp.plugins.library/library/sections/%s/%s" % (
+            machine_c10g, movie_section, query)
+    status_create_c10g, created_c10g, _ = container(
+        base, "POST", "/playlists?type=video&title=c10+smart&smart=1&uri="
+        + urllib.parse.quote(uri_c10g("all?type=1"), safe=""))
+    playlist_c10g = (created_c10g.get("Metadata") or [{}])[0].get("ratingKey")
+    listing_c10g = uri_c10g("all?type=1&sort=titleSort%3Adesc&limit=1")
+    status_save_c10g, saved_c10g, _ = container(
+        base, "PUT", "/playlists/%s/items?uri=%s"
+        % (playlist_c10g, urllib.parse.quote(listing_c10g, safe="")))
+    row_c10g = (saved_c10g.get("Metadata") or [{}])[0]
+    items_c10g = get(base, "/playlists/%s/items" % playlist_c10g)[1].get("Metadata") or []
+    detail_c10g = (get(base, "/playlists/%s" % playlist_c10g)[1].get("Metadata") or [{}])[0]
+    status_item_c10g, _, _ = request(base, "PUT", "/playlists/%s/items?uri=%s" % (
+        playlist_c10g, urllib.parse.quote(
+            "server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine_c10g, movie),
+            safe="")))
+    status_none_c10g, _, _ = request(base, "PUT", "/playlists/%s/items" % playlist_c10g)
+    status_clear_c10g, _, _ = request(base, "DELETE", "/playlists/%s/items" % playlist_c10g)
+    status_coll_c10g, collection_c10g, _ = container(
+        base, "POST", "/library/collections?type=1&title=c10+smart+collection&smart=1"
+        "&sectionId=%s&uri=%s" % (movie_section, urllib.parse.quote(uri_c10g("all?type=1"), safe="")))
+    key_c10g = (collection_c10g.get("Metadata") or [{}])[0].get("ratingKey")
+    status_csave_c10g, csaved_c10g, _ = container(
+        base, "PUT", "/library/collections/%s/items?uri=%s"
+        % (key_c10g, urllib.parse.quote(listing_c10g, safe="")))
+    children_c10g = get(base, "/library/collections/%s/children" % key_c10g)[1].get("Metadata") or []
+    check("saving an edited smart list replaces its query and answers the list row",
+          status_create_c10g == 200 and status_save_c10g == 200
+          and row_c10g.get("ratingKey") == playlist_c10g and row_c10g.get("smart") is True
+          and len(items_c10g) == 1 and detail_c10g.get("leafCount") == 1
+          and "limit%3D1" in (detail_c10g.get("content") or "")
+          and (status_item_c10g, status_none_c10g, status_clear_c10g) == (400, 400, 400)
+          and status_coll_c10g == 200 and status_csave_c10g == 200
+          and (csaved_c10g.get("Metadata") or [{}])[0].get("ratingKey") == key_c10g
+          and len(children_c10g) == 1,
+          "HTTP %s/%s, row %r, items %s, content %r, refusals %s/%s/%s, collection %s/%s children %s"
+          % (status_create_c10g, status_save_c10g, row_c10g.get("ratingKey"), len(items_c10g),
+             detail_c10g.get("content"), status_item_c10g, status_none_c10g, status_clear_c10g,
+             status_coll_c10g, status_csave_c10g, len(children_c10g)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
