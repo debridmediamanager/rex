@@ -1485,6 +1485,16 @@ class PlexSim:
             self.section_timeline.setdefault(section_key, {})[str(row.get("ratingKey"))] = record
         self.notify("timeline", "TimelineEntry", [entry])
 
+    @staticmethod
+    def _frame_title(row):
+        """A row's name as an activity subtitle prints it: `title (year)`.
+
+        Measured on the copy: the refresh activity's subtitle is `Sintel (2010)`, the
+        same form the scan activity uses for each item it steps through.
+        """
+        title = row.get("title") or ""
+        return "%s (%s)" % (title, row["year"]) if row.get("year") else title
+
     def notify_refreshed(self, row):
         """The seven-frame sequence a real PMS pushes for a metadata refresh.
 
@@ -1500,7 +1510,14 @@ class PlexSim:
         every `!!metadataState` gate stayed latched.
         """
         self.notify_timeline(row, self.TIMELINE_QUEUED, "queued")
-        activity = self.library.add_activity(row.get("title") or "", progress=-1)
+        # Measured on the copy, and what the docstring above already said: the `updated`
+        # frame comes SECOND, before `processing`. plexsim emitted it inside
+        # finish_activity, after `loading` -- the rule was recorded right and implemented
+        # as something else. The subtitle is the row's `title (year)`, as the scan
+        # activity's is; plexsim sent the bare title.
+        activity = self.library.add_activity(self._frame_title(row), progress=-1)
+        activity["progress"] = 49
+        self.library.notify_activity(activity, "updated")
         self.notify_timeline(row, self.TIMELINE_QUEUED, "processing")
         self.notify_timeline(row, self.TIMELINE_LOADING, "loading")
         self.library.finish_activity(activity)
