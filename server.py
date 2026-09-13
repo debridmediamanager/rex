@@ -2627,7 +2627,7 @@ class PlexSim:
             return ("error", 404, "plexsim: not found")
         if (segments[:2] == ["library", "people"] and method in ("GET", "HEAD")
                 and (len(segments) == 3 or (len(segments) == 4 and segments[3] == "media"))):
-            return self.person(segments[2], len(segments) == 4)
+            return self.person(segments[2], len(segments) == 4, query)
 
         if segments[:2] == ["library", "collections"]:
             return self.collections_route(method, segments, query)
@@ -3899,21 +3899,7 @@ class PlexSim:
         if "group" in query:
             source = self.grouped(source, query.get("group"))
         source = self._limited(source, query)
-        rows = [_listing_row(r) for r in source]
-        excluded = [e for e in (query.get("excludeElements") or "").split(",") if e]
-        if excluded:
-            # Measured on both servers, paged and not: a LISTING drops the named child
-            # elements as a detail read does, and dropping Media substitutes the counts
-            # -- `mediaCount` (0 on a show) and `mediaCountOptimized` 0. plexsim applied
-            # it to detail reads and child lists only.
-            trimmed = []
-            for row in rows:
-                out = {k: v for k, v in row.items() if k not in excluded}
-                if "Media" in excluded:
-                    out["mediaCount"] = len(row.get("Media") or [])
-                    out["mediaCountOptimized"] = 0
-                trimmed.append(out)
-            rows = trimmed
+        rows = self._excluded_elements([_listing_row(r) for r in source], query)
         if query.get("type") == "3":
             # Measured on both servers: a season in a LISTING carries no leaf
             # counts, where its /children row does.
@@ -4115,8 +4101,9 @@ class PlexSim:
             rows = self.typed_rows(section_id, {"type": "4" if is_show else "1"})
             if not is_show:
                 rows, _ = self._sorted(rows, "titleSort")
-            shown = [_grid_row(r, keep_section=False, keep_guid=True)
-                     for r in self._guid_gate([_listing_row(r) for r in rows], query)]
+            shown = self._excluded_elements(
+                [_grid_row(r, keep_section=False, keep_guid=True)
+                 for r in self._guid_gate([_listing_row(r) for r in rows], query)], query)
             return self.bare_container(size=len(shown), viewGroup="show" if is_show else "movie",
                                        Metadata=shown, **fields)
         if leaf == "albums":
@@ -4682,6 +4669,30 @@ class PlexSim:
             return rows
         return [r for r in rows
                 if all(str(r.get("guid") or "").startswith(value) for value in wanted)]
+
+    @staticmethod
+    def _excluded_elements(rows, query):
+        """`excludeElements=` on a list of rows, measured on both servers.
+
+        A LISTING drops the named child elements as a detail read does, and dropping
+        Media substitutes the counts -- `mediaCount` (0 on a show) and
+        `mediaCountOptimized` 0. Re-measured in cycle 11 on kids (1.43.4) and zen
+        (1.42.2): it applies to the section `allLeaves`, to `/library/people/{id}/media`
+        and to `/hubs/items` as well, which plexsim answered with their Media intact --
+        so a client that asked for the cheap list to lay a page out was handed the
+        expensive one and no count to draw the badge from.
+        """
+        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",") if e]
+        if not excluded:
+            return rows
+        trimmed = []
+        for row in rows:
+            out = {k: v for k, v in row.items() if k not in excluded}
+            if "Media" in excluded:
+                out["mediaCount"] = len(row.get("Media") or [])
+                out["mediaCountOptimized"] = 0
+            trimmed.append(out)
+        return trimmed
 
     @staticmethod
     def _limited(rows, query):
@@ -5785,7 +5796,7 @@ class PlexSim:
         hub = next((h for h in hubs if h.get("hubIdentifier") == identifier), None)
         if hub is None:
             return ("error", 404, "plexsim: not found")
-        rows = hub.get("Metadata") or []
+        rows = self._excluded_elements(hub.get("Metadata") or [], query)
         return self.hub_container(size=len(rows), allowSync=True, Metadata=rows)
 
     def item_hubs(self, rating_key, leaf, query):
@@ -8268,7 +8279,7 @@ class PlexSim:
     PERSON_TAGS = (("Role", "actor", 6), ("Director", "director", 4),
                    ("Writer", "writer", 5), ("Producer", "producer", 7))
 
-    def person(self, person_id, media):
+    def person(self, person_id, media, query=None):
         """`/library/people/{id}` and `/library/people/{id}/media`.
 
         Measured on both servers. The person is one `Directory` row -- id, a `filter`
@@ -8304,7 +8315,7 @@ class PlexSim:
         if not media:
             return self.bare_container(size=1, Directory=[found], **common)
         rows, _ = self._sorted(rows, "titleSort")
-        shown = [_grid_row(_listing_row(r)) for r in rows]
+        shown = self._excluded_elements([_grid_row(_listing_row(r)) for r in rows], query)
         return self.bare_container(size=len(shown), viewGroup="movie", viewMode=65592,
                                    Metadata=shown, **common)
 

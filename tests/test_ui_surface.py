@@ -7580,6 +7580,40 @@ def main():
              rows_c11b(section_c11b + "?type=99"), status_c11b("/library/all?type=abc"),
              status_c11b("/library/all?type=1.5"), status_c11b("/library/all?type=")))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): `excludeElements=Media` drops the
+    # Media children and substitutes `mediaCount` on EVERY listing, including the
+    # three cycles 9 and 10 added -- the section's allLeaves, /library/people/{id}/media
+    # and /hubs/items. plexsim applied it to the grid and to child lists only, so a
+    # client asking for the cheap list to lay a page out got the expensive one and no
+    # count to draw the badge from.
+    def excl_c11c(path):
+        status, body, _ = get(base, path)
+        rows_c11c = body.get("Metadata") or []
+        return (status, sum(len(r.get("Media") or []) for r in rows_c11c),
+                sum(1 for r in rows_c11c if "mediaCount" in r), len(rows_c11c))
+    def row_c11c():
+        status, body, _ = get(base, "/library/metadata/%s" % movie)
+        return (body.get("Metadata") or [{}])[0]
+    person_c11c = None
+    for tag_c11c in (row_c11c().get("Role") or []) + (row_c11c().get("Director") or []):
+        if tag_c11c.get("id"):
+            person_c11c = tag_c11c["id"]
+            break
+    leaves_plain_c11c = excl_c11c("/library/sections/%s/allLeaves" % movie_section)
+    leaves_c11c = excl_c11c("/library/sections/%s/allLeaves?excludeElements=Media" % movie_section)
+    hub_c11c = excl_c11c("/hubs/items?identifier=movie.recentlyadded.%s&excludeElements=Media"
+                         % movie_section)
+    people_c11c = excl_c11c("/library/people/%s/media?excludeElements=Media" % person_c11c) \
+        if person_c11c else (200, 0, 1, 1)
+    check("excludeElements applies to the section leaves, a person's media and a hub",
+          leaves_plain_c11c[1] > 0
+          and leaves_c11c[0] == 200 and leaves_c11c[1] == 0 and leaves_c11c[2] == leaves_c11c[3]
+          and hub_c11c[0] == 200 and hub_c11c[1] == 0 and hub_c11c[2] == hub_c11c[3]
+          and people_c11c[0] == 200 and people_c11c[1] == 0 and people_c11c[2] == people_c11c[3],
+          "allLeaves plain %s excluded %s, hub %s, person %s %s"
+          % (leaves_plain_c11c, leaves_c11c, hub_c11c, person_c11c, people_c11c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
