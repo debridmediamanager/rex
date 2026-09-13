@@ -3070,6 +3070,9 @@ the same parameters, then read back from both.
   `updated` frame at `round(n * 99 / count)` percent, then 100, `ended`, and the status
   `Library scan complete`. Hunter A's "a type change is a 400" did not reproduce: both
   servers answer 200. plexsim renamed the library and dropped the rest.
+- **`/library/sections/all/refresh` scans every library.** It is a 200 that runs the scan
+  above for each library in turn; plexsim 404'd it as an unknown section, and scanned a
+  single library by starting and ending a metadata activity per row.
 
 ### Emulation calibrated against the account's own claimed servers
 
