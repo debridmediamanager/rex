@@ -3073,6 +3073,9 @@ the same parameters, then read back from both.
 - **`/library/sections/all/refresh` scans every library.** It is a 200 that runs the scan
   above for each library in turn; plexsim 404'd it as an unknown section, and scanned a
   single library by starting and ending a metadata activity per row.
+- **A movie's written setting shows on its row.** After `PUT
+  /library/metadata/{movie}/prefs?useOriginalTitle=1` the movie's detail row carries
+  `useOriginalTitle: "1"`, as a show's does for `episodeSort`; plexsim stored it unseen.
 
 ### Emulation calibrated against the account's own claimed servers
 

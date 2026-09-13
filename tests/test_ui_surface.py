@@ -6777,6 +6777,15 @@ def main():
           and "library.update.section" in kinds_w15b and "library.update.item.metadata" not in kinds_w15b,
           "HTTP %s, statuses %s, kinds %s" % (holder_w15b, statuses_w15(frames_w15b)[:4], sorted(kinds_w15b)))
 
+    # Measured on plexscratch: a movie's written setting shows on its row, as a show's does;
+    # plexsim stored it and never showed it.
+    request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
+    shown_w15c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0].get("useOriginalTitle")
+    request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=" % movie)
+    cleared_w15c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0].get("useOriginalTitle")
+    check("a movie's written setting shows on its row", shown_w15c == "1" and cleared_w15c is None,
+          "%r then %r" % (shown_w15c, cleared_w15c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
