@@ -3347,6 +3347,27 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   state 5 last -- forty frames for a two-season show. plexsim stored the value and pushed
   nothing, so a re-ordering was invisible to every other client until a reload.
 
+Measured in the tenth pass's write batch and not acted on:
+
+- **What the copy cannot do.** It has no account and no route out, so the download queue is a
+  404 on every path there, `POST .../posters?url=<an external image>` is a 406 (the fetch
+  fails, and plexsim can fetch, so copying the 406 would be wrong), and a provider match
+  search returns nothing. `POST /library/metadata/{id}/subtitles` is a 500 on the copy with
+  nothing in its log; the cause was not established, so plexsim keeps its 400.
+- **Captured and not reproduced:** a library create's per-item `created` frames (state 0
+  untitled, 0 titled, 1, then `mediaState` analyzing and thumbnailing) and the
+  `backgroundProcessingQueue` frame a minute later; the 201 row's `metadataAgentProviderGroupId`,
+  `uuid`, `createdAt` and `contentChangedAt: -1`, where plexsim sends `refreshing` and 0; and
+  the `provider.subscriptions.process` activity pairs a scan ends with, seen only on the
+  1.43.4 copy.
+- **Oddities of the copy, left alone:** the artwork write's response body and the row's own
+  `thumb` differ by exactly its timezone offset; a smart collection's `childCount` goes stale
+  where its `/children` does not; `/library/sections/{id}/extras/all` times out on fun's
+  largest library.
+- **`POST /library/parts/{id}` was implemented**, but no client sends it: the web bundle's
+  track selection is a PUT. It is here because the endpoint answers, not because anything
+  asks.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
