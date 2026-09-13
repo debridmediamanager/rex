@@ -1,8 +1,8 @@
-# plexsim handover — 2026-09-13 (refreshed after cycle 8)
+# plexsim handover — 2026-09-13 (refreshed after cycle 9)
 
 This file hands over the "implement everything the Plex UI asks of the server"
 programme: the measurement-cycle loop, how it is run, where it stands, and what bit
-us along the way. It is **untracked** (not committed) and carries **no tokens**.
+us along the way. It is tracked in the repository and carries **no tokens**.
 Tokens live in the private `../docs/operations/credentials.md`.
 
 Read `CLAUDE.md` and `docs/findings.md` as well. This file tells you how the work
@@ -14,25 +14,29 @@ is run. Those two record what was measured.
 
 | | |
 |---|---|
-| `main` | `d8395b0` (cycle 8 plus the plexscratch harness), equal to `origin/main`, clean tree |
-| Worktrees and stashes from this work | none (the `cycle8` worktree and branch were removed) |
-| Cycles completed | 8. Cycle 8 had findings, so **cycle 9 is due**. |
+| `main` | the cycle-9 docs commit on top of `4f2bb31`, equal to `origin/main`, clean tree |
+| Worktrees and stashes from this work | none (the `cycle9` worktree and branch were removed) |
+| Cycles completed | 9. Cycle 9 had findings, so **cycle 10 is due**. |
 | Work half-done | **none**. Every finding reported so far is implemented, recorded as deliberately not implemented, or refuted by re-measurement. |
 
-Suite results at `c8c072a`, all run on 2026-09-13:
+Suite results at `4220879` (the code as of `4f2bb31`, plus test fixes), all run on 2026-09-13:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **768/768**, 3 skipped | The skips need a TMDB key or real RD links |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **830/830**, 4 skipped | The skips need a TMDB key or real RD links |
 | `tests/test_navigation.py` on the full catalog | **46/46** | |
 | `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). They are expected. |
 | `tests/test_all.py --skip-decode` | playQueue and decision PASS | Byte reads fail with 502 for the same reason |
 
-Proof for cycle 8: batch 1 (`5b7d4ff`) added 12 checks, all failing against
-`c62c51b` (743/755); batch 2 (`c8c072a`) added 13, all failing against `5b7d4ff`
-(754/768). Two old checks were re-measured and updated (the folder XML element, and
-`parentYear` on a season's episode list). The kids snapshot was identical before and
-after the cycle.
+Proof for cycle 9. Batch 1 (hunter B, `985293a`..`ae19756`) added 17 checks, all failing
+against `a7c3408` (768/784). Batch 2 (hunter A, `7589e32`..`4f2bb31`) was proven one check
+at a time: `c9/drive.py` applied each patch, ran its check against an unfixed server
+started from `ae19756` and against the fixed one, and committed only on fail-then-pass.
+The whole final suite against that unfixed tree: 781/829, the 46 new checks and the 2 re-measured collection checks failing (plus Delete Version, whose movie the old code's cross-type merge had already moved into the show). Old checks re-measured and updated in
+this cycle: a collection's unlocked Sort Title, the collection reorder response, the
+"renames its members' tag" label, the state-write refusals (now sent with the identifier),
+the play-queue checks that build a second queue (a client's new queue retires its older
+one), and the frame-batch order. The kids snapshot was identical before and after.
 
 ---
 
@@ -257,10 +261,15 @@ The hunter runs (from the session transcript):
 | 6 | playback and streams sweep (opus) | notifications and identifiers sweep (fable) |
 | 7 | probe table + corpus replay diffed mechanically (opus) | python-plexapi as a third-party client (fable) |
 | 8 | every URL template in the web bundle, three servers, JSON and XML (opus) | the XML path, four client families, plexapi extended (fable hit a session rate limit; re-run on opus) |
+| 9 | write semantics on plexscratch: edits, play state, playlists, collections, queues, libraries, merge (fable) | the community OpenAPI description, every GET, three servers (fable hit a rate limit; re-run on opus) |
 
 Commits of the loop era, newest first:
 
 ```
+4f2bb31 fix: unmatch an episode or a season to a local guid and its generated title, keeping its Guids   (cycle 9 batch 2: 49 commits from 7589e32)
+ae19756 test: expect a library's albums leaf to answer, as both servers do                               (cycle 9 batch 1: 17 commits from 985293a)
+c8c072a fix: keep session flags out of the catalog, carry full related rows, ...                           (cycle 8 batch 2)
+5b7d4ff ...                                                                                                 (cycle 8 batch 1)
 c62c51b feat: sort and filter by the row a scope names, match titles by word, and answer the reads python-plexapi makes   (cycle 7 batch 2)
 11a5100 fix: send no theme that cannot play, and shape hub rows and excludeFields like a real PMS                        (cycle 7 batch 1)
 3e52226 feat: refuse the decisions a real PMS refuses, and push the frames every write pushes                            (cycle 6)
@@ -416,6 +425,45 @@ there, verbatim, in `hunt_prompts.md`.
 - `movie.random` sorts; `/library/tags?type=318|319`; stream `/levels` 404.
 - XML child element order (`xmlout._CHILD_ORDER`) and `Meta` first.
 
+**Cycle 9 batch 1 (`985293a`..`ae19756`)**, from the community OpenAPI description's GETs
+
+- `/library/sections/all`; every MediaContainer pages when both paging headers are sent.
+- Refusals: one agent by identifier 404; stream loudness 404, a sidecar extension 501, a
+  bare `/file` 400; the live TV reads a server with no tuner refuses.
+- Season and episode `allLeaves`; voice search keeps the asked type; `excludeElements` on
+  a listing; bandwidth statistics filters; `/status/sessions/history/{id}`.
+- `/hubs/metadata/{id}`; section `allLeaves`/`albums`/`cluster`/`moment`/`computePath`/
+  `nearest`; `/library/people/{id}` and `/media`; `/library/matches`; `/hubs/items`;
+  `/sorts` keyed by type (`section_sorts.json`); `randomArtwork` and a library's `/arts`.
+
+**Cycle 9 batch 2 (`7589e32`..`4f2bb31`)**, writes measured on plexscratch
+
+- Edits: the section save path MERGES tags; an unlocked Sort Title is re-derived (items,
+  collections, playlists); the save is scoped by type and library, and a type-scoped filter
+  there is a 400; dates are parsed and set the year on the section path; the section path
+  stores `userRating` and ratings are numbers; the section lock grammar, the lock-only
+  columns and the `Field` column order; a parent's title and studio are copied to its
+  children; frame titles (`Show (year)`, `Show S01 E07`), a section save's frame order, list
+  rename frames; generated `Season N`/`Episode N` titles and the kept sort form; value-less
+  fields accepted and discarded; POST on an item and PUT on `/library/all` 404.
+- Play state: the identifier refusal order; an episode scrobble counts on its season and
+  show; one on-deck row per show; `/:/progress` never completes; a negative rating keeps
+  `lastRatedAt`; timeline `time`/`duration` 400s; `complete` until a `stopped` beat closes
+  the play; Remove from Continue Watching is a PUT with a ratingKey.
+- Playlists: create validation; unknown item 404, DELETE on the items clears, smart lists
+  refuse item writes; a move after nothing goes to the front.
+- Collections: create validation; a show or season collection holds that row; add
+  refusals; `collectionSort` order and moves from the order shown; labels and `type=18`
+  saves; a rename leaves member tags alone.
+- Play queues: `key=` selection; per-client retention; `playlistID` adds; DELETE on the
+  items keeps the selected one; deleting the selected item; moves to the front;
+  `includeBefore`/`includeAfter`; a foreign server's uri.
+- Libraries: an edit applies language and prefs and runs the measured scan; refresh all;
+  a movie's settings on its row; a create applies prefs and answers bare; analyze frames;
+  clean-bundles and delete activities.
+- Merge, split, unmatch: merge refusals; merge and split frames, and a split onto a key
+  never used; an episode or season unmatches to `local://` and its generated title.
+
 ---
 
 ## 8. Safety rules and incidents
@@ -512,38 +560,43 @@ Added in cycle 8:
   `movie.same.actor.N`.
 - Child elements outside the measured order list; minted studio tag ids.
 
+Added in cycle 9:
+
+- `/services/ultrablur/image` and `/colors?url=` (no image codec on a stdlib server path);
+  `/library/metadata/{id}/file?url=` (the servers disagree); an episode `allLeaves`
+  container's disagreeing fields; kids' history filtering by account; genre and actor
+  hub identifiers on `/hubs/items`; `/library/matches` provider options; paging on
+  write-shaped reads.
+- plexscratch's instrument limits: session-bound timelines and timelines with no
+  `duration` (ten-second clips).
+- Not reproduced on re-measurement: progress `state=playing` opening a session; a bogus
+  `playQueueItemID` selecting by ratingKey; a library type change being a 400; a
+  collection create with no uri being a 400; smart collections tagging members; a
+  whole-library playlist add adding nothing; `continuous=1` stopping at one episode.
+- Captured only in part: optimize's activity and type-12 frames, the `showOrdering`
+  refresh cascade, a library create's per-item created frames, TV scan subtitles.
+- Reference oddities (tag types landing in other columns, `merge?ids=<self>`, the
+  `C13` capitalisation) and copy artefacts (item DELETE 400, `editionTitle` 403).
+
 ---
 
-## 10. Next: cycle 9 (launched 2026-09-13)
+## 10. Next: cycle 10
 
-Cycle 8 had findings, so the loop continues. Cycle 9 was launched with hunter A
-(fable) on WRITE semantics against plexscratch, and hunter B (opus) on a read-only sweep of
-the community OpenAPI description of PMS across kids, fun and plexsim. Two hunters must
-not share one plexscratch: resets and writes would collide, so only one hunter writes per
-cycle unless a second copy is built. The cycle-8 territories, for the record:
+Cycle 9 had findings, so the loop continues. Suggested territories:
 
-1. **The web bundle's own URL templates, mechanically.** The served client is in
-   `webclient/js/`, and module 92273 of `main-*.js` holds the capability gates.
-   Extract every server path the client can build, instantiate each with real
-   ids, GET it on kids, fun and plexsim, and diff status and top-level shape.
-   This is the one sweep nothing has done exhaustively.
-2. **XML through python-plexapi's own parser, and the other client families.**
-   - The cycle-7 python-plexapi corpus (`handover/tools/probe.py`) covered reads
-     only; extend it to every read method it did not call.
-   - Replay the recorded fixtures in `tests/fixtures/` **without** an Accept
-     header, which is the TV and mobile path.
-3. **Write behaviour, on `plexscratch`.** The disposable copy exists now (§3). A
-   cycle-9 hunter can measure every write the UI makes -- edits, playlists,
-   collections, library and item settings, merge/split, deletes, scrobbles and
-   timelines -- against plexsim, resetting the copy between destructive steps. fun
-   stays GET-only and the shared lab stays read-only; the copy is the only target
-   for writes.
+1. **The writes cycle 9 did not reach, on plexscratch.** Smart playlist and collection
+   filter edits, butler task runs, server-settings writes (not network or auth), stream
+   and subtitle selection, artwork uploads by url, Fix Match offline, extras, and the
+   download queue. Item deletes need the copy's media mount made writable first.
+2. **Real-length media for the copy.** Rebuild plexscratch's media with long synthetic
+   clips so session-bound timelines, progress with a session, and "no duration" become
+   measurable; then re-measure the timeline and session surface with the client's own
+   session headers.
+3. **The write responses on the XML path** (no Accept header), which cycle 9 compared only
+   as JSON, and the frames cycle 9 captured only in part (§9), with longer settle times.
 
-Before launching:
-
-- Refresh `hunt_prompts.md`: commit `c62c51b`, the lists in §7 and §9, and
-  "docs/findings.md records seven cycles".
-- Pick fresh ports and snapshot kids.
+Before launching: refresh `hunt_prompts.md`, write a fresh `tokens.env`, pick ports,
+snapshot kids, and reset plexscratch. One hunter writes to plexscratch per cycle.
 
 ---
 
@@ -584,6 +637,20 @@ Before launching:
   left in. That once committed two changes on `main` in the shared checkout instead of
   the worktree branch (caught before any push: `git log origin/main..main`).
 
+- **`rtk` can swallow a redirected `ssh` stdout.** `ssh host cmd > file` wrote an empty file
+  while `ssh host cmd | wc -c` counted 42 bytes; write through a pipe (`| cat > file`). And
+  `wc -c < file` read 0 for a 42-byte file: check sizes with `stat -f %z`.
+- **A test server started with `( ... &)` from a foreground call can die later.** Start
+  long-lived servers with `subprocess.Popen(..., start_new_session=True)`.
+- **`cmd | tail` hides a failure from `&&`.** Chain drivers under `set -o pipefail`.
+- **A check that `%`-formats a path twice breaks on an encoded `%2F`**; build the path in
+  a function with one substitution.
+- **plexscratch's token changes on every start, `reset` included**; re-read it after each.
+- **plexscratch's clips are ten seconds long**: send timelines with an explicit `duration`
+  and no `X-Plex-Session-Identifier`, or every beat is ignored.
+- **A client's new play queue retires its older ones.** A check that builds a second queue
+  cannot write to the first.
+
 ---
 
 ## 12. Artifacts
@@ -615,6 +682,14 @@ It holds:
 - the per-cycle before/after logs `c*_before.log` / `c*_after.log`;
 - the plexapi corpora `out_{sim,ref,fun}.json`;
 - the unfixed trees `base6/`, `base7/`, `base7b/`.
+
+Cycle 9's scratch directory was
+`/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/5e5b69a0-29b2-4bf9-9163-a14559c47805/scratchpad/`.
+Its `c9/` holds hunter A's per-operation data and guarded client (`writes/`, `w.py`), the
+re-measurement scripts `remeasure*.py` (each write sent to plexscratch and to an unfixed
+plexsim, both read back), the patch modules `p_w*.py`, `drive.py` (apply one named patch,
+prove its check fails on the unfixed server and passes on the fixed one, commit) and
+`runblock.py` (run one check block against servers), plus the unfixed tree `old9b/`.
 
 The full session transcript, including every hunter's report, is at:
 
