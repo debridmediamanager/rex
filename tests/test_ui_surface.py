@@ -9002,6 +9002,42 @@ def main():
                  [("parentSummary" in r_c13n) for r_c13n in movies_c13n],
                  [("parentSummary" in r_c13n) for r_c13n in elsewhere_c13n]))
 
+        # Measured on zen (1.42.2 -- the build plexsim reports): `/hubs/promoted` answers a
+    # DIFFERENT third shelf when the client sends `pinnedContentDirectoryID` beside
+    # `contentDirectoryID`. Bare, it is `movie.recentlyadded.1` / "Recently Added in Zen
+    # Movies", keyed on the section listing; with the parameter it is
+    # `home.movies.recent.1` / "Recently Added Movies", context `hub.home.movies.recent`,
+    # keyed on `/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=1`. A show
+    # library gives `home.television.recent.N` / "Recently Added TV". kids (1.43.4)
+    # ignores the parameter entirely, so this is a version difference and zen is the
+    # witness. The web client does send it -- its Promoted fetch builds
+    # `{contentDirectoryID, pinnedContentDirectoryID, includeMeta, excludeFields}` --
+    # and plexsim answered the bare shape to both, so a pinned library's Home row was
+    # titled and keyed as the unpinned one.
+    def promoted_c13o(section_c13o, pinned_c13o):
+        path_c13o = "/hubs/promoted?contentDirectoryID=%s" % section_c13o
+        if pinned_c13o:
+            path_c13o += "&pinnedContentDirectoryID=%s" % section_c13o
+        return [(h_c13o.get("hubIdentifier"), h_c13o.get("title"), h_c13o.get("context"),
+                 h_c13o.get("key"), h_c13o.get("type"))
+                for h_c13o in get(base, path_c13o)[1].get("Hub") or []]
+    bare_c13o = promoted_c13o(movie_section, False)
+    pinned_c13o = promoted_c13o(movie_section, True)
+    tv_c13o = promoted_c13o(show_section, True) if show_section else []
+    check("pinnedContentDirectoryID reshapes the promoted Recently Added shelf",
+          bare_c13o[:2] == pinned_c13o[:2]
+          and bare_c13o[2][0] == "movie.recentlyadded.%s" % movie_section
+          and pinned_c13o[2] == ("home.movies.recent.%s" % movie_section,
+                                 "Recently Added Movies", "hub.home.movies.recent",
+                                 "/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=%s"
+                                 % movie_section, "movie")
+          and (not show_section or tv_c13o[2] == (
+              "home.television.recent.%s" % show_section, "Recently Added TV",
+              "hub.home.television.recent",
+              "/hubs/home/recentlyAdded?type=2&pinnedContentDirectoryID=%s" % show_section,
+              "mixed")),
+          "bare %s | pinned %s | tv %s" % (bare_c13o[2:], pinned_c13o[2:], tv_c13o[2:]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
