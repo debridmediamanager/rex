@@ -3028,6 +3028,10 @@ the same parameters, then read back from both.
   selection on the item that followed it; plexsim left the selection on the deleted id.
 - **A play queue move after an item the queue does not hold goes to the front.** `after=0`
   and an unknown id both send the item first, as `after=-1` does; plexsim answered 404.
+- **A windowed play queue read honours `includeBefore` and `includeAfter`.** Both are on by
+  default; with the first item selected, `window=1&includeBefore=0&includeAfter=1` answers
+  only the second row, `includeBefore=1&includeAfter=0` answers none, and the selected
+  item comes back only when both are on. plexsim ignored both flags.
 
 ### Emulation calibrated against the account's own claimed servers
 
