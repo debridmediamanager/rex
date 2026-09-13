@@ -9510,8 +9510,11 @@ def main():
     # Five roles have to be WRITTEN here: by this point the suite has replaced every
     # fixture tag list, so a check that waited for a row with more than three would
     # skip itself and quietly measure nothing.
+    # The edit parameter is the FILTER field name `actor`, not the row's element name
+    # `Role` -- `role[0].tag.tag` is a 400 (an unknown tag type), which is how the
+    # first version of this check wrote nothing and then skipped itself.
     request(base, "PUT", "/library/metadata/%s?%s" % (movie, "&".join(
-        "role[%d].tag.tag=%s" % (i_c14h, urllib.parse.quote("C14 Actor %d" % i_c14h))
+        "actor[%d].tag.tag=%s" % (i_c14h, urllib.parse.quote("C14 Actor %d" % i_c14h))
         for i_c14h in range(5))))
     roles_c14h = []
     for row_c14h in get(base, "/library/sections/%s/all" % movie_section)[1] \
