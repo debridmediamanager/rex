@@ -251,6 +251,13 @@ FILTER_FIELD_TYPES.setdefault("index", "integer")
 # And `id` filters every listing although no Meta advertises it: `/query/parse` echoes
 # it as a Rule with an empty `fieldTitle`. See filters.py for the comparison rules.
 FILTER_FIELD_TYPES.setdefault("id", "id")
+# And the three leaf counts filter a show listing on both servers although no Meta
+# advertises them: `viewedOrInProgressLeafCount=0` is 499 of zen's 507 shows and `=1`
+# is 4, `viewedLeafCount>>0` is the 8 with a watched episode, `unviewedLeafCount>>0`
+# is 505. `leafCount` and `childCount` are NOT fields -- both answer the whole library
+# -- so they stay unknown, which is what plexsim already did with all five.
+for _bare in ("viewedLeafCount", "viewedOrInProgressLeafCount", "unviewedLeafCount"):
+    FILTER_FIELD_TYPES.setdefault(_bare, "integer")
 # Likewise `titleSort`, `summary` and `tagline` filter on a real PMS (`titleSort=sintel`
 # is one row, `summary=e` none) without appearing in a Meta. See filters.py for how.
 for _bare in ("titleSort", "summary", "tagline"):
@@ -4688,6 +4695,22 @@ class PlexSim:
             return 1 if leaves > 0 else 0
         if field == "unviewedLeafCount":
             return (row.get("leafCount") or 0) - (row.get("viewedLeafCount") or 0)
+        if field == "viewedLeafCount":
+            # Measured on zen: `viewedLeafCount>>0` on its show library returns exactly
+            # the eight shows whose row carries a non-zero count, and `=0` the other
+            # 499. plexsim had no such field, so both answered the whole library.
+            return row.get("viewedLeafCount") or 0
+        if field == "viewedOrInProgressLeafCount":
+            # The key of a real PMS's own "Start Watching" shelf. Measured on zen it
+            # partitions the library exactly as `viewedLeafCount` does -- but zen and
+            # kids between them hold NO leaf that is in progress and unwatched, so the
+            # "or in progress" half of the name could not be separated from the viewed
+            # half on either reference. It is read here as the name says; see
+            # HANDOVER.md 3.3.
+            leaves = self.catalog.leaves(row.get("ratingKey")) \
+                if row.get("type") in ("show", "season") else []
+            return sum(1 for leaf in leaves
+                       if leaf.get("viewCount") or leaf.get("viewOffset"))
         media = (row.get("Media") or [{}])[0]
         parts = media.get("Part") or [{}]
         if field == "resolution":

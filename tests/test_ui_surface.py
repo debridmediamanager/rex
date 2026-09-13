@@ -8734,6 +8734,50 @@ def main():
                                   and first_c13f["4"] > 0)),
           "%s | firstCharacter %s | resolution %s" % (codes_c13f, first_c13f, media_c13f))
 
+        # Measured on zen (1.42.2) over its 507-show library and confirmed on kids (1.43.4):
+    # `viewedLeafCount`, `viewedOrInProgressLeafCount` and `unviewedLeafCount` are real
+    # filter fields on a show listing -- `viewedOrInProgressLeafCount=0` is 499 of 507
+    # and `=1` is 4, `viewedLeafCount>>0` is exactly the 8 shows with a watched episode,
+    # and `unviewedLeafCount>>0` is 505 -- while `leafCount` and `childCount` are NOT
+    # (both answer the whole library, which plexsim already matched). plexsim answered
+    # the same rows to `=0` and `=1`, i.e. it read all five as unknown fields. The first
+    # of them is the key of a real PMS's own "Start Watching" shelf.
+    if not show_section:
+        skip("the leaf-count fields filter a show listing", "need a show library")
+    else:
+        def shows_c13g(query_c13g):
+            path_c13g = "/library/sections/%s/all?type=2" % show_section
+            if query_c13g:
+                path_c13g += "&" + query_c13g
+            return [r["ratingKey"] for r in get(base, path_c13g)[1].get("Metadata") or []]
+        every_c13g = shows_c13g("")
+        # Built rather than hoped for: scrobbling one EPISODE is what moves its show's
+        # viewedLeafCount (measured in cycle 9), and by this point the suite has
+        # unscrobbled everything it watched.
+        leaf_c13g = next((r["ratingKey"] for r in
+                          get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                          .get("Metadata") or []), None)
+        if leaf_c13g:
+            request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % leaf_c13g)
+        watched_c13g = next((r for r in
+                             get(base, "/library/sections/%s/all?type=2" % show_section)[1]
+                             .get("Metadata") or [] if (r.get("viewedLeafCount") or 0) > 0), None)
+        if watched_c13g is None:
+            skip("the leaf-count fields filter a show listing", "no watched leaf in the fixture")
+        else:
+            key_c13g = watched_c13g["ratingKey"]
+            check("the leaf-count fields filter a show listing where leafCount does not",
+                  every_c13g
+                  and shows_c13g("viewedLeafCount%3E%3E=0") == [key_c13g]
+                  and key_c13g not in shows_c13g("viewedLeafCount=0")
+                  and shows_c13g("viewedOrInProgressLeafCount%3E%3E=0") == [key_c13g]
+                  and key_c13g not in shows_c13g("viewedOrInProgressLeafCount=0")
+                  and shows_c13g("leafCount%3E%3E=0") == every_c13g
+                  and shows_c13g("childCount%3E%3E=0") == every_c13g,
+                  "all %s, watched %s, viewed>>0 %s, viewedOrInProgress=0 %s, leafCount>>0 %s"
+                  % (every_c13g, key_c13g, shows_c13g("viewedLeafCount%3E%3E=0"),
+                     shows_c13g("viewedOrInProgressLeafCount=0"), shows_c13g("leafCount%3E%3E=0")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
