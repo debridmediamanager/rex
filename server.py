@@ -3894,6 +3894,13 @@ class PlexSim:
             # (music) and `/make`, `/model`, `/place`, `/tag` (photo), each with its
             # own title2 and `size` 0. A 404 there tells the client the endpoint does
             # not exist, which is the opposite of what a real PMS says.
+            #
+            # They are TAG/FIELD axes for the purposes of cycle 13's type rule, not
+            # media axes: `?type=abc` and an empty `?type=` are 500s on both
+            # references, exactly as `/genre` is, while `?type=2` is a 200. The two
+            # axes added beside them split the other way -- see `userRating` above,
+            # which ignores `type=` completely the way `/resolution` does.
+            self._parsed_type(query, 500, 500)
             return self.secondary_container(section_id, section,
                                             CROSS_TYPE_AXES[leaf], Directory=[])
 
