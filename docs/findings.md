@@ -3313,6 +3313,13 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   task under one wrapper and
   `DELETE /butler` is empty too, while `DELETE /butler/{Task}` is a **404**. plexsim answered
   the task LIST to all three, pushed no frames, and accepted the task DELETE.
+- **The Edit-smart-list Save is `PUT {list}/items?uri=<listing>`, and it REPLACES the stored
+  query -- `limit` included.** Measured for a smart playlist and a smart collection alike: the list is
+  re-evaluated on the next read, so its `leafCount` and its items follow the new `sort` and
+  `limit` at once, and the response is the list's own row. A uri naming an ITEM, and no uri,
+  are 400s, and a smart playlist's items cannot be cleared (`DELETE` is a 400 where plexsim
+  emptied a list it never reads). plexsim refused every uri on a smart list, so Save answered
+  "There was a problem updating this item."
 
 ### Emulation calibrated against the account's own claimed servers
 

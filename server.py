@@ -6200,6 +6200,12 @@ class PlexSim:
             if unsupported:
                 raise filters_module.FilterError(
                     500, "unsupported sort key %s" % unsupported)
+            # `limit` is part of the query a smart list stores, measured on a writable copy
+            # of the reference: a list saved with `sort=titleSort:desc&limit=2` reads back
+            # two rows and its `leafCount` follows. plexsim applied the filter and the sort
+            # and ignored the limit, so every capped smart list was the whole section.
+            if str(inner.get("limit") or "").isdigit() and int(inner["limit"]) > 0:
+                rows = rows[:int(inner["limit"])]
             return self._playable(rows)
         # A playlist's items, which is what Play on a playlist sends.
         match = re.search(r"/playlists/(\d+)/items", path)
@@ -6960,6 +6966,27 @@ class PlexSim:
                 stamps[id(chosen)] = max(e.get("lastViewedAt") or 0 for e in episodes)
         return sorted(rows, key=lambda r: -stamps.get(id(r), r.get("lastViewedAt") or 0))
 
+    def save_smart_query(self, target, query, kind):
+        """`PUT {list}/items?uri=<listing>` on a smart list -- the Edit dialog's Save.
+
+        Measured on a writable copy of the reference, for a smart playlist and a smart
+        collection alike: the stored query is REPLACED by the uri and the list re-evaluated
+        on the next read, so its `leafCount` and its items follow the new `sort` and `limit`
+        at once. The response is the list's own row. A uri naming an ITEM, and no uri at all,
+        are 400s. Only the uri is stored: both row builders derive `content` from it -- a
+        playlist rewriting it into `library://x/directory/...` and a collection keeping it
+        verbatim -- and re-evaluate the query on every read.
+        """
+        uri = query.get("uri") or ""
+        if not uri or "/library/metadata/" in uri:
+            return ("error", 400, "plexsim: bad request")
+        target["uri"] = uri
+        target["updatedAt"] = int(time.time())
+        logger.info("%s %s query <- %s", kind.upper(), target["ratingKey"], uri[:120])
+        if kind == "playlist":
+            return self.bare_container(size=1, Metadata=[self.library._playlist_row(target)])
+        return self.bare_container(size=1, Metadata=[self.library._collection_row(target)])
+
     def select_stream(self, part_id, query):
         """`PUT /library/parts/{partID}?audioStreamID=&subtitleStreamID=`.
 
@@ -7465,9 +7492,12 @@ class PlexSim:
             # Measured: the move answers the collection ROW, where plexsim sent nothing.
             return self.bare_container(
                 size=1, Metadata=[self.library._collection_row(collection)])
+        if leaf == "items" and method == "PUT" and collection.get("smart"):
+            # The Edit-smart-collection Save, the same as a playlist's above.
+            return self.save_smart_query(collection, query, "collection")
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""), expand=False)
-            if collection.get("smart") or not rows or any(
+            if not rows or any(
                     r.get("type") != collection.get("subtype") for r in rows):
                 # Measured on a writable copy of the reference: a smart collection's
                 # members are its query, and an add with no uri, an unknown key, or a row
@@ -7584,11 +7614,16 @@ class PlexSim:
                     return ("error", 404, "plexsim: no such playlist item")
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
-            if playlist.get("smart") and ((len(segments) == 3 and method == "PUT")
+            if playlist.get("smart") and len(segments) == 3 and method == "PUT":
+                # Measured on a writable copy of the reference: this is the Edit-smart-
+                # playlist Save. A LISTING uri REPLACES the stored query and answers the
+                # playlist row, re-evaluated; an ITEM uri and no uri are 400s, because a
+                # smart playlist's items are its query. plexsim refused every uri, so Save
+                # answered "There was a problem updating this item."
+                return self.save_smart_query(playlist, query, "playlist")
+            if playlist.get("smart") and ((len(segments) == 3 and method == "DELETE")
                                           or (len(segments) == 4 and method == "DELETE")):
-                # Measured on a writable copy of the reference: a SMART playlist's items
-                # are its query, so adding to it or removing one is a 400. plexsim
-                # edited a stored list it never reads.
+                # A smart playlist's items cannot be removed or cleared either.
                 return ("error", 400, "plexsim: bad request")
             if len(segments) == 4 and method == "DELETE":
                 if not self.library.remove_playlist_item(playlist, segments[3]):
