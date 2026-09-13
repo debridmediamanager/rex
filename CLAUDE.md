@@ -339,10 +339,13 @@ precisely how the Seasons bug survived a fix attempt.
   no `Type` — so every Save was a silent no-op and the Tags pane was empty. With no
   `id=` the save edits the whole FILTERED set, and a bare `field=value` there is a
   filter that SCOPES it where on the item path it is an edit.
-- **An indexed tag write REPLACES the list** (`genre[0]…&genre[1]…` leaves exactly
-  those two), and ANY `tag-` removal clears the whole list whatever it names. A tag
-  matches case-insensitively and keeps its canonical spelling and id even after
-  being removed from every row — a real PMS keeps a tag TABLE, so plexsim does too.
+- **An indexed tag write REPLACES the list on the ITEM path** (`genre[0]…&genre[1]…`
+  leaves exactly those two), and ANY `tag-` removal there clears the whole list
+  whatever it names. **The section save path MERGES**: the indexed list goes first,
+  the row's other tags follow, and a removal removes only what it names. The INDEX
+  orders the list, not the parameter's position. A tag matches case-insensitively and
+  keeps its canonical spelling and id even after being removed from every row — a
+  real PMS keeps a tag TABLE, so plexsim does too.
 - **Edit parameters are validated**: an unknown field or tag type is 400, an empty
   or unparseable integer is 500, a negative year or a bad date REMOVES the field,
   only `title`/`summary` store `""`, `userRating` is accepted and discarded, and

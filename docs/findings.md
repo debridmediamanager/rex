@@ -2862,6 +2862,23 @@ Measured in the ninth pass and not acted on:
   only where those already page.
 
 
+#### The ninth pass, second batch: writes, measured on a disposable copy of the reference
+
+The reference is read-only for hunts, so every write here was sent to plexscratch -- the
+reference's own library, copied, sanitised and cut off from plex.tv -- and to plexsim with
+the same parameters, then read back from both.
+
+- **The Edit dialog's save path MERGES tags; only the item path replaces them.**
+  `PUT /library/sections/1/all?type=1&id=4&genre[0].tag.tag=Alpha&genre[1].tag.tag=Beta`
+  on a movie with two genres leaves four: Alpha, Beta, then the originals in their order.
+  On that path the indexed list is deduplicated case-insensitively (`Same&same` is one
+  tag), a `tag-` removal removes exactly the names it lists and ignores ones the row lacks
+  (the client double-encodes them, `Label%2520A%2CLabel%2520B`), and an empty indexed
+  value changes nothing. On the item path the list is still replaced; there an exact
+  repeat is one tag and `Qx&qx` is the first spelling twice. Both order by the INDEX
+  (`genre[1]=Second&genre[0]=First` is First, Second); plexsim replaced on both paths, in
+  parameter order.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
