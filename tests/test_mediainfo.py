@@ -189,6 +189,19 @@ SKIP = {
     ("kids-4-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
     ("kids-8-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
     ("kids-9-0", None, "bitrate"): "the 1.43.4 reference's ten-second clips",
+    # The Media's audio fields.
+    ("fun-1051324-2", None, "audioCodec"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
+    ("fun-1051324-2", None, "audioChannels"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
+    ("fun-1051324-2", None, "audioProfile"): "E-AC-3 JOC in mp4: the probe's 7.1 outranks the DTS-HD MA track",
+    ("kids-1-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-12-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-13-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-14-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-17-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-18-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-3-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-4-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
+    ("kids-8-0", None, "audioProfile"): "the 1.43.4 reference omits most of its AAC clips' profile; fun writes lc",
 }
 
 
@@ -336,6 +349,14 @@ def _bitrate_rounding(fixture):
 @check("frame-rate")
 def _frame_rate(fixture):
     return per_stream(1, ("frameRate",))(fixture) + per_media(("videoFrameRate",))(fixture)
+
+
+@check("media-audio-track")
+def _media_audio_track(fixture):
+    out = per_media(("audioCodec", "audioChannels", "audioProfile"))(fixture)
+    real_part = fixture["Media"]["Part"][0]
+    sim_part = (fixture["sim"].get("Part") or [{}])[0]
+    return out + compare(fixture, "Part", real_part, sim_part, ("audioProfile",))
 
 
 def load(root):

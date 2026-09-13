@@ -545,7 +545,12 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
 
     width = video.get("width") if video else None
     height = video.get("height") if video else None
-    first_audio = audios[0] if audios else {}
+    # The Media's audio fields name the track with the MOST channels, the first of them on a
+    # tie -- measured on 35 of 35 files on fun, where the first track was the wrong one in 9
+    # -- and a DTS-HD MA track is `dca-ma` there while every other DTS variant stays `dca`.
+    # plexsim named the first track, and a client gates direct play on these fields.
+    main_audio = max(audios, key=lambda s: s.get("channels") or 0) if audios else {}
+    main_codec, main_profile = audio_codec(main_audio.get("codec_name"), main_audio.get("profile"))
     container = _CONTAINER_ALIASES.get(
         fmt.get("format_name"), (fmt.get("format_name") or "").split(",")[0]
     )
@@ -563,7 +568,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "size": size,
         "container": container,
         "videoProfile": video_profile,
-        "audioProfile": (first_audio.get("profile") or "").lower() or None,
+        "audioProfile": main_profile,
         # A real PMS reports these only under `?checkFiles=1` -- measured: a plain
         # detail read carries neither. plexsim sends them ALWAYS on purpose,
         # because plezy re-fetches metadata in a loop until every part carries all
@@ -582,14 +587,14 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "width": width,
         "height": height,
         "aspectRatio": _aspect_ratio(video) if video else None,
-        "audioChannels": first_audio.get("channels"),
-        "audioCodec": first_audio.get("codec_name"),
+        "audioChannels": main_audio.get("channels"),
+        "audioCodec": "dca-ma" if (main_codec, main_profile) == ("dca", "ma") else (main_codec or None),
         "videoCodec": video.get("codec_name") if video else None,
         "videoResolution": _video_resolution(height, width),
         "container": container,
         "videoFrameRate": _frame_rate_token(_frame_rate(video)) if video else None,
         "videoProfile": video_profile,
-        "audioProfile": (first_audio.get("profile") or "").lower() or None,
+        "audioProfile": main_profile,
         "Part": [part],
     }
     return normalize_media(media)
@@ -628,6 +633,10 @@ def normalize_media(media):
         media["optimizedForStreaming"] = 0
         media["has64bitOffsets"] = large
     media["hasVoiceActivity"] = bool(media.get("hasVoiceActivity"))
+    if media.get("audioCodec") == "dts":
+        _, profile = audio_codec("dts", media.get("audioProfile"))
+        media["audioCodec"] = "dca-ma" if profile == "ma" else "dca"
+        media["audioProfile"] = profile
     for part in parts:
         part.pop("optimizedForStreaming", None)
         part.pop("has64bitOffsets", None)
