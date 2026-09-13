@@ -248,6 +248,7 @@ def _video_stream(stream, stream_id):
         "chromaLocation": stream.get("chroma_location"),
         "codedHeight": stream.get("coded_height"),
         "codedWidth": stream.get("coded_width"),
+        "codecID": _codec_id(stream),
         "colorPrimaries": stream.get("color_primaries"),
         "colorTrc": stream.get("color_transfer"),
         "colorSpace": stream.get("color_space"),
@@ -305,6 +306,16 @@ def _bit_depth(stream):
         return raw
     match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
     return int(match.group(1)) if match else 8
+
+
+def _codec_id(stream):
+    """A video stream's codec tag, measured on 8 of 8 streams that have a real one: `hev1`,
+    `hvc1` and `dvhe` in an mp4, `XVID` and `DX50` in an AVI, `HDMV` in MPEG-TS -- but not
+    `avc1`, and never on an audio or subtitle stream. plexsim sent none."""
+    tag = stream.get("codec_tag_string") or ""
+    if not tag or "[" in tag or tag == "avc1":
+        return None
+    return tag
 
 
 def _stream_identifier(stream):
