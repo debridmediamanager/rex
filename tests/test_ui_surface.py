@@ -6786,6 +6786,25 @@ def main():
     check("a movie's written setting shows on its row", shown_w15c == "1" and cleared_w15c is None,
           "%r then %r" % (shown_w15c, cleared_w15c))
 
+    # Measured on plexscratch: a library create applies its prefs[...] and answers a bare
+    # container; plexsim dropped the prefs and sent the library container's extras.
+    status_w15d, body_w15d, _ = request(base, "POST", "/library/sections?name=W15d&type=show"
+                                                      "&agent=tv.plex.agents.series&scanner=%s&language=en-US"
+                                                      "&location=%s&prefs%%5BflattenSeasons%%5D=1"
+                                                      "&prefs%%5BepisodeSort%%5D=1"
+                                                      % (quote("Plex TV Series"), quote("/data/w15d")))
+    made_w15d = json.loads(body_w15d).get("MediaContainer", {}) if body_w15d[:1] == b"{" else {}
+    key_w15d = ((made_w15d.get("Directory") or [{}])[0]).get("key")
+    prefs_w15d = {s.get("id"): s.get("value") for s in get(base, "/library/sections/%s/prefs" % key_w15d)[1]
+                  .get("Setting") or []}
+    if key_w15d:
+        request(base, "DELETE", "/library/sections/%s" % key_w15d)
+    check("a library create applies its prefs and answers a bare container",
+          status_w15d == 201 and "identifier" not in made_w15d and "allowSync" not in made_w15d
+          and str(prefs_w15d.get("flattenSeasons")) == "1" and str(prefs_w15d.get("episodeSort")) == "1",
+          "HTTP %s, container %s, prefs %r/%r" % (status_w15d, sorted(k for k in made_w15d if k != "Directory"),
+                                                 prefs_w15d.get("flattenSeasons"), prefs_w15d.get("episodeSort")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

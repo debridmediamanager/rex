@@ -8335,7 +8335,16 @@ class PlexSim:
         section = self.catalog.add_section(
             title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))
         logger.info("SECTION create %s (%s)", title, section_type)
-        return ("created", self.container(Directory=[dict(
+        prefs = {match.group(1): value for name, value in query.items()
+                 for match in [re.match(r"^prefs\[(\w+)\]$", name)] if match}
+        if prefs:
+            # Measured on a writable copy of the reference: the create applies its
+            # `prefs[...]` -- `flattenSeasons` and `episodeSort` read back as sent -- where
+            # plexsim dropped them.
+            self.library_section(["library", "sections", str(section["key"]), "prefs"], prefs, "PUT")
+        # Measured: the create answers a BARE container, with none of the library
+        # container's identifier, media-tag pair or allowSync.
+        return ("created", self.bare_container(size=1, Directory=[dict(
             section,
             agent=("tv.plex.agents.series" if section_type == "show"
                    else "tv.plex.agents.movie"),
