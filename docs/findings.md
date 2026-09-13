@@ -3304,6 +3304,15 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   and kept its old name, so renaming the server in Settings changed nothing on screen.
 - **Track selection takes a POST as well as a PUT** on `/library/parts/{id}`; plexsim 404'd
   the POST.
+- **A butler run is an empty 200 that pushes a `butler` activity.** `POST /butler/{Task}`
+  answers no body and pushes one "Butler tasks" activity (started at -1) around the task's
+  own -- `general.db.backup` "Database"/"Backing up database" stepping to 100 -- ending with
+  the task's message ("The butler backed up your database."); `/activities` carries the
+  `butler` row while it runs -- plexsim's run is synchronous, so only the frames are visible
+  here, and nothing is left in `/activities` afterwards. `POST /butler` runs every enabled
+  task under one wrapper and
+  `DELETE /butler` is empty too, while `DELETE /butler/{Task}` is a **404**. plexsim answered
+  the task LIST to all three, pushed no frames, and accepted the task DELETE.
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -7072,6 +7072,39 @@ def main():
     else:
         skip("track selection takes a POST as well as a PUT", "need an audio stream")
 
+    # Measured on plexscratch: a butler task run answers an EMPTY body and pushes one
+    # `butler` activity around the task's own frames, ending with its message; `POST
+    # /butler` and `DELETE /butler` are empty too, and `DELETE /butler/{Task}` -- which
+    # plexsim answered 200 -- is a 404. plexsim answered the task LIST to the first three
+    # and pushed no frames at all, so Settings > Scheduled Tasks showed nothing running.
+    _, frames_c10f = notifications(base, lambda: request(base, "POST", "/butler/BackupDatabase"),
+                                   seconds=4)
+    events_c10f = [(a.get("event"), (a.get("Activity") or {}).get("type"),
+                    (a.get("Activity") or {}).get("title"))
+                   for f in frames_c10f or []
+                   for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    messages_c10f = [p.get("message") for f in frames_c10f or []
+                     for p in (f.get("NotificationContainer") or {}).get("ProgressNotification") or []]
+    after_c10f = [a.get("type") for a in get(base, "/activities")[1].get("Activity") or []]
+    status_run_c10f, body_run_c10f, _ = request(base, "POST", "/butler/BackupDatabase")
+    status_all_c10f, body_all_c10f, _ = request(base, "POST", "/butler")
+    status_del_c10f, body_del_c10f, _ = request(base, "DELETE", "/butler")
+    status_task_c10f, _, _ = request(base, "DELETE", "/butler/BackupDatabase")
+    check("a butler run is an empty 200 that pushes a butler activity, and a task DELETE is a 404",
+          events_c10f[:1] == [("started", "butler", "Butler tasks")]
+          and events_c10f[-1:] == [("ended", "butler", "Butler tasks")]
+          and ("started", "general.db.backup", "Database") in events_c10f
+          and ("ended", "general.db.backup", "Database") in events_c10f
+          and "The butler backed up your database." in messages_c10f
+          and "butler" not in after_c10f
+          and is_empty_200(status_run_c10f, body_run_c10f)
+          and is_empty_200(status_all_c10f, body_all_c10f)
+          and is_empty_200(status_del_c10f, body_del_c10f)
+          and status_task_c10f == 404,
+          "events %s, messages %s, after %s, HTTP %s/%s/%s/%s"
+          % (events_c10f, messages_c10f, after_c10f, status_run_c10f, status_all_c10f,
+             status_del_c10f, status_task_c10f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
