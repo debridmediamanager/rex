@@ -41,7 +41,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
 | `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` |
-| `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client |
+| `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
 | `probes/` | One-off measurement scripts that produced findings |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
@@ -285,6 +285,7 @@ python3 tests/test_navigation.py            # client request replay, shape confo
 python3 tests/test_ui_surface.py            # context menu + every server page, end to end
 python3 tests/test_all.py                   # play queue → decision → byte reads → real decode
 python3 tests/conformance.py                # drives plexsim with python-plexapi
+python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
