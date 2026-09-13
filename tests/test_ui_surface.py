@@ -6354,6 +6354,41 @@ def main():
         skip("an episode scrobble counts on its season and show; a show scrobble does not count on the show",
              "need a show")
 
+    # Measured on plexscratch: a show puts ONE row on deck -- its in-progress episode with
+    # the lowest number, not the one played last -- removing any of its episodes from
+    # Continue Watching hides that row, a timeline on one of them brings it back, and with
+    # the first one watched the next one in progress is the row. plexsim listed every
+    # episode with a resume point.
+    leaves_w10c = sorted(get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [],
+                         key=lambda r: (r.get("parentIndex") or 0, r.get("index") or 0)) if show else []
+    if len(leaves_w10c) >= 2:
+        first_w10c, second_w10c = str(leaves_w10c[0]["ratingKey"]), str(leaves_w10c[1]["ratingKey"])
+        keys_w10c = {str(r["ratingKey"]) for r in leaves_w10c}
+        def deck_w10c():
+            return [str(r.get("ratingKey")) for r in get(base, "/library/onDeck")[1].get("Metadata") or []
+                    if str(r.get("ratingKey")) in keys_w10c]
+        def play_w10c(key, ms):
+            request(base, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s&state=stopped"
+                                 "&time=%s&duration=600000" % (key, key, ms))
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
+        play_w10c(second_w10c, 120000)
+        play_w10c(first_w10c, 180000)
+        both_w10c = deck_w10c()
+        request(base, "PUT", "/actions/removeFromContinueWatching?ratingKey=%s" % second_w10c)
+        hidden_w10c = deck_w10c()
+        play_w10c(second_w10c, 150000)
+        back_w10c = deck_w10c()
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % first_w10c)
+        next_w10c = deck_w10c()
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
+        check("On Deck holds one row per show: the lowest episode in progress, hidden and restored as one",
+              both_w10c == [first_w10c] and hidden_w10c == [] and back_w10c == [first_w10c]
+              and next_w10c == [second_w10c],
+              "%s / %s / %s / %s" % (both_w10c, hidden_w10c, back_w10c, next_w10c))
+    else:
+        skip("On Deck holds one row per show: the lowest episode in progress, hidden and restored as one",
+             "need a show with two episodes")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

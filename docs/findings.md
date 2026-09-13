@@ -2989,6 +2989,13 @@ the same parameters, then read back from both.
   unscrobbling an episode left the parents alone. plexsim counted on a parent only when
   the parent itself was scrobbled -- the earlier note ("scrobbling one episode twice took
   the show to viewCount 2") implemented the wrong way round.
+- **On Deck holds one row per show.** Two episodes in progress list only the
+  lower-numbered one -- episodes 13, then 12, then 14 left 12 on deck, and 13 played again
+  at 240 s did not displace it -- and with none in progress the row is the episode after
+  the one watched (episode 8 watched: 9; season 1 watched: season 2's first). Removing any
+  of the show's episodes from Continue Watching hides the show's row, even when the row
+  names another episode, and a timeline on any of them brings it back. plexsim listed
+  every episode with a resume point, and never the next one.
 
 ### Emulation calibrated against the account's own claimed servers
 

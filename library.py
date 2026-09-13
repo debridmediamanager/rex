@@ -274,8 +274,13 @@ class Library:
         total = duration or row.get("duration") or 0
         if offset is not None:
             # A timeline puts the row back in Continue Watching, whatever the menu
-            # entry did before -- measured on the reference.
+            # entry did before -- measured on the reference. For an episode that row is
+            # its SHOW's, which any of the show's episodes hides and brings back.
             row.pop("_hiddenFromContinueWatching", None)
+            if row.get("type") == "episode":
+                for other in self.catalog.items.values():
+                    if other.get("grandparentRatingKey") == row.get("grandparentRatingKey"):
+                        other.pop("_hiddenFromContinueWatching", None)
             # Measured: a resume point under a MINUTE is not stored at all -- the
             # reference answers `playbackState: ignore` AND leaves the row untouched
             # at 3 000, 20 000 and 59 000 ms, and only starts recording at 61 000.
