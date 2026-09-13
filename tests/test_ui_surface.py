@@ -8314,6 +8314,29 @@ def main():
           and renamed_c12j == 200 and title_c12j == "c12renamed",
           "%s, rename %s -> %r" % (edits_c12j, renamed_c12j, title_c12j))
 
+
+    # Re-measured on the copy: `psb` is accepted alongside srt/ass/ssa/smi/txt, and the
+    # format check is CASE-SENSITIVE -- `SRT` is a 400 where `srt` is a 200. plexsim
+    # lowercased the value and so accepted uploads a real PMS refuses, and refused psb.
+    def upload_c12k(query_c12k):
+        return request(base, "POST", "/library/metadata/%s/subtitles%s" % (movie, query_c12k),
+                       body=b"1\n00:00:00,000 --> 00:00:02,000\nc12\n\n")[0]
+    formats_c12k = {
+        "psb": upload_c12k("?title=c12a.psb&format=psb"),
+        "srt": upload_c12k("?title=c12b.srt&format=srt"),
+        "SRT": upload_c12k("?title=c12c.SRT&format=SRT"),
+        "format upper": upload_c12k("?title=c12d.srt&format=SRT"),
+        "vtt": upload_c12k("?title=c12e.vtt&format=vtt"),
+        "aqt": upload_c12k("?title=c12f.aqt&format=aqt"),
+        "txt named srt": upload_c12k("?title=c12g.txt&format=srt"),
+    }
+    check("the subtitle upload takes psb and is case-sensitive about the format",
+          formats_c12k["psb"] == 200 and formats_c12k["srt"] == 200
+          and formats_c12k["txt named srt"] == 200
+          and formats_c12k["SRT"] == 400 and formats_c12k["format upper"] == 400
+          and formats_c12k["vtt"] == 400 and formats_c12k["aqt"] == 400,
+          "%s" % formats_c12k)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
