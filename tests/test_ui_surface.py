@@ -8938,6 +8938,36 @@ def main():
               % (detail_c13l.get("audienceRatingImage"), detail_c13l.get("Rating"),
                  season_c13l.get("Rating")))
 
+        # Measured on kids (1.43.4) and zen (1.42.2), 20 rows across five shows: a SHOW's
+    # `/allLeaves` gives every episode row the SHOW's `studio` -- "Mutant Enemy
+    # Productions" on all six of Firefly's, "Toei Animation" on One Piece's, "20th
+    # Century Fox Television" on The Simpsons'. Nothing else carries it: the episode's
+    # own detail row, the season's `/children` and the SECTION's `allLeaves` all answer
+    # no studio on both servers. plexsim sent none anywhere.
+    if not show:
+        skip("a show's allLeaves gives every episode the show's studio", "need a show")
+    else:
+        studio_c13m = (get(base, "/library/metadata/%s" % show)[1].get("Metadata") or [{}])[0].get("studio")
+        leaves_c13m = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+        one_c13m = (get(base, "/library/metadata/%s" % leaves_c13m[0]["ratingKey"])[1]
+                    .get("Metadata") or [{}])[0] if leaves_c13m else {}
+        season_kids_c13m = get(base, "/library/metadata/%s/children"
+                               % one_c13m.get("parentRatingKey"))[1].get("Metadata") or []
+        section_c13m = get(base, "/library/sections/%s/allLeaves" % show_section)[1].get("Metadata") or []
+        if not studio_c13m or not leaves_c13m:
+            skip("a show's allLeaves gives every episode the show's studio",
+                 "the show has no studio left")
+        else:
+            check("a show's allLeaves gives every episode the show's studio, and nothing else does",
+                  all(r_c13m.get("studio") == studio_c13m for r_c13m in leaves_c13m)
+                  and one_c13m.get("studio") is None
+                  and all(r_c13m.get("studio") is None for r_c13m in season_kids_c13m)
+                  and all(r_c13m.get("studio") is None for r_c13m in section_c13m),
+                  "allLeaves %s | detail %r | season children %s | section allLeaves %s"
+                  % ([r_c13m.get("studio") for r_c13m in leaves_c13m], one_c13m.get("studio"),
+                     [r_c13m.get("studio") for r_c13m in season_kids_c13m],
+                     [r_c13m.get("studio") for r_c13m in section_c13m]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
