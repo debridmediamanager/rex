@@ -5016,6 +5016,10 @@ class PlexSim:
             elif query.get("includeExtras") == "1":
                 # Measured: an episode and a movie carry the Extras block too.
                 detail["Extras"] = {"size": 0}
+            if row.get("type") == "movie":
+                # Measured on a writable copy of the reference: a movie's written setting
+                # shows on its row as a show's does -- `useOriginalTitle: "1"`.
+                detail.update(row.get("_prefs") or {})
             detail = self.apply_detail_options(row, detail, query)
             # Re-measured 2026-09-12 against BOTH fun and the 1.43.4 reference,
             # with the client's own includeX param set: the detail container
