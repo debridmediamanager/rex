@@ -3080,6 +3080,9 @@ the same parameters, then read back from both.
   created with `prefs[flattenSeasons]=1&prefs[episodeSort]=1` reads both back as 1, and the
   201's container carries only `size` beside the Directory; plexsim dropped the prefs
   (-1 and 0) and sent the library container's identifier, media-tag pair and allowSync.
+- **A library analyze pushes three frames per movie.** For each movie in title order: state
+  5 with `mediaState: analyzing`, state 5 with `thumbnailing`, and a plain state 5.
+  plexsim pushed nothing.
 
 ### Emulation calibrated against the account's own claimed servers
 
