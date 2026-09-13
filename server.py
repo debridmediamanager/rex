@@ -6336,13 +6336,19 @@ class PlexSim:
     # included -- the client lays the results page out from this list, so a server
     # that omits the empty hubs is handing it a different page. Note "Shows", not
     # "TV Shows", which is what plexsim called it.
+    # Re-measured on kids (1.43.4) and zen (1.42.2) with four queries that match
+    # NOTHING -- the only way to see the base order, because a query with fuzzy hits
+    # promotes the hubs that scored. Both servers give this order exactly. The two
+    # plexsim had wrong were the first one: `movie` is fifth, not first, and
+    # `collection` is fourteenth, between genre and playlist, not seventh.
     SEARCH_HUBS = [
-        ("movie", "Movies"), ("show", "Shows"), ("artist", "Artists"),
-        ("album", "Albums"), ("episode", "Episodes"), ("track", "Tracks"),
-        ("collection", "Collections"), ("photoalbum", "Photo Albums"),
-        ("autotag", "Automatic Tags"), ("photo", "Photos"), ("tag", "Tags"),
-        ("actor", "Actors"), ("director", "Directors"), ("genre", "Genres"),
-        ("playlist", "Playlists"), ("shared", "Shared"), ("place", "Places"),
+        ("show", "Shows"), ("artist", "Artists"), ("album", "Albums"),
+        ("episode", "Episodes"), ("movie", "Movies"), ("track", "Tracks"),
+        ("photoalbum", "Photo Albums"), ("autotag", "Automatic Tags"),
+        ("photo", "Photos"), ("tag", "Tags"), ("actor", "Actors"),
+        ("director", "Directors"), ("genre", "Genres"),
+        ("collection", "Collections"), ("playlist", "Playlists"),
+        ("shared", "Shared"), ("place", "Places"),
     ]
 
     # The tag hubs, and which of a row's tag lists each one searches.

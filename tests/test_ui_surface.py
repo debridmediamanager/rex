@@ -8852,6 +8852,23 @@ def main():
                                             % show_section))),
           "movies %s | tv %s" % (order_c13i, list(tv_c13i)))
 
+        # Re-measured on kids (1.43.4) and zen (1.42.2) across four queries that match
+    # nothing at all (`nomatchatall`, `xyzzyplugh`, `qwertyuiopzz`, `1234567890zz`):
+    # both servers answer the seventeen hubs in ONE order, and it is not the order
+    # plexsim used. `movie` is FIFTH, not first, and `collection` is FOURTEENTH,
+    # between genre and playlist, not seventh. (A query with fuzzy hits promotes the
+    # hubs that scored -- `zzqqxx` moves actor to sixth on kids -- which is why this
+    # has to be measured on a query that matches nothing; that promotion is recorded
+    # and deliberately not reproduced.) The client lays the results page out from this
+    # list, so every search drew its sections in the wrong order.
+    order_c13j = [h_c13j.get("type") for h_c13j in
+                  get(base, "/hubs/search?query=zzzznomatchzzzz")[1].get("Hub") or []]
+    check("the search hubs come back in the order both servers answer",
+          order_c13j == ["show", "artist", "album", "episode", "movie", "track",
+                         "photoalbum", "autotag", "photo", "tag", "actor", "director",
+                         "genre", "collection", "playlist", "shared", "place"],
+          "%s" % order_c13j)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
