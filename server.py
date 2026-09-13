@@ -4433,10 +4433,16 @@ class PlexSim:
                 # made every playlist compare equal and the direction do nothing.
                 if key == "titleSort" and not value:
                     value = row.get("title")
-                return (value is None, str(value or "").lower())
+                # Measured on both servers across eleven keys and four row types: a
+                # row with NO value sorts BELOW every row that has one -- first
+                # ascending, last descending -- so the "missing" flag has to sort
+                # FIRST, not last. `(value is None, ...)` put it above every value,
+                # and twelve of the fifteen advertised sorts default to `desc`.
+                return (value is not None, str(value or "").lower())
             return text
         if key in self.NUMERIC_SORTS:
-            return lambda r: (r.get(key) is None, r.get(key) or 0)
+            # Same rule as the text keys above: absent sorts below every value.
+            return lambda r: (r.get(key) is not None, r.get(key) or 0)
         return None
 
     def _scoped_sort_key(self, key):
