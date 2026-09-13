@@ -2760,6 +2760,19 @@ Measured and not acted on:
   `titleSort` and `updatedAt` is cycle 7's season-year rule. A season with a year of
   its own carries all three.
 
+#### The ninth pass: the community OpenAPI description, every GET in it
+
+Cycle 9's read-only agent swept the community OpenAPI description of PMS (the
+`plex-api-spec` behind plexapi.dev and the SDKs generated from it): 405 operations, 195
+GETs aimed at the server, 132 of them instantiated as 403 requests and sent to the
+reference, fun and plexsim in JSON and XML -- 2,406 exchanges, 1,205 differences
+triaged. Twelve findings survived, each re-measured by hand on both servers before
+anything changed.
+
+- **`/library/sections/all`** is the section list itself, identical to
+  `/library/sections` on both servers. The spec calls it `getSections`, so generated
+  SDKs ask there; plexsim 404'd it.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
