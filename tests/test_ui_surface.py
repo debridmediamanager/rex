@@ -9226,6 +9226,37 @@ def main():
                   "season %s, detail %s, children %s"
                   % (season_index_c13t, detail_c13t, listed_c13t))
 
+        # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE carries its SHOW's
+    # `contentRating` -- all six of Firefly's say TV-14 like the show, the three unmatched
+    # ones among them included although they have no agent metadata at all, and 18 of 18
+    # episodes across three zen shows carry their show's (TV-14, TV-Y, TV-PG). A SEASON
+    # carries none on either server. The write side agrees: on the copy, editing the show's
+    # rating moved it on the episodes that had no rating of their own, and the show unmatch
+    # removed it from all of them. plexsim left an episode with no rating at all, so every
+    # episode page and every episode row showed no certificate.
+    if not show_section:
+        skip("an episode carries its show's content rating and a season carries none",
+             "need a show library")
+    else:
+        show_rating_c13u = (get(base, "/library/metadata/%s" % show)[1]
+                            .get("Metadata") or [{}])[0].get("contentRating")
+        leaves_c13u = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+                       for r in get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                       .get("Metadata") or []]
+        seasons_c13u = [(get(base, "/library/metadata/%s" % r["ratingKey"])[1].get("Metadata") or [{}])[0]
+                        for r in get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or [] if r.get("type") == "season"]
+        if not show_rating_c13u or not leaves_c13u:
+            skip("an episode carries its show's content rating and a season carries none",
+                 "the show has no content rating left")
+        else:
+            check("an episode carries its show's content rating and a season carries none",
+                  all(r_c13u.get("contentRating") == show_rating_c13u for r_c13u in leaves_c13u)
+                  and all(r_c13u.get("contentRating") is None for r_c13u in seasons_c13u),
+                  "show %r | episodes %s | seasons %s"
+                  % (show_rating_c13u, [r_c13u.get("contentRating") for r_c13u in leaves_c13u],
+                     [r_c13u.get("contentRating") for r_c13u in seasons_c13u]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -168,6 +168,17 @@ def normalize_rows(rows):
             # so it is dropped -- extended to EPISODE here because no episode on either
             # reference carries one (0 of 20 One Piece episodes on zen, 0 of 3 on kids).
             row.pop("rating", None)
+        if kind == "episode" and not row.get("contentRating"):
+            # Measured on kids (1.43.4) and zen (1.42.2): an episode carries its SHOW's
+            # `contentRating` -- 6 of 6 on the lab, the three unmatched ones included
+            # although they have no agent metadata at all, and 18 of 18 across three zen
+            # shows (TV-14, TV-Y, TV-PG). A SEASON carries none on either server, and the
+            # write side agrees: on a writable copy, editing the show's rating moved it
+            # on the episodes that had none of their own and a show unmatch removed it
+            # from all of them. plexsim left an episode with no certificate at all.
+            parent = by_key.get(str(row.get("grandparentRatingKey")))
+            if parent and parent.get("contentRating"):
+                row["contentRating"] = parent["contentRating"]
         if kind == "episode" and row.get("audienceRating") is not None:
             # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE with an
             # `audienceRating` carries `audienceRatingImage` and a `Rating` element as
