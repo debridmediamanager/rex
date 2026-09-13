@@ -2416,10 +2416,7 @@ class PlexSim:
         if route == "/library/tags":
             return self.library_tags(query)
         if route == "/library/matches":
-            # Match is per item: /library/metadata/{id}/matches. The bare
-            # endpoint is the provider's advertised key, and a real PMS answers
-            # 400 for it.
-            return ("error", 400, "plexsim: bad request")
+            return self.library_matches(query)
         if route == "/library/people":
             return ("error", 404, "plexsim: not found")
         if (segments[:2] == ["library", "people"] and method in ("GET", "HEAD")
@@ -7417,6 +7414,48 @@ class PlexSim:
         shown = [_grid_row(_listing_row(r)) for r in rows]
         return self.bare_container(size=len(shown), viewGroup="movie", viewMode=65592,
                                    Metadata=shown, **common)
+
+    def library_matches(self, query):
+        """`/library/matches` -- does this library already hold an item?
+
+        plexsim advertises this key in /media/providers (`type: match`) and refused every
+        request to it. Measured on both servers:
+
+        - `type` is required and numeric (none, or `abc`, is a 400);
+        - `title` matches a movie or show title EXACTLY, ignoring case -- a partial title
+          matches nothing -- narrowed by `year`, and each row leads with `score` 100;
+        - `guid` matches the whole guid (a prefix matches nothing), and an episode
+          matches by `grandparentTitle` + `parentIndex` + `index`; neither carries a score;
+        - `type` alone, a season title and an episode title all answer `size 0`.
+
+        Rows are the listing's own; the container is nothing but `size`.
+        """
+        raw = query.get("type") or ""
+        if not raw.lstrip("-").isdigit():
+            return ("error", 400, "plexsim: bad request")
+        wanted = {"1": "movie", "2": "show", "3": "season", "4": "episode"}.get(str(int(raw)))
+        rows = [r for r in self.catalog.items.values() if wanted and r.get("type") == wanted]
+        scored = False
+        if query.get("guid"):
+            rows = [r for r in rows if r.get("guid") == query["guid"]]
+        elif wanted == "episode" and query.get("grandparentTitle"):
+            rows = [r for r in rows
+                    if str(r.get("grandparentTitle") or "").lower() == query["grandparentTitle"].lower()
+                    and str(r.get("parentIndex")) == str(query.get("parentIndex"))
+                    and str(r.get("index")) == str(query.get("index"))]
+        elif query.get("title") and wanted in ("movie", "show"):
+            title = query["title"].lower()
+            rows = [r for r in rows if str(r.get("title") or "").lower() == title
+                    and (not query.get("year") or str(r.get("year")) == str(query["year"]))]
+            scored = True
+        else:
+            rows = []
+        rows, _ = self._sorted(rows, "titleSort")
+        shown = []
+        for r in rows:
+            row = _grid_row(_listing_row(r), keep_section=False)
+            shown.append(dict([("score", 100)] + list(row.items())) if scored else row)
+        return self.bare_container(size=len(shown), Metadata=shown)
 
     def library_tags(self, query):
         """Every tag of one type the server knows, ordered by id.
