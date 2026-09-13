@@ -2343,7 +2343,8 @@ class PlexSim:
                 # history/all lists, alone in a container carrying only `size`. plexsim
                 # listed `/status/sessions/history/1` in history/all and 404'd that key.
                 wanted = "/status/sessions/history/%s" % int(segments[3])
-                found = [r for r in self.library.history() if r.get("historyKey") == wanted]
+                found = [self._history_row(r) for r in self.library.history()
+                         if r.get("historyKey") == wanted]
                 if found:
                     return self.bare_container(size=1, Metadata=found[:1])
             # Measured: only `all` and a numeric historyKey exist here.
@@ -8833,6 +8834,23 @@ class PlexSim:
         """`/updater/status` -- plexsim never has an update to install."""
         return self.bare_container(size=0, canInstall=False,
                                    checkedAt=int(time.time()), status=0)
+
+    # The attribute set a SINGLE history read answers, in order -- measured on kids
+    # (1.43.4) and zen (1.42.2) and identical on both, against every readable row on
+    # each. It is not the listing's row: there is no `key`, no `ratingKey` and no
+    # artwork, `viewType` is always 1, and an episode adds the show's title and the two
+    # indices. plexsim answered its stored listing row, so a client reading one history
+    # entry was handed links the endpoint does not advertise.
+    HISTORY_ROW_FIELDS = ("historyKey", "librarySectionID", "title", "grandparentTitle",
+                          "type", "index", "parentIndex", "originallyAvailableAt",
+                          "viewedAt", "accountID", "deviceID")
+
+    @classmethod
+    def _history_row(cls, entry):
+        """One history row as the single read projects it."""
+        row = {name: entry[name] for name in cls.HISTORY_ROW_FIELDS if entry.get(name) is not None}
+        row["viewType"] = 1
+        return row
 
     def history(self, query):
         """`/status/sessions/history/all` -- the View Play History page.
