@@ -4653,6 +4653,8 @@ class PlexSim:
             raise filters_module.FilterError(500, "cannot group by %r" % field)
         best = {}
         for row in rows:
+            # The prefix is a SCOPE, exactly as it is on a filter and on a sort
+            # key: `filter_value` resolves it against the row the prefix names.
             marker = str(self.filter_value(field, row))
             rank = (row.get("addedAt") or 0, int(row.get("ratingKey") or 0))
             if marker not in best or rank < best[marker][0]:
@@ -4663,7 +4665,7 @@ class PlexSim:
         return [row for row in rows if id(row) in chosen]
 
     def group_field(self, field):
-        """The column a `group=` key names. Overridden by the scope patch."""
+        """The column a `group=` key names, with its type prefix stripped."""
         return field.split(".", 1)[1] if field and "." in field else field
 
     def _sortable(self, key):
@@ -4721,11 +4723,20 @@ class PlexSim:
         return [row]
 
     def filter_value(self, field, row):
-        """One row's value for an advertised filter field."""
-        # `episode.unwatched` and friends: the type prefix is the scope, and the
-        # field behind it is the same field.
-        if "." in field:
-            field = field.split(".", 1)[1]
+        """One row's value for an advertised filter field.
+
+        Cycle 14: the type prefix is a SCOPE here too, not decoration to strip.
+        `type=4&group=show.title` collapses kids' six episodes to 1 and zen's 9287
+        to 505 (its show count) where `group=title` gives 4 and 4443;
+        `group=season.index` gives 2 and 58 where `group=index` gives 3 and 1144.
+        plexsim stripped the prefix and read the field off the episode, so every
+        prefixed group and every prefixed value read was the unprefixed one.
+        """
+        scope, _, field = field.rpartition(".")
+        if scope and scope in self.SCOPE_TYPES and row.get("type") != scope:
+            found = self.scope_rows(scope, row)
+            if found:
+                row = found[0]
         if field == "id":
             # The row's own key: `id=` is the client's "is there another copy of this?"
             # probe, sent beside `guid=`.
