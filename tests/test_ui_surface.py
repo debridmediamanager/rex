@@ -8337,6 +8337,27 @@ def main():
           and formats_c12k["vtt"] == 400 and formats_c12k["aqt"] == 400,
           "%s" % formats_c12k)
 
+
+    # Measured on the copy: `DELETE /library/streams/abc` is a 400 (a malformed id)
+    # where `DELETE /library/streams/999999` is a 404 (a missing one), and a POST to a
+    # stream the server HAS is a 404 rather than the 501 its GET answers. plexsim made
+    # a malformed id indistinguishable from a missing one.
+    row_c12l = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    stream_c12l = next((s_c12l.get("id") for m_c12l in (row_c12l.get("Media") or [])
+                        for p_c12l in (m_c12l.get("Part") or [])
+                        for s_c12l in (p_c12l.get("Stream") or [])), None)
+    verbs_c12l = {
+        "DELETE abc": request(base, "DELETE", "/library/streams/abc")[0],
+        "DELETE unknown": request(base, "DELETE", "/library/streams/999999")[0],
+        "PUT abc": request(base, "PUT", "/library/streams/abc")[0],
+        "POST known": request(base, "POST", "/library/streams/%s" % stream_c12l)[0],
+        "GET known": request(base, "GET", "/library/streams/%s" % stream_c12l)[0],
+    }
+    check("a stream path tells a malformed id from a missing one, and 404s a POST",
+          verbs_c12l == {"DELETE abc": 400, "DELETE unknown": 404, "PUT abc": 400,
+                         "POST known": 404, "GET known": 501},
+          "%s" % verbs_c12l)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -2807,7 +2807,12 @@ class PlexSim:
                 for row in catalog.items.values() for media in row.get("Media") or []
                 for part in media.get("Part") or [] for stream in part.get("Stream") or [])
             if not known:
-                if method == "PUT" and len(segments) == 3:
+                # Measured on the copy: a PUT to an id it does not have is a 400, and so
+                # is a DELETE of a NON-NUMERIC one -- `DELETE /library/streams/abc` is a
+                # 400 where `DELETE /library/streams/999999` is a 404. plexsim answered
+                # 404 to both, so a malformed id and a missing one were indistinguishable.
+                if len(segments) == 3 and (method == "PUT"
+                                           or (method == "DELETE" and not stream_id.isdigit())):
                     return ("error", 400, "plexsim: bad request")
                 return ("error", 404, "plexsim: not found")
             if segments[3:] in (["levels"], ["loudness"]):
@@ -2821,6 +2826,10 @@ class PlexSim:
                 # 501 the GET answers, so python-plexapi's stream edit read a refusal
                 # where a real PMS reads an acceptance.
                 return ("empty", 200)
+            if method == "POST" and len(segments) == 3:
+                # Measured on the copy: a POST to a stream it HAS is a 404 -- there is no
+                # such verb on the path -- where plexsim answered its 501.
+                return ("error", 404, "plexsim: not found")
             if method == "DELETE" and len(segments) == 3:
                 # And a DELETE removes an uploaded SIDECAR (200) while refusing an
                 # embedded track with 403 -- it is part of the file. plexsim 501'd both.
