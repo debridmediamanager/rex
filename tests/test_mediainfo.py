@@ -126,6 +126,19 @@ SKIP = {
     ("kids-9-0", 1, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
     ("kids-9-0", 1, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
     ("kids-9-0", 1, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    # Layouts the probe does not explain.
+    ("fun-1051324-2", 2, "audioChannelLayout"): "E-AC-3 JOC in mp4",
+    ("fun-1051324-2", 4, "audioChannelLayout"): "E-AC-3 JOC in mp4",
+    ("fun-1061845-0", 1, "audioChannelLayout"): "DTS Express: fun writes no layout; one track",
+    ("kids-1-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-12-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-13-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-14-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-17-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-18-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-3-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-4-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
+    ("kids-8-0", 1, "audioChannelLayout"): "the 1.43.4 reference leaves most mono AAC clips without a layout",
 }
 
 
@@ -216,6 +229,11 @@ def _scan_type_value(fixture):
 @check("color-range")
 def _color_range(fixture):
     return per_stream(1, ("colorRange",))(fixture)
+
+
+@check("channel-layout")
+def _channel_layout(fixture):
+    return per_stream(2, ("audioChannelLayout",))(fixture)
 
 
 def load(root):

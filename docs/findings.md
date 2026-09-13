@@ -3197,6 +3197,10 @@ below is one check there, and each check failed against the code before its fix.
   `progressive` everywhere.
 - **`colorRange` is ffprobe's `color_range`** (22 streams carry it, 25 do not); plexsim
   never sent it.
+- **`audioChannelLayout` is ffprobe's layout verbatim, and absent where it has none.**
+  plexsim derived it from the channel count, so a `5.1` track was `5.1(side)` and 3, 4, 5
+  and 7 channels had none. Left alone: E-AC-3 with Atmos in an mp4, which fun reads as its
+  5.1 core; one DTS Express track; and the reference's mono AAC clips.
 
 ### Emulation calibrated against the account's own claimed servers
 
