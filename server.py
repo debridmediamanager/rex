@@ -7126,11 +7126,39 @@ class PlexSim:
             logger.info("UNMATCH %s -> guid=%s", row["ratingKey"], row.get("guid"))
         elif action == "match":
             guid = query.get("guid") or ""
-            if not guid:
-                return ("error", 400, "plexsim: match needs a guid")
-            self.library.apply_match(row, guid, query.get("name"), query.get("year"),
-                                     identify=self._identify_guid)
-            logger.info("MATCH %s -> %s", row["ratingKey"], guid)
+            if query.get("name") is None:
+                # Measured on a writable copy of the reference: the NAME is what this
+                # endpoint requires -- a guid with no name is a 400, and an empty guid with
+                # a name is a 200 that renames the row and refreshes it. plexsim had the
+                # test the other way round.
+                return ("error", 400, "plexsim: match needs a name")
+            # Matching to a guid another row in the same library already carries MERGES this
+            # row into that one: measured, the matched row is deleted and the survivor keeps
+            # both Media. plexsim left two rows claiming one identity.
+            existing = next((other for other in list(self.catalog.items.values())
+                             if guid and other is not row and other.get("guid") == guid
+                             and str(other.get("librarySectionID")) == str(row.get("librarySectionID"))),
+                            None)
+            self.notify_timeline(row, self.TIMELINE_QUEUED, None)
+            if existing is not None:
+                merged = self.library.merge(existing, [row["ratingKey"]])
+                self.drop_from_queues(int(row["ratingKey"]))
+                for other in merged:
+                    self.notify_timeline(dict(other, title="", year=None),
+                                         self.TIMELINE_DELETED, "deleted")
+                self.notify_timeline(existing, self.TIMELINE_QUEUED, None, type_number=-1)
+                self.notify_timeline(existing, self.TIMELINE_DONE, None, type_number=-1)
+                self.library.refresh(existing)
+                self.notify_refreshed(existing)
+                logger.info("MATCH %s merged into %s (%s)", row["ratingKey"],
+                            existing["ratingKey"], guid)
+            else:
+                self.library.apply_match(row, guid, query.get("name"), query.get("year"),
+                                         identify=self._identify_guid if guid else None)
+                self.library.refresh(row)
+                # Every match runs the refresh sequence, activity and all, and it ENDS.
+                self.notify_refreshed(row)
+                logger.info("MATCH %s -> %s", row["ratingKey"], guid or "(name only)")
         elif action == "split":
             created = self.library.split(row)
             # Measured: each new row is created -- state 0 untitled, state 0 titled, state

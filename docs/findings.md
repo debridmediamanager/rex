@@ -3329,6 +3329,13 @@ implemented: the writes on plexscratch, and anything a read can show on both ser
   into `thumb`, so choosing an upload set the tile's img src to `upload://posters/...`.
   A playlist's and a collection's artwork list lives under `/library/metadata/{ratingKey}`
   too and holds one `default://` composite row; plexsim 404'd it.
+- **Fix Match requires a `name`, and a guid another row already carries MERGES the two.**
+  A guid with no name is a 400 and an empty guid with a name is a 200 that renames the row and
+  refreshes it; matching to a guid a row in the same library holds deletes this row and leaves
+  the survivor with both Media, framed as the merge (state 3, then 9 `deleted` untitled, then
+  type -1 state 3 and 5) followed by the survivor's own refresh. Every match runs that refresh
+  sequence and ENDS its activity: plexsim started a `Matching` activity per match and never
+  finished one, so the Dashboard's spinner never stopped.
 
 ### Emulation calibrated against the account's own claimed servers
 
