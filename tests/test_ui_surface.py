@@ -568,6 +568,12 @@ def main():
     # at one row through three of them, because rows come only from a timeline that
     # reaches the end. plexsim recorded one per mark-as-played, so History and the Top
     # shelf counted things nobody had watched. So the row has to be earned here.
+    # Re-measured in cycle 10 on half-hour media: a play is completed by a beat that
+    # CROSSES 90% inside its session, so the row is earned by a beat below the threshold
+    # first and one past it after -- a single beat at the end completes nothing, on a real
+    # PMS or here. This check used to send only the second beat.
+    request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=61000"
+                         "&duration=100000" % movie)
     request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=100000"
                          "&duration=100000" % movie)
     request(base, "GET", "/:/timeline?ratingKey=%s&state=stopped&time=100000"
@@ -4408,7 +4414,12 @@ def main():
               "X-Plex-Platform": "c5platform", "Accept": "application/json"}
     duration = int((get(base, "/library/metadata/%s" % c5_movie)[1].get("Metadata") or [{}])[0]
                    .get("duration") or 600000)
-    for state, offset in (("playing", duration - 5000), ("stopped", duration)):
+    # Re-measured in cycle 10: a play completes only when a beat CROSSES 90% inside its own
+    # session, so this play starts half way -- two beats in the last tenth complete nothing,
+    # on a real PMS or here, and the row this check reads would be an older play's by
+    # another device.
+    for state, offset in (("playing", duration // 2), ("playing", duration - 5000),
+                          ("stopped", duration)):
         raw("/:/timeline?ratingKey=%s&key=%s&state=%s&time=%d&duration=%d"
             % (c5_movie, quote("/library/metadata/%s" % c5_movie), state, offset, duration),
             headers=player)
@@ -7347,35 +7358,38 @@ def main():
     def viewed_c10l(key):
         row = (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
         return (row.get("viewCount"), row.get("viewOffset"))
-    cold_c10l = [r["ratingKey"] for r in
-                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
-                 if not r.get("viewCount") and not r.get("viewOffset")]
-    if len(cold_c10l) >= 3:
-        one_c10l, two_c10l, three_c10l = cold_c10l[:3]
-        span_c10l = int((get(base, "/library/metadata/%s" % one_c10l)[1]
-                         .get("Metadata") or [{}])[0].get("duration") or 0)
-        high_c10l, low_c10l = int(span_c10l * 0.95), int(span_c10l * 0.3)
-        answer_cold_c10l = beat_c10l(one_c10l, high_c10l, span_c10l, "c10l-cold")
-        climb_c10l = [beat_c10l(one_c10l, int(span_c10l * step), span_c10l, "c10l-cold").get("playbackState")
-                      for step in (0.96, 0.97, 0.98)]
-        beat_c10l(two_c10l, low_c10l, span_c10l, "c10l-cross")
-        answer_cross_c10l = beat_c10l(two_c10l, high_c10l, span_c10l, "c10l-cross")
-        beat_c10l(three_c10l, low_c10l, span_c10l, "c10l-clientA")
-        answer_other_c10l = beat_c10l(three_c10l, high_c10l, span_c10l, "c10l-clientB")
-        check("a play completes only when a beat crosses 90% inside its own session",
-              answer_cold_c10l.get("playbackState") == "ignore" and viewed_c10l(one_c10l) == (None, None)
-              and climb_c10l == ["ignore", "ignore", "ignore"]
-              and answer_cross_c10l.get("playbackState") == "complete"
-              and viewed_c10l(two_c10l)[0] == 1
-              and answer_other_c10l.get("playbackState") == "ignore"
-              and viewed_c10l(three_c10l)[0] is None,
-              "cold %r %s climb %s, crossed %r %s, other client %r %s"
-              % (answer_cold_c10l.get("playbackState"), viewed_c10l(one_c10l), climb_c10l,
-                 answer_cross_c10l.get("playbackState"), viewed_c10l(two_c10l),
-                 answer_other_c10l.get("playbackState"), viewed_c10l(three_c10l)))
-    else:
-        skip("a play completes only when a beat crosses 90% inside its own session",
-             "need three unwatched movies")
+    # One row is enough, and the suite has watched and merged rows by the time this runs:
+    # every case is a distinct SESSION against the same item, and what is asserted is
+    # whether the beat ADDS a view.
+    span_c10l = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    high_c10l, low_c10l = int(span_c10l * 0.95), int(span_c10l * 0.3)
+    def views_c10l():
+        row = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+        return int(row.get("viewCount") or 0)
+    was_cold_c10l = views_c10l()
+    answer_cold_c10l = beat_c10l(movie, high_c10l, span_c10l, "c10l-cold")
+    climb_c10l = [beat_c10l(movie, int(span_c10l * step), span_c10l, "c10l-cold").get("playbackState")
+                  for step in (0.96, 0.97, 0.98)]
+    now_cold_c10l = views_c10l()
+    beat_c10l(movie, low_c10l, span_c10l, "c10l-cross")
+    answer_cross_c10l = beat_c10l(movie, high_c10l, span_c10l, "c10l-cross")
+    now_cross_c10l = views_c10l()
+    beat_c10l(movie, low_c10l, span_c10l, "c10l-clientA")
+    answer_other_c10l = beat_c10l(movie, high_c10l, span_c10l, "c10l-clientB")
+    now_other_c10l = views_c10l()
+    check("a play completes only when a beat crosses 90% inside its own session",
+          bool(span_c10l) and answer_cold_c10l.get("playbackState") == "ignore"
+          and now_cold_c10l == was_cold_c10l
+          and climb_c10l == ["ignore", "ignore", "ignore"]
+          and answer_cross_c10l.get("playbackState") == "complete"
+          and now_cross_c10l == was_cold_c10l + 1
+          and answer_other_c10l.get("playbackState") == "ignore"
+          and now_other_c10l == now_cross_c10l,
+          "cold %r %s->%s climb %s, crossed %r ->%s, other client %r ->%s"
+          % (answer_cold_c10l.get("playbackState"), was_cold_c10l, now_cold_c10l, climb_c10l,
+             answer_cross_c10l.get("playbackState"), now_cross_c10l,
+             answer_other_c10l.get("playbackState"), now_other_c10l))
 
     # Measured on plexscratch: a beat with NO `duration` stores nothing and completes nothing,
     # and answers the offset the item already has; `duration=0` is a 200 that stores nothing,

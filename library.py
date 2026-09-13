@@ -315,9 +315,11 @@ class Library:
             # A position inside the last 10% is a completion, not a resume point:
             # the reference answers `viewOffset: -1` from there on.
             near_end = completes and total and int(offset) >= total * 0.9
-            # Nothing is stored for a beat whose own `duration` is missing or zero: measured,
-            # the row is untouched at 130 s and at 95% of its real length alike.
-            if total and int(offset) > 60000 and not near_end:
+            # Nothing is stored for a TIMELINE beat whose own `duration` is missing or zero:
+            # measured, the row is untouched at 130 s and at 95% of its real length alike.
+            # `/:/progress` (`completes=False`) is the exception, and never sends a duration:
+            # cycle 9 measured it storing any position past a minute.
+            if (total or not completes) and int(offset) > 60000 and not near_end:
                 row["viewOffset"] = int(offset)
                 row["lastViewedAt"] = _now()
                 # Measured: a progress beat stamps `lastViewedAt` on the SEASON and the SHOW
