@@ -5972,9 +5972,26 @@ class PlexSim:
             key = ("/hubs/home/recentlyAdded?type=2&sectionID=%s" % section["key"]
                    if is_show else
                    "/library/sections/%s/all?sort=addedAt:desc" % section["key"])
+            identifier = "%s.recentlyadded.%s" % ("tv" if is_show else "movie",
+                                                  section["key"])
+            shelf_title = "Recently Added in %s" % (section.get("title") or "")
+            if query.get("pinnedContentDirectoryID"):
+                # Measured on zen, the 1.42.2 build plexsim reports: when the client
+                # sends `pinnedContentDirectoryID` beside `contentDirectoryID` -- and
+                # Plex Web always does, its Promoted fetch builds both -- this shelf
+                # comes back under a different identifier, title and key entirely:
+                # `home.movies.recent.1` / "Recently Added Movies" keyed on
+                # `/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=1`, and
+                # `home.television.recent.2` / "Recently Added TV" for a show library.
+                # kids (1.43.4) ignores the parameter, so this follows zen. plexsim
+                # answered the bare shape to both.
+                identifier = "home.%s.recent.%s" % ("television" if is_show else "movies",
+                                                    section["key"])
+                shelf_title = "Recently Added %s" % ("TV" if is_show else "Movies")
+                key = ("/hubs/home/recentlyAdded?type=%s&pinnedContentDirectoryID=%s"
+                       % (2 if is_show else 1, section["key"]))
             hubs.append(self.home_hub(
-                "%s.recentlyadded.%s" % ("tv" if is_show else "movie", section["key"]),
-                "Recently Added in %s" % (section.get("title") or ""), key,
+                identifier, shelf_title, key,
                 [_listing_row(r) for r in rows], query,
                 kind="mixed" if is_show else "movie", promoted=True))
         if not wanted:
