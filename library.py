@@ -1026,7 +1026,10 @@ class Library:
             # The agent supplies tag names and no ids; without this the row
             # keeps its detail page and disappears from every secondary filter.
             self.catalog.number_tags(row)
-        row["guid"] = guid
+        if guid:
+            # Measured: an EMPTY guid with a name is a 200 that renames the row and
+            # refreshes it, leaving the identity alone -- not a write of an empty guid.
+            row["guid"] = guid
         if name:
             row["title"] = name
         if year:
@@ -1035,7 +1038,9 @@ class Library:
             except (TypeError, ValueError):
                 pass
         row["updatedAt"] = _now()
-        self.add_activity(row.get("title") or "", title="Matching")
+        # No activity here: the server runs the measured refresh sequence around this call,
+        # which starts one and ENDS it. The activity added here was never finished, so
+        # /activities grew a stale `Matching` row per match for the life of the process.
         return row
 
     def refresh(self, row):

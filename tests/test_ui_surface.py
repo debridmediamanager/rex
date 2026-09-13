@@ -7214,6 +7214,53 @@ def main():
              after_c10h.get("thumb"), states_c10h, status_pick_c10h, picked_c10h[:60], thumb_c10h,
              selected_c10h, after_bogus_c10h, lists_c10h))
 
+    # Measured on plexscratch: a match needs a `name` (a guid alone is a 400), an EMPTY guid
+    # with a name is a 200 that just renames and refreshes, and matching to a guid ANOTHER
+    # row in the library already carries MERGES this row into that one -- this row is deleted,
+    # the survivor keeps both Media, and the frames are the merge's followed by the survivor's
+    # refresh. Every match ends its activity. plexsim accepted a nameless match, refused an
+    # empty guid, left two rows with one guid, and started a `Matching` activity that never
+    # ended -- one per match, for the life of the process.
+    spare_c10i = spare if spare and spare != movie else None
+    if spare_c10i:
+        def titles_c10i(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+        target_c10i = titles_c10i(spare_c10i)
+        status_noname_c10i, _, _ = request(base, "PUT", "/library/metadata/%s/match?guid=%s"
+                                           % (movie, urllib.parse.quote(target_c10i.get("guid") or "", safe="")))
+        status_empty_c10i, body_empty_c10i, _ = request(
+            base, "PUT", "/library/metadata/%s/match?guid=&name=c10+renamed" % movie)
+        renamed_c10i = titles_c10i(movie)
+        _, frames_c10i = notifications(
+            base, lambda: request(base, "PUT", "/library/metadata/%s/match?guid=%s&name=%s&year=%s"
+                                  % (movie, urllib.parse.quote(target_c10i.get("guid") or "", safe=""),
+                                     "c10+matched", target_c10i.get("year") or 2000)), seconds=3)
+        states_c10i = [(e.get("type"), e.get("state"), e.get("metadataState"), str(e.get("itemID")))
+                       for f in frames_c10i or []
+                       for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+        events_c10i = [a.get("event") for f in frames_c10i or []
+                       for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+        gone_c10i, _, _ = request(base, "GET", "/library/metadata/%s" % movie)
+        survivor_c10i = titles_c10i(spare_c10i)
+        activities_c10i = [a.get("title") for a in get(base, "/activities")[1].get("Activity") or []]
+        check("a match needs a name, an empty guid renames, and a guid another row holds merges",
+              status_noname_c10i == 400
+              and is_empty_200(status_empty_c10i, body_empty_c10i)
+              and renamed_c10i.get("title") == "c10 renamed"
+              and states_c10i[:2] == [(1, 3, None, str(movie)), (1, 9, "deleted", str(movie))]
+              and (-1, 3, None, str(spare_c10i)) in states_c10i
+              and states_c10i[-1] == (1, 5, None, str(spare_c10i))
+              and events_c10i[:1] == ["started"] and events_c10i[-1:] == ["ended"]
+              and gone_c10i == 404
+              and len(survivor_c10i.get("Media") or []) == 2
+              and "Matching" not in activities_c10i,
+              "HTTP %s/%s, renamed %r, frames %s, events %s, gone %s, survivor media %s, activities %s"
+              % (status_noname_c10i, status_empty_c10i, renamed_c10i.get("title"), states_c10i,
+                 events_c10i, gone_c10i, len(survivor_c10i.get("Media") or []), activities_c10i))
+    else:
+        skip("a match needs a name, an empty guid renames, and a guid another row holds merges",
+             "need a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
