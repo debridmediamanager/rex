@@ -2956,6 +2956,9 @@ the same parameters, then read back from both.
   history row. A timeline with NO `duration` answered `ignore` on plexscratch, but its
   clips are ten seconds long, so that cannot be told apart from a position past the
   item's own length; it was not acted on.
+- **A second completion of the same play answers `ignore`.** Two `stopped` beats at 98%
+  count one view on both servers, but the second one's `playbackState` is `ignore` on the
+  reference, where plexsim said `complete` again.
 
 ### Emulation calibrated against the account's own claimed servers
 

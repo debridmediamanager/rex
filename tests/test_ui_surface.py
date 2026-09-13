@@ -6225,6 +6225,21 @@ def main():
         skip("a timeline refuses a time past its duration and an unparseable time or duration",
              "need a second movie")
 
+    # Measured on plexscratch: a second completion of the same play answers `ignore` -- it
+    # counts nothing -- where plexsim answered `complete` again.
+    if spare:
+        def timeline_w11b(time_w11b):
+            return ("/:/timeline?ratingKey=%s&key=%s&state=stopped&time=%s&duration=600000"
+                    % (spare, quote("/library/metadata/%s" % spare), time_w11b))
+        container(base, "GET", timeline_w11b("120000"))
+        first_w11b = container(base, "GET", timeline_w11b("590000"))[1].get("playbackState")
+        second_w11b = container(base, "GET", timeline_w11b("590000"))[1].get("playbackState")
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % spare)
+        check("a second completion of the same play answers ignore",
+              (first_w11b, second_w11b) == ("complete", "ignore"), "%s then %s" % (first_w11b, second_w11b))
+    else:
+        skip("a second completion of the same play answers ignore", "need a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

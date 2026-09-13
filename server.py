@@ -6468,6 +6468,7 @@ class PlexSim:
             playing_session = (query.get("X-Plex-Session-Identifier")
                                or (headers.get("X-Plex-Session-Identifier") if headers else None)
                                or client or "")
+            already = row.get("_completed") == (playing_session or True)
             self.library.progress(int(rating_key), offset_ms, state=state,
                                   duration=total_ms, device_id=device,
                                   session=playing_session)
@@ -6482,7 +6483,10 @@ class PlexSim:
             if offset_ms > 60000:
                 playback_state = "progress"
                 if total and offset_ms >= total * 0.9:
-                    playback_state = "complete"
+                    # Measured on a writable copy of the reference: a second completion
+                    # of the same play counts nothing and answers `ignore`, where
+                    # plexsim said `complete` again.
+                    playback_state = "ignore" if already else "complete"
             view_count = int(row.get("viewCount") or 0)
             if state == "stopped":
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0,

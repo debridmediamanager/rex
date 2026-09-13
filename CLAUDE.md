@@ -708,6 +708,7 @@ precisely how the Seasons bug survived a fix attempt.
   one past the end, and a missing or unparseable `time` is a 500.
 - **A timeline refuses a position it cannot place**: a `time` past the `duration` sent
   with it, or a negative or non-numeric `time` or `duration`, is a 400.
+- **A second completion of one play answers `ignore`**, not `complete` again.
 
 ## Conventions
 
