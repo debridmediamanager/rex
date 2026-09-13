@@ -9817,6 +9817,29 @@ def main():
           % ({k_c14q: sorted(set(v_c14q)) for k_c14q, v_c14q in cross_c14q.items()},
              sorted(set(rating_c14q)), genre_c14q))
 
+
+    # Cycle 14: `/library/metadata/{id}/background` and `/composite` are 404s on kids
+    # and zen alike -- every row type, bare and versioned -- and plexsim served image
+    # bytes from both. `thumb`, `art` and `poster` beside them are real and stay 200.
+    # A playlist's and a collection's `/composite` is real and is served elsewhere.
+    def artstatus_c14r(key_c14r, leaf_c14r):
+        return request(base, "GET", "/library/metadata/%s/%s" % (key_c14r, leaf_c14r))[0]
+
+    gone_c14r = [artstatus_c14r(movie, leaf_c14r) for leaf_c14r in
+                 ("background", "background/1", "composite", "composite/1")]
+    kept_c14r = [artstatus_c14r(movie, leaf_c14r) for leaf_c14r in
+                 ("thumb", "art", "poster", "thumb/1")]
+    show_gone_c14r = ([artstatus_c14r(show, "composite"),
+                       artstatus_c14r(show, "background")] if show else [404, 404])
+    lists_c14r = get(base, "/playlists")[1].get("Metadata") or []
+    list_composite_c14r = (request(base, "GET", "/playlists/%s/composite/1"
+                                   % lists_c14r[0]["ratingKey"])[0] if lists_c14r else 200)
+    check("background and composite are 404s on an item, and the real leaves stay",
+          gone_c14r == [404] * 4 and kept_c14r == [200] * 4
+          and show_gone_c14r == [404, 404] and list_composite_c14r == 200,
+          "item gone %s | kept %s | show %s | playlist composite %s"
+          % (gone_c14r, kept_c14r, show_gone_c14r, list_composite_c14r))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
