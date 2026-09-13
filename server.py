@@ -1491,6 +1491,46 @@ class PlexSim:
         self.library.finish_activity(activity)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
 
+    def notify_show_cascade(self, show):
+        """The frames a show-wide re-read pushes, measured on a writable copy of the reference.
+
+        The show goes queued -> processing -> loading inside one `Updating Metadata`
+        activity; then each SEASON in turn (state 5 `processing`, then 4 `loading`) with its
+        EPISODES inside it (5 `processing`, 4 `loading` twice, then 5 with no metadataState);
+        each episode is then announced again with `mediaState` analyzing and thumbnailing and
+        a bare 5; the season closes at 5, the activity steps per season, and the SHOW's own
+        state 5 ends the cascade. Forty frames for a two-season show, and the shape is what
+        clears every `!!metadataState` gate the client latches on.
+        """
+        activity = self.library.add_activity(show.get("title") or "", progress=-1)
+        self.notify_timeline(show, self.TIMELINE_QUEUED, "queued")
+        self.notify_timeline(show, self.TIMELINE_QUEUED, "processing")
+        self.notify_timeline(show, self.TIMELINE_LOADING, "loading")
+        seasons = self.catalog.children(show["ratingKey"])
+        for number, season in enumerate(seasons, 1):
+            # The same string a season's own frames carry: `<show> S01`.
+            activity["subtitle"] = "%s S%02d" % (show.get("title") or "",
+                                                 int(season.get("index") or 0))
+            activity["progress"] = int(round(number * 89.0 / max(len(seasons), 1)))
+            self.notify_activity(activity, "updated")
+            self.notify_timeline(season, self.TIMELINE_DONE, "processing")
+            self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
+            episodes = self.catalog.children(season["ratingKey"])
+            for episode in episodes:
+                self.notify_timeline(episode, self.TIMELINE_DONE, "processing")
+                self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+                self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+                self.notify_timeline(episode, self.TIMELINE_DONE, None)
+            for episode in episodes:
+                # The media pass, measured after the metadata one: the same rows again,
+                # analyzing then thumbnailing, then bare.
+                self.notify_timeline(episode, self.TIMELINE_DONE, None, media_state="analyzing")
+                self.notify_timeline(episode, self.TIMELINE_DONE, None, media_state="thumbnailing")
+                self.notify_timeline(episode, self.TIMELINE_DONE, None)
+            self.notify_timeline(season, self.TIMELINE_DONE, None)
+        self.library.finish_activity(activity)
+        self.notify_timeline(show, self.TIMELINE_DONE, None)
+
     def notify_edited(self, row, metadata_state="loading"):
         """The two frames an EDIT pushes: state 3, then done. plexsim pushed none,
         so an edit made here was invisible to every other open client. Measured:
@@ -5332,6 +5372,12 @@ class PlexSim:
                 else:
                     stored[name] = value
                 logger.info("ITEM PREF %s %s = %s", rating_key, name, value)
+            if writes and row.get("type") == "show":
+                # Measured on a writable copy of the reference: a setting that changes how a
+                # show is read -- `showOrdering` above all -- re-reads the whole show, and
+                # the cascade is what tells every other client to refetch it. plexsim stored
+                # the value and pushed nothing.
+                self.notify_show_cascade(row)
             return ("empty", 200)
         if leaf == "subtitles":
             # The Search Subtitles dialog. A real PMS answers with `Stream` rows
