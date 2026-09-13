@@ -9769,6 +9769,28 @@ def main():
           "recentlyReleased %s/%s | unwatched %s %r"
           % (rr_c14o, rr_typed_c14o, unwatched_c14o[0], unwatched_c14o[1].get("title2")))
 
+
+    # Cycle 14: `/banners` and `/thumbs` are artwork candidate lists on BOTH references
+    # -- 200 with the same container shape as `/posters` -- and plexsim 404'd them.
+    # `banners` is empty on kids and zen alike; `thumbs` lists the media bundle's video
+    # thumbnails, which plexsim has none of. `/squareArts` stays a 404: it is 200 on
+    # kids (1.43.4) and 404 on zen (1.42.2), the version plexsim reports.
+    art_c14p = {}
+    for leaf_c14p in ("posters", "arts", "banners", "thumbs", "squareArts"):
+        status_c14p, body_c14p, _ = request(
+            base, "GET", "/library/metadata/%s/%s" % (movie, leaf_c14p))
+        parsed_c14p = (json.loads(body_c14p).get("MediaContainer", {})
+                       if body_c14p[:1] == b"{" else {})
+        art_c14p[leaf_c14p] = (status_c14p, parsed_c14p.get("size"),
+                               "identifier" in parsed_c14p)
+    writes_c14p = (request(base, "PUT", "/library/metadata/%s/banners" % movie)[0],
+                   request(base, "POST", "/library/metadata/%s/thumbs" % movie)[0])
+    check("banners and thumbs are empty candidate lists, and squareArts stays a 404",
+          art_c14p["banners"] == (200, 0, True) and art_c14p["thumbs"] == (200, 0, True)
+          and art_c14p["squareArts"][0] == 404 and art_c14p["posters"][0] == 200
+          and art_c14p["arts"][0] == 200 and writes_c14p == (404, 404),
+          "%s | writes %s" % (art_c14p, writes_c14p))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

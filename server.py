@@ -5830,6 +5830,17 @@ class PlexSim:
             if method == "POST":
                 return self.upload_artwork(row, leaf, body)
             return self.artwork_list(row, leaf)
+        if leaf in ("banners", "thumbs"):
+            # Cycle 14: two more artwork candidate lists, 200 on kids (1.43.4) AND zen
+            # (1.42.2) where plexsim answered 404. `banners` is empty on both servers;
+            # `thumbs` lists the video thumbnails out of the media BUNDLE (3 on kids, 1
+            # on zen), which plexsim has none of -- so an empty list of the same shape
+            # is the honest answer, the way `arts` already answers for a season.
+            # `/squareArts` is NOT here on purpose: it is 200 on kids and 404 on zen,
+            # so it is 1.43.4-only and plexsim reports 1.42.2.
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.tag_container(size=0, _xml={"Metadata": "Photo"})
         if leaf == "tree":
             # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
             # the season. The dialog reads the whole branch, not just the leaf.
