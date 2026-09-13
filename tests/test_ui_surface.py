@@ -9400,6 +9400,38 @@ def main():
           "movie %d | episode %d | show %d | type10 %d | advanced %d"
           % (len(movie_c14d), len(ep_c14d), len(show_c14d), len(ten_c14d), len(adv_c14d)))
 
+
+    # Cycle 14: the grid's filter bar is built from `Meta.Type[].Filter`, which is a
+    # different fixture from /filters and carried the same 1.43.4 axes. On zen
+    # (1.42.2) a movie Type advertises 22 and an episode Type 9; on kids (1.43.4)
+    # they are 28 and 17. Trimming /filters alone left the two disagreeing, which is
+    # worse than either: the bar drew axes the axis list no longer names.
+    codec_c14e = {"hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
+                  "audioLayout"}
+
+    def metatypes_c14e(section, type_number):
+        types_c14e = (get(base, "/library/sections/%s/all?type=%s&includeMeta=1"
+                          % (section, type_number))[1].get("Meta") or {}).get("Type") or []
+        return {t.get("type"): [f.get("key", "").rsplit("/", 1)[-1].split("?")[0]
+                                for f in t.get("Filter") or []] for t in types_c14e}
+
+    mv_c14e = metatypes_c14e(movie_section, 1)
+    if not show_section:
+        skip("the Meta descriptor advertises its version's filter list", "need a show")
+    else:
+        sh_c14e = metatypes_c14e(show_section, 2)
+        check("the Meta descriptor advertises its version's filter list",
+              len(mv_c14e.get("movie") or []) == 22
+              and len(sh_c14e.get("episode") or []) == 9
+              and len(sh_c14e.get("show") or []) == 15
+              and not codec_c14e & set(mv_c14e.get("movie") or [])
+              and not codec_c14e & set(sh_c14e.get("episode") or [])
+              and "hdr" in (mv_c14e.get("movie") or [])
+              and "hdr" not in (sh_c14e.get("episode") or []),
+              "movie %d | episode %d | show %d"
+              % (len(mv_c14e.get("movie") or []), len(sh_c14e.get("episode") or []),
+                 len(sh_c14e.get("show") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
