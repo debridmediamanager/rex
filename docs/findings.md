@@ -3411,6 +3411,27 @@ limits turn out to be one rule:
   server does not have answers `size 0` with no `Device` and no `Account` row, and an empty or
   non-numeric `accountID` is a 400. plexsim answered the whole server to all of them.
 
+Measured in the tenth pass's third batch and not acted on:
+
+- **Not reproduced: the `Session` block appearing only after a DECISION.** The hunt reported
+  that a timeline-only session carries no `Session` block and a decision creates one.
+  Re-measured with a decision that answers 200 and the same session identifier, the copy
+  carries no `Session` block at all, before or after -- it is unclaimed, and that block holds
+  the measured bandwidth. plexsim's stays as it is, and the row's derived `bandwidth` remains
+  on the deliberately-not-implemented list.
+- **What the copy cannot witness.** An unclaimed PMS 401s everything but `/identity`, so
+  `/status/sessions/terminate` cannot be measured there in any form; `/statistics/*` is a 404
+  on it, so the statistics rules came from kids and fun instead; and neither reference could
+  witness a live `/status/sessions` row, because opening one is a write -- the session row's
+  own shape is therefore the copy's alone.
+- **Only Plex Web was seen**, so `Player.profile` is `Web` for every session here; what another
+  product's profile reads as is not measured.
+- **An unmatched row's timeline answer** on the copy carries no `skipCount`, `viewCount` or
+  `viewOffset` at all, where a matched one carries all three. No plexsim catalog has a row
+  without an identity, so there is nothing to reproduce it against.
+- **`/statistics/resources`** answers per-second host samples on both references and one row
+  with no memory figures here: a stdlib server on another machine has no such numbers.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
