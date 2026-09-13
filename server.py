@@ -2718,6 +2718,10 @@ class PlexSim:
             # ratingKey, and a row carries its Media only when a `type` was given.
             # plexsim ignored every parameter and answered all its rows every time,
             # which is what python-plexapi's `library.search(libtype=)` read.
+            # Measured on both servers: `/library/all` refuses an unparseable
+            # `type=` with 400 where a section listing answers 500, and both answer
+            # 500 to an empty one.
+            self._parsed_type(query, status=400)
             source = sorted(catalog.items.values(), key=lambda r: int(r["ratingKey"]))
             kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
             if kinds:
@@ -3745,6 +3749,12 @@ class PlexSim:
         wanted = {"1": "movie", "2": "show", "3": "season",
                   "4": "episode"}.get(str(query.get("type") or ""))
         if wanted is None:
+            if query.get("type"):
+                # Measured on both servers: a type NUMBER the library holds no rows
+                # of -- 8, 9, 10, 12, 13, 19, 99, -1 -- answers an empty listing, not
+                # the library. plexsim fell back to every row in the section, so a
+                # client asking a movie library for its tracks was handed its movies.
+                return []
             return self.catalog.section_items(section_id)
         rows = [r for r in self.catalog.items.values()
                 if r.get("type") == wanted
@@ -3836,6 +3846,26 @@ class PlexSim:
         body["MediaContainer"].pop("title2", None)
         return body
 
+    @staticmethod
+    def _parsed_type(query, status=500):
+        """`type=` has to PARSE as a whole number, or the listing is refused.
+
+        Measured on kids (1.43.4) and zen (1.42.2), identically: a section listing
+        answers 500 to `type=abc`, `type=1.5` and an empty `type=`, while `type=-1`
+        and `type=99` are 200 with no rows -- an unknown number selects nothing, a
+        non-number is a refusal. `/library/all` refuses the same values with 400 and
+        keeps 500 for the empty one, which is why the status is a parameter here.
+        plexsim answered the whole unfiltered grid to all three.
+        """
+        raw = query.get("type")
+        if raw is None:
+            return None
+        if str(raw).strip() == "":
+            raise filters_module.FilterError(500, "bad type %r" % raw)
+        if not str(raw).lstrip("-").isdigit():
+            raise filters_module.FilterError(status, "bad type %r" % raw)
+        return int(raw)
+
     def section_listing(self, section_id, section, query):
         """`/library/sections/{id}/all` -- the grid, with the client's filters.
 
@@ -3848,6 +3878,7 @@ class PlexSim:
             # rather than at /library/sections/{id}/collections.
             rows = self.library.collections(section_id)
             return self.listing_container(section_id, section, rows, query=query)
+        self._parsed_type(query)
         source = self.typed_rows(section_id, query)
 
         source, _ = self.apply_filters(source, query, section)
