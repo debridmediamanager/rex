@@ -1,4 +1,4 @@
-# plexsim handover — 2026-09-13 (refreshed after cycle 9)
+# plexsim handover — 2026-09-13 (refreshed during cycle 10)
 
 This file hands over the "implement everything the Plex UI asks of the server"
 programme: the measurement-cycle loop, how it is run, where it stands, and what bit
@@ -14,19 +14,35 @@ is run. Those two record what was measured.
 
 | | |
 |---|---|
-| `main` | the cycle-9 docs commit on top of `4f2bb31`, equal to `origin/main`, clean tree |
-| Worktrees and stashes from this work | none (the `cycle9` worktree and branch were removed) |
-| Cycles completed | 9. Cycle 9 had findings, so **cycle 10 is due**. |
-| Work half-done | **none**. Every finding reported so far is implemented, recorded as deliberately not implemented, or refuted by re-measurement. |
+| `main` | cycle 10's work, merged from `cycle10` |
+| Worktrees and stashes from this work | none once cycle 10's `wt10` is removed |
+| Cycles completed | 10, in three batches. Cycle 10 had findings, so **cycle 11 is due**. |
+| Work half-done | **cycle 10's third hunt**. Its territory (the playback and session surface on real-length media) is written and its instrument is built; the hunter died on a model rate limit before reporting, so nothing from it has been measured. See §10. |
 
-Suite results at `4220879` (the code as of `4f2bb31`, plus test fixes), all run on 2026-09-13:
+Cycle 10 ran as three batches:
+
+| Batch | Territory | Outcome |
+|---|---|---|
+| 1 (opus) | `mediainfo.py` against fun's own analysis of the same real files | 16 rules, all re-measured; 22 commits; corpus in `tests/fixtures/media/` and `tests/test_mediainfo.py` |
+| 2 (fable) | the writes cycle 9 did not reach, on plexscratch | 9 findings, all re-measured on the copy; 10 commits |
+| 3 (opus) | the playback and session surface, on plexscratch's long media | **did not report** -- the hunter hit its model's weekly limit. Its prompt and its partial request log survive; see §10 |
+
+Suite results at the end of cycle 10, all run on 2026-09-13:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **830/830**, 4 skipped | The skips need a TMDB key or real RD links |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **841/841**, 4 skipped | The skips need a TMDB key or real RD links. Restart the server between runs -- it writes, and the match check now merges a row away |
+| `tests/test_mediainfo.py` | **27/27** | Offline: 46 recorded probes against what fun and the reference wrote for the same files |
 | `tests/test_navigation.py` on the full catalog | **46/46** | |
 | `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). They are expected. |
-| `tests/test_all.py --skip-decode` | playQueue and decision PASS | Byte reads fail with 502 for the same reason |
+| `tests/test_all.py --skip-decode` | playQueue and decision PASS, output identical to `b3dd23f` | Byte reads fail with 502 for the same reason |
+
+Proof for cycle 10. Every commit was proven one at a time against ITS OWN parent commit:
+`c10/mdrive.py` for the media rules (the parent tree exported per patch, the offline check run
+against both) and `c10/sdrive.py` for the write rules (the parent commit exported and served,
+the patch's suite block run against both, committed only on fail-then-pass). The parent server
+is re-exported per patch, so "fails on the parent" means the commit's own parent rather than
+some older tree.
 
 Proof for cycle 9. Batch 1 (hunter B, `985293a`..`ae19756`) added 17 checks, all failing
 against `a7c3408` (768/784). Batch 2 (hunter A, `7589e32`..`4f2bb31`) was proven one check
@@ -264,6 +280,7 @@ The hunter runs (from the session transcript):
 | 7 | probe table + corpus replay diffed mechanically (opus) | python-plexapi as a third-party client (fable) |
 | 8 | every URL template in the web bundle, three servers, JSON and XML (opus) | the XML path, four client families, plexapi extended (fable hit a session rate limit; re-run on opus) |
 | 9 | write semantics on plexscratch: edits, play state, playlists, collections, queues, libraries, merge (fable) | the community OpenAPI description, every GET, three servers (fable hit a rate limit; re-run on opus) |
+| 10 | the writes cycle 9 did not reach, on plexscratch (fable) | `mediainfo.py` against fun's analysis of 35 real files (opus); a third batch, the session surface on long media, died on a rate limit |
 
 Commits of the loop era, newest first:
 
@@ -468,6 +485,37 @@ there, verbatim, in `hunt_prompts.md`.
 
 ---
 
+**Cycle 10 batch 1**, `mediainfo.py` against fun's own analysis of 35 real files
+
+- Codec names: DTS is `dca` (the Media's is `dca-ma` for DTS-HD MA), a Blu-ray subtitle `pgs`,
+  a DVD one `vobsub`, and ffprobe's `+ Dolby Atmos` profile is not written.
+- Languages: named in the language itself, ISO 639-2/T code, 639-1 tag (`languages.json`).
+- Ten-bit depth from the pixel format; `colorRange`; `scanType` from the field order;
+  `codedHeight` aligned to macroblocks for H.264; `streamIdentifier`; `codecID`; audio
+  `bitDepth`; ffprobe's channel layout verbatim; the average frame rate; rounded bitrates;
+  ffprobe's unknown profile and level markers dropped; a video stream's language and title.
+- Every video stream (a Dolby Vision enhancement layer is one; a cover image is not), and the
+  eight `DOVI*` attributes.
+- The resolution label bucketed by width AND height (`2k`, `2.7k`), and the aspect ratio
+  snapped to one of six values.
+- The Media's audio fields taken from the WIDEST audio track.
+- Track titles composed, and the codec added to `displayTitle` for the thirteen products that
+  get it (`_with_client_titles`).
+- A stored catalog's media fields corrected at load, with the titles composed last.
+
+**Cycle 10 batch 2**, the writes cycle 9 did not reach
+
+- A library's extras leaf and hub; an item's `/extras/{n}` is a 404.
+- A settings save pushes a `preference` frame per id, and `FriendlyName` names the server.
+- Track selection takes a POST.
+- Butler runs push a `butler` activity and answer empty; `DELETE /butler/{Task}` is a 404.
+- A smart list's Save replaces its stored query, `limit` included.
+- An artwork upload stores the image and re-versions the row; a pick is always a versioned
+  path, never the url; a playlist's and a collection's artwork list answer.
+- Fix Match needs a `name`, merges onto a guid another row holds, and ends its activity.
+- A scan names its library in a `Context` and steps a show library by season.
+- A show's prefs write pushes the refresh cascade of its seasons and episodes.
+
 ## 8. Safety rules and incidents
 
 The rules:
@@ -582,25 +630,37 @@ Added in cycle 9:
 
 ---
 
-## 10. Next: cycle 10
+## 10. Next: finish cycle 10's third batch, then cycle 11
 
-Cycle 9 had findings, so the loop continues. Suggested territories:
+**The one thing half-done.** Cycle 10's third hunt never ran. Its instrument is built and
+deployed: plexscratch has a `long` mode (30-minute movies, 22-minute episodes, its own
+`pristine-long/` baseline) and the prompt is written. Relaunch it before anything else --
+`c10/prompt_C.md` in cycle 10's scratch directory is the whole prompt, and the hunter is
+started by pointing an agent at that file. It needs plexscratch in `long` mode and a plexsim
+of its own; the copy is left in `long` mode for it. Its territory:
 
-1. **The writes cycle 9 did not reach, on plexscratch.** Smart playlist and collection
-   filter edits, butler task runs, server-settings writes (not network or auth), stream
-   and subtitle selection, artwork uploads by url, Fix Match offline, extras, and the
-   download queue. Item deletes need the copy's media mount made writable first.
-2. **Real-length media for the copy.** Rebuild plexscratch's media with long synthetic
-   clips so session-bound timelines, progress with a session, and "no duration" become
-   measurable; then re-measure the timeline and session surface with the client's own
-   session headers.
-3. **The write responses on the XML path** (no Accept header), which cycle 9 compared only
-   as JSON, and the frames cycle 9 captured only in part (§9), with longer settle times.
+1. A whole play with a session identifier, beat by beat, against `/status/sessions`.
+2. Timelines with no `duration`, and `/:/progress` inside a live session -- the two instrument
+   limits cycle 9 recorded, which long media is what removes.
+3. Completion on real lengths, two clients at once, terminate, the `playing` frames, and the
+   Dashboard counters.
 
-Before launching: refresh `hunt_prompts.md`, write a fresh `tokens.env`, pick ports,
-snapshot kids, and reset plexscratch. One hunter writes to plexscratch per cycle.
+Its partial request log (about 2.6 MB) and its scripts are in that scratch directory's
+`c10/sessions/`; it had reached the point of driving plays when it died. Nothing from it has
+been measured or implemented, and none of it is in the repository.
 
----
+Then cycle 11. Territories worth taking next:
+
+1. **The writes this cycle could not reach**: the download queue (needs a claimed copy), a
+   subtitle upload, and the library-create frames recorded in findings.md as captured only in
+   part.
+2. **The XML path of cycle 10's writes**, which were compared as JSON.
+3. **A second media corpus**: music and photo libraries are wholly unmeasured, and every
+   media rule in this cycle came from video.
+
+Before launching: refresh `hunt_prompts.md`, write a fresh `tokens.env`, pick ports, snapshot
+kids, and reset plexscratch (`./scratch.sh short` first unless the territory wants long media).
+One hunter writes to plexscratch per cycle.
 
 ## 11. Tooling and environment gotchas
 
