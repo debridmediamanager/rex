@@ -4070,12 +4070,13 @@ class PlexSim:
         # Reasons Why, 30 Rock, 86 EIGHTY-SIX, The 100` because The 100's titleSort
         # is "100". plexsim answered catalog order, so an edited Sort Title never
         # moved a row and the grid's own default disagreed with its sort control.
-        for _refused in REFUSED_FILTER_FIELDS:
-            # Measured on both references: a listing answers 500 to this field rather
-            # than filtering on it, whatever the operator key.
-            if any(key == _refused or key.startswith(_refused) and
-                   not key[len(_refused):].isalnum() for key in query):
-                return ("error", 500, "plexsim: cannot filter on %s" % _refused)
+        # Measured on both references: `parentIndex` is a 500 on a listing rather than a
+        # filter, whatever operator key follows it. The operator lives in the KEY, so
+        # the field is what is left once the operator characters come off the end.
+        refused = next((key for key in query
+                        if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS), None)
+        if refused:
+            return ("error", 500, "plexsim: cannot filter on %s" % refused)
         source, unsupported = self._sorted(source, query.get("sort") or "titleSort")
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
