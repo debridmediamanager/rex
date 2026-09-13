@@ -2424,6 +2424,8 @@ class PlexSim:
 
         if route == "/library/tags":
             return self.library_tags(query)
+        if route == "/library/randomArtwork" and method in ("GET", "HEAD"):
+            return self.random_artwork(query)
         if route == "/library/matches":
             return self.library_matches(query)
         if route == "/library/people":
@@ -3289,6 +3291,8 @@ class PlexSim:
             return self.autocomplete(section_id, section, query)
         if leaf in ("allLeaves", "albums", "cluster", "moment", "computePath", "nearest"):
             return self.section_leaf(section_id, section, leaf, query)
+        if leaf == "arts":
+            return self.section_arts(section_id, section)
         if leaf == "collections":
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
@@ -3678,6 +3682,55 @@ class PlexSim:
             extra["totalSize"] = len(rows)
         return self.listing_container(section_id, section, [_listing_row(r) for r in rows],
                                       view_group=view_group, query=query, **extra)
+
+    @staticmethod
+    def _artwork_row(row):
+        """One backdrop as the screensaver and the library's art list carry it: the
+        measured row, with every field but title and key blanked or -1."""
+        return {"title": row.get("title"), "type": "image", "key": row.get("art"),
+                "thumb": "", "label": "", "mediaType": "", "summary": "", "rating": -1,
+                "addDate": -1, "modDate": -1, "metaModDate": -1}
+
+    def random_artwork(self, query):
+        """`/library/randomArtwork?sections=` -- what a screensaver cycles through.
+
+        Measured on both servers: one `<Photo>` row per movie or show with a backdrop in
+        the named libraries, in a different order on every request, at most 100, in a
+        container carrying only `size`; no `sections` is `size 0`. plexsim 404'd it.
+        """
+        wanted = [s for s in (query.get("sections") or "").split(",") if s]
+        rows = [r for section_id in wanted for r in self.catalog.section_items(section_id)
+                if r.get("type") in ("movie", "show") and r.get("art")]
+        rows = sorted(rows, key=lambda _row: uuid.uuid4().hex)[:100]
+        return self.bare_container(size=len(rows), Metadata=[self._artwork_row(r) for r in rows],
+                                   _xml={"Metadata": "Photo"})
+
+    def section_arts(self, section_id, section):
+        """`/library/sections/{id}/arts` -- the library's backdrops.
+
+        Measured on both servers: the same `<Photo>` rows as randomArtwork, one per movie
+        or show with a backdrop, in ratingKey order, in the library's container (with
+        `nocache` and viewGroup `episode` on a show library). plexsim 404'd it.
+        """
+        is_show = section.get("type") == "show"
+        rows = sorted([r for r in self.catalog.section_items(section_id)
+                       if r.get("type") in ("movie", "show") and r.get("art")],
+                      key=lambda r: int(r["ratingKey"]))
+        fields = {
+            "allowSync": False,
+            "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
+            "identifier": "com.plexapp.plugins.library",
+            "mediaTagPrefix": "/system/bundle/media/flags/",
+            "mediaTagVersion": 1655122614,
+            "thumb": "/:/resources/show.png" if is_show else "/:/resources/movie.png",
+            "title1": section.get("title"),
+            "viewGroup": "episode" if is_show else "movie",
+            "viewMode": 65592,
+        }
+        if is_show:
+            fields["nocache"] = True
+        return self.bare_container(size=len(rows), Metadata=[self._artwork_row(r) for r in rows],
+                                   _xml={"Metadata": "Photo"}, **fields)
 
     def section_leaf(self, section_id, section, leaf, query):
         """Six section leaves the community OpenAPI description names, all 404 on plexsim.
