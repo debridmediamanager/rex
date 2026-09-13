@@ -9633,6 +9633,30 @@ def main():
           % (sorted(set(bad_c14k.values())), sorted(set(ok_c14k.values())),
              sorted(set(missing_c14k.values())), here_c14k))
 
+
+    # Cycle 14: the section `allLeaves` takes `group=` too -- the one part of the
+    # listing grammar cycle 11 left out of it. kids' 6 episodes group to 3 and zen's
+    # 9287 to 1144, the same as the grid's `type=4&group=index`. An ITEM's
+    # `/allLeaves?group=` is ignored on both references, so only this form takes it.
+    if not show_section:
+        skip("the section allLeaves takes group= and an item's does not", "need a show")
+    else:
+        plain_c14l = len(get(base, "/library/sections/%s/allLeaves" % show_section)[1]
+                         .get("Metadata") or [])
+        grouped_c14l = len(get(base, "/library/sections/%s/allLeaves?group=index"
+                               % show_section)[1].get("Metadata") or [])
+        grid_c14l = len(get(base, "/library/sections/%s/all?type=4&group=index"
+                            % show_section)[1].get("Metadata") or [])
+        item_c14l = len(get(base, "/library/metadata/%s/allLeaves?group=index" % show)[1]
+                        .get("Metadata") or [])
+        item_plain_c14l = len(get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                              .get("Metadata") or [])
+        check("the section allLeaves takes group= and an item's does not",
+              grouped_c14l == grid_c14l and grouped_c14l < plain_c14l
+              and item_c14l == item_plain_c14l,
+              "section %s -> %s (grid %s) | item %s -> %s"
+              % (plain_c14l, grouped_c14l, grid_c14l, item_plain_c14l, item_c14l))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -4300,6 +4300,14 @@ class PlexSim:
                     return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             elif not is_show:
                 rows, _ = self._sorted(rows, "titleSort")
+            if "group" in query:
+                # Cycle 14: `group=` is the last part of the grammar this surface was
+                # missing. `/library/sections/2/allLeaves?group=index` is 3 of kids'
+                # 6 episodes and 1144 of zen's 9287 -- the same number as
+                # `type=4&group=index` on the grid. plexsim ignored it and answered
+                # every leaf. (An ITEM's `/allLeaves?group=` is ignored on both
+                # references and on plexsim, so only the SECTION form takes it.)
+                rows = self.grouped(rows, query.get("group"))
             rows = self._limited(rows, query)
             shown = self._excluded_elements(
                 [_grid_row(r, keep_section=False, keep_guid=True)
