@@ -9364,6 +9364,18 @@ class Handler(BaseHTTPRequestHandler):
             if name not in query and self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
         lists = [key for key, value in body.items() if isinstance(value, list)]
+        # Measured on kids (1.43.4) and zen (1.42.2): a statistics container does NOT
+        # slice its Device and Account lists with the page. They are a LOOKUP for the
+        # rows -- the page carries exactly the devices and accounts its own rows name,
+        # by content, so a window past the end carries neither and a window over two
+        # devices carries both. plexsim sliced all three lists with the same offset, so
+        # the second page of a graph named a device it had not sent and lost the
+        # Account row entirely: the Dashboard's per-device and per-account series
+        # arrive unlabelable.
+        series = [key for key in lists if key.startswith("Statistics")]
+        lookups = {"Device": "deviceID", "Account": "accountID"}
+        if series and any(key in lists for key in lookups):
+            lists = series
         total = max([len(body[key]) for key in lists] or [int(body.get("size") or 0)])
         _, paged, start, _ = self.server.sim.page_window(range(total), query)
         if not paged:
@@ -9371,6 +9383,14 @@ class Handler(BaseHTTPRequestHandler):
         size = int(query["X-Plex-Container-Size"])
         sliced = {key: value[start:start + size] for key, value in body.items()
                   if key in lists}
+        if series and lists == series:
+            named = {field: {str(row.get(field)) for key in series
+                             for row in sliced.get(key) or []}
+                     for field in lookups.values()}
+            for key, field in lookups.items():
+                if isinstance(body.get(key), list):
+                    sliced[key] = [row for row in body[key]
+                                   if str(row.get("id")) in named[field]]
         count = sum(len(rows) for rows in sliced.values()) if lists else int(body.get("size") or 0)
         out = {"size": count, "totalSize": total, "offset": start}
         out.update({key: sliced.get(key, value) for key, value in body.items() if key != "size"})
