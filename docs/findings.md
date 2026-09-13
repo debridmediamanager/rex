@@ -3213,6 +3213,8 @@ below is one check there, and each check failed against the code before its fix.
 - **An H.264 stream's `codedHeight` is whole macroblocks** (1080 is 1088, 436 is 448, 536
   is 544; 12 streams on fun and 11 on the reference), where ffprobe 8.1 reports the cropped
   height. Other codecs take ffprobe's value.
+- **A video stream has a language and a title too**, from its tags (17 and 10 streams on
+  fun); plexsim set neither.
 
 ### Emulation calibrated against the account's own claimed servers
 

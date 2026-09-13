@@ -144,6 +144,37 @@ SKIP = {
     # AVI tracks the probe gives no id.
     ("fun-1057221-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
     ("fun-1150826-0", 1, "streamIdentifier"): "an AVI track fun numbers with no id in the probe",
+    # The reference's untagged video tracks.
+    ("kids-1-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-1-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-10-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-12-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-13-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-14-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-17-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-3-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-4-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-8-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 0, "language"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 0, "languageCode"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
+    ("kids-9-0", 0, "languageTag"): "the 1.43.4 reference labels an untagged track English; fun writes nothing",
 }
 
 
@@ -259,6 +290,11 @@ def _codec_id(fixture):
 @check("coded-height")
 def _coded_height(fixture):
     return per_stream(1, ("codedHeight",))(fixture)
+
+
+@check("video-language-title")
+def _video_language_title(fixture):
+    return per_stream(1, ("language", "languageCode", "languageTag", "title"))(fixture)
 
 
 def load(root):
