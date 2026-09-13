@@ -345,6 +345,36 @@ def compare(kind, operator, actual, wanted, field=""):
             return state <= target
         return state == target
 
+    if kind == "id":
+        # `id` is a real filter field on every listing -- measured on kids (1.43.4)
+        # and zen (1.42.2), and echoed by `/query/parse` as a Rule with an EMPTY
+        # `fieldTitle`, because it is a field no Meta advertises. It compares like
+        # the database column it is: a value that converts to a number compares
+        # numerically (`id=01` and `id= 1` both find row 1), and one that cannot --
+        # `abc`, an empty value -- sorts ABOVE every number, so nothing is `>` it,
+        # everything is `<` it, and `=` matches none while `!=` matches all. `==`
+        # and `!==` are the exact-string pair and never match a number at all.
+        # plexsim had no such field, so python-plexapi's `editions()` -- which asks
+        # `guid=<x>&id!=<self>` -- reported every item as its own duplicate.
+        if operator in ("==", "!=="):
+            return operator == "!=="
+        try:
+            target = float(str(wanted).strip())
+        except (TypeError, ValueError):
+            return operator in ("!=", "<<=", "<=")
+        actual = as_number(actual if actual is not None else 0)
+        if operator == ">>=":
+            return actual > target
+        if operator == ">=":
+            return actual >= target
+        if operator == "<<=":
+            return actual < target
+        if operator == "<=":
+            return actual <= target
+        if operator == "!=":
+            return actual != target
+        return actual == target
+
     if kind == "integer":
         target = as_number(wanted)
         if actual is None:
