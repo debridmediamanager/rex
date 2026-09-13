@@ -6206,6 +6206,25 @@ def main():
           "-5: %r/%r, -1: %r/%r" % (minus5_w10e.get("userRating"), minus5_w10e.get("lastRatedAt"),
                                     minus1_w10e.get("userRating"), minus1_w10e.get("lastRatedAt")))
 
+    # Measured on plexscratch: a timeline `time` past the `duration` sent with it, a negative
+    # or unparseable `time` and an unparseable `duration` are each a 400. plexsim answered
+    # 200, and a time past the duration completed the play.
+    if spare:
+        def timeline_w11a(time_w11a, duration_w11a):
+            return ("/:/timeline?ratingKey=%s&key=%s&state=stopped&time=%s&duration=%s"
+                    % (spare, quote("/library/metadata/%s" % spare), time_w11a, duration_w11a))
+        views_w11a = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata") or [{}])[0].get("viewCount")
+        statuses_w11a = [container(base, "GET", timeline_w11a(*pair))[0]
+                         for pair in (("700000", "600000"), ("-5", "600000"), ("abc", "600000"),
+                                      ("120000", "abc"))]
+        after_w11a = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata") or [{}])[0].get("viewCount")
+        check("a timeline refuses a time past its duration and an unparseable time or duration",
+              statuses_w11a == [400, 400, 400, 400] and after_w11a == views_w11a,
+              "HTTP %s, viewCount %r -> %r" % (statuses_w11a, views_w11a, after_w11a))
+    else:
+        skip("a timeline refuses a time past its duration and an unparseable time or duration",
+             "need a second movie")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

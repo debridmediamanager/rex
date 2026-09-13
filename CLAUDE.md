@@ -706,6 +706,8 @@ precisely how the Seasons bug survived a fix attempt.
   follows the index), and every emptied title keeps the old title's sort form.
 - **`/:/progress` never completes a play**: it stores any position past a minute, even
   one past the end, and a missing or unparseable `time` is a 500.
+- **A timeline refuses a position it cannot place**: a `time` past the `duration` sent
+  with it, or a negative or non-numeric `time` or `duration`, is a 400.
 
 ## Conventions
 
