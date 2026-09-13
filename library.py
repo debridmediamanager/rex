@@ -1039,6 +1039,8 @@ class Library:
                 row.pop("titleSort", None)
             self._follow_parent(row, {"title"})
             row["updatedAt"] = _now()
+            if row["type"] == "season":
+                self._unmatch_season_children(row, identify)
             return row
         for key in self.UNMATCH_DROPS:
             row.pop(key, None)
@@ -1057,6 +1059,44 @@ class Library:
         row["updatedAt"] = _now()
         self.add_activity(row.get("title") or "", title="Unmatching")
         return row
+
+    # Measured on a writable copy of the reference by diffing the show, the season
+    # and all three episodes either side of one `PUT .../unmatch` on the SEASON: the
+    # call CASCADES. Every episode under the season is unmatched as well, and each
+    # one's `parentGuid` follows the season to its new `local://` guid -- so an
+    # unmatched season never has matched episodes under it. The season also loses
+    # its own `year` (the show's then shows through as `parentYear`) and its `thumb`
+    # falls back to the SHOW's, because the season no longer has an agent-supplied
+    # poster of its own. kids shows the same end state from the other side: its
+    # unmatched season 11 carries the show's thumb, no `year` and `parentYear`.
+    #
+    # The episode drops here are the ones that cascade measured -- the four people
+    # lists, `audienceRating`, `year` and the emptied `summary`. A DIRECT
+    # `unmatch` on an episode whose season is still matched was never diffed field
+    # for field (cycle 9 recorded only its guid and title), so the same drops are
+    # deliberately NOT applied there; see HANDOVER.md §3.3.
+    EPISODE_CASCADE_DROPS = ("Director", "Writer", "Producer", "Role",
+                             "audienceRating", "year")
+
+    def _unmatch_season_children(self, season, identify=None):
+        parent = self.catalog.items.get(int(season["parentRatingKey"])) \
+            if str(season.get("parentRatingKey") or "").isdigit() else None
+        season.pop("year", None)
+        if parent is not None:
+            if parent.get("year") is not None:
+                season["parentYear"] = parent["year"]
+            if parent.get("thumb"):
+                season["thumb"] = parent["thumb"]
+        for leaf in list(self.catalog.items.values()):
+            if leaf.get("type") != "episode" \
+                    or str(leaf.get("parentRatingKey")) != str(season["ratingKey"]):
+                continue
+            self.unmatch(leaf, identify)
+            for field in self.EPISODE_CASCADE_DROPS:
+                leaf.pop(field, None)
+            leaf["summary"] = ""
+            leaf["parentGuid"] = season["guid"]
+            leaf.pop("parentThumb", None)
 
     def matches(self, row, query=None, year=None, identify=None):
         """`GET /library/metadata/{id}/matches` -- candidates for Fix Match.
