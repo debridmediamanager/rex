@@ -3397,17 +3397,23 @@ class PlexSim:
                 # `agent` or no `scanner`, and for an unknown agent, scanner or
                 # language. plexsim accepted every one of those with a 200, so a
                 # typo in the dialog looked like it had been saved.
-                if not query.get("name"):
-                    return ("error", 400, "plexsim: bad request")
-                if not query.get("agent") or not query.get("scanner"):
+                # Re-measured on the copy, correcting the reading above: what an edit
+                # needs is an `agent`, not a `name` and not a `scanner`. The client's own
+                # library-UPGRADE form sends `agent` and `scanner` and nothing else, and
+                # `agent` alone is a 200 too; `name` alone, `scanner` alone, `language`
+                # alone and an empty form are all 400. plexsim demanded `name`, so the
+                # upgrade form -- the one whose failure the bundle reports as "There was
+                # a problem upgrading the library" -- was refused every time.
+                if not query.get("agent"):
                     return ("error", 400, "plexsim: bad request")
                 if query["agent"] not in KNOWN_AGENTS:
                     return ("error", 400, "plexsim: bad request")
-                if query["scanner"] not in KNOWN_SCANNERS:
+                if query.get("scanner") and query["scanner"] not in KNOWN_SCANNERS:
                     return ("error", 400, "plexsim: bad request")
                 if query.get("language") and query["language"] not in KNOWN_LANGUAGES:
                     return ("error", 400, "plexsim: bad request")
-                section["title"] = query["name"]
+                if query.get("name"):
+                    section["title"] = query["name"]
                 # Measured on a writable copy of the reference: the edit APPLIES the rest
                 # of the form -- `language=de-DE` reads back on the section and
                 # `prefs[enableBIFGeneration]=0` in its settings -- and runs a scan.
@@ -3419,7 +3425,7 @@ class PlexSim:
                 if prefs:
                     self.library_section(list(segments) + ["prefs"], prefs, "PUT")
                 self.notify_section_scan(section_id, section)
-                logger.info("SECTION edit %s -> %s", section_id, query["name"])
+                logger.info("SECTION edit %s -> %s", section_id, section.get("title"))
                 return ("empty", 200)
             return self.section_pivots(section_id, section, query)
 
