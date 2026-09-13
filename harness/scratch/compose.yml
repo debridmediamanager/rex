@@ -1,0 +1,76 @@
+# plexscratch -- a DISPOSABLE copy of the plexlab reference, for measuring writes.
+#
+# The shared reference (../plexlab, kids:32400) is read-only for hunts: writes to it
+# have deleted a library, re-matched a show and left an undeletable download queue.
+# This is a copy of its config that anything may write to and `./scratch.sh reset`
+# puts back, from a pristine copy taken once -- the lab itself is never touched again.
+#
+# It must never reach plex.tv. The copied config names the lab's machine and held
+# its plex.tv token, and a second server announcing that identity from another
+# address would rewrite the lab's registration. So `make` strips the token and mints
+# new identifiers, and the server sits on an INTERNAL network with no route out; a
+# socat relay is the only way in, published on one address.
+services:
+  plex:
+    # The lab's exact image, pinned by digest so both answer as the same version.
+    image: plexinc/pms-docker@sha256:e0ab27395614a8e1a4fdf84c6bc60ac664915cfdde70c52d030c7728a1c48e14
+    container_name: plexscratch-plex
+    restart: "no"
+    environment:
+      TZ: "Europe/Amsterdam"
+      PLEX_UID: "1000"
+      PLEX_GID: "1000"
+      # Unclaimed, so the API answers these networks without a token -- the relay's
+      # address is inside 172.16.0.0/12.
+      ALLOWED_NETWORKS: "192.168.88.0/24,100.64.0.0/10,172.16.0.0/12,127.0.0.1/32"
+    volumes:
+      - ./config:/config
+      - ./transcode:/transcode
+      - ${PLEXLAB_DIR:-../plexlab}/media:/data:ro
+    networks: [inside]
+
+  # Measured on this PMS (1.43.4): an UNCLAIMED server lets only LOOPBACK in without
+  # a token. A request from the relay's address is logged as "Allowed Network
+  # (Subnet)" and still answered 401. So the relay does not reach PMS directly: this
+  # hop listens inside PMS's own network namespace and connects to 127.0.0.1, which
+  # makes every request loopback. The price is that a session's client address always
+  # reads 127.0.0.1 here. Like plexlab's cdp-relay, it shares a namespace, so it must
+  # start after `plex` and be recreated with it -- `./scratch.sh up` does both.
+  #
+  # Loopback is still not enough without a token: PMS also checks the Host header,
+  # and answers 401 unless it names 127.0.0.1 or localhost (measured -- the published
+  # URL's `Host: 100.85.222.1:32410` is refused, `Host: 127.0.0.1:32400` is not, and
+  # any X-Forwarded-For turns the request into WAN). So clients send the server's own
+  # `.LocalAdminToken` instead: `./scratch.sh token` prints it.
+  loopback:
+    image: alpine/socat:latest
+    container_name: plexscratch-loopback
+    restart: "no"
+    network_mode: "service:plex"
+    # Not 32401: PMS binds that port itself, and a hop squatting on it makes PMS
+    # exit at start with "Error binding acceptor: Address in use".
+    command: TCP-LISTEN:32499,fork,reuseaddr,bind=0.0.0.0 TCP:127.0.0.1:32400
+    depends_on: [plex]
+
+  relay:
+    image: alpine/socat:latest
+    container_name: plexscratch-relay
+    restart: "no"
+    command: TCP-LISTEN:32400,fork,reuseaddr TCP:plexscratch-plex:32499
+    ports:
+      - "${SCRATCH_BIND:-100.85.222.1}:${SCRATCH_PORT:-32410}:32400"
+    depends_on: [loopback]
+    networks: [inside, edge]
+
+networks:
+  inside:
+    name: plexscratch-inside
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.9.0/24
+  edge:
+    name: plexscratch-edge
+    ipam:
+      config:
+        - subnet: 172.31.10.0/24

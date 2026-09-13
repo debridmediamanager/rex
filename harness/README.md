@@ -160,6 +160,22 @@ is taken *through* the client, so it cannot have that defect.
   everything else as 1000; a recursive chown takes the tree away from every other
   writer and the next session dies on `PermissionError`.
 
+## plexscratch -- the disposable write reference
+
+`scratch/` builds a second PMS from a sanitised copy of `config/`, for measuring writes
+the shared lab must never receive. It is deployed beside this directory on the lab host
+(`../plexscratch`) and answers on the Tailscale address, port 32410.
+
+| Measured while building it | Consequence |
+|---|---|
+| The lab's database writes its WAL continuously | `make` pauses `plexlab-plex` for the seconds the copy takes, then checkpoints and integrity-checks the copy |
+| The plex.tv token and certificate id appear in `Preferences.xml` and `Logs/` only; `Cache/` holds encrypted account state and the plex.direct certificate | the copy skips Logs, Cache, `.LocalAdminToken` and `Setup Plex.html`, strips the token, account and certificate, and gets new machine identifiers |
+| An unclaimed PMS 401s an allowed network, and 401s loopback whose `Host` is not 127.0.0.1/localhost | a socat hop in PMS's namespace makes requests loopback, and clients send the copy's own `.LocalAdminToken` (`./scratch.sh token`, new on every start) |
+| PMS binds 32401 itself | the hop listens on 32499; on 32401 PMS exits with "Address in use" |
+| An `internal: true` network has no route and no DNS | TCP to 1.1.1.1 is "Network is unreachable"; `./scratch.sh status` re-proves it |
+
+`./scratch.sh reset` discards every write by restoring `pristine/`; it never reads the lab.
+
 ## On plex.tv
 
 The harness claims through the supported flow only:
