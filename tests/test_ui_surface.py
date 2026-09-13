@@ -9718,6 +9718,41 @@ def main():
           and odd_c14m[-1][0] == "『",
           "digits %s | bracket %s" % (buckets_c14m, odd_c14m))
 
+
+    # Cycle 14: `/userRating` is a real axis with a FIXED six-bucket scale -- kids and
+    # zen answer the same rows on a movie library and a show library alike, whatever
+    # ratings the library holds -- and the nine axes belonging to OTHER library types
+    # answer an EMPTY secondary container with their own title2 rather than a 404.
+    # plexsim 404'd all ten, so the Ratings filter entry opened nothing and a client
+    # reading the axis list was told nine endpoints do not exist.
+    rating_c14n = get(base, "/library/sections/%s/userRating" % movie_section)[1]
+    rating_rows_c14n = [(d.get("key"), d.get("title"), "fastKey" in d)
+                        for d in rating_c14n.get("Directory") or []]
+    cross_c14n = {}
+    for axis_c14n, title_c14n in (("mood", "By Mood"), ("style", "By Style"),
+                                  ("format", "By Format"), ("subformat", "By Type"),
+                                  ("source", "By Source"), ("make", "By Camera Make"),
+                                  ("model", "By Camera Model"), ("place", "By Place"),
+                                  ("tag", "By Tag")):
+        status_c14n, body_c14n, _ = request(
+            base, "GET", "/library/sections/%s/%s" % (movie_section, axis_c14n))
+        parsed_c14n = json.loads(body_c14n).get("MediaContainer", {}) if body_c14n[:1] == b"{" else {}
+        cross_c14n[axis_c14n] = (status_c14n, parsed_c14n.get("size"),
+                                 parsed_c14n.get("title2"), parsed_c14n.get("content"))
+    check("userRating is a fixed six-bucket axis and the cross-type axes are empty 200s",
+          rating_rows_c14n == [("10", "5 stars", False), ("8", "4 stars", False),
+                               ("6", "3 stars", False), ("4", "2 stars", False),
+                               ("2", "1 star", False), ("-1", "Not rated", False)]
+          and rating_c14n.get("title2") == "By Rating"
+          and all(v_c14n == (200, 0, t_c14n, "secondary")
+                  for (_a, t_c14n), v_c14n in zip(
+                      (("mood", "By Mood"), ("style", "By Style"), ("format", "By Format"),
+                       ("subformat", "By Type"), ("source", "By Source"),
+                       ("make", "By Camera Make"), ("model", "By Camera Model"),
+                       ("place", "By Place"), ("tag", "By Tag")), cross_c14n.values())),
+          "ratings %s | cross-type %s"
+          % (rating_rows_c14n, sorted({v_c14n[:2] for v_c14n in cross_c14n.values()})))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

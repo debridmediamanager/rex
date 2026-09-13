@@ -385,6 +385,19 @@ SECONDARY_FIELDS = {
 # The axes read off the Media and its Streams rather than off a tag or a field.
 # Their entries carry only `key` and `title` -- measured, there is no `fastKey`
 # here, so the client builds the URL itself.
+# `/library/sections/{id}/userRating` -- a FIXED scale, identical on kids (1.43.4) and
+# zen (1.42.2) and on a movie library and a show library alike, however the library's own
+# ratings are distributed. The key is Plex's 0-10 rating and -1 is the unrated bucket.
+USER_RATINGS = (("10", "5 stars"), ("8", "4 stars"), ("6", "3 stars"),
+                ("4", "2 stars"), ("2", "1 star"), ("-1", "Not rated"))
+
+# The axes of OTHER library types. A movie library answers each an EMPTY secondary
+# container with its own title2, not a 404 -- measured on both references.
+CROSS_TYPE_AXES = {"mood": "By Mood", "style": "By Style", "format": "By Format",
+                   "subformat": "By Type", "source": "By Source",
+                   "make": "By Camera Make", "model": "By Camera Model",
+                   "place": "By Place", "tag": "By Tag"}
+
 SECONDARY_MEDIA = ("resolution", "videoCodec", "audioCodec", "subtitleCodec",
                    "audioLayout", "audioLanguage", "subtitleLanguage")
 SECONDARY_TITLES = {
@@ -411,6 +424,8 @@ SECONDARY_TITLES = {
     "audioLanguage": "By Audio Language",
     "subtitleLanguage": "By Subtitle Language",
     "location": "By Folder Location",
+    # Cycle 14: measured on both references, and a LABEL rather than a value list.
+    "userRating": "By Rating",
     # `/unwatched` is a LISTING, not an axis, and this is its title2.
     "unwatched": "Unplayed",
 }
@@ -3861,6 +3876,26 @@ class PlexSim:
             return self.media_axis(section_id, section, leaf)
         if leaf == "location":
             return self.location_axis(section_id, section)
+        if leaf == "userRating":
+            # Cycle 14: `/userRating` is a real axis and a FIXED one. kids and zen
+            # answer the same six rows, on a movie library and a show library alike,
+            # whatever ratings the library actually holds -- so it is a scale and not
+            # a value list. Like a media axis it carries no `fastKey` and its title is
+            # a LABEL; the key is the rating on Plex's 0-10 scale, and `-1` is the
+            # "Not rated" bucket. plexsim 404'd it, so the Ratings entry in the filter
+            # bar opened nothing.
+            return self.secondary_container(
+                section_id, section, SECONDARY_TITLES["userRating"],
+                Directory=[{"key": key, "title": title} for key, title in USER_RATINGS])
+        if leaf in CROSS_TYPE_AXES:
+            # ...and the axes belonging to OTHER library types answer an EMPTY
+            # secondary container rather than a 404 -- measured on both references, on
+            # a movie library: `/mood`, `/style`, `/format`, `/subformat`, `/source`
+            # (music) and `/make`, `/model`, `/place`, `/tag` (photo), each with its
+            # own title2 and `size` 0. A 404 there tells the client the endpoint does
+            # not exist, which is the opposite of what a real PMS says.
+            return self.secondary_container(section_id, section,
+                                            CROSS_TYPE_AXES[leaf], Directory=[])
 
         if leaf in ("unwatched", "recentlyReleased"):
             # Listing shortcuts the hub shelves link to. Measured: `/unwatched` is
