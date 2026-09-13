@@ -9340,6 +9340,34 @@ def main():
           "hubs %s | flat %s | plain %s | accented %s"
           % (hub_c14b[:2], flat_c14b[:2], plain_c14b, acc_c14b))
 
+
+    # Cycle 14: `title=` folds combining marks for a ONE-WORD query and not once the
+    # query holds a space -- measured on zen, where `title=Bogota` finds the accented
+    # row, `title=Bogota City` finds nothing, and `title=Bogota ` (trailing space)
+    # finds nothing while its accented spelling still does.
+    orig_c14c = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("title") or "Movie")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote("Bogotá City")))
+
+    def titles_c14c(spec):
+        return [r.get("title") for r in
+                get(base, "/library/sections/%s/all?type=1&title=%s"
+                    % (movie_section, urllib.parse.quote(spec)))[1].get("Metadata") or []]
+
+    one_c14c = titles_c14c("Bogota")
+    onedot_c14c = titles_c14c("Bogotá")
+    two_c14c = titles_c14c("Bogota City")
+    twodot_c14c = titles_c14c("Bogotá City")
+    trail_c14c = titles_c14c("Bogota ")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s"
+            % (movie, urllib.parse.quote(orig_c14c)))
+    check("title= folds a one-word query and stops folding once it has a space",
+          one_c14c == ["Bogotá City"] and onedot_c14c == ["Bogotá City"]
+          and two_c14c == [] and twodot_c14c == ["Bogotá City"] and trail_c14c == [],
+          "one %s | one-acc %s | two %s | two-acc %s | trailing-space %s"
+          % (one_c14c, onedot_c14c, two_c14c, twodot_c14c, trail_c14c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

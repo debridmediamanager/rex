@@ -40,6 +40,8 @@ is how the Edit Filters dialog reopens a smart filter it saved. `describe()` and
 import re
 import time
 
+from hierarchy import fold_marks
+
 # The operator a key's trailing punctuation means, keyed by what survives the
 # client's `slice(0, -1)`. The right-hand side is the operator as the `Meta`
 # FieldType block advertises it, which is also what /query/parse echoes back.
@@ -242,9 +244,27 @@ def _word_prefixes(wanted, text):
     begins any word: `title=` is every row, `title=%20` every title of two words or
     more, and `Tears%20%20Steel` still finds Tears of Steel. Only `=` works this
     way; `title!=ears` excludes Tears of Steel, so `!=` still reads a substring.
+
+    Cycle 14, on zen's accented rows: this matcher folds combining marks -- but
+    ONLY while the query holds no space. `title=Bogota` finds "Bogota: City of the
+    Lost" and `title=Senor` finds the Senor episode, while `title=Bogota City`,
+    `title=Manly Senor` and even `title=Bogota ` (one trailing space) find nothing
+    and their accented spellings all find their row. The trailing-space pair is
+    what pins it: the space alone does not break the match, it turns the fold off.
+
+    That asymmetry is the rule as measured, not a mechanism this code knows. It is
+    consistent with a folded per-word index answering a one-word query while a
+    multi-word query is checked as a sequence against the raw title, but nothing
+    here tested that, so the code follows the observation. `!=` is a substring and
+    does not fold at all (`title!=Amelie` excludes nothing; `title!=Amelie` with
+    the accent excludes exactly its one row), which is why this is the only place
+    the fold goes.
     """
     words = wanted.replace(",", "").replace(".", "").lower().split(" ")
     title_words = text.lower().split()
+    if len(words) == 1:
+        words = [fold_marks(words[0])]
+        title_words = [fold_marks(w) for w in title_words]
     position = 0
     for word in words:
         while position < len(title_words) and not title_words[position].startswith(word):
