@@ -6776,14 +6776,18 @@ class PlexSim:
         duration = query.get("duration")
         if (offset is not None and not str(offset).isdigit()) \
                 or (duration is not None and not str(duration).isdigit()) \
-                or (offset is not None and duration is not None and int(offset) > int(duration)):
+                or (offset is not None and duration is not None and int(duration)
+                    and int(offset) > int(duration)):
             # Measured on a writable copy of the reference: a negative or unparseable
             # `time` or `duration`, and a `time` past the `duration` sent with it, are
             # each a 400. plexsim answered 200 -- and a time past the duration
             # completed the play and wrote a history row.
             return ("error", 400, "plexsim: bad request")
         offset_ms = int(offset) if str(offset).isdigit() else 0
-        total_ms = int(duration) if str(duration).isdigit() else None
+        # Measured: `duration=0` is a 200 that stores nothing -- a real PMS reads it as
+        # "no usable duration", the same as sending none, where plexsim's `time > duration`
+        # refusal caught it as a 400.
+        total_ms = int(duration) if str(duration).isdigit() and int(duration) else None
         row = self.catalog.items.get(int(rating_key)) if rating_key.isdigit() else None
         if rating_key and row is None:
             # Measured: a ratingKey the server does not have is a 404, not a 200
