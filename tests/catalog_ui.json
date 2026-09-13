@@ -1,5 +1,5 @@
 {
- "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys. And three more episodes in the last season, because a shelf's default cap is six and a five-episode library cannot overflow one.",
+ "_provenance": "Derived from catalog.example.json -- the redacted copy of a real probe-built catalog -- by cloning its rows onto fresh keys. Every Media/Part/Stream shape is ffprobe-derived from real debrid content; only the multiplicity is synthetic, because a one-item section turns the Shuffle, Play Next, Merge and paging checks into no-ops. The debrid links are the example file's placeholder, so a part read fails at the provider rather than serving bytes: test_all.py covers real reads. Extended again for cycle 13: seasons 21 and 22 with an episode each, so a paged season list can return more than one row past the first page, and a second Media on episode 1004, so the Duplicates filter has a duplicate to find on the leaf, its season and the show. Same method -- existing rows cloned onto fresh keys. And three more episodes in the last season, because a shelf's default cap is six and a five-episode library cannot overflow one. The episodes carry no contentRating of their own, because a real PMS gives an episode its show's and a fixture that stores one on every row cannot show it.",
  "machineIdentifier": "f1x7u4e0000000000000000000000000000000f1",
  "friendlyName": "plexsim-ui-fixture",
  "sections": [
@@ -742,7 +742,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1001/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100100,
@@ -965,7 +964,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1002/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100200,
@@ -1148,7 +1146,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1003/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100300,
@@ -1371,7 +1368,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1004/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100400,
@@ -1679,7 +1675,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1005/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100500,
@@ -1862,7 +1857,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1006/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 100600,
@@ -2045,7 +2039,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1010/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 101000,
@@ -2228,7 +2221,6 @@
    "updatedAt": 1789180059,
    "thumb": "/library/metadata/1011/thumb/b2d1f10c76",
    "art": "/library/metadata/30001/art/a46fe593d7",
-   "contentRating": "12",
    "Media": [
     {
      "id": 101100,
