@@ -507,6 +507,7 @@ class Library:
             # Measured: a PUT with no parameters at all is a 400.
             raise EditError(400, "bad request")
 
+        old_title = row.get("title")
         # A title write, a sort-title write and a sort-title unlock each re-derive an
         # unlocked Sort Title (`_derive_title_sort`).
         sort_touched = any(name in ("title", "title.value", "titleSort", "titleSort.value",
@@ -580,8 +581,18 @@ class Library:
                 # exact repeat is one tag; `Qx&qx` is the first spelling twice, because
                 # the tag lookup ignores case and the dedupe does not.
                 self._set_tags(row, tag_type, list(dict.fromkeys(wanted)))
-        if sort_touched:
+        if "title" in written:
+            row.pop("_generatedTitle", None)
+        if "title" in written and row.get("title") == "":
+            self._empty_title(row, old_title)
+        elif sort_touched:
             self._derive_title_sort(row)
+        if "index" in written and row.get("_generatedTitle"):
+            # Measured: a generated title follows the index -- `Episode 2` is
+            # `Episode 7` after `index.value=7`.
+            row["title"] = "%s %s" % ("Season" if row.get("type") == "season" else "Episode",
+                                      row.get("index"))
+            written = written | {"title"}
         if written & {"title", "studio"}:
             self._follow_parent(row, written)
         if changed:
@@ -734,6 +745,22 @@ class Library:
             elif kind == "show" and str(child.get("grandparentRatingKey")) == key \
                     and "title" in written:
                 carry(child, "grandparentTitle", row.get("title"))
+
+    def _empty_title(self, row, old_title):
+        """An EMPTIED title, measured on a writable copy of the reference.
+
+        A season becomes `Season N` and an episode `Episode N` -- a title GENERATED from
+        the index, which follows a later index edit -- while a movie, a show and a list
+        keep "". Every one keeps its old title's sort form as `titleSort` (`The Old
+        List` sorts as `Old List`, `Bushwhacked` as `Bushwhacked`) unless the sort title
+        is locked. plexsim stored "" for all of them and dropped the sort title.
+        """
+        locked = any(f.get("name") == "titleSort" and f.get("locked") for f in row.get("Field") or [])
+        if old_title and not locked:
+            row["titleSort"] = sort_title(old_title)
+        if row.get("type") in ("season", "episode"):
+            row["_generatedTitle"] = True
+            row["title"] = "%s %s" % ("Season" if row["type"] == "season" else "Episode", row.get("index"))
 
     def _derive_title_sort(self, row):
         """Measured on a writable copy of the reference: a Sort Title that is not
@@ -1075,6 +1102,8 @@ class Library:
             # engine sees exactly what the client sent.
             "uri": uri if smart else None,
         }
+        # Measured: a list created as `The Fresh List` already sorts as `Fresh List`.
+        self._derive_title_sort(playlist)
         self._playlists[key] = playlist
         if not playlist["smart"]:
             self.add_playlist_items(playlist, rows)
@@ -1181,9 +1210,15 @@ class Library:
 
     def edit_playlist(self, playlist, title=None, summary=None):
         # Measured: `title=` stores the EMPTY string rather than being ignored, so
-        # the test is `is not None` and not truthiness.
+        # the test is `is not None` and not truthiness -- and an emptied list keeps its
+        # old title's sort form, where a new title re-derives it.
         if title is not None:
+            old_title = playlist["title"]
             playlist["title"] = title
+            if title:
+                self._derive_title_sort(playlist)
+            else:
+                self._empty_title(playlist, old_title)
         if summary is not None:
             playlist["summary"] = summary
         playlist["updatedAt"] = _now()
@@ -1289,6 +1324,7 @@ class Library:
             # smart playlist rewrites it -- see playlist_content().
             "uri": uri if smart else None,
         }
+        self._derive_title_sort(collection)
         self._collections[key] = collection
         if not collection["smart"]:
             # A smart collection has no members to tag: its membership is its
@@ -1357,9 +1393,15 @@ class Library:
         then creates a SECOND collection under the new name -- leaving the
         original empty, so deleting it afterwards untags nobody.
         """
+        if title == "" and collection["title"]:
+            # Measured: an emptied collection title is stored as "" and keeps its old
+            # title's sort form. plexsim ignored an empty title here.
+            self._empty_title(collection, collection["title"])
+            collection["title"] = ""
         if title and title != collection["title"]:
             old_title = collection["title"]
             collection["title"] = title
+            self._derive_title_sort(collection)
             for key in collection["items"]:
                 row = self.catalog.items.get(int(key))
                 if row is None:

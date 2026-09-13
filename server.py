@@ -7054,9 +7054,14 @@ class PlexSim:
                                      "title": ""})
                 return ("empty", 200)
             if method == "PUT":
-                self.library.edit_collection(
-                    collection, title=query.get("title.value") or query.get("title"),
-                    summary=query.get("summary.value") or query.get("summary"))
+                # `title.value=` is an empty title too, which `or` turned into None.
+                title = query.get("title.value")
+                if title is None:
+                    title = query.get("title")
+                summary = query.get("summary.value")
+                if summary is None:
+                    summary = query.get("summary")
+                self.library.edit_collection(collection, title=title, summary=summary)
                 self.notify_list_edited(collection, "collection")
                 return ("empty", 200)
             section = self.catalog.section(collection["librarySectionID"]) or {}

@@ -2935,6 +2935,14 @@ the same parameters, then read back from both.
   generated `Season N` title and no summary, which is why it recorded "" and no summary
   -- re-read on both servers here, and it still holds for those seasons. plexsim copied
   the fields once, at load, and updated only the containers.
+- **An emptied title is not always empty, and it keeps its sort form.** `title.value=` on
+  a season leaves `Season 1` and on an episode `Episode 2` -- generated from the index,
+  so a later `index.value=7` makes it `Episode 7` -- while a movie, a show, a playlist and
+  a collection store "". Every one keeps its old title's sort form as `titleSort` (`The
+  Old List` sorts as `Old List`, `Bushwhacked` as `Bushwhacked`). A playlist or a
+  collection created as `The Fresh List` already sorts as `Fresh List`, and
+  `PUT /library/collections/{id}?title=` empties the title, where plexsim ignored an empty
+  one. plexsim stored "" everywhere else and dropped the sort title.
 
 ### Emulation calibrated against the account's own claimed servers
 
