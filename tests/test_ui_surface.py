@@ -6546,6 +6546,23 @@ def main():
     else:
         skip("a play queue move after nothing it holds goes to the front", "need three movies")
 
+    # Measured on plexscratch: a windowed queue read's `includeBefore`/`includeAfter` choose
+    # the sides, and the selected item comes back only when both are on. plexsim ignored both.
+    made_w14h = container(base, "POST", "/playQueues?type=video&own=1&uri=%s" % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1" % (machine, movie_section)))[1]
+    ids_w14h = [r.get("playQueueItemID") for r in made_w14h.get("Metadata") or []]
+    if len(ids_w14h) >= 3:
+        def window_w14h(spec):
+            return [r.get("playQueueItemID") for r in get(base, "/playQueues/%s?%s" % (made_w14h.get("playQueueID"),
+                                                                                        spec))[1].get("Metadata") or []]
+        after_only_w14h = window_w14h("window=1&includeBefore=0&includeAfter=1")
+        before_only_w14h = window_w14h("window=1&includeBefore=1&includeAfter=0")
+        both_w14h = window_w14h("window=2")
+        check("a windowed queue read honours includeBefore and includeAfter",
+              after_only_w14h == ids_w14h[1:2] and before_only_w14h == [] and both_w14h == ids_w14h[:3],
+              "%s / %s / %s" % (after_only_w14h, before_only_w14h, both_w14h))
+    else:
+        skip("a windowed queue read honours includeBefore and includeAfter", "need three movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

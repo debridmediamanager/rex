@@ -6212,7 +6212,15 @@ class PlexSim:
         if str(window).isdigit():
             span = int(window)
             low = max(0, offset - span)
-            metadata = metadata[low:offset + span + 1]
+            # Measured on a writable copy of the reference: `includeBefore` and
+            # `includeAfter` (both on by default) choose the sides of the window, and the
+            # selected item itself comes back only when both are on -- after-only answers
+            # just the rows after it. plexsim ignored both flags.
+            before = query.get("includeBefore") != "0"
+            after = query.get("includeAfter") != "0"
+            metadata = ((metadata[low:offset] if before else [])
+                        + (metadata[offset:offset + 1] if before and after else [])
+                        + (metadata[offset + 1:offset + span + 1] if after else []))
             offset = offset - low
         fields = {
             "Metadata": metadata,
