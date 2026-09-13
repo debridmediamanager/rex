@@ -4491,17 +4491,35 @@ class PlexSim:
     # The sort keys the captured Meta advertises. A key the listing cannot honour
     # is a sort the UI offers and the server ignores, which reads as a broken
     # control rather than a missing one.
-    TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt", "contentRating")
+    TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt", "contentRating",
+                  # Cycle 14: seven more text columns sort on both references.
+                  "guid", "originalTitle", "studio", "type", "tagline", "summary",
+                  "editionTitle")
 
     NUMERIC_SORTS = ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
-                     "duration", "viewCount", "viewOffset", "index", "leafCount",
+                     "duration", "viewCount", "viewOffset", "index",
                      "unviewedLeafCount", "originallyAvailableAt", "mediaHeight",
                      "updatedAt", "lastRatedAt", "ratingCount",
                      # The keys `includeAdvanced=1` advertises. Three of them --
                      # userRating, contentRating, mediaBitrate -- answered 500 on
                      # plexsim while its own Meta was about to offer them, which is
                      # an advertised control that breaks the grid when used.
-                     "userRating", "mediaBitrate")
+                     "userRating", "mediaBitrate",
+                     # Cycle 14, measured key by key on kids (1.43.4) and zen (1.42.2),
+                     # which agree exactly: thirteen MORE keys sort although
+                     # `/sorts?includeAdvanced=1` advertises only fifteen, and none of
+                     # these is among them. They are real orderings, checked against
+                     # the rows zen returns -- `sort=createdAt` comes back in addedAt
+                     # order, `sort=mediaSize` smallest file first. plexsim answered
+                     # 500, which is a blank page for python-plexapi and for any
+                     # stored smart-list URI naming one.
+                     "contentRatingAge", "skipCount", "absoluteIndex", "mediaSize",
+                     "createdAt", "viewedLeafCount")
+
+    # ...and `leafCount` is the other direction: BOTH references answer 500 to it,
+    # along with `childCount`, `slug`, `key` and any unknown key, while plexsim sorted
+    # by it happily. A sort a real PMS refuses has to be refused, so it is gone from
+    # the list above.
 
     def _sort_key(self, key):
         """One row -> comparable value for a sort key, or None if unsupported."""
@@ -4526,6 +4544,14 @@ class PlexSim:
                 # and twelve of the fifteen advertised sorts default to `desc`.
                 return (value is not None, str(value or "").lower())
             return text
+        if key == "mediaSize":
+            # The Part's own size, the way the `mediaSize` FILTER reads it.
+            return lambda r: (True, max(
+                [p.get("size") or 0 for m in r.get("Media") or []
+                 for p in m.get("Part") or []] or [0]))
+        if key == "createdAt":
+            # Measured on zen: `sort=createdAt` comes back in addedAt order.
+            return lambda r: (r.get("addedAt") is not None, r.get("addedAt") or 0)
         if key in self.NUMERIC_SORTS:
             # Same rule as the text keys above: absent sorts below every value.
             return lambda r: (r.get(key) is not None, r.get(key) or 0)

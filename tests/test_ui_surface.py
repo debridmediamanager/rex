@@ -9572,6 +9572,39 @@ def main():
           % (all_c14i, sorted(known_c14i.values()), wide_c14i, orig_c14i,
              rule_c14i.get("fieldTitle"), refused_c14i, idx_c14i))
 
+
+    # Cycle 14: thirteen sort keys a real PMS accepts and plexsim answered 500 to, and
+    # one it accepted that both references refuse. Measured key by key on kids and zen,
+    # which agree exactly; none of the thirteen is in `/sorts?includeAdvanced=1`, so
+    # this is the unadvertised-but-real set, the same class as the filter columns above.
+    def sortstatus_c14j(key_c14j):
+        return request(base, "GET", "/library/sections/%s/all?type=1&sort=%s"
+                       % (movie_section, key_c14j))[0]
+
+    accepted_c14j = {k_c14j: sortstatus_c14j(k_c14j) for k_c14j in
+                     ("guid", "originalTitle", "contentRatingAge", "studio", "skipCount",
+                      "absoluteIndex", "mediaSize", "createdAt", "type", "viewedLeafCount",
+                      "tagline", "summary", "editionTitle")}
+    refused_c14j = {k_c14j: sortstatus_c14j(k_c14j) for k_c14j in
+                    ("leafCount", "childCount", "slug", "key", "zzz")}
+    # A real ordering, not a tolerated no-op: mediaSize puts the smallest Part first.
+    sizes_c14j = []
+    for row_c14j in get(base, "/library/sections/%s/all?type=1&sort=mediaSize"
+                        % movie_section)[1].get("Metadata") or []:
+        detail_c14j = (get(base, "/library/metadata/%s" % row_c14j["ratingKey"])[1]
+                       .get("Metadata") or [{}])[0]
+        sizes_c14j.append(max([p_c14j.get("size") or 0
+                               for m_c14j in detail_c14j.get("Media") or []
+                               for p_c14j in m_c14j.get("Part") or []] or [0]))
+    check("the thirteen unadvertised sort keys order, and leafCount is refused",
+          all(v_c14j == 200 for v_c14j in accepted_c14j.values())
+          and all(v_c14j == 500 for v_c14j in refused_c14j.values())
+          and sizes_c14j == sorted(sizes_c14j),
+          "accepted %s | refused %s | mediaSize ordered %s"
+          % (sorted({v_c14j for v_c14j in accepted_c14j.values()}),
+             sorted({v_c14j for v_c14j in refused_c14j.values()}),
+             sizes_c14j == sorted(sizes_c14j)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
