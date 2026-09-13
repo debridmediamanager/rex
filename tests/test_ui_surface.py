@@ -6414,6 +6414,39 @@ def main():
     check("an item takes no POST and /library/all takes no write",
           (post_w17a, all_w17a) == (404, 404), "POST %s, PUT /library/all %s" % (post_w17a, all_w17a))
 
+    # Measured on plexscratch: these edits are each a 200 that changes nothing -- thumb,
+    # art, addedAt, guid, lastViewedAt and viewCount values, a movie's duration and index,
+    # an episode's parentIndex, a show's network tag and a bare `genre=` -- and an actor
+    # written with a tagRole is stored with `role: ""`. plexsim 400'd most and stored two.
+    def row_w17b(key):
+        return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+    before_w17b = row_w17b(movie)
+    statuses_w17b = [container(base, "PUT", "/library/metadata/%s?%s.value=17" % (movie, name))[0]
+                     for name in ("thumb", "art", "addedAt", "guid", "lastViewedAt", "viewCount",
+                                  "duration", "index")]
+    statuses_w17b.append(container(base, "PUT", "/library/metadata/%s?genre=W17b" % movie)[0])
+    after_w17b = row_w17b(movie)
+    extra_w17b = []
+    if show:
+        season_w17b = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                            if r.get("type") == "season"), {}).get("ratingKey")
+        episode_w17b = (get(base, "/library/metadata/%s/children" % season_w17b)[1]
+                        .get("Metadata") or [{}])[0].get("ratingKey")
+        episode_before_w17b = row_w17b(episode_w17b).get("parentIndex")
+        extra_w17b = [container(base, "PUT", "/library/metadata/%s?parentIndex.value=3" % episode_w17b)[0],
+                      container(base, "PUT", "/library/metadata/%s?network[0].tag.tag=W17b" % show)[0],
+                      row_w17b(episode_w17b).get("parentIndex") == episode_before_w17b]
+    role_w17b, _, _ = container(base, "PUT", "/library/metadata/%s?actor[0].tag.tag=%s&actor[0].tagRole=Hero"
+                                             % (movie, quote("Actor W17b")))
+    roles_w17b = [{k: r.get(k) for k in ("tag", "role")} for r in row_w17b(movie).get("Role") or []]
+    check("value-less fields, a movie's duration and index, network tags and bare tags are accepted and discarded",
+          statuses_w17b == [200] * 9 and all(after_w17b.get(k) == before_w17b.get(k)
+                                             for k in ("thumb", "art", "addedAt", "guid", "duration", "index",
+                                                       "viewCount", "Genre"))
+          and extra_w17b in ([], [200, 200, True]) and role_w17b == 200
+          and roles_w17b == [{"tag": "Actor W17b", "role": ""}],
+          "%s %s role %s %s" % (statuses_w17b, extra_w17b, role_w17b, roles_w17b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

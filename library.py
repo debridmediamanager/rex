@@ -60,6 +60,18 @@ EDITABLE_FIELDS = {
 # through /:/rate there. The section path stores it (see `_set_field`).
 IGNORED_EDIT_FIELDS = {"userRating"}
 
+# Accepted with a 200 and DISCARDED as values. Measured on a writable copy of the
+# reference: `thumb.value=`, `art.value=`, `addedAt.value=`, `guid.value=`,
+# `lastViewedAt.value=`, `viewCount.value=` and an episode's `parentIndex.value=` change
+# nothing, where plexsim refused each as an unknown field. Artwork is written through
+# the poster and art endpoints, play state through /:/scrobble.
+IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "viewCount",
+                        "parentIndex"}
+
+# A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
+# nothing visible, where plexsim 400'd it.
+IGNORED_TAG_TYPES = {"network"}
+
 # Stored as NUMBERS. Measured: `audienceRating.value=5.5` reads back 5.5, not "5.5".
 FLOAT_FIELDS = {"audienceRating", "rating", "userRating"}
 
@@ -548,6 +560,11 @@ class Library:
                 removing.setdefault(tag_type, []).extend(
                     urllib.parse.unquote(part) for part in str(value).split(",") if part)
                 changed = True
+            elif name.split("[", 1)[0].lower() in IGNORED_TAG_TYPES \
+                    or re.match(r"^actor\[\d*\]\.tagRole$", name):
+                # Measured: accepted and discarded -- a role written as
+                # `actor[0].tagRole=` is not stored, and the actor carries `role: ""`.
+                changed = True
             elif ".tag.tag" in name:
                 tag_type = name.split("[", 1)[0].lower()
                 if tag_type not in TAG_KEYS:
@@ -577,6 +594,15 @@ class Library:
                 changed = True
             else:
                 field = name[: -len(".value")] if name.endswith(".value") else name
+                if field in IGNORED_VALUE_FIELDS \
+                        or (field in ("duration", "index") and row.get("type") == "movie") \
+                        or (field in TAG_KEYS and not name.endswith(".value")):
+                    # Measured: each is a 200 that changes nothing -- the value-less
+                    # columns above, a movie's `duration` and `index`, and a bare tag
+                    # name (`genre=Drama`) on the item path, where plexsim stored the
+                    # first two and 400'd the rest.
+                    changed = True
+                    continue
                 if field not in EDITABLE_FIELDS:
                     raise EditError(400, "unknown field %r" % field)
                 self._set_field(row, field, value, section)
@@ -727,6 +753,10 @@ class Library:
             tag_id = zlib.crc32(("%s:%s" % (key, value)).encode()) % 900000 + 1000
             minted = {"id": tag_id, "tag": value,
                       "filter": "%s=%s" % (tag_type, tag_id)}
+            if key == "Role":
+                # Measured: an actor added through an edit carries `role: ""`, where
+                # plexsim omitted the field.
+                minted["role"] = ""
             self._tags[(key, str(value).lower())] = minted
             existing[str(value).lower()] = minted
             fresh.append(minted)
