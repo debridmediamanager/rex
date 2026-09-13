@@ -2891,6 +2891,16 @@ the same parameters, then read back from both.
   path -- `show.title=`, `show.year>>=`, even `movie.year>>=` with `type=1` -- is a 400,
   where an unscoped `year>>=` still scopes the edit. plexsim edited every id it had and
   applied the filter.
+- **A release date is parsed, and on the section path it sets the year.** Value by
+  value on the item path: `2007-2-3` is `2007-02-03`, `2007-02-30` rolls over to
+  `2007-03-02`, while `2001-01-45`, `2001-00-10`, `2001/02/03`, `2001-02`, a leading space
+  and trailing text are removed; a trailing time is dropped with no zone shift,
+  `99-01-02` is `0099-01-02`, and a bare integer is epoch seconds (`20070203` is
+  `1970-08-21`, `-5` is `1969-12-31`). The section path refuses what it cannot read with
+  a 500, sets `year` from the date unless the same save writes one (which wins in either
+  order), removes both on an empty date, and removes an empty year where the item path
+  500s. A year of 0 is removed and `+2000` is 2000. plexsim stored dates verbatim and left
+  the year alone.
 
 ### Emulation calibrated against the account's own claimed servers
 

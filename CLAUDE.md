@@ -350,6 +350,10 @@ precisely how the Seasons bug survived a fix attempt.
   or unparseable integer is 500, a negative year or a bad date REMOVES the field,
   only `title`/`summary` store `""`, `userRating` is accepted and discarded, and
   only `.locked=1` locks. Library create and edit validate their whole form.
+  That is the ITEM path's grammar. **The section save path differs**: a date it
+  cannot read is a 500, a date also sets the year (an empty one clears both), and an
+  empty year is removed rather than refused. Both parse a date the same way --
+  `2007-02-30` rolls over, a bare integer is epoch seconds -- and 0 removes a year.
 - **The UI draws a menu entry from what the server *advertises*, not from
   whether the write behind it works.** `/media/providers` decides whether Edit,
   Delete, Download, Optimize and Mark as Played exist at all; an unimplemented

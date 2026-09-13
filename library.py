@@ -31,6 +31,7 @@ shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:
 playlists 40000+, collections 50000+.
 """
 
+import datetime
 import re
 import time
 import urllib.parse
@@ -77,6 +78,38 @@ class EditError(Exception):
         super().__init__(detail)
         self.status = status
         self.detail = detail
+
+def parse_date(value):
+    """An `originallyAvailableAt` as a real PMS reads it, or None when it cannot.
+
+    Measured value by value on a writable copy of the reference: `2007-2-3` is
+    `2007-02-03`, a day past the month's end ROLLS OVER (`2007-02-30` is
+    `2007-03-02`) while a day outside 1-31 or a month outside 1-12 is refused, a
+    trailing time is dropped (`2003-04-05T23:30:00Z` is `2003-04-05`, no zone shift),
+    a two-digit year is that year (`99-01-02` is `0099-01-02`), and a bare INTEGER is
+    epoch seconds (`20070203` is `1970-08-21`, `-5` is `1969-12-31`). `2001/02/03`,
+    `2001-02`, a leading space and trailing text are refused.
+    """
+    text = str(value)
+    if re.fullmatch(r"-?\d+", text):
+        try:
+            return (datetime.date(1970, 1, 1)
+                    + datetime.timedelta(seconds=int(text))).isoformat()
+        except OverflowError:
+            return None
+    match = re.fullmatch(r"(\d{1,4})-(\d{1,2})-(\d{1,2})"
+                         r"(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?",
+                         text)
+    if not match:
+        return None
+    year, month, day = (int(part) for part in match.groups())
+    if year < 1 or not 1 <= month <= 12 or not 1 <= day <= 31:
+        return None
+    try:
+        return (datetime.date(year, month, 1) + datetime.timedelta(days=day - 1)).isoformat()
+    except OverflowError:
+        return None
+
 
 PLAYLIST_BASE = 40000
 COLLECTION_BASE = 50000
@@ -496,9 +529,19 @@ class Library:
                 field = name[: -len(".value")] if name.endswith(".value") else name
                 if field not in EDITABLE_FIELDS:
                     raise EditError(400, "unknown field %r" % field)
-                self._set_field(row, field, value)
+                self._set_field(row, field, value, section)
                 changed = True
 
+        written = {name[: -len(".value")] if name.endswith(".value") else name
+                   for name, _ in items}
+        if section and "originallyAvailableAt" in written and "year" not in written:
+            # Measured: on the SECTION path the release date sets the YEAR -- and
+            # clearing it removes both -- unless the same save writes a year, which
+            # wins in either order. The item path leaves the year alone.
+            if row.get("originallyAvailableAt"):
+                row["year"] = int(row["originallyAvailableAt"][:4])
+            else:
+                row.pop("year", None)
         for tag_type in set(adding) | set(removing):
             wanted = [value for _, _, value in sorted(adding.get(tag_type, []),
                                                       key=lambda entry: entry[:2]) if value]
@@ -517,16 +560,20 @@ class Library:
             row["updatedAt"] = _now()
         return changed
 
-    def _set_field(self, row, field, value):
+    def _set_field(self, row, field, value, section=False):
         """One scalar field, with the coercions a real PMS applies."""
         if field in IGNORED_EDIT_FIELDS:
             # Measured: accepted, lock recorded, value discarded -- the star
             # rating is written through /:/rate, not through the Edit dialog.
             return
         if value == "":
+            if field == "year" and section:
+                # Measured: on the SECTION path an empty year is removed, not refused.
+                row.pop(field, None)
+                return
             if field in INTEGER_FIELDS:
-                # Measured: `year.value=` is a 500, the same refusal the filter
-                # grammar gives an empty integer.
+                # Measured: `year.value=` is a 500 on the item path, the same refusal
+                # the filter grammar gives an empty integer.
                 raise EditError(500, "unparseable %s %r" % (field, value))
             if field in KEEP_EMPTY_FIELDS:
                 # Measured field by field: only `title` and `summary` are STORED as
@@ -540,23 +587,28 @@ class Library:
             return
         if field in INTEGER_FIELDS:
             text = str(value).strip()
-            if not text.lstrip("-").isdigit():
+            if not re.fullmatch(r"[+-]?\d+", text):
                 # Measured: a real PMS answers 500 for `year.value=abc`.
                 raise EditError(500, "unparseable %s %r" % (field, value))
             number = int(text)
-            if number < 0:
-                # Measured: a negative year REMOVES the field.
+            if number < 0 or (field == "year" and number == 0):
+                # Measured: a negative year REMOVES the field, and so does 0 -- while
+                # `+2000` is 2000, where plexsim answered 500.
                 row.pop(field, None)
             else:
                 row[field] = number
             return
         if field in DATE_FIELDS:
-            if not re.match(r"^\d{4}-\d{2}-\d{2}", str(value)):
-                # Measured: an unparseable date removes the field rather than
-                # storing the text, which is what plexsim did.
+            parsed = parse_date(value)
+            if parsed is None and section:
+                # Measured: the section path REFUSES a date it cannot read, with 500.
+                raise EditError(500, "unparseable %s %r" % (field, value))
+            if parsed is None:
+                # Measured: the item path removes the field rather than storing the
+                # text, which is what plexsim did.
                 row.pop(field, None)
             else:
-                row[field] = value
+                row[field] = parsed
             return
         row[field] = value
 

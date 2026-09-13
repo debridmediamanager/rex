@@ -5915,6 +5915,44 @@ def main():
         skip("the save path edits only its own type and library, and refuses a type-scoped filter",
              "need a show library")
 
+    # Measured on plexscratch: a release date is PARSED (a day past the month's end
+    # rolls over, a bare integer is epoch seconds, a trailing time is dropped), and on
+    # the section path it sets the year, clearing it removes both, and a date it cannot
+    # read is a 500 -- the item path leaves the year alone. A year of 0 is removed and
+    # `+2000` is 2000. plexsim stored dates verbatim and never touched the year.
+    def dated_w4():
+        row = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+        return row.get("originallyAvailableAt"), row.get("year")
+    kept_w4 = dated_w4()
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&originallyAvailableAt.value=%s"
+                         % (movie_section, movie, quote("2003-04-05T23:30:00Z")))
+    section_w4 = dated_w4()
+    request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=2007-02-30" % movie)
+    rolled_w4 = dated_w4()
+    request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=20070203" % movie)
+    epoch_w4 = dated_w4()
+    bad_w4, _, _ = container(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                                          "&originallyAvailableAt.value=2001-13-45"
+                                          % (movie_section, movie))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&originallyAvailableAt.value="
+                         % (movie_section, movie))
+    cleared_w4 = dated_w4()
+    request(base, "PUT", "/library/metadata/%s?year.value=%%2B2000" % movie)
+    plus_w4 = dated_w4()
+    request(base, "PUT", "/library/metadata/%s?year.value=0" % movie)
+    zero_w4 = dated_w4()
+    if kept_w4[1] is not None:
+        request(base, "PUT", "/library/metadata/%s?year.value=%s" % (movie, kept_w4[1]))
+    if kept_w4[0] is not None:
+        request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s"
+                             % (movie, quote(str(kept_w4[0]))))
+    check("a release date is parsed, sets the year on the section path, and a bad one is a 500 there",
+          section_w4 == ("2003-04-05", 2003) and rolled_w4 == ("2007-03-02", 2003)
+          and epoch_w4 == ("1970-08-21", 2003) and bad_w4 == 500
+          and cleared_w4 == (None, None) and plus_w4 == (None, 2000) and zero_w4 == (None, None),
+          "%s %s %s HTTP %s %s %s %s" % (section_w4, rolled_w4, epoch_w4, bad_w4, cleared_w4,
+                                         plus_w4, zero_w4))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
