@@ -8090,6 +8090,29 @@ def main():
                   for el_c12a in caps_c12a),
           "detail %s, grid %s" % (detail_c12a[1], grid_c12a[1]))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): an episode's `parentGuid` is the
+    # SEASON's guid, not the show's. plexsim copied the season's own `parentGuid` (the
+    # show), so every episode of a show shared one parent guid and a client keying
+    # per-season state off it could not tell the seasons apart.
+    episodes_c12b = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [])
+    if not episodes_c12b:
+        skip("an episode's parentGuid is the season's own guid", "no episode in the fixture")
+    else:
+        row_c12b = (get(base, "/library/metadata/%s" % episodes_c12b[0]["ratingKey"])[1]
+                    .get("Metadata") or [{}])[0]
+        season_c12b = (get(base, "/library/metadata/%s" % row_c12b.get("parentRatingKey"))[1]
+                       .get("Metadata") or [{}])[0]
+        check("an episode's parentGuid is the season's own guid",
+              row_c12b.get("parentGuid")
+              and row_c12b.get("parentGuid") == season_c12b.get("guid")
+              and row_c12b.get("parentGuid") != row_c12b.get("grandparentGuid")
+              and str(row_c12b.get("parentGuid")).startswith("plex://season/"),
+              "episode parent %s, season guid %s, grandparent %s"
+              % (row_c12b.get("parentGuid"), season_c12b.get("guid"),
+                 row_c12b.get("grandparentGuid")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
