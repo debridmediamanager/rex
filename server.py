@@ -5930,8 +5930,11 @@ class PlexSim:
             section = self.catalog.section(row["librarySectionID"]) or {}
             hubs = self.related_hubs(row, query)
             return self.bare_container(
+                # ...and this one is built by hand rather than by `hub_container`, so
+                # it needs the same `allowSync: true` said explicitly. Both references
+                # carry true here, as they do on the `/hubs/` form beside it.
                 size=len(hubs), Hub=hubs,
-                allowSync=False, identifier="com.plexapp.plugins.library",
+                allowSync=True, identifier="com.plexapp.plugins.library",
                 librarySectionID=row["librarySectionID"],
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"),
@@ -6049,8 +6052,20 @@ class PlexSim:
     def hub_container(self, **fields):
         """A hub response. Measured on a real PMS: `size`, `allowSync` and
         `identifier` only -- no mediaTagPrefix or mediaTagVersion, which the
-        generic library container adds."""
-        body = {"size": 0, "allowSync": False, "identifier": "com.plexapp.plugins.library"}
+        generic library container adds.
+
+        Cycle 14: `allowSync` is TRUE here, on kids (1.43.4) and zen (1.42.2) alike.
+        Checked across every hub path: `/hubs`, `/hubs/sections/{id}`,
+        `/hubs/promoted`, `/hubs/home/recentlyAdded`, `/hubs/home/onDeck`,
+        `/hubs/continueWatching`, `/hubs/metadata/{id}/related` and
+        `/library/metadata/{id}/related` all say true. The ONE exception is
+        `/hubs/metadata/{id}/postplay`, which says false -- so the default flips and
+        postplay passes it explicitly. (`/hubs/search` and `/hubs/items` carry no
+        `allowSync` at all and are built by a different container, which is why they
+        are unaffected.) plexsim defaulted to false and had three call sites putting
+        it back, so eight of the ten hub paths said the opposite of a real PMS.
+        """
+        body = {"size": 0, "allowSync": True, "identifier": "com.plexapp.plugins.library"}
         body.update(fields)
         if isinstance(fields.get("Hub"), list):
             body["size"] = len(fields["Hub"])
@@ -6302,9 +6317,14 @@ class PlexSim:
         `/library/metadata/{id}/related`. plexsim routed neither, and a 404 is
         what the preplay page reads as "no related items" -- silently.
 
-        Measured: `related` carries the librarySection triple and `allowSync`,
-        `postplay` carries NEITHER, and the hub inside them is `movie.similar`
-        keyed on the item's own `/similar`.
+        Measured: `related` carries the librarySection triple, `postplay` carries
+        none of it, and the hub inside them is `movie.similar` keyed on the item's
+        own `/similar`.
+
+        Cycle 14 corrects the `allowSync` half of that sentence: postplay DOES carry
+        `allowSync`, as **false**, on both references -- its container is
+        `allowSync`, `identifier`, `size`. It is the only hub container that is not
+        true, which is why it is the one that has to say so here.
         """
         if leaf not in ("related", "postplay"):
             return ("error", 404, "plexsim: not found")
@@ -6314,7 +6334,7 @@ class PlexSim:
             return ("error", 404, "plexsim: no such item")
         hubs = self.related_hubs(row, query)
         if leaf == "postplay":
-            return self.hub_container(Hub=hubs)
+            return self.hub_container(Hub=hubs, allowSync=False)
         section = self.catalog.section(row["librarySectionID"]) or {}
         return self.hub_container(
             Hub=hubs, allowSync=True,
