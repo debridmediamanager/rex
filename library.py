@@ -413,7 +413,7 @@ class Library:
 
     # -- metadata edits --------------------------------------------------
 
-    def edit(self, row, params, pairs=None, bare_fields=True):
+    def edit(self, row, params, pairs=None, section=False):
         """`PUT /library/metadata/{id}?title.value=X&title.locked=1`.
 
         Four param shapes, all from the client's own `getSaveParams`:
@@ -432,8 +432,10 @@ class Library:
           * `userRating` is accepted and IGNORED (the star rating is /:/rate);
           * only `.locked=1` locks -- `true`, `false` and an empty value all
             UNLOCK, where plexsim locked on anything non-empty;
-          * an indexed tag list REPLACES the whole list rather than appending, and
-            a `tag-` removal with any value CLEARS it;
+          * on the ITEM path an indexed tag list REPLACES the whole list rather
+            than appending, and a `tag-` removal with any value CLEARS it; on the
+            SECTION path (`section=True`, the Edit dialog's own save) the list
+            MERGES and a removal removes only what it names;
           * a tag matches case-insensitively and keeps its canonical spelling;
           * an unknown TAG type is a 400.
         """
@@ -443,7 +445,7 @@ class Library:
         items = [(k, v) for k, v in items
                  if not k.startswith(("X-Plex-", "include", "exclude"))
                  and k not in ("_pairs", "id", "type")]
-        if not bare_fields:
+        if section:
             # On the SECTION path a bare `field=value` is a FILTER that scopes the
             # edit, not a field to write -- measured: `?type=1&title=Sintel` edits
             # only Sintel. On the ITEM path the same shape IS an edit (a bare
@@ -455,26 +457,27 @@ class Library:
             raise EditError(400, "bad request")
 
         changed = False
-        replacing = {}     # tag type -> the desired list, in index order
-        clearing = set()   # tag types a `tag-` removal empties
-        for name, value in items:
+        adding = {}     # tag type -> (index, position, value) per indexed entry
+        removing = {}   # tag type -> the names a `tag-` removal lists
+        for position, (name, value) in enumerate(items):
             if ".tag.tag-" in name:
                 tag_type = name.split("[", 1)[0].lower()
                 if tag_type not in TAG_KEYS:
                     raise EditError(400, "unknown tag field %r" % tag_type)
-                # Measured: ANY `tag-` removal clears the whole list, whatever it
-                # names -- even a value the row does not have. The indexed list in
-                # the same request then rebuilds it, which is how the client's
-                # "remove one tag" actually works.
-                clearing.add(tag_type)
+                # The client double-encodes the list: each name is quoted, then the
+                # comma-joined list is quoted again (`Label%2520A%2CLabel%2520B`).
+                removing.setdefault(tag_type, []).extend(
+                    urllib.parse.unquote(part) for part in str(value).split(",") if part)
                 changed = True
             elif ".tag.tag" in name:
                 tag_type = name.split("[", 1)[0].lower()
                 if tag_type not in TAG_KEYS:
                     raise EditError(400, "unknown tag field %r" % tag_type)
-                replacing.setdefault(tag_type, [])
-                if value:
-                    replacing[tag_type].append(value)
+                # Measured: the INDEX orders the list, not the parameter's position --
+                # `genre[1]=Second&genre[0]=First` is [First, Second].
+                index = name.split("[", 1)[1].split("]", 1)[0] if "[" in name else ""
+                adding.setdefault(tag_type, []).append(
+                    (int(index) if index.isdigit() else position, position, value))
                 changed = True
             elif name.endswith(".locked"):
                 field = name[: -len(".locked")]
@@ -490,8 +493,18 @@ class Library:
                 self._set_field(row, field, value)
                 changed = True
 
-        for tag_type in clearing | set(replacing):
-            self._set_tags(row, tag_type, replacing.get(tag_type) or [])
+        for tag_type in set(adding) | set(removing):
+            wanted = [value for _, _, value in sorted(adding.get(tag_type, []),
+                                                      key=lambda entry: entry[:2]) if value]
+            if section:
+                self._merge_tags(row, tag_type, wanted, removing.get(tag_type, []))
+            else:
+                # Measured on the item path: ANY `tag-` removal clears the whole list,
+                # whatever it names, and the indexed list in the same request rebuilds
+                # it -- which is how the client's "remove one tag" works there. An
+                # exact repeat is one tag; `Qx&qx` is the first spelling twice, because
+                # the tag lookup ignores case and the dedupe does not.
+                self._set_tags(row, tag_type, list(dict.fromkeys(wanted)))
         if changed:
             row["updatedAt"] = _now()
         return changed
@@ -572,6 +585,7 @@ class Library:
             minted = {"id": tag_id, "tag": value,
                       "filter": "%s=%s" % (tag_type, tag_id)}
             self._tags[(key, str(value).lower())] = minted
+            existing[str(value).lower()] = minted
             fresh.append(minted)
         if fresh:
             row[key] = fresh
@@ -582,6 +596,30 @@ class Library:
                 self._sync_collection_tag(row, entry["tag"])
             for gone in before - {str(t["tag"]) for t in fresh}:
                 self._untag_collection(row, gone)
+
+    def _merge_tags(self, row, tag_type, wanted, removed):
+        """The SECTION path's tag write, which merges where the item path replaces.
+
+        Measured on a writable copy of the reference, through the Edit dialog's own
+        save (`PUT /library/sections/{id}/all?type=&id=`): the indexed list goes
+        FIRST, deduplicated case-insensitively, and the row's other tags follow in
+        their order; a `tag-` removal removes exactly the names it lists, ignoring
+        ones the row does not have; and an empty indexed value changes nothing.
+        plexsim replaced or cleared the list here as it does on the item path, so a
+        partial save -- python-plexapi's addGenre, a second client -- lost tags.
+        """
+        key = TAG_KEYS.get(tag_type)
+        gone = {str(name).lower() for name in removed}
+        first, seen = [], set()
+        for value in wanted:
+            if str(value).lower() not in seen:
+                seen.add(str(value).lower())
+                first.append(value)
+        if not first and not gone:
+            return
+        kept = [str(t.get("tag")) for t in row.get(key) or []
+                if str(t.get("tag")).lower() not in seen | gone]
+        self._set_tags(row, tag_type, first + kept)
 
     def _set_lock(self, row, field, locked):
         """A real PMS reports locks as a `Field` array on the row, in COLUMN order.

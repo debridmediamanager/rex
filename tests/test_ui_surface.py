@@ -5840,6 +5840,33 @@ def main():
           and arts_tags9 == {"Photo"},
           "random %d, arts %d of %d, xml %s" % (len(random9), len(art_keys9), len(with_art9), sorted(arts_tags9)))
 
+    # Measured on plexscratch, a writable copy of the reference: the Edit dialog's own
+    # save path MERGES tags -- the indexed list first, in INDEX order and deduplicated
+    # case-insensitively, then the row's other tags -- and a `tag-` removal there
+    # removes only the (double-encoded) names it lists. The item path replaces.
+    # plexsim replaced on both paths, in parameter order.
+    def genres_w1(key):
+        return [t.get("tag") for t in (get(base, "/library/metadata/%s" % key)[1]
+                                       .get("Metadata") or [{}])[0].get("Genre") or []]
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=%s&genre[1].tag.tag=%s"
+                         % (movie, quote("Keep One"), quote("Keep Two")))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&genre[1].tag.tag=Second"
+                         "&genre[0].tag.tag=First&genre[2].tag.tag=first" % (movie_section, movie))
+    merged_w1 = genres_w1(movie)
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&genre[].tag.tag-=%s"
+                         % (movie_section, movie, quote(quote("keep one") + "," + quote("Not There"))))
+    removed_w1 = genres_w1(movie)
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&genre[0].tag.tag="
+                         % (movie_section, movie))
+    empty_w1 = genres_w1(movie)
+    request(base, "PUT", "/library/metadata/%s?genre[1].tag.tag=Zeta&genre[0].tag.tag=Eta" % movie)
+    replaced_w1 = genres_w1(movie)
+    check("the section save path merges tags and removes only what it names; the item path replaces",
+          merged_w1 == ["First", "Second", "Keep One", "Keep Two"]
+          and removed_w1 == ["First", "Second", "Keep Two"] and empty_w1 == removed_w1
+          and replaced_w1 == ["Eta", "Zeta"],
+          "%s / %s / %s / %s" % (merged_w1, removed_w1, empty_w1, replaced_w1))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

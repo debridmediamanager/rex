@@ -3276,7 +3276,7 @@ class PlexSim:
                 else:
                     rows = self.typed_rows(section_id, query)
                     rows, _ = self.apply_filters(rows, query, section)
-                return self.apply_edit(rows, query, bare_fields=False,
+                return self.apply_edit(rows, query, section=True,
                                        metadata_state="queued")
             return self.section_listing(section_id, section, query)
         if leaf == "timeline":
@@ -4656,7 +4656,7 @@ class PlexSim:
         row = self.library._playlist_row(playlist, content=True)
         return self.bare_container(size=1, Metadata=[row])
 
-    def apply_edit(self, rows, query, bare_fields=True, metadata_state="loading"):
+    def apply_edit(self, rows, query, section=False, metadata_state="loading"):
         """One edit against one or more rows, with the refusals a real PMS makes.
 
         The client's Edit dialog saves through `PUT /library/sections/{id}/all`,
@@ -4668,7 +4668,7 @@ class PlexSim:
         try:
             for row in rows:
                 self.library.edit(row, query, pairs=query.get("_pairs"),
-                                  bare_fields=bare_fields)
+                                  section=section)
                 self.notify_edited(row, metadata_state)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
