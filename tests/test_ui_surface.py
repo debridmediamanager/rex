@@ -7552,6 +7552,34 @@ def main():
           % (total_c11a, one_c11a, zero_c11a, neg_c11a, word_c11a, lib_c11a,
              newest_c11a, newest_plain_c11a, kids_c11a, kids_plain_c11a))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2), identically on both: a section
+    # listing answers 500 to a `type=` it cannot parse and 200-with-no-rows to a
+    # number it does not know, and /library/all answers 400 to the same values while
+    # keeping 500 for an empty one. plexsim answered the whole grid to all of them,
+    # so a client that sent a malformed type read the library as if it had matched.
+    def status_c11b(path):
+        return request(base, "GET", path)[0]
+    def rows_c11b(path):
+        status, body, _ = get(base, path)
+        return status, len(body.get("Metadata") or [])
+    section_c11b = "/library/sections/%s/all" % movie_section
+    check("a listing refuses a type it cannot parse, and empties one it cannot place",
+          status_c11b(section_c11b + "?type=abc") == 500
+          and status_c11b(section_c11b + "?type=") == 500
+          and status_c11b(section_c11b + "?type=1.5") == 500
+          and rows_c11b(section_c11b + "?type=-1") == (200, 0)
+          and rows_c11b(section_c11b + "?type=99") == (200, 0)
+          and rows_c11b(section_c11b + "?type=1")[1] == rows_c11b(section_c11b)[1]
+          and status_c11b("/library/all?type=abc") == 400
+          and status_c11b("/library/all?type=1.5") == 400
+          and status_c11b("/library/all?type=") == 500,
+          "section abc/empty/1.5 %s/%s/%s, -1 %s, 99 %s, all %s/%s/%s"
+          % (status_c11b(section_c11b + "?type=abc"), status_c11b(section_c11b + "?type="),
+             status_c11b(section_c11b + "?type=1.5"), rows_c11b(section_c11b + "?type=-1"),
+             rows_c11b(section_c11b + "?type=99"), status_c11b("/library/all?type=abc"),
+             status_c11b("/library/all?type=1.5"), status_c11b("/library/all?type=")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
