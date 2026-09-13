@@ -2789,6 +2789,11 @@ anything changed.
   `/epg/search`, `/recordings`, `/dvrs/{id}` and `/sessions/{id}` (and all beneath
   them) are 404 on both servers and `/epg/channels` a 400; only `/livetv/dvrs` and
   `/livetv/sessions` answer empty. plexsim answered an empty container to all of them.
+- **`/allLeaves` below the show is empty.** A season's is `size 0` in its episode-list
+  container, naming the show by title only; an episode's is presented as its season's
+  (title1 the season, an empty grandparentTitle, the episode layout). plexsim returned
+  the season's episodes and the season layout. Every child list also carries
+  `allowSync: true` on both servers, where plexsim sent false.
 
 ### Emulation calibrated against the account's own claimed servers
 

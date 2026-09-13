@@ -1556,7 +1556,8 @@ class PlexSim:
         while these were missing, even though the rows themselves were correct.
         """
         section = self.catalog.section(parent.get("librarySectionID")) or {}
-        is_episode_list = bool(rows) and rows[0].get("type") == "episode"
+        is_episode_list = ((bool(rows) and rows[0].get("type") == "episode")
+                           or (leaf == "allLeaves" and parent.get("type") in ("season", "episode")))
 
         fields = {
             # Measured on both servers: a child row is the light projection -- text
@@ -1576,6 +1577,9 @@ class PlexSim:
             "librarySectionUUID": section.get("uuid"),
             "title1": parent.get("librarySectionTitle"),
             "summary": parent.get("summary") or "",
+            # Measured on both servers: every child list says it can sync -- a show's
+            # seasons, a season's episodes, allLeaves -- where plexsim said it could not.
+            "allowSync": True,
         }
 
         if parent.get("type") == "season":
@@ -1624,6 +1628,19 @@ class PlexSim:
                     "art": parent.get("art"),
                 }
             )
+        if leaf == "allLeaves" and parent.get("type") == "season":
+            # Measured on both servers: a season's (empty) allLeaves names the show only
+            # by title -- none of the grandparent key, thumb, studio or rating its
+            # /children carries.
+            for name in ("grandparentRatingKey", "grandparentThumb", "grandparentStudio",
+                         "grandparentContentRating"):
+                fields.pop(name, None)
+        if leaf == "allLeaves" and parent.get("type") == "episode":
+            # Measured on both servers: an episode's allLeaves is presented as its
+            # SEASON's -- title1 the season, title2 the episode, an empty
+            # grandparentTitle, and the episode layout -- where plexsim sent the library
+            # title and the season layout.
+            fields.update(title1=parent.get("parentTitle"), grandparentTitle="")
         if leaf == "allLeaves":
             # Measured against the reference: the allLeaves container says
             # `mixedParents` (its rows come from more than one season) and
@@ -4747,6 +4764,12 @@ class PlexSim:
         if leaf in ("children", "allLeaves"):
             if leaf == "children":
                 rows = self.catalog.children(rating_key)
+            elif row.get("type") in ("season", "episode"):
+                # Measured on both servers: `/allLeaves` below the SHOW is empty -- a
+                # season's is `size 0` with its episode-list container, not the season's
+                # episodes, and an episode's is empty too. plexsim returned the season's
+                # episodes, so a client walking allLeaves counted them twice.
+                rows = []
             else:
                 rows = self.catalog.leaves(rating_key)
             extra = {}

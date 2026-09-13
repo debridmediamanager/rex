@@ -5649,6 +5649,25 @@ def main():
     check("livetv refuses the guide, recordings and named DVRs; its two roots are empty",
           livetv9 == [404] * 8 + [400, 200, 200], str(livetv9))
 
+    if c5_show and c5_season and c5_episode:
+        _, season_leaves9, _ = get(base, "/library/metadata/%s/allLeaves" % c5_season)
+        _, episode_leaves9, _ = get(base, "/library/metadata/%s/allLeaves" % c5_episode)
+        _, show_children9, _ = get(base, "/library/metadata/%s/children" % c5_show)
+        season_title9 = detail_of(c5_season).get("title")
+        check("a season's allLeaves is empty, an episode's is its season's; child lists sync",
+              season_leaves9.get("size") == 0 and not season_leaves9.get("Metadata")
+              and season_leaves9.get("viewGroup") == "episode"
+              and season_leaves9.get("allowSync") is True
+              and "grandparentRatingKey" not in season_leaves9
+              and episode_leaves9.get("viewGroup") == "episode"
+              and episode_leaves9.get("viewMode") == 65592
+              and episode_leaves9.get("title1") == season_title9
+              and episode_leaves9.get("grandparentTitle") == ""
+              and show_children9.get("allowSync") is True,
+              "season %s/%s, episode %s/%r" % (
+                  season_leaves9.get("size"), season_leaves9.get("viewGroup"),
+                  episode_leaves9.get("viewGroup"), episode_leaves9.get("title1")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
