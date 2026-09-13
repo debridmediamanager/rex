@@ -508,6 +508,11 @@ class Library:
             self._notify("started", activity)
         return activity
 
+    def notify_activity(self, activity, event):
+        """Push one activity frame for an activity that is already open."""
+        if self._notify:
+            self._notify(event, activity)
+
     def finish_activity(self, activity):
         """End an activity the way a real refresh does: an `updated` frame, then
         `ended` at 100, and the row leaves /activities.
@@ -520,9 +525,12 @@ class Library:
         """
         if activity not in self._activities:
             return False
-        activity["progress"] = 49
-        if self._notify:
-            self._notify("updated", activity)
+        if activity.get("progress") != 49:
+            # The refresh sequence pushes its own `updated 49` before the processing
+            # timeline (measured on the copy); every other caller still gets one here.
+            activity["progress"] = 49
+            if self._notify:
+                self._notify("updated", activity)
         activity["progress"] = 100
         self._activities = [a for a in self._activities
                             if a["uuid"] != activity["uuid"]]

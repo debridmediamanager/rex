@@ -8408,6 +8408,33 @@ def main():
               ("updated", "general.db.optimize", 60), ("ended", "general.db.optimize", 100)],
           "%s" % steps_c12n)
 
+
+    # Measured on the copy: a refresh's frames are timeline(3 queued), activity started
+    # -1, activity updated 49, timeline(3 processing), timeline(4 loading), activity
+    # ended 100, timeline(5) -- the order this file's own docstring already recorded.
+    # plexsim emitted the `updated` inside finish_activity, after `loading`. And the
+    # activity's subtitle is the row's `title (year)`, not the bare title.
+    _, refresh_frames_c12o = notifications(
+        base, lambda: request(base, "PUT", "/library/metadata/%s/refresh" % movie), seconds=8)
+    order_c12o, subtitle_c12o = [], None
+    for frame_c12o in refresh_frames_c12o:
+        body_c12o = frame_c12o.get("NotificationContainer", frame_c12o) or {}
+        for a_c12o in body_c12o.get("ActivityNotification") or []:
+            order_c12o.append("activity:%s:%s" % (a_c12o.get("event"),
+                                                  (a_c12o.get("Activity") or {}).get("progress")))
+            subtitle_c12o = subtitle_c12o or (a_c12o.get("Activity") or {}).get("subtitle")
+        for t_c12o in body_c12o.get("TimelineEntry") or []:
+            order_c12o.append("timeline:%s:%s" % (t_c12o.get("state"), t_c12o.get("metadataState")))
+    row_c12o = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    want_c12o = "%s (%s)" % (row_c12o.get("title"), row_c12o.get("year")) \
+        if row_c12o.get("year") else row_c12o.get("title")
+    check("a refresh pushes its progress frame before the processing timeline",
+          order_c12o == ["timeline:3:queued", "activity:started:-1", "activity:updated:49",
+                         "timeline:3:processing", "timeline:4:loading",
+                         "activity:ended:100", "timeline:5:None"]
+          and subtitle_c12o == want_c12o,
+          "%s | subtitle %r wanted %r" % (order_c12o, subtitle_c12o, want_c12o))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
