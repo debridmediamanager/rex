@@ -6240,6 +6240,13 @@ def main():
     else:
         skip("a second completion of the same play answers ignore", "need a second movie")
 
+    # Measured on plexscratch: Remove from Continue Watching is a PUT that needs its
+    # ratingKey -- a GET is a 404 and a bare PUT a 400. plexsim hid the row on a GET.
+    get_w11c, _, _ = container(base, "GET", "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
+    bare_w11c, _, _ = container(base, "PUT", "/actions/removeFromContinueWatching")
+    check("Remove from Continue Watching is a PUT that needs a ratingKey",
+          (get_w11c, bare_w11c) == (404, 400), "GET %s, bare PUT %s" % (get_w11c, bare_w11c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

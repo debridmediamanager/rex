@@ -2959,6 +2959,9 @@ the same parameters, then read back from both.
 - **A second completion of the same play answers `ignore`.** Two `stopped` beats at 98%
   count one view on both servers, but the second one's `playbackState` is `ignore` on the
   reference, where plexsim said `complete` again.
+- **Remove from Continue Watching is a PUT that needs its `ratingKey`.** A GET is a 404
+  and a PUT with no `ratingKey` a 400; plexsim hid the row on a GET and 404'd the bare
+  PUT.
 
 ### Emulation calibrated against the account's own claimed servers
 
