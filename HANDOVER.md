@@ -1,4 +1,4 @@
-# plexsim handover — 2026-09-13 (refreshed during cycle 10)
+# plexsim handover — 2026-09-13 (refreshed after cycle 10)
 
 This file hands over the "implement everything the Plex UI asks of the server"
 programme: the measurement-cycle loop, how it is run, where it stands, and what bit
@@ -16,8 +16,8 @@ is run. Those two record what was measured.
 |---|---|
 | `main` | cycle 10's work, merged from `cycle10` |
 | Worktrees and stashes from this work | none once cycle 10's `wt10` is removed |
-| Cycles completed | 10, in three batches. Cycle 10 had findings, so **cycle 11 is due**. |
-| Work half-done | **cycle 10's third hunt**. Its territory (the playback and session surface on real-length media) is written and its instrument is built; the hunter died on a model rate limit before reporting, so nothing from it has been measured. See §10. |
+| Cycles completed | 10, in three batches, all three implemented. Cycle 10 had findings, so **cycle 11 is due**. |
+| Work half-done | **none**. |
 
 Cycle 10 ran as three batches:
 
@@ -25,13 +25,13 @@ Cycle 10 ran as three batches:
 |---|---|---|
 | 1 (opus) | `mediainfo.py` against fun's own analysis of the same real files | 16 rules, all re-measured; 22 commits; corpus in `tests/fixtures/media/` and `tests/test_mediainfo.py` |
 | 2 (fable) | the writes cycle 9 did not reach, on plexscratch | 9 findings, all re-measured on the copy; 10 commits |
-| 3 (opus) | the playback and session surface, on plexscratch's long media | **did not report** -- the hunter hit its model's weekly limit. Its prompt and its partial request log survive; see §10 |
+| 3 (opus) | the playback and session surface, on plexscratch's long media | 8 findings; 7 implemented, 1 refuted on re-measurement. The first attempt died on a model weekly limit and was relaunched against the merged head |
 
 Suite results at the end of cycle 10, all run on 2026-09-13:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **841/841**, 4 skipped | The skips need a TMDB key or real RD links. Restart the server between runs -- it writes, and the match check now merges a row away |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **846/846**, 4 skipped | The skips need a TMDB key or real RD links. Restart the server between runs -- it writes, and the match check now merges a row away |
 | `tests/test_mediainfo.py` | **27/27** | Offline: 46 recorded probes against what fun and the reference wrote for the same files |
 | `tests/test_navigation.py` on the full catalog | **46/46** | |
 | `tests/conformance.py` (python-plexapi) | **29/38** | The 9 failures are byte reads of placeholder RD links (502). They are expected. |
@@ -516,6 +516,18 @@ there, verbatim, in `hunt_prompts.md`.
 - A scan names its library in a `Context` and steps a show library by season.
 - A show's prefs write pushes the refresh cascade of its seasons and episodes.
 
+**Cycle 10 batch 3**, the playback surface on real-length media
+
+- A play completes only when a beat CROSSES 90% inside its own session; past 90% the answer is
+  `complete` or `ignore`, never `progress`.
+- A beat's own `duration` is the only one that counts: none, or `duration=0` (a 200), stores
+  nothing and completes nothing. `/:/progress` still stores without one.
+- A beat at or under a minute deletes the stored resume point; a progress beat stamps
+  `lastViewedAt` on the season and the show.
+- `playQueueItemID` and `playQueueID` on every `playing` frame of a queue-driven session.
+- A `/status/sessions` row drops `Guid` and `Image`, and its `Player` names a `profile`.
+- `/statistics/media` filters by `accountID` and `deviceID`.
+
 ## 8. Safety rules and incidents
 
 The rules:
@@ -630,37 +642,24 @@ Added in cycle 9:
 
 ---
 
-## 10. Next: finish cycle 10's third batch, then cycle 11
+## 10. Next: cycle 11
 
-**The one thing half-done.** Cycle 10's third hunt never ran. Its instrument is built and
-deployed: plexscratch has a `long` mode (30-minute movies, 22-minute episodes, its own
-`pristine-long/` baseline) and the prompt is written. Relaunch it before anything else --
-`c10/prompt_C.md` in cycle 10's scratch directory is the whole prompt, and the hunter is
-started by pointing an agent at that file. It needs plexscratch in `long` mode and a plexsim
-of its own; the copy is left in `long` mode for it. Its territory:
+Cycle 10 is complete: all three batches are measured, implemented and merged. Territories
+worth taking next:
 
-1. A whole play with a session identifier, beat by beat, against `/status/sessions`.
-2. Timelines with no `duration`, and `/:/progress` inside a live session -- the two instrument
-   limits cycle 9 recorded, which long media is what removes.
-3. Completion on real lengths, two clients at once, terminate, the `playing` frames, and the
-   Dashboard counters.
-
-Its partial request log (about 2.6 MB) and its scripts are in that scratch directory's
-`c10/sessions/`; it had reached the point of driving plays when it died. Nothing from it has
-been measured or implemented, and none of it is in the repository.
-
-Then cycle 11. Territories worth taking next:
-
-1. **The writes this cycle could not reach**: the download queue (needs a claimed copy), a
-   subtitle upload, and the library-create frames recorded in findings.md as captured only in
-   part.
-2. **The XML path of cycle 10's writes**, which were compared as JSON.
-3. **A second media corpus**: music and photo libraries are wholly unmeasured, and every
-   media rule in this cycle came from video.
+1. **The writes this cycle could not reach**: the download queue (it needs a claimed copy),
+   a subtitle upload, and the library-create frames recorded in findings.md as captured only
+   in part.
+2. **The XML path of cycle 10's writes and session beats**, which were compared as JSON.
+3. **A second media corpus**: music and photo libraries are wholly unmeasured, and every media
+   rule in this cycle came from video.
+4. **Terminate and the statistics surface on a CLAIMED copy.** An unclaimed plexscratch 401s
+   `/status/sessions/terminate` and 404s `/statistics/*`, so neither could be measured there;
+   both are recorded as instrument limits rather than as findings.
 
 Before launching: refresh `hunt_prompts.md`, write a fresh `tokens.env`, pick ports, snapshot
-kids, and reset plexscratch (`./scratch.sh short` first unless the territory wants long media).
-One hunter writes to plexscratch per cycle.
+kids, and reset plexscratch (`./scratch.sh short` first unless the territory wants long media --
+it is left in `long` mode). One hunter writes to plexscratch per cycle.
 
 ## 11. Tooling and environment gotchas
 
@@ -708,8 +707,10 @@ One hunter writes to plexscratch per cycle.
 - **A check that `%`-formats a path twice breaks on an encoded `%2F`**; build the path in
   a function with one substitution.
 - **plexscratch's token changes on every start, `reset` included**; re-read it after each.
-- **plexscratch's clips are ten seconds long**: send timelines with an explicit `duration`
-  and no `X-Plex-Session-Identifier`, or every beat is ignored.
+- **plexscratch's SHORT clips are ten seconds long**: send timelines with an explicit
+  `duration`, or every beat is ignored. (The reason, found in cycle 10: a play completes
+  only when a beat crosses 90% inside its session, and a ten-second clip is crossed at
+  once. `./scratch.sh long` is the copy on half-hour media.)
 - **A client's new play queue retires its older ones.** A check that builds a second queue
   cannot write to the first.
 - **A proof's parent tree needs every sidecar.** `mediainfo.py` loads `languages.json` beside
