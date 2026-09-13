@@ -685,6 +685,9 @@ precisely how the Seasons bug survived a fix attempt.
   unlock each re-derive it from the title, article stripped, on items, collections and
   playlists alike; only a lock keeps what was typed. A check that writes `titleSort`
   without `titleSort.locked=1` is testing a value a real PMS throws away.
+- **The section save path is scoped by `type` AND by library**: an `id` of another type
+  or library is silently not edited, and a type-scoped filter (`show.title=`) there is a
+  400 even though the same key filters a listing.
 
 ## Conventions
 
