@@ -2836,7 +2836,7 @@ class PlexSim:
         if route == "/:/rate":
             return self.rate(query)
         if route == "/actions/removeFromContinueWatching":
-            return self.remove_from_continue_watching(query)
+            return self.remove_from_continue_watching(query, method)
 
         # -- live TV / DVR / sync: plexsim has no tuner and no encoder ----
         if segments[:1] == ["media"] and segments[1:2] in (["subscriptions"], ["grabbers"]):
@@ -6649,12 +6649,19 @@ class PlexSim:
         logger.info("RATE %s -> %s", row["ratingKey"], rating)
         return ("empty", 200)
 
-    def remove_from_continue_watching(self, query):
+    def remove_from_continue_watching(self, query, method="PUT"):
         """The context-menu entry of the same name: drop the resume point.
 
         Advertised as an Action on the `actions` provider feature; the client
         only draws the entry when that Action is present.
         """
+        if method == "GET":
+            # Measured on a writable copy of the reference: the action is a WRITE -- a
+            # GET is a 404 -- and a PUT that names no ratingKey is a 400. plexsim hid
+            # the row on a GET and 404'd the bare PUT.
+            return ("error", 404, "plexsim: not found")
+        if not (query.get("ratingKey") or query.get("key")):
+            return ("error", 400, "plexsim: bad request")
         key = (query.get("ratingKey") or query.get("key") or "").rsplit("/", 1)[-1]
         if not key.isdigit() or self.library.remove_from_continue_watching(
                 int(key)) is None:
