@@ -3023,6 +3023,9 @@ the same parameters, then read back from both.
   plexsim stepped the version and added nothing.
 - **DELETE on a play queue's items clears it down to the selected item**, stepping the
   version; plexsim answered 404.
+- **Deleting a play queue's selected item answers the queue as it stood.** The response
+  carries the old version, selection and total with no rows, and the next read has the
+  selection on the item that followed it; plexsim left the selection on the deleted id.
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -7422,6 +7422,16 @@ class PlexSim:
             return self.play_queue_container(queue_id, query)
 
         if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
+            # Measured on a writable copy of the reference: deleting the SELECTED item
+            # answers the queue as it stood -- the old version, selection and total --
+            # with no rows, and the next read has the selection on the item that
+            # followed it. plexsim left the selection on the deleted id.
+            stale = None
+            if str(queue.get("selected")) == str(segments[3]):
+                stale = self.play_queue_container(queue_id, query)
+                if isinstance(stale, dict):
+                    stale["MediaContainer"].pop("Metadata", None)
+                    stale["MediaContainer"]["size"] = 0
             with self.lock:
                 items = queue["items"]
                 index = next((i for i, e in enumerate(items)
@@ -7433,7 +7443,10 @@ class PlexSim:
                     return ("error", 404, "plexsim: no such play queue item")
                 items.pop(index)
                 queue["version"] += 1
-            return self.play_queue_container(queue_id, query)
+                if stale is not None:
+                    following = items[index] if index < len(items) else (items[-1] if items else None)
+                    queue["selected"] = following["id"] if following else None
+            return stale if stale is not None else self.play_queue_container(queue_id, query)
 
         if len(segments) == 2 and method == "PUT":
             if not query.get("uri") and not query.get("playlistID"):

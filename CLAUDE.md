@@ -723,6 +723,8 @@ precisely how the Seasons bug survived a fix attempt.
   timeline.
 - **A client's new play queue retires its older ones** (a 404 afterwards); another client's
   queue does not. A check that creates a second queue cannot read the first.
+- **Deleting a play queue's SELECTED item answers the queue as it stood** (old version,
+  selection and total, no rows); the next read has the selection on the following item.
 
 ## Conventions
 
