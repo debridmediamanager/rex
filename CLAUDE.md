@@ -732,6 +732,9 @@ precisely how the Seasons bug survived a fix attempt.
 - **A library edit applies the whole form and scans**: `language` and `prefs[...]` apply,
   and a scan is ONE `library.update.section` activity stepping through the items, not an
   activity per row.
+- **Unmatching an episode or a season gives `local://<id>` and the generated `Episode N` /
+  `Season N`**, keeping the external Guids; the filename title and `none://` guid are a
+  movie's.
 
 ## Conventions
 

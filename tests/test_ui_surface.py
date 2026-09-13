@@ -6895,6 +6895,47 @@ def main():
         skip("a merge frames the absorbed row deleted and the survivor as type -1; a split frames the new row",
              "need three movies")
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: unmatching an episode gives it `local://<id>` and the generated
+    # `Episode N`, keeps its Guids and pushes matching then done; a season becomes `Season
+    # N` on `local://<id>`. plexsim used the filename, a none:// guid and dropped the Guids.
+    if show:
+        season_w16c = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                            if r.get("type") == "season"), {}).get("ratingKey")
+        episode_w16c = (get(base, "/library/metadata/%s/children" % season_w16c)[1]
+                        .get("Metadata") or [{}])[0].get("ratingKey")
+        def row_w16c(key):
+            return (get(base, "/library/metadata/%s" % key)[1].get("Metadata") or [{}])[0]
+        guids_w16c = [g.get("id") for g in row_w16c(episode_w16c).get("Guid") or []]
+        _, frames_w16c = notifications(base, lambda: request(base, "PUT", "/library/metadata/%s/unmatch" % episode_w16c),
+                                       seconds=3)
+        states_w16c = [(e.get("state"), e.get("metadataState")) for e in timelines_w15(frames_w16c)
+                       if str(e.get("itemID")) == str(episode_w16c)]
+        episode_after_w16c = row_w16c(episode_w16c)
+        request(base, "PUT", "/library/metadata/%s/unmatch" % season_w16c)
+        season_after_w16c = row_w16c(season_w16c)
+        check("unmatching an episode or a season gives a local guid and a generated title, keeping the Guids",
+              states_w16c == [(2, "matching"), (5, None)]
+              and episode_after_w16c.get("title") == "Episode %s" % episode_after_w16c.get("index")
+              and episode_after_w16c.get("guid") == "local://%s" % episode_w16c
+              and [g.get("id") for g in episode_after_w16c.get("Guid") or []] == guids_w16c
+              and season_after_w16c.get("title") == "Season %s" % season_after_w16c.get("index")
+              and season_after_w16c.get("guid") == "local://%s" % season_w16c,
+              "frames %s, episode %r %r, season %r %r" % (states_w16c, episode_after_w16c.get("title"),
+                                                         episode_after_w16c.get("guid"), season_after_w16c.get("title"),
+                                                         season_after_w16c.get("guid")))
+    else:
+        skip("unmatching an episode or a season gives a local guid and a generated title, keeping the Guids",
+             "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

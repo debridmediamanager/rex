@@ -6977,6 +6977,15 @@ class PlexSim:
                         row["ratingKey"])
         elif action == "unmatch":
             self.library.unmatch(row)
+            if row.get("type") in ("episode", "season"):
+                # Measured: an unmatch pushes `matching` (state 2) and then the refresh it
+                # causes -- an episode straight to state 5, a season through the full
+                # refresh sequence.
+                self.notify_timeline(row, 2, "matching")
+                if row["type"] == "season":
+                    self.notify_refreshed(row)
+                else:
+                    self.notify_timeline(row, self.TIMELINE_DONE, None)
             logger.info("UNMATCH %s -> guid=%s", row["ratingKey"], row.get("guid"))
         elif action == "match":
             guid = query.get("guid") or ""

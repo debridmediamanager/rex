@@ -3100,6 +3100,13 @@ the same parameters, then read back from both.
   source's state 3 and 5, on a NEW ratingKey never used before (67 after 57). plexsim
   pushed nothing for either, and put the split's row on the highest FREE key -- the one
   the merge had just taken from the absorbed row.
+- **Unmatching an episode or a season gives it a local guid and its generated title.** An
+  episode became `Episode 2` on `guid: local://9`, kept its imdb/tmdb/tvdb Guids and pushed
+  `matching` (state 2) then state 5; a season became `Season 1` on `local://7`, through the
+  full refresh sequence. The earlier reading -- a filename title and a
+  `tv.plex.agents.none://` guid -- was a movie's and still stands for movies. plexsim
+  applied the movie rule to both, dropped the Guids, and left an `Unmatching` activity that
+  never ended.
 
 ### Emulation calibrated against the account's own claimed servers
 
