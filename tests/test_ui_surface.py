@@ -6032,12 +6032,17 @@ def main():
         episode_w8 = entries_w8(lambda: request(base, "PUT", "/library/metadata/%s?summary.value=w8"
                                                           % episode_row_w8.get("ratingKey")))
         show_w8 = entries_w8(lambda: request(base, "PUT", "/library/metadata/%s?summary.value=w8" % show))
-        pair_w8 = sorted((row_w8(movie), row_w8(spare)),
-                         key=lambda r: str(r.get("titleSort") or r.get("title") or "").lower())
-        batch_w8 = entries_w8(lambda: request(base, "PUT", "/library/sections/%s/all?type=1&id=%s,%s"
+        # Two rows whose sort titles DIFFER, named in reverse: by here earlier checks can
+        # leave two movies with one title, and a tie is ordered by something this check
+        # does not pin.
+        listing_w8 = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [{}]
+        sort_w8 = lambda r: str(r.get("titleSort") or r.get("title") or "").lower()
+        pair_w8 = sorted([listing_w8[0]] + [r for r in listing_w8 if sort_w8(r) != sort_w8(listing_w8[0])][:1],
+                         key=sort_w8)
+        batch_w8 = entries_w8(lambda: request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
                                                           "&summary.value=w8"
-                                                          % (movie_section, pair_w8[1]["ratingKey"],
-                                                             pair_w8[0]["ratingKey"])))
+                                                          % (movie_section, ",".join(
+                                                              str(r["ratingKey"]) for r in reversed(pair_w8)))))
         uri_w8 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
         _, made_w8, _ = container(base, "POST", "/playlists?type=video&smart=0&title=w8list&uri=%s" % uri_w8)
         list_w8 = str((made_w8.get("Metadata") or [{}])[0].get("ratingKey"))
@@ -6053,13 +6058,20 @@ def main():
                                                int(episode_row_w8.get("index") or 0))
         show_title_w8 = "%s (%s)" % (show_row_w8.get("title"), show_row_w8.get("year"))
         keys_w8 = [str(r["ratingKey"]) for r in pair_w8]
+        # Only the frames for the rows each write touched: another item's earlier work
+        # can land a frame in the same window.
+        episode_w8 = [e for e in episode_w8 if e[2] == str(episode_row_w8.get("ratingKey"))]
+        show_w8 = [e for e in show_w8 if e[2] == str(show)]
+        batch_w8 = [e for e in batch_w8 if e[2] in keys_w8]
         check("a frame names a show with its year and an episode by S and E; a batch and a list frame as measured",
               [e[3] for e in episode_w8] == [episode_title_w8] * 2 and [e[3] for e in show_w8] == [show_title_w8] * 2
-              and [(e[1], e[2]) for e in batch_w8] == [(3, keys_w8[0]), (3, keys_w8[1]), (5, keys_w8[0]), (5, keys_w8[1])]
+              and [(e[1], e[2]) for e in batch_w8] == [(3, k) for k in keys_w8] + [(5, k) for k in keys_w8]
               and playlist_w8 == [(15, 3, list_w8, "w8renamed"), (15, 5, list_w8, "w8renamed")]
               and collection_w8 == [(18, 3, coll_w8, "w8collrenamed"), (18, 5, coll_w8, "w8collrenamed")],
-              "%s / %s / %s / %s / %s" % ([e[3] for e in episode_w8][:1], [e[3] for e in show_w8][:1],
-                                         [(e[1], e[2]) for e in batch_w8], playlist_w8, collection_w8))
+              "%s want %r / %s want %r / %s want %s by %s / %s / %s"
+              % ([e[3] for e in episode_w8], episode_title_w8, [e[3] for e in show_w8], show_title_w8,
+                 [(e[1], e[2]) for e in batch_w8], keys_w8,
+                 [(r.get("titleSort"), r.get("title")) for r in pair_w8], playlist_w8, collection_w8))
     else:
         skip("a frame names a show with its year and an episode by S and E; a batch and a list frame as measured",
              "need a show and a second movie")
