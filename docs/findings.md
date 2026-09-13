@@ -2950,6 +2950,12 @@ the same parameters, then read back from both.
   missing time.
 - **Only -1 clears a rating's timestamp.** `/:/rate?rating=-5` removes the stars and
   keeps `lastRatedAt`; `-1` removes both. plexsim cleared both for any negative rating.
+- **A timeline refuses a position it cannot place.** A `time` past the `duration` sent
+  with it, a negative or non-numeric `time` and a non-numeric `duration` are each a 400.
+  plexsim answered 200 -- and a time past the duration completed the play and wrote a
+  history row. A timeline with NO `duration` answered `ignore` on plexscratch, but its
+  clips are ten seconds long, so that cannot be told apart from a position past the
+  item's own length; it was not acted on.
 
 ### Emulation calibrated against the account's own claimed servers
 
