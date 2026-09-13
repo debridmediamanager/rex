@@ -7306,7 +7306,13 @@ class PlexSim:
     # What the Upload Subtitle modal is allowed to send, measured one extension at a
     # time on a writable copy of the reference: these five are accepted and `vtt`,
     # `sub`, `idx`, `sup`, `pgs`, an unknown extension and an empty one are 400s.
-    SUBTITLE_UPLOAD_FORMATS = ("srt", "ass", "ssa", "smi", "txt")
+    # Re-measured one extension at a time on the copy, extending cycle 11's set:
+    # `psb` is accepted too, and the check is CASE-SENSITIVE -- `format=SRT` and a
+    # `title=x.SRT` are both 400 where the lowercase forms are 200. plexsim lowercased
+    # the value, so it accepted uploads a real PMS refuses. The client's own allowed
+    # list is wider than the server's (`aqt jss rt utf utf-8 utf8 sub idx vtt` are
+    # offered by the modal and refused by the server), which is the client's business.
+    SUBTITLE_UPLOAD_FORMATS = ("srt", "ass", "ssa", "smi", "txt", "psb")
 
     def upload_subtitle(self, row, query, body):
         """`POST /library/metadata/{id}/subtitles?title=&format=` -- the Upload modal.
@@ -7329,7 +7335,8 @@ class PlexSim:
         if not title or "." not in title:
             return ("error", 500, "plexsim: internal error")
         stem, _, extension = title.rpartition(".")
-        fmt = str(query.get("format") or extension).lower()
+        # Measured on the copy: the format is compared AS SENT -- `SRT` is a 400.
+        fmt = str(query.get("format") or extension)
         if fmt not in self.SUBTITLE_UPLOAD_FORMATS:
             return ("error", 400, "plexsim: bad request")
         if not body:
