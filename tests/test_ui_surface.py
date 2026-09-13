@@ -7880,6 +7880,55 @@ def main():
           and plain_c11k[0] is None,
           "tiny %s, small %s, identity %s" % (tiny_c11k, small_c11k, plain_c11k))
 
+
+    # Re-measured on a writable copy of the reference: a plain "Add to Queue" lands
+    # immediately after the current item, in front of the queue's original members,
+    # and a second one stacks behind the first -- [A,B,C] + D = [A,D,B,C], + E =
+    # [A,D,E,B,C]. plexsim skipped forward while the item id was above the selected
+    # id, which every original member also satisfies, so it appended to the very end
+    # and Add to Queue from a grid put the row at the bottom of the queue.
+    def queue_rows_c11l(body_c11l):
+        return [(m.get("playQueueItemID"), m.get("ratingKey"))
+                for m in (body_c11l.get("Metadata") or [])]
+    members_c11l = [r.get("ratingKey") for r in
+                    (get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or [])]
+    extra_c11l = [r.get("ratingKey") for r in
+                  (get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or [])]
+    if len(members_c11l) < 2 or not extra_c11l:
+        skip("a plain queue add lands in Up Next, after the items already added",
+             "the fixture has too few rows")
+    else:
+        uri_c11l = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(members_c11l)))
+        status_c11l, queue_c11l, _ = container(
+            base, "POST", "/playQueues?type=video&uri=%s&key=%s&shuffle=0&repeat=0&continuous=0"
+            % (uri_c11l, quote("/library/metadata/%s" % members_c11l[0])))
+        id_c11l = queue_c11l.get("playQueueID")
+        created_c11l = queue_rows_c11l(queue_c11l)
+        first_c11l = queue_rows_c11l(container(
+            base, "PUT", "/playQueues/%s?uri=%s"
+            % (id_c11l, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                              % (machine, extra_c11l[0]))))[1])
+        second_c11l = queue_rows_c11l(container(
+            base, "PUT", "/playQueues/%s?uri=%s"
+            % (id_c11l, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                              % (machine, extra_c11l[-1]))))[1])
+        ahead_c11l = queue_rows_c11l(container(
+            base, "PUT", "/playQueues/%s?uri=%s&next=1"
+            % (id_c11l, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                              % (machine, members_c11l[-1]))))[1])
+        check("a plain queue add lands in Up Next, after the items already added",
+              status_c11l == 200 and len(created_c11l) == len(members_c11l)
+              and [key for _, key in first_c11l]
+              == [members_c11l[0], extra_c11l[0]] + members_c11l[1:]
+              and [key for _, key in second_c11l]
+              == [members_c11l[0], extra_c11l[0], extra_c11l[-1]] + members_c11l[1:]
+              and [key for _, key in ahead_c11l]
+              == [members_c11l[0], members_c11l[-1], extra_c11l[0], extra_c11l[-1]] + members_c11l[1:],
+              "created %s, +1 %s, +2 %s, next=1 %s"
+              % ([k for _, k in created_c11l], [k for _, k in first_c11l],
+                 [k for _, k in second_c11l], [k for _, k in ahead_c11l]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
