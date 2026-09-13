@@ -10068,11 +10068,16 @@ def main():
         candidates_c14x = get(base, "/library/metadata/%s/posters" % show)[1].get("Metadata") or []
         pickable_c14x = next((c_c14x.get("key") for c_c14x in candidates_c14x
                               if not str(c_c14x.get("key") or "").endswith("/thumb/1")), None)
-        if (not pickable_c14x or not seasons_c14x or not leaves_c14x
-                or not before_season_c14x.get("parentThumb")
-                or not detail_c14x(leaves_c14x[0]).get("grandparentThumb")):
+        # The cascade half is asserted only for children that still CARRY the borrowed
+        # field -- by this point the suite's unmatch checks have stripped some -- but
+        # the re-version and the lock are asserted either way, so the check never
+        # becomes a no-op the way its first version did.
+        want_season_c14x = bool(before_season_c14x.get("parentThumb"))
+        want_leaf_c14x = bool(detail_c14x(leaves_c14x[0]).get("grandparentThumb")) \
+            if leaves_c14x else False
+        if not pickable_c14x or not seasons_c14x or not leaves_c14x:
             skip("an artwork pick re-versions all three and cascades to the children",
-                 "no remote candidate, or no child still carrying the borrowed artwork")
+                 "no remote candidate to pick")
         else:
             status_c14x, body_c14x, _ = request(
                 base, "PUT", "/library/metadata/%s/poster?url=%s"
@@ -10089,13 +10094,16 @@ def main():
             check("an artwork pick re-versions all three and cascades to the children",
                   status_c14x == 200 and body_c14x.decode() == after_c14x.get("thumb")
                   and not moved_c14x and "thumb" in locked_c14x
-                  and season_c14x.get("parentThumb") == after_c14x.get("thumb")
-                  and leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb")
+                  and (not want_season_c14x
+                       or season_c14x.get("parentThumb") == after_c14x.get("thumb"))
+                  and (not want_leaf_c14x
+                       or leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb"))
                   and season_c14x.get("thumb") == before_season_c14x.get("thumb"),
-                  "stamp %s | unmoved-of-three %s | locked %s | season.parentThumb %s | "
-                  "leaf.grandparentThumb %s | season.thumb kept %s"
+                  "stamp %s | unmoved-of-three %s | locked %s | season.parentThumb %s "
+                  "(checked %s) | leaf.grandparentThumb %s | season.thumb kept %s"
                   % (stamp_c14x, moved_c14x, sorted(locked_c14x),
                      season_c14x.get("parentThumb") == after_c14x.get("thumb"),
+                     want_season_c14x,
                      leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb"),
                      season_c14x.get("thumb") == before_season_c14x.get("thumb")))
 
