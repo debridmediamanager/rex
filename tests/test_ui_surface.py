@@ -8435,6 +8435,40 @@ def main():
           and subtitle_c12o == want_c12o,
           "%s | subtitle %r wanted %r" % (order_c12o, subtitle_c12o, want_c12o))
 
+
+    # Measured on the copy: a scan ends inside a NESTED pair of
+    # `provider.subscriptions.process` activities -- outer started, section ended,
+    # completion status, inner started, inner ended, outer ended -- and "Refresh All
+    # Metadata" (`?force=1`) runs that whole sequence before it refreshes anything.
+    # plexsim pushed neither, so the Libraries page showed no scan for the one
+    # operation that takes longest.
+    def scan_frames_c12p(path_c12p):
+        _, frames_c12p = notifications(base, lambda: request(base, "GET", path_c12p), seconds=8)
+        out_c12p = []
+        for frame_c12p in frames_c12p:
+            body_c12p = frame_c12p.get("NotificationContainer", frame_c12p) or {}
+            for a_c12p in body_c12p.get("ActivityNotification") or []:
+                out_c12p.append("%s:%s" % ((a_c12p.get("Activity") or {}).get("type"),
+                                           a_c12p.get("event")))
+            for s_c12p in body_c12p.get("StatusNotification") or []:
+                out_c12p.append("status:%s" % (s_c12p.get("title") or "")[:14])
+        return out_c12p
+    plain_c12p = scan_frames_c12p("/library/sections/%s/refresh" % movie_section)
+    tail_c12p = ["provider.subscriptions.process:started",
+                 "library.update.section:ended",
+                 "status:Library scan c",
+                 "provider.subscriptions.process:started",
+                 "provider.subscriptions.process:ended",
+                 "provider.subscriptions.process:ended"]
+    forced_c12p = scan_frames_c12p("/library/sections/%s/refresh?force=1" % movie_section)
+    check("a scan ends inside the subscriptions pair, and a forced refresh scans first",
+          plain_c12p[-6:] == tail_c12p
+          and plain_c12p[0] == "library.update.section:started"
+          and forced_c12p[0] == "library.update.section:started"
+          and forced_c12p[1].startswith("status:Scanning")
+          and "provider.subscriptions.process:ended" in forced_c12p,
+          "plain %s | forced %s" % (plain_c12p[-7:], forced_c12p[:4]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
