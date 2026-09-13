@@ -8968,6 +8968,40 @@ def main():
                      [r_c13m.get("studio") for r_c13m in season_kids_c13m],
                      [r_c13m.get("studio") for r_c13m in section_c13m]))
 
+        # Measured on kids (1.43.4) and zen (1.42.2): a SEASON row of `/library/recentlyAdded`
+    # carries `parentSummary`, the SHOW's summary -- 2 of 2 season rows on kids and 3 of 3
+    # zen season rows whose show has a summary, while the 4 zen rows whose show has an
+    # empty one carry no such field (an empty string is omitted, like every other). A
+    # movie row never carries it. And it is on that endpoint ALONE: swept across
+    # /library/sections/{id}/recentlyAdded, /newest, /hubs/home/recentlyAdded,
+    # /hubs/sections/{id}, /hubs/promoted, a type=3 listing, /children and /library/onDeck,
+    # every other season row on both servers carries none. plexsim never sent it anywhere.
+    rows_c13n = get(base, "/library/recentlyAdded")[1].get("Metadata") or []
+    seasons_c13n = [r_c13n for r_c13n in rows_c13n if r_c13n.get("type") == "season"]
+    movies_c13n = [r_c13n for r_c13n in rows_c13n if r_c13n.get("type") == "movie"]
+    if not seasons_c13n:
+        skip("a season in the global Recently Added carries its show's summary",
+             "no season in the global recently-added list")
+    else:
+        show_c13n = (get(base, "/library/metadata/%s" % seasons_c13n[0].get("parentRatingKey"))[1]
+                     .get("Metadata") or [{}])[0]
+        elsewhere_c13n = []
+        for path_c13n in ("/library/sections/%s/all?type=3" % show_section,
+                          "/library/sections/%s/recentlyAdded" % show_section,
+                          "/library/metadata/%s/children" % show):
+            elsewhere_c13n += [r_c13n for r_c13n in get(base, path_c13n)[1].get("Metadata") or []
+                               if r_c13n.get("type") == "season"]
+        check("a season in the global Recently Added carries its show's summary, and only there",
+              bool(show_c13n.get("summary"))
+              and all(r_c13n.get("parentSummary") == show_c13n.get("summary")
+                      for r_c13n in seasons_c13n)
+              and all("parentSummary" not in r_c13n for r_c13n in movies_c13n)
+              and all("parentSummary" not in r_c13n for r_c13n in elsewhere_c13n),
+              "seasons %s | movies %s | elsewhere %s"
+              % ([r_c13n.get("parentSummary") is not None for r_c13n in seasons_c13n],
+                 [("parentSummary" in r_c13n) for r_c13n in movies_c13n],
+                 [("parentSummary" in r_c13n) for r_c13n in elsewhere_c13n]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -2772,6 +2772,16 @@ class PlexSim:
             rows = []
             for added, row in dated[:50]:
                 entry = _grid_row(_listing_row(row))
+                if row.get("type") == "season":
+                    # Measured on both servers: a SEASON row here -- and nowhere else on
+                    # the surface -- carries `parentSummary`, the show's own summary. An
+                    # empty one is omitted like every other empty string (4 zen rows
+                    # whose show has none carry no field at all). The client prints it
+                    # under the season tile, where plexsim left it blank.
+                    parent = self.catalog.items.get(int(row["parentRatingKey"])) \
+                        if str(row.get("parentRatingKey") or "").isdigit() else None
+                    if parent and parent.get("summary"):
+                        entry["parentSummary"] = parent["summary"]
                 entry.pop("librarySectionKey", None)
                 entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
                                                or {}).get("uuid")
