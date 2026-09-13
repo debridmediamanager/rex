@@ -10398,6 +10398,29 @@ def main():
              request(base, "GET", "/status/sessions/history/all?type=")[0],
              request(base, "GET", "/status/sessions/history/all?type=1")[0]))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: the in-library
+    # search box answers the LIGHT grid row, exactly as every other listing does -- no
+    # `Guid`, no `Rating`, no tag ids, no `Stream` inside a Part. Its row is
+    # byte-comparable with the grid's row for the same item on both servers. plexsim
+    # answered the DETAIL row here and nowhere else, so the one listing a user reaches
+    # by typing carried uncapped tag lists, every Stream element and every external
+    # guid -- and a client that tests `Rating`/`Guid` presence to decide "this row is
+    # fully loaded" skips its detail fetch and then renders a page missing whatever
+    # only a detail row carries.
+    srow_c15s = (get(base, "/library/sections/%s/search?type=1&query=%s"
+                     % (movie_section, quote("Tears")))[1].get("Metadata") or [{}])[0]
+    grow_c15s = (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                 .get("Metadata") or [{}])[0]
+    streams_c15s = any("Stream" in p_c15s for m_c15s in srow_c15s.get("Media") or []
+                       for p_c15s in m_c15s.get("Part") or [])
+    tagids_c15s = any("id" in t_c15s for t_c15s in
+                      (srow_c15s.get("Genre") or []) + (srow_c15s.get("Director") or []))
+    check("the section search box answers the light grid row, not the detail row",
+          "Guid" not in srow_c15s and "Rating" not in srow_c15s
+          and not tagids_c15s and not streams_c15s
+          and ("Guid" in grow_c15s) == ("Guid" in srow_c15s),
+          "search keys %s" % sorted(srow_c15s))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
