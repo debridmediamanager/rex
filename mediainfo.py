@@ -108,10 +108,6 @@ def _video_resolution(height, width):
     return max(by_width, by_height, key=_RESOLUTION_ORDER.index)
 
 
-def _channel_layout(channels):
-    return {1: "mono", 2: "stereo", 6: "5.1(side)", 8: "7.1"}.get(channels)
-
-
 # The aspect ratio a real PMS writes is one of six values -- 1.33, 1.66, 1.78, 1.85, 2.2 and
 # 2.35 -- on every Media of fun's movie libraries: the DISPLAY aspect (width times the sample
 # aspect ratio, over height) snapped to the nearest. plexsim wrote the raw quotient and
@@ -368,7 +364,10 @@ def _audio_stream(stream, stream_id, selected):
         "codec": plex_codec,
         "index": stream.get("index"),
         "channels": channels,
-        "audioChannelLayout": _channel_layout(channels),
+        # ffprobe's layout verbatim, measured on 126 of 130 tracks on fun, and absent where
+        # it has none. plexsim derived it from the channel count, so a `5.1` track was
+        # `5.1(side)` and a 3-, 4-, 5- or 7-channel one had no layout.
+        "audioChannelLayout": stream.get("channel_layout") or None,
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
         "profile": plex_profile,
     }
