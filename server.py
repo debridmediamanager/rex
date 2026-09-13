@@ -4035,9 +4035,15 @@ class PlexSim:
                 rows = [r for r in rows
                         if text in str(r.get("title") or "").lower()
                         or text in str(r.get("originalTitle") or "").lower()]
+            # Cycle 15, measured on kids and zen: this row is the LIGHT grid
+            # projection, like every other listing's -- no `Guid`, no `Rating`, no
+            # tag ids and no `Stream`. Both references answer a search row that is
+            # identical to their grid row for the same item. plexsim sent the detail
+            # row here and only here, so the one listing a user reaches by typing
+            # was the fattest response the server had.
             found = self.secondary_container(
                 section_id, section, "Search for '%s'" % text,
-                Metadata=[_listing_row(r) for r in rows],
+                Metadata=[_grid_row(_listing_row(r)) for r in rows],
                 viewGroup=section.get("type"))
             # Measured: this one is NOT a secondary view -- it carries no
             # `content`, and its viewGroup is the library's type.
