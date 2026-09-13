@@ -23,8 +23,8 @@ If you are picking this up cold, read in this order:
 4. Then §6–§9 as reference while a cycle runs.
 
 **The standing instruction for whoever takes over:** a rule in `docs/findings.md` is a
-measurement *with a date and an instrument attached*, not a fact. Eleven cycles have overturned
-at least twenty of them. Before you build on a rule that matters, check it against §3's six
+measurement *with a date and an instrument attached*, not a fact. Fourteen cycles have overturned
+50 of them. Before you build on a rule that matters, check it against §3's six
 failure classes and re-measure it if it fits one. The cheapest re-measurement is always the
 one you do before writing code, not the one a later cycle does for you.
 
@@ -118,8 +118,8 @@ Suite results at the head of cycle 15, all run 2026-09-14:
 
 ## 3. The revalidation register
 
-**This is the most important section in the file.** Twenty-odd recorded rules have been
-overturned across eleven cycles. They did not fail randomly: they failed in six ways, and the
+**This is the most important section in the file.** 50 recorded rules have been overturned
+across fourteen cycles. They did not fail randomly: they failed in six ways, and the
 same six keep recurring. Learn the classes, then check the items.
 
 ### 3.1 The six ways a measurement in this project goes wrong
@@ -202,7 +202,6 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 |---|---|---|
 | **Every write rule from cycles 9–12** | plexscratch is their ONLY possible witness: kids is read-only and zen cannot answer a write at all. That includes all of cycle 12's frame sequences, the upload grammar and the queue rules | Nothing settles it short of a second writable copy. Treat "measured on the copy" as one witness and say so in every write rule you record |
 | **The three cycle-13 cascades cycle 14 re-measured and did NOT implement** | Cycle 14 re-measured all six on the copy. Three were implemented (the artwork PICK, `flattenSeasons`/`episodeSort`, and the merge -- which was a data-loss bug); three are recorded with their frame sequences and not built: the show/season REFRESH cascade (7/18/40 frames with a 5.3 s gap), `analyze`'s per-LEAF triple plus its chapter-thumbs activity (cycle 13's "per-level" was wrong), and the 74-frame library create with its `queueRegenerated` at +60.8 s | Implement from the sequences in docs/findings.md, re-measuring each on the copy first -- they are cycle 15's cheapest territory |
-| ~~`viewedOrInProgressLeafCount`'s "or in progress" half~~ **settled in cycle 14** | An episode was put in progress on the copy and the field does count in-progress leaves, exactly as plexsim already read it. A `/:/progress` write counts the same way a timeline does. The loose end is closed; what cycle 14 found beside it is that on a SEASON listing all three leaf-count filters read the SHOW's counts | — |
 | An episode's INHERITED content rating versus its own | Both are the same string on the row, so plexsim cannot tell "no rating, showing the show's" from "its own, equal to the show's". The hunt saw a show edit move one and not the other | Only a second column would settle it; record the derived half and leave the edit-follow half alone |
 | `/status/sessions/history/all` answering `size 0` | Reproduced on both servers and still unexplained; plexsim's listing was built against fun's 3,879 rows, which are no longer readable | Find the parameter or account state that makes a real PMS list history |
 | Every rule measured before cycle 10's `long` mode | plexscratch's clips were **ten seconds**, so any timeline rule measured on them crossed 90% instantly | Re-run anything about sessions, completion or resume from cycles 9 or earlier on `long` |
@@ -341,14 +340,18 @@ From an agent tool, start servers with `subprocess.Popen(..., start_new_session=
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
 
-**Ports.** Pick freely EXCEPT `32400`, `32502`, `32511`, `32512`, `32595`, `32596` and `8787`,
-which belong to other sessions — a server started on one of those silently fails to bind and
-every request then goes to somebody else's plexsim, which reads as a wildly failing suite.
-`32599` is `test_ui_surface.py`'s own gated server; leave it free.
+**Ports.** Re-checked at the end of cycle 14: `32400`, `32502`, `32595`, `32596` and `8787`
+are held by other sessions — a server started on one of those silently fails to bind and every
+request then goes to somebody else's plexsim, which reads as a wildly failing suite. `32511` and
+`32512` were on this list and are now FREE. `32599` is `test_ui_surface.py`'s own gated server;
+leave it free. Check with `lsof -ti tcp:<port> -sTCP:LISTEN` rather than trusting this list.
 
 `tests/catalog_ui.json` holds movies `1007` Tears of Steel, `1008` and `1009` (fixture copies);
-show `20001` The Simpsons; seasons `30001` (S19) and `30002` (S20); episodes `1001` (S19E09),
-`1002` and `1003`; sections `1` movie and `2` show. Multiplicity is a prerequisite, not a
+show `20001` The Simpsons; **four** seasons `30001` (S19), `30002` (S20), `30003` (S21) and
+`30004` (S22); **eight** episodes `1001` (S19E09), `1002`–`1003` (S20), `1004` (S21) and
+`1005`, `1006`, `1010`, `1011` (S22); sections `1` movie and `2` show. Cycle 13 grew it three
+times and cycle 14 relied on the extra seasons and episodes, so **read the fixture rather than
+this paragraph** before writing a check that counts rows. Multiplicity is a prerequisite, not a
 detail: on a one-movie section the Shuffle, Play Next, Merge and second-page checks have nothing
 to compare and quietly become no-ops.
 
@@ -356,7 +359,7 @@ to compare and quietly become no-ops.
 
 ## 5. The cycle procedure
 
-One cycle, as run for cycles 8–12:
+One cycle, as run for cycles 8–14:
 
 1. **Snapshot the reference.** `refcheck7.py` against the baseline (read-only); keep the output
    to diff at the end.
@@ -907,10 +910,10 @@ Incidents, so the rules make sense:
 | Cycle 9 | Three patches committed with every backtick-quoted word stripped from their comments, and a fourth that never ran | An UNQUOTED heredoc runs backticked words as commands — see §10 |
 | Cycle 11 | fun's Plex found stopped and SIGKILLed mid-`deploy-fun.sh` by another session | Left alone; it came back when that session finished. Not ours to restart |
 
-Local processes **not** belonging to this work, left alone on purpose: `32400` is another
-session's plexsim; `8787` another session's `http.server`; `32502` a plexsim on
-`catalog.example.json`; `32511` an old agent's parent process; `32595`/`32596` plexsims of
-unverified origin.
+Local processes **not** belonging to this work, left alone on purpose (re-checked at the end of
+cycle 14): `32400` is another session's plexsim; `8787` another session's `http.server`; `32502`
+a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified origin. `32511` and
+`32512` were here and their processes are gone.
 
 ---
 
@@ -989,6 +992,28 @@ Every one of these cost real time at least once.
   way — relaunch against the CURRENT head with the Already-fixed list extended, or the second run
   re-reports the first batch's work.
 
+**Measuring, as of cycle 14**
+
+- **A "zero frames" measurement needs a control.** A silent notification socket and a broken
+  listener look identical. Every cycle-14 frame count was taken by running a write that MUST
+  push frames (a title edit: `state 3 loading`, `state 5`) on the same socket first.
+- **Probe a FRESHLY RESTARTED fixture server.** Pointed at one `test_ui_surface.py` has
+  finished with — it deletes a row and a section at the end, and has rewritten every tag list
+  and every piece of artwork — a sweep reported `thumb` and `poster` as 404s that both
+  references answer 200.
+- **Sweep a surface by comparing THREE servers, not two.** Fetch each path from kids, from zen
+  and from plexsim, and report only where the two references AGREE and plexsim differs. That
+  filters out every version difference automatically. One afternoon of it found five findings,
+  three of them endpoints plexsim had invented.
+- **A hunter's rule is scoped to what it tried.** "A show's prefs write pushes nothing" was true
+  of the four settings the hunt sent and false of `showOrdering`. Re-measure the rule on a case
+  the hunt did NOT use before generalising it.
+- **The edit parameter for a tag is the FILTER field name, not the row's element name.**
+  `actor[0].tag.tag` writes a `Role`; `role[0].tag.tag` is a 400 that writes nothing — and a
+  check built on it skipped itself silently.
+- **`lastViewedAt` has one-second resolution.** Two timeline beats inside the same second tie,
+  and any rule about "most recently viewed" then reads its tie-break instead.
+
 **plexsim itself**
 
 - **`catalog.json` links are account-scoped.** A different key answers `unavailable_file`, which
@@ -1027,10 +1052,15 @@ authoritative record of a hunt's reasoning:
 - cycle 9: `…/5e5b69a0-….jsonl`
 - cycle 10: `…/ebe127ef-….jsonl` plus its `subagents/agent-*.jsonl`
 - cycles 11–12: `…/778e8a59-81ef-4a89-a46b-16ef32b5343d.jsonl`
+- cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
+- cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 
-The cycle-11 and cycle-12 scratch directories share one session:
-`/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/778e8a59-81ef-4a89-a46b-16ef32b5343d/scratchpad/`,
-in `c11/` and `c12/`. Each holds `prompt_A.md`/`prompt_B.md` (the hunts' full briefs, also
-appended to `hunt_prompts.md`), `rb.py` (the read-only re-measurement client), `ra.py` (the write
-one), `pb.py` (every patch with its `apply`, message and check block), `restart.py`, the frozen
-head, the worktree, and the suite logs.
+The scratch directory of each is
+`/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/<session>/scratchpad/`
+(cycles 11 and 12 share one, in `c11/` and `c12/`; cycle 13 is in `c13/`, cycle 14 in `c14/`).
+All four still existed at the end of cycle 14. Each holds `prompt_A.md`/`prompt_B.md` (the
+hunts' full briefs, also appended to `hunt_prompts.md`), the re-measurement clients, the patch
+modules (every patch with its `apply`, message and check block), the frozen head, the worktree,
+and the suite logs. Cycle 14 adds `rd.py` (the driver's guarded GET/HEAD client for kids and
+zen), `frames.py` (a dependency-free notification-socket listener) and `vsweep.py` (the
+structural kids-vs-zen diff).
