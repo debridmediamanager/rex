@@ -333,6 +333,11 @@ def _bitrate_rounding(fixture):
     return out
 
 
+@check("frame-rate")
+def _frame_rate(fixture):
+    return per_stream(1, ("frameRate",))(fixture) + per_media(("videoFrameRate",))(fixture)
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))

@@ -3219,6 +3219,8 @@ below is one check there, and each check failed against the code before its fix.
   fun, and `Simple Profile` is `simple`; plexsim wrote them as they came.
 - **Bitrates round to the nearest kbps.** plexsim truncated, so 28 of 35 Media read one
   short. Two fun files whose bitrate is neither, and the reference's clips, are left alone.
+- **The frame rate is the average one.** The reference's mp4 clip with a nominal 48 fps
+  reads `23.947` and `24p`, ffprobe's `avg_frame_rate`; plexsim used `r_frame_rate`.
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -254,7 +254,7 @@ def _video_stream(stream, stream_id):
         "colorSpace": stream.get("color_space"),
         # Measured: ffprobe's `color_range` as it is, and absent where it has none.
         "colorRange": stream.get("color_range"),
-        "frameRate": _float_or_none(stream.get("r_frame_rate")),
+        "frameRate": _float_or_none(_frame_rate(stream)),
         "scanType": _scan_type(stream.get("field_order")),
     }
     # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
@@ -312,6 +312,16 @@ def _bit_depth(stream):
         return raw
     match = re.search(r"p(\d+)(?:le|be)$", stream.get("pix_fmt") or "")
     return int(match.group(1)) if match else 8
+
+
+def _frame_rate(stream):
+    """The AVERAGE frame rate, falling back to the nominal one. Measured: the reference's mp4
+    clip whose nominal rate is 48 reads `frameRate: 23.947` and `24p`, which is ffprobe's
+    `avg_frame_rate`; plexsim read `r_frame_rate` and said 48p."""
+    average = stream.get("avg_frame_rate") or ""
+    if average and not average.startswith("0/"):
+        return average
+    return stream.get("r_frame_rate")
 
 
 def _video_profile(profile):
@@ -577,7 +587,7 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "videoCodec": video.get("codec_name") if video else None,
         "videoResolution": _video_resolution(height, width),
         "container": container,
-        "videoFrameRate": _frame_rate_token(video.get("r_frame_rate")) if video else None,
+        "videoFrameRate": _frame_rate_token(_frame_rate(video)) if video else None,
         "videoProfile": video_profile,
         "audioProfile": (first_audio.get("profile") or "").lower() or None,
         "Part": [part],
