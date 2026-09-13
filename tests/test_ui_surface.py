@@ -8282,6 +8282,38 @@ def main():
              [(f_c12i.get("NotificationContainer", f_c12i) or {}).get("type")
               for f_c12i in upload_frames_c12i]))
 
+
+    # Re-measured on the copy, correcting cycle 4's reading: a section edit needs an
+    # `agent`, not a `name` and not a `scanner`. The client's library-upgrade handler
+    # sends `agent` and `scanner` and nothing else; `agent` alone is a 200 too, while
+    # `name` alone, `scanner` alone, `language` alone and an empty form are 400.
+    # plexsim demanded `name`, so the upgrade form was refused every time.
+    forms_c12j = {
+        "agent+scanner": "?agent=tv.plex.agents.movie&scanner=Plex%20Movie",
+        "agent only": "?agent=tv.plex.agents.movie",
+        "scanner only": "?scanner=Plex%20Movie",
+        "language only": "?language=en-US",
+        "name only": "?name=c12name",
+        "empty": "",
+        "bad agent": "?agent=com.bogus.agent",
+    }
+    edits_c12j = {label_c12j: request(base, "PUT", "/library/sections/%s%s"
+                                      % (movie_section, form_c12j))[0]
+                  for label_c12j, form_c12j in forms_c12j.items()}
+    renamed_c12j = request(base, "PUT", "/library/sections/%s?name=c12renamed"
+                                        "&agent=tv.plex.agents.movie&scanner=Plex%%20Movie"
+                                        % movie_section)[0]
+    title_c12j = next((d_c12j.get("title") for d_c12j in
+                       (get(base, "/library/sections")[1].get("Directory") or [])
+                       if str(d_c12j.get("key")) == str(movie_section)), None)
+    check("a library edit needs an agent, not a name",
+          edits_c12j["agent+scanner"] == 200 and edits_c12j["agent only"] == 200
+          and edits_c12j["scanner only"] == 400 and edits_c12j["language only"] == 400
+          and edits_c12j["name only"] == 400 and edits_c12j["empty"] == 400
+          and edits_c12j["bad agent"] == 400
+          and renamed_c12j == 200 and title_c12j == "c12renamed",
+          "%s, rename %s -> %r" % (edits_c12j, renamed_c12j, title_c12j))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
