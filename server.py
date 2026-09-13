@@ -5235,9 +5235,12 @@ class PlexSim:
             return row.get(field)
 
         fields = self.COMMON_FIELDS
-        if wanted in ("season", "episode"):
-            # Measured on the lab's seasons and episodes: their titles are never
-            # compared (two differently titled episodes do not list `title` mixed).
+        if wanted == "season":
+            # Re-measured on kids (1.43.4) and zen (1.42.2): a SEASON's title is never
+            # compared or sent -- but an EPISODE's is. The earlier reading said both, from
+            # a lab whose episodes are titled by the agent identically enough that the
+            # difference did not show; on both servers today, several differently titled
+            # episodes list `title` in `mixedFields` and a single one sends its title.
             fields = [f for f in fields if f != "title"]
         common = {"mixedFields": ""}
         mixed = []
@@ -5253,7 +5256,12 @@ class PlexSim:
         # MIXED titleSort is present as "" rather than absent; and a season's or an
         # episode's titleSort is reported only ever as "".
         common["guid"] = ""
-        if "titleSort" in mixed or wanted in ("season", "episode"):
+        if "titleSort" in mixed:
+            # Re-measured: only a MIXED titleSort is reported as "". A single season
+            # answers its own sort title (`Season 1`) and a single episode the sort form
+            # of its title (`The Train Job` -> `Train Job`), derived where the row stores
+            # none. plexsim hardcoded "" for every season and episode, so the Edit
+            # dialog's Sort Title box came up blank on both and a save could overwrite it.
             common["titleSort"] = ""
         if wanted == "episode" and rows:
             # Measured: an episode Common names its show, and `parentTitle` is "".
