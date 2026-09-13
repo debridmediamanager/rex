@@ -7777,6 +7777,45 @@ def main():
                   for good_c11h in ("6", "0", "-1")),
           "%s" % sorted((k[0], k[1] or "(empty)", v) for k, v in spans_c11h.items()))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): `includeStorage=1` adds
+    # `durationTotal` and `storageTotal` to a section grid row, at the library's own
+    # top-level type only -- a show's are the sums over its episodes -- and nowhere
+    # else (allLeaves, /library/all, /newest, a detail read carry neither). plexsim
+    # sent neither, so the library's storage column was empty although the row
+    # already carries both numbers.
+    def storage_c11i(path):
+        status, body, _ = get(base, path)
+        rows_c11i = body.get("Metadata") or []
+        return status, [(r.get("durationTotal"), r.get("storageTotal")) for r in rows_c11i]
+    movies_c11i = storage_c11i("/library/sections/%s/all?includeStorage=1" % movie_section)
+    plain_c11i = storage_c11i("/library/sections/%s/all" % movie_section)
+    shows_c11i = storage_c11i("/library/sections/%s/all?includeStorage=1" % show_section)
+    episodes_c11i = storage_c11i("/library/sections/%s/all?type=4&includeStorage=1" % show_section)
+    leaves_c11i = storage_c11i("/library/sections/%s/allLeaves?includeStorage=1" % movie_section)
+    detail_c11i = storage_c11i("/library/metadata/%s?includeStorage=1" % movie)
+    row_c11i = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    own_c11i = (int(row_c11i.get("duration") or 0),
+                sum(int(p.get("size") or 0) for m in (row_c11i.get("Media") or [])
+                    for p in (m.get("Part") or [])))
+    leaf_total_c11i = (0, 0)
+    show_row_c11i = (get(base, "/library/sections/%s/all" % show_section)[1].get("Metadata") or [{}])[0]
+    show_leaves_c11i = (get(base, "/library/metadata/%s/allLeaves" % show_row_c11i.get("ratingKey"))[1]
+                        .get("Metadata") or [])
+    leaf_total_c11i = (sum(int(e.get("duration") or 0) for e in show_leaves_c11i),
+                       sum(int(p.get("size") or 0) for e in show_leaves_c11i
+                           for m in (e.get("Media") or []) for p in (m.get("Part") or [])))
+    check("includeStorage adds the duration and storage totals a library counts",
+          movies_c11i[0] == 200 and own_c11i in movies_c11i[1]
+          and all(pair_c11i == (None, None) for pair_c11i in plain_c11i[1])
+          and shows_c11i[1][:1] == [leaf_total_c11i]
+          and all(pair_c11i == (None, None) for pair_c11i in episodes_c11i[1])
+          and all(pair_c11i == (None, None) for pair_c11i in leaves_c11i[1])
+          and all(pair_c11i == (None, None) for pair_c11i in detail_c11i[1]),
+          "movies %s (own %s), plain %s, shows %s (leaves %s), episodes %s, leaves %s, detail %s"
+          % (movies_c11i[1], own_c11i, plain_c11i[1], shows_c11i[1], leaf_total_c11i,
+             episodes_c11i[1], leaves_c11i[1], detail_c11i[1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
