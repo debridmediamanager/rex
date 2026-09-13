@@ -5784,6 +5784,23 @@ def main():
           and matched9("type=1") == (200, []) and get(base, "/library/matches?title=%s" % quote(title9))[0] == 400,
           "exact %s partial %s guid %s" % (exact9, partial9[1][:2], by_guid9[1][:2]))
 
+    section_hubs9 = get(base, "/hubs/sections/%s?count=100" % movie_lib)[1].get("Hub") or []
+    added_hub9 = next((h for h in section_hubs9 if str(h.get("hubIdentifier", "")).startswith("movie.recentlyadded")), {})
+    if added_hub9:
+        status_items9, items9, _ = get(base, "/hubs/items?identifier=%s" % added_hub9["hubIdentifier"])
+        capped9 = get(base, "/hubs/items?identifier=%s&count=1" % added_hub9["hubIdentifier"])[1]
+        check("/hubs/items answers one shelf's rows by identifier, and 404s the rest",
+              status_items9 == 200 and items9.get("allowSync") is True
+              and [r.get("ratingKey") for r in items9.get("Metadata") or []]
+              == [r.get("ratingKey") for r in added_hub9.get("Metadata") or []]
+              and capped9.get("size") == 1
+              and get(base, "/hubs/items?identifier=nosuch.hub")[0] == 404
+              and get(base, "/hubs/items")[0] == 404
+              and (not show_lib or get(base, "/hubs/items?identifier=tv.inprogress.%s" % show_lib)[0] == 404),
+              "HTTP %s, %d row(s)" % (status_items9, len(items9.get("Metadata") or [])))
+    else:
+        skip("/hubs/items answers one shelf's rows by identifier, and 404s the rest", "no recently added shelf")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

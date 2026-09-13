@@ -2827,6 +2827,10 @@ anything changed.
   movie or show title exactly, ignoring case, narrowed by `year`, each row led by
   `score` 100; `guid` matches the whole guid and an episode matches by `grandparentTitle`,
   `parentIndex` and `index`, unscored; `type` alone is `size 0`.
+- **`/hubs/items?identifier=`** answers one shelf's rows, uncapped unless `count` caps
+  them, in a container of `size`, `allowSync` true and identifier. A missing or unknown
+  identifier is a 404, and so are `tv.inprogress.{id}` and `home.playlists` although the
+  hub lists carry them. plexsim 404'd every identifier.
 
 ### Emulation calibrated against the account's own claimed servers
 
