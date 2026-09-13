@@ -7246,8 +7246,23 @@ class PlexSim:
                     return ("error", 404, "plexsim: no such playlist item")
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
+            if playlist.get("smart") and ((len(segments) == 3 and method == "PUT")
+                                          or (len(segments) == 4 and method == "DELETE")):
+                # Measured on a writable copy of the reference: a SMART playlist's items
+                # are its query, so adding to it or removing one is a 400. plexsim
+                # edited a stored list it never reads.
+                return ("error", 400, "plexsim: bad request")
             if len(segments) == 4 and method == "DELETE":
-                self.library.remove_playlist_item(playlist, segments[3])
+                if not self.library.remove_playlist_item(playlist, segments[3]):
+                    # Measured: an item id the playlist does not hold is a 404 -- and a
+                    # ratingKey is not an item id -- where plexsim answered 200.
+                    return ("error", 404, "plexsim: no such playlist item")
+                return self.bare_container(
+                    size=1, Metadata=[self.library._playlist_row(playlist)])
+            if len(segments) == 3 and method == "DELETE":
+                # Measured: DELETE on the items CLEARS the playlist. plexsim answered the
+                # item listing and removed nothing.
+                self.library.clear_playlist(playlist)
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
             if method == "PUT":

@@ -1213,6 +1213,11 @@ class Library:
             return True
         return False
 
+    def clear_playlist(self, playlist):
+        """`DELETE /playlists/{id}/items` -- every item goes."""
+        playlist["items"] = []
+        playlist["updatedAt"] = _now()
+
     def playlist(self, key):
         return self._playlists.get(int(key)) if str(key).isdigit() else None
 
