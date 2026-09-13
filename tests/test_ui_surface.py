@@ -7428,6 +7428,30 @@ def main():
         skip("a beat with no duration stores nothing, and duration=0 is a 200",
              "need an unwatched movie")
 
+    # Measured on plexscratch: a session driven from a play queue carries `playQueueItemID`
+    # and `playQueueID` on every `playing` frame -- the Now Playing panel and companion
+    # clients tie the frame to the queue item they hold. plexsim sent neither.
+    machine_c10n = get(base, "/identity")[1].get("machineIdentifier")
+    queue_c10n = container(base, "POST", "/playQueues?type=video&uri=%s&X-Plex-Client-Identifier=c10n"
+                           % urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                                % (machine_c10n, movie), safe=""))[1]
+    item_c10n = (queue_c10n.get("Metadata") or [{}])[0].get("playQueueItemID")
+    id_c10n = queue_c10n.get("playQueueID")
+    span_c10n = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    _, frames_c10n = notifications(base, lambda: request(
+        base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&hasMDE=1&time=300000&duration=%s"
+                     "&playQueueItemID=%s&X-Plex-Client-Identifier=c10n&X-Plex-Session-Identifier=c10n1"
+                     % (movie, urllib.parse.quote("/library/metadata/%s" % movie, safe=""),
+                        span_c10n, item_c10n)), seconds=3)
+    playing_c10n = [p for f in frames_c10n or []
+                    for p in (f.get("NotificationContainer") or {}).get("PlaySessionStateNotification") or []]
+    check("a play queue's session names the queue and the item on every playing frame",
+          playing_c10n and item_c10n
+          and playing_c10n[0].get("playQueueItemID") == item_c10n
+          and playing_c10n[0].get("playQueueID") == id_c10n,
+          "queue %s item %s, frame %s" % (id_c10n, item_c10n, playing_c10n[0] if playing_c10n else None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

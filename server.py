@@ -6828,7 +6828,8 @@ class PlexSim:
                 row["_completionStopped"] = True
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms)
-            self.notify_playing(entry, row, state, offset_ms)
+            self.notify_playing(entry, row, state, offset_ms,
+                                self.playing_queue_fields(query))
             # Measured thresholds: nothing is reported back at or under a minute, on
             # ANY state, and past 90% the play is `complete` on any state too.
             # `viewCount` is the item's own count -- 0 on a first play in progress,
@@ -6889,7 +6890,24 @@ class PlexSim:
                                    viewOffset=int(stored) if stored else -1,
                                    **fields)
 
-    def notify_playing(self, entry, row, state, offset_ms):
+    def playing_queue_fields(self, query):
+        """The play-queue pair a `playing` frame carries when the session has one.
+
+        Measured on a writable copy of the reference: every frame of a session driven from a
+        play queue -- playing, paused, a seek and the stop -- carries `playQueueItemID` and
+        `playQueueID`, and a session with no queue carries neither. plexsim sent neither
+        ever, and the Now Playing panel and companion clients tie a frame to the queue item
+        they hold by exactly these two.
+        """
+        wanted = query.get("playQueueItemID")
+        if not str(wanted or "").isdigit():
+            return {}
+        for queue_id, queue in list(self.play_queues.items()):
+            if any(item["id"] == int(wanted) for item in queue.get("items") or []):
+                return {"playQueueItemID": int(wanted), "playQueueID": queue_id}
+        return {}
+
+    def notify_playing(self, entry, row, state, offset_ms, extra=None):
         """The `playing` notification -- a FIFTH type, and the one Now Playing
         depends on. Measured: one frame per timeline, and the client drops the
         row from its own state on `stopped` or refetches /status/sessions when it
@@ -6903,6 +6921,7 @@ class PlexSim:
             "key": "/library/metadata/%s" % row.get("ratingKey"),
             "viewOffset": int(offset_ms or 0),
             "state": state or "playing",
+            **(extra or {}),
         }])
 
     def session_rows(self):

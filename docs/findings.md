@@ -3394,6 +3394,10 @@ limits turn out to be one rule:
   resume point in Continue Watching. `lastViewedAt` is left alone.
 - **A progress beat stamps `lastViewedAt` on the season and the show**, before anything is
   watched; plexsim touched the parents only on a completion.
+- **A session driven from a play queue names the queue on every `playing` frame**:
+  `playQueueItemID` and `playQueueID` ride beside the recorded eight fields, on the playing,
+  paused, seek and stop frames alike, and a session with no queue carries neither. plexsim
+  sent neither ever, and the Now Playing panel ties a frame to its queue item by them.
 
 ### Emulation calibrated against the account's own claimed servers
 
