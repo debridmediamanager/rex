@@ -699,7 +699,7 @@ class Library:
             row["title"] = "%s %s" % ("Season" if row.get("type") == "season" else "Episode",
                                       row.get("index"))
             written = written | {"title"}
-        if written & {"title", "studio"}:
+        if written & {"title", "studio", "index"}:
             self._follow_parent(row, written)
         if changed:
             row["updatedAt"] = _now()
@@ -852,6 +852,14 @@ class Library:
                     carry(child, "parentTitle", row.get("title"))
                 if "studio" in written:
                     carry(child, "parentStudio", row.get("studio"))
+                if "index" in written and kind == "season":
+                    # Re-measured on the copy: a SEASON's `index` lands on its
+                    # episodes' `parentIndex`, on the detail row and in `/children`
+                    # alike -- the same rule as the title and the studio above, which
+                    # cycle 9 measured and this one missed. An episode left pointing at
+                    # a season number that no longer exists draws an empty season in
+                    # any client that groups by `parentIndex`.
+                    child["parentIndex"] = row.get("index")
             elif kind == "show" and str(child.get("grandparentRatingKey")) == key \
                     and "title" in written:
                 carry(child, "grandparentTitle", row.get("title"))

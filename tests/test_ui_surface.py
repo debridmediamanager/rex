@@ -9193,6 +9193,39 @@ def main():
                                        [(a_c13s.get("title"), a_c13s.get("progress"))
                                         for a_c13s in after_c13s]))
 
+        # Re-measured on the copy: `PUT /library/metadata/{season}?index.value=5` moves the
+    # season from 1 to 5 AND rewrites every episode's `parentIndex` to 5 -- on the detail
+    # row and in the season's `/children` alike. It is the same rule cycle 9 measured for
+    # a parent's `title` and `studio`, which plexsim already copies; `index` was missed,
+    # so an episode kept pointing at a season number that no longer existed and any client
+    # grouping by `parentIndex` drew an empty season.
+    if not show:
+        skip("a season's index lands on its episodes' parentIndex", "need a show")
+    else:
+        season_c13t = next((r["ratingKey"] for r in
+                            get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                            .get("Metadata") or [] if r.get("type") == "season"), None)
+        kids_c13t = [r["ratingKey"] for r in
+                     get(base, "/library/metadata/%s/children" % season_c13t)[1].get("Metadata") or []
+                     if r.get("type") == "episode"] if season_c13t else []
+        if not kids_c13t:
+            skip("a season's index lands on its episodes' parentIndex", "no episode under a season")
+        else:
+            request(base, "PUT", "/library/metadata/%s?index.value=41" % season_c13t)
+            detail_c13t = [(get(base, "/library/metadata/%s" % k)[1].get("Metadata") or [{}])[0]
+                           .get("parentIndex") for k in kids_c13t]
+            listed_c13t = [r.get("parentIndex") for r in
+                           get(base, "/library/metadata/%s/children" % season_c13t)[1]
+                           .get("Metadata") or [] if r.get("type") == "episode"]
+            season_index_c13t = (get(base, "/library/metadata/%s" % season_c13t)[1]
+                                 .get("Metadata") or [{}])[0].get("index")
+            check("a season's index lands on its episodes' parentIndex",
+                  season_index_c13t == 41
+                  and detail_c13t == [41] * len(kids_c13t)
+                  and listed_c13t == [41] * len(kids_c13t),
+                  "season %s, detail %s, children %s"
+                  % (season_index_c13t, detail_c13t, listed_c13t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
