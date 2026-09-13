@@ -5955,18 +5955,22 @@ class PlexSim:
                     stored[name] = value
                 logger.info("ITEM PREF %s %s = %s", rating_key, name, value)
             if writes and row.get("type") == "show":
-                # Cycle 14, re-measured on the copy with a socket open: a show's prefs
-                # write pushes **NOTHING**. Nine seconds of listening after
-                # `PUT /library/metadata/6/prefs?flattenSeasons=1` produced zero frames,
-                # on a socket that answered a title edit beside it with the expected
-                # `state 3 loading` / `state 5` pair -- so it is silence, not a dead
-                # listener. What the write does instead is change the ROWS.
+                # Cycle 14, re-measured on the copy with a socket open, one setting at a
+                # time: the cascade belongs to `showOrdering` ALONE. `showOrdering=dvd`
+                # pushes 45 frames -- the show's own refresh sequence and then every
+                # season and episode -- because it changes how the episodes are NUMBERED
+                # and the server re-reads the tree. `flattenSeasons`, `episodeSort`,
+                # `useOriginalTitle` and `subtitleMode` each push **zero** frames in
+                # eight seconds on the same socket, which answered a title edit beside
+                # them with the usual `state 3` / `state 5` pair.
                 #
-                # plexsim pushed a 79-frame refresh cascade for every prefs write and
-                # changed no row at all: it told every client on the socket that the
-                # whole show tree had been re-read, and then did not do the one thing
-                # the setting means. Cycle 9 recorded the cascade from `showOrdering`,
-                # whose own row effects are a re-match this catalog cannot do.
+                # plexsim pushed the cascade for EVERY prefs write -- telling every
+                # client the whole tree had been re-read whenever a display flag moved --
+                # and changed no row at all. The first version of this fix then swung
+                # the other way and silenced `showOrdering` too; the suite's own
+                # cycle-13 check caught it, which is what it is there for.
+                if any(name == "showOrdering" for name, _ in writes):
+                    self.notify_show_cascade(row)
                 self.catalog.apply_show_prefs(row)
             return ("empty", 200)
         if leaf == "subtitles":
