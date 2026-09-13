@@ -8907,6 +8907,37 @@ def main():
               % ({k_c13k: hit_c13k.get(k_c13k) for k_c13k in ("ratingKey", "reason", "reasonTitle")}
                  if hit_c13k else None, len(tag_c13k), len(items_c13k)))
 
+        # Measured on kids (1.43.4) and zen (1.42.2): an EPISODE that carries an
+    # `audienceRating` carries `audienceRatingImage` and a `Rating` element too -- 60 of
+    # 60 One Piece episodes and 3 of 3 kids episodes, with no exception, and the three
+    # kids episodes with no rating carry none of the three. A SEASON never carries any of
+    # them (0 of 12 sampled across both servers). plexsim built `Rating` and
+    # `audienceRatingImage` for a show and a movie only, so its own episode rows
+    # contradicted its own movie rows, and the rating badge was missing from every
+    # episode page and every episode row of a listing.
+    leaf_c13l = next((r_c13l for r_c13l in
+                      get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+                      if r_c13l.get("audienceRating") is not None), None) if show_section else None
+    if leaf_c13l is None:
+        skip("an episode with an audience rating carries its image and a Rating row",
+             "no rated episode in the fixture")
+    else:
+        detail_c13l = (get(base, "/library/metadata/%s" % leaf_c13l["ratingKey"])[1]
+                       .get("Metadata") or [{}])[0]
+        season_c13l = (get(base, "/library/metadata/%s" % detail_c13l.get("parentRatingKey"))[1]
+                       .get("Metadata") or [{}])[0]
+        check("an episode with an audience rating carries its image and a Rating row",
+              detail_c13l.get("audienceRatingImage") == "themoviedb://image.rating"
+              and [(r_c13l.get("type"), r_c13l.get("image"), r_c13l.get("value"))
+                   for r_c13l in detail_c13l.get("Rating") or []]
+                  == [("audience", "themoviedb://image.rating", detail_c13l.get("audienceRating"))]
+              # and a season carries none of it, on either server
+              and not season_c13l.get("Rating")
+              and not season_c13l.get("audienceRatingImage"),
+              "episode %s / %s | season Rating %s"
+              % (detail_c13l.get("audienceRatingImage"), detail_c13l.get("Rating"),
+                 season_c13l.get("Rating")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
