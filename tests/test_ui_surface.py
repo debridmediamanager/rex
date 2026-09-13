@@ -9038,6 +9038,46 @@ def main():
               "mixed")),
           "bare %s | pinned %s | tv %s" % (bare_c13o[2:], pinned_c13o[2:], tv_c13o[2:]))
 
+        # Re-measured on zen (1.42.2) against One Piece, a 24-season show -- the first time
+    # this project has had a show deep enough to tell the two rules apart. A show's
+    # `/children` carries the "All episodes" `Directory` row exactly when the PAGE comes
+    # back with more than one season row, wherever the page starts: Start=0 Size=10 and
+    # Start=10 Size=10 both answer size 11 with the row, Start=5 Size=3 answers 4 with it,
+    # and Start=23 Size=2, Start=3 Size=1 and Start=0 Size=1 -- all one-row pages -- answer
+    # 1 without it. kids agrees on all six cases it can express. Cycle 8 recorded "at
+    # Start>0 the two servers disagree, follow kids and drop it", but kids has TWO seasons,
+    # so every Start>0 page there is a one-row page: the disagreement was a two-season
+    # library, not a version difference, and fun was right. A virtualised season list
+    # therefore mis-measured its own height on every page but the first.
+    if not show:
+        skip("the All-episodes row follows the page's row count, not its offset", "need a show")
+    else:
+        def paged_c13p(start_c13p, size_c13p):
+            # The paging parameters go in the query here: a real PMS reads them from the
+            # headers, and plexsim normalises both spellings into the same place.
+            _, body_c13p, _ = get(base, "/library/metadata/%s/children"
+                                        "?X-Plex-Container-Start=%s&X-Plex-Container-Size=%s"
+                                        % (show, start_c13p, size_c13p))
+            return (body_c13p.get("size"), len(body_c13p.get("Metadata") or []),
+                    len(body_c13p.get("Directory") or []))
+        seasons_c13p = len(get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                           .get("Metadata") or [])
+        if seasons_c13p < 3:
+            skip("the All-episodes row follows the page's row count, not its offset",
+                 "need three seasons to tell the offset rule from the row-count rule")
+        else:
+            cases_c13p = {(start_c13p, size_c13p): paged_c13p(start_c13p, size_c13p)
+                          for start_c13p, size_c13p in ((0, 2), (1, 2), (2, 2), (0, 1), (1, 1),
+                                                        (seasons_c13p - 1, 2))}
+            check("the All-episodes row follows the page's row count, not its offset",
+                  # more than one row on the page -> the row is there, wherever it starts
+                  cases_c13p[(0, 2)] == (3, 2, 1) and cases_c13p[(1, 2)] == (3, 2, 1)
+                  # a one-row page drops it, at Start=0 as much as past it
+                  and cases_c13p[(0, 1)] == (1, 1, 0) and cases_c13p[(1, 1)] == (1, 1, 0)
+                  # and the last page, which has one row left
+                  and cases_c13p[(seasons_c13p - 1, 2)] == (1, 1, 0),
+                  "%s" % cases_c13p)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

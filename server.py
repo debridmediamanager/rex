@@ -5596,9 +5596,15 @@ class PlexSim:
             else:
                 rows = self.catalog.leaves(rating_key)
             extra = {}
-            _, paged, start, _ = self.page_window(rows, query)
-            size = query.get("X-Plex-Container-Size") or ""
-            short_page = paged and (start > 0 or (size.lstrip("-").isdigit() and int(size) < 2))
+            page, paged, start, _ = self.page_window(rows, query)
+            # Re-measured on zen against a 24-season show, which is the first show this
+            # project has had that can tell the two readings apart: the "All episodes"
+            # row is present exactly when the PAGE holds more than one season row --
+            # Start=10 Size=10 carries it, Start=0 Size=1 does not -- so the gate is the
+            # page's own length and has nothing to do with the offset. Cycle 8 read
+            # kids as dropping it past Start=0, but kids has two seasons, so every page
+            # past the first there IS a one-row page.
+            short_page = paged and len(page) < 2
             if (leaf == "children" and row.get("type") == "show"
                     and query.get("excludeAllLeaves") != "1" and rows
                     and not short_page):
