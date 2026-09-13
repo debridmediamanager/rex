@@ -5632,6 +5632,16 @@ def main():
           agent_statuses9 == [404, 404] and get(base, "/system/agents")[0] == 200,
           str(agent_statuses9))
 
+    stream9 = next((s.get("id") for media in detail_of(c5_movie).get("Media") or []
+                    for part in media.get("Part") or [] for s in part.get("Stream") or []), None)
+    refusals9 = (get(base, "/library/streams/%s/loudness" % stream9)[0],
+                 get(base, "/library/streams/%s.srt" % stream9)[0],
+                 get(base, "/library/streams/%s.vtt" % stream9)[0],
+                 get(base, "/library/streams/999999999.srt")[0],
+                 get(base, "/library/metadata/%s/file" % c5_movie)[0])
+    check("loudness 404s, a sidecar extension 501s like its stream, a bare file read 400s",
+          stream9 and refusals9 == (404, 501, 501, 404, 400), str(refusals9))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -2781,6 +2781,10 @@ anything changed.
   alone. plexsim paged seven listings; the rule now lives in the response path.
 - **`/system/agents/{identifier}` is a 404** with an empty body on both servers, for a
   real agent and an unknown one alike. plexsim answered the whole list.
+- **Three refusal codes.** A stream's `/loudness` is a 404 (plexsim 501); `.srt` and
+  `.vtt` on a stream the server has are the bare stream's 501 (plexsim 404, reading the
+  extension into the id); `/library/metadata/{id}/file` without `url` is a 400
+  (plexsim 404).
 
 ### Emulation calibrated against the account's own claimed servers
 

@@ -2527,6 +2527,12 @@ class PlexSim:
             # for a stream it HAS. An unknown or non-numeric id, and the bare path,
             # are 404s, and a PUT to an unknown one is a 400. plexsim 501'd them all.
             stream_id = segments[2] if len(segments) > 2 else ""
+            # Measured on both servers: `/library/streams/{id}.srt` and `.vtt` -- the
+            # sidecar extraction by extension -- are the same 501 as the bare stream for
+            # a stream the server has, and a 404 for one it does not. plexsim read the
+            # extension as part of the id and 404'd every one.
+            if stream_id.endswith((".srt", ".vtt")) and len(segments) == 3:
+                stream_id = stream_id.rsplit(".", 1)[0]
             known = stream_id.isdigit() and any(
                 str(stream.get("id")) == stream_id
                 for row in catalog.items.values() for media in row.get("Media") or []
@@ -2535,7 +2541,7 @@ class PlexSim:
                 if method == "PUT" and len(segments) == 3:
                     return ("error", 400, "plexsim: bad request")
                 return ("error", 404, "plexsim: not found")
-            if segments[3:] == ["levels"]:
+            if segments[3:] in (["levels"], ["loudness"]):
                 # Measured on both servers: the loudness levels of a stream the server
                 # has not analysed are a 404, where the stream itself is the 501.
                 return ("error", 404, "plexsim: not found")
@@ -4716,6 +4722,11 @@ class PlexSim:
         if leaf == "children" and row.get("type") in ("movie", "episode", "clip", "track"):
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
+            return ("error", 400, "plexsim: bad request")
+        if leaf == "file" and method in ("GET", "HEAD") and not query.get("url"):
+            # Measured on both servers: the item's file endpoint without its `url` is a
+            # 400. (With a `url` the two servers disagree -- 400 on one, 404 on the
+            # other -- so that form stays the unrouted 404.)
             return ("error", 400, "plexsim: bad request")
         if leaf == "grandchildren":
             if method not in ("GET", "HEAD"):
