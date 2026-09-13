@@ -5976,7 +5976,7 @@ class PlexSim:
             hubs[-1]["context"] = "hub.results.search"
         return self.bare_container(size=len(hubs), Hub=hubs)
 
-    def _items_for_uri(self, uri, continuous=False):
+    def _items_for_uri(self, uri, continuous=False, expand=True):
         """Resolve a playQueue `uri` to the rows it should enqueue.
 
         Two shapes reach here, and only the first was handled before:
@@ -6037,11 +6037,14 @@ class PlexSim:
                              None)
                 if index is not None:
                     return siblings[index:]
-            return self._playable(rows)
+            # `expand=False` is a collection's add: measured, a show collection holds the
+            # SHOW, not its episodes.
+            return self._playable(rows) if expand else rows
         # A bare trailing ratingKey, which some clients send.
         tail = path.rstrip("/").rsplit("/", 1)[-1]
         if tail.isdigit() and int(tail) in self.catalog.items:
-            return self._playable([self.catalog.items[int(tail)]])
+            rows = [self.catalog.items[int(tail)]]
+            return self._playable(rows) if expand else rows
         return []
 
     def _playable(self, rows):
@@ -7121,7 +7124,10 @@ class PlexSim:
                     # where plexsim made an "Untitled" collection in the first row's
                     # library. A missing `uri` is a 200 on both servers.
                     return ("error", 400, "plexsim: bad request")
-                rows = self._items_for_uri(query.get("uri", ""))
+                # Measured on a writable copy of the reference: a collection over a show
+                # holds the SHOW (`subtype: show`, one child) and one over a season holds
+                # the season, where plexsim expanded both into episodes.
+                rows = self._items_for_uri(query.get("uri", ""), expand=False)
                 section = query.get("sectionId") or (
                     rows[0].get("librarySectionID") if rows else None)
                 subtype = rows[0].get("type") if rows else "movie"
@@ -7227,7 +7233,7 @@ class PlexSim:
                 return ("error", 404, "plexsim: not in this collection")
             return ("empty", 200)
         if leaf == "items" and method == "PUT":
-            rows = self._items_for_uri(query.get("uri", ""))
+            rows = self._items_for_uri(query.get("uri", ""), expand=False)
             self.library.add_collection_items(collection, rows)
             # Measured: a collection add answers the collection ROW -- with its new
             # childCount and year span -- and not the leafCountAdded/Requested pair a

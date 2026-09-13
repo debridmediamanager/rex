@@ -6584,6 +6584,27 @@ def main():
     check("a collection create needs a title and a sectionId",
           [r[0] for r in results_w13a] == [400, 400], str([r[0] for r in results_w13a]))
 
+    # Measured on plexscratch: a collection over a show holds the SHOW (subtype show, one
+    # child) and one over a season holds the season; plexsim expanded both into episodes.
+    if show and show_section:
+        season_w13f = next((r for r in get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                            if r.get("type") == "season"), {}).get("ratingKey")
+        made_w13f = []
+        for type_w13f, key_w13f in (("2", show), ("3", season_w13f)):
+            _, doc_w13f, _ = container(base, "POST", "/library/collections?type=%s&sectionId=%s&title=w13f%s&uri=%s"
+                                                     % (type_w13f, show_section, type_w13f,
+                                                        quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                                              % (machine, key_w13f))))
+            row_w13f = (doc_w13f.get("Metadata") or [{}])[0]
+            children_w13f = [str(r.get("ratingKey")) for r in get(base, "/library/collections/%s/children"
+                                                                       % row_w13f.get("ratingKey"))[1].get("Metadata") or []]
+            made_w13f.append((row_w13f.get("subtype"), row_w13f.get("childCount"), children_w13f))
+            request(base, "DELETE", "/library/collections/%s" % row_w13f.get("ratingKey"))
+        check("a collection over a show or a season holds that row, typed by it",
+              made_w13f == [("show", 1, [str(show)]), ("season", 1, [str(season_w13f)])], str(made_w13f))
+    else:
+        skip("a collection over a show or a season holds that row, typed by it", "need a show")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
