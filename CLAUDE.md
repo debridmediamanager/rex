@@ -739,6 +739,22 @@ precisely how the Seasons bug survived a fix attempt.
 - **Unmatching an episode or a season gives `local://<id>` and the generated `Episode N` /
   `Season N`**, keeping the external Guids; the filename title and `none://` guid are a
   movie's.
+- **A Media, Part or Stream attribute is measured against a real file, never read off
+  ffprobe's names.** `tests/test_mediainfo.py` converts 46 recorded probes and compares them
+  with what fun and the reference wrote for the same file; add a probe to
+  `tests/fixtures/media/` before changing a rule. DTS is `dca` (`dca-ma` on the Media for
+  DTS-HD MA), a Blu-ray subtitle `pgs`, a language is named in itself with its 639-2/T code and
+  639-1 tag (`languages.json`), the Media's audio fields name the WIDEST track, the resolution
+  label buckets width AND height, and the aspect ratio snaps to one of six values.
+- **A track title never enters `displayTitle`**, and the extended title leaves out the label
+  parts the title already carries: a part is carried when its first word is one of the
+  title's words, split on whitespace and `- / ( ) [ ] + , | : ;` `&` but not on dots, folding
+  ASCII case only, with a language's two-letter tag, `2.0` for Stereo and `AVC` for H.264
+  counting too.
+- **ffprobe lists a Matroska cover image as a video stream**, and a real PMS does not; a
+  dual-layer Dolby Vision file's enhancement layer IS a second video stream.
+- **Catalog media is corrected at load, and the titles are composed LAST.** Composed before
+  `normalize_media`, a stored `dts` track is titled from the codec it no longer has.
 
 ## Conventions
 
