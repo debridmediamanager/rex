@@ -8389,6 +8389,25 @@ def main():
           "start %s, foreign %s, unknown %s, real %s"
           % (start_c12m, foreign_c12m, unknown_c12m, real_c12m))
 
+
+    # Measured on the copy, frame for frame: `PUT /library/optimize` runs a
+    # `general.db.optimize` activity -- started 0 with an empty subtitle, updated at
+    # 0/10/40/60 with `Optimizing Database`, ended 100. plexsim answered 200 and pushed
+    # nothing, so the Settings progress bar never moved.
+    _, optimize_c12n = notifications(base, lambda: request(base, "PUT", "/library/optimize"),
+                                     seconds=6)
+    steps_c12n = [(a_c12n.get("event"), (a_c12n.get("Activity") or {}).get("type"),
+                   (a_c12n.get("Activity") or {}).get("progress"))
+                  for f_c12n in optimize_c12n
+                  for a_c12n in ((f_c12n.get("NotificationContainer", f_c12n) or {})
+                                 .get("ActivityNotification") or [])]
+    check("Optimize Database runs its activity",
+          [step_c12n for step_c12n in steps_c12n if step_c12n[1] == "general.db.optimize"]
+          == [("started", "general.db.optimize", 0), ("updated", "general.db.optimize", 0),
+              ("updated", "general.db.optimize", 10), ("updated", "general.db.optimize", 40),
+              ("updated", "general.db.optimize", 60), ("ended", "general.db.optimize", 100)],
+          "%s" % steps_c12n)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

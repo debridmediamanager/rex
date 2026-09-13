@@ -2620,7 +2620,15 @@ class PlexSim:
             # "Optimize Database". GET is a 404 on a real PMS: PUT only.
             if method != "PUT":
                 return ("error", 404, "plexsim: not found")
-            logger.info("OPTIMIZE database -- plexsim has none, nothing to do")
+            # Measured on the copy, frame for frame: Optimize Database runs a
+            # `general.db.optimize` activity -- started at 0 with an EMPTY subtitle, then
+            # updated at 0, 10, 40 and 60 with the subtitle `Optimizing Database`, then
+            # ended at 100. plexsim answered the empty 200 and pushed nothing, so the
+            # Settings page's progress bar never moved and the Activity pane stayed blank.
+            self.notify_activity_run("general.db.optimize", "Optimizing database",
+                                     [(0, "Optimizing Database"), (10, "Optimizing Database"),
+                                      (40, "Optimizing Database"), (60, "Optimizing Database")])
+            logger.info("OPTIMIZE database -- plexsim has none, the activity is the answer")
             return ("empty", 200)
         if route == "/library/clean/bundles":
             if method != "PUT":
