@@ -8515,6 +8515,60 @@ def main():
           and grid_c13a[1] == {"Director": 3, "Producer": 0},
           "detail %s, grid %s" % (detail_c13a[1], grid_c13a[1]))
 
+        # Measured on a writable copy of the reference (1.43.4) by snapshotting the show,
+    # the season and all three episodes field by field either side of ONE call:
+    # `PUT /library/metadata/{season}/unmatch` does not touch the season alone. Every
+    # episode under it is unmatched too -- `local://<id>`, the generated `Episode N`,
+    # `summary` emptied, `year`, `audienceRating` and the people tags dropped,
+    # `titleSort` removed, `parentThumb` nulled -- and each episode's `parentGuid`
+    # follows the season to `local://<season id>`. The season itself loses its `year`,
+    # so the show's shows through as `parentYear`, and its `thumb` falls back to the
+    # SHOW's. kids corroborates the season half from the other side: its season 11 is
+    # unmatched and carries the show's thumb, no year and `parentYear: 2002`, where
+    # its matched season 7 carries its own thumb and year. plexsim edited the one row,
+    # which left matched episodes under an unmatched parent -- a state a real PMS
+    # cannot produce, and one where the client's `local://` menu predicate disagrees
+    # with itself between the season page and the episodes listed on it.
+    if not show:
+        skip("unmatching a season unmatches every episode under it", "need a show")
+    else:
+        def row_c13b(key_c13b):
+            return (get(base, "/library/metadata/%s" % key_c13b)[1].get("Metadata") or [{}])[0]
+        # An earlier check unmatches the show's FIRST season, so this needs the one
+        # still carrying an agent guid -- the reason the fixture has two.
+        season_c13b = next((r.get("ratingKey") for r in
+                            get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                            if str(row_c13b(r.get("ratingKey")).get("guid") or "").startswith("plex://season/")),
+                           None)
+        eps_c13b = [r["ratingKey"] for r in
+                    get(base, "/library/metadata/%s/children" % season_c13b)[1].get("Metadata") or []
+                    if r.get("type") == "episode"] if season_c13b else []
+        if not eps_c13b:
+            skip("unmatching a season unmatches every episode under it",
+                 "no matched season with episodes left in the fixture")
+        else:
+            before_c13b = {k: row_c13b(k) for k in eps_c13b}
+            status_c13b, _, _ = request(base, "PUT", "/library/metadata/%s/unmatch" % season_c13b)
+            after_s_c13b = row_c13b(season_c13b)
+            after_c13b = {k: row_c13b(k) for k in eps_c13b}
+            check("unmatching a season unmatches every episode under it",
+                  status_c13b == 200
+                  and all(str(before_c13b[k].get("guid") or "").startswith("plex://") for k in eps_c13b)
+                  and after_s_c13b.get("guid") == "local://%s" % season_c13b
+                  and after_s_c13b.get("year") is None
+                  and all(after_c13b[k].get("guid") == "local://%s" % k for k in eps_c13b)
+                  and all(after_c13b[k].get("parentGuid") == "local://%s" % season_c13b for k in eps_c13b)
+                  and all(after_c13b[k].get("title") == "Episode %s" % after_c13b[k].get("index")
+                          for k in eps_c13b)
+                  and all(after_c13b[k].get("summary") == "" for k in eps_c13b)
+                  and all(after_c13b[k].get("year") is None for k in eps_c13b)
+                  and all(not after_c13b[k].get("Role") for k in eps_c13b)
+                  and all(after_c13b[k].get("parentThumb") is None for k in eps_c13b),
+                  "season %s -> %s (year %s), episodes %s"
+                  % (season_c13b, after_s_c13b.get("guid"), after_s_c13b.get("year"),
+                     [(k, after_c13b[k].get("guid"), after_c13b[k].get("parentGuid"),
+                       after_c13b[k].get("title")) for k in eps_c13b]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
