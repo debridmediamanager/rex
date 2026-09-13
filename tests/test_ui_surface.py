@@ -7718,6 +7718,45 @@ def main():
               "actor %s, director %s, year %s, none %s"
               % (plain_c11f, dir_c11f, narrow_c11f, none_c11f))
 
+
+    # Measured on kids (1.43.4) and zen (1.42.2): a statistics container pages its
+    # SERIES only. Device and Account are a lookup for the rows on the page -- the
+    # answer carries exactly the ones its rows name -- so a window past the end
+    # carries neither. plexsim sliced all three lists with the same offset, so the
+    # second page of a Dashboard graph named a device it had not sent.
+    span_c11g = int((get(base, "/library/metadata/%s" % movie)[1]
+                     .get("Metadata") or [{}])[0].get("duration") or 0)
+    for state_c11g, at_c11g, client_c11g in (("playing", 300000, "c11g1"), ("stopped", 400000, "c11g1"),
+                                             ("playing", 300000, "c11g2"), ("stopped", 400000, "c11g2")):
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&hasMDE=1&time=%s&duration=%s"
+                             "&X-Plex-Session-Identifier=%s&X-Plex-Client-Identifier=%s"
+                             % (movie, quote("/library/metadata/%s" % movie), state_c11g,
+                                at_c11g, span_c11g, client_c11g, client_c11g))
+    def stats_c11g(headers_c11g=None):
+        url_c11g = base.rstrip("/") + "/statistics/media"
+        req_c11g = urllib.request.Request(url_c11g, headers=dict({
+            "User-Agent": UA, "Accept": "application/json",
+            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Platform": "Chrome"}, **(headers_c11g or {})))
+        with urllib.request.urlopen(req_c11g, timeout=30) as response_c11g:
+            body_c11g = json.loads(response_c11g.read()).get("MediaContainer", {})
+        rows_c11g = body_c11g.get("StatisticsMedia") or []
+        return (body_c11g.get("size"), body_c11g.get("totalSize"),
+                sorted({str(r.get("deviceID")) for r in rows_c11g}),
+                sorted(str(d.get("id")) for d in (body_c11g.get("Device") or [])),
+                len(body_c11g.get("Account") or []), len(rows_c11g))
+    whole_c11g = stats_c11g()
+    first_c11g = stats_c11g({"X-Plex-Container-Start": "0", "X-Plex-Container-Size": "1"})
+    past_c11g = stats_c11g({"X-Plex-Container-Start": "500", "X-Plex-Container-Size": "5"})
+    check("a paged statistics container keeps the Device and Account rows its page names",
+          whole_c11g[5] >= 2
+          and first_c11g[5] == 1 and first_c11g[2] == first_c11g[3] and first_c11g[4] == 1
+          and first_c11g[1] == whole_c11g[5]
+          and first_c11g[0] == first_c11g[5] + len(first_c11g[3]) + first_c11g[4]
+          and past_c11g[5] == 0 and past_c11g[3] == [] and past_c11g[4] == 0
+          and past_c11g[0] == 0,
+          "whole %s, first page %s, past the end %s" % (whole_c11g, first_c11g, past_c11g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
