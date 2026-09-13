@@ -214,13 +214,25 @@ def stream_titles(row):
     return row
 
 
+# ffprobe's disposition keys against a real PMS's attribute names. Measured on every
+# probed track on fun: each flag is written only when TRUE, on audio, subtitles and video
+# alike, and a real PMS never sends `default: false` or `selected: false`.
+_DISPOSITIONS = {"default": "default", "forced": "forced", "hearingImpaired": "hearing_impaired",
+                 "original": "original", "dub": "dub", "comment": "comment"}
+TRACK_FLAGS = ("default", "forced", "hearingImpaired", "original", "dub", "comment")
+
+
+def _disposition(stream, fields):
+    flags = stream.get("disposition") or {}
+    return {field: True for field in fields if flags.get(_DISPOSITIONS[field])}
+
+
 def _video_stream(stream, stream_id):
     width = stream.get("width")
     height = stream.get("height")
     row = {
         "id": stream_id,
         "streamType": 1,
-        "default": True,
         "codec": stream.get("codec_name"),
         "index": stream.get("index"),
         "width": width,
@@ -262,6 +274,7 @@ def _video_stream(stream, stream_id):
             "DOVIRPUPresent": bool(dovi.get("rpu_present_flag")),
             "DOVIVersion": "%s.%s" % (dovi.get("dv_version_major", 1), dovi.get("dv_version_minor", 0)),
         })
+    row.update(_disposition(stream, ("default", "forced", "original")))
     codec = (stream.get("codec_name") or "").upper()
     resolution = _video_resolution(height, width)
     if resolution and codec:
@@ -341,8 +354,6 @@ def _audio_stream(stream, stream_id, selected):
     row = {
         "id": stream_id,
         "streamType": 2,
-        "selected": selected,
-        "default": selected,
         "codec": plex_codec,
         "index": stream.get("index"),
         "channels": channels,
@@ -350,6 +361,14 @@ def _audio_stream(stream, stream_id, selected):
         "samplingRate": stream.get("sample_rate") and int(stream["sample_rate"]),
         "profile": plex_profile,
     }
+    # Measured on 130 audio tracks on fun: every flag is ffprobe's disposition and appears
+    # only when true. plexsim marked the FIRST track default, sent `default: false` and
+    # `selected: false` on every other one, and none of the other five flags. Which track
+    # is selected depends on the account's language settings, which plexsim does not have,
+    # so the first one still is.
+    if selected:
+        row["selected"] = True
+    row.update(_disposition(stream, TRACK_FLAGS))
     row.update(_language_fields(tags))
     bitrate = stream.get("bit_rate")
     if bitrate:
@@ -375,7 +394,6 @@ SUBTITLE_CODECS = {"subrip": "srt", "hdmv_pgs_subtitle": "pgs", "dvd_subtitle": 
 
 def _subtitle_stream(stream, stream_id):
     tags = stream.get("tags") or {}
-    disposition = stream.get("disposition") or {}
     codec = stream.get("codec_name") or ""
     codec = SUBTITLE_CODECS.get(codec, codec)
     # Measured on 432 embedded subtitle tracks on fun: `default` and `forced`
@@ -390,10 +408,7 @@ def _subtitle_stream(stream, stream_id):
         "codec": codec,
         "index": stream.get("index"),
     }
-    if disposition.get("default"):
-        row["default"] = True
-    if disposition.get("forced"):
-        row["forced"] = True
+    row.update(_disposition(stream, TRACK_FLAGS))
     bitrate = stream.get("bit_rate")
     if bitrate:
         row["bitrate"] = int(int(bitrate) / 1000)
@@ -537,6 +552,9 @@ def normalize_media(media):
         if part.get("hasThumbnail") not in ("1", 1, True):
             part.pop("hasThumbnail", None)
         for stream in part.get("Stream") or []:
+            for flag in TRACK_FLAGS + ("selected",):
+                if stream.get(flag) is False:
+                    stream.pop(flag)
             if stream.get("languageCode"):
                 stream.update(_language_fields({"language": stream["languageCode"]}))
             if "bitDepth" in stream:

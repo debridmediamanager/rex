@@ -197,6 +197,17 @@ def _aspect_ratio_value(fixture):
     return per_media(("aspectRatio",))(fixture)
 
 
+@check("disposition-flags")
+def _disposition_flags(fixture):
+    flags = ("default", "forced", "hearingImpaired", "original", "dub", "comment")
+    out = per_stream(1, ("default", "forced", "original"))(fixture)
+    out += per_stream(2, flags)(fixture) + per_stream(3, flags)(fixture)
+    for real, sim in paired(fixture, 2):
+        if sim.get("selected") is False:
+            out.append(("%s stream %s selected" % (fixture["name"], real["index"]), None, False))
+    return out
+
+
 def load(root):
     if root:
         sys.path.insert(0, os.path.abspath(root))
