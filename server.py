@@ -1330,7 +1330,8 @@ class PlexSim:
     TIMELINE_DONE = 5
     TIMELINE_DELETED = 9
 
-    def notify_timeline(self, row, state=3, metadata_state="queued"):
+    def notify_timeline(self, row, state=3, metadata_state="queued", media_state=None,
+                        type_number=None):
         """A TimelineEntry for one row, with the field set measured off a real
         refresh: identifier, sectionID and itemID as STRINGS, the numeric type,
         the title, `state` and `metadataState`.
@@ -1358,13 +1359,16 @@ class PlexSim:
             "identifier": "com.plexapp.plugins.library",
             "sectionID": str(row.get("librarySectionID", "")),
             "itemID": str(row.get("ratingKey", "")),
-            "type": self.TIMELINE_TYPES.get(row.get("type"), 1),
+            "type": (type_number if type_number is not None
+                     else self.TIMELINE_TYPES.get(row.get("type"), 1)),
             "title": title,
             "state": state,
             "updatedAt": int(time.time()),
         }
         if metadata_state is not None:
             entry["metadataState"] = metadata_state
+        if media_state:
+            entry["mediaState"] = media_state
         section_key = str(row.get("librarySectionID", ""))
         if state in (self.TIMELINE_DONE, self.TIMELINE_DELETED) and section_key.isdigit():
             # What a library's /timeline lists: the last finished or removed state
@@ -3284,6 +3288,15 @@ class PlexSim:
                 # Measured: a real PMS 404s this rather than answering 405, which is
                 # a status it never sends.
                 return ("error", 404, "plexsim: not found")
+            if leaf == "analyze":
+                # Measured on a writable copy of the reference: an analyze pushes, for
+                # each movie in title order, a state-5 frame with `mediaState:
+                # analyzing`, one with `thumbnailing`, and a plain state 5. plexsim
+                # pushed nothing.
+                movies = [r for r in self.catalog.section_items(section_id) if r.get("type") == "movie"]
+                for row in sorted(movies, key=self._sort_key("titleSort")):
+                    for media_state in ("analyzing", "thumbnailing", None):
+                        self.notify_timeline(row, self.TIMELINE_DONE, None, media_state=media_state)
             logger.info("SECTION %s %s -- nothing to %s, plexsim owns no files",
                         leaf, section_id, leaf)
             return ("empty", 200)

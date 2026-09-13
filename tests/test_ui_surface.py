@@ -6805,6 +6805,29 @@ def main():
           "HTTP %s, container %s, prefs %r/%r" % (status_w15d, sorted(k for k in made_w15d if k != "Directory"),
                                                  prefs_w15d.get("flattenSeasons"), prefs_w15d.get("episodeSort")))
 
+
+    def activities_w15(frames):
+        return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
+                for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
+    def statuses_w15(frames):
+        return [s.get("title") for f in frames or []
+                for s in (f.get("NotificationContainer") or {}).get("StatusNotification") or []]
+    def timelines_w15(frames):
+        return [e for f in frames or [] for e in (f.get("NotificationContainer") or {}).get("TimelineEntry") or []]
+    # Measured on plexscratch: analyzing a movie library pushes, for every movie, a state-5
+    # frame with mediaState analyzing, one with thumbnailing, and a plain state 5. plexsim
+    # pushed nothing.
+    movies_w15f = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    holder_w15f = []
+    _, frames_w15f = notifications(base, lambda: holder_w15f.append(
+        request(base, "PUT", "/library/sections/%s/analyze" % movie_section)[0]), seconds=3)
+    states_w15f = [e.get("mediaState") for e in timelines_w15(frames_w15f) if e.get("state") == 5]
+    check("analyzing a library pushes analyzing and thumbnailing frames for every movie",
+          holder_w15f == [200] and movies_w15f
+          and states_w15f.count("analyzing") == len(movies_w15f)
+          and states_w15f.count("thumbnailing") == len(movies_w15f),
+          "HTTP %s, %d movie(s), states %s" % (holder_w15f, len(movies_w15f), states_w15f[:6]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
