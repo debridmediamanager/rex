@@ -9162,9 +9162,7 @@ class Handler(BaseHTTPRequestHandler):
     GZIP_TYPES = ("text/xml", "application/json", "text/html", "text/plain")
 
     def _maybe_gzip(self, content_type, payload, names):
-        if "content-encoding" in names or len(payload) < 860:
-            # The reference leaves very small bodies alone; 860 is the smallest
-            # compressed answer measured off it.
+        if "content-encoding" in names:
             return payload
         accepted = (self.headers.get("Accept-Encoding") or "").lower()
         if "gzip" not in accepted:
@@ -9173,8 +9171,13 @@ class Handler(BaseHTTPRequestHandler):
             return payload
         import gzip as gzip_module
         squeezed = gzip_module.compress(payload, 6)
-        if len(squeezed) >= len(payload):
-            return payload
+        # Re-measured on kids (1.43.4) and zen (1.42.2): the gate is the client's offer
+        # and NOTHING else. Both compress an 83-byte body into 90 bytes and send it
+        # gzipped, and both send it plain for `Accept-Encoding: identity`. The earlier
+        # 860-byte floor was inferred from the smallest compressed answer that happened
+        # to be seen, and the "only if it shrinks" test was invented: together they left
+        # seventeen of the endpoints cycles 9 and 10 added answering plain where a real
+        # PMS answers gzip, without the length pair a client reads off them.
         self.send_header("Content-Encoding", "gzip")
         self.send_header("X-Plex-Content-Original-Length", str(len(payload)))
         self.send_header("X-Plex-Content-Compressed-Length", str(len(squeezed)))

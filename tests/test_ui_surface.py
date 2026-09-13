@@ -7853,6 +7853,33 @@ def main():
               % (sorted(row_c11j), sorted(set(row_c11j) - allowed_c11j),
                  "ratingKey" in rows_c11j[-1]))
 
+
+    # Re-measured on kids (1.43.4) and zen (1.42.2): a real PMS gzips every
+    # compressible body whenever the client offers gzip, even when compressing makes
+    # it LARGER (83 bytes in, 90 out), and sends it plain only for
+    # `Accept-Encoding: identity`. plexsim had an 860-byte floor and a "only if it
+    # shrinks" test, both inferred rather than measured, so seventeen endpoints
+    # answered plain and without the length pair.
+    def encoded_c11k(path, encoding_c11k="gzip"):
+        req_c11k = urllib.request.Request(base.rstrip("/") + path, headers={
+            "User-Agent": UA, "Accept": "application/json", "Accept-Encoding": encoding_c11k,
+            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Product": "Plex Web",
+            "X-Plex-Platform": "Chrome"})
+        with urllib.request.urlopen(req_c11k, timeout=30) as response_c11k:
+            raw_c11k = response_c11k.read()
+            return (response_c11k.headers.get("Content-Encoding"),
+                    response_c11k.headers.get("X-Plex-Content-Original-Length"),
+                    response_c11k.headers.get("X-Plex-Content-Compressed-Length"),
+                    len(raw_c11k))
+    tiny_c11k = encoded_c11k("/livetv/dvrs")
+    small_c11k = encoded_c11k("/library/sections/%s/albums" % movie_section)
+    plain_c11k = encoded_c11k("/livetv/dvrs", "identity")
+    check("every compressible body is gzipped when the client offers it",
+          tiny_c11k[0] == "gzip" and tiny_c11k[1] and tiny_c11k[2]
+          and small_c11k[0] == "gzip" and small_c11k[1] and small_c11k[2]
+          and plain_c11k[0] is None,
+          "tiny %s, small %s, identity %s" % (tiny_c11k, small_c11k, plain_c11k))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
