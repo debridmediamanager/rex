@@ -264,12 +264,18 @@ def _audio_stream(stream, stream_id, selected):
     return stream_titles(row)
 
 
+# ffprobe's subtitle decoder names against the codec a real PMS writes, measured on every
+# embedded track of 35 files on fun: SubRip is `srt`, a Blu-ray bitmap track `pgs` and a DVD
+# one `vobsub`. plexsim passed the last two through as `hdmv_pgs_subtitle` and
+# `dvd_subtitle`, which no client's burn-in rule names.
+SUBTITLE_CODECS = {"subrip": "srt", "hdmv_pgs_subtitle": "pgs", "dvd_subtitle": "vobsub"}
+
+
 def _subtitle_stream(stream, stream_id):
     tags = stream.get("tags") or {}
     disposition = stream.get("disposition") or {}
     codec = stream.get("codec_name") or ""
-    # Plex names the SRT codec "srt"; ffprobe calls it subrip.
-    codec = {"subrip": "srt", "mov_text": "mov_text"}.get(codec, codec)
+    codec = SUBTITLE_CODECS.get(codec, codec)
     # Measured on 432 embedded subtitle tracks on fun: `default` and `forced`
     # appear only when TRUE, every track says `canAutoSync: false`, and none
     # carries `embeddedInVideo` -- which marks captions carried INSIDE the video
@@ -428,6 +434,8 @@ def normalize_media(media):
                 # The subtitle flag rules, for catalogs built before they were
                 # measured (see _subtitle_stream).
                 stream.pop("embeddedInVideo", None)
+                if stream.get("codec") in SUBTITLE_CODECS:
+                    stream["codec"] = SUBTITLE_CODECS[stream["codec"]]
                 for flag in ("default", "forced"):
                     if not stream.get(flag):
                         stream.pop(flag, None)
