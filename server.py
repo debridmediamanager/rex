@@ -98,6 +98,21 @@ except (OSError, ValueError):
 # -- measured on the copy in cycle 15, in all four combinations.
 SHOW_ROW_PREFS = ("flattenSeasons", "episodeSort")
 
+# Cycle 16, captured from the reference: the strings a real PMS translates, keyed by
+# the ATTRIBUTE they appear in and then by the English text. Captured mechanically --
+# each endpoint fetched in English and in each of the 28 languages the reference answers
+# differently, then the two documents diffed string by string at the same structural
+# path -- so nothing in it is invented. The attribute key matters: the reference
+# translates "By Genre" as a section pivot's `title` and leaves the same words alone as
+# a secondary axis's `title2`.
+_TRANSLATIONS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  "translations.json")
+try:
+    with open(_TRANSLATIONS_PATH, encoding="utf-8") as _handle:
+        TRANSLATIONS = json.load(_handle).get("strings") or {}
+except (OSError, ValueError):
+    TRANSLATIONS = {}
+
 _SECTION_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_prefs.json")
 try:
     with open(_SECTION_PREFS_PATH) as _handle:
@@ -11281,7 +11296,58 @@ class Handler(BaseHTTPRequestHandler):
         return (payload[start:stop], 206,
                 "bytes %d-%d/%d" % (start, stop - 1, len(payload)))
 
+    # Strings that are the LIBRARY's own content rather than the server's own text.
+    # Measured: an item title, a tag name and a library name stay as they are in every
+    # language; only the server's own vocabulary moves.
+    def _language(self, query):
+        """The language a request asks for, by the measured precedence.
+
+        Cycle 16 on kids and zen: `X-Plex-Language` beats `Accept-Language` when both
+        are sent, either may be a regional form (`de-DE` works like `de`), the query
+        string carries `X-Plex-Language` as well as the header, and a language the
+        server does not have falls back to English.
+        """
+        if query is None:
+            query = dict(urllib.parse.parse_qsl(
+                urllib.parse.urlsplit(self.path).query, keep_blank_values=True))
+        wanted = query.get("X-Plex-Language") or self.headers.get("X-Plex-Language")
+        if not wanted:
+            accept = self.headers.get("Accept-Language") or ""
+            wanted = accept.split(",")[0].split(";")[0].strip()
+        primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
+        return primary or None
+
+    def _localise(self, node, language, attribute=None):
+        """Translate the server's own text in a response -- measured, not guessed.
+
+        Every string is looked up by the ATTRIBUTE it appears in and then by its
+        English text; anything the reference did not translate is left exactly as it
+        is, which is how item titles, tag names, `All Movies`, a secondary axis's
+        `title2` and `Unplayed` stay English in every language on a real PMS too.
+        """
+        if isinstance(node, dict):
+            return {key: self._localise(value, language, key)
+                    for key, value in node.items()}
+        if isinstance(node, list):
+            return [self._localise(value, language, attribute) for value in node]
+        if isinstance(node, str) and attribute:
+            found = (TRANSLATIONS.get(attribute) or {}).get(node)
+            if found and language in found:
+                return found[language]
+            # A GENERATED title carries a number: `Season 1` is in the table and
+            # `Season 19` is not, so the word is taken from the numbered form the
+            # reference did translate and the row's own number kept.
+            match = re.match(r"^(Season|Episode) (\d+)$", node)
+            if match:
+                pattern = (TRANSLATIONS.get(attribute) or {}).get("%s 1" % match.group(1))
+                if pattern and language in pattern:
+                    return pattern[language].replace("1", match.group(2))
+        return node
+
     def _send_container(self, container):
+        language = self._language(None)
+        if language and language != "en" and TRANSLATIONS:
+            container = self._localise(container, language)
         # `_xml` names the element a container's rows render as where the rows
         # cannot name it themselves (an artwork list is <Photo>, a folder list
         # <Directory>). It is internal: it must never reach the JSON body.

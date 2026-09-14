@@ -12743,6 +12743,50 @@ def main():
           "state3=%r state5=%r (was %r)"
           % (loading_c16a23[:1], done_c16a23[:1], was_c16a23))
 
+
+    # Cycle 16, measured on kids and zen, identically, across eight endpoints and 200+
+    # strings: a real PMS LOCALISES its own text by `X-Plex-Language` -- header or query
+    # -- falling back to `Accept-Language`, and `X-Plex-Language` wins when both are
+    # sent. The filter and sort menus, the `Meta` type titles, the hub titles, a
+    # GENERATED season title (`Season 1` -> `Staffel 1`), a stream's language name and
+    # its `displayTitle`, and all 200+ `/:/prefs` labels and summaries change; an
+    # unknown language falls back to English, `de-DE` works like `de`, and the LIBRARY's
+    # own rows -- item titles, `All Movies`, a secondary axis's `title2`, `Unplayed` --
+    # do not change at all. plexsim read the header nowhere, so every non-English user
+    # of every real client (Plex Web sends it from the browser locale, iOS/Android/TV
+    # from the OS) saw English filter and sort menus, English hub titles, English
+    # "Season N" and English track labels on every screen.
+    def titles_c16i(header_c16i):
+        probe_c16i = urllib.request.Request(
+            base + "/library/sections/%s/filters" % movie_section,
+            headers={"Accept": "application/json", "User-Agent": UA, **header_c16i})
+        with urllib.request.urlopen(probe_c16i, timeout=20) as answer_c16i:
+            body_c16i = json.load(answer_c16i)["MediaContainer"]
+        return [d_c16i.get("title") for d_c16i in body_c16i.get("Directory") or []][:4]
+
+    english_c16i = titles_c16i({})
+    german_c16i = titles_c16i({"X-Plex-Language": "de"})
+    regional_c16i = titles_c16i({"X-Plex-Language": "de-DE"})
+    accepted_c16i = titles_c16i({"Accept-Language": "de-DE,de;q=0.9"})
+    both_c16i = titles_c16i({"X-Plex-Language": "fr", "Accept-Language": "de-DE"})
+    unknown_c16i = titles_c16i({"X-Plex-Language": "xx"})
+    seasons_c16i = [r_c16i.get("title") for r_c16i in json.loads(request(
+        base, "GET", "/library/metadata/%s/children?excludeAllLeaves=1&X-Plex-Language=de"
+        % show)[1])["MediaContainer"].get("Metadata") or []]
+    plain_seasons_c16i = [r_c16i.get("title") for r_c16i in get(
+        base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+        .get("Metadata") or []]
+    check("a real PMS localises its own text by X-Plex-Language",
+          german_c16i != english_c16i and "Jahr" in german_c16i
+          and regional_c16i == german_c16i and accepted_c16i == german_c16i
+          and both_c16i != german_c16i and "Année" in both_c16i
+          and unknown_c16i == english_c16i
+          and any(str(t_c16i).startswith("Staffel") for t_c16i in seasons_c16i)
+          and any(str(t_c16i).startswith("Season") for t_c16i in plain_seasons_c16i),
+          "en=%s de=%s de-DE=%s accept=%s fr-wins=%s xx=%s seasons=%s/%s"
+          % (english_c16i, german_c16i, regional_c16i, accepted_c16i, both_c16i,
+             unknown_c16i, seasons_c16i[:2], plain_seasons_c16i[:2]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
