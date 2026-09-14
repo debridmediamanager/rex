@@ -2270,6 +2270,49 @@ class PlexSim:
             detail[name] = value
         return detail
 
+    def item_language_enum(self, row, stored):
+        """`audioLanguage`/`subtitleLanguage` on an ITEM, led by its own streams.
+
+        Cycle 18, measured on zen (1.42.2) and kids (1.43.4): the enum is
+        `:Account default`, then the item's OWN stream languages as bare 639-1 tags --
+        the AUDIO ones first, then the subtitle ones, each group ordered by tag and the
+        whole head deduped, each named in its own language -- and then the generic
+        regional list every item shares. zen's show 6910 leads
+        `en:English|bg:...|cs:...|da:...` against episodes carrying an English audio
+        track and fifteen subtitle languages; its show 11113 leads `pa:...|en:English`
+        for a Punjabi audio track and an English subtitle; kids' Firefly leads
+        `en:English` alone. plexsim served `item_prefs.json`'s captured list to every
+        item, so a show's own languages could not be chosen in its Preferences pane.
+
+        The generic tail is the captured list from its first REGIONAL entry (`ca-ES`)
+        onward -- the bare two-letter entries ahead of it are the captured item's own
+        head, which is what made the fixture look version-neutral.
+        """
+        head, seen = [], set()
+        rows = ([row] if row.get("type") not in ("show", "season")
+                else self.catalog.leaves(row.get("ratingKey")))
+        for kind in (2, 3):
+            tags = set()
+            for leaf in rows:
+                for media in leaf.get("Media") or []:
+                    for part in media.get("Part") or []:
+                        for stream in part.get("Stream") or []:
+                            if stream.get("streamType") == kind and stream.get("languageTag"):
+                                tags.add(stream["languageTag"])
+            for tag in sorted(tags):
+                if tag in seen:
+                    continue
+                seen.add(tag)
+                name = next((entry[0] for entry
+                             in mediainfo_module.LANGUAGES.values()
+                             if entry[1] == tag), None)
+                if name:
+                    head.append("%s:%s" % (tag, name))
+        entries = [piece for piece in str(stored or "").split("|")]
+        generic = next((index for index, piece in enumerate(entries)
+                        if "-" in piece.split(":", 1)[0]), len(entries))
+        return "|".join([":Account default"] + head + entries[generic:])
+
     def apply_detail_options(self, row, detail, query):
         """The `include*` / `exclude*` / `checkFiles` effects, measured one by one.
 
@@ -2340,6 +2383,10 @@ class PlexSim:
             # season three, all captured -- and the list is per TYPE, so serving
             # the show list for a movie offers settings the item does not have.
             settings = ITEM_PREFS.get(row.get("type")) or []
+            # Cycle 18: the two language enums are the ITEM's, not the fixture's.
+            settings = [dict(s, enumValues=self.item_language_enum(row, s.get("enumValues")))
+                        if s.get("id") in ("audioLanguage", "subtitleLanguage") else s
+                        for s in settings]
             # Cycle 16, measured on plexscratch and corroborated read-only on zen: an
             # UNMATCHED item loses its AGENT-driven settings. A show drops
             # `languageOverride` and `useOriginalTitle` (zen's six `local://` shows
