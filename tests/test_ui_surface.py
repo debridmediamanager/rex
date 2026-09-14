@@ -14635,6 +14635,46 @@ def main():
                          for op_c19t in ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}
                         if pick_c19t else None))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). Three rules about the `Meta`
+    # descriptor the library page is built from. (1) `active` follows the REQUEST: a show
+    # library's `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode`, where
+    # plexsim served the captured fixture's stored flags and kept the Shows tab lit. (2)
+    # `?includeDetails=1` honours `includeAdvanced=1` -- bare it is 9 sorts on a movie
+    # library and 17 on a show one, with the flag 15 and 32 -- where plexsim always answered
+    # the advanced list, so six sorts and the Duplicates filter the client hides behind its
+    # own toggle were permanently on show. (3) That form carries no `folder` Type row and
+    # marks none of the others active.
+    status_c19m, meta_c19m, _ = get(base, "/library/sections/%s/all?type=4&includeMeta=1"
+                                    "&X-Plex-Container-Size=1" % show_section)
+    types_c19m = [(t_c19m.get("type"), t_c19m.get("active"))
+                  for t_c19m in ((meta_c19m.get("Meta") or {}).get("Type") or [])]
+    status_c19m3, meta_c19m3, _ = get(base, "/library/sections/%s/all?type=3&includeMeta=1"
+                                      "&X-Plex-Container-Size=1" % show_section)
+    types_c19m3 = [(t_c19m.get("type"), t_c19m.get("active"))
+                   for t_c19m in ((meta_c19m3.get("Meta") or {}).get("Type") or [])]
+    check("a Meta Type's active flag follows the asked type=",
+          dict(types_c19m).get("episode") is True and dict(types_c19m).get("show") is False
+          and dict(types_c19m3).get("season") is True and dict(types_c19m3).get("show") is False,
+          "type=4 %s ; type=3 %s" % (types_c19m, types_c19m3))
+    _, plain_c19m, _ = get(base, "/library/sections/%s?includeDetails=1" % movie_section)
+    _, adv_c19m, _ = get(base, "/library/sections/%s?includeDetails=1&includeAdvanced=1"
+                         % movie_section)
+
+
+    def sorts_c19m(body_c19m):
+        return sum(len(t_c19m.get("Sort") or []) for t_c19m in body_c19m.get("Type") or [])
+
+
+    check("includeDetails=1 honours includeAdvanced and drops the folder row",
+          sorts_c19m(plain_c19m) < sorts_c19m(adv_c19m)
+          and all(t_c19m.get("type") != "folder" for t_c19m in plain_c19m.get("Type") or [])
+          and all(t_c19m.get("active") is False for t_c19m in plain_c19m.get("Type") or [])
+          and bool(plain_c19m.get("Type")),
+          "plain sorts %d types %s ; advanced sorts %d"
+          % (sorts_c19m(plain_c19m),
+             [(t_c19m.get("type"), t_c19m.get("active")) for t_c19m in plain_c19m.get("Type") or []],
+             sorts_c19m(adv_c19m)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
