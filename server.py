@@ -9798,16 +9798,16 @@ class PlexSim:
             return self.play_queue_container(queue_id, query)
 
         if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
-            # Measured on a writable copy of the reference: deleting the SELECTED item
-            # answers the queue as it stood -- the old version, selection and total --
-            # with no rows, and the next read has the selection on the item that
-            # followed it. plexsim left the selection on the deleted id.
-            stale = None
-            if str(queue.get("selected")) == str(segments[3]):
-                stale = self.play_queue_container(queue_id, query)
-                if isinstance(stale, dict):
-                    stale["MediaContainer"].pop("Metadata", None)
-                    stale["MediaContainer"]["size"] = 0
+            # Cycle 16, re-measured on plexscratch: EVERY item delete answers the queue
+            # as it stood BEFORE it -- the old `playQueueVersion` and
+            # `playQueueTotalCount` -- with the rows that REMAIN; only the SELECTED
+            # one also drops the rows entirely. The next read carries the stepped
+            # version, the new total and, where the selection went, the item that
+            # followed it. Cycle 9 measured the selected case alone and plexsim
+            # answered the post-mutation container for every other item -- and the
+            # client DISCARDS a queue response whose version it did not expect, so a
+            # delete from Up Next threw the player's own queue away.
+            was_selected = str(queue.get("selected")) == str(segments[3])
             with self.lock:
                 items = queue["items"]
                 index = next((i for i, e in enumerate(items)
@@ -9819,10 +9819,18 @@ class PlexSim:
                     return ("error", 404, "plexsim: no such play queue item")
                 items.pop(index)
                 queue["version"] += 1
-                if stale is not None:
+                if was_selected:
                     following = items[index] if index < len(items) else (items[-1] if items else None)
                     queue["selected"] = following["id"] if following else None
-            return stale if stale is not None else self.play_queue_container(queue_id, query)
+            answer = self.play_queue_container(queue_id, query)
+            if isinstance(answer, dict):
+                body = answer["MediaContainer"]
+                body["playQueueVersion"] -= 1
+                body["playQueueTotalCount"] = len(items) + 1
+                if was_selected:
+                    body.pop("Metadata", None)
+                    body["size"] = 0
+            return answer
 
         if len(segments) == 2 and method == "PUT":
             if not query.get("uri") and not query.get("playlistID"):
