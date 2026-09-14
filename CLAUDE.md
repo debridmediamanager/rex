@@ -1201,6 +1201,73 @@ precisely how the Seasons bug survived a fix attempt.
   `useOriginalTitle`, a MOVIE loses the whole `Preferences` block, a season keeps its
   three.
 
+- **Three fixtures were captured off 1.43.4 and plexsim reports 1.42.2.** Cycle 14 split
+  `Meta.Type[].Filter` per version and left `Field` at 1.43.4's: 1.42.2 advertises **34**
+  movie Fields and **20** episode ones against 40 and 26, differing in the six media-codec
+  axes -- and on 1.42.2 those six are UNKNOWN fields, so a listing filtered on one answers
+  EVERY row and `/query/parse` reports an `Error`. `tv.plex.agents.nfo.movie`/`.series` are
+  1.43.4-only too (four modern agents there, not six). When a fixture disagrees with zen,
+  suspect the version before the shape.
+- **A real PMS escapes XML attribute values into pure ASCII**, `encoding="UTF-8"`
+  notwithstanding: `&amp;`/`&lt;`/`&gt;` named, `"` and `'` NUMERIC (`&#34;`, `&#39;`), TAB
+  decimal `&#9;` but NEWLINE and CR HEX (`&#xA;`, `&#xD;`), every codepoint from U+0080 up
+  its DECIMAL reference (an emoji is one `&#128512;`, not a surrogate pair), and every
+  control XML 1.0 forbids replaced with a literal `?`. The surface carries no element TEXT,
+  so that is the whole rule.
+- **A ROW's XML attributes come out in a measured order too** -- not alphabetical and not
+  the order the row was built in. 25 element buckets in `xmlout._ATTR_ORDER`, derived as a
+  topological sort of every PAIR both references were seen to emit and verified as a
+  superset of every observed sequence. A tag is `id, filter, tag`; a sort row is `default,
+  defaultDirection, descKey, firstCharacterKey, key, title`; a `firstCharacter` bucket is
+  `size, key, title`.
+- **`titleSort` strips a leading run of PUNCTUATION as well as whitespace, before the
+  article.** The set is not a Unicode category: in ASCII only `" ' ( - . [ { ~`, and outside
+  it every character from U+0080 to U+00BF and from U+2000 to U+2FFF -- while U+0100..U+1FFF
+  and U+3000 upwards stay, so the CJK and fullwidth brackets are kept. The run may mix with
+  whitespace and repeat, and a title made of nothing else keeps its own text.
+- **A show's `/allLeaves` -- and no other container -- stamps a leaf's BORROWED artwork with
+  the LEAF's own `addedAt`** (`grandparentThumb`, `grandparentArt`, `grandparentTheme`,
+  `art`). Everywhere else they carry the show's CURRENT version. Same family as the `studio`
+  that list already stamps: a property of the LIST, not of the row.
+- **The localiser reaches INSIDE a row for exactly two blocks**: the `Preferences` block's
+  `label`/`summary`/`enumValues`, and a `Stream`'s language fields -- where the two display
+  titles are COMPOSED from the localised name and the omission is decided on the ENGLISH one,
+  so a track titled "English" keeps `English (SRT)` in German while its plain title moves.
+  The row's own `title`, `summary` and tags stay English.
+- **A save a real PMS REFUSES writes NOTHING.** Validate the whole form before applying any
+  of it: plexsim applied each parameter as it validated it, so a 500 left half the edit on
+  disk while telling the client it had failed.
+- **The ITEM edit path's 400 means "this request edits nothing"**, not "an unknown field":
+  with a real edit beside it every unrecognised name is IGNORED, and each alone is a 400.
+  The SECTION path answers 200 to a form that writes nothing (a bare field is a filter
+  there) and still 400s an unknown `.value`.
+- **A library preference write moves the SECTION's `updatedAt`**; an INT pref that does not
+  parse is stored as **0** (not ignored); and a TEXT pref is stored percent-escaped for `:`
+  and `|` -- the `enumValues` delimiters -- with a value carrying `%` stored EMPTY.
+- **The collection ITEM paths take one verb each** (`/items` PUT plus its own GET/HEAD,
+  `/items/{rk}` DELETE, `/move` PUT) and 404 the rest; a non-numeric ratingKey on the DELETE
+  is a 404 where an unknown number is a 200. The MOVE refuses `after=<itself>`, an empty
+  `after=` and an unparseable one with a 400, sends an `after=` naming no member to the
+  FRONT, and works through the `/children/{rk}/move` alias. A comma-joined add TOLERATES the
+  members it cannot use; only a single-key uri of the wrong type is a 400.
+- **A collection's `/children` on the METADATA path is the LIGHT row**, with the
+  librarySection triple on the CONTAINER, `allowSync: true` and no `thumb`.
+- **A local artwork candidate names a server path**: `ratingKey` the bare uri, `key` and
+  `thumb` `/library/metadata/{id}/file?url=<encoded, `.` as `%2E`>`, which really serves the
+  image. A `media://` or `upload://` candidate carries no `provider`. `DELETE .../thumb`
+  clears the poster like `/poster`, and an artwork UPLOAD moves `updatedAt` onto the new
+  stamp exactly as a PICK does.
+- **Twelve butler tasks report a different sentence than plexsim did**, three report
+  SEVERAL and five report one where it reported none; `CleanOldBundles` steps its activity
+  SUBTITLE through four named phases and `OptimizeDatabase` is titled `Optimizing database`
+  with the subtitle `Optimizing Database`. And **an activity's subtitle is the row's FRAME
+  title** -- a season's `<show> S01`, an episode's `<show> S01 E01` -- not `title (year)`.
+- **`POST` on an item ACTION leaf is a 404** (`/refresh`, `/analyze`, `/unmatch` take PUT),
+  while `POST /library/sections/{id}/refresh` is a 200; `/match` answers EVERY verb with its
+  no-parameters 400; `?force=` on a section refresh is PARSED; a KNOWN single-segment path
+  (`/butler`, `/devices`) falls through to the plug-in dispatcher for the verbs it does not
+  implement; and `GET /livetv` is that dispatcher's three-row container, not an empty one.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
