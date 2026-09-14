@@ -15960,6 +15960,33 @@ def main():
                   for _rk_c20j, _f_c20j, version_c20j, stamp_c20j in owned_c20j)
           and served_c20j == 200,
           "%s | versioned GET %s" % (owned_c20j[:4], served_c20j))
+
+    # Cycle 20, measured on plexscratch over 57 columns x 4 row types: eleven more
+    # columns are known to the ITEM edit path. `absoluteIndex`, `updatedAt`,
+    # `createdAt`, `skipCount`, `viewOffset`, `ratingCount`, `type`, `viewedLeafCount`,
+    # `contentRatingAge`, `mediaCount` and `extraType` each answer 200 and each records
+    # a `Field` lock, on a movie, a show, a season and an episode alike, where
+    # `bogusXY` is the 400 an unknown name really gets. Only the VALUE of
+    # `absoluteIndex` is read (a word is a 500 there and a 200 on all the others),
+    # which is what tells a known numeric column from an ignored name. plexsim 400'd
+    # all eleven, so a client locking any of them was told the field does not exist.
+    lockable_c20k = ["absoluteIndex", "updatedAt", "createdAt", "skipCount", "viewOffset",
+                     "ratingCount", "type", "viewedLeafCount", "contentRatingAge",
+                     "mediaCount", "extraType"]
+    edits_c20k = {}
+    for field_c20k in lockable_c20k + ["bogusXY"]:
+        value_c20k = "4" if field_c20k == "absoluteIndex" else "7"
+        status_c20k, _, _ = request(base, "PUT", "/library/metadata/%s?%s.value=%s&%s.locked=1"
+                                    % (movie, field_c20k, value_c20k, field_c20k))
+        _, doc_c20k, _ = get(base, "/library/metadata/%s" % movie)
+        locks_c20k = [f_c20k.get("name")
+                      for f_c20k in ((doc_c20k.get("Metadata") or [{}])[0].get("Field") or [])]
+        edits_c20k[field_c20k] = (status_c20k, field_c20k in locks_c20k)
+    word_c20k, _, _ = request(base, "PUT", "/library/metadata/%s?absoluteIndex.value=ZZQ1" % movie)
+    check("eleven more columns take an item edit and a lock",
+          all(edits_c20k[field_c20k] == (200, True) for field_c20k in lockable_c20k)
+          and edits_c20k["bogusXY"] == (400, False) and word_c20k == 500,
+          "%s | absoluteIndex=ZZQ1 %s" % (edits_c20k, word_c20k))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
