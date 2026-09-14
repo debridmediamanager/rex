@@ -516,7 +516,18 @@ def compare(kind, operator, actual, wanted, field=""):
     text = "" if actual is None else str(actual)
     wanted = str(wanted)
     if field == "title" and operator == "=":
-        return _word_prefixes(wanted, text)
+        # Cycle 18, measured on zen over all 3,887 rows of a real movie library: the
+        # bare `title=` matcher -- and ONLY it -- also reads the row's ORIGINAL title.
+        # `title=the` answers 1,484 rows where the title alone explains 1,481, and the
+        # three extras are `Interstate 60` ("Interstate 60: Episodes of the Road"),
+        # `Millennial Killer` ("The Millennial Killer") and `Vae Victis` ("The Art of
+        # Evil"); `title=B` is 815 against 807 and `title=art` 7 against 6. Every other
+        # operator reads the title alone -- `title!=`, `==`, `!==`, `<=` and `>=` all
+        # reproduce exactly on the title and DISAGREE once the original title is added,
+        # which is what separates the two halves. Held out over 24 (operator, value)
+        # pairs. A client searching a foreign film by its own-language title finds it.
+        return (_word_prefixes(wanted, text)
+                or _word_prefixes(wanted, str(getattr(actual, "original", "") or "")))
     if field in UNLISTED_STRING_FIELDS and operator in ("<=", "<<=", ">=", ">>="):
         # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
         # -- the string fields no Meta advertises -- take `>>`/`<<` where an advertised
