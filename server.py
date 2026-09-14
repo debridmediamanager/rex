@@ -1349,6 +1349,34 @@ def _with_stream_language(node, language):
     return walk(node)
 
 
+# The artwork fields a leaf BORROWS from its show, and which a show's `/allLeaves`
+# re-stamps with the leaf's own `addedAt`. `thumb` and `parentThumb` are not among them:
+# measured on zen, an episode's own `thumb` carries its `updatedAt` on that list too and
+# `parentThumb` carries the season's current version.
+_BORROWED_ARTWORK = ("grandparentThumb", "grandparentArt", "grandparentTheme", "art")
+
+
+def _restamped(row, stamp):
+    """`row` with its borrowed artwork versions replaced by `stamp`.
+
+    A real PMS serves any version on the owning row's path -- `/thumb/1` is a 200 on
+    both references -- so re-pointing the version is not a broken URL, it is the
+    version the reference itself sends on this one list.
+    """
+    if stamp is None:
+        return row
+    changed = None
+    for field in _BORROWED_ARTWORK:
+        value = row.get(field)
+        if not value:
+            continue
+        head, slash, _ = str(value).rpartition("/")
+        if slash:
+            changed = dict(row) if changed is None else changed
+            changed[field] = "%s/%s" % (head, stamp)
+    return row if changed is None else changed
+
+
 def _image_type(body):
     """The content type of an uploaded image, from its magic bytes."""
     if body[:8] == b"\x89PNG\r\n\x1a\n":
@@ -2241,6 +2269,14 @@ class PlexSim:
         # rather than written into the catalog.
         carry_studio = (parent.get("studio")
                         if leaf == "allLeaves" and parent.get("type") == "show" else None)
+        # Cycle 17, measured on kids and zen, which agree: the same list -- and no other
+        # container -- also stamps each episode's BORROWED artwork with the EPISODE's own
+        # `addedAt` rather than the show's current version, so the URL a client caches for
+        # a leaf never changes once the leaf exists. The episode's detail row, the
+        # season's `/children`, the section grid, `recentlyAdded`, `newest`,
+        # `/library/all` and the hubs all carry the show's CURRENT stamp (641 of 641 on
+        # zen's grid), which is what plexsim answered everywhere.
+        restamp_borrowed = leaf == "allLeaves" and parent.get("type") == "show"
 
         fields = {
             # Measured on both servers: a child row is the light projection -- text
@@ -2360,6 +2396,9 @@ class PlexSim:
                                   for r in fields["Metadata"]]
         if carry_studio:
             fields["Metadata"] = [dict(r, studio=carry_studio)
+                                  for r in fields.get("Metadata") or []]
+        if restamp_borrowed:
+            fields["Metadata"] = [_restamped(r, r.get("addedAt"))
                                   for r in fields.get("Metadata") or []]
         fields.update(extra)
         if extra.get("Directory"):
