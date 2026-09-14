@@ -13076,6 +13076,51 @@ def main():
           % (len(stamped_c17a1), len(leaves_c17a1), len(art_c17a1), len(leaves_c17a1),
              len(current_c17a1), len(grid_c17a1)))
 
+
+    # Cycle 17, derived by the driver from kids (1.43.4) and zen (1.42.2) and verified
+    # against both: a ROW's XML attribute order. Cycle 16 settled the CONTAINER's and
+    # left a row's explicitly unmapped for this cycle. It is not alphabetical and not
+    # the order the row dict was built in: a tag is `id, filter, tag`, a movie leads
+    # `ratingKey, key, guid, slug, studio, type, title, titleSort`, and a Hub leads
+    # `hubKey, key, title, type, hubIdentifier`. 25 element buckets, each a topological
+    # sort of every attribute PAIR the two references were seen to emit and each checked
+    # to be a superset of every observed sequence; plexsim inverted a witnessed pair in
+    # 11 of them, 634 pairs in all.
+    #
+    # What it costs a real client: nothing visible -- every Plex client uses a real XML
+    # parser, and attribute order is invisible to one. It is fixed because the corpus
+    # replay in harness/scripts compares attribute presence and values but not order, so
+    # nothing else in the programme would ever catch it, and because a recorded corpus
+    # cannot be matched byte for byte while it is wrong.
+    def attrs_c17a2(path_c17a2, element_c17a2):
+        body_c17a2 = request(base, "GET", path_c17a2, want_json=False)[1].decode(
+            "utf-8", "replace")
+        found_c17a2 = re.search(r"<%s ([^>]*?)/?>" % element_c17a2, body_c17a2)
+        return ([m_c17a2.group(1) for m_c17a2
+                 in re.finditer(r'(\w+)="', found_c17a2.group(1))] if found_c17a2 else [])
+    movie_attrs_c17a2 = attrs_c17a2("/library/sections/%s/all" % movie_section, "Video")
+    genre_attrs_c17a2 = attrs_c17a2("/library/metadata/%s" % movie, "Genre")
+    section_attrs_c17a2 = attrs_c17a2("/library/sections", "Directory")
+
+    def leads_c17a2(got_c17a2, want_c17a2):
+        present_c17a2 = [n_c17a2 for n_c17a2 in want_c17a2 if n_c17a2 in got_c17a2]
+        return [n_c17a2 for n_c17a2 in got_c17a2
+                if n_c17a2 in present_c17a2] == present_c17a2
+    check("a row's XML attributes come out in the measured order",
+          leads_c17a2(movie_attrs_c17a2,
+                      ["ratingKey", "key", "guid", "slug", "studio", "type", "title",
+                       "titleSort", "librarySectionTitle", "librarySectionID",
+                       "librarySectionKey", "summary", "year", "thumb", "art",
+                       "duration", "addedAt", "updatedAt"])
+          and genre_attrs_c17a2[:3] == ["id", "filter", "tag"]
+          and leads_c17a2(section_attrs_c17a2,
+                          ["allowSync", "filters", "refreshing", "key", "type", "title",
+                           "agent", "scanner", "language", "uuid", "updatedAt",
+                           "createdAt", "scannedAt", "content", "directory",
+                           "contentChangedAt", "hidden"]),
+          "movie=%s genre=%s section=%s"
+          % (movie_attrs_c17a2[:6], genre_attrs_c17a2[:3], section_attrs_c17a2[:5]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
