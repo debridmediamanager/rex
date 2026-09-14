@@ -13866,6 +13866,36 @@ def main():
              bundles_c17b18, {a_c17b18[1] for a_c17b18 in bundle_acts_c17b18},
              {a_c17b18[1] for a_c17b18 in db_acts_c17b18}))
 
+
+    # Cycle 17, re-measured on plexscratch: `DELETE /library/collections/{id}/items/abc`
+    # -- a ratingKey that is not a number -- is a 404, where an unknown NUMBER is a 200
+    # that removes nothing (the delete is idempotent). It is the same split the stream
+    # paths already have, recorded in cycle 15: a malformed id is told apart from a
+    # missing one. plexsim answered 200 with the collection row to both, so a client
+    # that built the path wrong was told the member had been removed.
+    made_c17b19 = json.loads(request(
+        base, "POST", "/library/collections?type=1&title=c17del&smart=0&sectionId=%s"
+                      "&uri=%s"
+        % (movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1])
+    cid_c17b19 = (made_c17b19["MediaContainer"]["Metadata"][0]["ratingKey"]
+                  if (made_c17b19.get("MediaContainer") or {}).get("Metadata") else None)
+    if not cid_c17b19:
+        skip("a malformed ratingKey on a collection item delete is a 404", "no collection")
+    else:
+        word_c17b19, _, _ = request(base, "DELETE",
+                                    "/library/collections/%s/items/abc" % cid_c17b19)
+        unknown_c17b19, _, _ = request(base, "DELETE",
+                                       "/library/collections/%s/items/999999" % cid_c17b19)
+        real_c17b19, _, _ = request(base, "DELETE", "/library/collections/%s/items/%s"
+                                    % (cid_c17b19, movie))
+        check("a malformed ratingKey on a collection item delete is a 404",
+              word_c17b19 == 404 and unknown_c17b19 == 200 and real_c17b19 == 200,
+              "abc=%s 999999=%s real=%s"
+              % (word_c17b19, unknown_c17b19, real_c17b19))
+        request(base, "DELETE", "/library/collections/%s" % cid_c17b19)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

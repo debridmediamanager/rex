@@ -9756,6 +9756,14 @@ class PlexSim:
             return self.bare_container(size=len(rows), Metadata=rows)
         # Measured: `/children/{ratingKey}` removes a member exactly as `/items/` does;
         # plexsim answered it with an empty 200 and removed nothing.
+        if leaf in ("items", "children") and len(segments) == 5 \
+                and method == "DELETE" and not segments[4].isdigit():
+            # Cycle 17, measured on plexscratch: a ratingKey that is not a NUMBER is a
+            # 404 here, where an unknown number is a 200 that removes nothing. The same
+            # split the stream paths already have (cycle 15): a malformed id is told
+            # apart from a missing one. Recorded in cycle 14 and left unimplemented, so
+            # a client that built the path wrong was told the member had been removed.
+            return ("error", 404, "plexsim: not found")
         if leaf in ("items", "children") and len(segments) == 5 and method == "DELETE":
             # Remove-from-collection, which the client builds as
             # `collection.url + "/items/" + ratingKey` with type DELETE and then
