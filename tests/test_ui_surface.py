@@ -10669,6 +10669,39 @@ def main():
           is_empty_200(st_c15d, body_c15d) and after_c15d.get("art") is None,
           "HTTP %s art=%r" % (st_c15d, after_c15d.get("art")))
 
+    # Cycle 15, measured on plexscratch across nine paths -- and this CORRECTS the hunt
+    # that reported it. `PATCH` and `OPTIONS` are not blanket 404s: they are routed
+    # exactly like every other verb, so `/identity`, `/hubs` and `/playlists` answer
+    # 200 to both (the recorded "these answer any verb" rule) and every other path
+    # 404s them. What a real PMS does not recognise as a method AT ALL -- `FROB`,
+    # `TRACE`, a wrong-case `Get` -- is a **500** with its own four-line html body, on
+    # every path.
+    #
+    # plexsim answered Python's BaseHTTPRequestHandler 501 page, which also leaks
+    # `Server: PlexSim/0.1 Python/3.10.20`; HANDOVER records that a real PMS never
+    # answers 405, and it never answers 501 either. A bare OPTIONS with no
+    # Access-Control-Request-* headers was a 200 where a real PMS routes it; a genuine
+    # preflight is unchanged except that its response carries `Content-Type: text/plain`.
+    routed_c15v = {}
+    for path_c15v in ("/library/sections", "/identity", "/hubs", "/playlists",
+                      "/status/sessions", "/library/sections/%s/all" % movie_section):
+        routed_c15v[path_c15v] = (request(base, "PATCH", path_c15v)[0],
+                                  request(base, "OPTIONS", path_c15v)[0])
+    # The paths whose VERB TABLE is wrong are a separate finding (they answer the GET
+    # body to every verb); what this check pins is that PATCH and a bare OPTIONS go
+    # through routing at all rather than being refused or answered as a preflight.
+    check("PATCH and OPTIONS are routed like any other verb, not blanket-404ed",
+          routed_c15v["/identity"] == (200, 200) and routed_c15v["/hubs"] == (200, 200)
+          and routed_c15v["/playlists"] == (200, 200)
+          and routed_c15v["/library/sections/%s/all" % movie_section] == (404, 404),
+          str(routed_c15v))
+    frob_c15v, frob_body_c15v, frob_hd_c15v = request(base, "FROB", "/library/sections")
+    check("a method a real PMS does not recognise is a 500, not a 501",
+          frob_c15v == 500 and b"501" not in frob_body_c15v
+          and b"Internal Server Error" in frob_body_c15v
+          and b"DOCTYPE" not in frob_body_c15v,
+          "HTTP %s body %r" % (frob_c15v, frob_body_c15v[:70]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
