@@ -16359,6 +16359,38 @@ def main():
           and leads_c21d.get("subtitleMode") == "-1:Series default"
           and show_leads_c21d.get("audioLanguage") == ":Account default",
           "season %s | show %s" % (leads_c21d, show_leads_c21d))
+
+    c21_leaf_row = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                    .get("Metadata") or [{}])[0]
+    c21_episode = c21_leaf_row.get("ratingKey")
+    c21_season2 = c21_leaf_row.get("parentRatingKey")
+
+    # Cycle 21, measured on kids (episodes 8, 10, 13) and zen (5191, 19741, 13160): an
+    # EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
+    # `MetadataItem` nodes, the show, THAT episode's season and the episode. No sibling
+    # season and no sibling episode. The controls agree on both references: a SEASON's
+    # tree is the season plus its own episodes and a SHOW's is the whole tree. plexsim
+    # rooted an episode's tree at the show and then answered the WHOLE show, so the
+    # response grew with the show and the node the caller asked about was no longer
+    # identifiable as the leaf.
+    def tree_ids_c21e(rating_key_c21e):
+        status_c21e, body_c21e, _ = request(base, "GET", "/library/metadata/%s/tree"
+                                            % rating_key_c21e, want_json=False)
+        if status_c21e != 200:
+            return status_c21e, []
+        return status_c21e, [node_c21e.attrib.get("id") for node_c21e
+                             in ET.fromstring(body_c21e).iter("MetadataItem")]
+
+    status_ep_c21e, episode_tree_c21e = tree_ids_c21e(c21_episode)
+    _, season_tree_c21e = tree_ids_c21e(c21_season2)
+    _, show_tree_c21e = tree_ids_c21e(show)
+    check("an episode's tree is the ancestor chain",
+          status_ep_c21e == 200 and len(episode_tree_c21e) == 3
+          and str(c21_episode) in [str(i_c21e) for i_c21e in episode_tree_c21e]
+          and len(season_tree_c21e) >= 2
+          and len(show_tree_c21e) > len(episode_tree_c21e),
+          "episode %s | season %d | show %d"
+          % (episode_tree_c21e, len(season_tree_c21e), len(show_tree_c21e)))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
