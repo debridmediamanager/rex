@@ -1223,6 +1223,50 @@ def _drop_private(node):
     return node
 
 
+# Cycle 21, measured on kids and zen: `/system/agents` is the one endpoint whose
+# JSON REPEATS a child element's key instead of writing an array --
+# `"Language":{"code":"ar"},"Language":{"code":"ca"},...` -- for `Language` and
+# `MediaType`. Every other repeated child on every other path is a proper array
+# (`Setting`, `Agent`, `Genre`, `Media`, `Role`, `Image`, `Action`, `Directory`,
+# `Feature`, `Pivot`). A JSON parser keeps the LAST of the repeated keys, so a
+# client sees ONE language per agent where plexsim showed it forty-five.
+REPEATED_JSON_KEYS = ("Language", "MediaType")
+
+
+def _repeat_keys(text):
+    """Rewrite `"Language": [a, b]` into `"Language": a, "Language": b`."""
+    for name in REPEATED_JSON_KEYS:
+        needle = '"%s": [' % name
+        while needle in text:
+            start = text.index(needle)
+            depth, index = 0, start + len(needle) - 1
+            while index < len(text):
+                if text[index] == '[':
+                    depth += 1
+                elif text[index] == ']':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                index += 1
+            inner = text[start + len(needle):index]
+            rows, depth, piece = [], 0, ''
+            for character in inner:
+                if character in '{[':
+                    depth += 1
+                elif character in '}]':
+                    depth -= 1
+                if character == ',' and depth == 0:
+                    rows.append(piece)
+                    piece = ''
+                else:
+                    piece += character
+            if piece.strip():
+                rows.append(piece)
+            text = text[:start] + ', '.join('"%s": %s' % (name, row.strip())
+                                            for row in rows) + text[index + 1:]
+    return text
+
+
 def json_body(container):
     """A container as JSON with every `null` and empty list left out.
 
@@ -1233,7 +1277,12 @@ def json_body(container):
     decoding a missing key happily chokes on as a null. An empty OBJECT is kept:
     `Related: {}` is exactly what the reference sends for an item with no hubs.
     """
-    return json.dumps(ordered_keys(_drop_private(_drop_empty(container)))).encode()
+    # Cycle 21: one endpoint writes a repeated child element as a repeated KEY
+    # rather than an array, and it marks its own container to say so.
+    repeat = bool((container.get("MediaContainer") or {}).pop("_repeatKeys", False)) \
+        if isinstance(container, dict) else False
+    text = json.dumps(ordered_keys(_drop_private(_drop_empty(container))))
+    return (_repeat_keys(text) if repeat else text).encode()
 
 
 # The tree's MediaStream is its own projection, measured: a fixed field set per
@@ -11570,13 +11619,15 @@ class PlexSim:
                           if agent["identifier"] in names]
                 if serves:
                     agent["MediaType"] = [{"mediaType": number} for number in sorted(serves)]
-            return self.bare_container(size=len(agents), Agent=agents)
+            return self.bare_container(size=len(agents), Agent=agents,
+                                   _repeatKeys=True)
         if not wanted.lstrip("-").isdigit():
             return ("error", 400, "plexsim: bad request")
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = [by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                   if name in by_id]
-        return self.bare_container(size=len(agents), Agent=agents)
+        return self.bare_container(size=len(agents), Agent=agents,
+                                   _repeatKeys=True)
 
     # The scanner names a real PMS offers per library type, captured verbatim.
     # The element is `Scanner` with nothing but a `name`, and the container's

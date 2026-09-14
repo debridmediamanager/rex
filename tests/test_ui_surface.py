@@ -16286,6 +16286,29 @@ def main():
           and all(langs_c21a > 0 and types_c21a == 0
                   for _id_c21a, langs_c21a, types_c21a in shape_c21a(typed_c21a)),
           "bare %s | mediaType=1 %s" % (shape_c21a(bare_c21a), shape_c21a(typed_c21a)))
+
+    # Cycle 21: `/system/agents` is the ONE endpoint whose JSON repeats a child
+    # element's KEY instead of emitting an array. Measured on both references: the raw
+    # body reads `"Language":{"code":"ar"},"Language":{"code":"ca"},...` -- 150
+    # occurrences on zen and 195 on kids -- and `MediaType` is written the same way,
+    # while every other repeated child on every other path is a proper array (`Setting`
+    # on `/:/prefs`, `Agent` here, `Genre`, `Media`, `Role`, `Image` on a row,
+    # `Action`, `Directory`, `Feature`, `Pivot` on `/media/providers`). A JSON parser
+    # keeps the LAST of the repeated keys, so a client sees exactly one language per
+    # agent where plexsim showed it forty-five.
+    status_c21b, body_c21b, _ = request(base, "GET", "/system/agents?mediaType=1")
+    text_c21b = body_c21b.decode("utf-8", "replace").replace(" ", "")
+    _, providers_c21b, _ = request(base, "GET", "/media/providers")
+    control_c21b = providers_c21b.decode("utf-8", "replace").replace(" ", "")
+    parsed_c21b = json.loads(body_c21b)["MediaContainer"].get("Agent") or []
+    check("only /system/agents repeats a child element's JSON key",
+          status_c21b == 200 and text_c21b.count('"Language":{') > 1
+          and '"Language":[' not in text_c21b
+          and '"Feature":[' in control_c21b
+          and all(isinstance(a_c21b.get("Language"), dict) for a_c21b in parsed_c21b),
+          "repeats %d | array %s | control Feature array %s"
+          % (text_c21b.count('"Language":{'), '"Language":[' in text_c21b,
+             '"Feature":[' in control_c21b))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
