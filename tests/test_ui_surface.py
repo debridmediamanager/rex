@@ -14930,18 +14930,21 @@ def main():
         return out_c19g
 
 
-    # A light row is only distinguishable from a detail row when the row HAS a tag, and
-    # the suite has replaced every tag list by this point -- so write one first.
-    if "Genre" not in text_c19g:
+    # A light row is only distinguishable from a detail row when BOTH carry a tag, and
+    # by this point the suite has replaced every tag list -- the listing row may still
+    # have one where the detail row does not. So write one and re-read both.
+    _s_c19g, detail_raw_c19g, _h_c19g = request(base, "GET", "/library/metadata/%s" % movie,
+                                                want_json=False)
+    if "<Genre" not in detail_raw_c19g.decode("utf-8", "replace"):
         request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=ZetaGenre" % movie)
         _s_c19g, raw_c19g, _h_c19g = request(
             base, "GET", "/library/sections/%s/all?type=1&includeGuids=1" % movie_section,
             want_json=False)
         text_c19g = raw_c19g.decode("utf-8", "replace")
         rows_c19g = re_c19g.findall(r"<Video\b.*?</Video>", text_c19g, re_c19g.S)
+        _s_c19g, detail_raw_c19g, _h_c19g = request(
+            base, "GET", "/library/metadata/%s" % movie, want_json=False)
     listing_c19g = [kids_c19g(r_c19g) for r_c19g in rows_c19g]
-    _s_c19g, detail_raw_c19g, _h_c19g = request(base, "GET", "/library/metadata/%s" % movie,
-                                                want_json=False)
     detail_c19g = kids_c19g(detail_raw_c19g.decode("utf-8", "replace"))
     with_guid_c19g = [s_c19g for s_c19g in listing_c19g if "Guid" in s_c19g and "Genre" in s_c19g]
     check("a light row puts Guid before its tags and a detail row after",
