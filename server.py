@@ -7121,6 +7121,7 @@ class PlexSim:
         playlist = self.library.playlist(rating_key)
         if collection is None and playlist is None:
             return ("error", 404, "plexsim: no such item")
+        target_row = collection if collection is not None else playlist
         if len(segments) == 4 and segments[3] == "prefs":
             # Measured: the per-item prefs are WRITE-only here (the GET is a 404),
             # and `collectionSort`/`collectionMode` land on the collection row as
@@ -7227,6 +7228,82 @@ class PlexSim:
             container["librarySectionUUID"] = section.get("uuid")
             container.pop("thumb", None)
             return body
+        if len(segments) == 4 and segments[3] in ("analyze", "match", "extras", "related",
+                                                  "allLeaves", "grandchildren",
+                                                  "poster", "art", "thumb"):
+            # Cycle 21, measured on plexscratch over a fresh collection and a fresh
+            # playlist: both answer the ITEM action leaves, and the four that differ
+            # differ by row type rather than by leaf. `/analyze` is a 200 on a
+            # collection and a 400 on a playlist; `/allLeaves` and `/grandchildren` are
+            # real secondary containers on a collection and 404s on a playlist;
+            # `/related` is empty on both but carries the librarySection triple and
+            # `allowSync` only on a collection. plexsim 404'd all of them, so Change
+            # Poster and Clear Artwork on a collection page did nothing at all.
+            leaf = segments[3]
+            if leaf in ("poster", "art", "thumb"):
+                if leaf == "thumb" and method == "DELETE":
+                    leaf = "poster"
+                if method == "PUT":
+                    return self.set_artwork(target_row, leaf + "s", query)
+                if method == "DELETE":
+                    return self.clear_artwork(target_row, leaf)
+                return ("image-key", target_row, leaf)
+            if method not in ("GET", "HEAD", "PUT"):
+                return ("error", 404, "plexsim: not found")
+            if leaf == "match":
+                # The same no-parameters 400 the item path answers to every verb.
+                return ("error", 400, "plexsim: bad request")
+            if leaf == "extras":
+                return ("error", 400, "plexsim: bad request")
+            if leaf == "analyze":
+                if playlist is not None:
+                    return ("error", 400, "plexsim: bad request")
+                return ("empty", 200)
+            if leaf == "related":
+                if collection is None:
+                    # A playlist's carries neither the triple nor `allowSync`.
+                    return self.bare_container(
+                        size=0, identifier="com.plexapp.plugins.library",
+                        mediaTagPrefix="/system/bundle/media/flags/",
+                        mediaTagVersion=1655122614)
+                section = self.catalog.section(collection["librarySectionID"]) or {}
+                return self.bare_container(
+                    size=0, allowSync=True, identifier="com.plexapp.plugins.library",
+                    librarySectionID=int(collection["librarySectionID"])
+                    if str(collection["librarySectionID"]).isdigit()
+                    else collection["librarySectionID"],
+                    librarySectionTitle=section.get("title"),
+                    librarySectionUUID=section.get("uuid"),
+                    mediaTagPrefix="/system/bundle/media/flags/",
+                    mediaTagVersion=1655122614)
+            if collection is None:
+                # A playlist has no leaf view of its own: both are 404s.
+                return ("error", 404, "plexsim: not found")
+            members = [_grid_row(row) for row in
+                       self.library.collection_children(collection)]
+            section = self.catalog.section(collection["librarySectionID"]) or {}
+            fields = dict(
+                size=len(members), allowSync=True,
+                art="/:/resources/movie-fanart.jpg",
+                identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
+                title1=section.get("title"), viewGroup="movie", viewMode=65592,
+                Metadata=members)
+            if leaf == "allLeaves":
+                fields.update(
+                    key=str(collection["ratingKey"]),
+                    librarySectionID=int(collection["librarySectionID"])
+                    if str(collection["librarySectionID"]).isdigit()
+                    else collection["librarySectionID"],
+                    librarySectionTitle=section.get("title"),
+                    librarySectionUUID=section.get("uuid"),
+                    mixedParents=True, nocache=True,
+                    parentIndex=self.library._collection_row(collection).get("index"),
+                    parentTitle=collection["title"], title2=collection["title"])
+            else:
+                fields.pop("allowSync", None)
+            return self.bare_container(**fields)
         if len(segments) != 3:
             return ("error", 404, "plexsim: not found")
         if method == "DELETE" and playlist is not None and collection is None:
