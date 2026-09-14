@@ -3259,6 +3259,15 @@ class PlexSim:
             if route == "/updater/apply":
                 logger.warning("UPDATER apply requested -- nothing downloaded")
                 return ("error", 400, "plexsim: bad request")
+            # Cycle 19, measured on plexscratch behind a control write, 2 of 2 runs: the
+            # check pushes ONE frame -- a NotificationContainer of type
+            # `update.statechange` carrying an `AutoUpdateNotification` row. plexsim
+            # pushed none, so Settings > General > Check for Updates never resolved.
+            # The copy is isolated from plex.tv, so its `state` is `error`; the frame
+            # TYPE and the row NAME are not that limit, and plexsim -- which has no
+            # update channel either -- answers the same state honestly.
+            self.notify("update.statechange", "AutoUpdateNotification",
+                        [{"key": "", "version": "", "state": "error"}])
             return ("empty", 200)
 
         if segments[:1] == ["activities"]:
@@ -4549,7 +4558,11 @@ class PlexSim:
                         return ("error", 400, "plexsim: bad request")
                 if query.get("scanner") and query["scanner"] not in KNOWN_SCANNERS:
                     return ("error", 400, "plexsim: bad request")
-                if query.get("language") and query["language"] not in KNOWN_LANGUAGES:
+                if (query.get("language")
+                        and str(query["language"]).lower() not in KNOWN_LANGUAGES):
+                    # The set is stored lowercased, and the create path already compares
+                    # that way: `EN-US` is a 201 on the reference, so the edit must not
+                    # refuse `en-GB` on a case mismatch of its own making.
                     return ("error", 400, "plexsim: bad request")
                 if query.get("name"):
                     section["title"] = query["name"]
@@ -4563,7 +4576,16 @@ class PlexSim:
                          for match in [re.match(r"^prefs\[(\w+)\]$", name)] if match}
                 if prefs:
                     self.library_section(list(segments) + ["prefs"], prefs, "PUT")
-                self.notify_section_scan(section_id, section)
+                # Cycle 19, re-measured on plexscratch behind a control write: an edit
+                # scans only when the form carries `language` or `scanner`. `agent`
+                # alone, `agent` with `name`, and `agent` with a `prefs[...]` are 200s
+                # with ZERO frames; either of those two makes it 20. Cycle 9 measured
+                # "an edit applies the whole form and scans" with a form that carried a
+                # `language`, which is the half that scans. plexsim scanned on every
+                # accepted edit, so renaming a library or toggling one Advanced
+                # preference lit the Dashboard with a full scan and re-framed every row.
+                if any(query.get(field) for field in self.SCAN_TRIGGERING_EDIT_FIELDS):
+                    self.notify_section_scan(section_id, section)
                 logger.info("SECTION edit %s -> %s", section_id, section.get("title"))
                 return ("empty", 200)
             return self.section_pivots(section_id, section, query)
