@@ -103,6 +103,31 @@ def _escape(text):
 # by element plus the row's `type`, except a `/library/sections` row -- the one
 # Directory that carries `agent` -- which has an order of its own.
 _ATTR_ORDER = {
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), which agree on all five:
+    # four element buckets `_ATTR_ORDER` had no entry for at all, plus the split
+    # `Directory[PROVIDER]` above. Without an entry the attributes come out in
+    # whatever order the dict that built the row held them.
+    "Common": (
+        # `/library/sections/{id}/common`, a single-row form on both servers. zen's
+        # sequence is a superset of kids'.
+        "mixedFields", "ratingKey", "key", "guid", "studio", "type", "title",
+        "titleSort", "contentRating", "summary", "index", "year", "tagline",
+        "originallyAvailableAt"
+    ),
+    "Feature": (
+        # `/media/providers`. Only the scrobble feature carries the first two, and
+        # both references put them FIRST; plexsim appended them.
+        "scrobbleKey", "unscrobbleKey", "key", "type"
+    ),
+    "Type": (
+        # A `Meta/Type` row. plexsim sorted it alphabetically -- `active, key, title,
+        # type` -- where both references answer `key, type, title, active`.
+        "key", "type", "title", "active", "activeDirection"
+    ),
+    "Directory[PROVIDER]": (
+        "agent", "language", "refreshing", "scanner", "uuid", "id", "key", "hubKey",
+        "type", "title", "updatedAt", "scannedAt"
+    ),
     "AgeRating": (
         "type", "rating", "age"
     ),
@@ -129,7 +154,8 @@ _ATTR_ORDER = {
     ),
     "Directory[none]": (
         "default", "defaultDirection", "descKey", "firstCharacterKey", "size",
-        "fastKey", "leafCount", "thumb", "viewedLeafCount", "key", "title"
+        "fastKey", "leafCount", "thumb", "viewedLeafCount", "count", "hubKey",
+        "key", "title"
     ),
     "Directory[season]": (
         "ratingKey", "key", "parentRatingKey", "guid", "parentGuid", "parentSlug",
@@ -200,8 +226,8 @@ _ATTR_ORDER = {
     ),
     "Video[episode]": (
         "ratingKey", "key", "parentRatingKey", "grandparentRatingKey", "guid",
-        "parentGuid", "grandparentGuid", "grandparentSlug", "type", "title",
-        "titleSort", "grandparentKey", "parentKey", "librarySectionTitle",
+        "parentGuid", "grandparentGuid", "grandparentSlug", "studio", "type",
+        "title", "titleSort", "grandparentKey", "parentKey", "librarySectionTitle",
         "librarySectionID", "librarySectionKey", "grandparentTitle",
         "parentTitle", "contentRating", "summary", "index", "parentIndex",
         "audienceRating", "year", "thumb", "art", "parentThumb",
@@ -227,11 +253,29 @@ _ATTR_INDEX = {bucket: {name: index for index, name in enumerate(names)}
                for bucket, names in _ATTR_ORDER.items()}
 
 
+# Cycle 19, measured on kids (1.43.4) and zen (1.42.2): the rows of
+# `/library/recentlyAdded` and `/library/onDeck` -- and only those -- LEAD with
+# `allowSync` and the librarySection triple, before `ratingKey`. A section grid carries
+# none of the four on the row, and `/library/all` and `/hubs/home/recentlyAdded` carry
+# the triple in the middle where every other row does. `allowSync` on the ROW is the
+# tell: it appears there and nowhere else, so it is the signal rather than the path.
+_LIBRARY_SECTION_LEAD = {"allowSync": -4, "librarySectionID": -3,
+                         "librarySectionTitle": -2, "librarySectionUUID": -1}
+
+
 def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
     if name in ("Video", "Directory", "Track", "Playlist"):
         if row.get("agent") is not None or row.get("scanner") is not None:
-            return "Directory[SECTION]"
+            # Cycle 19: the library `Directory` of `/media/providers` is a DIFFERENT
+            # order from `/library/sections`'s, and plexsim reused one bucket for
+            # both. Measured identically on kids and zen: the provider form is
+            # `agent, language, refreshing, scanner, uuid, id, key, hubKey, type,
+            # title, updatedAt, scannedAt` where the section form leads `allowSync,
+            # filters, refreshing, key, type, title, agent, ...`. `hubKey` is what
+            # tells them apart -- the section rows carry none.
+            return "Directory[PROVIDER]" if row.get("hubKey") is not None \
+                else "Directory[SECTION]"
         return "%s[%s]" % (name, row.get("type") or "none")
     return name
 
@@ -326,7 +370,9 @@ def _render(name, row, out, overrides=None, container=False):
         # whatever order the dict that built the row happened to hold them.
         index = _ATTR_INDEX.get(_attr_bucket(name, row))
         if index:
-            attrs.sort(key=lambda pair: index.get(pair[0], len(index)))
+            lead = _LIBRARY_SECTION_LEAD if row.get("allowSync") is not None else {}
+            attrs.sort(key=lambda pair: (lead.get(pair[0], 1),
+                                         index.get(pair[0], len(index))))
 
     out.append("<" + name)
     for key, value in attrs:
