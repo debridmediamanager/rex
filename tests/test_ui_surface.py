@@ -15798,6 +15798,24 @@ def main():
           all(count_c20ab == 0 for count_c20ab in dates_c20ab.values())
           and total_c20ab and unequal_c20ab == total_c20ab,
           "seasons %s | addedAt!= %s of %s" % (dates_c20ab, unequal_c20ab, total_c20ab))
+
+    # Cycle 20, measured on zen's 3,887 movies and on kids: of the four unlisted string
+    # fields only `titleSort` folds case. `titleSort<=b` and `<=B` answer the same 127
+    # rows and `<=m`/`<=M` the same 872, while `summary<=b` is 3,884 against `<=B`'s
+    # 2,911, `tagline<=b` 3,878 against 3,011 and `originalTitle<=b` 3,548 against
+    # 3,439 -- a BYTE-ordered comparison, where an upper-case letter sorts below every
+    # lower-case one. kids reproduces it on five rows (`summary<=b` 5, `<=B` 2).
+    # Cycle 18 recorded all four as case-insensitive.
+    ordered_c20ac = {}
+    for field_c20ac in ("titleSort", "summary"):
+        for value_c20ac in ("b", "B"):
+            ordered_c20ac[(field_c20ac, value_c20ac)] = len(
+                get(base, "/library/sections/%s/all?type=1&%s%%3C=%s"
+                    % (movie_section, field_c20ac, value_c20ac))[1].get("Metadata") or [])
+    check("only titleSort folds case among the unlisted string fields",
+          ordered_c20ac[("titleSort", "b")] == ordered_c20ac[("titleSort", "B")]
+          and ordered_c20ac[("summary", "b")] != ordered_c20ac[("summary", "B")],
+          "%s" % ordered_c20ac)
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

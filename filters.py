@@ -757,7 +757,16 @@ def compare(kind, operator, actual, wanted, field=""):
         # `title<=B` is 136 rows all beginning with B and `title>=ing` 26 ending in
         # `ing` -- so the two families genuinely differ, and the split is the
         # advertised FieldType's, exactly as cycle 14 found for `>>`/`<<`.
-        lower, target = text.lower(), wanted.lower()
+        # Cycle 20, measured on zen's 3,887 movies and on kids: only `titleSort`
+        # folds case. `titleSort<=b` and `<=B` answer the same 127 rows, while
+        # `summary<=b` is 3,884 against `<=B`'s 2,911, `tagline<=b` 3,878 against 3,011
+        # and `originalTitle<=b` 3,548 against 3,439 -- a BYTE-ordered comparison, in
+        # which every upper-case letter sorts below every lower-case one. Cycle 18
+        # measured `titleSort` and read the fold onto all four.
+        if field == "titleSort":
+            lower, target = text.lower(), wanted.lower()
+        else:
+            lower, target = text, wanted
         return lower < target if operator in ("<=", "<<=") else lower > target
     if field in EXACT_STRING_FIELDS and operator in ("=", "!="):
         # Measured: `titleSort=Sin` and `summary=e` match nothing where
