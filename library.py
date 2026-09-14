@@ -38,7 +38,7 @@ import urllib.parse
 import uuid
 import zlib
 
-from hierarchy import sort_title
+from hierarchy import _GENERATED_TITLE as GENERATED_SEASON_TITLE, sort_title
 
 # Fields a row carries as a number. The client sends every edit as a string.
 INTEGER_FIELDS = {"year", "index", "parentIndex", "duration", "viewOffset",
@@ -1033,6 +1033,14 @@ class Library:
             return
         title = row.get("title")
         if not title:
+            return
+        if row.get("type") == "season" and GENERATED_SEASON_TITLE.match(title):
+            # Cycle 20: a title the SERVER generated stores no sort title at all --
+            # zen's five `[Unknown Season]` rows carry none, where stripping the
+            # leading `[` would leave `Unknown Season]`. `Season N` and `Specials`
+            # derive to themselves and so were already absent; this is the third
+            # label, and the only one where the derivation differs from the title.
+            row.pop("titleSort", None)
             return
         derived = sort_title(title)
         if derived != title:

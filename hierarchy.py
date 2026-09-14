@@ -193,7 +193,13 @@ def sort_title(title):
 
 # The title forms a real PMS generates when it has none of its own. A season plexsim
 # synthesises is always one of them: `hierarchy` builds "Season %d" from the index.
-_GENERATED_TITLE = re.compile(r"^Season (\d+)$")
+# Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
+# labels. `Specials` is season 0 (4 rows there, each `index: 0`) and `[Unknown Season]`
+# is a season with no index at all (5 rows); both behave exactly as `Season N` does --
+# no stored sort title, absent from `title=` and from the section search box, and in
+# the `#` bucket of the firstCharacter listing. kids holds neither, so the two labels
+# are single-reference while the mechanism behind them is cycle 18's two-witness rule.
+_GENERATED_TITLE = re.compile(r"^(Season \d+|Specials|\[Unknown Season\])$")
 
 
 def stored_title(row):
