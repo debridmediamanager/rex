@@ -12146,6 +12146,37 @@ def main():
           and sizes_c16a3["?type=1"] == 0 and bad_c16a3 == 500,
           "%s type=abc -> %s" % (sizes_c16a3, bad_c16a3))
 
+
+    # Cycle 16, measured on plexscratch over five playlists created a second apart,
+    # whose ratingKey, addedAt and title orders are all different: the default
+    # `/playlists` order is the SMART ones first, then `titleSort` within each group --
+    # and every tie under `?sort=viewCount:desc`, `mediaCount:desc` and `duration:desc`
+    # falls back to the same. plexsim sorted by titleSort alone, so a smart list sat
+    # among the plain ones.
+    made_c16a4 = []
+    for name_c16a4 in ("d-plain", "b-smart", "a-plain", "c-smart"):
+        if "smart" in name_c16a4:
+            uri_c16a4 = ("server://%s/com.plexapp.plugins.library/library/sections/%s"
+                         "/all?type=1" % (machine, movie_section))
+            smart_c16a4 = 1
+        else:
+            uri_c16a4 = ("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, movie))
+            smart_c16a4 = 0
+        made_c16a4.append(json.loads(request(
+            base, "POST", "/playlists?title=%s&type=video&smart=%d&uri=%s"
+            % (quote("c16o-" + name_c16a4), smart_c16a4, quote(uri_c16a4)))[1]
+        )["MediaContainer"]["Metadata"][0]["ratingKey"])
+    order_c16a4 = [(r_c16a4.get("title"), bool(r_c16a4.get("smart")))
+                   for r_c16a4 in get(base, "/playlists")[1].get("Metadata") or []
+                   if str(r_c16a4.get("title") or "").startswith("c16o-")]
+    for key_c16a4 in made_c16a4:
+        request(base, "DELETE", "/playlists/%s" % key_c16a4)
+    check("the default /playlists order is smart first, then titleSort",
+          order_c16a4 == [("c16o-b-smart", True), ("c16o-c-smart", True),
+                          ("c16o-a-plain", False), ("c16o-d-plain", False)],
+          "%s" % order_c16a4)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
