@@ -2518,7 +2518,7 @@ class PlexSim:
                 return ("error", 400, "plexsim: bad request")
             if method in ("PUT", "DELETE"):
                 return ("error", 404, "plexsim: not found")
-            return self.media_providers()
+            return self.media_providers(query)
 
         # The claim flow: a client hands the server a short-lived claim token
         # and the SERVER redeems it. This is what the "Claim this server"
@@ -3543,20 +3543,32 @@ class PlexSim:
             }
         }
 
-    def media_providers(self):
+    def media_providers(self, query=None):
         """`/media/providers` -- the first call a modern client makes.
 
         The Feature list is a capability contract: a client will not offer
         search, playback state or a play queue for a provider that does not
         advertise the matching feature, so an omission here looks to the user
         like a missing feature rather than a protocol error.
-        """
-        return self.bare_container(size=1,
-                                   MediaProvider=self.media_provider_rows(),
-                                   **self.server_info())
 
-        return self.bare_container(size=1, MediaProvider=self.media_provider_rows(),
-                                   **self.server_info())
+        Cycle 16, measured on kids and zen: `X-Plex-Platform: Roku` -- that exact
+        spelling, header or query; `roku`, iOS, tvOS, Chrome, Windows and the rest
+        change nothing, and `GET /` is unaffected -- strips `id` AND the whole
+        `Pivot` list from every library `Directory` here, leaving the other nine
+        attributes alone. plexsim sent the same rows to every client, so a Roku is
+        handed pivots a real server withholds from it.
+        """
+        container = self.bare_container(size=1,
+                                        MediaProvider=self.media_provider_rows(),
+                                        **self.server_info())
+        if (query or {}).get("X-Plex-Platform") == "Roku":
+            for provider in container["MediaContainer"].get("MediaProvider") or []:
+                for feature in provider.get("Feature") or []:
+                    for row in feature.get("Directory") or []:
+                        if row.get("key"):
+                            row.pop("id", None)
+                            row.pop("Pivot", None)
+        return container
 
     # The 25 top-level Directory rows `/` lists, in the reference's order. The row
     # shape is `{count, key, title}` and the count is 1 on every one.
