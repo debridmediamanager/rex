@@ -7165,8 +7165,14 @@ class PlexSim:
             # and `collectionSort`/`collectionMode` land on the collection row as
             # STRING attributes. `collectionSort.value=` on this path is a 400 --
             # prefs are not fields.
-            if method != "PUT" or collection is None:
+            if method != "PUT":
                 return ("error", 404, "plexsim: not found")
+            if collection is None:
+                # Cycle 21, measured on plexscratch: a PLAYLIST answers this path with
+                # the item prefs writer's own 400 for a name it does not know, the way
+                # every other row type does; plexsim 404'd it, because the branch
+                # resolved a collection and nothing else.
+                return ("error", 400, "plexsim: bad request")
             if collection.get("smart") and "collectionSort" in query:
                 # Cycle 15, measured on the copy: a SMART collection refuses
                 # `collectionSort` with a 400 -- for `0` as well as `1` -- and the row
