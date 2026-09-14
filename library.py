@@ -518,6 +518,18 @@ class Library:
         if self._notify:
             self._notify(event, activity)
 
+    def end_activity_quietly(self, activity):
+        """End an activity with started -> ended and NO `updated` between.
+
+        Cycle 15: the chapter-thumbs activity an analyze pushes has exactly two
+        frames on the copy, where `finish_activity` inserts an `updated` for the
+        refresh sequence that needs one.
+        """
+        self._activities = [a for a in self._activities
+                            if a["uuid"] != activity["uuid"]]
+        if self._notify:
+            self._notify("ended", activity)
+
     def finish_activity(self, activity):
         """End an activity the way a real refresh does: an `updated` frame, then
         `ended` at 100, and the row leaves /activities.

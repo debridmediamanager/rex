@@ -1827,6 +1827,20 @@ class PlexSim:
         self.library.finish_activity(activity)
         self.notify_timeline(show, self.TIMELINE_DONE, None)
 
+    def notify_queue_regenerated(self):
+        """The `backgroundProcessingQueue` frame that follows a queue-touching write.
+
+        Cycle 15, measured on the copy: it is neither create-specific nor periodic.
+        It arrived +7.1 s after an analyze and +63.1 s after a library create here,
+        and cycle 14 saw it +2.4 s after a season split and +1.2 s after a collection
+        add. plexsim never sent it, so a client watching the queue never learned it
+        had been rebuilt. The DELAY is not reproduced -- plexsim pushes its frames
+        synchronously -- and that is recorded rather than guessed at.
+        """
+        self.notify("backgroundProcessingQueue",
+                    "BackgroundProcessingQueueEventNotification",
+                    [{"queueID": 1, "event": "queueRegenerated"}])
+
     def notify_season_cascade(self, season):
         """The eighteen frames a SEASON refresh pushes. Cycle 15, measured.
 
@@ -8521,10 +8535,35 @@ class PlexSim:
             self.notify_refreshed(row)
             logger.info("REFRESH %s (%s)", row["ratingKey"], row.get("title"))
         elif action == "analyze":
-            # The catalog rows already carry ffprobe-derived Media attributes;
-            # there is no second, better analysis to run.
-            logger.info("ANALYZE %s -- catalog rows are already probe-derived",
-                        row["ratingKey"])
+            # The catalog rows already carry ffprobe-derived Media attributes; there
+            # is no second, better analysis to run -- but the FRAMES are what a client
+            # watches for, and plexsim pushed none.
+            #
+            # Cycle 15, re-measured on the copy with a control write first: per LEAF
+            # and in tree order, three `state 5` frames carrying `mediaState`
+            # `analyzing`, `thumbnailing` and none, then ONE
+            # `media.generate.chapter.thumbs` activity whose subtitle is the TARGET's
+            # frame title. 5 frames for an episode or a movie, 11 for a
+            # three-episode season, 21 for the two-season show. Cycle 13's
+            # "per-LEVEL triple" was wrong: a season and a show row are never framed
+            # themselves, only their leaves.
+            leaves = (self.catalog.leaves(row["ratingKey"])
+                      if row.get("type") in ("show", "season") else [row])
+            for leaf in leaves:
+                for media_state in ("analyzing", "thumbnailing", None):
+                    self.notify_timeline(leaf, self.TIMELINE_DONE, None,
+                                         media_state=media_state)
+            activity = self.library.add_activity(
+                self._frame_title(row), title="Generating video chapter thumbnails",
+                kind="media.generate.chapter.thumbs", progress=-1)
+            # started then ENDED, with no `updated` between them -- measured. The
+            # refresh sequence's `finish_activity` inserts one, so this ends the
+            # activity itself rather than borrowing that helper.
+            activity["progress"] = 100
+            self.library.end_activity_quietly(activity)
+            self.notify_queue_regenerated()
+            logger.info("ANALYZE %s -- %d leaf frame set(s)",
+                        row["ratingKey"], len(leaves))
         elif action == "unmatch":
             self.library.unmatch(row)
             if row.get("type") in ("episode", "season"):
