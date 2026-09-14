@@ -23,8 +23,8 @@ If you are picking this up cold, read in this order:
 4. Then §6–§9 as reference while a cycle runs.
 
 **The standing instruction for whoever takes over:** a rule in `docs/findings.md` is a
-measurement *with a date and an instrument attached*, not a fact. Fourteen cycles have overturned
-50 of them. Before you build on a rule that matters, check it against §3's six
+measurement *with a date and an instrument attached*, not a fact. Fifteen cycles have overturned
+57 of them. Before you build on a rule that matters, check it against §3's six
 failure classes and re-measure it if it fits one. The cheapest re-measurement is always the
 one you do before writing code, not the one a later cycle does for you.
 
@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 14 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **14**. Cycle 14 had findings, so **cycle 15 is due**. |
+| `main` | cycle 15 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **15**. Cycle 15 had findings, so **cycle 16 is due**. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -83,6 +83,7 @@ Coverage, measured from the repository rather than asserted:
 | 12 | 690 | 10,322 | 16 (of 18 reported) |
 | 13 | 899 | 10,509 | 22 (of 28 reported) |
 | 14 | 926 | 10964 | 29 (of ~40 reported) |
+| 15 | 979 | 11678 | 33 (of 24 reported plus 9 the driver found) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -104,11 +105,11 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 15, all run 2026-09-14:
+Suite results at the head of cycle 16, all run 2026-09-14 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **927/927**, 5 skipped | the skips need a TMDB key or real RD links |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **979/979**, 6 skipped | was 927 at the head of cycle 15; the skips need a TMDB key, real RD links, or a fixture row the suite has already consumed |
 | `tests/test_mediainfo.py` | **27/27** | offline |
 | `tests/test_navigation.py` on the full catalog | **46/46** | 27/27 on the UI fixture |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); expected |
@@ -118,8 +119,8 @@ Suite results at the head of cycle 15, all run 2026-09-14:
 
 ## 3. The revalidation register
 
-**This is the most important section in the file.** 50 recorded rules have been overturned
-across fourteen cycles. They did not fail randomly: they failed in six ways, and the
+**This is the most important section in the file.** 57 recorded rules have been overturned
+across fifteen cycles. They did not fail randomly: they failed in six ways, and the
 same six keep recurring. Learn the classes, then check the items.
 
 ### 3.1 The six ways a measurement in this project goes wrong
@@ -196,27 +197,40 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | `/hubs/metadata/{id}/postplay` carries neither the librarySection triple nor `allowSync` | It carries `allowSync`, as false. Only the triple half was right | B | cycle 14 |
 | A merge absorbs the other row whatever the type | A merge whose TARGET has no `Media` absorbs nothing -- and plexsim's cascading delete made a season merge destroy the season's episodes | C | cycle 14 |
 
+| `titleSort` trims both ends (`.strip()`) | It trims the LEFT only. zen holds no row with trailing or doubled whitespace, so cycle 14 recorded the symmetric reading with the trailing half explicitly unwitnessed; written on the copy, a trailing space survives | B, D | cycle 15 |
+| `/status/sessions/history/all` answering `size 0` is unexplained | It lists nothing without a `type=`, and the `type` is the row's `viewType` -- kids' MOVIES and zen's EPISODES both answer to `type=1`. Carried in 3.3 for four cycles | A | cycle 15 |
+| `title=` folds only while the query holds no space | The space was never the rule -- the COLON was. A row matches if the raw word-prefix matcher matches OR a folded pass in which every term but the last must equal a WHOLE whitespace word. 52 queries, 27 fitted and 25 held out | B, D | cycle 15 |
+| The library-wide `flattenSeasons`/`episodeSort` behave like the item path | They do -- and the item value is a TRI-STATE where `-1` INHERITS. plexsim read `-1` as "off", so the library-level write moved the setting list and half a row | C | cycle 15 |
+| An unwritten show's `episodeSort` is `0` | It is `-1`, equal to the setting's own default. `item_prefs.json` was captured from a show that had been written, and `-1` is the value that inherits | B | cycle 15 |
+| `/library/search` finds a collection as a tag row | Only `/hubs/search` does, and the library's own `?type=18` search box. Recorded in cycle 14 from the hubs measurement | F | cycle 15 |
+| A member's `Collection` tag carries `guid` AND `count` | The guid only -- which cycle 12 had already shown for a detail row's tags in general | F | cycle 15 |
+| `PATCH` and `OPTIONS` are blanket 404s | They are ROUTED like any other verb: `/identity`, `/hubs` and `/playlists` answer 200 to both. Reported from the paths the hunt tried | B | cycle 15 |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
 | **Every write rule from cycles 9–12** | plexscratch is their ONLY possible witness: kids is read-only and zen cannot answer a write at all. That includes all of cycle 12's frame sequences, the upload grammar and the queue rules | Nothing settles it short of a second writable copy. Treat "measured on the copy" as one witness and say so in every write rule you record |
-| **The three cycle-13 cascades cycle 14 re-measured and did NOT implement** | Cycle 14 re-measured all six on the copy. Three were implemented (the artwork PICK, `flattenSeasons`/`episodeSort`, and the merge -- which was a data-loss bug); three are recorded with their frame sequences and not built: the show/season REFRESH cascade (7/18/40 frames with a 5.3 s gap), `analyze`'s per-LEAF triple plus its chapter-thumbs activity (cycle 13's "per-level" was wrong), and the 74-frame library create with its `queueRegenerated` at +60.8 s | Implement from the sequences in docs/findings.md, re-measuring each on the copy first -- they are cycle 15's cheapest territory |
+| ~~The three cycle-13 cascades cycle 14 re-measured and did NOT implement~~ | **BUILT in cycle 15**, each re-measured on the copy with a control write first. The refresh cascade is 7/18/**49** frames (cycle 14 counted 40); the analyze triple is per LEAF and never on a season or show row; the library create is 75 frames with its `queueRegenerated` at **+63.1 s**. What is left of the create is its per-item half, which is over real files a plexsim library does not have | — |
 | An episode's INHERITED content rating versus its own | Both are the same string on the row, so plexsim cannot tell "no rating, showing the show's" from "its own, equal to the show's". The hunt saw a show edit move one and not the other | Only a second column would settle it; record the derived half and leave the edit-follow half alone |
 | `/status/sessions/history/all` answering `size 0` | Reproduced on both servers and still unexplained; plexsim's listing was built against fun's 3,879 rows, which are no longer readable | Find the parameter or account state that makes a real PMS list history |
 | Every rule measured before cycle 10's `long` mode | plexscratch's clips were **ten seconds**, so any timeline rule measured on them crossed 90% instantly | Re-run anything about sessions, completion or resume from cycles 9 or earlier on `long` |
 | Every row-shape rule measured before cycle 12 | Eleven cycles used a five-movie, one-show library. Cycle 12 found seven rules invisible there and there are certainly more | Keep pointing hunts at zen's 3,887 rows |
 | Anything whose only second witness was fun | fun is out of scope. Its `newest` bound, its Recently Viewed order and its postplay shelves are unverifiable now | Re-measure on zen, or mark the rule single-witness |
 | Rules measured on kids alone | kids is **1.43.4** and plexsim reports **1.42.2** | zen answers 1.42.2: one request settles it |
-| **The `addedAt` TIE inside one `group=`** | The survivor rule is measured over 9,700+ groups, but no group on either reference has two members sharing a minimum `addedAt`, so the tie-break is a choice and not a measurement. plexsim breaks it on the lowest ratingKey, which at least keeps the answer independent of the sort | Two rows with an identical `addedAt` in one group on the copy |
-| **The TRAILING half of `titleSort`'s whitespace trim** | zen holds 90 rows with leading whitespace and **none** with trailing or doubled whitespace, so only the leading half is witnessed. `.strip()` is the symmetric reading | Write a title with a trailing space on the copy and read `titleSort` back |
-| **The one-word condition on the `title=` fold** | Reproduced on two accented rows across two libraries and two row types, nine queries, with the trailing-space pair pinning it — but the MECHANISM is unexplained, and a rule whose shape nothing predicts is the kind this project has got wrong before | More accented rows, and a query whose accent is in the third word |
+| ~~The `addedAt` TIE inside one `group=`~~ | **SETTLED in cycle 15.** Movies 1 and 17 on the copy share `addedAt` 1789187071; grouped together and renamed so that "lowest ratingKey" and "lowest titleSort" predict different survivors, the survivor is the lowest ratingKey under every sort. plexsim was already right | — |
+| ~~The TRAILING half of `titleSort`'s whitespace trim~~ | **SETTLED in cycle 15.** It is an `lstrip`: a trailing space survives, and a title written with one carries no `titleSort` at all | — |
+| ~~The one-word condition on the `title=` fold~~ | **SETTLED in cycle 15, and overturned.** The space was never the rule; the colon was. The model is fitted on 27 queries and held out on 25 more it reproduced exactly | — |
 | **A non-alphanumeric `firstCharacter` bucket** | The digits half is solid (29 + 13 + 13 + 185 rows across four library/type pairs). The "any other non-letter gets its own bucket" half rests on **one row** on zen. The percent-encoding is corroborated on kids' other axes | A library with several punctuation- or CJK-led titles |
 | **The non-English article strip** | `La` (4 rows) and `Das` (1) are stripped while `Les`, `Die` and `O` are not, so the article list is per-item LANGUAGE and not mechanical. Deliberately NOT implemented — plexsim's catalog carries no per-item language | Nothing short of a library with real per-item languages |
 | **`banners` and `thumbs` answering EMPTY** | Both are 200 on both references; `banners` is empty on both, but `thumbs` is populated from the media BUNDLE, which plexsim has none of. The empty answer is the honest shape, not a measured value | Nothing to settle: plexsim has no bundle |
 | **A merge on a SHOW** | The season half is measured (a 200 no-op on two seasons); a show has no `Media` either and takes the same branch, but the copy holds ONE show | Put a second show on the copy and merge them |
-| **The `episodeSort`/`flattenSeasons` row effects at the SECTION level** | Both are measured on the ITEM path (`/library/metadata/{show}/prefs`). The library-wide `/library/sections/{id}/prefs` writes the same setting and is assumed to behave the same | Write the section pref on the copy and read a show and its episodes back |
+| ~~The `episodeSort`/`flattenSeasons` row effects at the SECTION level~~ | **SETTLED in cycle 15.** The library-wide write produces exactly the item path's row effects, and the item value is a tri-state where `-1` inherits — measured in all four combinations | — |
 | **Whether a cascade CREATES a borrowed artwork field** | The artwork cascade moves `parentThumb`/`grandparent*` on children that already carry them; no measurement says what happens to a child that carries none | Strip one on the copy, then pick a poster on its parent |
+| **`DELETE /library/metadata/{id}` on a season and a show** | The copy answers **400** to every media-item DELETE — episode, season, show and movie alike — while a collection DELETE is a clean 200, with `allowMediaDeletion` true and the media mounted read-only. So whether a real PMS cascades a season delete onto its episodes is unproven, and plexsim's own cascading delete is unverified. The merge half of the same question was settled in cycle 14 | A claimed copy with writable media |
+| **The `queueRegenerated` frame's DELAY** | Measured at +63.1 s after a library create and +7.1 s after an analyze, and by cycle 14 at +2.4 s after a season split and +1.2 s after a collection add. plexsim pushes its frames synchronously and emits it with the write | Nothing a synchronous server can reproduce; recorded rather than faked |
+| **The non-alphanumeric `firstCharacter` bucket** (again) | Re-read in cycle 15 on both references: zen holds exactly ONE non-digit non-letter-led title (`『`) and kids none, so the "its own bucket" half is still single-witness. plexsim orders by codepoint, which that one example cannot tell from "listed after Z" | A library with several punctuation- or CJK-led titles |
+| **plexsim's `Server:` banner** | It sends `Server: PlexSim/0.1 Python/3.10.20` on every response and a real PMS sends none. Noticed in cycle 15 while measuring the 500 for an unknown method; out of that cycle's scope | Strip it and re-run every suite, in a cycle that can check what reads it |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -340,10 +354,10 @@ From an agent tool, start servers with `subprocess.Popen(..., start_new_session=
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
 
-**Ports.** Re-checked at the end of cycle 14: `32400`, `32502`, `32595`, `32596` and `8787`
+**Ports.** Re-checked at the end of cycle 15: `32400`, `32502`, `32595`, `32596` and `8787`
 are held by other sessions — a server started on one of those silently fails to bind and every
-request then goes to somebody else's plexsim, which reads as a wildly failing suite. `32511` and
-`32512` were on this list and are now FREE. `32599` is `test_ui_surface.py`'s own gated server;
+request then goes to somebody else's plexsim, which reads as a wildly failing suite. `32511`,
+`32512`, `32541` and `32586` are FREE. `32599` is `test_ui_surface.py`'s own gated server;
 leave it free. Check with `lsof -ti tcp:<port> -sTCP:LISTEN` rather than trusting this list.
 
 `tests/catalog_ui.json` holds movies `1007` Tears of Steel, `1008` and `1009` (fixture copies);
@@ -779,25 +793,90 @@ clearest argument in the programme's history for never deleting a check.
 
 ---
 
-### Next: cycle 15
+### Next: cycle 16
 
-Cycle 14 is complete. Territories worth taking next, in order of expected yield:
+Cycle 15 is complete, and it emptied §3.3's carried list: all three cascades are built and
+four of its thin-evidence entries are settled. Territories worth taking next, in order of
+expected yield:
 
-1. **The three cascades cycle 14 re-measured and did not implement** (§3.3): the
-   show/season REFRESH sequence, `analyze`'s per-LEAF frames, and the 74-frame library
-   create. Their frame sequences are written out in `docs/findings.md`, so this is
-   transcription plus a re-measurement, the cheapest yield available.
-2. **The rest of the collection surface.** Cycle 14 built the instrument and implemented
-   four of its findings; a dozen more are recorded and not built — `includePreferences`,
-   `collectionSort` semantics, the section-path tag rename, collections in search, the
-   member tag's `guid`/`count`. All single-witness on the copy, so re-measure as you go.
-3. **Keep sweeping the surface path by path.** Three invented endpoints and two missing
-   ones came out of one mechanical sweep in an afternoon. The verb surface is untouched
-   because a write to a shared reference is forbidden — but it can be swept on the copy.
-4. **Keep pointing hunts at zen.** Three passes have now found 29 rules invisible on the
-   lab and none exhausted it.
-5. **Terminate and `/statistics/*` on a CLAIMED copy.** Still blocked on the user's
-   decision; claiming needs plex.tv, and past claim exchanges reset account-wide tokens.
+1. **Sweep the remaining surfaces the way cycle 15 swept the verb table.** Two mechanical
+   sweeps have now each produced a batch no amount of re-hunting the old dimension would
+   have: by PATH in cycle 14 (three invented endpoints), by METHOD and by PARAMETER in
+   cycle 15 (33 paths, every one different). The dimensions left are HEADERS (`Accept`,
+   `Accept-Encoding`, `X-Plex-*` on paths that have never been asked for them), the XML
+   half of everything cycle 15 added, and the RESPONSE HEADERS of every route.
+2. **The write surface below the collection.** Playlists had one pass in cycle 9 and
+   nothing since; the play queue's mutations, the section-path save on a SHOW library and
+   the item-prefs family are each a cycle-15-sized territory on the copy.
+3. **Keep pointing hunts at zen.** Four passes have now found rules invisible on the lab
+   and none has exhausted it. Its show libraries and its real collections are still the
+   least-swept part of it.
+4. **The three §3.3 entries a second writable copy would settle**: the media-item DELETE
+   (season and show cascades), `terminate` and `/statistics/*`. All three need a CLAIMED
+   copy, which needs plex.tv, which past claim exchanges have shown resets account-wide
+   tokens. Still the user's decision.
+5. **plexsim's `Server:` banner**, and whatever else a response-header sweep turns up.
+
+### Cycle 15 — the parameter that makes history list, what a fold really folds, and the verb table
+
+Hunters: the rest of the collection surface and the first sweep of the surface by HTTP
+METHOD (opus, on plexscratch); the real library swept by PARAMETER rather than by path
+(opus, read-only on kids and zen). **33 findings implemented** — the largest cycle in the
+programme's history, and 1,006 checks in the suites for the first time.
+
+The revalidation round paid three times before either hunter reported. **`titleSort`
+trims the LEFT only** — a trailing space survives into the sort title, which is why a
+title written with one carries no `titleSort` at all. **The library-level
+`flattenSeasons`/`episodeSort` produce the item path's row effects**, and the item value
+is a TRI-STATE where `-1` inherits; plexsim read `-1` as "off", so the write the Edit
+Library dialog actually makes moved the setting list and half a row. And the **`group=`
+`addedAt` tie-break** is settled: the copy has one tied pair, the survivor is the lowest
+ratingKey under every sort, and plexsim was already right.
+
+Two of §3.3's oldest entries fell. **`/status/sessions/history/all` lists nothing without
+a `type=`** — the answer to cycle 11's unexplained `size 0`, carried for four cycles —
+and the `type` is the row's `viewType`, not its metadata type: kids' MOVIES and zen's
+EPISODES both answer to `type=1`. And **`title=` folds across a space**: cycle 14's
+"the fold stops once the query has a space" was the colon on `Bogotá:`, and the real rule
+— a raw word-prefix pass OR a folded pass whose non-final terms must equal WHOLE words —
+was fitted on 27 queries and reproduced 25 more it had never seen.
+
+The read hunt swept by PARAMETER where cycle 14 swept by path: the section search box
+answers the LIGHT row, `excludeElements=` belongs to the RESPONSE rather than to eight
+hand-wired handlers, four more columns filter and eight more parse, `contentDirectoryID`
+scopes and validates `/hubs/search` alone, `/playlists` and the Recently Added hub carry
+a `Meta`, `includeChildren` is a SHOW's alone, the inline Related block caps at five, and
+three refusal grammars (`limit=`/`parent=`, `/hubs/search?limit=`, a fractional value on
+the seven timestamp and state columns) were measured end to end.
+
+The write hunt finished the collection surface — `ratingCount` is the member TYPE number
+plus 100 when smart, the Preferences block is two settings whose second `smart` swaps,
+`/prefs` is a 404, `collectionSort` is alphabetical for any parseable non-zero integer,
+the section-path rename moves the members' TAG, a member's tag carries the collection's
+guid, a label reaches the `/label` axis and a collection is findable in `/hubs/search` —
+and swept the **verb** surface for the first time, which needs writes and so had never
+been done. Thirty-three paths, every one different: a read-only route 404s every verb but
+GET and HEAD, the legacy plug-in dispatcher answers all of them, an unknown method is a
+500 and never a 501, and an empty POST to any candidate list is a 406.
+
+And **all three cascades §3.3 had carried since cycle 13 are built**: the refresh cascade
+(7/18/49 frames), the analyze triple per LEAF with its chapter-thumbs activity, and the
+library create's `queueRegenerated` frame.
+
+**Corrected here:** cycle 14's `titleSort` trim and its `title=` fold rule; cycle 11's
+unexplained history `size 0`; the stale `episodeSort` in `item_prefs.json`; cycle 14's
+note that `/library/search` finds a collection; cycle 14's "guid AND count" on a member's
+Collection tag; and two standing suite checks that encoded beliefs this cycle overturned
+(the bare-OPTIONS preflight and the banners/thumbs write statuses).
+
+**And two corrections the hunters made to each other and to themselves.** The write hunt
+reported `PATCH` and `OPTIONS` as blanket 404s; nine paths show they are routed like any
+other verb, and the three that answer every verb answer these too. The write hunt's own
+first run of the `collectionSort` test found "plexsim ignores it entirely" — a class-B
+error it caught itself, because all three fixture movies carried the same year and the
+same title stem, so release, alphabetical and insertion order coincided.
+
+---
 
 ## 8. Measured and deliberately NOT implemented
 
@@ -868,8 +947,17 @@ anyway, `/playlists/upload`, a 404 on a malformed collection item delete, the gl
 comparable with cycle 4's online measurement); `ratingCount` on a collection row; and the
 non-English article strip in `titleSort`, which is per-item language and not mechanical.
 
-**Cycle 11:** `/status/sessions/history/all` answering `size 0` on both servers;
-`includeBandwidths=1`; `/library/people/{id}` answering any TAG id;
+**Cycle 15:** the library create's per-item frames (the 75-frame scan is over REAL files and
+a library plexsim creates is empty by construction); the DELAY on the `queueRegenerated`
+frame (plexsim pushes synchronously); the media pass inside a show refresh (state-dependent
+work on real files, not a rule); `DELETE /library/metadata/{id}` on a season and a show (the
+copy 400s every media-item delete); `enableCreditsMarkerGeneration` (the copy 400s it and
+does not advertise it, where kids does); `collectionSort=2` on a fixture whose custom,
+insertion and alphabetical orders coincide; plexsim's `Server:` banner; and the
+non-alphanumeric `firstCharacter` bucket, re-read and still single-witness.
+
+**Cycle 11:** ~~`/status/sessions/history/all` answering `size 0`~~ (ANSWERED in cycle 15:
+it needs a `type=`); `includeBandwidths=1`; `/library/people/{id}` answering any TAG id;
 `playQueueLastAddedItemID` re-anchoring on a move; the subtitle SEARCH path's 503 on the isolated
 copy; the `<CODEC> External` label's single witness.
 
@@ -911,7 +999,7 @@ Incidents, so the rules make sense:
 | Cycle 11 | fun's Plex found stopped and SIGKILLed mid-`deploy-fun.sh` by another session | Left alone; it came back when that session finished. Not ours to restart |
 
 Local processes **not** belonging to this work, left alone on purpose (re-checked at the end of
-cycle 14): `32400` is another session's plexsim; `8787` another session's `http.server`; `32502`
+cycle 15): `32400` is another session's plexsim; `8787` another session's `http.server`; `32502`
 a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified origin. `32511` and
 `32512` were here and their processes are gone.
 
@@ -1054,13 +1142,19 @@ authoritative record of a hunt's reasoning:
 - cycles 11–12: `…/778e8a59-81ef-4a89-a46b-16ef32b5343d.jsonl`
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
 
 The scratch directory of each is
 `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/<session>/scratchpad/`
 (cycles 11 and 12 share one, in `c11/` and `c12/`; cycle 13 is in `c13/`, cycle 14 in `c14/`).
-All four still existed at the end of cycle 14. Each holds `prompt_A.md`/`prompt_B.md` (the
+All five still existed at the end of cycle 15. Each holds `prompt_A.md`/`prompt_B.md` (the
 hunts' full briefs, also appended to `hunt_prompts.md`), the re-measurement clients, the patch
 modules (every patch with its `apply`, message and check block), the frozen head, the worktree,
 and the suite logs. Cycle 14 adds `rd.py` (the driver's guarded GET/HEAD client for kids and
 zen), `frames.py` (a dependency-free notification-socket listener) and `vsweep.py` (the
-structural kids-vs-zen diff).
+structural kids-vs-zen diff). Cycle 15 (in `c15/`) adds `compose.py` (which builds both hunt
+prompts from the previous cycle's, so the lists in 5 step 4 are refreshed in one place rather
+than by hand), `remeasure_a.py`/`remeasure_a2.py`/`remeasure_b.py`/`remeasure_b2.py`/
+`remeasure_b3.py` (the driver's re-measurement of every hunter finding), `fold.py`–`fold5.py`
+(the `title=` model, fitted and then held out), `history.py`–`history5.py`, `verbsweep.py`,
+`cascade.py` and `create.py`.
