@@ -13760,6 +13760,54 @@ def main():
                  unknown_c17b16[:2], zero_c17b16[:2], stranger_c17b16[:2],
                  alias_c17b16[:2]))
 
+
+    # Cycle 17, re-measured on plexscratch: a comma-joined `uri` on a collection add
+    # TOLERATES the members it cannot use. A movie and an episode into a movie
+    # collection is a 200 that adds the movie and drops the episode; an unknown key
+    # beside a real one adds the real one. Only a SINGLE-key uri of the wrong type is
+    # the 400 cycle 9 recorded. plexsim refused the whole batch, so "Add to Collection"
+    # over a multi-select lost every row when one of them was the wrong type.
+    episodes_c17b17 = [r_c17b17["ratingKey"] for r_c17b17
+                       in (get(base, "/library/metadata/%s/allLeaves"
+                               % show)[1].get("Metadata") or [])]
+    ids_c17b17 = [r_c17b17["ratingKey"] for r_c17b17
+                  in (get(base, "/library/sections/%s/all?type=1"
+                          % movie_section)[1].get("Metadata") or [])]
+    if len(ids_c17b17) < 2 or not episodes_c17b17:
+        skip("a comma-joined collection add tolerates what it cannot use",
+             "needs two movies and an episode")
+    else:
+        made_c17b17 = json.loads(request(
+            base, "POST", "/library/collections?type=1&title=c17mix&smart=0"
+                          "&sectionId=%s&uri=%s"
+            % (movie_section,
+               quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine, ids_c17b17[0]))))[1])
+        cid_c17b17 = made_c17b17["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+        def add_c17b17(keys_c17b17):
+            status_c17b17, _, _ = request(
+                base, "PUT", "/library/collections/%s/items?uri=%s"
+                % (cid_c17b17,
+                   quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, keys_c17b17))))
+            return status_c17b17, [r_c17b17.get("ratingKey") for r_c17b17
+                                   in (get(base, "/library/collections/%s/items"
+                                           % cid_c17b17)[1].get("Metadata") or [])]
+        mixed_c17b17 = add_c17b17("%s,%s" % (ids_c17b17[1], episodes_c17b17[0]))
+        single_c17b17, _, _ = request(
+            base, "PUT", "/library/collections/%s/items?uri=%s"
+            % (cid_c17b17,
+               quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine, episodes_c17b17[0]))))
+        check("a comma-joined collection add tolerates what it cannot use",
+              mixed_c17b17[0] == 200 and ids_c17b17[1] in mixed_c17b17[1]
+              and episodes_c17b17[0] not in mixed_c17b17[1]
+              and single_c17b17 == 400,
+              "mixed=%s members=%s single-episode=%s"
+              % (mixed_c17b17[0], mixed_c17b17[1], single_c17b17))
+        request(base, "DELETE", "/library/collections/%s" % cid_c17b17)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
