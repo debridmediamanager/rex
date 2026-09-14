@@ -2394,6 +2394,31 @@ def main():
         query_status, _, _ = gated_status("/library/sections?X-Plex-Token=suite-gate-token")
         check("the token is accepted in the query as well as the header",
               query_status == 200, "HTTP %s" % query_status)
+        # Cycle 16, measured on kids and zen with no token at all: a real PMS ROUTES
+        # before it authenticates. A path that does not exist is a 404 even
+        # unauthenticated -- `/no/such/path`, an unknown ratingKey, an unknown section
+        # -- and only a path that DOES exist answers 401. The legacy single-segment
+        # plug-in dispatcher (`/prefs`, `/channels`, `/prefsx`) is a 403 with its own
+        # 85-byte body, and `GET /` is a 401 whose 193-byte body carries a script that
+        # walks a browser into the web client. plexsim answered one generic 401 to all
+        # of them, so a probing client could not tell "no such item" from "not
+        # authorised" and a person opening the origin in a browser got a bare 401
+        # where a real server lands them in the app.
+        routed_c16w = {path_c16w: gated_status(path_c16w)[0]
+                       for path_c16w in ("/no/such/path", "/library/metadata/999999999",
+                                         "/library/sections/99", "/prefs", "/channels",
+                                         "/prefsx", "/statistics", "/system",
+                                         "/log", "/hubs", "/library/sections")}
+        _, _, root_c16w = gated_status("/")
+        check("a gated server routes before it authenticates",
+              routed_c16w == {"/no/such/path": 404, "/library/metadata/999999999": 404,
+                              "/library/sections/99": 404, "/prefs": 403,
+                              "/channels": 403, "/prefsx": 403, "/statistics": 403,
+                              "/system": 403, "/log": 401, "/hubs": 401,
+                              "/library/sections": 401}
+              and b"web/index.html" in root_c16w and len(root_c16w) == 193,
+              "%s ; root body %d bytes, redirect=%s"
+              % (routed_c16w, len(root_c16w), b"web/index.html" in root_c16w))
         # /security/token is the one exception: its own 400 and 403, not a 401.
         bare, _, _ = gated_status("/security/token")
         forbidden, _, _ = gated_status("/security/token?type=delegation&scope=all", "nope")
