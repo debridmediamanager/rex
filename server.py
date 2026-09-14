@@ -10916,7 +10916,11 @@ class Handler(BaseHTTPRequestHandler):
         for key, value in self._cors_headers():
             self.send_header(key, value)
         for key, value in extra_headers:
-            self.send_header(key, value)
+            # A None value marks a header that must NOT be sent -- it still counts in
+            # `names`, which is how `/web/*` opts out of gzip (a real PMS never
+            # compresses a bundle asset, measured on kids and zen).
+            if value is not None:
+                self.send_header(key, value)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(payload)
@@ -11515,6 +11519,13 @@ class Handler(BaseHTTPRequestHandler):
         out.update({key: sliced.get(key, value) for key, value in body.items() if key != "size"})
         return {"MediaContainer": out}
 
+    # Cycle 16, measured on kids and zen: the bundle's own content types differ from
+    # Python's guesses in three places -- `.js` is `text/javascript` rather than
+    # `application/javascript`, `.html` carries NO charset, and `.ico` is
+    # `application/octet-stream` rather than `image/x-icon`.
+    WEB_TYPES = {".js": "text/javascript", ".mjs": "text/javascript",
+                 ".html": "text/html", ".ico": "application/octet-stream"}
+
     STATIC_TYPES = {
         ".html": "text/html;charset=utf-8",
         ".js": "application/javascript",
@@ -11603,11 +11614,19 @@ class Handler(BaseHTTPRequestHandler):
         with open(target, "rb") as handle:
             payload = handle.read()
         extension = os.path.splitext(target)[1].lower()
+        # Cycle 16, measured on kids and zen over every asset the bundle serves:
+        # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges:
+        # bytes`, and NEVER gzipped even when the client offers gzip. plexsim cached
+        # them for an hour, which keeps an unhashed `index.html` pointing at the old
+        # chunk names for an hour after a bundle upgrade, and it gzipped the html.
         self._send(
             200,
-            self.STATIC_TYPES.get(extension, "application/octet-stream"),
+            self.WEB_TYPES.get(extension,
+                               self.STATIC_TYPES.get(extension,
+                                                     "application/octet-stream")),
             payload,
-            [("Cache-Control", "max-age=3600")],
+            [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
+             ("Content-Encoding", None)],
         )
 
     # RFC6455's fixed handshake GUID.
