@@ -737,8 +737,16 @@ def main():
           and len(tag_fields) >= 10,
           "%d pivot(s), %d tag field(s)" % (len(plain_pivots.get("Directory") or []),
                                             len(tag_fields)))
+    movie_title = next((d.get("title") for d in
+                        get(base, "/library/sections")[1].get("Directory") or []
+                        if str(d.get("key")) == str(movie_section)), "")
+    # RE-MEASURED in cycle 18 on kids ("Movies") and zen ("Zen Movies", "Bench TV"): a
+    # MOVIE library COMPOSES this row's title from its own -- zen answers "All Zen
+    # Movies" -- and only a SHOW library answers the constant "All Shows". The check
+    # asserted the constant for both, which is the half plexsim had hardcoded.
     check("the pivot rows carry the titles the sidebar prints",
-          (plain_pivots.get("Directory") or [{}])[0].get("title") == "All Movies"
+          (plain_pivots.get("Directory") or [{}])[0].get("title")
+          == "All " + str(movie_title)
           and any(p.get("secondary") for p in plain_pivots.get("Directory") or [])
           and any(p.get("search") for p in plain_pivots.get("Directory") or []),
           ", ".join(str(p.get("title")) for p in (plain_pivots.get("Directory") or [])[:4]))
@@ -4373,8 +4381,12 @@ def main():
     check("the Add Library form needs a type", status == 400, "HTTP %s" % status)
     status, form, _ = get(base, "/library/sections/%s/prefs?agent=tv.plex.agents.none"
                           % movie_lib)
+    # RE-MEASURED in cycle 18: this list is PER VERSION. 1.43.4 answers 12 settings here
+    # and 1.42.2 -- the build plexsim reports -- answers 7: `tv.plex.agents.none` adds no
+    # agent rows there at all. `section_prefs_new.json` was captured off kids, which is
+    # the fourth fixture found to carry a version's own shape.
     check("an existing library's form is reshaped by ?agent=",
-          status == 200 and len(form.get("Setting") or []) == 12,
+          status == 200 and len(form.get("Setting") or []) == 7,
           "%d setting(s)" % len(form.get("Setting") or []))
 
     # -- writes to the three kinds of settings ---------------------------
@@ -11156,7 +11168,11 @@ def main():
     readonly_c15v2 = {}
     for p_c15v2 in ("/", "/library/recentlyAdded", "/library/onDeck", "/hubs/promoted",
                     "/hubs/continueWatching", "/channels/all", "/services/browse",
-                    "/system", "/system/agents", "/updater/status", "/:/plugins",
+                    # `/system` and `/system/agents` were here until cycle 18, which
+                    # measured the whole subtree's own envelope on plexscratch: PATCH is
+                    # a 405, a bare OPTIONS an empty 200, and PUT/POST/DELETE an
+                    # EMPTY-bodied 404 rather than the library server's text/plain one.
+                    "/updater/status", "/:/plugins",
                     "/library/metadata/%s/tree" % show,
                     "/library/metadata/%s/allLeaves" % show,
                     "/library/metadata/%s/related" % show):
@@ -13964,18 +13980,30 @@ def main():
     # and a row whose sort title IS the value is in neither. plexsim allowed the keys and
     # fell through to containment, so `titleSort<<=Z` answered no rows at all and
     # `titleSort>>=A` answered every row whose title holds an `a`.
-    rows = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("size")
-    for key, expected in (("titleSort%3C%3C=Z", rows), ("titleSort%3C=Z", rows),
-                          ("titleSort%3E%3E=Z", 0), ("titleSort%3E=Z", 0),
-                          ("titleSort%3C%3C=A", 0), ("titleSort%3E%3E=A", rows)):
+    # The expectation is computed from the rows AS THEY STAND: by this point in the
+    # suite their titles have been edited several times, so "every movie sorts above a"
+    # is no longer true of the fixture it started with.
+    listing_now = get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+    sorts_now = [str(r.get("titleSort") or r.get("title") or "").lower()
+                 for r in listing_now.get("Metadata") or []]
+    rows = listing_now.get("size")
+    for key, expected in (("titleSort%3C%3C=Z", sum(1 for t in sorts_now if t < "z")),
+                          ("titleSort%3C=Z", sum(1 for t in sorts_now if t < "z")),
+                          ("titleSort%3E%3E=Z", sum(1 for t in sorts_now if t > "z")),
+                          ("titleSort%3E=Z", sum(1 for t in sorts_now if t > "z")),
+                          ("titleSort%3C%3C=A", sum(1 for t in sorts_now if t < "a")),
+                          ("titleSort%3E%3E=A", sum(1 for t in sorts_now if t > "a"))):
         status, listing, _ = get(base, "/library/sections/%s/all?type=1&%s"
                                  % (movie_section, key))
         check("string ordering: %s answers %s" % (key, expected),
               status == 200 and listing.get("size") == expected,
               "%s %s" % (status, listing.get("size")))
     status, listing, _ = get(base, "/library/sections/%s/all?type=1&title%%3C=T" % movie_section)
+    titles_now = [str(r.get("title") or "").lower() for r in listing_now.get("Metadata") or []]
     check("and an ADVERTISED string field keeps begins-with on <=",
-          status == 200 and listing.get("size") == rows, "%s %s" % (status, listing.get("size")))
+          status == 200 and listing.get("size") == sum(1 for t in titles_now
+                                                       if t.startswith("t")),
+          "%s %s" % (status, listing.get("size")))
 
     # Cycle 18, measured on zen (1.42.2, 14,433 rows) and kids: a row whose title the
     # SERVER generated stores the EMPTY STRING as its sort title. `titleSort=` with no
@@ -13985,7 +14013,13 @@ def main():
     # plexsim read the row's TITLE where it stores no sort title, so its synthesised
     # seasons filtered and bucketed under `S`.
     status, listing, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
-    seasons = get(base, "/library/sections/%s/all?type=3" % show_section)[1].get("size")
+    # Counted live: by this point an earlier check may have given a season a title or a
+    # SORT TITLE of its own, and either is stored like any other -- which is the
+    # reference's own "Egghead" season, the one of zen's 741 that does store one.
+    seasons = len([r for r in get(base, "/library/sections/%s/all?type=3"
+                                  % show_section)[1].get("Metadata") or []
+                   if re.match(r"^Season \d+$", str(r.get("title") or ""))
+                   and str(r.get("titleSort") or r.get("title")) == str(r.get("title"))])
     check("a synthesised season stores an EMPTY sort title",
           status == 200 and listing.get("size") == seasons and seasons,
           "%s %s of %s" % (status, listing.get("size"), seasons))
@@ -13995,10 +14029,15 @@ def main():
           "%s %s" % (status, below.get("size")))
     status, hashed, _ = get(base, "/library/sections/%s/firstCharacter/%%23?type=3" % show_section)
     status2, lettered, _ = get(base, "/library/sections/%s/firstCharacter/S?type=3" % show_section)
-    check("so every season is in the # bucket and none under a letter",
-          status == 200 and hashed.get("size") == seasons
-          and status2 == 200 and not lettered.get("size"),
-          "# %s, S %s" % (hashed.get("size"), lettered.get("size")))
+    # A season that HAS a stored sort title is bucketed by it, which is the reference's
+    # own "Egghead" row -- so the letter bucket holds exactly the seasons the empty set
+    # does not, and by this point in the suite an earlier check has made one.
+    all_seasons = get(base, "/library/sections/%s/all?type=3" % show_section)[1].get("size")
+    check("so every generated season is in the # bucket and the rest under their letter",
+          status == 200 and hashed.get("size") == seasons and status2 == 200
+          and (lettered.get("size") or 0) == all_seasons - seasons,
+          "# %s, S %s, seasons %s of %s" % (hashed.get("size"), lettered.get("size"),
+                                            seasons, all_seasons))
 
     # Cycle 18: `section_prefs_new.json` is the FOURTH fixture found to be per VERSION,
     # after Meta.Type[].Filter (14), Meta.Type[].Field and system_agents.json (17). It was
@@ -14314,6 +14353,14 @@ def main():
           status == 204 and get(base, "/playlists/%s" % created)[0] == 404,
           "%s %s" % (status, get(base, "/playlists/%s" % created)[0]))
 
+    # By this point in the suite the fixture's spare movie has been MERGED away (the
+    # match check absorbs it), so cycle 18's three write checks below resolve a LIVE
+    # row from the section rather than trusting the `spare` the suite started with --
+    # the trap HANDOVER.md 6 names, and the reason this file counts rows live.
+    live = [r["ratingKey"] for r in
+            (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+             .get("Metadata") or [])]
+    spare = live[-1] if live else spare
     # Cycle 18, measured on plexscratch: a REPEATED `id=` on the section save path edits
     # NOTHING -- a 200 in which neither row moves -- where the comma list edits both. plexsim
     # edited the LAST id, so the same request edited a row at random.
@@ -14427,6 +14474,26 @@ def main():
     check("and so does the filter", status == 200 and listing.get("size") == 1,
           "%s %s" % (status, listing.get("size")))
 
+
+    # Cycle 18, measured on zen (1.42.2) and kids (1.43.4): an item's `audioLanguage` and
+    # `subtitleLanguage` enums are led by the item's OWN stream languages -- bare 639-1
+    # tags, audio first then subtitles, each named in its own language -- before the generic
+    # regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against its episodes'
+    # one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
+    # plexsim served the captured fixture list to every item, so a show's own languages could
+    # not be chosen in its Preferences pane. The fixture gains one French subtitle track for
+    # this check: with nothing but English in it the rule is invisible.
+    status, detail, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
+    prefs = {s.get("id"): s.get("enumValues")
+             for s in ((detail.get("Metadata") or [{}])[0].get("Preferences") or {}).get("Setting") or []}
+    head = (prefs.get("audioLanguage") or "").split("ca-ES:")[0]
+    check("the show's own stream languages lead its language enum",
+          status == 200 and head.startswith(":Account default|en:English|fr:")
+          and head == (prefs.get("subtitleLanguage") or "").split("ca-ES:")[0],
+          "%r" % head)
+    check("and the generic regional list still follows",
+          "ca-ES:" in (prefs.get("audioLanguage") or ""), "%r" % (prefs.get("audioLanguage") or "")[:80])
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
@@ -14448,25 +14515,6 @@ def main():
                                 and str(entry.get("sectionID")) == "-%s" % show_section
                                 for entry in deleted),
           "%s" % deleted[:1])
-
-    # Cycle 18, measured on zen (1.42.2) and kids (1.43.4): an item's `audioLanguage` and
-    # `subtitleLanguage` enums are led by the item's OWN stream languages -- bare 639-1
-    # tags, audio first then subtitles, each named in its own language -- before the generic
-    # regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against its episodes'
-    # one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
-    # plexsim served the captured fixture list to every item, so a show's own languages could
-    # not be chosen in its Preferences pane. The fixture gains one French subtitle track for
-    # this check: with nothing but English in it the rule is invisible.
-    status, detail, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
-    prefs = {s.get("id"): s.get("enumValues")
-             for s in ((detail.get("Metadata") or [{}])[0].get("Preferences") or {}).get("Setting") or []}
-    head = (prefs.get("audioLanguage") or "").split("ca-ES:")[0]
-    check("the show's own stream languages lead its language enum",
-          status == 200 and head.startswith(":Account default|en:English|fr:")
-          and head == (prefs.get("subtitleLanguage") or "").split("ca-ES:")[0],
-          "%r" % head)
-    check("and the generic regional list still follows",
-          "ca-ES:" in (prefs.get("audioLanguage") or ""), "%r" % (prefs.get("audioLanguage") or "")[:80])
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
