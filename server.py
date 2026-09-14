@@ -7730,10 +7730,13 @@ class PlexSim:
         if leaf == "tree":
             # Measured: an EPISODE's tree is rooted at its SHOW, and a season's at
             # the season. The dialog reads the whole branch, not just the leaf.
-            top = row
+            top, keep = row, None
             if row.get("type") == "episode" and row.get("grandparentRatingKey"):
                 top = self.catalog.items.get(int(row["grandparentRatingKey"])) or row
-            return self.metadata_tree(top)
+                # Cycle 21: rooted at the show, but carrying only this episode's own
+                # season and this episode -- three nodes on both references.
+                keep = {str(row.get("parentRatingKey")), str(row.get("ratingKey"))}
+            return self.metadata_tree(top, keep=keep)
         if leaf == "media" and len(segments) > 4:
             if method != "DELETE":
                 # Measured: a 404. A real PMS never answers 405 anywhere.
@@ -10379,7 +10382,7 @@ class PlexSim:
                           "autoDeletionItemPolicyWatchedLibrary", "flattenSeasons",
                           "showOrdering", "audioLanguage", "subtitleLanguage", "subtitleMode")
 
-    def metadata_tree(self, row, root=None):
+    def metadata_tree(self, row, root=None, keep=None):
         """`/library/metadata/{id}/tree` -- the raw item/media/part tree.
 
         Measured shape: MetadataItem rows carrying MediaItem, each with MediaPart.
@@ -10440,8 +10443,13 @@ class PlexSim:
             # Never `MediaItem: []`: a parent row has no media at all, and an
             # empty list is a shape no real PMS sends.
             item["MediaItem"] = media_items
-        children = [self._tree_item(child, root)
-                    for child in self.catalog.children(row["ratingKey"])]
+        # Cycle 21, measured on kids and zen over six episodes: an EPISODE's tree is
+        # the ancestor CHAIN -- the show, THAT episode's season and the episode, three
+        # nodes and no siblings. `keep` carries the chain down; a season's and a show's
+        # own tree pass none and hold everything, as both references do.
+        children = [self._tree_item(child, root, keep)
+                    for child in self.catalog.children(row["ratingKey"])
+                    if keep is None or str(child.get("ratingKey")) in keep]
         if children:
             # Measured: the tree NESTS -- a show holds its seasons, each season
             # its episodes, each episode its MediaItem. plexsim answered one flat
@@ -10469,9 +10477,9 @@ class PlexSim:
                 item["Setting"] = settings
         return self.tag_container(size=1, MetadataItem=[item])
 
-    def _tree_item(self, row, root=None):
+    def _tree_item(self, row, root=None, keep=None):
         """One node of the tree, with its own children beneath it."""
-        inner = self.metadata_tree(row, root)["MediaContainer"]["MetadataItem"][0]
+        inner = self.metadata_tree(row, root, keep)["MediaContainer"]["MetadataItem"][0]
         return inner
 
     # -- collections -----------------------------------------------------
