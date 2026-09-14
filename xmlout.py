@@ -331,65 +331,115 @@ def _element_name(key, row, overrides=None):
     return key
 
 
-def _render(name, row, out, overrides=None, container=False):
+# The two roots on the surface that are not a `MediaContainer`, both measured:
+# `/butler` answers `ButlerTasks` and `/library/sections/{id}/query/parse` a `Query`.
+_ROOT_NAMES = {"ButlerTasks", "Query"}
+
+
+def _split(name, row, container=False):
+    """One element's ATTRIBUTE keys and CHILD keys, each in the order a real PMS
+    emits them.
+
+    Cycle 19: split out of `_render` because the JSON writer needs exactly the same
+    answer -- a real PMS's JSON key order IS its XML order, measured on kids (1.43.4)
+    and zen (1.42.2) for the container, the row, `Media`, `Part` and the row's child
+    element keys, on all four row types.
+    """
     attrs = []
     children = []
 
     for key, value in row.items():
-        if value is None:
+        if value is None or str(key).startswith("_"):
             continue
         if isinstance(value, dict):
-            children.append((key, [value]))
+            children.append(key)
         elif isinstance(value, (list, tuple)):
             # A list of dicts is a child element set; a list of scalars has no
             # representation in Plex XML, so it is joined the way tag lists are.
             if value and all(isinstance(v, dict) for v in value):
-                children.append((key, list(value)))
+                children.append(key)
             elif value:
-                attrs.append((key, ",".join(_attr(v) for v in value)))
-        elif not str(key).startswith("_"):
-            # A private key is the builder talking to this writer (`_light`), never
-            # an attribute: `_public_row` strips the catalog's own, and these are
-            # added after it.
-            attrs.append((key, _format(key, value, row)))
+                attrs.append(key)
+        else:
+            attrs.append(key)
 
     if container:
         # Measured: a listing's `Meta` comes BEFORE its rows; the rest keep their order.
-        children.sort(key=lambda child: 0 if child[0] == "Meta" else 1)
+        children.sort(key=lambda child: 0 if child == "Meta" else 1)
         # Cycle 16, measured on kids and zen over five containers: the ATTRIBUTES come
         # out `size`, then `totalSize` and `offset` when the container is paged, then
         # everything else alphabetically. plexsim emitted whatever order its dict held.
         lead = {"size": 0, "totalSize": 1, "offset": 2}
-        if any(key == "noHistory" for key, _ in attrs):
+        if "noHistory" in attrs:
             # Cycle 18, measured on kids and zen: the PLUG-IN FRAMEWORK's container
             # has an order of its own -- `noHistory, replaceParent, size, identifier`,
             # with `totalSize` FIRST of all when it is paged. It is the one container
             # shape cycle 16's rule does not describe, and the only one on the surface
             # that emits `totalSize` without `offset`.
             lead = {"totalSize": 0, "noHistory": 1, "replaceParent": 2, "size": 3}
-        attrs.sort(key=lambda pair: (lead.get(pair[0], 4), pair[0]))
+        attrs.sort(key=lambda key: (lead.get(key, 4), key))
     elif name == "Type":
-        children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child[0],
+        children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child,
                                                               len(_TYPE_CHILD_ORDER)))
     elif name == "Meta":
-        children.sort(key=lambda child: _META_CHILD_ORDER.get(child[0],
+        children.sort(key=lambda child: _META_CHILD_ORDER.get(child,
                                                               len(_META_CHILD_ORDER)))
     elif row.get("_light"):
-        children.sort(key=lambda child: _LIGHT_CHILD_ORDER.get(child[0],
+        children.sort(key=lambda child: _LIGHT_CHILD_ORDER.get(child,
                                                                len(_LIGHT_CHILD_ORDER)))
     else:
-        children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
+        children.sort(key=lambda child: _CHILD_ORDER.get(child, len(_CHILD_ORDER)))
     if not container:
         # Cycle 17: a row's attributes come out in a measured order too, not in
         # whatever order the dict that built the row happened to hold them.
         index = _ATTR_INDEX.get(_attr_bucket(name, row))
         if index:
             lead = _LIBRARY_SECTION_LEAD if row.get("allowSync") is not None else {}
-            attrs.sort(key=lambda pair: (lead.get(pair[0], 1),
-                                         index.get(pair[0], len(index))))
+            attrs.sort(key=lambda key: (lead.get(key, 1), index.get(key, len(index))))
+    return attrs, children
+
+
+def ordered(container):
+    """The same container with every dict's keys in the order the XML writer emits.
+
+    Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object
+    keys come out in exactly its XML order -- the container's attributes, then its
+    child keys; a row's attributes in the row's attribute order, then its child
+    element keys. plexsim ordered the XML alone and left the JSON in whatever order
+    the dict that built it held, so the two formats disagreed on every response. It
+    costs a correct parser nothing, and that is the same reason cycle 17's attribute
+    order mattered anyway: the document is a measurement.
+    """
+    def walk(name, row):
+        attrs, children = _split(name, row, container=(name.endswith("Container")
+                                                       or name in _ROOT_NAMES))
+        out = {}
+        for key in attrs:
+            out[key] = row[key]
+        for key in children:
+            value = row[key]
+            if isinstance(value, dict):
+                out[key] = walk(_element_name(key, value), value)
+            else:
+                # The ELEMENT name, not the container key: `_attr_bucket` reads it,
+                # and a `Metadata` row names its own element through `type`.
+                out[key] = [walk(_element_name(key, entry), entry) for entry in value]
+        return out
+
+    root, body = next(iter(container.items()))
+    return {root: walk(root, body)}
+
+
+def _render(name, row, out, overrides=None, container=False):
+    attrs, children = _split(name, row, container)
 
     out.append("<" + name)
-    for key, value in attrs:
+    for key in attrs:
+        value = row[key]
+        if isinstance(value, (list, tuple)):
+            value = ",".join(_attr(v) for v in value)
+        else:
+            value = _format(key, value, row)
         out.append(" %s=%s" % (key, _escape(_attr(value))))
 
     if not children:
@@ -397,8 +447,9 @@ def _render(name, row, out, overrides=None, container=False):
         return
 
     out.append(">")
-    for key, rows in children:
-        for child in rows:
+    for key in children:
+        value = row[key]
+        for child in ([value] if isinstance(value, dict) else list(value)):
             # Overrides apply to the container's own children only; a nested
             # `Metadata` inside one of them still names itself.
             _render(_element_name(key, child, overrides), child, out)
