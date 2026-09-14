@@ -15218,6 +15218,36 @@ def main():
           and any("media.generate.chapter.thumbs" in str(f_c19t) for f_c19t in analyze_c19t),
           "%d frames" % len(analyze_c19t))
 
+    # Cycle 19, measured on plexscratch behind a control write: a library EDIT scans only
+    # when the form carries `language` or `scanner` -- `agent` alone, `agent` with `name` and
+    # `agent` with a `prefs[...]` are 200s with ZERO frames, while either of those two makes
+    # it 20. plexsim scanned on every accepted edit. And `PUT /updater/check` pushes one
+    # `update.statechange` frame carrying an `AutoUpdateNotification` row, where plexsim
+    # pushed none and Check for Updates never resolved.
+    def edit_frames_c19u(form_c19u):
+        _s_c19u, frames_c19u = notifications(
+            base, lambda: request(base, "PUT", "/library/sections/%s?%s" % (movie_section, form_c19u)))
+        return len(frames_c19u)
+
+
+    silent_c19u = {f_c19u: edit_frames_c19u("agent=tv.plex.agents.movie" + f_c19u)
+                   for f_c19u in ("", "&name=Movies", "&prefs[enableBIFGeneration]=0")}
+    loud_c19u = {f_c19u: edit_frames_c19u("agent=tv.plex.agents.movie" + f_c19u)
+                 for f_c19u in ("&language=en-GB", "&scanner=Plex%20Movie")}
+    check("a library edit scans only on language or scanner",
+          all(n_c19u == 0 for n_c19u in silent_c19u.values())
+          and all(n_c19u > 0 for n_c19u in loud_c19u.values()),
+          "silent %s ; loud %s" % (silent_c19u, loud_c19u))
+    _s_c19u, upd_c19u = notifications(base, lambda: request(base, "PUT", "/updater/check"))
+    rows_c19u = [r_c19u for f_c19u in upd_c19u
+                 for r_c19u in ((f_c19u.get("NotificationContainer") or {})
+                                .get("AutoUpdateNotification") or [])]
+    check("PUT /updater/check pushes its update.statechange frame",
+          len(rows_c19u) == 1 and set(rows_c19u[0]) == {"key", "version", "state"}
+          and any((f_c19u.get("NotificationContainer") or {}).get("type") == "update.statechange"
+                  for f_c19u in upd_c19u),
+          "%d frames %s" % (len(upd_c19u), rows_c19u))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
