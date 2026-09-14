@@ -555,6 +555,15 @@ def compare(kind, operator, actual, wanted, field=""):
             # not the python type. Measured on both references.
             raise FilterError(500, "fractional value %r on %s" % (wanted, field))
         target = as_number(wanted)
+        if isinstance(actual, (list, tuple)):
+            # Cycle 19: a MEDIA column can hold several values -- one per Media on the
+            # row, or one per Media of every leaf on a show or a season -- and a real
+            # PMS matches when ANY of them does. zen's `type=2&duration<=1200000` (39)
+            # and `>=1200000` (483) overlap on 505 rows, which only an ANY can produce.
+            values = [v for v in actual if v is not None]
+            if not values:
+                return False
+            return any(compare(kind, operator, v, wanted, field) for v in values)
         # Cycle 19, measured on kids and zen: a row with NO value for a numeric column
         # matches NOTHING -- `!=` and `!==` included, which is what separates this from
         # treating the absence as a 0. On zen 742 of 3,887 movies carry a `rating`, and
