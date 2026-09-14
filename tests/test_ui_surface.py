@@ -14314,6 +14314,23 @@ def main():
           status == 204 and get(base, "/playlists/%s" % created)[0] == 404,
           "%s %s" % (status, get(base, "/playlists/%s" % created)[0]))
 
+    # Cycle 18, measured on plexscratch: a REPEATED `id=` on the section save path edits
+    # NOTHING -- a 200 in which neither row moves -- where the comma list edits both. plexsim
+    # edited the LAST id, so the same request edited a row at random.
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&summary.value=RepeatBefore"
+            % (movie_section, spare))
+    before = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0].get("summary")
+    status, _, _ = request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&id=%s"
+                           "&summary.value=RepeatChk" % (movie_section, movie, spare))
+    after = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0].get("summary")
+    check("a repeated id= is a 200 that edits nothing",
+          status == 200 and after == before, "%s %r -> %r" % (status, before, after))
+    status, _, _ = request(base, "PUT", "/library/sections/%s/all?type=1&id=%s,%s"
+                           "&summary.value=CommaChk" % (movie_section, movie, spare))
+    after = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0].get("summary")
+    check("while the comma list still edits both",
+          status == 200 and after == "CommaChk", "%s %r" % (status, after))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

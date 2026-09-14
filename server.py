@@ -4470,8 +4470,18 @@ class PlexSim:
                     return ("empty", 200)
                 wanted = {"1": "movie", "2": "show", "3": "season",
                           "4": "episode"}.get(str(query.get("type")))
-                keys = [int(k) for k in (query.get("id") or "").split(",")
-                        if k.strip().isdigit()]
+                # Cycle 18, measured on plexscratch: a REPEATED `id=` edits NOTHING --
+                # `?id=1&id=3&summary.value=x` is a 200 and neither row moves, where the
+                # comma list `?id=1,3` edits both and a single `id=1` edits one. It is
+                # the rule repeated parameters follow everywhere else on this server
+                # (they AND, and a row has one id); plexsim took the LAST one, so the
+                # same request edited a row at random.
+                named = [value for name, value in query.get("_pairs") or []
+                         if name == "id"]
+                keys = ([int(k) for k in (query.get("id") or "").split(",")
+                         if k.strip().isdigit()] if len(named) < 2 else [])
+                if len(named) > 1:
+                    return ("empty", 200)
                 if keys:
                     # Measured: `id=` names rows of the asked TYPE in THIS library. A
                     # movie id under `type=2`, or on another library's path, is edited
