@@ -14165,6 +14165,21 @@ def main():
         status, _, _ = get(base, "/status/sessions/history/all?type=1&group=" + value)
         check("and group=%r is a 400" % value, status == 400, "%s" % status)
 
+    # Cycle 18, measured on kids and zen: `parentIndex=` is a 500 on `/library/all` and on
+    # `/playlists` as well as on a section listing, and a `resolution=` outside the enum is
+    # a 500 there too (`/playlists?resolution=1` refuses where `?resolution=1080` is a 200).
+    # Cycle 15 recorded the parentIndex rule and it was wired into the section listing
+    # alone -- the class-C shape -- so python-plexapi and the SDKs read plexsim's 200 as
+    # "this field filtered nothing" rather than as a refusal.
+    for path in ("/library/all?type=1&parentIndex=1", "/library/all?type=4&parentIndex=1",
+                 "/playlists?parentIndex=1", "/playlists?resolution=1"):
+        status, _, _ = get(base, path)
+        check("%s is a 500" % path, status == 500, "%s" % status)
+    status, _, _ = get(base, "/library/sections/%s/all?parentIndex=1" % movie_section)
+    check("and the section listing still refuses it", status == 500, "%s" % status)
+    status, _, _ = get(base, "/playlists?resolution=1080")
+    check("a resolution inside the enum is still a 200", status == 200, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
