@@ -11834,7 +11834,11 @@ class Handler(BaseHTTPRequestHandler):
     # container to four verbs on the list, 200 with an invented single-item container
     # to a GET of one member, and 200 with the whole children listing to a GET of
     # `/move` -- a client reads any 200 as "this endpoint exists".
-    COLLECTION_ITEM_VERBS = {"items": ("PUT",), "move": ("PUT",), "member": ("DELETE",)}
+    # `items` keeps its own GET and HEAD -- it is the member list, recorded since
+    # cycle 14 -- while a GET of one member or of `/move` is a 404 on the reference.
+    # The verbs measured as 404s on the list were POST, DELETE, PATCH and OPTIONS.
+    COLLECTION_ITEM_VERBS = {"items": ("GET", "HEAD", "PUT"), "move": ("PUT",),
+                             "member": ("DELETE",)}
     # Item leaves that are pure reads. `extras`, `themes`, `clearLogos`, `posters`
     # and `arts` are NOT here: their POST is the upload path (400 or 406, measured
     # separately), only their PUT and DELETE are refused.

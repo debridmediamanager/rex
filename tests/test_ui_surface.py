@@ -13662,6 +13662,44 @@ def main():
                              "librarySectionID" in row_c17b15))
         request(base, "DELETE", "/library/collections/%s" % cid_c17b15)
 
+
+    # Cycle 17: the verb table above must not take the member LIST's own read with it.
+    # `GET /library/collections/{id}/items` is the member list -- recorded since cycle
+    # 14 and measured again here -- while a GET of ONE member and of `/move` really are
+    # 404s on the reference. The refusals the reference was measured on were POST,
+    # DELETE, PATCH and OPTIONS; GET was never tried, and a rule is scoped to what was
+    # tried.
+    made_c17f2 = json.loads(request(
+        base, "POST", "/library/collections?type=1&title=c17list&smart=0&sectionId=%s"
+                      "&uri=%s"
+        % (movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1])
+    cid_c17f2 = (made_c17f2["MediaContainer"]["Metadata"][0]["ratingKey"]
+                 if (made_c17f2.get("MediaContainer") or {}).get("Metadata") else None)
+    if not cid_c17f2:
+        skip("a collection's member list still answers its own GET", "no collection")
+    else:
+        status_c17f2, listed_c17f2, _ = get(
+            base, "/library/collections/%s/items" % cid_c17f2)
+        one_c17f2, _, _ = request(base, "GET", "/library/collections/%s/items/%s"
+                                  % (cid_c17f2, movie))
+        move_c17f2, _, _ = request(base, "GET", "/library/collections/%s/items/%s/move"
+                                   % (cid_c17f2, movie))
+        head_c17f2, _, _ = request(base, "HEAD", "/library/collections/%s/items"
+                                   % cid_c17f2)
+        check("a collection's member list still answers its own GET",
+              status_c17f2 == 200
+              and [r_c17f2.get("ratingKey")
+                   for r_c17f2 in (listed_c17f2.get("Metadata") or [])] == [str(movie)]
+              and head_c17f2 == 200 and one_c17f2 == 404 and move_c17f2 == 404,
+              "list=%s rows=%s head=%s one=%s move=%s"
+              % (status_c17f2,
+                 [r_c17f2.get("ratingKey")
+                  for r_c17f2 in (listed_c17f2.get("Metadata") or [])],
+                 head_c17f2, one_c17f2, move_c17f2))
+        request(base, "DELETE", "/library/collections/%s" % cid_c17f2)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
