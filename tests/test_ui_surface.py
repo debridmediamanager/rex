@@ -15662,6 +15662,30 @@ def main():
           and season_rows_c20w == seasons_c20w and episode_rows_c20w > 0,
           "type=2 %s | seasons %s of %s | episodes %s | fragment %r"
           % (show_code_c20w, season_rows_c20w, seasons_c20w, episode_rows_c20w, fragment_c20w))
+
+    # Cycle 20: `/library/sections/{id}/unwatched` is typed like a listing. Any `type=`
+    # but the library's own top-level type answers EMPTY on both references -- zen and
+    # kids each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
+    # show library -- and the container's `viewGroup` flips to `episode` for every one
+    # of them where a movie library keeps `movie`. An unparseable or empty `type=` is a
+    # 500 there, and on `/onDeck` too, the refusal plexsim already answered on `/all`.
+    unwatched_c20x = {}
+    for spec_c20x in ("", "?type=2", "?type=3", "?type=4", "?type=1"):
+        status_c20x, doc_c20x, _ = get(base, "/library/sections/%s/unwatched%s"
+                                       % (show_section, spec_c20x))
+        unwatched_c20x[spec_c20x or "<bare>"] = (status_c20x, len(doc_c20x.get("Metadata") or []),
+                                                 doc_c20x.get("viewGroup"))
+    refusals_c20x = {leaf_c20x + spec_c20x:
+                     get(base, "/library/sections/%s/%s%s" % (show_section, leaf_c20x, spec_c20x))[0]
+                     for leaf_c20x in ("unwatched", "onDeck")
+                     for spec_c20x in ("?type=abc", "?type=")}
+    check("/unwatched answers only its own type and refuses an unparseable one",
+          unwatched_c20x["?type=2"][1] > 0
+          and unwatched_c20x["?type=3"][1] == 0 and unwatched_c20x["?type=4"][1] == 0
+          and unwatched_c20x["?type=1"][1] == 0
+          and unwatched_c20x["?type=3"][2] == "episode"
+          and all(code_c20x == 500 for code_c20x in refusals_c20x.values()),
+          "%s | refusals %s" % (unwatched_c20x, refusals_c20x))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
