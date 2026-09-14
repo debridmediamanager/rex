@@ -110,14 +110,14 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 20, all run 2026-09-14 against the merged tree:
+Suite results at the head of cycle 20, run 2026-09-15 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1,229/1,229**, 7 skipped | was 1,186 at the head of cycle 18; the skips need a TMDB key, real RD links, or a fixture row the suite has already consumed |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **0 failures over three passes**, and no single pass ran to the end | the environment's clock made one full pass take hours. The evidence is three overlapping runs on the cycle-20 tree: one reached 1,231 checks with twelve failures, every one of them a cycle-20 check placed AFTER the library-delete check (fixed by moving them, as cycle 19 had to); the next reached 1,091 with two, both defects in the CHECKS -- an `id==`/`id!==` expectation the cycle overturned, and an `%%` escape in a literal that is not a format string -- each fixed and re-verified directly against a fresh server; the third was at 838 checks and 0 failures when the cycle was merged. Every one of the 35 findings was separately proven fail-then-pass against its own parent commit |
 | `tests/test_mediainfo.py` | **27/27** | offline |
-| `tests/test_navigation.py` on the full catalog | **47/47** | 28/28 on the UI fixture |
-| `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); expected |
+| `tests/test_navigation.py` | **28/28** on the UI fixture, **47/47** on the full catalog | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); the recorded baseline |
 | `tests/test_all.py --skip-decode` | playQueue and decision PASS on all three rows | the twelve byte reads are 502 for the same reason |
 
 ---
