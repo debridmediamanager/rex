@@ -7400,7 +7400,14 @@ class PlexSim:
             # no banner artwork, no chapter thumbnails, no preview index.
             return ("error", 404, "plexsim: not found")
         if leaf == "extras":
-            if len(segments) > 4:
+            if len(segments) == 5 and segments[4] == "all":
+                # Cycle 19: the ITEM path has the same `/all` form the SECTION path
+                # does. Both references answer `/library/metadata/{id}/extras/all` with
+                # the container `/extras` gives -- kids an empty one, zen a three-clip
+                # one -- and plexsim 404'd the segment, which a client walking to the
+                # paged form of a preplay Extras shelf reads as "this item is gone".
+                pass
+            elif len(segments) > 4:
                 # Measured on both servers: `/extras/{n}` is a 404, even for an extra the
                 # item has. plexsim answered the extras container at any depth.
                 return ("error", 404, "plexsim: not found")
