@@ -4314,6 +4314,14 @@ class PlexSim:
             found["MediaContainer"].pop("content", None)
             return found
         if leaf == "composite":
+            # Cycle 16, measured on kids and zen: the BARE path is a 404 on both, with
+            # and without `?width&height`, on a movie library and a show library alike
+            # -- only `/composite/{version}` answers, and no `/library/sections` row
+            # carries a `composite` attribute for a client to build the bare form
+            # from. plexsim answered image bytes to either, inventing a path the way
+            # `/recentlyReleased` was invented.
+            if len(segments) < 5:
+                return ("error", 404, "plexsim: not found")
             art = self.composite_for("section", section_id)
             if art:
                 return ("image", self._at_width(art, query.get("width")))

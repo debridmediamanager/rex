@@ -11622,6 +11622,18 @@ def main():
              headers_c16i.get("x-plex-container-total-size"),
              paged_c16i[1].get("totalSize"), lower_c16i.get("x-plex-container-start")))
 
+
+    # Cycle 16, measured on kids and zen: a section's `/composite` exists only in its
+    # VERSIONED form. The bare path is a 404 on both references, with and without
+    # `?width&height`, and no `/library/sections` row carries a `composite` attribute
+    # for a client to build the bare form from. plexsim answered image bytes there --
+    # the same shape of invention as cycle 14's `/recentlyReleased`.
+    bare_c16j = request(base, "GET", "/library/sections/%s/composite" % movie_section)
+    versioned_c16j = request(base, "GET", "/library/sections/%s/composite/1" % movie_section)
+    check("a section's bare /composite is a 404 and only the versioned form answers",
+          bare_c16j[0] == 404 and versioned_c16j[0] == 200,
+          "bare=%s versioned=%s" % (bare_c16j[0], versioned_c16j[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
