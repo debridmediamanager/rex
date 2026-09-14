@@ -5313,7 +5313,11 @@ class PlexSim:
         for row in rows:
             out = {k: v for k, v in row.items() if k not in excluded}
             if "Media" in excluded:
-                out["mediaCount"] = len(row.get("Media") or [])
+                # Cycle 15: this now runs as a post-handler pass as well, so a row a
+                # handler has ALREADY trimmed arrives with no `Media` and its count
+                # in place. Recomputing from an absent `Media` would zero it.
+                out["mediaCount"] = (len(row["Media"]) if "Media" in row
+                                     else row.get("mediaCount", 0))
                 out["mediaCountOptimized"] = 0
             trimmed.append(out)
         return trimmed
@@ -10464,12 +10468,48 @@ class Handler(BaseHTTPRequestHandler):
 
         if method in ("GET", "HEAD"):
             try:
+                result = self._exclude_container(result)
                 result = self._page_container(result)
             except filters_module.FilterError as refused:
                 self._send(refused.status, "text/plain",
                            ("plexsim: %s" % refused.detail).encode())
                 return
         self._send_container(result)
+
+    def _exclude_container(self, result):
+        """Apply `excludeElements=` to any MediaContainer that carries rows.
+
+        Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: this is a
+        property of the RESPONSE, the way paging is -- `/library/all`,
+        `/library/recentlyAdded`, a section's `recentlyAdded`, `newest`, `search` and
+        `common`, an item's `/grandchildren` and EVERY hub path all honour it. Cycle
+        11 wired it into four surfaces by hand and the rest were missed; doing it
+        here instead is the shape the measurement actually has.
+
+        The Home screen is the one that costs a client something: `excludeElements=
+        Media` is how it asks for a cheap shelf, and plexsim sent the whole
+        Media/Part/Stream tree for every shelf row on every render.
+        """
+        if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
+            return result
+        body = result["MediaContainer"]
+        if not isinstance(body, dict):
+            return result
+        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
+                                            keep_blank_values=True))
+        if not [e for e in (query.get("excludeElements") or "").split(",") if e]:
+            return result
+        trim = self.server.sim._excluded_elements
+
+        def walk(container):
+            out = dict(container)
+            if isinstance(out.get("Metadata"), list):
+                out["Metadata"] = trim(out["Metadata"], query)
+            if isinstance(out.get("Hub"), list):
+                out["Hub"] = [walk(hub) for hub in out["Hub"]]
+            return out
+
+        return {"MediaContainer": walk(body)}
 
     def _page_container(self, result):
         """Apply the client's container paging to any MediaContainer not yet paged.

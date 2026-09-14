@@ -10600,6 +10600,42 @@ def main():
              hits_c15h("&contentDirectoryID=%s" % show_section),
              hits_c15h("&contentDirectoryID=")))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree on all of it:
+    # `excludeElements=` is a property of the RESPONSE, exactly as paging is -- every
+    # container that carries rows drops the named child elements, and dropping `Media`
+    # substitutes `mediaCount` and `mediaCountOptimized`. Cycle 11 wired it into the
+    # section grid, the section allLeaves, /library/people/{id}/media and /hubs/items;
+    # eight more surfaces were never wired, and the Home screen is the one that costs
+    # most -- it is how a client asks for a CHEAP shelf, and plexsim sent a full
+    # Media/Part/Stream tree for every shelf row on every Home render.
+    paths_c15e = ["/library/all?type=1", "/library/recentlyAdded",
+                  "/library/sections/%s/recentlyAdded" % movie_section,
+                  "/library/sections/%s/newest" % movie_section,
+                  "/library/sections/%s/search?type=1&query=%s" % (movie_section, quote("Tears")),
+                  "/hubs", "/hubs/promoted?contentDirectoryID=%s" % movie_section,
+                  "/hubs/home/recentlyAdded?type=1",
+                  "/library/metadata/%s/grandchildren" % show]
+    bad_c15e = []
+    for p_c15e in paths_c15e:
+        sep_c15e = "&" if "?" in p_c15e else "?"
+        plain_c15e = get(base, p_c15e)[1]
+        excl_c15e = get(base, p_c15e + sep_c15e + "excludeElements=Media")[1]
+
+        def rows_c15e(doc_c15e):
+            out_c15e = list(doc_c15e.get("Metadata") or [])
+            for hub_c15e in doc_c15e.get("Hub") or []:
+                out_c15e += hub_c15e.get("Metadata") or []
+            return out_c15e
+
+        before_c15e, after_c15e = rows_c15e(plain_c15e), rows_c15e(excl_c15e)
+        if not before_c15e or not any("Media" in r_c15e for r_c15e in before_c15e):
+            continue
+        if any("Media" in r_c15e for r_c15e in after_c15e) \
+                or not any("mediaCount" in r_c15e for r_c15e in after_c15e):
+            bad_c15e.append(p_c15e)
+    check("excludeElements=Media reaches every response that carries rows",
+          not bad_c15e, "still carrying Media: %s" % bad_c15e)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
