@@ -174,6 +174,52 @@ def sort_title(title):
     return _ARTICLE.sub("", trimmed or folded)
 
 
+# The title forms a real PMS generates when it has none of its own. A season plexsim
+# synthesises is always one of them: `hierarchy` builds "Season %d" from the index.
+_GENERATED_TITLE = re.compile(r"^Season (\d+)$")
+
+
+def stored_sort_title(row):
+    """The sort title a real PMS STORES, which is not the one it sends.
+
+    Measured on zen (1.42.2) over 14,433 rows of two real libraries and confirmed on
+    kids (1.43.4): a row whose title the SERVER generated stores the EMPTY STRING as
+    its sort title, where a row whose title an agent supplied stores the derived one.
+    The three observables all agree, and they are what a client sees:
+
+    * `?titleSort=` -- a bare, EMPTY value, which on this field is an equality --
+      answers exactly 740 of zen's 741 seasons, 4,630 of its 9,287 episodes, kids'
+      one unmatched season and its three unmatched episodes, and 0 of either
+      library's movies and shows. `titleSort!=` answers the complement.
+    * `?titleSort<<=0` answers the same sets: the empty string compares below `0`.
+    * `/library/sections/{id}/firstCharacter/%23` answers them, and every LETTER
+      bucket of a season list answers none -- which is the other half of cycle 16's
+      "the axis counts by the SHOW's sort title and the listing filters on the row's
+      own". The listing half was implemented reading the row's TITLE when it stores
+      no sort title, so plexsim's season buckets answered under `S`.
+    * `sort=titleSort` puts them first ascending and last descending, as an empty
+      string does and as cycle 13's "no value sorts BELOW every value" says.
+
+    The one season and the 176 episodes that DO store a sort title while reading
+    `Season 1`/`Episode 1` are rows an agent gave that exact title to (kids' season 7
+    gained its own in the metadata refresh recorded in HANDOVER 4.1, and zen's 176
+    carry `plex://episode` guids). plexsim cannot tell those apart from a title it
+    generated itself, so it decides on the title FORM -- a proxy for the mechanism,
+    recorded in HANDOVER 3.3. Every season in a plexsim catalog is synthesised here,
+    so the proxy is exact for the rows plexsim actually holds.
+
+    An emptied title is NOT this case: a title write that empties a row regenerates
+    `Season N`/`Episode N` and KEEPS the old title's sort form, which is measured and
+    already implemented.
+    """
+    title = row.get("title") or ""
+    if row.get("type") == "season" and _GENERATED_TITLE.match(title):
+        stored = row.get("titleSort")
+        if not stored or stored == title:
+            return ""
+    return row.get("titleSort") or title
+
+
 def normalize_rows(rows):
     """The row rules a real PMS follows, applied to rows however they were built.
 
