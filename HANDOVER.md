@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 19 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **19**. Cycle 19 had findings, so **cycle 20 is due**. |
+| `main` | cycle 20 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **20**. Cycle 20 had findings, so **cycle 21 is due**. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -88,6 +88,7 @@ Coverage, measured from the repository rather than asserted:
 | 17 | 1,057 | 12,928 | **29** (of 23 reported plus 6 the driver found; 1 refuted, 1 corrected) |
 | 18 | 1,186 | 13,357 | **26** (of 23 reported plus 6 the driver found; 1 refuted, 1 corrected) |
 | 19 | 1,229 | 13,720 | **31** (of 28 reported plus 4 the driver found; 1 refuted, 2 corrected) |
+| 20 | 1,262 | 13,905 | **33** (of 24 reported plus 9 the driver found; 1 refuted, 5 recorded rules overturned) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -109,7 +110,7 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 19, all run 2026-09-14 against the merged tree:
+Suite results at the head of cycle 20, all run 2026-09-14 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
@@ -266,6 +267,17 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | `/:/prefs` accepts any known setting | Four answer 403 even writing back their own value, and two integer settings take a word | B | cycle 19 |
 | `server_prefs.json` is version-independent | The fifth per-version fixture: `AllowLegacyAgents` and `CLDriver` are 1.43.4-only | B | cycle 19 |
 
+| **A season with a `year` carries its title as `titleSort`** (cycle 7) | **B** | Fitted to kids' season 7 -- the only season with a year the lab has -- whose `Season 1` came from the AGENT and is therefore stored. zen has 741 real seasons: 740 carry no `titleSort` at all and the one that does carries `Egghead`, not its displayed `Season 22`. The sort title follows the STORED title, which is cycle 18's rule |
+| **A NULL date matches "is before"** (pre-cycle-11, fun) | **A** | Measured on fun, which is out of scope. On zen and kids a null date matches NOTHING, on every operator -- of 3,887 movies the 1,518 with a value answer `<=2100-01-01` and the other 2,369 answer neither half. It put every season of a show library into every `<=` set |
+| **`id==`/`id!==` never match a number** (cycle 11) | **B** | Measured against a value that was not a number, where they really do match nothing, and recorded as if it were the whole rule. Against a NUMBER both compare like `=`/`!=`, on both references over two libraries and two row types |
+| **The four unlisted string fields compare case-insensitively** (cycle 18) | **B** | Measured on `titleSort` and read onto the other three. `summary`, `tagline` and `originalTitle` compare BYTES: `summary<=b` is 3,884 of zen and `<=B` 2,911 |
+| **An artwork URL's version is a hash of its source URL** (cycle 8) | **D** | A defensible constant nobody measured. It is the row's `updatedAt`, on 726 of 726 owned paths on zen and 12 of 12 on kids, and the copy re-versions the poster when `updatedAt` is written |
+| **Every edit moves `updatedAt`** (plexsim's own, never measured) | **D** | An edit moves nothing -- five fields written to one movie over half a minute left the column where it was, while a poster write in the same session moved it |
+| **An episode's inherited `contentRating` is copied when the show is written** (cycle 13/16) | **C** | The rule was recorded correctly and implemented as a write-time copy. It is a READ-TIME fallback: clearing the episode's own makes it read the show's at once |
+| **`unmatched` is a boolean** (cycle 19's rule, applied by family) | **C** | It ignores the operator entirely: only the literal `1` is true, under all eight. `unwatched` really is a boolean and was the control |
+| **A parent row's `duplicate` is one scalar** (cycle 19) | **C** | The any-leaf rule was recorded and implemented as a collapse, so the two halves were complements by construction. On zen 24 shows and 35 seasons are in BOTH |
+| **A media column on a parent always reads the leaves** (cycle 19) | **C** | True of `duration`, `resolution` and `mediaSize`; NOT of `audioLanguage`/`subtitleLanguage`, which answer nothing at all on a show or season row |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -311,6 +323,12 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The `allowSync`-on-the-ROW signal** | `/library/recentlyAdded` and `/library/onDeck` lead with `allowSync` and the librarySection triple and no other listing does. `allowSync` on the row is used as the tell because the XML writer cannot see the path; it holds on every row measured, but it is a proxy for "this endpoint", which is class C | A row carrying `allowSync` on some other path |
 | **The `_light` projection marker** | A LIGHT row's child order is chosen by a private key the builder sets, because nothing in the row itself distinguishes the two projections. `_drop_private` strips it from both formats and the suite checks that it reaches no client, but it is a proxy for the same reason | Nothing the response exposes |
 | **`sort=duration`, `duration=` and a show's media columns** | The rule is measured -- both read the MEDIA -- and only the show/season half is built: plexsim's own rows always carry a Media duration equal to the row's, so the movie half cannot differ for its catalog. The `audioLanguage` operator table is measured and unexplained | A catalog row whose Media duration differs from its own |
+
+| **The `Specials` and `[Unknown Season]` season labels** | Both are zen's alone -- kids holds neither, its two seasons being `Season N`. 4 and 5 rows, each corroborated by three independent probes (`titleSort=`, `title=`, `/search`) plus the `#` bucket, and the MECHANISM behind them is cycle 18's two-witness rule | A second library with a season 0 or an index-less season |
+| **`createdAt` read as `addedAt`** | The column is real on both references (every row answers `createdAt>=2000-01-01`) and tracks `addedAt` almost exactly on zen -- 2,437 rows above one epoch against `addedAt`'s 2,436 -- but the one row that differs proves they are not the same column. plexsim holds no other creation time | Nothing the API exposes |
+| **The episode `contentRating` re-inherit** | The rule is a READ-TIME fallback and it is implemented on the WRITE side, because `_public_row` cannot reach the catalog. Every step of the measured sequence is reproduced; a rating cleared by some path that does not go through `library.edit` would not be | Move the fallback into the row projection if one is ever given the catalog |
+| **The `mediaCount` column on a parent** | Read as one value per leaf, which reproduces zen's `=1`/`>>=1` split exactly (487/44 shows, 702/74 seasons) -- but that is also the Duplicates split, so the two rules are not independently witnessed on the same data | A library where a show's leaves differ in media count without duplicating |
+| **`slug` minted by the agent** | Measured on 2,406 of zen's rows (every `local://` movie and show carries none) and deliberately NOT implemented: plexsim mints a `plex://` guid for every row, so the two rules coincide for its catalog. The children's `parentSlug`/`grandparentSlug` are derived from the parent TITLE rather than from the parent's slug -- a proxy that agrees today | A catalog row that fails identification |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -1163,7 +1181,85 @@ its show library carries no artwork at all; `/squareArts` as 1.43.4-only (kids 2
 404); and the "All episodes" row following the PAGE's row count, with `size` counting it
 and `totalSize` not.
 
-### Next: cycle 20
+### Cycle 20 -- the season and the episode row, the edit grammar by column, and the engines again
+
+Hunters: the show library at **type 3 and type 4** -- zen's 741 real seasons and 9,287
+real episodes, the rows carrying the most derived fields on the surface and the ones
+cycle 19's holdout never reached (opus, read-only on kids and zen) -- and the **edit
+grammar swept by COLUMN**, every column of every row type on both write paths (opus, on
+plexscratch). The driver's round ran plexsim's remaining engines over a real library:
+`hsweep.py` (new) holds `hierarchy.py`'s derivations out against 10,535 rows and
+`psweep.py`/`psweep3.py` (new) hold `filters.parse` out against both references'
+`/query/parse`, field by field and operator by operator.
+
+The driver's round found eight of the cycle's findings before either hunter reported, and
+two of them are the kind only a holdout produces. **A season's `titleSort` follows the
+title it STORES, not its `year`** -- cycle 7 fitted that rule to kids' season 7, the only
+season with a year a five-clip lab has, and zen's one year-carrying season carries
+`Egghead` rather than its displayed `Season 22`. **An episode carries `parentThumb` only
+when the season's poster is the season's own**: 654 seasons hand it down, 27 that borrow
+the show's hand down nothing, 0 exceptions over 9,293 episodes on both references, and
+`art` is the opposite. Beside them the parse surface turned out to be wider than the
+filter surface in three more ways (`theme`/`banner`/`art`/`thumb`/`slug` parse and 500 a
+listing; `type<op>` is a real numeric column; `sourceType` parses an integer and adds the
+default Order block), `guid` takes only two operator keys and reports both as `<=`, and
+`group=` takes five more keys -- the same unadvertised columns that FILTER.
+
+Territory A's own family was the one cycle 19 predicted: nearly every rule the show rows
+gave has a different answer at type 3 and type 4. `Specials` and `[Unknown Season]` are
+generated titles too; `viewCount` and `viewOffset` read a missing value as below every
+value and equal to 0 where `skipCount` does not; the stream-language operators are
+universally quantified negations (the question cycle 19 left open, now fitted and held out
+over 14,400 points); those two columns do NOT read the leaves where the other media
+columns do; a show library's media AXES do; `file=` is a 500 on a show listing;
+`unmatched` ignores its operator; `duplicate`'s two halves OVERLAP on a parent; a NULL
+date matches nothing; only `titleSort` folds case; `id==` compares a number; `mediaCount`
+and `createdAt` were columns that could never select anything; a search row carries no
+librarySection triple; and four small leaves refuse every unparseable `type=`.
+
+Territory B swept the edit by column and found that **an edit does not move `updatedAt`**
+-- and that the artwork version IS that column, on 738 of 738 owned paths across both
+references. Beside it: eleven more columns take an item edit and a lock, the SECTION path
+parses every numeric column where the item path parses three, `year` is bounded to signed
+32-bit (the last hole in cycle 19's whole-form refusal rule), a negative `rating` removes
+the field, `theme` and `banner` are artwork columns, an episode's inherited
+`contentRating` is a read-time fallback, and a collection and a playlist take the item
+path's whole validation.
+
+**Refuted:** hunt A's reading that `addedAt!==<date>` differs. Re-measured, zen, kids and
+plexsim all answer 500.
+
+**Revalidated and still standing** (3.4 step 1): the `allowSync`-on-the-ROW signal, swept
+over 28 paths on both references -- only `/library/recentlyAdded` (every `type=`) and
+`/library/onDeck` carry it on a Metadata row, and `/library/sections`' Directory rows are a
+different element; and the non-English article strip, which zen's `La La Land`,
+`La Dolce Villa` and `Das Deutsche Volk` still witness and which stays unimplemented.
+
+### Next: cycle 21
+
+Territories worth taking next, in order of expected yield:
+
+1. **Keep running plexsim's OWN engines over a real library.** Three cycles of this have
+   now produced the largest batches: `fsweep` (cycle 18-19), `ssweep` (19), and cycle 20's
+   `hsweep` and `psweep`. What is still unheld-out is `xmlout`'s writers against a real
+   row's element and attribute order at scale, `library.edit`'s grammar against the copy
+   column by column for the row types this cycle did not reach (collection, playlist,
+   season, show on the SECTION path), and `mediainfo.py` against zen's real Media rows
+   rather than the 46 recorded probes.
+2. **The season and episode row at type 3 and 4 is not spent.** Cycle 20 took the listing
+   grammar and the subsets; what is left is the detail read (`includeChildren`,
+   `includePreferences`, `includeExtras` and the rest on a season and an episode), the
+   artwork paths of a season, and the hub shelves those two row types appear on.
+3. **The column census of a WRITE, for the row types hunt B did not sweep.** It covered a
+   movie, a show, a season, an episode, a collection and a playlist on the item path and
+   four row types on the section path. The `/library/sections/{id}/prefs` family per type
+   and the item-prefs writes are the obvious gap.
+4. **Widen `capture_i18n.py` again** -- the table is 545 entries over ~130 paths.
+5. **The three 3.3 entries a second writable copy would settle**: the media-item DELETE
+   (season and show cascades), `terminate` and `/statistics/*`. All three need a CLAIMED
+   copy, which needs plex.tv. Still the user's decision.
+
+### Next: cycle 20 (superseded)
 
 Territories worth taking next, in order of expected yield:
 
@@ -1460,6 +1556,8 @@ on an unclaimed copy even though the other three write-protected settings are no
 obviously so. A running `Activity` could not be caught in `/activities` at all -- every
 activity on the copy completes in under 150 ms -- so that element was censused from the
 frames instead.
+
+**Cycle 20:** the `slug` being minted by the AGENT (measured on 2,406 of zen's rows -- every `local://` movie and show carries none, and a season's `parentSlug`/`grandparentSlug` are the SHOW's slug exactly -- and not implemented because plexsim mints a `plex://` guid for every row it holds, so the two rules coincide for its catalog; the slug's VALUE is not the slugified title either, 935 of zen's 1,536 matching and the rest carrying a disambiguating year or counter); a season with no `index` being titled `[Unknown Season]` with its episodes carrying neither `parentTitle` nor `parentIndex` and its `index` column reading -1 (plexsim synthesises an index for every season it builds, so the row cannot arise -- the generated-title half IS built); `addedAt!==<date>` (REFUTED -- 500 on zen, on kids and on plexsim alike); the `Specials`/`[Unknown Season]` labels being single-reference, kids holding neither; and the exact spelling a real PMS gives a slug, which nothing in the API exposes.
 
 **Cycle 11:** ~~`/status/sessions/history/all` answering `size 0`~~ (ANSWERED in cycle 15:
 it needs a `type=`); `includeBandwidths=1`; `/library/people/{id}` answering any TAG id;

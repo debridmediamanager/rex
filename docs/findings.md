@@ -5683,6 +5683,281 @@ a library of that type where plexsim refused it.
   elements could not be exercised at all. An instrument limit, not a rule.
 
 
+#### The twentieth pass — the season and the episode row, the edit grammar by column, and the engines held out again
+
+Two hunts and a driver round. Territory A took the show library at **type 3 and type 4** —
+zen's 741 real seasons and 9,287 real episodes, the rows with the most derived fields on
+the whole surface and the ones cycle 19's holdout never reached. Territory B swept the
+**edit grammar by COLUMN**: every column of every row type, on the item path and the
+section path, on plexscratch. The driver's own round ran plexsim's remaining engines over
+a real library — `hierarchy.py`'s derivations against 10,535 rows and `filters.parse`
+against both references' `/query/parse`, field by field and operator by operator.
+
+**Thirty-four findings, every one re-measured by the driver before it was built.** One of
+hunt A's was refuted on re-measurement and one of the recorded rules it corrected had
+stood since cycle 11.
+
+---
+
+**A season's `titleSort` follows the title it STORES, not its `year`.** Cycle 7 recorded
+"a season with a year of its own carries it, with its title as `titleSort`" from kids'
+season 7, whose `Season 1` came from the agent and therefore IS stored. zen has 741 real
+seasons: 740 carry no `titleSort` at all, and the ONE that does — One Piece's season 22,
+the only season in the library with a `year` — carries `"Egghead"`, the arc name its agent
+stored, not the `"Season 22"` it displays. So the year is a coincidence of a season an
+agent really identified, and the rule is cycle 18's: a generated title stores nothing.
+plexsim was contradicting itself here — the ROW said `titleSort: "Season 19"` while
+`?titleSort=`, an equality on the empty string, matched the same row.
+
+**An episode carries `parentThumb` only when the season's poster is the season's own.**
+Held out over 9,293 real episodes on both references, with no exception either way: of
+zen's 681 seasons that have episodes, the 654 with a poster of their own give every
+episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of them one;
+kids reproduces it exactly (season 7 has its own and its three episodes carry the field,
+season 11 carries the show's and its three carry none). `art` is NOT like this — it is
+handed down borrowed or not — so it is a property of the FIELD, not of the row.
+
+**Four more columns PARSE, and `slug` is the fifth.** Swept field by field and operator by
+operator against both references: `theme`, `banner`, `art` and `thumb` each answer
+`/query/parse` with a Rule carrying an EMPTY `fieldTitle` — the shape `id`, `guid`, `slug`
+and `parentIndex` already had — under every one of the eight operator keys, and a LISTING
+filtered on any of them is a **500** on both servers, as `parentIndex` already was. `slug`
+is the same: it parses under all eight (plexsim answered an Error for `>>` and `<<`) and
+its listing is a 500 for every operator, which cycle 7 measured and left unimplemented.
+
+**`guid` takes exactly two operator keys, and the parser reports both as `<=`.** `guid=x`
+and `guid<=x` are a Rule whose operator is `<=` — the parser saying out loud what cycle 13
+measured from the listing side, that a bare `guid=` is a PREFIX match — while `guid!=`,
+`guid!==`, `guid>=`, `guid>>=` and `guid<<=` are each an Error naming the key with the
+operator still attached (`guid!`, `guid>`), and a listing filtered on one of those answers
+every row. That is the unknown-FIELD shape, so those operators are not part of the field's
+grammar at all.
+
+**`type` with an operator is a real numeric column.** A bare `type=` is the listing's own
+type selector, but `type>>=1`, `type<<=4`, `type!=1`, `type>=3` and `type<=2` each parse
+into a Rule — the only rule on the surface with NO `fieldTitle` key at all, where every
+other unadvertised column carries `""` — and each really filters, on the row's TYPE
+NUMBER: zen answers 0 rows to `type=1&type>>=1` and all 3,887 to `type<<=99`, 0 to
+`type=4&type!=4` and all 9,287 to `type=4&type>>=3`, and it reaches `/library/all` too.
+
+**`sourceType` is a parameter both references know and neither filters on.** It must parse
+as a whole number — an empty value, `1.5` and `abc` are 500s on a listing and at
+`/query/parse` alike — it constrains no row, and the parser reports NO Rule for it. What it
+does do is switch the source: any value but `1` makes the Query carry the DEFAULT `Order`
+block (`id`, ascending) that it otherwise omits, with the Rule, Limit and Group blocks
+untouched and an explicit `sort=` still winning.
+
+**`group=` takes five more keys**: `originalTitle`, `createdAt`, `mediaCount`,
+`ratingCount` and `absoluteIndex` (zen answers 472, 3,840, 9, 1 and 1 groups of its 3,887
+movies), swept over 60 candidates on both references. They are exactly the unadvertised
+columns cycles 14 and 15 found FILTER, so the group surface follows the filter surface
+rather than the Meta; the 500s that remain are the tag joins, the media and the per-user
+state.
+
+---
+
+**`Specials` and `[Unknown Season]` are server-generated season titles too.** Cycle 18
+built the rule for `Season N` alone. zen holds 4 seasons titled `Specials` (each
+`index: 0`) and 5 titled `[Unknown Season]` (each with no `index` at all), and all three
+labels behave identically: `?titleSort=` answers 740 of the 741, `title=Specials` and
+`title=Unknown` answer 0, `/search?type=3&query=specials` answers 0, and the `#` bucket of
+the firstCharacter listing holds all 740. `[Unknown Season]` is the one where the
+derivation differs from the title — the leading `[` would strip and leave
+`Unknown Season]` — so it is also the one that proves the sort title is not derived at
+all but simply absent. kids holds neither label, so the two new ones are single-reference
+while the mechanism behind them is cycle 18's two-witness rule.
+
+**`viewCount` and `viewOffset` read a row with NO stored value as BELOW every value and
+equal to 0.** kids makes the mechanism unambiguous: three of its six episodes carry a
+settings row with `view_count = 0` and three carry none, and it answers `viewCount=0` with
+all six, `<<=0` with the three that have no row, `>=0` with the three that have one, and
+`!=0` with none. zen agrees over 8,943 of 9,287 episodes. `skipCount` is NOT in this
+family — its nulls match nothing, cycle 19's ordinary rule — which is how the two were
+separated. This also corrects cycle 19's note that the null-versus-zero distinction is
+invisible to the API: the FILTER sees it.
+
+**`audioLanguage` and `subtitleLanguage` answer their six non-`=` operators as UNIVERSALLY
+QUANTIFIED NEGATIONS** — the question cycle 19 left open. `=v` is "SOME stream of that type
+is v"; every other operator is "NO stream satisfies the operator's own comparison", with
+`!=` and `==` both comparing EQUALITY and `!==` inequality. On kids' six all-English
+episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0 `<<=`6 `>>=`6, which is exactly
+what it answers; zen's 9,287 episodes and 3,887 movies agree, and a row with no stream of
+that type matches every non-`=` operator vacuously (`audioLanguage=zz` is 0 and `!=zz` all
+3,887, while `<=zz` is the 21 rows with no audio stream at all). The three-letter code
+normalises under every operator, not just `=`.
+
+**...and a stream-language column does NOT read the leaves.** Both references answer
+nothing at all to `type=2&audioLanguage=en` and `type=3&subtitleLanguage=en` while the same
+probe at `type=4` returns a real subset, so a parent row has no such column — unlike
+`duration`, `resolution` and `mediaSize`, which cycle 19 measured reading the leaves.
+plexsim applied the fallback here too and selected every show.
+
+**A show library's media AXES are built from the leaves.** Both references answer a
+populated `/library/sections/{show}/resolution` and `/audioLanguage` — zen 6 and 46
+entries, kids 1 and 1 — although no show or season row carries Media. plexsim built them
+from the section's top-level rows and answered an empty container, so a TV library's
+Resolution and Audio Language menus were empty while the filters behind them worked.
+
+**`file=` refuses a SHOW listing and reads the leaves on a SEASON one.** `type=2&file=/` is
+a 500 on kids and zen alike — the only media column that refuses rather than answering —
+while `type=3&file=/` answers every season and `type=4` every episode.
+
+**`/library/sections/{id}/unwatched` is typed like a listing**: any `type=` but the
+library's own top-level type answers EMPTY on both references, the container's `viewGroup`
+flips to `episode` for every one of them on a show library where a movie library keeps
+`movie`, and an unparseable or empty `type=` is a 500 — on `/onDeck` as well.
+
+**`/recentlyViewedShows?type=N` is a typed QUERY**: zen answers 507 shows, 741 seasons and
+9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, both answer 0 to `type=1`, and
+the container keeps `viewGroup="show"` and `allowSync: false` throughout. `type=abc` is a
+500. plexsim ignored the parameter.
+
+**`unmatched` IGNORES the operator.** Measured on kids' two seasons and zen's 741 over all
+eight operators and six values: only the literal `1` selects the unmatched rows, and it
+does so under every operator, while every other value selects the matched ones under every
+operator. It belongs with `resolution`, which cycle 19 measured as operator-insensitive,
+and not with `unwatched`, whose two-request boolean rule is the control and holds on both
+references.
+
+**On a PARENT row the Duplicates filter's two halves OVERLAP.** zen answers
+`type=2&duplicate=1` with 44 shows and `!=1` with 487 — 531 of 507 rows, so 24 are in both
+— and its seasons split 74 / 702 with 35 in both. Both queries are evaluated per LEAF, so
+a parent holding one duplicated episode and one plain one is in each set. A scalar per
+parent makes the two halves complements by construction: cycle 19's own any-leaf rule,
+implemented as a proxy.
+
+**A NULL date matches NOTHING, and `!=` really compares.** Of zen's 3,887 movies exactly
+1,518 carry an `originallyAvailableAt`; `<=2100-01-01` answers those 1,518 while
+`<=1800-01-01` and `<<=1800-01-01` answer 0, so the 2,369 without one are in neither half
+— cycle 19's numeric rule exactly. The old reading, "a NULL date matches is-before", was
+measured on fun, which is out of scope, and it put every season of a show library into
+every `<=` set. And `addedAt!=<a date>` answers every row on both references where plexsim
+answered none: the date branch had no `!=` case and fell through to equality.
+
+**Of the four unlisted string fields only `titleSort` folds case.** `titleSort<=b` and
+`<=B` answer the same 127 rows of zen and `<=m`/`<=M` the same 872, while `summary<=b` is
+3,884 against `<=B`'s 2,911, `tagline<=b` 3,878 against 3,011 and `originalTitle<=b` 3,548
+against 3,439 — a BYTE-ordered comparison, in which every upper-case letter sorts below
+every lower-case one. kids reproduces it on five rows. Cycle 18 measured `titleSort` and
+read the fold onto all four.
+
+**`id==<n>` and `id!==<n>` DO compare a number**, on both references, over two libraries
+and two row types — which overturns cycle 11's "`==`/`!==` never match a number" for this
+column. Against a value that is NOT a number they still match nothing, which is what that
+cycle actually measured.
+
+**`mediaCount` and `createdAt` are recorded filter fields that could never select
+anything.** Cycle 15 listed both among the nine that filter without a Meta and both were
+read straight off the row, where no plexsim row carries either attribute. Both references
+answer real subsets: `type=1&mediaCount=1` is 3,673 of zen's 3,887, `type=2` and `type=3`
+read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74 answer `>>=1` — the
+Duplicates sets exactly), and `createdAt>=2000-01-01` answers every row of every library.
+`sort=mediaCount` is a real ordering on both too, at every row type, where plexsim answered
+500.
+
+**A section search row carries no librarySection fields.** Cycle 19 made `/search` answer
+the light grid row and the triple survived on that path alone; a grid row never carries it,
+because it is the container's.
+
+**Four small leaves validate `type=`, and plexsim refused the wrong half of each.** On both
+references `?type=abc`, `?type=`, `?type=1.5` and `?type=%20` are each a 400 on `/sorts`,
+`/filters`, `/common` and `/search` — sixteen cells, all 400 — where plexsim answered 200
+to the empty value on the first two and to the three unparseable ones on the last two.
+
+---
+
+**A metadata edit does NOT move `updatedAt`.** Measured on plexscratch behind a control:
+five writes to one movie (`title`, `summary`, `year`, `studio`, `contentRating`) over half
+a minute left the column exactly where it was, on the item path and the section path
+alike, while a poster write in the same session moved it. The column tracks the ARTWORK and
+the row's own identity, not its text — and it is the cursor python-plexapi and every sync
+client polls, so plexsim's stamp on every edit made a title fix look like a new row.
+
+**An artwork URL's version IS the row's `updatedAt`** — 726 of 726 owned paths on zen and
+12 of 12 on kids, `thumb` and `art` alike, with no exception. The copy shows the mechanism
+from the write side: `updatedAt.value=1500000000` through the section save path moves the
+column AND re-versions the poster to `/library/metadata/1/thumb/1500000000`, which still
+serves the image. Every reference to a row's artwork follows it, borrowed or not, so a
+season's `parentThumb` and an episode's `grandparentArt` move with the show.
+
+**Eleven more columns are known to the ITEM edit path**: `absoluteIndex`, `updatedAt`,
+`createdAt`, `skipCount`, `viewOffset`, `ratingCount`, `type`, `viewedLeafCount`,
+`contentRatingAge`, `mediaCount` and `extraType`, each a 200 with its lock recorded in the
+row's `Field` list, on a movie, a show, a season and an episode alike, where `bogusXY` is
+the 400 an unknown name gets. Only `absoluteIndex`'s VALUE is read there (a word is a 500
+on it and a 200 on all the others), which is what tells a known numeric column from an
+ignored name.
+
+**The SECTION save path reads every numeric column where the item path reads three.**
+Seven parse — `addedAt`, `duration`, `parentIndex`, `ratingCount`, `updatedAt`,
+`createdAt`, `contentRatingAge`: 200 for a number, 500 for a word — and eight refuse
+outright with a 500 even for a valid number (`viewCount`, `lastViewedAt`, `skipCount`,
+`viewOffset`, `type`, `viewedLeafCount`, `mediaCount`, `extraType`). Four of the seven
+really STORE (`updatedAt`, `addedAt`, `ratingCount`, `contentRatingAge`), and so does an
+episode's `index`, while `duration` and `parentIndex` parse and change nothing. It is the
+Edit dialog's own save path, so a form carrying an unreadable number in any of fifteen
+fields is refused whole by a real PMS.
+
+**`year` is bounded to signed 32-bit**, bisected: 2147483647 and -2147483648 are 200s,
+2147483648 and -2147483649 are 500s, and the bound is `year`'s alone — the other numeric
+columns take 9223372036854775807 happily, because the item path never reads them. The
+refusal carries cycle 19's whole-form rule with it: `summary.value=OK&year.value=<huge>` is
+a 500 with the summary untouched, the last hole in "a save a real PMS refuses writes
+nothing".
+
+**A negative `rating` or `audienceRating` REMOVES the field**, exactly as a negative year
+does, and the rule reaches those two floats and no other. plexsim stored `-3.0` and the
+preplay page printed it.
+
+**`theme` and `banner` are ARTWORK columns on the edit path.** `theme.value=<a url>` is a
+200 and the row comes back carrying `theme: "/library/metadata/4/theme/1789421253"` — the
+url discarded and the column minted as the row's own versioned path at its current
+`updatedAt`, the same shape a poster pick produces. plexsim honoured the lock and stored
+nothing, and on the SECTION path it 400'd `theme`, `banner` and `slug`, all three of which
+the copy takes on both paths.
+
+**An episode's inherited `contentRating` is a READ-TIME fallback.** Set the episode's own
+and then the show's: the episode keeps its own. CLEAR the episode's and it reads the
+show's at once; write the show again and the episode follows. plexsim copied the show's
+value onto the episode at load and on a show edit, so an episode whose own rating was
+cleared had none at all and drew a blank badge for the life of the process. Cycle 13
+recorded the rule correctly and it was implemented as a write-time copy — a textbook class-C
+proxy, and the fix is another one: see the note in `library.edit`.
+
+**A COLLECTION row and a PLAYLIST row take the item path's whole validation.** Over the
+same 57 columns on the copy: an unknown name is a 400, an unparseable number a 500
+(`year`, `index`, `absoluteIndex`, `rating`, `audienceRating`), and `title`, `summary` and
+`userRating` are the 200s — identically on both row types. plexsim skipped the validation
+for these two and answered 200 to every name, the one place it contradicted itself, since
+the same field was a 400 on a movie.
+
+---
+
+**Measured and not acted on.**
+
+- **The `slug` is minted by the AGENT.** It is on a MOVIE or SHOW row only, and only when
+  the row carries a `plex://` guid: 1,536 of zen's 3,887 movies and 452 of its 507 shows
+  carry one, exactly the agent-matched ones, and not one of its 741 seasons or 9,287
+  episodes does. A season's `parentSlug` and an episode's `grandparentSlug` are the SHOW's
+  slug exactly — present on all 741 and all 9,287 when the show has one and absent when it
+  does not. plexsim mints every guid itself (`metadata.py` always answers a `plex://` form),
+  so every row it holds is agent-matched by construction and the two rules coincide; what
+  stays a proxy is deriving the children's from the parent TITLE rather than from the
+  parent's slug, which agrees today because plexsim mints both the same way. The slug's
+  VALUE is not simply the slugified title either — 935 of zen's 1,536 match and the rest
+  carry a disambiguating year or counter (`3bhk-2025`, `100-cooks-1`) or a
+  transliteration — which nothing in the API exposes.
+- **A season with no `index` is titled `[Unknown Season]` and its episodes carry neither
+  `parentTitle` nor `parentIndex`** (5 seasons and 6 episodes on zen), and the season's
+  `index` COLUMN reads -1 there (`index=-1` answers those 5). plexsim synthesises an index
+  for every season it builds, so the row cannot arise in its catalog; the generated-title
+  half of the rule IS built.
+- **`addedAt!==<date>` is a 500** — on zen, on kids and on plexsim alike. Hunt A reported it
+  as a difference; re-measured, all three agree, so it is REFUTED.
+- The `Specials` / `[Unknown Season]` labels are **single-reference**: kids holds neither.
+- The `updatedAt` rule's write half is plexscratch's alone, as every write rule is; the
+  artwork-version half is read off both references and is not.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

@@ -1419,6 +1419,69 @@ precisely how the Seasons bug survived a fix attempt.
   a socket opened with `filters=all` receives NOTHING and looks exactly like a server that
   pushes none. Always open with a control write.
 
+- **A season's `titleSort` follows the title it STORES, not its `year`.** 740 of zen's 741
+  seasons carry none, and the one that does -- the only one with a year -- carries
+  `Egghead`, its agent's arc name, not the `Season 22` it displays. Cycle 7 fitted the year
+  rule to kids' season 7, whose `Season 1` came from an agent. And **`Specials` and
+  `[Unknown Season]` are generated titles too** (season 0 and a season with no index): no
+  stored sort title, absent from `title=` and from the section search box, in the `#`
+  bucket.
+- **An episode carries `parentThumb` only when the season's poster is the season's OWN.**
+  654 of zen's seasons hand it down and its 27 that borrow the show's hand down nothing,
+  0 exceptions over 9,293 episodes on both references. `art` is the opposite -- handed down
+  borrowed or not -- so it is a property of the FIELD.
+- **`viewCount` and `viewOffset` read a row with NO stored value as BELOW every value and
+  equal to 0** (`=0` and every `<=`/`<<=` match it, nothing else does); `skipCount` is not
+  in the family. **A NULL date matches NOTHING**, on every operator -- the old "a null date
+  is before everything" came from fun -- and a date's `!=` really compares.
+- **`audioLanguage`/`subtitleLanguage`: `=v` is "SOME stream is v" and every other operator
+  is "NO stream satisfies the comparison"** (`!=`/`==` compare equality, `!==` inequality),
+  so a row with no stream of that type matches all six vacuously. The 3-letter code
+  normalises under every operator. **They do NOT read the leaves**: a show or season row
+  answers nothing, where `duration`/`resolution`/`mediaSize` do read them.
+- **A show library's media AXES are built from the leaves** (`/resolution`,
+  `/audioLanguage`), and **`file=` is a 500 on a SHOW listing** while a season's reads the
+  leaves like every other media column.
+- **`unmatched` IGNORES the operator**: only the literal `1` selects the unmatched rows,
+  under all eight. **On a PARENT row `duplicate`'s two halves OVERLAP** -- each is evaluated
+  per leaf, so a show with one duplicated episode and one plain one is in both.
+- **`id==<n>` and `id!==<n>` DO compare a number** (overturning cycle 11), and **only
+  `titleSort` folds case** among the four unlisted string fields -- `summary`, `tagline`
+  and `originalTitle` compare BYTES, so every capital sorts below every lower-case letter.
+- **`mediaCount` and `createdAt` are real columns**: `mediaCount` is the number of Media,
+  read from the LEAVES on a show or season, and `createdAt` tracks `addedAt`.
+  `sort=mediaCount` is a real ordering. Both were recorded in cycle 15 and read off an
+  attribute no row carries, so they selected nothing.
+- **The parse surface is wider than the filter surface, in three more ways.** `theme`,
+  `banner`, `art`, `thumb` and `slug` each parse under every operator with an empty
+  `fieldTitle` and are a **500** on a listing; `type<op>` parses (the one Rule with NO
+  `fieldTitle` key) and filters on the TYPE NUMBER; `sourceType` parses an integer,
+  reports NOTHING, constrains nothing, and any value but `1` adds the default
+  `Order: id ascending` block. **`guid` takes only `=` and `<=`, both reported as `<=`**,
+  and every other operator is an unknown FIELD.
+- **`group=` takes five more keys** -- `originalTitle`, `createdAt`, `mediaCount`,
+  `ratingCount`, `absoluteIndex` -- so the group surface follows the FILTER surface rather
+  than the Meta.
+- **`/unwatched` answers only the library's own top-level type** (and flips its `viewGroup`
+  to `episode` for any other), **`/recentlyViewedShows?type=N` is a typed query**, and
+  **`/sorts`, `/filters`, `/common` and `/search` 400 every unparseable `type=`**, the
+  empty value included. **A section search row carries no librarySection fields.**
+- **An EDIT does not move `updatedAt`** -- an artwork write does -- and **an artwork URL's
+  version IS the row's `updatedAt`**, on 738 of 738 owned paths across both references.
+  Every borrowed reference to it follows.
+- **Eleven more columns take an item edit and a lock** (`absoluteIndex`, `updatedAt`,
+  `createdAt`, `skipCount`, `viewOffset`, `ratingCount`, `type`, `viewedLeafCount`,
+  `contentRatingAge`, `mediaCount`, `extraType`), only `absoluteIndex`'s value being read
+  there. **The SECTION path parses every numeric column**: seven are 200/500 and eight are
+  a 500 even for a valid number, and four really store.
+- **`year` is bounded to signed 32-bit**, and that refusal was the last hole in "a save a
+  real PMS refuses writes nothing". **A negative `rating` or `audienceRating` REMOVES the
+  field.** **`theme` and `banner` are ARTWORK columns**: the url is discarded and the
+  column becomes the row's own versioned path.
+- **An episode's inherited `contentRating` is a READ-TIME fallback**: clearing the
+  episode's own makes it read the show's at once, and a later show write moves it again.
+  **A collection and a playlist take the ITEM path's whole edit validation.**
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
