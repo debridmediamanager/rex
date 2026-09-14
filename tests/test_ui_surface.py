@@ -11599,6 +11599,29 @@ def main():
                         "close": ("close", None)},
           "%s" % conn_c16h)
 
+
+    # Cycle 16, measured on kids and zen: a paged container answers
+    # `X-Plex-Container-Start` and `X-Plex-Container-Total-Size` as response HEADERS
+    # beside the body's own `offset`/`totalSize`, on every container that pages
+    # (`/identity` answers Total-Size 0). And the paging HEADER beats the query when
+    # both are sent: query `Start=0&Size=2` with header `Start=1&Size=1` answers
+    # offset 1, size 1 on both references. plexsim read the header only where the
+    # query did not name the parameter, so a client sending both got the query's page.
+    _, _, plain_c16i = request(base, "GET", "/library/sections/%s/all" % movie_section)
+    lower_c16i = {k_c16i.lower(): v_c16i for k_c16i, v_c16i in plain_c16i.items()}
+    paged_c16i = get(base, "/library/sections/%s/all"
+                     "?X-Plex-Container-Start=1&X-Plex-Container-Size=1" % movie_section)
+    headers_c16i = {k_c16i.lower(): v_c16i for k_c16i, v_c16i in paged_c16i[2].items()}
+    check("a paged container answers its window in response headers",
+          headers_c16i.get("x-plex-container-start") == "1"
+          and headers_c16i.get("x-plex-container-total-size")
+          == str(paged_c16i[1].get("totalSize"))
+          and "x-plex-container-start" not in lower_c16i,
+          "paged=%s/%s body totalSize=%s unpaged carries start=%r"
+          % (headers_c16i.get("x-plex-container-start"),
+             headers_c16i.get("x-plex-container-total-size"),
+             paged_c16i[1].get("totalSize"), lower_c16i.get("x-plex-container-start")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
