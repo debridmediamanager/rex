@@ -9799,7 +9799,11 @@ class PlexSim:
             # activity itself rather than borrowing that helper.
             activity["progress"] = 100
             self.library.end_activity_quietly(activity)
-            self.notify_queue_regenerated()
+            # Cycle 19, measured on plexscratch behind a control write: an analyze pushes
+            # the per-leaf triples and this one activity and NOTHING else. plexsim added a
+            # `backgroundProcessingQueue` `queueRegenerated` frame of its own, telling
+            # every client on the socket that the background queue had been rebuilt --
+            # the same family as cycle 12's invented subtitle-upload pair.
             logger.info("ANALYZE %s -- %d leaf frame set(s)",
                         row["ratingKey"], len(leaves))
         elif action == "unmatch":
@@ -11689,10 +11693,18 @@ class PlexSim:
     }
     # The four phases `CleanOldBundles`'s own activity steps its SUBTITLE through, and
     # the progress it carries at each -- measured on plexscratch.
+    # Cycle 19, re-measured on plexscratch behind a control write: there are SEVEN
+    # updates, not four. The fourth phase is not the end -- `Analyzing metadata bundles`
+    # is followed by two `Deleting N metadata bundles` steps at 25 and 50, and the
+    # `ended` frame carries THAT subtitle rather than the analysing one. plexsim stopped
+    # at the fourth, so the Dashboard's last word on the task was a phase that is not
+    # its last.
     BUNDLE_CLEAN_PHASES = (("Analyzing media bundles", -1),
                            ("Deleting %d media bundles", 75),
                            ("Deleting %d media bundles", 100),
-                           ("Analyzing metadata bundles", 100))
+                           ("Analyzing metadata bundles", 100),
+                           ("Deleting %d metadata bundles", 25),
+                           ("Deleting %d metadata bundles", 50))
 
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
@@ -11746,10 +11758,14 @@ class PlexSim:
                 kind, title, subtitle = inner
                 # The task's own activity, measured: started at -1 with its subtitle
                 # already set, stepping to 100, then ended.
+                # Cycle 19: `general.db.optimize` STARTS at 0 with an empty subtitle
+                # and gains the subtitle on its first `updated`; `general.bundle.clean`
+                # starts at -1 with an empty one. Measured on plexscratch.
                 activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
-                            "userID": 1, "title": title,
-                            "subtitle": subtitle or "", "progress": -1}
+                            "userID": 1, "title": title, "subtitle": "",
+                            "progress": 0 if subtitle else -1}
                 self.notify_activity(activity, "started")
+                activity["subtitle"] = subtitle or ""
                 if subtitle is None:
                     # Cycle 17: `CleanOldBundles` steps its SUBTITLE through four named
                     # phases rather than stepping a progress bar under one subtitle.
@@ -11758,15 +11774,29 @@ class PlexSim:
                         activity["progress"] = step
                         self.notify_activity(activity, "updated")
                 else:
-                    for step in (10, 53, 100):
+                    # Cycle 19, measured on plexscratch over three runs: the progression
+                    # is `started` at 0 with an EMPTY subtitle, then `updated` at 0 with
+                    # the subtitle set, then 10, 40, 60, then `ended` at 100. plexsim
+                    # started at -1 with the subtitle already there and stepped
+                    # 10/53/100 -- and its own `PUT /library/optimize` already answered
+                    # the reference's sequence, so the two paths disagreed with each
+                    # other as well as with the reference.
+                    for step in (0, 10, 40, 60):
                         activity["progress"] = step
                         self.notify_activity(activity, "updated")
+                # ...and the `ended` frame carries 100 whatever the last update was.
+                activity["progress"] = 100
                 self.notify_activity(activity, "ended")
             if name == "RefreshLibraries":
+                # Cycle 19, measured on plexscratch: this task runs a section SCAN per
+                # library -- a `library.update.section` activity titled `Scanning
+                # <library>` with the per-item `progress` rows and the subscriptions
+                # pair -- not a metadata refresh per row. plexsim pushed one
+                # `library.update.item.metadata` triple per item and no progress rows at
+                # all, so the Dashboard named the wrong operation for the one task that
+                # runs daily.
                 for section in self.catalog.sections:
-                    for row in self.catalog.section_items(section["key"]):
-                        self.library.finish_activity(
-                            self.library.add_activity(row.get("title") or "", progress=-1))
+                    self.notify_section_scan(section["key"], section)
             for message in messages:
                 if "%d" in message:
                     if "movies" in message:
