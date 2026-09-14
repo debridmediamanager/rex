@@ -13121,6 +13121,32 @@ def main():
           "movie=%s genre=%s section=%s"
           % (movie_attrs_c17a2[:6], genre_attrs_c17a2[:3], section_attrs_c17a2[:5]))
 
+
+    # Cycle 17, second pass over the row attribute order: the untyped `Directory` rows.
+    # The first table's one untyped order came from the "All episodes" row alone, so it
+    # put `key, title` ahead of everything. Measured on kids and zen, which agree: a
+    # SORT row is `default, defaultDirection, descKey, firstCharacterKey, key, title`, a
+    # `firstCharacter` bucket is `size, key, title`, a FILTER row is `filter,
+    # filterType, key, title, type` and the All-episodes row is `leafCount, thumb,
+    # viewedLeafCount, key, title`. All four agree on `key` before `title`, so one union
+    # order serves them: the shape-specific attributes never co-occur.
+    def first_attrs_c17a3(path_c17a3):
+        body_c17a3 = request(base, "GET", path_c17a3, want_json=False)[1].decode(
+            "utf-8", "replace")
+        found_c17a3 = re.search(r"<Directory ([^>]*?)/?>", body_c17a3)
+        return ([m_c17a3.group(1) for m_c17a3
+                 in re.finditer(r'(\w+)="', found_c17a3.group(1))] if found_c17a3 else [])
+    sorts_c17a3 = first_attrs_c17a3("/library/sections/%s/sorts" % movie_section)
+    chars_c17a3 = first_attrs_c17a3("/library/sections/%s/firstCharacter" % movie_section)
+    filters_c17a3 = first_attrs_c17a3("/library/sections/%s/filters" % movie_section)
+    check("the untyped Directory rows order their attributes too",
+          sorts_c17a3[:2] == ["default", "defaultDirection"]
+          and sorts_c17a3[-2:] == ["key", "title"]
+          and chars_c17a3 == ["size", "key", "title"]
+          and filters_c17a3[:2] == ["filter", "filterType"],
+          "sorts=%s firstCharacter=%s filters=%s"
+          % (sorts_c17a3[:4], chars_c17a3, filters_c17a3[:3]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -112,11 +112,15 @@ _ATTR_ORDER = {
         "updatedAt", "createdAt", "scannedAt", "content", "directory",
         "contentChangedAt", "hidden"
     ),
+    "Directory[filter]": (
+        "filter", "filterType", "key", "title", "type"
+    ),
     "Directory[genre]": (
         "fastKey", "key", "title", "type"
     ),
     "Directory[none]": (
-        "leafCount", "thumb", "viewedLeafCount", "key", "title"
+        "default", "defaultDirection", "descKey", "firstCharacterKey", "size",
+        "fastKey", "leafCount", "thumb", "viewedLeafCount", "key", "title"
     ),
     "Directory[season]": (
         "ratingKey", "key", "parentRatingKey", "guid", "parentGuid", "parentSlug",
