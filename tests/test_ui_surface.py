@@ -14427,6 +14427,28 @@ def main():
     check("and so does the filter", status == 200 and listing.get("size") == 1,
           "%s %s" % (status, listing.get("size")))
 
+    # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
+    # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
+    # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
+    # NEGATIVE section id -- between the 10% and 40% activity updates. plexsim pushed the
+    # eight activity frames and none of the fourteen timeline ones, so a client holding a
+    # row from the deleted library never heard that it had gone.
+    doomed = [r.get("ratingKey") for r in
+              get(base, "/library/sections/%s/all" % show_section)[1].get("Metadata") or []]
+    _status, frames = notifications(
+        base, lambda: request(base, "DELETE", "/library/sections/%s" % show_section))
+    deleted = [entry for frame in frames
+               for entry in ((frame.get("NotificationContainer") or {}).get("TimelineEntry") or [])
+               if entry.get("state") == 9 and entry.get("metadataState") == "deleted"]
+    check("a library delete frames its rows as deleted",
+          bool(doomed) and len(deleted) >= len(doomed),
+          "%s frames for %s rows" % (len(deleted), len(doomed)))
+    check("each frame is type 12 with an empty title and the negative section id",
+          bool(deleted) and all(entry.get("type") == 12 and entry.get("title") == ""
+                                and str(entry.get("sectionID")) == "-%s" % show_section
+                                for entry in deleted),
+          "%s" % deleted[:1])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

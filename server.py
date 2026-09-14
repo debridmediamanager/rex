@@ -4233,13 +4233,47 @@ class PlexSim:
             if method == "DELETE":
                 # Manage > Libraries > Delete Library. Drops the section and
                 # every row in it, in memory: catalog.json is untouched.
+                doomed = [str(r.get("ratingKey"))
+                          for r in self.catalog.section_items(section_id)]
                 if self.catalog.remove_section(section_id) is None:
                     return ("error", 404, "plexsim: no such section")
                 # Measured on a writable copy of the reference, frame for frame.
-                self.notify_activity_run("library.delete", "Deleting Library", [
-                    (0, "Deleting section %s" % section_id), (50, "Optimizing Database"),
-                    (0, "Optimizing Database"), (10, "Optimizing Database"),
-                    (40, "Optimizing Database"), (60, "Optimizing Database")])
+                #
+                # Cycle 18, re-measured with a control write first (a title edit, which
+                # must push `state 3` then `state 5`): the reference pushes one `state 9`
+                # timeline frame PER ROW as well -- `type: 12`, `metadataState:
+                # "deleted"`, an EMPTY title and `sectionID` the NEGATIVE section id --
+                # between the 10% and 40% activity updates. A nine-row library produced
+                # 14 of them there, keyed on the server's own internal metadata ids
+                # rather than the ratingKeys, which plexsim cannot reproduce; it frames
+                # the rows it actually removes. plexsim pushed the activity and none of
+                # the timeline, so a client holding a row from the deleted library was
+                # never told it had gone -- which is the failure the whole notification
+                # lifecycle exists for.
+                activity = {"uuid": str(uuid.uuid4()), "type": "library.delete",
+                            "cancellable": False, "userID": 1,
+                            "title": "Deleting Library", "subtitle": "", "progress": 0}
+                self.notify_activity(activity, "started")
+                for progress, subtitle in ((0, "Deleting section %s" % section_id),
+                                           (50, "Optimizing Database"),
+                                           (0, "Optimizing Database"),
+                                           (10, "Optimizing Database")):
+                    activity.update(progress=progress, subtitle=subtitle)
+                    self.notify_activity(activity, "updated")
+                negative = "-%s" % section_id if str(section_id).isdigit() else "-1"
+                if doomed:
+                    self.notify("timeline", "TimelineEntry", [
+                        {"identifier": "com.plexapp.plugins.library",
+                         "sectionID": negative, "itemID": key, "type": 12, "title": "",
+                         "state": 9, "metadataState": "deleted",
+                         "updatedAt": int(time.time())}
+                        for key in doomed])
+                for progress, subtitle in ((40, "Optimizing Database"),
+                                           (60, "Optimizing Database")):
+                    activity.update(progress=progress, subtitle=subtitle)
+                    self.notify_activity(activity, "updated")
+                activity["progress"] = 100
+                self.notify_activity(activity, "ended")
                 logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
                 return ("empty", 200)
             if method == "PUT":
