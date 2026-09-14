@@ -16309,6 +16309,26 @@ def main():
           "repeats %d | array %s | control Feature array %s"
           % (text_c21b.count('"Language":{'), '"Language":[' in text_c21b,
              '"Feature":[' in control_c21b))
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2): a `Feature` element is never
+    # self-closed. Every one of the fifteen on `/media/providers` is written as a PAIRED
+    # empty element (`<Feature key="/hubs/search" type="search"></Feature>`) on both
+    # servers, while `Directory`, `Action` and `Pivot` in the same document self-close
+    # when they have no children. plexsim self-closed all fifteen. It is the writer's
+    # own quirk rather than anything a parser can see, and it is the last byte-level
+    # difference on that document.
+    # XML is the default format, and `request` asks for JSON unless told otherwise.
+    _, providers_c21c, _ = request(base, "GET", "/media/providers", want_json=False)
+    xml_c21c = providers_c21c.decode("utf-8", "replace")
+    check("a Feature element is never self-closed",
+          "<Feature " in xml_c21c
+          and not re.findall(r"<Feature [^>]*/>", xml_c21c)
+          and bool(re.findall(r"<Feature [^>]*></Feature>", xml_c21c))
+          and bool(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c)),
+          "self-closed %d | paired %d | other self-closed %d"
+          % (len(re.findall(r"<Feature [^>]*/>", xml_c21c)),
+             len(re.findall(r"<Feature [^>]*></Feature>", xml_c21c)),
+             len(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c))))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
