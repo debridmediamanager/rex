@@ -15426,6 +15426,29 @@ def main():
           "%s %r -> %r | rows %s" % (status_c21s, before_c21s, after_c21s,
                                      "unchanged" if rows_before_c21s == rows_after_c21s
                                      else "moved"))
+
+    # Cycle 21, measured on plexscratch four times on a movie and four on a show: a
+    # `PUT /library/metadata/{id}/refresh` does NOT move the row's `updatedAt` -- and the
+    # reference really ran the refresh, because it pushed its seven-frame sequence each
+    # time. plexsim stamped it and re-minted the artwork paths with it, so every Refresh
+    # Metadata told every client that the row's poster and background had changed. Cycle 20
+    # established that the artwork version IS the row's `updatedAt`, so the two move
+    # together and neither should. (plexscratch is isolated from plex.tv, so what is
+    # established is that running the refresh sequence does not by itself stamp the row;
+    # an agent returning changed metadata is not measurable here.)
+    _, before_c21t, _ = get(base, "/library/metadata/%s" % movie)
+    row_before_c21t = (before_c21t.get("Metadata") or [{}])[0]
+    status_c21t, _body_c21t, _ = request(base, "PUT", "/library/metadata/%s/refresh" % movie)
+    _, after_c21t, _ = get(base, "/library/metadata/%s" % movie)
+    row_after_c21t = (after_c21t.get("Metadata") or [{}])[0]
+    check("a refresh does not move the row's updatedAt",
+          status_c21t == 200
+          and row_after_c21t.get("updatedAt") == row_before_c21t.get("updatedAt")
+          and row_after_c21t.get("thumb") == row_before_c21t.get("thumb")
+          and row_after_c21t.get("art") == row_before_c21t.get("art"),
+          "%s %r -> %r | thumb %r -> %r"
+          % (status_c21t, row_before_c21t.get("updatedAt"), row_after_c21t.get("updatedAt"),
+             row_before_c21t.get("thumb"), row_after_c21t.get("thumb")))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
