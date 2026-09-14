@@ -15396,6 +15396,36 @@ def main():
                          "exp": 500, "space": 500}
           and stored_c21r == 120000,
           "%s | stored %r" % (codes_c21r, stored_c21r))
+
+    # Cycle 21, measured on plexscratch five times: `DELETE /library/sections/{id}/indexes`
+    # -- Delete Preview Thumbnails -- moves the SECTION's own `updatedAt`, while answering
+    # 200 with an empty body and pushing zero frames and leaving every row's `updatedAt`
+    # and `scannedAt` alone. It is the container half of cycle 20's "an edit does not move
+    # `updatedAt`, an artwork write does": clients cache a library keyed on that stamp, so
+    # on plexsim the delete never invalidated it.
+    def section_stamp_c21s():
+        return next((d_c21s.get("updatedAt") for d_c21s in
+                     get(base, "/library/sections")[1].get("Directory") or []
+                     if str(d_c21s.get("key")) == str(movie_section)), None)
+
+    before_c21s = section_stamp_c21s()
+    rows_before_c21s = [(r_c21s.get("ratingKey"), r_c21s.get("updatedAt")) for r_c21s in
+                        get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                        .get("Metadata") or []]
+    status_c21s, body_c21s, _ = request(
+        base, "DELETE", "/library/sections/%s/indexes" % movie_section)
+    after_c21s = section_stamp_c21s()
+    rows_after_c21s = [(r_c21s.get("ratingKey"), r_c21s.get("updatedAt")) for r_c21s in
+                       get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                       .get("Metadata") or []]
+    check("deleting a section's indexes moves the section's updatedAt",
+          status_c21s == 200 and not body_c21s
+          and before_c21s is not None and after_c21s is not None
+          and after_c21s > before_c21s
+          and rows_before_c21s == rows_after_c21s,
+          "%s %r -> %r | rows %s" % (status_c21s, before_c21s, after_c21s,
+                                     "unchanged" if rows_before_c21s == rows_after_c21s
+                                     else "moved"))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -4808,6 +4808,13 @@ class PlexSim:
             # Delete Preview Thumbnails. plexsim generates none.
             if method != "DELETE":
                 return ("error", 404, "plexsim: not found")
+            # Cycle 21, measured on plexscratch five times: the delete MOVES the
+            # section's own `updatedAt` while leaving every row's `updatedAt` and
+            # `scannedAt` alone, and it still answers 200/empty with zero frames. It is
+            # the container half of cycle 20's "an edit does not move `updatedAt`, an
+            # artwork write does" -- clients cache a library keyed on that stamp, so
+            # here the delete never invalidated it.
+            section["updatedAt"] = int(time.time())
             return ("empty", 200)
         if leaf == "prefs":
             settings = SECTION_PREFS.get(section.get("type") or "movie") or []
