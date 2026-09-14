@@ -11675,6 +11675,32 @@ def main():
                              "*": None, "gzip;q=0": "gzip"},
           "%s" % encodings_c16l)
 
+
+    # Cycle 16, measured on plexscratch: a PREFLIGHT that carries no `Origin` gets no
+    # CORS headers at all -- not the method list, not the header list, not Max-Age.
+    # plexsim answered all three. A browser always sends Origin, so nothing
+    # user-visible turns on it; it is a probe being answered a question it did not ask.
+    # A bare OPTIONS with no `Access-Control-Request-Method` is a different thing
+    # entirely (cycle 15: it is routed like any other verb), so the preflight header
+    # has to be sent for this to reach the branch at all.
+    def preflight_c16m(origin_c16m):
+        headers_c16m = {"User-Agent": UA, "Access-Control-Request-Method": "GET"}
+        if origin_c16m:
+            headers_c16m["Origin"] = origin_c16m
+        probe_c16m = urllib.request.Request(base + "/library/sections", method="OPTIONS",
+                                            headers=headers_c16m)
+        try:
+            with urllib.request.urlopen(probe_c16m, timeout=20) as answer_c16m:
+                seen_c16m = dict(answer_c16m.headers)
+        except urllib.error.HTTPError as refused_c16m:
+            seen_c16m = dict(refused_c16m.headers)
+        return sorted(name_c16m for name_c16m in seen_c16m
+                      if name_c16m.lower().startswith("access-control"))
+
+    check("a preflight with no Origin carries no CORS headers",
+          preflight_c16m(None) == [] and preflight_c16m("http://x.example") != [],
+          "none=%s origin=%s" % (preflight_c16m(None), preflight_c16m("http://x.example")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
