@@ -4687,6 +4687,241 @@ after a collection add. It follows a write that leaves work in the queue.
   count"; the tag carries the guid and no count, as cycle 12 had already shown for a
   detail row's tags in general.
 
+#### The sixteenth pass — the HTTP envelope, the write surface below the collection, and the first real show library
+
+Two hunters and a driver sweep. **Territory A** took the write surface one level below the
+collection on plexscratch: playlists, the play queue, the section save path on a SHOW
+library and the item-prefs family — the layer that had one pass in cycle 9 and nothing
+since, and the cycle whose findings §3.3 flags as thinnest. **Territory B** swept the
+dimension nobody had: the HTTP envelope itself — what a request's headers do and what
+every response's headers say, across three servers. The driver took the `Server:` banner
+§3.3 had carried, and then swept zen's **section 2**, which nobody had pointed anything
+at: 507 shows, 741 seasons and 9,287 episodes, the first real SHOW library the project
+has had.
+
+**49 findings implemented**, the largest cycle in the programme's history. Every one was
+re-measured by the driver before any code was written, and every one is committed with a
+check proved to fail against its own parent commit.
+
+##### What the first real show library showed
+
+- **`/library/sections/{id}/firstCharacter` counts on one basis and its buckets filter on
+  another.** The AXIS counts a row BELOW the library's own top-level type by its SHOW's
+  sort title: bucketing zen's 741 seasons and 9,287 episodes by their show reproduces the
+  axis on **28 of 28 buckets at `type=3` and again at `type=4`**, and bucketing them by
+  their own titles reproduces **0 of 28**. kids, whose one show is Firefly and whose
+  seasons are "Season 1"/"Season 2", says `F:2` at `type=3` and `F:6` at `type=4`. The
+  LISTING behind each bucket is the other way round — it filters on the row's own stored
+  sort title — so a season list's `A` bucket says 64 and answers no rows at all. That is
+  the reference's own inconsistency, measured on both servers, and plexsim reproduced
+  neither half.
+- **`/firstCharacter/{key}` is a real listing**, `title2` reading `Start with '<key>'`
+  with the key echoed as the client sent it (`%23` decodes; `BB` and a lowercase `b` are
+  echoed verbatim and match nothing), the light grid row, and the listing grammar on top —
+  zen's `B` bucket answers 6 of its 161 rows to `year=2020` and reverses under
+  `sort=titleSort:desc`. plexsim dropped the extra path segment and answered the AXIS, so
+  clicking a letter in the A-Z rail redrew the rail.
+- **Every section leaf's extra path segment is a bucket or a 404, never the leaf again.**
+  Swept across both references and both library types: `/all/zzz`, `/onDeck/zzz`,
+  `/sorts/zzz`, `/studio/<a real studio key>`, `/audioLanguage/en`, `/location/1` and
+  fourteen more are 404s, and a SECOND extra segment (`/genre/24/more`) is a 404 too. The
+  leaves that DO have a bucket answer its rows: a tag axis keyed by TAG ID with the tag's
+  own title as `title2` and a 404 for an id the library does not hold; `year` and `decade`
+  keyed by a non-negative integer (a word or a negative number is a 404, and `decade/1995`
+  opens a ten-year window from 1995 rather than naming a calendar decade); `contentRating`
+  as `Rated <value>` and `resolution` accepting anything at all, an unknown value there
+  matching every row that HAS a resolution; `userRating` as `<n> Star`, refusing `-1`
+  despite that being the key of its own "Not rated" bucket. plexsim answered 200 with the
+  axis to every one of them.
+- **A show library's `?type=3` and `?type=4` grids default to BROADCAST order**, grouped
+  by the show's sort title then `parentIndex` then `index` — not to a flat `titleSort`.
+  kids' episode grid opens "The Train Job, Bushwhacked, Our Mrs. Reynolds, Episode 1, 2,
+  3" where `sort=titleSort` gives the reverse; zen's, 2,000 rows in, is one show's
+  episodes in order where `sort=titleSort` is an alphabetical jumble across shows.
+  `docs/findings.md` had already asserted this for "`/allLeaves` AND the section listing";
+  only the allLeaves half was ever implemented (class **C**).
+- **A show library's `/unwatched` carries `nocache`** like every other container it
+  answers, and a movie library's does not. plexsim had the rule on `/all` and the five
+  subsets and had missed it on exactly this one.
+- **A row that BORROWS its background carries the OWNER's path verbatim** — kids' season 7
+  and episode 8 both carry `/library/metadata/6/art/<v>` — and its own `/art` is a 404
+  while the owner's is a 200, where zen's season 11114, which has art of its own, answers
+  200. plexsim's artwork stamping re-keyed every borrowed URL to the row holding it, so a
+  show, its season and its episode each claimed to own the same image and
+  `/library/metadata/<season>/art` answered 200. Cycle 15's episode-only rule turns out to
+  be the special case of one general one: an artwork path is a 200 only on the row whose
+  own stored path names it.
+
+##### The HTTP envelope
+
+- **A real PMS LOCALISES its own text.** `X-Plex-Language` — header or query — beats
+  `Accept-Language`, a regional form works like its primary subtag, and an unknown
+  language falls back to English. The filter and sort menus, the `Meta` type titles, the
+  hub titles, a GENERATED season title (`Season 1` → `Staffel 1`), a stream's language
+  name and its `displayTitle`, and all 200+ `/:/prefs` labels, summaries and enum values
+  all move; the LIBRARY's own rows do not, and neither do `All Movies`, a secondary axis's
+  `title2` or `Unplayed` — the same English words ARE translated as a section pivot's
+  `title`, so the rule is per attribute and not per string. 28 languages answer
+  differently. plexsim read the header nowhere, so every non-English user of every real
+  client saw English menus on every screen. The table is `translations.json`, captured
+  mechanically: each endpoint fetched in English and in each language, the two documents
+  diffed string by string at the same structural path. Nothing in it is invented.
+- **A real PMS ROUTES before it authenticates.** With no token a path that does not exist
+  is a **404** — `/no/such/path`, an unknown ratingKey, an unknown section — and only a
+  path that DOES exist is a 401. Of the single-segment paths, exactly eleven answer 401
+  (`/library`, `/hubs`, `/playlists`, `/devices`, `/butler`, `/servers`, `/clients`,
+  `/accounts`, `/activities`, `/playQueues`, `/log`); `/identity` and `/security` answer
+  200; every other one — `/statistics`, `/updater`, `/status`, `/system`, `/photo`,
+  `/video`, `/media`, `/transcode`, `/services`, `/myplex`, `/livetv`, `/resources`,
+  `/setting`, `/channels`, `/prefs`, `/nearest`, `/diagnostics`, `/websockets` and
+  anything unrouted — is a **403**, whether or not it answers when a token IS given
+  (`/channels` is a real two-row Directory with one). And `GET /` is a 401 whose 193-byte
+  body carries a script that walks a browser into the web client. Measured path by path on
+  kids and zen, which agree exactly.
+- **Every response names its connection state**: `Connection: Keep-Alive` plus
+  `Keep-Alive: timeout=20` when the connection is kept, `Connection: close` when it is
+  not — and an idle kept-alive connection really is closed after 20 seconds. plexsim sent
+  neither header and never closed one.
+- **A paged container answers its window in response HEADERS too** —
+  `X-Plex-Container-Start` and `X-Plex-Container-Total-Size`, `/identity` answering
+  Total-Size 0 — and an unpaged one carries neither. And the paging HEADER beats the query
+  when both are sent, per parameter; a header `Start=abc` beside a valid query is a 500.
+- **`Range` applies to EVERY response body**, not only to media bytes: 206 with a
+  `Content-Range`, 416 past the end, an unrecognised unit still read as bytes, and a 206
+  never gzipped.
+- **A malformed request header is a 400**: a line with no colon, a TAB anywhere in a value
+  (a space is fine), a name over 1024 bytes, a value over 4096. plexsim accepted all of
+  them and only refused at Python's own 64 KiB line limit, with Python's HTML page.
+- **The Accept `q` grammar, corrected in six places.** A range qualifies only if its media
+  type is exactly `application/json` or `application/xml` AND either it has no parameters
+  or its FIRST parameter begins exactly `q=`; `;charset=utf-8`, `;level=1;q=0.5`,
+  `; q=0.5` (a space after the semicolon) and `;Q=0.5` disqualify it, while
+  `application/json ;q=0.5` does not. No parameter weighs 1.0; a single parseable
+  non-negative `q=` weighs that; anything else — `q=0`, `q=abc`, `q=`, `q=-1`, `q="0.5"`,
+  `q=0.5x`, a second parameter of any kind — weighs 0 and still QUALIFIES. Highest weight
+  wins, a tie goes to the range listed first. Thirty headers, both servers. plexsim
+  DROPPED every zero-or-unparseable q, so `application/json;q=0` came back as XML.
+- **`Accept-Encoding` tokens are matched exactly and case-sensitively**: `GZIP`, `x-gzip`
+  and `*` all get a plain body, while `gzip;q=0` is still gzipped because the q is ignored.
+- **A real PMS never answers `100 Continue`**, and a preflight with no `Origin` carries no
+  CORS headers at all.
+- **`/web` and `/web/` answer `302 Moved Temporarily`** with an ABSOLUTE `Location` built
+  from the request's own `Host` header, `Cache-Control: public` — the one place on the
+  whole surface that is not `no-cache` — and `X-Plex-Protocol: 1.0`. Every `/web/*` asset
+  is `no-cache`, `Accept-Ranges: bytes` and NEVER gzipped, `.js` is `text/javascript`,
+  `.html` carries no charset and `.ico` is `application/octet-stream`.
+- **A section's bare `/composite` is a 404**; only `/composite/{version}` answers, and no
+  `/library/sections` row carries a `composite` attribute to build the bare form from.
+  Another invented path, the same class as cycle 14's `/recentlyReleased`.
+- **`X-Plex-Platform: Roku`** — that exact spelling — strips `id` and the whole `Pivot`
+  list from every library `Directory` of `/media/providers`, and leaves the other nine
+  attributes alone.
+- **Four XML shapes.** A `Meta/Type` orders its children `Filter, Sort, Field` (not the
+  item order, where `Field` comes first); `includeDetails=1` carries no
+  `active`/`activeDirection` on a Sort and no `advanced` on a Filter, where `includeMeta=1`
+  carries all three; the rows `includeChildren=1` inlines carry no librarySection triple;
+  and a MediaContainer's attributes come out `size`, then `totalSize` and `offset` when
+  paged, then everything else alphabetically.
+- **`POST /library/metadata/{id}/extras` is a 400** whatever the body — cycle 15 recorded
+  exactly that and left the code answering the GET listing.
+- **A real PMS sends no `Server:` banner at all.** Fifteen paths, both formats,
+  200/400/404/500 alike. plexsim announced itself as `PlexSim/0.1 Python/3.10.20` on every
+  response it had ever sent — the one header on the wire that says the server is not a
+  Plex Media Server. §3.3 had carried it since cycle 15.
+
+##### Playlists, the play queue and the section save
+
+- **`/playlists/{id}/items` is a real typed QUERY.** `?type=1` answers the movie members,
+  `?type=2` the SHOW that owns the member episodes, `?type=3` their seasons, `?type=4` the
+  episodes; a type the list holds nothing of answers 0, `-1` answers everything, `1.5` is a
+  400; the library filters apply; `sort=` and `limit=` are PARSED and then ignored (an
+  unparseable one is a 500); and `?includeMeta=1` carries the Meta the page's own
+  All/Movies/Episodes/Seasons/TV Shows tab bar is built from.
+- **A playlist is born `viewCount: 1` with `lastViewedAt` equal to its `addedAt`**, and
+  the pair appears on the LISTING row only — never on `/playlists/{id}` and never on the
+  create response. The Home shelf is keyed `sort=lastViewedAt:desc`, so with nothing to
+  sort on its order was arbitrary.
+- **`/playlists` filters** by `title`, `smart`, `sectionID` (a mixed list answers to BOTH
+  its libraries) and `type` (a playlist is 15; `type=abc` is a 500), and its **default
+  order is the SMART ones first, then `titleSort`** — measured over five lists whose
+  ratingKey, addedAt and title orders are all different.
+- **`sort=mediaCount` is a real ordering** there — the sixth sort its own Meta advertises,
+  as "Item Count" — while `leafCount` is a 500 on both.
+- **`POST /playlists/{id}/items` is a 404**: only PUT adds. **An empty `title=` is stored
+  verbatim**, where plexsim substituted "Untitled". **`smart=1` over a comma-joined key
+  list is a 400**; a smart list's uri has to name a LISTING. **A uri the server cannot
+  RESOLVE adds nothing** — a foreign machine, a scheme-less `/library/metadata/1` and an
+  unknown key all build an empty list with no `composite` and no `duration`.
+- **`PUT /playlists/{id}` takes the whole ITEM edit grammar**: `thumb=`/`art=` mint artwork
+  under `/library/metadata/{playlist ratingKey}/`, every `.locked` really locks, `year`,
+  `originallyAvailableAt` and `studio` are stored, and `userRating`, `guid`, `duration`
+  and the timestamps are accepted and discarded. plexsim 400'd every one of them, so the
+  Edit dialog's Poster and Background pickers and every lock checkbox were refused.
+- **`playlistItemID` is a SERVER-WIDE sequence** — three lists built in a row took 40/41,
+  42/43, 44/45 — and a SMART list's items carry NONE at all; every item write on one is a
+  400, the move included.
+- **A playlist's artwork paths live under `/library/metadata/{ratingKey}/`**, where
+  `posters`, `arts`, `thumbs`, `banners` and `tree` are all 200s, while under
+  `/playlists/{id}/` the same names and the UNVERSIONED `composite` are 404s. plexsim had
+  it the other way round on eight paths.
+- **A shuffled play queue is really shuffled.** plexsim reversed the unshuffled queue,
+  deterministically, so Shuffle played a show's episodes backwards and backwards the same
+  way every time.
+- **`includeBefore` and `includeAfter` window the queue with NO `window=`** — the radius is
+  unlimited when it is absent — and each is a boolean: both zero, a value that is not 0 or
+  1, an unparseable one and an empty one are all 400s. Cycle 9 measured them only ever WITH
+  `window=1`, which is why the no-window half was missing (class **A** in the original).
+- **EVERY play-queue item delete answers the container as it stood BEFORE it** — the old
+  version and total, with the rows that remain — and only the SELECTED one also drops the
+  rows. The client DISCARDS a queue response whose version it did not expect, so a delete
+  from Up Next threw the player's own queue away.
+- **A queue move refuses two forms**: `after=<the moving item's own id>` is a 404 and an
+  empty `after=` is a 400. **A queue built from a PLAYLIST uri is a playlist queue**,
+  carrying `playQueuePlaylistID` and `playQueuePlaylistTitle` and no `playQueueSourceURI` —
+  plexsim recognised only the `playlistID=` form.
+- **The SECTION save path stores an unlocked `titleSort.value=`**, which survives until the
+  next TITLE write re-derives it, where the ITEM path discards it. The recorded rule ("an
+  unlocked Sort Title does not stick") is the item path's alone.
+- **A show's `contentRating` reaches only the episodes that carry none of their own**, and
+  **a show's `index` cascades onto its seasons' `parentIndex`**. **A season whose own
+  `year` is cleared gains `parentYear` in the same read** — the rule was right at catalog
+  LOAD and derived nowhere else, so a season edited at runtime carried neither year.
+  **`type=abc` on the save path is a 400** that edits nothing.
+- **An UNMATCHED item drops its agent-driven prefs**: a show loses `languageOverride` and
+  `useOriginalTitle`, a MOVIE loses the whole `Preferences` block rather than its rows, a
+  season keeps its three. Corroborated read-only on zen, where six `local://` shows
+  advertise exactly eight settings and every matched one advertises the full list.
+- **On the section save path the `state 3` frame carries the row's title from BEFORE the
+  write** and only `state 5` carries the new one, where the item path sends the new title
+  in both. Visible only on a TITLE edit of a SHOW.
+
+##### A defect this cycle introduced and caught
+
+The first implementation of "`smart=1` over a key list is a 400" refused the create
+whenever the uri resolved to any rows — and a LISTING uri resolves to rows too, so every
+smart playlist create became a 400. The test is the uri's SHAPE, not whether it resolves.
+It was caught by the next patch's own check block failing on the parent, three commits
+later, and corrected with a check of its own. The lesson is the one §3.1 class C keeps
+teaching: a rule implemented as a proxy for itself is the kind that survives.
+
+##### Measured and not acted on
+
+- **The container attribute ORDER inside a ROW** (a tag is `id, filter, tag[, role,
+  thumb]`, not alphabetical). Only the CONTAINER's order was settled; a row's is not
+  alphabetical and was not mapped.
+- **`Set-Cookie: com.plexapp.system=…` on `/system` and `/system/agents/contributors`** —
+  the plug-in framework's, on paths plexsim answers from its own table.
+- **The 1024/4096/41 KB header limits as exact constants**: measured as brackets, not
+  probed to the byte.
+- **Whether `X-Plex-Language` reaches the XML path identically** — the table is applied to
+  the container before rendering, so it does by construction, but the reference's XML was
+  not diffed language by language.
+- **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says
+  of the whole family; kids is read-only and zen cannot answer a write.
+- **`/library/metadata/{playlist}/` container attributes** (`allowSync`, `identifier`,
+  `mediaTagPrefix`, `mediaTagVersion`) — measured on the copy, not implemented: plexsim's
+  bare container there carries `size` alone, and the paths that matter now answer.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

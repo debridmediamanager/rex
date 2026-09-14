@@ -3293,11 +3293,34 @@ def main():
                               if not isinstance(async_container[k], list))))
     # Per-item settings are per TYPE: a movie has three, a show eleven, a season
     # three, and an episode NONE -- where an empty block draws an empty tab.
+    #
+    # Cycle 16 re-measured this and the check had to move with it: an UNMATCHED movie
+    # carries no `Preferences` block AT ALL (measured on plexscratch, corroborated
+    # read-only on zen, where every `local://` show advertises eight settings against a
+    # matched show's full list). `movie` has been unmatched well before this point, so
+    # the three-setting half is now asserted on a movie that is still matched and the
+    # empty half on the unmatched one. The old check asserted three settings on the
+    # unmatched row, which is the belief this cycle overturned.
     _, _, movie_prefs = detail_of("includePreferences=1")
     names = [s.get("id") for s in (movie_prefs.get("Preferences") or {}).get("Setting") or []]
-    check("a movie's own settings are the three measured ones",
-          names == ["languageOverride", "useOriginalTitle",
-                    "enableCreditsMarkerGeneration"], ",".join(str(n) for n in names))
+    matched_movie = next(
+        (m["ratingKey"] for m in get(base, "/library/sections/%s/all" % movie_section)[1]
+         .get("Metadata") or []
+         if str(m.get("ratingKey")) != str(movie)
+         and str(get(base, "/library/metadata/%s" % m["ratingKey"])[1]["Metadata"][0]
+                 .get("guid") or "").startswith("plex://")), None)
+    matched_names = []
+    if matched_movie:
+        _, _, matched_prefs = detail_of("includePreferences=1", matched_movie)
+        matched_names = [s.get("id") for s in
+                         (matched_prefs.get("Preferences") or {}).get("Setting") or []]
+    check("a movie's own settings are the three measured ones, and an unmatch drops them",
+          matched_names == ["languageOverride", "useOriginalTitle",
+                            "enableCreditsMarkerGeneration"]
+          and "Preferences" not in movie_prefs,
+          "matched %s -> %s ; unmatched carries a block: %s"
+          % (matched_movie, ",".join(str(n) for n in matched_names),
+             "Preferences" in movie_prefs))
     if show:
         _, _, show_row = detail_of("includeChildren=1", show)
         children = show_row.get("Children") or {}
