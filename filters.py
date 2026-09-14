@@ -501,8 +501,30 @@ def compare(kind, operator, actual, wanted, field=""):
             # not the python type. Measured on both references.
             raise FilterError(500, "fractional value %r on %s" % (wanted, field))
         target = as_number(wanted)
+        # Cycle 19, measured on kids and zen: a row with NO value for a numeric column
+        # matches NOTHING -- `!=` and `!==` included, which is what separates this from
+        # treating the absence as a 0. On zen 742 of 3,887 movies carry a `rating`, and
+        # `rating!=7` is 736, `rating!==7` 742, `rating<=7` 368 and `rating>>=7` 374:
+        # 368 + 374 = 742 exactly, so the 3,145 rows without one are in neither half.
+        # Its show library, where NO row carries a rating at all, answers 0 to all
+        # eight. plexsim read the absence as 0, so every `<=`/`<<=`/`!=` on Rating,
+        # Plays, Critic Rating or Audience Rating answered the rows that have no value
+        # -- the majority of a real library -- and `rating<=7` was the whole grid.
+        # The VALUE is still parsed first (cycle 15), so a word is a 500 here whether
+        # or not the column is null.
         if actual is None:
-            actual = 0
+            return False
+        if operator in ("==", "!=="):
+            # ...and this pair is an exact STRING comparison of the stored number, not
+            # a numeric one. On zen `rating==7` answers 0 where `rating==7.0` answers
+            # the same 6 rows `rating=7` does, and `userRating==5` answers 0 against
+            # `==5.0`'s 43 -- while the INTEGER column answers `year==2000` with the
+            # same 39 as `year=2000` and `year==2000.0` with none. So the comparison is
+            # against the column's own rendering: a float prints `7.0`, an integer
+            # `2000`. plexsim compared numerically, so `rating==7` found the 7.0 rows a
+            # real PMS does not.
+            hit = str(actual) == str(wanted)
+            return hit if operator == "==" else not hit
         actual = as_number(actual)
         if operator == ">>=":
             return actual > target
@@ -512,7 +534,7 @@ def compare(kind, operator, actual, wanted, field=""):
             return actual < target
         if operator == "<=":
             return actual <= target
-        if operator in ("!=", "!=="):
+        if operator == "!=":
             return actual != target
         return actual == target
 

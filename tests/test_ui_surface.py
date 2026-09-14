@@ -14553,6 +14553,44 @@ def main():
           % (bool_count_c19b("duplicate%21=2"), bool_count_c19b("duplicate=0"),
              bool_count_c19b("duplicate%3E=0"), bool_count_c19b("duplicate%21=1")))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a row with NO value for a
+    # numeric column matches NOTHING -- `!=` and `!==` included. zen's 742 rated movies
+    # split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145 unrated ones are in
+    # neither, and its show library (no row rated at all) answers 0 to all eight operators.
+    # And `==`/`!==` are an exact STRING comparison of the stored number: `rating==7` is 0
+    # where `rating==7.0` is the 6 rows `rating=7` finds, while `year==2000` is the same 39
+    # as `year=2000`. Read the fixture's own rows rather than assuming what they hold.
+    # The operator lives in the parameter NAME, so every key here is built by concatenation
+    # -- a percent-escape inside a `%`-format string is a format spec.
+    rows_c19n = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    rated_c19n = [r_c19n for r_c19n in rows_c19n if r_c19n.get("rating") is not None]
+
+
+    def num_count_c19n(key_c19n):
+        body_c19n = get(base, "/library/sections/" + str(movie_section) + "/all?type=1&" + key_c19n)[1]
+        return len(body_c19n.get("Metadata") or [])
+
+
+    null_keys_c19n = {k_c19n: num_count_c19n("rating" + k_c19n + "=7") for k_c19n in
+                      ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}
+    check("a null numeric column matches no operator at all",
+          num_count_c19n("rating%3C=99999") == num_count_c19n("rating%3C%3C=99999")
+          == num_count_c19n("rating%21=7") == num_count_c19n("rating%21%3D=7")
+          == len(rated_c19n),
+          "rated=%d of %d  by operator %s" % (len(rated_c19n), len(rows_c19n),
+                                              sorted(null_keys_c19n.items())))
+    ar_c19n = [r_c19n.get("audienceRating") for r_c19n in rows_c19n
+               if r_c19n.get("audienceRating") is not None]
+    exact_c19n = num_count_c19n("audienceRating%3D=" + quote(ar_c19n[0])) if ar_c19n else -1
+    int_c19n = num_count_c19n("audienceRating%3D=" + quote(int(ar_c19n[0]))) if ar_c19n else -1
+    check("==/!== on a numeric column compare the stored number's TEXT",
+          bool(ar_c19n) and exact_c19n == ar_c19n.count(ar_c19n[0])
+          and int_c19n == 0
+          and num_count_c19n("audienceRating=" + quote(ar_c19n[0])) == ar_c19n.count(ar_c19n[0]),
+          "values %s  ==%r -> %d   ==%r -> %d"
+          % (ar_c19n, ar_c19n[0] if ar_c19n else None, exact_c19n,
+             int(ar_c19n[0]) if ar_c19n else None, int_c19n))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
