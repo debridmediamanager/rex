@@ -108,9 +108,26 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
                      ".wmv", ".flv", ".mpg", ".mpeg")
 
 
+# The characters a real PMS folds that NFD does NOT decompose. Cycle 18, swept
+# character by character on plexscratch over every codepoint from U+0080 to U+02FF that
+# NFD leaves alone -- 282 alphabetic and 106 non-alphabetic -- by writing a title with
+# each one in the middle and reading back the sort title. Exactly ELEVEN fold, all of
+# them in Latin-1, and the targets are not a transliteration anyone would write by hand:
+# `\u00f8` and `\u00d8` become the DIGIT ZERO and `\u00f0` becomes a capital `O`. Two of
+# them are witnessed on zen's real library as well (`D\u00f8d Kalm` sorts as `D0d Kalm`
+# and `D\u00e6monicus` as `Demonicus`), which is what found the gap: plexsim folded
+# combining marks only, so both rows carried no `titleSort` at all where a real PMS
+# sends one. Nothing above U+02FF folds -- Greek, Cyrillic and CJK all survive, as the
+# 51 non-ASCII rows of zen already showed.
+_FOLD = {"\u00c6": "E", "\u00d0": "D", "\u00d7": "x", "\u00d8": "0", "\u00de": "P",
+         "\u00df": "s", "\u00e6": "e", "\u00f0": "O", "\u00f7": "/", "\u00f8": "0",
+         "\u00fe": "p"}
+
+
 def fold_marks(text):
-    """Drop Unicode combining marks, leaving everything NFD does not decompose."""
-    return "".join(ch for ch in unicodedata.normalize("NFD", text)
+    """Drop Unicode combining marks, then the eleven characters NFD cannot reach."""
+    return "".join(_FOLD.get(ch, ch)
+                   for ch in unicodedata.normalize("NFD", text)
                    if not unicodedata.combining(ch))
 
 
