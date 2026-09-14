@@ -2734,6 +2734,20 @@ class PlexSim:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
 
+        # Cycle 18, measured on plexscratch over four `/system` paths and six verbs: the
+        # `/system` subtree is a DIFFERENT SERVER with an envelope of its own. `PATCH`
+        # is a **405** with an HTML body -- the one 405 on the surface, against the
+        # recorded "a real PMS never answers 405", which is the library server's rule --
+        # a bare `OPTIONS` is a 200 with an empty body, and every other unimplemented
+        # verb, and an unknown path under it, is a 404 with an EMPTY body and no
+        # `Content-Type` at all. plexsim answered its own text/plain 404 to all of them.
+        if segments[:1] == ["system"]:
+            if method == "PATCH":
+                return ("text", 405, "<html><head><title>405: Method Not Allowed</title>"
+                                     "</head><body>405: Method Not Allowed</body></html>")
+            if method == "OPTIONS":
+                return ("empty", 200)
+
         # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
         # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
         # single-segment path falls through to the legacy plug-in dispatcher for every
@@ -3190,6 +3204,10 @@ class PlexSim:
             return self.bare_container(
                 size=len(page), noHistory=0, replaceParent=0,
                 identifier="com.plexapp.system", Directory=page, **fields)
+        if segments[:1] == ["system"] and method in ("POST", "PUT", "DELETE"):
+            # The same envelope: an empty body and no Content-Type, not plexsim's
+            # text/plain refusal.
+            return ("empty", 404)
         if route == "/system/search":
             # Cycle 18, found by sweeping 46 second-level `/system/*` names against both
             # references: this one is a 200 on kids and zen alike, an empty
@@ -12122,10 +12140,12 @@ class Handler(BaseHTTPRequestHandler):
         "/", "/library/recentlyAdded", "/library/onDeck", "/library/tags",
         "/library/matches", "/playlists/all", "/hubs/promoted",
         "/hubs/continueWatching", "/hubs/search", "/status/sessions/history/all",
-        "/:/plugins", "/channels/all", "/services/browse", "/system",
-        "/system/agents", "/updater/status",
+        "/:/plugins", "/channels/all", "/services/browse", "/updater/status",
     )
-    READ_ONLY_PREFIXES = ("/system/scanners/",)
+    # Cycle 18: `/system`, `/system/agents` and `/system/scanners/{N}` were here, and
+    # the whole subtree has an envelope of its own instead -- 405 on PATCH, an empty 200
+    # on OPTIONS and an empty-bodied 404 on the rest, measured on plexscratch.
+    READ_ONLY_PREFIXES = ()
     # Cycle 17, measured on plexscratch: the collection ITEM paths take exactly one
     # verb each and answer 404 to every other. plexsim answered 200 with an empty
     # container to four verbs on the list, 200 with an invented single-item container
