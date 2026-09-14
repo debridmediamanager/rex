@@ -13411,6 +13411,21 @@ def main():
           and match_c17b5 == [400, 400],
           "post=%s section=%s match=%s" % (post_c17b5, section_c17b5, match_c17b5))
 
+
+    # Cycle 17, re-measured on plexscratch: `GET /library/sections/{id}/refresh?force=`
+    # PARSES the flag -- `abc` and an empty value are 400s there, where `0` and `1` are
+    # 200s. plexsim took anything and ran the scan, so a client that sent a malformed
+    # flag triggered a full refresh instead of being refused.
+    force_c17b6 = {value_c17b6: request(
+        base, "GET", "/library/sections/%s/refresh?force=%s"
+        % (movie_section, value_c17b6))[0]
+        for value_c17b6 in ("0", "1", "abc", "", "1.5", "-1")}
+    check("a section refresh parses its force flag",
+          force_c17b6["0"] == 200 and force_c17b6["1"] == 200
+          and force_c17b6["abc"] == 400 and force_c17b6[""] == 400
+          and force_c17b6["1.5"] == 400,
+          "%s" % force_c17b6)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
