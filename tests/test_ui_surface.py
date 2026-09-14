@@ -11742,6 +11742,47 @@ def main():
           "roku=%s chrome=%s" % (sorted(roku_c16o[0]) if roku_c16o else None,
                                  sorted(chrome_c16o[0]) if chrome_c16o else None))
 
+
+    # Cycle 16, re-measured on kids and zen over thirty Accept headers, correcting
+    # cycle 5's reading in six places. A range qualifies only if its media type is
+    # exactly `application/json` or `application/xml` AND either it has no parameters
+    # at all or its FIRST parameter begins exactly `q=` -- `;charset=utf-8`,
+    # `;level=1;q=0.5`, `; q=0.5` (a space after the semicolon) and `;Q=0.5` are all
+    # disqualified, while `application/json ;q=0.5` (a space BEFORE it) is not. A
+    # range with no parameter weighs 1.0; one whose single `q=` value parses as a
+    # non-negative float weighs that; anything else -- `q=0`, `q=abc`, `q=`, `q=-1`,
+    # `q="0.5"`, `q=0.5x`, and a second parameter of any kind -- weighs 0 and still
+    # QUALIFIES. Highest weight wins, a tie goes to the range listed first, and no
+    # qualifying range at all is XML. plexsim dropped every zero-or-unparseable q
+    # instead of ranking it, so `application/json;q=0` came back as XML where both
+    # references answer JSON.
+    accepts_c16p = {}
+    for header_c16p in ("application/json;q=0", "application/json;q=abc",
+                        "application/json;q=", "application/json;q=-1",
+                        "application/json;q=0.5;charset=utf-8",
+                        "application/json;charset=utf-8", "application/json; q=0.5",
+                        "application/json ;q=0.5", "application/json;Q=0.5",
+                        "application/json;q=0, application/xml;q=0.5",
+                        "application/xml;q=0.5, application/json",
+                        "application/json;q=0.5;level=1, application/xml;q=0.4"):
+        probe_c16p = urllib.request.Request(base + "/identity",
+                                            headers={"Accept": header_c16p, "User-Agent": UA})
+        with urllib.request.urlopen(probe_c16p, timeout=20) as answer_c16p:
+            accepts_c16p[header_c16p] = answer_c16p.read()[:1] == b"{" and "json" or "xml"
+    want_c16p = {"application/json;q=0": "json", "application/json;q=abc": "json",
+                 "application/json;q=": "json", "application/json;q=-1": "json",
+                 "application/json;q=0.5;charset=utf-8": "json",
+                 "application/json;charset=utf-8": "xml",
+                 "application/json; q=0.5": "xml", "application/json ;q=0.5": "json",
+                 "application/json;Q=0.5": "xml",
+                 "application/json;q=0, application/xml;q=0.5": "xml",
+                 "application/xml;q=0.5, application/json": "json",
+                 "application/json;q=0.5;level=1, application/xml;q=0.4": "xml"}
+    check("the Accept q grammar ranks a zero or unparseable q rather than dropping it",
+          accepts_c16p == want_c16p,
+          "%s" % {k_c16p: v_c16p for k_c16p, v_c16p in accepts_c16p.items()
+                  if want_c16p[k_c16p] != v_c16p})
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

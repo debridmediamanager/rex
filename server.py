@@ -1042,26 +1042,32 @@ def accept_wants_xml(header):
     """
     best = None
     for position, token in enumerate((header or "").split(",")):
-        parts = [part.strip() for part in token.split(";")]
-        if parts[0] not in ("application/json", "application/xml"):
+        parts = token.split(";")
+        if parts[0].strip() not in ("application/json", "application/xml"):
             continue
-        weight = 1.0
-        usable = True
-        for parameter in parts[1:]:
-            name, _, value = parameter.partition("=")
-            if name.strip() != "q":
-                usable = False
-                break
+        # Cycle 16, re-measured over thirty headers on kids and zen. The FIRST
+        # parameter decides whether the range counts at all and it is matched
+        # literally: `;charset=utf-8`, `;level=1;q=0.5`, `; q=0.5` (a space after the
+        # semicolon) and `;Q=0.5` disqualify the range, while a space BEFORE the
+        # semicolon does not. Everything after that first parameter only costs it its
+        # weight.
+        if parts[1:] and not parts[1].startswith("q="):
+            continue
+        if not parts[1:]:
+            weight = 1.0
+        else:
             try:
-                weight = float(value)
+                weight = float(parts[1][2:])
             except ValueError:
-                usable = False
-                break
-        if not usable or weight <= 0:
-            continue
+                weight = 0.0
+            if weight < 0 or len(parts) > 2:
+                # `q=-1` and a second parameter of any kind both weigh 0 -- and 0 is
+                # not a refusal: `application/json;q=0` alone is answered in JSON on
+                # both references, where plexsim dropped the range and answered XML.
+                weight = 0.0
         rank = (weight, -position)
         if best is None or rank > best[0]:
-            best = (rank, parts[0] == "application/xml")
+            best = (rank, parts[0].strip() == "application/xml")
     return True if best is None else best[1]
 
 
