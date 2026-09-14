@@ -15372,6 +15372,40 @@ def main():
               for op_c20d, (status_c20d, operator_c20d) in slug_parse_c20d.items())
           and all(code_c20d == 500 for code_c20d in slug_list_c20d.values()),
           "parse %s | listing %s" % (slug_parse_c20d, slug_list_c20d))
+
+    # Cycle 20: `guid` takes exactly two operator keys, and the parser reports both as
+    # `<=`. On both references `guid=x` and `guid<=x` are a Rule whose operator is `<=`
+    # -- the parser telling the client what cycle 13 measured from the listing side, that
+    # a bare `guid=` is a PREFIX match -- while `guid!=`, `guid!==`, `guid>=`, `guid>>=`
+    # and `guid<<=` are each an Error naming the key with the operator still on it
+    # (`guid!`, `guid>`), and a listing filtered on one of those answers every row. That
+    # is the "unknown FIELD" shape, so the operator is not part of the field's grammar at
+    # all. plexsim accepted all eight and echoed whichever it was given.
+
+    def parse_doc_c20(path_c20):
+        """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
+        cannot see. Read the body."""
+        status_c20, body_c20, _ = request(base, "GET", path_c20)
+        try:
+            return status_c20, json.loads(body_c20).get("Query") or {}
+        except ValueError:
+            return status_c20, {}
+    guid_c20e = {}
+    for label_c20e, key_c20e in (("=", "guid"), ("<=", "guid%3C"), ("!=", "guid%21"),
+                                 (">=", "guid%3E"), (">>=", "guid%3E%3E"), ("<<=", "guid%3C%3C")):
+        status_c20e, doc_c20e = parse_doc_c20("/library/sections/%s/query/parse?type=1&%s=plex"
+                                              % (movie_section, key_c20e))
+        rule_c20e = doc_c20e.get("Rule") or {}
+        guid_c20e[label_c20e] = (status_c20e, rule_c20e.get("operator"),
+                                 [e_c20e.get("value") for e_c20e in (doc_c20e.get("Error") or [])])
+    all_rows_c20e = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("size")
+    refused_c20e = get(base, "/library/sections/%s/all?type=1&guid%%21=plex" % movie_section)[1]
+    check("guid takes = and <= only, both reported as <=",
+          guid_c20e["="][1] == "<=" and guid_c20e["<="][1] == "<="
+          and all(guid_c20e[bad_c20e][1] is None and guid_c20e[bad_c20e][2]
+                  for bad_c20e in ("!=", ">=", ">>=", "<<="))
+          and refused_c20e.get("size") == all_rows_c20e,
+          "%s | guid!= listed %s of %s" % (guid_c20e, refused_c20e.get("size"), all_rows_c20e))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
