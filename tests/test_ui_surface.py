@@ -13172,6 +13172,55 @@ def main():
           and show_c17d6 == ["tv.plex.agents.series", "tv.plex.agents.none"],
           "bare=%s movie=%s show=%s" % (bare_c17d6, movie_c17d6, show_c17d6))
 
+
+    # Cycle 17, re-measured by the driver on plexscratch character by character and
+    # corroborated on zen: a leading run of PUNCTUATION comes off the sort title, and it
+    # comes off BEFORE the article. zen's episode 10866 is titled "'Til Death Do Us Art"
+    # and sorts as "Til Death Do Us Art"; its episode `firstCharacter` axis has 27
+    # buckets -- `#` then A-Z, no apostrophe bucket -- and the `T` bucket holds that row.
+    # The set is not a Unicode category: in ASCII only `" ' ( - . [ {` and `~` strip
+    # while `! # $ % & ) * + , / : ; < = > ? @ \ ] ^ _ ` | }` do not, and the fullwidth
+    # and CJK brackets do not either. Everything from U+0080 to U+00BF and everything
+    # from U+2000 to U+2FFF does strip -- 85 of 85 characters tested across those ranges
+    # -- while U+0100..U+1FFF and U+3000 upwards do not, so the boundary is sharp on
+    # both sides. The run may mix those characters with whitespace and repeat, and a
+    # title made of nothing else keeps its own text rather than sorting as the empty
+    # string.
+    def sort_of_c17a4(title_c17a4):
+        request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s"
+                             "&title.locked=1" % (spare, spare, quote(title_c17a4)))
+        row_c17a4 = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
+        return row_c17a4.get("title"), row_c17a4.get("titleSort")
+    if not spare:
+        skip("a leading punctuation run comes off the sort title",
+             "the fixture has no spare movie left")
+    else:
+        cases_c17a4 = [
+            ("'Til Death Do Us Art", "Til Death Do Us Art"),
+            ("(Krishna Katha) Pootna", "Krishna Katha) Pootna"),
+            ("-The Zulu Probe", "Zulu Probe"),
+            ("((( Zulu Probe", "Zulu Probe"),
+            (" . - Zulu Probe", "Zulu Probe"),
+            ("\u2018Zulu Probe", "Zulu Probe"),
+            ("\u00a1Zulu Probe", "Zulu Probe"),
+            # the article comes off AFTER the run, and only once, so a bracket that
+            # follows the article stays
+            ("The (Zulu Probe", "(Zulu Probe"),
+            # kept: these are not in the set
+            (")Zulu Probe", None),
+            ("!Zulu Probe", None),
+            ("\uff08Zulu Probe", None),
+            # a title with nothing but strippable characters keeps its own text
+            ("(((", None),
+        ]
+        wrong_c17a4 = []
+        for title_c17a4, want_c17a4 in cases_c17a4:
+            got_title_c17a4, got_c17a4 = sort_of_c17a4(title_c17a4)
+            if got_title_c17a4 != title_c17a4 or got_c17a4 != want_c17a4:
+                wrong_c17a4.append((title_c17a4, got_c17a4, want_c17a4))
+        check("a leading punctuation run comes off the sort title",
+              not wrong_c17a4, "wrong=%s" % wrong_c17a4[:3])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
