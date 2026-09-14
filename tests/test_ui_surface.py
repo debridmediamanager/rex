@@ -14591,6 +14591,50 @@ def main():
           % (ar_c19n, ar_c19n[0] if ar_c19n else None, exact_c19n,
              int(ar_c19n[0]) if ar_c19n else None, int_c19n))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). `contentRating` is declared
+    # `tag` like `genre`, but it is a COLUMN rather than a join, and it answers all eight
+    # operators: on zen `=PG` and `==PG` are 112 (and `==pg` too -- `=` is case-sensitive,
+    # `==` is not), `<=PG` 3,197 and `>>=PG` 690 partition the 3,887 exactly, and the empty
+    # value compares as "" so `>=` with no value is every row and `<<=` none. `resolution`
+    # is the other way round: every operator, `!=` included, answers the `=` set -- 3,608 of
+    # zen's 3,887 at `1080` for all eight. And `resolution=` matches ANY of a row's Media.
+    rows_c19t = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    rated_c19t = [str(r_c19t.get("contentRating") or "") for r_c19t in rows_c19t]
+
+
+    def tag_count_c19t(key_c19t):
+        body_c19t = get(base, "/library/sections/" + str(movie_section) + "/all?type=1&" + key_c19t)[1]
+        return len(body_c19t.get("Metadata") or [])
+
+
+    one_c19t = next((v_c19t for v_c19t in rated_c19t if v_c19t), "")
+    check("a tag COLUMN orders on <=/<<=/>=/>>= and folds case on ==",
+          bool(one_c19t)
+          and tag_count_c19t("contentRating%3D=" + quote(one_c19t.lower())) == rated_c19t.count(one_c19t)
+          and tag_count_c19t("contentRating=" + quote(one_c19t.lower())) == 0
+          and tag_count_c19t("contentRating%3E=") == len(rows_c19t)
+          and tag_count_c19t("contentRating%3C%3C=") == 0
+          and tag_count_c19t("contentRating%3C=" + quote(one_c19t))
+          + tag_count_c19t("contentRating%3E%3E=" + quote(one_c19t)) == len(rows_c19t),
+          "ratings %s  ==lower %d  =lower %d  >=(empty) %d  <<=(empty) %d  <= %d  >>= %d"
+          % (sorted(set(rated_c19t)),
+             tag_count_c19t("contentRating%3D=" + quote(one_c19t.lower())) if one_c19t else -1,
+             tag_count_c19t("contentRating=" + quote(one_c19t.lower())) if one_c19t else -1,
+             tag_count_c19t("contentRating%3E="), tag_count_c19t("contentRating%3C%3C="),
+             tag_count_c19t("contentRating%3C=" + quote(one_c19t)) if one_c19t else -1,
+             tag_count_c19t("contentRating%3E%3E=" + quote(one_c19t)) if one_c19t else -1))
+    res_c19t = [m_c19t.get("videoResolution") for r_c19t in rows_c19t
+                for m_c19t in (r_c19t.get("Media") or [])]
+    pick_c19t = next((v_c19t for v_c19t in res_c19t if v_c19t), None)
+    check("every resolution operator answers the same set as =",
+          pick_c19t is not None
+          and len({tag_count_c19t("resolution" + op_c19t + "=" + pick_c19t) for op_c19t in
+                   ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}) == 1,
+          "%r -> %s" % (pick_c19t,
+                        {op_c19t or "=": tag_count_c19t("resolution" + op_c19t + "=" + pick_c19t)
+                         for op_c19t in ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}
+                        if pick_c19t else None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

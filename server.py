@@ -6091,7 +6091,12 @@ class PlexSim:
         media = (row.get("Media") or [{}])[0]
         parts = media.get("Part") or [{}]
         if field == "resolution":
-            return media.get("videoResolution")
+            # Cycle 19: `resolution=` matches ANY of the row's Media, not the first.
+            # Measured on zen's multi-version movies -- 4093 The Breadwinner carries a
+            # `4k` and a `1080` and answers BOTH `resolution=4k` and `resolution=1080`;
+            # 401 The Devil's Mouth answers `1080` and `720` the same way. plexsim read
+            # `Media[0]`, so a row's second version was invisible to the filter.
+            return [m.get("videoResolution") for m in row.get("Media") or []]
         if field in ("videoCodec", "audioCodec", "container"):
             return media.get(field)
         if field == "audioLayout":
