@@ -9949,6 +9949,7 @@ class PlexSim:
             # client DISCARDS a queue response whose version it did not expect, so a
             # delete from Up Next threw the player's own queue away.
             was_selected = str(queue.get("selected")) == str(segments[3])
+            was_id = queue.get("selected")
             with self.lock:
                 items = queue["items"]
                 index = next((i for i, e in enumerate(items)
@@ -9971,6 +9972,15 @@ class PlexSim:
                 if was_selected:
                     body.pop("Metadata", None)
                     body["size"] = 0
+                    # The container is built after the mutation, so the SELECTION has
+                    # to be put back too: cycle 9 measured that this answer carries the
+                    # queue as it stood -- the old version, total AND selection -- and
+                    # only the NEXT read has the selection on the following item. This
+                    # cycle's first rewrite restored the version and the total and left
+                    # the new selection in place, and the standing cycle-9 check caught
+                    # it.
+                    if was_id is not None:
+                        body["playQueueSelectedItemID"] = was_id
             return answer
 
         if len(segments) == 2 and method == "PUT":

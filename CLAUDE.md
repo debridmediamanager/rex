@@ -1114,6 +1114,93 @@ precisely how the Seasons bug survived a fix attempt.
   themselves. A library **create** ends in a `backgroundProcessingQueue` `queueRegenerated`
   frame, which follows any write that leaves work in the queue.
 
+- **A real PMS LOCALISES its own text.** `X-Plex-Language` (header or query) beats
+  `Accept-Language`, a regional form works like its primary subtag, an unknown language
+  falls back to English, and 28 languages answer differently. The filter and sort menus,
+  the `Meta` titles, the hub titles, a GENERATED `Season N`, a stream's language name and
+  `displayTitle`, and all 200+ `/:/prefs` labels move; the LIBRARY's own rows do not, and
+  neither do `All Movies`, an axis's `title2` or `Unplayed` -- the same words ARE
+  translated as a section pivot's `title`, so the table is keyed by ATTRIBUTE and then by
+  the English string (`translations.json`, captured by diffing each endpoint against
+  itself in each language).
+- **A real PMS ROUTES before it authenticates.** With no token an unknown path is a
+  **404** and only a path that exists is a 401. Of the single-segment paths exactly eleven
+  answer 401 (`library hubs playlists devices butler servers clients accounts activities
+  playQueues log`), `/identity` and `/security` answer 200, and every other one is a
+  **403** -- whether or not it answers when a token IS given. `GET /` is a 401 whose
+  193-byte body redirects a browser into the web client.
+- **The `firstCharacter` AXIS and its BUCKETS disagree, on a real PMS.** The axis counts a
+  season or an episode by its SHOW's sort title (28 of 28 buckets on zen, both types); the
+  listing at `/firstCharacter/{key}` filters on the row's OWN stored sort title. So a
+  season list's `A` bucket says 64 and answers 0 rows.
+- **A section leaf's extra path segment is a bucket or a 404, never the leaf again.**
+  `/all/zzz`, `/sorts/zzz`, `/studio/<real key>`, `/audioLanguage/en` and fourteen more
+  are 404s; the tag axes, `year`, `decade`, `contentRating`, `resolution` and `userRating`
+  answer that bucket's rows. `extras/all`, `query/parse`, `indexes/thumbnails` and the
+  VERSIONED `composite/{v}` are the real two-segment leaves; the bare section
+  `/composite` is a 404.
+- **A show library's `?type=3`/`?type=4` grid defaults to BROADCAST order** -- the show's
+  sort title, then `parentIndex`, then `index` -- not to a flat `titleSort`, and its
+  `/unwatched` carries `nocache` like every other container it answers.
+- **An artwork path is a 200 only on the row that OWNS the image.** A row that borrows
+  carries the owner's path verbatim (kids' season 7 and episode 8 both carry
+  `/library/metadata/6/art/<v>`), so comparing the stored path's ratingKey with the
+  requested one IS the rule; cycle 15's episode-only `/art` 404 was its special case.
+- **The envelope is measured too.** Every response names its connection state
+  (`Keep-Alive: timeout=20`, and an idle socket really is closed at 20 s); a paged
+  container answers `X-Plex-Container-Start`/`-Total-Size` as HEADERS and the paging
+  header BEATS the query; `Range` applies to every body (206/416, never gzipped); a
+  malformed header (no colon, a TAB in a value, a name over 1024 or a value over 4096) is
+  a 400; `Accept-Encoding` tokens match exactly (`GZIP` and `x-gzip` get plain); no `100
+  Continue`; a preflight with no `Origin` carries no CORS headers; and **no `Server:`
+  banner at all**.
+- **The Accept `q` grammar ranks a zero rather than dropping it.** The FIRST parameter must
+  begin exactly `q=` or the range is disqualified (`; q=0.5` and `;Q=0.5` are out,
+  `application/json ;q=0.5` is in); no parameter weighs 1.0, a single parseable
+  non-negative `q` weighs that, and everything else -- `q=0`, `q=abc`, `q=`, `q=-1`,
+  `q="0.5"`, `q=0.5x`, a second parameter -- weighs 0 and still QUALIFIES.
+- **`/web` is a `302 Moved Temporarily`** with an ABSOLUTE Location from the request's own
+  `Host` and `Cache-Control: public`, the one place on the surface that is not
+  `no-cache`; a `/web/*` asset is `no-cache`, `Accept-Ranges: bytes` and never gzipped,
+  `.js` is `text/javascript`, `.html` carries no charset, `.ico` is
+  `application/octet-stream`.
+- **`X-Plex-Platform: Roku`** -- that exact spelling -- strips `id` and `Pivot` from every
+  library `Directory` of `/media/providers` and changes nothing else.
+- **Four XML shapes**: a `Meta/Type` orders its children `Filter, Sort, Field`;
+  `includeDetails=1` carries no `active`/`activeDirection` on a Sort nor `advanced` on a
+  Filter where `includeMeta=1` carries all three; the rows `includeChildren=1` inlines
+  carry no librarySection triple; and a container's attributes are `size`, then
+  `totalSize` and `offset` when paged, then alphabetical.
+- **`/playlists/{id}/items` is a typed QUERY** -- `type=2` answers the SHOW that owns the
+  member episodes and `type=3` their seasons -- and `includeMeta=1` carries the page's own
+  tab bar. A playlist is born `viewCount: 1` with `lastViewedAt == addedAt`, and that pair
+  is on the LISTING row only. `/playlists` filters by `title`, `smart`, `sectionID` and
+  `type` (a playlist is 15), its default order is SMART first then `titleSort`, and
+  `sort=mediaCount` is a real ordering where `leafCount` is a 500.
+- **`POST /playlists/{id}/items` is a 404**: only PUT adds. An empty `title=` is stored
+  verbatim; `smart=1` over a comma-joined KEY LIST is a 400 (the test is the uri's SHAPE,
+  not whether it resolves -- refusing anything that resolves breaks every smart create);
+  a uri the server cannot resolve adds NOTHING. `PUT /playlists/{id}` takes the whole ITEM
+  edit grammar, `playlistItemID` is a SERVER-WIDE sequence, a smart list's items carry
+  none and every item write on one is a 400, and a playlist's artwork lives under
+  `/library/metadata/{ratingKey}/` while `/playlists/{id}/{posters,arts,thumb,art}` and
+  the bare `composite` are 404s.
+- **A shuffled play queue is really shuffled** (plexsim reversed it, identically every
+  time). `includeBefore`/`includeAfter` window the queue with NO `window=` -- the radius is
+  unlimited then -- and each is a boolean whose every other value is a 400. EVERY item
+  delete answers the container as it stood BEFORE it, and only the SELECTED one drops the
+  rows. A move refuses `after=<itself>` (404) and an empty `after=` (400). A queue built
+  from a PLAYLIST uri is a playlist queue.
+- **The SECTION save path stores an unlocked `titleSort.value=`** until the next title
+  write re-derives it, where the ITEM path discards it; `type=abc` there is a 400. A
+  show's `contentRating` reaches only the episodes carrying none of their own, a show's
+  `index` cascades onto its seasons' `parentIndex`, a season that LOSES its year gains
+  `parentYear` in the same read, and the `state 3` frame carries the row's title from
+  BEFORE the write.
+- **An UNMATCHED item drops its agent-driven prefs**: a show loses `languageOverride` and
+  `useOriginalTitle`, a MOVIE loses the whole `Preferences` block, a season keeps its
+  three.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
