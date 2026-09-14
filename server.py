@@ -542,6 +542,38 @@ def _begins_word(text, wanted):
 # `mediaCount` "Item Count" where `/playlists/sorts` below ends with `updatedAt`
 # "Date Modified" -- the two lists really are different, and each was measured on
 # its own path. The client reads `Meta.Type[].Sort` straight into its sort menu.
+# Cycle 15, captured verbatim from plexscratch: the two settings a collection's
+# `includePreferences=1` block carries. Which SECOND one appears depends on `smart` --
+# a smart collection has `collectionFilterBasedOnUser` and no collection ORDER at all,
+# which the write side agrees with (a `collectionSort` write to a smart collection is a
+# 400 where `collectionMode` is a 200).
+COLLECTION_PREFS = {
+    "collectionMode": {
+        "id": "collectionMode", "label": "Collection Mode",
+        "summary": "How the items in the collection are displayed on the Library tab.",
+        "type": "text", "default": "-1", "value": "-1", "hidden": False,
+        "advanced": False, "group": "",
+        "enumValues": "-1:Library default|1:Hide items in this collection"
+                      "|2:Show this collection and its items"
+                      "|0:Hide this collection but show its items"},
+    "collectionSort": {
+        "id": "collectionSort", "label": "Collection order",
+        "summary": "How to sort the items in the collection.",
+        "type": "text", "default": "0", "value": "0", "hidden": False,
+        "advanced": False, "group": "",
+        "enumValues": "0:Release date|1:Alphabetical"},
+    "collectionFilterBasedOnUser": {
+        "id": "collectionFilterBasedOnUser",
+        "label": "Collection filtering based on",
+        "summary": "Which user's activity (e.g. user rating, play count, or watched "
+                   "status) is used for the collection filtering.",
+        "type": "text", "default": "0", "value": "0", "hidden": False,
+        "advanced": False, "group": "",
+        "enumValues": "0:Always the server admin user"
+                      "|1:User currently viewing the content"},
+}
+
+
 PLAYLIST_META = {"Type": [{
     "key": "/playlists", "type": "playlist", "title": "All", "active": True,
     "Sort": [
@@ -5661,6 +5693,13 @@ class PlexSim:
             # prefs are not fields.
             if method != "PUT" or collection is None:
                 return ("error", 404, "plexsim: not found")
+            if collection.get("smart") and "collectionSort" in query:
+                # Cycle 15, measured on the copy: a SMART collection refuses
+                # `collectionSort` with a 400 -- for `0` as well as `1` -- and the row
+                # never gains the field, while `collectionMode` is a 200. It has no
+                # collection ORDER at all: its Preferences block carries
+                # `collectionFilterBasedOnUser` in that slot instead.
+                return ("error", 400, "plexsim: bad request")
             for name, value in query.items():
                 if name.startswith("X-Plex-") or name == "_pairs":
                     continue
@@ -5771,9 +5810,25 @@ class PlexSim:
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"),
                 mediaTagPrefix="/system/bundle/media/flags/", mediaTagVersion=1655122614,
-                Metadata=[self.library._collection_row(collection)])
+                Metadata=[self.collection_detail(collection, query)])
         row = self.library._playlist_row(playlist, content=True)
         return self.bare_container(size=1, Metadata=[row])
+
+    def collection_detail(self, collection, query):
+        """A collection's detail row, with its Preferences when asked for. Cycle 15."""
+        row = self.library._collection_row(collection)
+        if (query or {}).get("includePreferences") == "1":
+            second = ("collectionFilterBasedOnUser" if collection.get("smart")
+                      else "collectionSort")
+            stored = collection
+            settings = []
+            for name in ("collectionMode", second):
+                setting = dict(COLLECTION_PREFS[name])
+                if name in stored:
+                    setting["value"] = str(stored[name])
+                settings.append(setting)
+            row["Preferences"] = {"Setting": settings}
+        return row
 
     def apply_edit(self, rows, query, section=False, metadata_state="loading"):
         """One edit against one or more rows, with the refusals a real PMS makes.
@@ -8853,7 +8908,7 @@ class PlexSim:
                 else collection["librarySectionID"],
                 librarySectionTitle=section.get("title"),
                 librarySectionUUID=section.get("uuid"),
-                Metadata=[self.library._collection_row(collection)],
+                Metadata=[self.collection_detail(collection, query)],
             )
 
         leaf = segments[3]
