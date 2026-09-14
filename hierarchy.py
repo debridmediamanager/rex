@@ -312,6 +312,19 @@ def normalize_rows(rows):
         season = by_key.get(str(row.get("parentRatingKey")))
         if season and season.get("art"):
             row["art"] = season["art"]
+        # Cycle 20, held out against 9,293 real episodes on both references: a season
+        # hands its poster down only when the poster is its OWN. zen's 654 seasons with
+        # a thumb of their own give every episode a `parentThumb` and its 27 whose thumb
+        # is the SHOW's give none, with no exception on either side; kids agrees on both
+        # of its seasons. `art` above is the opposite -- handed down borrowed or not --
+        # so this is a property of the FIELD and not of the row. The test is the stored
+        # path, which is the only thing the response exposes: cycle 16 measured that a
+        # borrowing row carries the owner's path verbatim, so a `thumb` naming another
+        # ratingKey IS the borrowed case. See HANDOVER.md 3.3.
+        if season is not None:
+            thumb = str(season.get("thumb") or "")
+            if not thumb.startswith("/library/metadata/%s/" % season.get("ratingKey")):
+                row.pop("parentThumb", None)
     for row in rows:
         if row.get("type") not in ("show", "season"):
             continue
