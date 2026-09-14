@@ -16454,6 +16454,29 @@ def main():
           all(keys_c21h[s_c21h] == ["allowSync", "identifier"] for s_c21h in keys_c21h)
           and all(sync_c21h[s_c21h] is True for s_c21h in sync_c21h),
           "%s | allowSync %s" % (keys_c21h, sync_c21h))
+
+    # Cycle 21, measured on kids and zen over four row types: an artwork path with an
+    # EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
+    # and `/thumb/{v}/1/2` both, on `thumb`, `poster` and `art`. A single trailing slash
+    # is a 200 on all three (the recorded "one trailing slash is harmless") and so is a
+    # bad version. plexsim served the image for anything that merely STARTED like an
+    # artwork path, which is the inverse of the `/photo/:/transcode` rule: a 404 lets
+    # the client draw its own placeholder where a 200 gets cached.
+    _, art_row_c21i, _ = get(base, "/library/metadata/%s" % movie)
+    row_c21i = (art_row_c21i.get("Metadata") or [{}])[0]
+    version_c21i = str(row_c21i.get("thumb") or "").rsplit("/", 1)[-1] or "1"
+    codes_c21i = {}
+    for suffix_c21i in ("", "/", "/extra", "/1/2"):
+        codes_c21i[suffix_c21i or "<bare>"] = request(
+            base, "GET", "/library/metadata/%s/thumb/%s%s" % (movie, version_c21i, suffix_c21i),
+            want_json=False)[0]
+    art_codes_c21i = request(base, "GET", "/library/metadata/%s/art/%s/extra"
+                             % (movie, version_c21i), want_json=False)[0]
+    check("an artwork path with an extra segment is a 404",
+          codes_c21i["<bare>"] == 200 and codes_c21i["/"] == 200
+          and codes_c21i["/extra"] == 404 and codes_c21i["/1/2"] == 404
+          and art_codes_c21i == 404,
+          "%s | art/extra %s" % (codes_c21i, art_codes_c21i))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

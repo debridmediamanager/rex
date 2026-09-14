@@ -7584,6 +7584,16 @@ class PlexSim:
             return self.bare_container(Metadata=[detail], **fields)
 
         leaf = segments[3]
+        if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
+            # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
+            # after the version is a 404 -- `/thumb/{v}/x` and `/thumb/{v}/1/2` both, on
+            # `thumb`, `art` and `poster`. A single trailing slash stays a 200 (the
+            # recorded "one trailing slash is harmless"), which is why an empty piece is
+            # filtered out, and so does a bad version. plexsim served the image for
+            # anything that merely STARTED like an artwork path, which is the inverse of
+            # the `/photo/:/transcode` rule: a 404 lets the client draw its own
+            # placeholder where a 200 gets cached.
+            return ("error", 404, "plexsim: not found")
         if leaf == "children" and row.get("type") in ("movie", "episode", "clip", "track"):
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
