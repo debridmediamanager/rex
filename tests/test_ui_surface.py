@@ -14642,6 +14642,63 @@ def main():
                                                  % (movie_section, mres_c19v[0]))[1].get("Metadata") or [])
                                          if mres_c19v else -1))
 
+
+    # Cycle 20, the derivation holdout: every rule `hierarchy.normalize_rows` applies,
+    # checked row by row against zen's 507 shows, 741 seasons and 9,287 episodes. A
+    # season's `titleSort` does NOT follow its `year`. 740 of zen's 741 seasons carry no
+    # `titleSort` at all and the one that does -- One Piece's season 22, the only season
+    # in the library with a `year` -- carries `"Egghead"`, its own stored title, not the
+    # `"Season 22"` it displays. Cycle 7 fitted "a year means titleSort == title" to
+    # kids' season 7, whose `Season 1` came from the agent and IS stored. plexsim
+    # synthesises every season title, so under cycle 18's stored-title rule it stores
+    # none -- and it was contradicting itself: the ROW said `titleSort: "Season 19"`
+    # while `?titleSort=` (an equality on the empty string) matched the same row.
+    _, seasons_c20a, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    rows_c20a = [r_c20a for r_c20a in (seasons_c20a.get("Metadata") or [])
+                 if re.match(r"^Season \d+$", str(r_c20a.get("title") or ""))]
+    # A sort title EQUAL to the title is the one the year branch used to mint; a
+    # different one was written by an earlier check in this suite and is real.
+    minted_c20a = [r_c20a for r_c20a in rows_c20a
+                   if r_c20a.get("titleSort") == r_c20a.get("title")]
+    bare_c20a = [r_c20a for r_c20a in rows_c20a if "titleSort" not in r_c20a]
+    status_c20a, empty_c20a, _ = get(base, "/library/sections/%s/all?type=3&titleSort="
+                                     % show_section)
+    matched_c20a = {str(r_c20a.get("ratingKey")) for r_c20a in (empty_c20a.get("Metadata") or [])}
+    check("a synthesised season sends no titleSort, whatever its year",
+          bool(rows_c20a) and any(r_c20a.get("year") for r_c20a in rows_c20a)
+          and not minted_c20a and bool(bare_c20a) and status_c20a == 200
+          and all(str(r_c20a.get("ratingKey")) in matched_c20a for r_c20a in bare_c20a),
+          "%s | titleSort= matched %s"
+          % ([(r_c20a.get("ratingKey"), r_c20a.get("year"), r_c20a.get("titleSort"))
+              for r_c20a in rows_c20a], sorted(matched_c20a)))
+
+
+    # Cycle 20, the derivation holdout, on 9,293 real episodes across both references: a
+    # season hands its `thumb` down as `parentThumb` only when the thumb is its OWN. Of
+    # zen's 681 seasons whose episodes exist, the 654 with a poster of their own give
+    # every episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of
+    # them one -- 0 exceptions either way -- and kids reproduces it exactly: season 7 has
+    # its own poster and its three episodes carry `parentThumb`, season 11 carries the
+    # show's and its three carry none. `art` is NOT like this: it is handed down borrowed
+    # or not. plexsim copied the season's thumb down whatever it pointed at, so an
+    # episode row named a poster that belongs to another row.
+    _, seasons_c20b, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    season_thumbs_c20b = {str(r_c20b.get("ratingKey")): str(r_c20b.get("thumb") or "")
+                          for r_c20b in (seasons_c20b.get("Metadata") or [])}
+    own_c20b = {rk_c20b for rk_c20b, thumb_c20b in season_thumbs_c20b.items()
+                if thumb_c20b.startswith("/library/metadata/%s/" % rk_c20b)}
+    borrowed_c20b = set(season_thumbs_c20b) - own_c20b
+    _, eps_c20b, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+    ep_rows_c20b = eps_c20b.get("Metadata") or []
+    carry_c20b = [(str(r_c20b.get("parentRatingKey")), "parentThumb" in r_c20b)
+                  for r_c20b in ep_rows_c20b]
+    check("an episode carries parentThumb only where the season's poster is its own",
+          bool(own_c20b) and bool(borrowed_c20b) and bool(carry_c20b)
+          and all(has_c20b for parent_c20b, has_c20b in carry_c20b if parent_c20b in own_c20b)
+          and not any(has_c20b for parent_c20b, has_c20b in carry_c20b
+                      if parent_c20b in borrowed_c20b),
+          "own %s borrowed %s -> %s" % (sorted(own_c20b), sorted(borrowed_c20b), carry_c20b))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
@@ -15250,61 +15307,6 @@ def main():
                   for f_c19u in upd_c19u),
           "%d frames %s" % (len(upd_c19u), rows_c19u))
 
-
-    # Cycle 20, the derivation holdout: every rule `hierarchy.normalize_rows` applies,
-    # checked row by row against zen's 507 shows, 741 seasons and 9,287 episodes. A
-    # season's `titleSort` does NOT follow its `year`. 740 of zen's 741 seasons carry no
-    # `titleSort` at all and the one that does -- One Piece's season 22, the only season
-    # in the library with a `year` -- carries `"Egghead"`, its own stored title, not the
-    # `"Season 22"` it displays. Cycle 7 fitted "a year means titleSort == title" to
-    # kids' season 7, whose `Season 1` came from the agent and IS stored. plexsim
-    # synthesises every season title, so under cycle 18's stored-title rule it stores
-    # none -- and it was contradicting itself: the ROW said `titleSort: "Season 19"`
-    # while `?titleSort=` (an equality on the empty string) matched the same row.
-    _, seasons_c20a, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
-    rows_c20a = [r_c20a for r_c20a in (seasons_c20a.get("Metadata") or [])
-                 if re.match(r"^Season \d+$", str(r_c20a.get("title") or ""))]
-    # A sort title EQUAL to the title is the one the year branch used to mint; a
-    # different one was written by an earlier check in this suite and is real.
-    minted_c20a = [r_c20a for r_c20a in rows_c20a
-                   if r_c20a.get("titleSort") == r_c20a.get("title")]
-    bare_c20a = [r_c20a for r_c20a in rows_c20a if "titleSort" not in r_c20a]
-    status_c20a, empty_c20a, _ = get(base, "/library/sections/%s/all?type=3&titleSort="
-                                     % show_section)
-    matched_c20a = {str(r_c20a.get("ratingKey")) for r_c20a in (empty_c20a.get("Metadata") or [])}
-    check("a synthesised season sends no titleSort, whatever its year",
-          bool(rows_c20a) and any(r_c20a.get("year") for r_c20a in rows_c20a)
-          and not minted_c20a and bool(bare_c20a) and status_c20a == 200
-          and all(str(r_c20a.get("ratingKey")) in matched_c20a for r_c20a in bare_c20a),
-          "%s | titleSort= matched %s"
-          % ([(r_c20a.get("ratingKey"), r_c20a.get("year"), r_c20a.get("titleSort"))
-              for r_c20a in rows_c20a], sorted(matched_c20a)))
-
-    # Cycle 20, the derivation holdout, on 9,293 real episodes across both references: a
-    # season hands its `thumb` down as `parentThumb` only when the thumb is its OWN. Of
-    # zen's 681 seasons whose episodes exist, the 654 with a poster of their own give
-    # every episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of
-    # them one -- 0 exceptions either way -- and kids reproduces it exactly: season 7 has
-    # its own poster and its three episodes carry `parentThumb`, season 11 carries the
-    # show's and its three carry none. `art` is NOT like this: it is handed down borrowed
-    # or not. plexsim copied the season's thumb down whatever it pointed at, so an
-    # episode row named a poster that belongs to another row.
-    _, seasons_c20b, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
-    season_thumbs_c20b = {str(r_c20b.get("ratingKey")): str(r_c20b.get("thumb") or "")
-                          for r_c20b in (seasons_c20b.get("Metadata") or [])}
-    own_c20b = {rk_c20b for rk_c20b, thumb_c20b in season_thumbs_c20b.items()
-                if thumb_c20b.startswith("/library/metadata/%s/" % rk_c20b)}
-    borrowed_c20b = set(season_thumbs_c20b) - own_c20b
-    _, eps_c20b, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
-    ep_rows_c20b = eps_c20b.get("Metadata") or []
-    carry_c20b = [(str(r_c20b.get("parentRatingKey")), "parentThumb" in r_c20b)
-                  for r_c20b in ep_rows_c20b]
-    check("an episode carries parentThumb only where the season's poster is its own",
-          bool(own_c20b) and bool(borrowed_c20b) and bool(carry_c20b)
-          and all(has_c20b for parent_c20b, has_c20b in carry_c20b if parent_c20b in own_c20b)
-          and not any(has_c20b for parent_c20b, has_c20b in carry_c20b
-                      if parent_c20b in borrowed_c20b),
-          "own %s borrowed %s -> %s" % (sorted(own_c20b), sorted(borrowed_c20b), carry_c20b))
 
     # Cycle 20, the parser holdout (every field x every operator against both
     # references): four more columns PARSE. `theme`, `banner`, `art` and `thumb` each
