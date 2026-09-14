@@ -15374,6 +15374,28 @@ def main():
           and order_c21q == {"rate rating first": 400, "progress ident first": 404,
                              "plus key": 200},
           "%s | %s" % (sorted(grid_c21q.items()), order_c21q))
+
+    # Cycle 21, measured on plexscratch value by value: `/:/progress?time=` takes a NEGATIVE
+    # value and a leading `+`. `-1` and `-500000` are 200s that store nothing, `+120000`
+    # stores 120000, and `abc`, an empty value, `1.5`, `0x10`, `1e6` and a leading space
+    # stay the 500 plexsim already answered. plexsim read the value with `isdigit()`, so
+    # the two shapes a real PMS accepts were refused.
+    codes_c21r = {}
+    for label_c21r, value_c21r in (("neg1", "-1"), ("neg", "-500000"), ("plus", "%2B120000"),
+                                   ("zero", "0"), ("word", "abc"), ("empty", ""),
+                                   ("fraction", "1.5"), ("hex", "0x10"), ("exp", "1e6"),
+                                   ("space", "%20120000")):
+        codes_c21r[label_c21r] = request(
+            base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                         "&time=%s&state=played" % (movie, value_c21r))[0]
+    _, plus_back_c21r, _ = get(base, "/library/metadata/%s" % movie)
+    stored_c21r = (plus_back_c21r.get("Metadata") or [{}])[0].get("viewOffset")
+    check("/:/progress?time= takes a negative value and a leading plus",
+          codes_c21r == {"neg1": 200, "neg": 200, "plus": 200, "zero": 200,
+                         "word": 500, "empty": 500, "fraction": 500, "hex": 500,
+                         "exp": 500, "space": 500}
+          and stored_c21r == 120000,
+          "%s | stored %r" % (codes_c21r, stored_c21r))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
