@@ -3447,7 +3447,14 @@ class PlexSim:
         # sidesteps the resource `accessToken` entirely, which is the one thing
         # blocking app.plex.tv from connecting to plexsim.
         if route == "/web" or route == "/web/":
-            return ("redirect", "/web/index.html")
+            # Cycle 16, measured on kids and zen: the Location is ABSOLUTE and
+            # built from the request's own `Host` header -- `Host:
+            # example.com:1234` gives `http://example.com:1234/web/index.html`
+            # and an empty Host gives `http:///web/index.html`. plexsim sent a
+            # RELATIVE Location, which is legal and is not what a real PMS
+            # sends.
+            return ("redirect", "http://%s/web/index.html"
+                    % ((headers.get("Host") or "") if headers else ""))
         if route.startswith("/web/"):
             return ("static", route[len("/web/"):])
         # The web app opens this as soon as it connects. A real PMS pushes
@@ -11332,8 +11339,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._serve_websocket()
                 return
             if kind == "redirect":
-                self.send_response(302)
+                # Cycle 16, measured on kids and zen: the reason phrase is
+                # "Moved Temporarily" rather than Python's "Found", and the
+                # response carries `X-Plex-Protocol: 1.0` and `Cache-Control:
+                # public` -- the ONE place on the whole surface that is not
+                # `no-cache`. plexsim sent neither header.
+                self.send_response(302, "Moved Temporarily")
+                self.send_header("X-Plex-Protocol", "1.0")
                 self.send_header("Location", result[1])
+                self.send_header("Cache-Control", "public")
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return

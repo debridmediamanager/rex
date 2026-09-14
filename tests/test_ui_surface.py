@@ -11967,6 +11967,33 @@ def main():
           and fine_c16v == b"200",
           "%s ; a space in the value is fine -> %s" % (refused_c16v, fine_c16v))
 
+
+    # Cycle 16, measured on kids and zen: `/web` and `/web/` answer `302 Moved
+    # Temporarily` with an ABSOLUTE `Location` built from the request's own `Host`
+    # header (`Host: example.com:1234` gives `http://example.com:1234/web/index.html`),
+    # `Cache-Control: public`, `X-Plex-Protocol: 1.0` and a zero-length body. plexsim
+    # answered `302 Found` with a relative `Location: /web/index.html`, no
+    # X-Plex-Protocol and no Cache-Control -- a relative Location is legal but it is
+    # not what a real PMS sends, and the `public` is the one place on the surface that
+    # is not `no-cache`.
+    import http.client as http_c16x
+
+    connection_c16x = http_c16x.HTTPConnection(
+        base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]), timeout=20)
+    connection_c16x.request("GET", "/web", headers={"Host": "example.com:1234",
+                                                    "User-Agent": UA})
+    answer_c16x = connection_c16x.getresponse()
+    answer_c16x.read()
+    seen_c16x = (answer_c16x.status, answer_c16x.reason,
+                 answer_c16x.headers.get("Location"),
+                 answer_c16x.headers.get("Cache-Control"),
+                 answer_c16x.headers.get("X-Plex-Protocol"))
+    connection_c16x.close()
+    check("the /web redirect is absolute, from the request's own Host",
+          seen_c16x == (302, "Moved Temporarily",
+                        "http://example.com:1234/web/index.html", "public", "1.0"),
+          "%s" % (seen_c16x,))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
