@@ -12047,6 +12047,45 @@ def main():
         web_c16y.terminate()
         web_c16y.wait(timeout=10)
 
+
+    # Cycle 16, measured on plexscratch: `/playlists/{id}/items` is a real typed QUERY,
+    # not a fixed list. `?type=1` answers the movie members, `?type=2` the SHOW that
+    # owns the member episodes, `?type=3` their seasons, `?type=4` the episodes, a type
+    # the list holds nothing of answers 0, `?type=-1` answers everything and `?type=1.5`
+    # is a 400; a filter (`?title=`, `?year>>=`, `?unwatched=1`) constrains it; an
+    # unknown field is ignored; `sort=` and `limit=` are PARSED and then ignored (an
+    # unparseable one is a 500); and `?includeMeta=1` carries the Meta the page's own
+    # All / Movies / Episodes / Seasons / TV Shows tab bar is built from. plexsim
+    # answered every row to every one of them and no Meta at all, so the tab bar was
+    # absent and each tab, had it been drawn, would have shown the same list.
+    made_c16a1 = request(base, "POST", "/playlists?title=c16items&type=video&smart=0"
+                         "&uri=%s" % quote("server://%s/com.plexapp.plugins.library"
+                                           "/library/metadata/%s" % (machine, movie)))
+    key_c16a1 = json.loads(made_c16a1[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    request(base, "PUT", "/playlists/%s/items?uri=%s"
+            % (key_c16a1, quote("server://%s/com.plexapp.plugins.library"
+                                "/library/metadata/%s" % (machine, show))))
+    sizes_c16a1 = {}
+    for probe_c16a1 in ("", "?type=1", "?type=2", "?type=4", "?type=0", "?type=-1"):
+        sizes_c16a1[probe_c16a1 or "bare"] = get(
+            base, "/playlists/%s/items%s" % (key_c16a1, probe_c16a1))[1].get("size")
+    refusals_c16a1 = tuple(get(base, "/playlists/%s/items?%s" % (key_c16a1, probe_c16a1))[0]
+                           for probe_c16a1 in ("type=1.5", "sort=bogus", "limit=abc"))
+    meta_c16a1 = get(base, "/playlists/%s/items?includeMeta=1" % key_c16a1)[1].get("Meta")
+    titled_c16a1 = get(base, "/playlists/%s/items?title=nosuchtitleatall"
+                       % key_c16a1)[1].get("size")
+    request(base, "DELETE", "/playlists/%s" % key_c16a1)
+    check("a playlist's items are a typed query with the page's own Meta",
+          sizes_c16a1["?type=1"] == 1 and sizes_c16a1["?type=0"] == 0
+          and sizes_c16a1["?type=-1"] == sizes_c16a1["bare"]
+          and sizes_c16a1["?type=2"] == 1 and sizes_c16a1["?type=4"] >= 1
+          and refusals_c16a1 == (400, 500, 500)
+          and titled_c16a1 == 0
+          and bool((meta_c16a1 or {}).get("Type")),
+          "%s refusals=%s title=%s meta=%s"
+          % (sizes_c16a1, refusals_c16a1, titled_c16a1,
+             [t_c16a1.get("title") for t_c16a1 in (meta_c16a1 or {}).get("Type") or []]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

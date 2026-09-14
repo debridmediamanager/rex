@@ -9444,6 +9444,45 @@ class PlexSim:
 
     # -- playlists -------------------------------------------------------
 
+    def _playlist_items_meta(self, playlist):
+        """The tab bar the playlist page draws -- measured on plexscratch.
+
+        `?includeMeta=1` on a playlist's items carries a Meta whose Type rows
+        are All plus one per type the list can be narrowed to, every one of
+        them `type: "mixed"` and keyed by this same path with a `?type=`.
+        plexsim carried no Meta, so the page drew no tabs.
+        """
+        path = "/playlists/%s/items" % playlist["ratingKey"]
+        return {"Type": [
+            {"key": path, "type": "mixed", "title": "All", "active": True},
+            {"key": path + "?type=1", "type": "mixed", "title": "Movies",
+             "active": False},
+            {"key": path + "?type=4", "type": "mixed", "title": "Episodes",
+             "active": False},
+            {"key": path + "?type=3", "type": "mixed", "title": "Seasons",
+             "active": False},
+            {"key": path + "?type=2", "type": "mixed", "title": "TV Shows",
+             "active": False},
+        ]}
+
+    def _playlist_ancestry(self, row):
+        """A member row and the parents a `type=` above it selects -- measured.
+
+        Cycle 16 on plexscratch: a playlist of four episodes answers `size 1` to
+        `?type=2` (the show that owns them) and `size 2` to `?type=3` (their seasons),
+        so the type reaches UP the tree from each member, de-duplicated.
+        """
+        found = [row]
+        parent = self.catalog.items.get(int(row["parentRatingKey"])) \
+            if str(row.get("parentRatingKey") or "").isdigit() else None
+        if parent is not None:
+            found.append(parent)
+        grand = self.catalog.items.get(int(row["grandparentRatingKey"])) \
+            if str(row.get("grandparentRatingKey") or "").isdigit() else None
+        if grand is not None:
+            found.append(grand)
+        return found
+
     def playlists_route(self, method, segments, query):
         """`/playlists` -- Add to Playlist, and the Playlists pivot.
 
@@ -9579,12 +9618,48 @@ class PlexSim:
                 return self.bare_container(
                     size=1, leafCountAdded=added, leafCountRequested=len(rows),
                     Metadata=[self.library._playlist_row(playlist)])
+            # Cycle 16, measured on plexscratch: this is a real typed QUERY. A
+            # `type=` selects the members of that type -- and above the leaf it
+            # selects the PARENTS the members belong to, so a list of episodes
+            # answers its show to `type=2` and its seasons to `type=3` -- a type the
+            # list holds nothing of answers 0, `-1` answers everything and a
+            # fractional one is a 400. The library filters apply on top, `sort=` and
+            # `limit=` are parsed and then ignored (an unparseable one is a 500), and
+            # `includeMeta=1` carries the Meta the page's tab bar is built from.
+            # plexsim answered every row to every one of these.
+            self._parsed_type(query, 400, 400)
+            wanted = str(query.get("type") or "")
+            pairs = list(self.library.playlist_items(playlist))
+            if wanted and wanted != "-1":
+                kind = {"1": "movie", "2": "show", "3": "season",
+                        "4": "episode"}.get(wanted)
+                kept = []
+                seen = set()
+                for row, item_id in pairs:
+                    for candidate in self._playlist_ancestry(row):
+                        if candidate.get("type") != kind:
+                            continue
+                        if str(candidate.get("ratingKey")) in seen:
+                            continue
+                        seen.add(str(candidate.get("ratingKey")))
+                        kept.append((candidate, item_id if candidate is row else None))
+                pairs = kept
+            source = [row for row, _ in pairs]
+            source, _ = self.apply_filters(source, query, None)
+            keep = {id(row) for row in source}
+            pairs = [pair for pair in pairs if id(pair[0]) in keep]
+            _, unsupported = self._sorted([row for row, _ in pairs],
+                                          query.get("sort") or "")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            self._limited([], query)
             rows = []
-            for row, item_id in self.library.playlist_items(playlist):
+            for row, item_id in pairs:
                 # The light grid row, as measured on the copy -- see the collection's
                 # children above; a playlist item keeps its librarySection fields.
                 entry = _grid_row(_listing_row(row))
-                entry["playlistItemID"] = item_id
+                if item_id is not None:
+                    entry["playlistItemID"] = item_id
                 rows.append(entry)
             summary = self.library._playlist_row(playlist)
             return self.paged_container(
@@ -9598,6 +9673,8 @@ class PlexSim:
                 duration=(int(round(summary["duration"] / 1000.0))
                           if "duration" in summary else None),
                 leafCount=summary["leafCount"],
+                Meta=(self._playlist_items_meta(playlist)
+                      if query.get("includeMeta") == "1" else None),
                 playlistType=summary["playlistType"],
                 ratingKey=summary["ratingKey"],
                 smart=summary["smart"],
