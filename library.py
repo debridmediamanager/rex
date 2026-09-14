@@ -622,6 +622,14 @@ class Library:
             # `studio=` is applied). So which it means depends on the path.
             items = [(k, v) for k, v in items
                      if k.endswith((".value", ".locked")) or ".tag.tag" in k]
+        if section and not items:
+            # Cycle 17, measured on plexscratch: on the SECTION path a form that names
+            # nothing to write is a 200 that edits nothing -- `?type=2&id={id}` alone,
+            # with a bare unknown name, with `includeGuids=1` or with an item-prefs
+            # option are all 200s -- because a bare `field=value` is a FILTER there and
+            # a filter with nothing to write is a no-op. The unknown `.value` form
+            # stays a 400 on this path, which is where the two paths really differ.
+            return False
         if not items or (not section and not self._recognised(items)):
             # Measured: a PUT with no parameters at all is a 400.
             #
