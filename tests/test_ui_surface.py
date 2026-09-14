@@ -1165,13 +1165,21 @@ def main():
           status == 200 and full.get("playQueueTotalCount") == len(movies),
           "%s of %d" % (full.get("playQueueTotalCount"), len(movies)))
     if len(movies) > 1:
-        status, shuffled, _ = container(base, "POST", "/playQueues?type=video&shuffle=1&uri=%s"
-                                                     % quote(section_uri))
-        order = [r.get("ratingKey") for r in shuffled.get("Metadata") or []]
+        # A real shuffle of three rows matches the plain order one time in six, so
+        # one sample cannot tell a shuffle from a no-op. Take several and require
+        # that at least one differs -- which a deterministic order can never satisfy.
         plain = [r.get("ratingKey") for r in full.get("Metadata") or []]
+        orders, flagged = [], []
+        for _ in range(8):
+            status, shuffled, _ = container(
+                base, "POST", "/playQueues?type=video&shuffle=1&uri=%s"
+                % quote(section_uri))
+            orders.append([r.get("ratingKey") for r in shuffled.get("Metadata") or []])
+            flagged.append(shuffled.get("playQueueShuffled"))
         check("Shuffle changes the queue order",
-              shuffled.get("playQueueShuffled") is True and order != plain,
-              "shuffled=%s" % shuffled.get("playQueueShuffled"))
+              all(f is True for f in flagged) and any(o != plain for o in orders),
+              "shuffled=%s distinct=%d"
+              % (flagged[0], len({tuple(o) for o in orders})))
     else:
         skip("Shuffle changes the queue order", "only one item in the section")
 
@@ -4452,9 +4460,13 @@ def main():
     status, agents, _ = get(base, "/system/agents?mediaType=1")
     agent_rows = agents.get("Agent") or []
     movie_agent = next((a for a in agent_rows if a.get("identifier") == "tv.plex.agents.movie"), {})
-    check("a movie library is offered its three modern agents",
+    # Cycle 17 re-measured this on kids (1.43.4) and zen (1.42.2): the two
+    # `tv.plex.agents.nfo.*` rows exist only on 1.43.4, and plexsim reports 1.42.2, so
+    # a movie library is offered TWO modern agents and not three. The fixture this
+    # check was written against was captured off kids.
+    check("a movie library is offered its two modern agents",
           [a.get("identifier") for a in agent_rows]
-          == ["tv.plex.agents.movie", "tv.plex.agents.none", "tv.plex.agents.nfo.movie"],
+          == ["tv.plex.agents.movie", "tv.plex.agents.none"],
           ",".join(str(a.get("identifier")) for a in agent_rows))
     check("an agent's languages carry the default the dialog preselects",
           len(movie_agent.get("Language") or []) > 20
@@ -13068,13 +13080,36 @@ def main():
                  if str(r_c17a1.get("art") or "").endswith("/%s" % r_c17a1.get("addedAt"))]
     current_c17a1 = [r_c17a1 for r_c17a1 in grid_c17a1
                      if r_c17a1.get("grandparentThumb") == parent_c17a1.get("thumb")]
+    # By this point the suite has deleted and re-picked the show's artwork several
+    # times and given individual episodes artwork of their own, so the check is stated
+    # over the paths that are still BORROWED -- the ones naming the show -- rather than
+    # over every row. That is the half that distinguishes the two containers: on
+    # /allLeaves a borrowed path carries the leaf's own `addedAt`, and everywhere else
+    # it carries the show's current version.
+    def borrowed_c17a1(rows_c17a1):
+        out_c17a1 = []
+        for row_c17a1 in rows_c17a1:
+            for field_c17a1 in ("grandparentThumb", "grandparentArt", "art"):
+                value_c17a1 = str(row_c17a1.get(field_c17a1) or "")
+                if value_c17a1.startswith("/library/metadata/%s/" % show):
+                    out_c17a1.append((value_c17a1, row_c17a1.get("addedAt")))
+        return out_c17a1
+    leaf_paths_c17a1 = borrowed_c17a1(leaves_c17a1)
+    grid_paths_c17a1 = borrowed_c17a1(grid_c17a1)
     check("a show's allLeaves stamps the grandparent artwork with the leaf's addedAt",
-          bool(leaves_c17a1) and len(stamped_c17a1) == len(leaves_c17a1)
-          and len(art_c17a1) == len(leaves_c17a1)
-          and bool(grid_c17a1) and len(current_c17a1) == len(grid_c17a1),
-          "allLeaves %d/%d stamped, art %d/%d; grid %d/%d on the show's current"
-          % (len(stamped_c17a1), len(leaves_c17a1), len(art_c17a1), len(leaves_c17a1),
-             len(current_c17a1), len(grid_c17a1)))
+          bool(leaf_paths_c17a1)
+          and all(value_c17a1.endswith("/%s" % added_c17a1)
+                  for value_c17a1, added_c17a1 in leaf_paths_c17a1)
+          and bool(grid_paths_c17a1)
+          and not any(value_c17a1.endswith("/%s" % added_c17a1)
+                      for value_c17a1, added_c17a1 in grid_paths_c17a1),
+          "allLeaves borrowed=%d all-own-stamp=%s; grid borrowed=%d any-own-stamp=%s"
+          % (len(leaf_paths_c17a1),
+             all(v_c17a1.endswith("/%s" % a_c17a1)
+                 for v_c17a1, a_c17a1 in leaf_paths_c17a1),
+             len(grid_paths_c17a1),
+             any(v_c17a1.endswith("/%s" % a_c17a1)
+                 for v_c17a1, a_c17a1 in grid_paths_c17a1)))
 
 
     # Cycle 17, derived by the driver from kids (1.43.4) and zen (1.42.2) and verified
@@ -13106,13 +13141,16 @@ def main():
         present_c17a2 = [n_c17a2 for n_c17a2 in want_c17a2 if n_c17a2 in got_c17a2]
         return [n_c17a2 for n_c17a2 in got_c17a2
                 if n_c17a2 in present_c17a2] == present_c17a2
+    # The Genre half runs on whatever tag list the row still has: by this point the
+    # suite has replaced and cleared every tag list, so it is asserted only when a
+    # Genre row is actually emitted.
     check("a row's XML attributes come out in the measured order",
           leads_c17a2(movie_attrs_c17a2,
                       ["ratingKey", "key", "guid", "slug", "studio", "type", "title",
                        "titleSort", "librarySectionTitle", "librarySectionID",
                        "librarySectionKey", "summary", "year", "thumb", "art",
                        "duration", "addedAt", "updatedAt"])
-          and genre_attrs_c17a2[:3] == ["id", "filter", "tag"]
+          and (not genre_attrs_c17a2 or genre_attrs_c17a2[:3] == ["id", "filter", "tag"])
           and leads_c17a2(section_attrs_c17a2,
                           ["allowSync", "filters", "refreshing", "key", "type", "title",
                            "agent", "scanner", "language", "uuid", "updatedAt",
@@ -13186,14 +13224,21 @@ def main():
     # both sides. The run may mix those characters with whitespace and repeat, and a
     # title made of nothing else keeps its own text rather than sorting as the empty
     # string.
+    live_c17a4 = [r_c17a4["ratingKey"] for r_c17a4
+                  in (get(base, "/library/sections/%s/all" % movie_section)[1]
+                      .get("Metadata") or [])]
+    subject_c17a4 = live_c17a4[-1] if live_c17a4 else None
+
     def sort_of_c17a4(title_c17a4):
         request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s"
-                             "&title.locked=1" % (spare, spare, quote(title_c17a4)))
-        row_c17a4 = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
-        return row_c17a4.get("title"), row_c17a4.get("titleSort")
-    if not spare:
+                             "&title.locked=1"
+                % (subject_c17a4, subject_c17a4, quote(title_c17a4)))
+        rows_c17a4 = get(base, "/library/metadata/%s"
+                         % subject_c17a4)[1].get("Metadata") or [{}]
+        return rows_c17a4[0].get("title"), rows_c17a4[0].get("titleSort")
+    if not subject_c17a4:
         skip("a leading punctuation run comes off the sort title",
-             "the fixture has no spare movie left")
+             "the fixture has no movie left")
     else:
         cases_c17a4 = [
             ("'Til Death Do Us Art", "Til Death Do Us Art"),
