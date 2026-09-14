@@ -23,8 +23,8 @@ If you are picking this up cold, read in this order:
 4. Then §6–§9 as reference while a cycle runs.
 
 **The standing instruction for whoever takes over:** a rule in `docs/findings.md` is a
-measurement *with a date and an instrument attached*, not a fact. Fifteen cycles have overturned
-57 of them. Before you build on a rule that matters, check it against §3's six
+measurement *with a date and an instrument attached*, not a fact. Sixteen cycles have overturned
+65 of them. Before you build on a rule that matters, check it against §3's six
 failure classes and re-measure it if it fits one. The cheapest re-measurement is always the
 one you do before writing code, not the one a later cycle does for you.
 
@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 15 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **15**. Cycle 15 had findings, so **cycle 16 is due**. |
+| `main` | cycle 16 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **16**. Cycle 16 had findings, so **cycle 17 is due**. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -84,6 +84,7 @@ Coverage, measured from the repository rather than asserted:
 | 13 | 899 | 10,509 | 22 (of 28 reported) |
 | 14 | 926 | 10964 | 29 (of ~40 reported) |
 | 15 | 979 | 11678 | 33 (of 24 reported plus 9 the driver found) |
+| 16 | 1,030 | 12,584 | **49** (of 39 reported plus 6 the driver found, plus 4 the driver split out) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -105,7 +106,7 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 16, all run 2026-09-14 against the merged tree:
+Suite results at the head of cycle 17, all run 2026-09-14 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
@@ -119,8 +120,8 @@ Suite results at the head of cycle 16, all run 2026-09-14 against the merged tre
 
 ## 3. The revalidation register
 
-**This is the most important section in the file.** 57 recorded rules have been overturned
-across fifteen cycles. They did not fail randomly: they failed in six ways, and the
+**This is the most important section in the file.** 65 recorded rules have been overturned
+across sixteen cycles. They did not fail randomly: they failed in six ways, and the
 same six keep recurring. Learn the classes, then check the items.
 
 ### 3.1 The six ways a measurement in this project goes wrong
@@ -206,6 +207,17 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | A member's `Collection` tag carries `guid` AND `count` | The guid only -- which cycle 12 had already shown for a detail row's tags in general | F | cycle 15 |
 | `PATCH` and `OPTIONS` are blanket 404s | They are ROUTED like any other verb: `/identity`, `/hubs` and `/playlists` answer 200 to both. Reported from the paths the hunt tried | B | cycle 15 |
 
+| `titleSort` is the article-stripped title on a listing, and a listing's default order | A show library's `type=3`/`type=4` grid defaults to BROADCAST order -- the show's sort title, then `parentIndex`, then `index`. findings.md had already asserted it for "`/allLeaves` AND the section listing"; only the allLeaves half was implemented | C | cycle 16 |
+| A `firstCharacter` bucket is counted and listed on the same basis | The AXIS counts a season or an episode by its SHOW's sort title and the LISTING filters on the row's own, so a season list's `A` bucket says 64 and answers 0 rows. 28 of 28 buckets on zen, both types | B | cycle 16 |
+| `/library/sections/{id}/{leaf}/{anything}` is the leaf | It is that leaf's BUCKET or a 404 -- never the leaf again. plexsim answered 200 with the axis to every one of ~20 paths | F | cycle 16 |
+| An artwork path is a 200 wherever the row has artwork; an EPISODE alone owns no `/art` | It is a 200 only on the row that OWNS the image, and a borrower carries the owner's path verbatim. Cycle 15's episode rule is the special case | B | cycle 16 |
+| A real PMS answers the same text to every client | It LOCALISES by `X-Plex-Language`, in 28 languages, across the menus, the hub titles, a generated `Season N`, the track labels and 200+ pref strings. plexsim read the header nowhere | B | cycle 16 |
+| The token gate is checked before anything else | A real PMS ROUTES first: an unknown path is a 404 without a token, eleven single-segment paths are 401 and every other one is a 403 | B | cycle 16 |
+| The Accept `q` grammar drops a zero or unparseable q | It RANKS it -- `application/json;q=0` alone is answered in JSON. Six of cycle 5's readings were wrong | D | cycle 16 |
+| `includeBefore`/`includeAfter` need a `window=` | They window the queue with none, the radius unlimited; every value but 0/1 is a 400. Cycle 9 measured them only ever WITH `window=1` | A | cycle 16 |
+| Only the SELECTED play-queue item's delete answers the pre-mutation container | EVERY item delete does; the selected one merely also drops the rows | B | cycle 16 |
+| A playlist's items are a fixed list, and `/playlists` is unfiltered | Both are real queries -- a typed one with its own `Meta`, and a listing filtered by `title`, `smart`, `sectionID` and `type` | B | cycle 16 |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -230,7 +242,11 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **`DELETE /library/metadata/{id}` on a season and a show** | The copy answers **400** to every media-item DELETE — episode, season, show and movie alike — while a collection DELETE is a clean 200, with `allowMediaDeletion` true and the media mounted read-only. So whether a real PMS cascades a season delete onto its episodes is unproven, and plexsim's own cascading delete is unverified. The merge half of the same question was settled in cycle 14 | A claimed copy with writable media |
 | **The `queueRegenerated` frame's DELAY** | Measured at +63.1 s after a library create and +7.1 s after an analyze, and by cycle 14 at +2.4 s after a season split and +1.2 s after a collection add. plexsim pushes its frames synchronously and emits it with the write | Nothing a synchronous server can reproduce; recorded rather than faked |
 | **The non-alphanumeric `firstCharacter` bucket** (again) | Re-read in cycle 15 on both references: zen holds exactly ONE non-digit non-letter-led title (`『`) and kids none, so the "its own bucket" half is still single-witness. plexsim orders by codepoint, which that one example cannot tell from "listed after Z" | A library with several punctuation- or CJK-led titles |
-| **plexsim's `Server:` banner** | It sends `Server: PlexSim/0.1 Python/3.10.20` on every response and a real PMS sends none. Noticed in cycle 15 while measuring the 500 for an unknown method; out of that cycle's scope | Strip it and re-run every suite, in a cycle that can check what reads it |
+| ~~plexsim's `Server:` banner~~ | **SETTLED in cycle 16.** Neither reference sends one, on fifteen paths and every status; it is gone, and every suite still passes | — |
+| **The translation table's coverage** | `translations.json` holds 342 string entries across 28 languages, captured off the 31 endpoints the capture script lists. A string plexsim emits that those endpoints do not carry is not in the table and stays English. The MECHANISM is measured; the COVERAGE is only as wide as that path list | Add paths to `capture_i18n.py` and re-capture; the diff is mechanical |
+| **The XML half of the localisation** | The table is applied to the container before rendering, so XML gets it by construction -- but the reference's XML was never diffed language by language | Re-run the capture against the XML path |
+| **A row's XML attribute ORDER** | The CONTAINER's is settled (`size`, the paging pair, then alphabetical). A ROW's is not alphabetical (a tag is `id, filter, tag`) and was not mapped | Diff a row's attribute order across several types on both references |
+| **The 1024 / 4096 / ~41 KB header limits** | Measured as BRACKETS -- 1024 passes and 1100 fails -- not probed to the byte. The refusal is real; the exact constants are inferred, which is class D | Bisect, if it ever matters |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -803,29 +819,92 @@ clearest argument in the programme's history for never deleting a check.
 
 ---
 
-### Next: cycle 16
+### Cycle 16 — the HTTP envelope, the writes below the collection, and the first real show library
+
+Hunters: the write surface one level below the collection (opus, on plexscratch --
+playlists, the play queue, the section save on a SHOW library, item prefs); the HTTP
+envelope, swept by request header, by response header and by XML shape (fable, read-only
+on kids and zen). The driver took the `Server:` banner §3.3 had carried and then swept
+**zen's section 2**, which nobody had pointed anything at: 507 shows, 741 seasons, 9,287
+episodes — the first real SHOW library the programme has had. **49 findings implemented**,
+the largest cycle in its history, and 1,030 checks in the suites.
+
+The new instrument paid immediately. Three of the driver's six findings are things no
+five-clip library can show: the `firstCharacter` axis counts a leaf by its SHOW's sort
+title (28 of 28 buckets at `type=3` and again at `type=4`; bucketing by the rows' own
+titles reproduces 0 of 28) while the LISTING behind each bucket filters on the row's own,
+so a season list's `A` bucket says 64 and answers no rows — the reference disagreeing with
+itself, on both servers. A sweep of the same family found that **every** section leaf's
+extra path segment is a bucket or a 404 and never the leaf again, which plexsim answered
+200 to about twenty times. And a show library's typed grid defaults to BROADCAST order,
+which findings.md had asserted for the section listing since cycle 8 and which only
+`/allLeaves` ever implemented — the canonical class C.
+
+The envelope sweep produced the cycle's largest single piece of work: **a real PMS
+localises its own text**, in 28 languages, keyed by `X-Plex-Language` over
+`Accept-Language`. Rather than write translations, the driver captured them — each
+endpoint fetched in English and in each language, the two documents diffed string by
+string at the same structural path — which is also what showed the rule is per ATTRIBUTE
+and not per string: "By Genre" is translated as a section pivot's `title` and left alone
+as an axis's `title2`. Beside it: a real PMS ROUTES before it authenticates (an unknown
+path is a 404 with no token; eleven single-segment paths are 401 and every other one is a
+403, measured path by path on both servers), `Range` applies to every response body, a
+malformed header is a 400, the Accept `q` grammar ranks a zero rather than dropping it,
+and the `Server:` banner is gone.
+
+The write hunt found the playlist surface was barely a surface: its items are a typed
+QUERY with their own `Meta`, `/playlists` filters and orders smart-first,
+`PUT /playlists/{id}` takes the whole item edit grammar, `playlistItemID` is server-wide,
+a smart list's items carry none, and the artwork paths are on the other endpoint from the
+one plexsim served. On the queue: shuffle was a deterministic reverse, every item delete
+answers the pre-mutation container, and `includeBefore`/`includeAfter` window it with no
+`window=` at all — cycle 9 measured those two only ever WITH one, which is class A in the
+original.
+
+**Corrected here:** cycle 8's section-listing order (implemented for one half only); cycle
+5's Accept grammar in six places; cycle 9's queue window and its "only the selected
+delete" rule; cycle 15's episode-only `/art` 404, which is the special case of the
+ownership rule; and the belief that the token gate runs before routing.
+
+**And a defect this cycle introduced and caught itself.** The first implementation of
+"`smart=1` over a key list is a 400" refused the create whenever the uri resolved to any
+rows — and a listing uri resolves to rows too, so every smart playlist create became a
+400. The next patch's own check block failed on the parent three commits later and
+surfaced it. The test is the uri's SHAPE, not whether it resolves: a rule implemented as a
+proxy for itself is exactly what §3.1 class C describes.
+
+**One incident, and it cost nothing.** The scratch disk filled mid-cycle and the working
+directory was cleared to recover it, taking the worktree with it. Every commit survived,
+because a worktree is only a checkout — the objects and the branch ref live in the main
+repository. The branch was pushed to `origin` immediately afterwards, which §5 says to do
+as you go and which this cycle had not been doing. **Do that from the first commit.**
+
+### Next: cycle 17
 
 Cycle 15 is complete, and it emptied §3.3's carried list: all three cascades are built and
 four of its thin-evidence entries are settled. Territories worth taking next, in order of
 expected yield:
 
-1. **Sweep the remaining surfaces the way cycle 15 swept the verb table.** Two mechanical
-   sweeps have now each produced a batch no amount of re-hunting the old dimension would
-   have: by PATH in cycle 14 (three invented endpoints), by METHOD and by PARAMETER in
-   cycle 15 (33 paths, every one different). The dimensions left are HEADERS (`Accept`,
-   `Accept-Encoding`, `X-Plex-*` on paths that have never been asked for them), the XML
-   half of everything cycle 15 added, and the RESPONSE HEADERS of every route.
-2. **The write surface below the collection.** Playlists had one pass in cycle 9 and
-   nothing since; the play queue's mutations, the section-path save on a SHOW library and
-   the item-prefs family are each a cycle-15-sized territory on the copy.
-3. **Keep pointing hunts at zen.** Four passes have now found rules invisible on the lab
-   and none has exhausted it. Its show libraries and its real collections are still the
-   least-swept part of it.
+1. **Keep pointing hunts at zen's SECTION 2.** One pass at the first real show library
+   the programme has had produced six findings, three of which no five-clip library can
+   show at all. Its seasons, its 9,287 episodes, its deep paging, its per-show watch state
+   and its `/allLeaves` at scale are all barely touched. This is the same curve cycle 12
+   rode when zen's movie library arrived, and it is nowhere near exhausted.
+2. **The dimensions still unswept.** By PATH (cycle 14), by METHOD and PARAMETER (15) and
+   by HEADER (16) have each produced a batch. What is left is the **XML half language by
+   language**, a ROW's attribute order, and the surface swept by **row TYPE** — every
+   attribute of a movie, show, season, episode, collection and playlist row, in every
+   container that carries one, against both references.
+3. **The write surface below the playlist.** This cycle found the playlist layer was
+   barely implemented; the same is likely true of the collection ITEM path, the
+   `/library/sections/{id}/prefs` family and the butler's individual tasks.
 4. **The three §3.3 entries a second writable copy would settle**: the media-item DELETE
    (season and show cascades), `terminate` and `/statistics/*`. All three need a CLAIMED
    copy, which needs plex.tv, which past claim exchanges have shown resets account-wide
    tokens. Still the user's decision.
-5. **plexsim's `Server:` banner**, and whatever else a response-header sweep turns up.
+5. **Widen `translations.json`.** The mechanism is measured and the table is captured, but
+   its coverage is only as wide as `capture_i18n.py`'s path list. Any string plexsim emits
+   from an endpoint not on that list stays English.
 
 ### Cycle 15 — the parameter that makes history list, what a fold really folds, and the verb table
 
@@ -965,6 +1044,16 @@ copy 400s every media-item delete); `enableCreditsMarkerGeneration` (the copy 40
 does not advertise it, where kids does); `collectionSort=2` on a fixture whose custom,
 insertion and alphabetical orders coincide; plexsim's `Server:` banner; and the
 non-alphanumeric `firstCharacter` bucket, re-read and still single-witness.
+
+**Cycle 16:** a ROW's XML attribute order (the container's is settled; a tag is
+`id, filter, tag`, which is not alphabetical, and the rest was not mapped);
+`Set-Cookie: com.plexapp.system=…` on `/system` and `/system/agents/contributors` (the
+plug-in framework's); the 1024/4096/~41 KB header limits as exact constants (measured as
+brackets); the XML half of the localisation language by language (it follows by
+construction, but was not diffed); `/library/metadata/{playlist}`'s container attributes
+(`allowSync`, `identifier`, `mediaTagPrefix`, `mediaTagVersion` — measured on the copy,
+and the paths that matter now answer); and the reference's own duplicated `Content-Length`
+on a 206, which is a quirk rather than a rule.
 
 **Cycle 11:** ~~`/status/sessions/history/all` answering `size 0`~~ (ANSWERED in cycle 15:
 it needs a `type=`); `includeBandwidths=1`; `/library/people/{id}` answering any TAG id;
