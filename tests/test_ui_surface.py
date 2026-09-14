@@ -11430,6 +11430,43 @@ def main():
               for server_c16a, dated_c16a in banner_c16a.values()),
           "%s" % banner_c16a)
 
+
+    # Cycle 16, measured on zen's 507-show / 741-season / 9287-episode library and
+    # confirmed on kids: the `firstCharacter` AXIS counts a row BELOW the library's
+    # own top-level type by its SHOW's sort title, not by its own. Bucketing zen's
+    # seasons and episodes by their show reproduces the axis on 28 of 28 buckets at
+    # type=3 AND at type=4; bucketing them by their own titles reproduces 0 of 28.
+    # kids -- whose one show is Firefly, whose seasons are "Season 1"/"Season 2" and
+    # whose episodes have real titles -- answers `F:2` at type=3 and `F:6` at type=4.
+    # plexsim counted each row's own title, so an episode grid's A-Z rail was an index
+    # of episode titles where a real PMS indexes the shows.
+    def bucket_of_c16c(row_c16c):
+        head_c16c = (str(row_c16c.get("titleSort") or row_c16c.get("title") or "")[:1]
+                     or "#").upper()
+        return "#" if head_c16c.isdigit() else head_c16c
+
+    shows_c16c = (get(base, "/library/sections/%s/all?type=2" % show_section)[1]
+                  .get("Metadata") or [])
+    want_c16c = {}
+    for row_c16c in shows_c16c:
+        leaves_c16c = get(base, "/library/metadata/%s/allLeaves" % row_c16c["ratingKey"])[1]
+        want_c16c[bucket_of_c16c(row_c16c)] = (
+            want_c16c.get(bucket_of_c16c(row_c16c), 0)
+            + len(leaves_c16c.get("Metadata") or []))
+    axis_c16c = get(base, "/library/sections/%s/firstCharacter?type=4" % show_section)[1]
+    letters_c16c = {d_c16c.get("title"): d_c16c.get("size")
+                    for d_c16c in axis_c16c.get("Directory") or []}
+    # the old server bucketed by the episode's own title; only a fixture where the two
+    # predictions DIFFER can tell them apart, so assert that too rather than pass by
+    # coincidence
+    own_c16c = {}
+    for row_c16c in (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or []):
+        own_c16c[bucket_of_c16c(row_c16c)] = own_c16c.get(bucket_of_c16c(row_c16c), 0) + 1
+    check("the firstCharacter axis buckets episodes by their SHOW's sort title",
+          letters_c16c == want_c16c and want_c16c != own_c16c,
+          "axis %s, by show %s, by own title %s" % (letters_c16c, want_c16c, own_c16c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

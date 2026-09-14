@@ -4101,7 +4101,20 @@ class PlexSim:
             self._parsed_type(query, 500)
             counts = {}
             for row in self.typed_rows(section_id, query):
-                title = str(row.get("titleSort") or row.get("title") or "")
+                # Cycle 16, measured on zen's real show library (507 shows, 741
+                # seasons, 9287 episodes) and confirmed on kids: the AXIS counts a
+                # row below the library's own top-level type by its SHOW's sort
+                # title. Bucketing zen's seasons and episodes by their show
+                # reproduces the axis on 28 of 28 buckets at type=3 AND at type=4;
+                # bucketing them by their own titles reproduces 0 of 28. kids says
+                # `F:2` for its two "Season 1"/"Season 2" rows and `F:6` for six
+                # episodes with real titles of their own. plexsim counted each row's
+                # own title, so a season grid's A-Z rail read "S" and an episode
+                # grid's indexed episode titles -- neither of which is what the
+                # client's letter bar is for, and neither of which agrees with the
+                # rail's own links.
+                title = str(self._first_character_basis(row).get("titleSort")
+                            or self._first_character_basis(row).get("title") or "")
                 first = (title[:1] or "#").upper()
                 # Cycle 14, reconstructed from zen's 3887 rows against its own axis:
                 # `#` is the DIGITS bucket, not the everything-else one. The 29 rows
@@ -4250,6 +4263,24 @@ class PlexSim:
         # A leaf a real PMS does not have is a 404 there, not an empty container.
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
+
+    def _first_character_basis(self, row):
+        """The row whose sort title the `firstCharacter` AXIS counts this row under.
+
+        Measured cycle 16 on zen and kids: a SEASON and an EPISODE are counted under
+        their SHOW, not under themselves. The LISTING behind each bucket is the other
+        way round -- it filters on the row's own sort title -- so the two halves of
+        the same axis genuinely disagree on a real PMS, and a season list's `A`
+        bucket says 64 and answers 0 rows.
+        """
+        if row.get("type") == "season":
+            key = row.get("parentRatingKey")
+        elif row.get("type") == "episode":
+            key = row.get("grandparentRatingKey")
+        else:
+            return row
+        show = self.catalog.items.get(int(key)) if str(key or "").isdigit() else None
+        return show or row
 
     def typed_rows(self, section_id, query):
         """The rows a listing or a secondary axis is over, scoped by `?type=`.
