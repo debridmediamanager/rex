@@ -6042,6 +6042,11 @@ class PlexSim:
         if key == "createdAt":
             # Measured on zen: `sort=createdAt` comes back in addedAt order.
             return lambda r: (r.get("addedAt") is not None, r.get("addedAt") or 0)
+        if key == "mediaCount":
+            # Cycle 20: a real ordering on both references, at every row type -- zen's
+            # `sort=mediaCount:desc` opens on the movie with 59 versions. plexsim
+            # answered the 500 it answers an unknown key.
+            return lambda r: (True, len(r.get("Media") or []))
         if key in self.NUMERIC_SORTS:
             # Same rule as the text keys above: absent sorts below every value.
             return lambda r: (r.get(key) is not None, r.get(key) or 0)
@@ -6463,6 +6468,24 @@ class PlexSim:
                     if s.get("streamType") == wanted
                     for code in (s.get("languageTag"), s.get("languageCode"))
                     if code]
+        if field == "mediaCount":
+            # Cycle 20, measured on kids and zen: the column is the number of Media on
+            # the row, and on a SHOW or SEASON it is read from the LEAVES, one value
+            # per leaf -- zen answers `type=2&mediaCount=1` with 487 shows and `>>=1`
+            # with 44, which are the two Duplicates sets exactly. Cycle 15 listed the
+            # field among the nine that filter without a Meta and read it straight off
+            # the row, where no row carries the attribute, so it selected nothing.
+            if row.get("type") in ("show", "season"):
+                return [len(leaf.get("Media") or [])
+                        for leaf in self.catalog.leaves(row.get("ratingKey")) or []] or 0
+            return len(row.get("Media") or [])
+        if field == "createdAt":
+            # ...and `createdAt` is a real date column on both references -- every row
+            # of every library answers `createdAt>=2000-01-01` -- which plexsim read
+            # off an attribute no row has. It tracks `addedAt` almost exactly on zen
+            # (2,437 rows above one epoch against `addedAt`'s 2,436), and `addedAt` is
+            # the only creation time plexsim holds, so it is read here and said so.
+            return row.get("addedAt")
         if field == "duplicate":
             # Measured on zen, which has 214 duplicated movies of 3887 and 504 episodes
             # of 9287: the Duplicates filter is "more than one Media on the row", and for

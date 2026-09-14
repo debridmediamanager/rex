@@ -15840,6 +15840,36 @@ def main():
           and ids_c20ad["!=="] == ids_c20ad["!="]
           and str(c20_one_season) not in ids_c20ad["!=="],
           "%s" % ids_c20ad)
+
+    # Cycle 20: `mediaCount` and `createdAt` are recorded filter fields that could
+    # never select anything in plexsim, because no row carries either attribute and
+    # both were read straight off the row. Both references answer real subsets:
+    # `type=1&mediaCount=1` is 3,673 of zen's 3,887 and all 5 of kids', `type=2` and
+    # `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
+    # answer `>>=1` -- the duplicate sets exactly), and `createdAt>=2000-01-01`
+    # answers every row of every library on both. `sort=mediaCount` is a real
+    # ordering on both too, where plexsim answered 500.
+    counts_c20ae = {}
+    for spec_c20ae in ("type=1&mediaCount=1", "type=1&mediaCount%3E%3E=1",
+                       "type=1&createdAt%3E=2000-01-01"):
+        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
+                                           % (movie_section, spec_c20ae))[1].get("Metadata") or [])
+    for spec_c20ae in ("type=2&mediaCount=1", "type=2&mediaCount%3E%3E=1",
+                       "type=4&mediaCount=1"):
+        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
+                                           % (show_section, spec_c20ae))[1].get("Metadata") or [])
+    movies_c20ae = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                       .get("Metadata") or [])
+    sorted_c20ae = get(base, "/library/sections/%s/all?type=1&sort=mediaCount" % movie_section)[0]
+    check("mediaCount and createdAt select rows, and mediaCount sorts",
+          counts_c20ae["type=1&mediaCount=1"] == movies_c20ae
+          and counts_c20ae["type=1&mediaCount%3E%3E=1"] == 0
+          and counts_c20ae["type=1&createdAt%3E=2000-01-01"] == movies_c20ae
+          and counts_c20ae["type=2&mediaCount=1"] > 0
+          and counts_c20ae["type=2&mediaCount%3E%3E=1"] > 0
+          and counts_c20ae["type=4&mediaCount=1"] > 0
+          and sorted_c20ae == 200,
+          "%s of %s movies | sort %s" % (counts_c20ae, movies_c20ae, sorted_c20ae))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
