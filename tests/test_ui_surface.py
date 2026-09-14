@@ -15171,6 +15171,53 @@ def main():
           own_c19z == 200 and numeric_c19z == 200 and foreign_c19z == 400,
           "own %s ; numeric %s ; foreign %s" % (own_c19z, numeric_c19z, foreign_c19z))
 
+    # Cycle 19, measured on plexscratch behind a control write. `OptimizeDatabase` starts at
+    # 0 with an empty subtitle and steps 0/10/40/60 before ending at 100, where plexsim
+    # started at -1 with the subtitle set and stepped 10/53/100 -- disagreeing with its own
+    # `/library/optimize`, which already matched. `CleanOldBundles` has SEVEN updates, not
+    # four: `Analyzing metadata bundles` is followed by two `Deleting N metadata bundles`
+    # steps and the `ended` frame carries that subtitle. `RefreshLibraries` runs a section
+    # SCAN per library, not a metadata refresh per row. And an analyze pushes no
+    # `backgroundProcessingQueue` frame.
+    def butler_activity_c19t(task_c19t, kind_c19t):
+        _s_c19t, frames_c19t = notifications(
+            base, lambda: request(base, "POST", "/butler/%s" % task_c19t))
+        out_c19t = []
+        for f_c19t in frames_c19t:
+            for a_c19t in ((f_c19t.get("NotificationContainer") or {})
+                           .get("ActivityNotification") or []):
+                act_c19t = a_c19t.get("Activity") or {}
+                if act_c19t.get("type") == kind_c19t:
+                    out_c19t.append((a_c19t.get("event"), act_c19t.get("progress"),
+                                     act_c19t.get("subtitle")))
+        return out_c19t, frames_c19t
+
+
+    opt_c19t, _f_c19t = butler_activity_c19t("OptimizeDatabase", "general.db.optimize")
+    check("the butler's OptimizeDatabase steps 0/10/40/60",
+          [p_c19t for _e_c19t, p_c19t, _s2_c19t in opt_c19t] == [0, 0, 10, 40, 60, 100]
+          and opt_c19t[0][2] == "",
+          str(opt_c19t))
+    clean_c19t, _f2_c19t = butler_activity_c19t("CleanOldBundles", "general.bundle.clean")
+    check("and CleanOldBundles ends on its metadata phase",
+          len(clean_c19t) == 8 and "metadata bundles" in (clean_c19t[-1][2] or "")
+          and clean_c19t[-1][0] == "ended",
+          str([(e_c19t, p_c19t, (s2_c19t or "")[:30]) for e_c19t, p_c19t, s2_c19t in clean_c19t]))
+    _refresh_c19t, frames_c19t = butler_activity_c19t("RefreshLibraries", "library.update.section")
+    progress_c19t = [p_c19t.get("message") for f_c19t in frames_c19t
+                     for p_c19t in ((f_c19t.get("NotificationContainer") or {})
+                                    .get("ProgressNotification") or [])]
+    check("and RefreshLibraries runs a section scan per library",
+          bool(_refresh_c19t)
+          and any(str(m_c19t).startswith("Scanning ") for m_c19t in progress_c19t),
+          "%d section-activity frames ; progress %s" % (len(_refresh_c19t), progress_c19t[:3]))
+    _s_c19t, analyze_c19t = notifications(
+        base, lambda: request(base, "PUT", "/library/metadata/%s/analyze" % movie))
+    check("an analyze pushes no backgroundProcessingQueue frame",
+          not any("backgroundProcessingQueue" in str(f_c19t) for f_c19t in analyze_c19t)
+          and any("media.generate.chapter.thumbs" in str(f_c19t) for f_c19t in analyze_c19t),
+          "%d frames" % len(analyze_c19t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
