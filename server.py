@@ -3761,6 +3761,13 @@ class PlexSim:
                 # projection, naming its library by id, title and UUID and not by key.
                 entry = _grid_row(_listing_row(row))
                 entry.pop("librarySectionKey", None)
+                # Cycle 21, measured on zen's own on-deck row: this list's rows LEAD
+                # with `allowSync` and the librarySection triple, exactly as
+                # `/library/recentlyAdded`'s do -- and `allowSync` on the ROW is the
+                # signal `xmlout._LIBRARY_SECTION_LEAD` keys that lead on, so without
+                # it the four came out mid-row. Cycle 19 recorded the rule for both
+                # paths and plexsim carried it on one.
+                entry["allowSync"] = True
                 entry["librarySectionUUID"] = (catalog.section(row.get("librarySectionID"))
                                                or {}).get("uuid")
                 rows.append(entry)
