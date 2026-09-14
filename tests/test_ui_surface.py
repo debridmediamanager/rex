@@ -12229,6 +12229,29 @@ def main():
           and keylist_c16a6[0] == 400,
           "title=%r keylist=%s" % (made_c16a6.get("title"), keylist_c16a6[0]))
 
+
+    # Cycle 16, measured on plexscratch: three consecutive shuffled queues over the
+    # same show come back in three DIFFERENT orders. plexsim reversed the unshuffled
+    # queue, deterministically, so Shuffle on a show or a library played the episodes
+    # backwards and played them backwards again every single time.
+    orders_c16a7 = []
+    for _attempt_c16a7 in range(4):
+        made_c16a7 = request(base, "POST", "/playQueues?type=video&shuffle=1&own=1"
+                             "&uri=%s" % quote("server://%s/com.plexapp.plugins.library"
+                                               "/library/metadata/%s" % (machine, show)))
+        container_c16a7 = json.loads(made_c16a7[1])["MediaContainer"]
+        orders_c16a7.append([r_c16a7["ratingKey"]
+                             for r_c16a7 in container_c16a7.get("Metadata") or []])
+    plain_c16a7 = [r_c16a7["ratingKey"] for r_c16a7 in json.loads(request(
+        base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, show)))[1])["MediaContainer"].get("Metadata") or []]
+    check("a shuffled queue is really shuffled, not reversed",
+          len(orders_c16a7[0]) > 2
+          and len({tuple(order_c16a7) for order_c16a7 in orders_c16a7}) > 1
+          and sorted(orders_c16a7[0]) == sorted(plain_c16a7),
+          "%s (plain %s)" % (orders_c16a7, plain_c16a7))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

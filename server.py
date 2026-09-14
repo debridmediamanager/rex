@@ -34,6 +34,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
 import resource
 import socket
@@ -7915,9 +7916,13 @@ class PlexSim:
         else:
             rows = self._items_for_uri(uri, continuous=query.get("continuous") == "1")
         if query.get("shuffle") == "1":
-            # Deterministic per queue rather than random, so a test can assert
-            # the order changed without asserting which order.
-            rows = list(reversed(rows))
+            # Cycle 16, measured on plexscratch: three consecutive shuffled queues over
+            # the same show come back in three DIFFERENT orders. plexsim reversed the
+            # queue instead, so Shuffle played a show's episodes backwards -- and
+            # backwards the same way every time, which is the one thing shuffle must
+            # not be. A test asserts that the order CHANGES, not which order it is.
+            rows = list(rows)
+            random.shuffle(rows)
 
         client = (query.get("X-Plex-Client-Identifier")
                   or (headers or {}).get("X-Plex-Client-Identifier") or "")
