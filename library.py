@@ -1405,6 +1405,9 @@ class Library:
                                            str(r.get("titleSort") or r.get("title") or "")))
 
     def create_playlist(self, title, playlist_type, rows, smart=False, uri=None):
+        # the item-id sequence is the SERVER's, not the playlist's -- measured cycle 16
+        if not hasattr(self, "_next_playlist_item"):
+            self._next_playlist_item = 0
         self._next_playlist += 1
         key = self._next_playlist
         stamp = _now()
@@ -1421,7 +1424,6 @@ class Library:
             "addedAt": stamp,
             "updatedAt": stamp,
             "items": [],
-            "next_item_id": 1,
             # The query a smart playlist re-evaluates, kept verbatim so the
             # engine sees exactly what the client sent.
             "uri": uri if smart else None,
@@ -1468,11 +1470,16 @@ class Library:
             if key in present:
                 continue
             present.add(key)
+            # Cycle 16, measured on plexscratch: `playlistItemID` is a SERVER-WIDE
+            # sequence -- three lists built in a row took 40/41, 42/43, 44/45, unbroken
+            # across them. plexsim restarted at 1 inside each playlist, so two lists
+            # handed the client the same ids for different rows and a cached id from
+            # one list addressed a row in another.
+            self._next_playlist_item += 1
             playlist["items"].append({
                 "ratingKey": key,
-                "playlistItemID": playlist["next_item_id"],
+                "playlistItemID": self._next_playlist_item,
             })
-            playlist["next_item_id"] += 1
             added += 1
         if added:
             playlist["updatedAt"] = _now()
@@ -1572,8 +1579,11 @@ class Library:
         nothing to reorder in a list the server rebuilds.
         """
         if playlist.get("smart"):
-            return [(row, index) for index, row
-                    in enumerate(self.smart_rows(playlist.get("uri")), 1)]
+            # Cycle 16, measured on plexscratch: a SMART list's items carry NO
+            # `playlistItemID` at all -- its members are its query, so there is nothing
+            # to address. plexsim stamped 1, 2, 3 on them, which offers the client an
+            # item id for a row that cannot be moved or removed.
+            return [(row, None) for row in self.smart_rows(playlist.get("uri"))]
         out = []
         for entry in playlist["items"]:
             row = self.catalog.items.get(entry["ratingKey"])

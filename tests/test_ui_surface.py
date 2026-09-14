@@ -12580,6 +12580,44 @@ def main():
           "listing=%s smart=%r keylist=%s"
           % (listing_c16f1[0], made_c16f1.get("smart"), keylist_c16f1[0]))
 
+
+    # Cycle 16, measured on plexscratch: `playlistItemID` is a SERVER-WIDE sequence --
+    # three lists built in a row took 40/41, 42/43, 44/45, unbroken -- and a SMART
+    # list's items carry NONE at all, because its members are its query. Every item
+    # write on a smart list is a 400: the move, the single delete and the clear alike.
+    # plexsim restarted the ids at 1 inside each playlist, stamped 1, 2, 3 on a smart
+    # list's items, and answered 404 to a smart move.
+    keys_c16a19, ids_c16a19 = [], []
+    for n_c16a19 in range(2):
+        made_c16a19 = json.loads(request(
+            base, "POST", "/playlists?title=c16seq%d&type=video&smart=0&uri=%s"
+            % (n_c16a19, quote("server://%s/com.plexapp.plugins.library"
+                               "/library/metadata/%s" % (machine, movie)))
+        )[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+        keys_c16a19.append(made_c16a19)
+        ids_c16a19.append([r_c16a19.get("playlistItemID") for r_c16a19 in get(
+            base, "/playlists/%s/items" % made_c16a19)[1].get("Metadata") or []])
+    smart_c16a19 = json.loads(request(
+        base, "POST", "/playlists?title=c16seqsmart&type=video&smart=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1"
+                % (machine, movie_section)))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    smart_ids_c16a19 = [r_c16a19.get("playlistItemID") for r_c16a19 in get(
+        base, "/playlists/%s/items" % smart_c16a19)[1].get("Metadata") or []]
+    refusals_c16a19 = (
+        request(base, "PUT", "/playlists/%s/items/1/move?after=-1" % smart_c16a19)[0],
+        request(base, "DELETE", "/playlists/%s/items/1" % smart_c16a19)[0],
+        request(base, "DELETE", "/playlists/%s/items" % smart_c16a19)[0])
+    for key_c16a19 in keys_c16a19 + [smart_c16a19]:
+        request(base, "DELETE", "/playlists/%s" % key_c16a19)
+    check("playlistItemID is a server-wide sequence and a smart list carries none",
+          ids_c16a19[0] and ids_c16a19[1]
+          and ids_c16a19[1][0] > ids_c16a19[0][-1]
+          and all(seen_c16a19 is None for seen_c16a19 in smart_ids_c16a19)
+          and bool(smart_ids_c16a19)
+          and refusals_c16a19 == (400, 400, 400),
+          "plain=%s smart=%s refusals=%s"
+          % (ids_c16a19, smart_ids_c16a19, refusals_c16a19))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
