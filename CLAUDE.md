@@ -1341,6 +1341,84 @@ precisely how the Seasons bug survived a fix attempt.
   hub refusal passed its own fail-then-pass proof while raising a `NameError`, because a
   crash is also a 500. Read something back afterwards.
 
+- **A BOOLEAN filter answers the true set to exactly two requests** -- `field=1` and
+  `field!=0`. Every other operator and every other value answers the rows where the
+  column is FALSE: zen's `unwatched=1` is 3,866 of 3,887 and its `!=1`, `==1`, `<=1`,
+  `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `=2`, `!=2`, `=`, `=01` and `=true` are all
+  the same 21. `!=2` is what rules out "parse the value, then negate".
+- **A row with NO value for a numeric column matches NOTHING**, `!=` and `!==` included --
+  zen's 742 rated movies split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145
+  unrated ones are in neither -- and **`==`/`!==` there are an exact STRING comparison of
+  the stored number**: `rating==7` is 0 where `rating==7.0` is the 6 rows `rating=7`
+  finds, while `year==2000` is the same 39 as `year=2000`.
+- **A `tag`-typed COLUMN takes all eight operators** where a tag-TABLE field takes two.
+  `contentRating`'s `<=`/`<<=`/`>=`/`>>=` are a BYTE-ordered comparison over the stored
+  string (`>=PG` 802 + `<<=PG` 3,085 = 3,887), an absent value compares as `""`, `=` is
+  case-SENSITIVE and `==` is not. **`resolution` is the opposite**: every operator, `!=`
+  included, answers the `=` set -- and `resolution=` matches ANY of a row's Media.
+- **The section `Meta`'s `active` follows the REQUEST**, not the library: `?type=3` marks
+  `season` and `?type=4` marks `episode`. **`?includeDetails=1` honours
+  `includeAdvanced=1`** (9 sorts bare, 15 with it), carries no `folder` Type row and marks
+  none of them active.
+- **A row that HAS children names its child list** -- `key="/library/metadata/{id}/
+  children"` on every show and season of both references, where an episode keeps the bare
+  item path. The client follows `key` verbatim, so a season carrying the bare path opens
+  the season's metadata row instead of its episodes and the page draws nothing.
+- **`excludeFields=` strips the field from every CHILD ELEMENT** (`id` off Media, Part,
+  Stream, Genre and Guid; `file` off Part; `url` off Image; `value` off Rating), while
+  **`excludeElements=Image` and `=UltraBlurColors` are NO-OPS** on both references like an
+  unknown name. **`checkFiles=` is validated**: `0`, `1` and `01` pass, everything else --
+  an empty value, `2`, `true`, `-1`, `1.5`, a leading or trailing space -- is a 400.
+- **`/library/metadata/{id}/extras/all` is a real leaf**, the same container `/extras`
+  answers; only `/extras/{n}` is the 404.
+- **Four more ordering rules.** A `Meta`'s `Type` rows come before its `FieldType` rows;
+  `Common`, `Feature` (`scrobbleKey` first), `Type` and the `/media/providers` library
+  `Directory` are element buckets of their own (the last shared `/library/sections`'s and
+  is a different order); the rows of `/library/recentlyAdded` and `/library/onDeck` LEAD
+  with `allowSync` and the librarySection triple, which `allowSync` on the ROW identifies;
+  and a LIGHT row puts `Guid` directly after `UltraBlurColors`, before its tags, where a
+  detail row puts it after `Genre`/`Country`.
+- **A real PMS's JSON key order IS its XML order** -- the container's, the row's,
+  `Media`'s, `Part`'s and the row's child-element keys. `xmlout._split` is the one answer
+  both writers ask; ordering only the XML left the two formats disagreeing on every
+  response.
+- **`sort=duration` and `duration=` read the MEDIA's duration**, not the row's column, and
+  on a SHOW or SEASON listing a media column is read from the LEAVES and matches when ANY
+  leaf does (zen's `duration<=1200000` and `>=1200000` answer 39 and 483 of 505).
+- **The default listing order IS `sort=titleSort` and every tie falls back to `titleSort`
+  ASCENDING, in both directions** -- re-measured against zen's own ordering of 3,887 real
+  rows, so collation cancels out of the comparison.
+- **A library EDIT scans only when the form carries `language` or `scanner`** -- `agent`
+  alone, with `name`, or with a `prefs[...]` is a 200 with ZERO frames -- and it REFUSES a
+  `type` naming a different type from the library's own. **`?path=` SCOPES a scan**: the
+  section's own Location, an empty value and no path scan everything; a parent of it, a
+  child of it and a path it does not hold scan nothing (no `progress` rows, the activity
+  0 to 100 with an empty subtitle).
+- **Three butler tasks push the wrong thing.** `RefreshLibraries` runs a section SCAN per
+  library, not a metadata refresh per row; `OptimizeDatabase` starts at 0 with an EMPTY
+  subtitle and steps 0/10/40/60 to an `ended` at 100; `CleanOldBundles` has SEVEN updates,
+  ending on two `Deleting N metadata bundles` steps at 25 and 50.
+- **A show library's scan names the SHOW before its seasons**, in a `progress` row with no
+  activity update of its own; **`provider.subscriptions.process` is the one `cancellable:
+  true` activity**; and **an analyze pushes NO `backgroundProcessingQueue` frame** --
+  plexsim invented one. **`PUT /updater/check` pushes one `update.statechange` frame**
+  carrying an `AutoUpdateNotification` row.
+- **`DELETE /devices/{id}` and `DELETE /accounts/{id}` are 404s**, for an id the server
+  lists and one it does not; **`PUT /activities/{x}` is a 400** where its DELETE is a 404;
+  and **`HEAD /:/prefs` is a 200**, the one disagreement in a HEAD sweep over sixty paths.
+- **Four settings answer 403 to a PUT** (`PlexOnlineUrl`, `TranscoderH264Options`,
+  `TranscoderH264OptionsOverride`, `allowMediaDeletionLanOnly`) even when the value written
+  is the one already stored, while **`ButlerStartHour` and `ButlerEndHour` take a WORD**
+  with a 200 that stores nothing -- alone among the 38 integer settings.
+- **`server_prefs.json` is the FIFTH per-version fixture**: `AllowLegacyAgents` and
+  `CLDriver` are 1.43.4-only, and a write to one must be refused as an unknown preference.
+- **The Add Library form refuses a missing or unlisted `language`** (the agent's own list,
+  case-insensitive), **accepts an EMPTY `location`** and **accepts a NUMERIC `type`**,
+  creating a library of that type.
+- **`filters=` on a notification channel is a WHITELIST and `all` is not an event type**, so
+  a socket opened with `filters=all` receives NOTHING and looks exactly like a server that
+  pushes none. Always open with a control write.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

@@ -5451,6 +5451,238 @@ the query exists.
   both carried forward again: nothing this cycle touched either.
 
 
+#### The nineteenth pass — the child element, the filter engine held out against a real library, and what a write really pushes
+
+Two hunts and a driver round. Territory A swept the dimension left after the row (cycle
+17) and the container (cycle 18): the **child element** — every element between the two,
+per endpoint and per row type, against both references. Territory B took the write
+surface's own payload: the notification **frame**, the `Activity` element, and the
+server-level writers nobody had swept. The driver's round ran plexsim's **own engines**
+over a real library's rows: `ssweep.py` holds the `sort=` engine out against zen's
+ordering, and `fsweep.py` — cycle 18's filter holdout — was pointed at a show library for
+the first time.
+
+The cycle's own family came from that holdout. Cycle 18 found the `title=`/`originalTitle`
+rule by running `filters.compare` over zen's 3,887 movie rows and diffing the SETS; run
+again over its 507 shows it disagreed 74 times, and behind those disagreements were four
+rules about the filter grammar that eighteen cycles of endpoint-by-endpoint measurement
+had not reached — because each one needs a library where most rows have NO value for the
+column being filtered, and neither five-clip reference has one.
+
+**A boolean field answers the true set to exactly two requests.** `field=1` and
+`field!=0`; every other operator and every other value answers the rows where the column
+is FALSE. Measured on kids (1.43.4) and zen (1.42.2), over `unwatched` and `duplicate`,
+seven values and all eight operators: zen's `unwatched=1` is 3,866 of 3,887 and its
+`!=1`, `==1`, `!==1`, `<=1`, `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `<=0`, `>=0`,
+`<<=0`, `>>=0`, `=2`, `!=2`, `=` (empty), `=01`, `=true` and `=1 ` are all the same 21;
+`duplicate=1` is 214 and every one of the others the other 3,673. `!=2` is what rules out
+the obvious model — a value parsed to 0 and then negated would answer the true set there,
+and it does not. plexsim compared 0/1 numerically, so `unwatched>=0` answered the whole
+library and `unwatched!=2` the unwatched half: the Unplayed filter inverted for every
+value the client does not send.
+
+**A row with NO value for a numeric column matches NOTHING**, `!=` and `!==` included.
+zen's 742 rated movies split 368/374 across `rating<=7` and `rating>>=7`, so the 3,145
+unrated rows are in neither half; its show library, where no row carries a rating at all,
+answers 0 to all eight operators. plexsim read a missing value as 0, so `rating<=7` was
+the whole grid and `rating!=7` every row — on a real library, the majority of the rows.
+And **`==`/`!==` on a numeric column are an exact STRING comparison of the stored
+number**: `rating==7` answers 0 where `rating==7.0` answers the same 6 rows `rating=7`
+does, `userRating==5` 0 against `==5.0`'s 43, while the INTEGER column answers
+`year==2000` with the same 39 as `year=2000` and `year==2000.0` with none.
+
+**A `tag`-typed COLUMN takes all eight operators**, where a tag-TABLE field takes two.
+`contentRating` is declared `tag` in the Meta exactly as `genre` is, but it is a column on
+the row rather than a join: on zen `=PG` and `==PG` are both 112, `!=PG` and `!==PG` both
+3,775, `<=PG` 3,197 and `>>=PG` 690 — the pairs partition 3,887 exactly — and the empty
+value compares as `""`, so `>=` with no value is every row and `<<=` none. `=` is
+case-SENSITIVE (`=pg` is 0) and `==` is not (`==pg` is 112); the four ordering keys are a
+BYTE comparison, so `<=pg` answers every row a real library holds. plexsim answered
+nothing to six of the eight, so the Content Rating filter's "is before"/"is after"
+controls came back empty.
+
+**`resolution` is the other way round: every operator answers the `=` set**, `!=`
+included — 3,608 of zen's 3,887 at `1080` for all eight, 2 at `sd`, 6 at `720`, and 490 of
+507 on its show library. And `resolution=` matches ANY of a row's Media: zen's 4093 The
+Breadwinner carries a `4k` and a `1080` and answers both, 401 The Devil's Mouth answers
+`1080` and `720`. plexsim read `Media[0]` and negated `!=`, so a row's second version was
+invisible and a "not 4k" filter emptied the grid.
+
+**The section's `Meta` descriptor is three rules, not one.** `active` follows the
+REQUEST: `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode` on both
+references, where plexsim served the captured fixture's stored flags and kept the Shows
+tab lit on the Seasons and Episodes pages. `?includeDetails=1` honours `includeAdvanced=1`
+like every other form — bare it is 9 sorts on a movie library and 17 on a show one, with
+the flag 15 and 32 — where plexsim always answered the advanced list, so six sorts and the
+Duplicates filter the client hides behind its own toggle were permanently on show. And
+that form carries no `folder` Type row and marks none of the others active.
+
+**A row that HAS children names its child list.** `key="/library/metadata/{id}/children"`
+on 300 of 300 zen shows, 300 of 300 zen seasons and both of kids'; an episode keeps the
+bare item path. Three of the four seasons cycle 13 added to `tests/catalog_ui.json` by
+hand carry the bare path, and the client follows `key` verbatim — so a click on Season 20,
+21 or 22 fetched the season's own metadata row instead of its episode list and the season
+page drew nothing. Six cycles of suites passed over it. It is corrected in
+`hierarchy.normalize_rows`, at LOAD, because the wrong value is baked into catalogs
+already written.
+
+**The three options that reshape an item read.** `excludeFields=` strips the named field
+from every CHILD ELEMENT and not only from the row — `id` off Media, Part, Stream, Genre
+and Guid; `file` off Part; `url` off Image; `value` off Rating; `index` and `codec` off
+Stream; `tag` off Genre and Role — so a client asking not to be sent `file` still got the
+full filesystem path out of plexsim. `excludeElements=Image` and `=UltraBlurColors` are
+no-ops on both references, exactly like an unknown name, while every other element the
+option names really goes; plexsim removed them. And `checkFiles=` is VALIDATED: `0`, `1`
+and `01` are 200 while `abc`, an empty value, `2`, `true`, `-1`, `1.5`, a leading space
+and a trailing one are all 400 on both servers. (That plexsim sends `exists`/`accessible`
+unconditionally stays a deliberate deviation; the value grammar was never part of it.)
+
+**`/library/metadata/{id}/extras/all` is a real leaf** — the same container `/extras`
+answers, on both references — where plexsim 404'd the segment. Cycle 15 measured the
+`/all` form on the SECTION path and nobody had asked the item path.
+
+**Four more XML ordering rules.** A `Meta`'s two `Type` rows come BEFORE its eight
+`FieldType` rows, where plexsim sorted them by the item table, which knows neither name,
+and left dict order. Five element buckets `_ATTR_ORDER` had no entry for at all —
+`Common`, `Feature` (whose `scrobbleKey`/`unscrobbleKey` lead), `Type`, and the
+`/media/providers` library `Directory`, which is a DIFFERENT order from
+`/library/sections`'s and had been sharing its bucket — plus `count` and `hubKey` inside
+`Directory[none]`. The rows of `/library/recentlyAdded` and `/library/onDeck`, and only
+those, LEAD with `allowSync` and the librarySection triple before `ratingKey`;
+`allowSync` on the ROW is the tell, since it appears there and nowhere else. And a LIGHT
+row orders its children differently from a detail row: `Guid` sits directly after
+`UltraBlurColors` and before the tags on every listing row of both references, where a
+detail row answers `Genre, Country, Guid, Rating`.
+
+**A real PMS's JSON key order is its XML order** — the container's, the row's, `Media`'s,
+`Part`'s and the row's child-element keys, on both references and all four row types.
+plexsim had ordered the XML since cycle 16 and left the JSON in whatever order the dict
+that built it held, so its two renderings of the same response disagreed. `xmlout._split`
+is now the one answer both writers ask.
+
+##### Territory B: what a write really pushes
+
+**A library EDIT scans only when the form carries `language` or `scanner`.** Measured on
+plexscratch behind a control write, one listener, one run: `agent` alone, `agent` with
+`name`, and `agent` with a `prefs[...]` are each a 200 with ZERO frames, while adding
+either of those two makes it twenty. Cycle 9 recorded "a library edit applies the whole
+form and scans" from a form that happened to carry a `language` -- the half that scans.
+plexsim scanned on every accepted edit, so renaming a library or toggling one Advanced
+preference lit the Dashboard with a full "Scanning Movies" activity and re-framed every
+row where a real PMS is silent. And an edit REFUSES a `type` naming a different type from
+the library's own (400) while accepting its own as a word, as a number, empty or absent.
+
+**`?path=` SCOPES a section scan.** The section's own Location, an empty value and no
+`path` at all each scan everything (five `progress` rows on the copy's five movies,
+twenty frames); a PARENT of it, a CHILD of it and a path the library does not hold scan
+nothing at all -- no `progress` rows, nine frames, the activity running 0 to 100 with an
+empty subtitle. plexsim ignored the parameter, so "Scan Library Files" on one folder
+rescanned and re-framed the whole library.
+
+**Three butler tasks push the wrong thing.** `RefreshLibraries` runs a section SCAN per
+library -- `library.update.section` titled `Scanning <library>`, the per-item `progress`
+rows, the subscriptions pair -- where plexsim ran one `library.update.item.metadata`
+triple per row and no progress rows at all. `OptimizeDatabase` starts at 0 with an EMPTY
+subtitle and steps 0, 10, 40, 60 before ending at 100, where plexsim started at -1 with
+the subtitle already set and stepped 10, 53, 100 -- and its own `PUT /library/optimize`
+already answered the reference's sequence, so the two paths disagreed with each other as
+well as with the reference. `CleanOldBundles` has SEVEN updates and not four: `Analyzing
+metadata bundles` is followed by two `Deleting N metadata bundles` steps at 25 and 50,
+and the `ended` frame carries that subtitle.
+
+**A show library's scan names the SHOW before its seasons**, in a `progress` row with no
+activity update of its own; and `provider.subscriptions.process` is the one activity a
+real PMS marks `cancellable: true`, where every `library.update.section` and
+`library.update.item.metadata` beside it is false -- so the Dashboard drew no Cancel
+control for the only activity that has one. **An analyze pushes no
+`backgroundProcessingQueue` frame**: plexsim invented one, telling every client on the
+socket that the background queue had been rebuilt. Same family as cycle 12's invented
+subtitle-upload pair.
+
+**`PUT /updater/check` pushes one frame** -- an `update.statechange` container carrying an
+`AutoUpdateNotification` row -- where plexsim pushed none and Settings > General > Check
+for Updates never resolved.
+
+**Three verbs at the server level.** `DELETE /devices/{id}` and `DELETE /accounts/{id}`
+are 404s for an id the server lists and one it does not, with the list unchanged; plexsim
+answered an empty 200 to the first and the accounts LISTING to the second, which a client
+reads as a successful write. `PUT /activities/{x}` is a 400 where the DELETE of the same
+path is a 404. And `HEAD /:/prefs` is a 200 on kids, zen and plexscratch alike -- the one
+disagreement in a HEAD sweep over sixty paths and four servers, and a breach of plexsim's
+own rule that a read-only route answers GET and HEAD.
+
+**The `/:/prefs` write grammar has two more rules.** Four settings -- `PlexOnlineUrl`,
+`TranscoderH264Options`, `TranscoderH264OptionsOverride` and `allowMediaDeletionLanOnly`
+-- answer **403** and push no frame, even when the value written is the one already
+stored, while the other 147 answer 200 and push a `preference` frame each; nothing in the
+row marks them, so the set is the measurement. And `ButlerStartHour` and `ButlerEndHour`
+take a WORD without refusing -- a 200 that stores nothing, alone among the 38 integer
+settings, where the other 36 are 500s.
+
+**`server_prefs.json` is the fifth per-version fixture.** kids (1.43.4) answers 174
+settings and zen (1.42.2) 173, and exactly `AllowLegacyAgents` and `CLDriver` are on kids
+and not on zen. Two extra rows on the Settings page is the small half; the real one is
+that a write to `AllowLegacyAgents` succeeded where a real 1.42.2 refuses the whole
+request as an unknown preference.
+
+**The Add Library form validates four ways plexsim did not.** A missing `language` and an
+unparseable one are both 400s carrying exactly `'language' is invalid` -- the accepted set
+is the agent's own list, so `en-US`, `de-DE`, `pt-BR`, `nb-NO` and even `EN-US` pass while
+`en`, `de`, `xx`, `zz-ZZ`, `yue-HK`, `en_US` and an empty value do not. An EMPTY
+`location` is a 201 where plexsim refused it, and a NUMERIC `type` is accepted and creates
+a library of that type where plexsim refused it.
+
+##### Measured and not acted on
+
+- **`sort=` holds up.** `ssweep.py` ran every one of plexsim's 33 sort keys, ascending
+  and descending, against zen's own ordering of the same 3,887 rows. The default listing
+  order IS `sort=titleSort` (3,887 of 3,887), and the tie-break is `titleSort` ASCENDING
+  in BOTH directions — 6 of 6 tied groups on `year`, `rating`, `audienceRating`,
+  `userRating`, `contentRating`, `studio`, `updatedAt` and `originallyAvailableAt`, under
+  `:desc` as well. Both sides of that comparison come from zen, so ICU collation cancels
+  out and what is left is the rule. Every remaining text-sort difference is collation,
+  which is a declared non-goal.
+- **`sort=duration` and `duration=` read the MEDIA's duration**, not the row's column.
+  zen's `sort=duration` opens with 23 rows in title order whose durations run from 5.0 to
+  9.9 million ms, every one of them a row whose Media carries no duration at all; the
+  ordered list starts at index 23. And `duration=5700000` answers 0 although a row's own
+  `duration` is exactly that. plexsim's rows always carry a Media duration equal to the
+  row's, so the two cannot differ for its own catalog. Recorded rather than implemented.
+- **On a SHOW listing a media column is read from the LEAVES, matching when any leaf
+  matches.** zen's `type=2&duration<=1200000` answers 39 and `>=1200000` 483, which
+  overlap — 522 against 505 rows with a value — and `mediaSize` behaves the same way.
+  plexsim's show rows carry no Media at all, so every media filter on a show grid answers
+  nothing. Not built this cycle: it needs the same leaf resolution the `viewedLeafCount`
+  family uses, and cycle 19 was already full.
+- **`lastViewedAt=` and `lastRatedAt=` are a 500 on both references** where every other
+  date column answers a listing — `addedAt=`, `updatedAt=`, `createdAt=` and
+  `originallyAvailableAt=` are all 200. Two columns, no rule that predicts which.
+- **`audioLanguage`'s six non-`=`/`!=` operators.** On zen `=en` is 2,375 and `!=en`
+  1,512 (complementary, and plexsim matches), while `==en` is 1,512, `!==en` 528,
+  `<=en` 1,330, `>=en` 148, `<<=en` 3,664 and `>>=en` 657 — which no single model fits,
+  on a field where a row holds several values. Left as measured.
+- **`Agent`'s attribute order.** Hunt A reported it inverted. The only pairs both
+  references constrain are `hasPrefs < identifier < primary`, which plexsim already
+  satisfies; the `id` that kids puts first is 1.43.4-only and plexsim reports 1.42.2.
+  Refuted.
+- **A `viewCount` or `skipCount` tie.** zen's 3,866 rows with no `viewCount` do not
+  order by `titleSort` within the group, so the column distinguishes NULL from 0 where
+  the API omits both. Unobservable from outside.
+- **`filters=` on the notification channels is a WHITELIST and `all` is not an event
+  type**, so a socket opened with `filters=all` receives NOTHING -- which looks exactly
+  like a server that pushes nothing. It cost this cycle one full round of frame
+  measurements, and the control write is what caught it. Recorded here because the trap
+  is the instrument's, not the server's.
+- **A running `Activity` could not be caught in `/activities`.** Every activity on the
+  copy completes in under 150 ms, so the element was censused from the FRAMES instead; it
+  matches attribute for attribute (`uuid`, `type`, `cancellable`, `userID`, `title`,
+  `subtitle`, `progress`, and a `Context` carrying `librarySectionID` from the second
+  `updated` of a scan onward) apart from the `cancellable` finding above.
+- **Neither reference library holds a single `Collection` or `Label`** — all six axes
+  answer `totalSize 0` on both servers and both library types — so those two child
+  elements could not be exercised at all. An instrument limit, not a rule.
+
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
