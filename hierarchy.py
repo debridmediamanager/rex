@@ -97,6 +97,13 @@ def _fill_real_pms_fields(rows):
 
 
 _ARTICLE = re.compile(r"(?i)^(the|a|an)\s+")
+# Cycle 17, measured on plexscratch character by character: the characters a
+# real PMS drops from the FRONT of a sort title, alongside whitespace. See
+# `sort_title` for why this is a membership table and not a predicate.
+_LEADING_STRIP = ("\"'(-.[{~"
+                  + "".join(chr(code) for code in range(0x80, 0xc0))
+                  + "".join(chr(code) for code in range(0x2000, 0x3000))
+                  + " \t\r\n\f\v")
 _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m2ts",
                      ".wmv", ".flv", ".mpg", ".mpeg")
 
@@ -139,10 +146,32 @@ def sort_title(title):
     `O Ultimo Portal` keep theirs -- so the article list is per-item language, which
     plexsim's catalog does not carry. Left alone deliberately; see docs/findings.md.
 
+    Cycle 17 re-measured the leading trim on plexscratch character by character and
+    found it is not whitespace alone: a leading run of PUNCTUATION comes off too, and
+    before the article. zen's episode 10866, "'Til Death Do Us Art", sorts as "Til Death
+    Do Us Art" and sits in the `T` bucket of an episode `firstCharacter` axis that has
+    no apostrophe bucket at all -- 27 buckets, `#` then A-Z -- so the rule holds on
+    1.42.2 as well as on the copy where the table was measured.
+
+    The set is NOT a Unicode category and cannot be written as one. In ASCII exactly
+    eight characters strip -- `"` `'` `(` `-` `.` `[` `{` `~` -- while `! # $ % & ) * +
+    , / : ; < = > ? @ \ ] ^ _ ` | }` do not, so it is neither "opening brackets" nor
+    "Po" nor "Sm". Outside ASCII it is two whole ranges: every character from U+0080 to
+    U+00BF and every character from U+2000 to U+2FFF strips (85 of 85 tested across
+    them, plus every block boundary probed), while U+0100..U+1FFF and everything from
+    U+3000 up does not -- the CJK and fullwidth brackets stay. The run may mix those
+    characters with whitespace and repeat, and the guard is that a title made only of
+    them keeps its own text rather than sorting as the empty string.
+
     Only the LEADING half of the whitespace trim has a witness (zen holds no title
     with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
     """
-    return _ARTICLE.sub("", fold_marks(title or "").lstrip())
+    folded = fold_marks(title or "")
+    trimmed = folded.lstrip(_LEADING_STRIP)
+    # A title made of nothing but strippable characters keeps its own text: measured,
+    # `'''` and `(((` carry no titleSort at all, which is what a derived string equal
+    # to the title looks like.
+    return _ARTICLE.sub("", trimmed or folded)
 
 
 def normalize_rows(rows):
