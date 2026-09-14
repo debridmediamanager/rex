@@ -130,7 +130,25 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     "viewCount", "network", "parentIndex",
                     # Cycle 20: `lastViewedAt` records a lock as well -- plexsim
                     # accepted the write and left the `Field` list alone.
-                    "lastViewedAt"}
+                    "lastViewedAt",
+                    # Cycle 21, swept on plexscratch over 41 candidate names drawn
+                    # from both references' `Meta` keys and every column findings.md
+                    # records: each of these is a 200 that stores a lock and a `Field`
+                    # row, and stores no VALUE, where plexsim answered 400 "unknown
+                    # field". Eleven names (`album`, `artist`, `chapterSource`,
+                    # `childCount`, `hasChapterVideoStream`, `leafCount`, `logo`,
+                    # `poster`, `role`, `sourceType`, `track`) are a 400 on both and
+                    # stay refused, and `hdr10plus` alone is a 200 that stores nothing.
+                    # The five media-codec names beside it (`atmos`, `audioCodec`,
+                    # `audioLayout`, `subtitleCodec`, `videoCodec`) are held OUT:
+                    # cycle 20 established that family is 1.43.4-only and plexscratch
+                    # is 1.43.4, so their 1.42.2 status -- the build plexsim reports --
+                    # cannot be measured on a writable reference.
+                    "audioLanguage", "dovi", "duplicate", "file", "format", "hdr",
+                    "id", "lastRatedAt", "make", "mediaBitrate", "mediaSize", "model",
+                    "parent", "place", "resolution", "source", "subformat",
+                    "subtitleLanguage", "tag", "trash", "unmatched",
+                    "unviewedLeafCount", "unwatched", "viewedOrInProgressLeafCount"}
 
 
 class EditError(Exception):
