@@ -1340,7 +1340,17 @@ class Library:
     # -- playlists -------------------------------------------------------
 
     def playlists(self, playlist_type=None):
-        rows = [self._playlist_row(p) for p in self._playlists.values()]
+        rows = []
+        for playlist in self._playlists.values():
+            row = self._playlist_row(playlist)
+            # Cycle 16, measured on plexscratch: a playlist is born `viewCount: 1`
+            # with `lastViewedAt` equal to its `addedAt`, and the pair appears on the
+            # LISTING row only -- never on `/playlists/{id}` and never on the create
+            # response. plexsim carried neither anywhere, so the Home shelf keyed
+            # `sort=lastViewedAt:desc` had nothing to order by.
+            row["viewCount"] = playlist.get("viewCount", 1)
+            row["lastViewedAt"] = playlist.get("lastViewedAt", playlist["addedAt"])
+            rows.append(row)
         if playlist_type:
             rows = [r for r in rows if r.get("playlistType") == playlist_type]
         return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or ""))

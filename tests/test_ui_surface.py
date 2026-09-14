@@ -12086,6 +12086,33 @@ def main():
           % (sizes_c16a1, refusals_c16a1, titled_c16a1,
              [t_c16a1.get("title") for t_c16a1 in (meta_c16a1 or {}).get("Type") or []]))
 
+
+    # Cycle 16, measured on plexscratch: a playlist is born `viewCount: 1` with
+    # `lastViewedAt` equal to its `addedAt`, and those two appear on the LISTING row
+    # only -- `/playlists`, `/playlists/all`, `?playlistType=`, `?type=15` -- never on
+    # the single read at `/playlists/{id}` and never on the create response. plexsim
+    # carried neither anywhere, and the Home shelf `home.playlists` is keyed
+    # `/playlists/all?type=15&sort=lastViewedAt:desc`, so with nothing to sort on the
+    # shelf's order was arbitrary and the Meta's own "Plays" and "Last Played" sorts
+    # were inert.
+    born_c16a2 = request(base, "POST", "/playlists?title=c16born&type=video&smart=0"
+                         "&uri=%s" % quote("server://%s/com.plexapp.plugins.library"
+                                           "/library/metadata/%s" % (machine, movie)))
+    created_c16a2 = json.loads(born_c16a2[1])["MediaContainer"]["Metadata"][0]
+    key_c16a2 = created_c16a2["ratingKey"]
+    listed_c16a2 = [r_c16a2 for r_c16a2 in get(base, "/playlists")[1].get("Metadata") or []
+                    if str(r_c16a2.get("ratingKey")) == str(key_c16a2)][0]
+    single_c16a2 = get(base, "/playlists/%s" % key_c16a2)[1]["Metadata"][0]
+    request(base, "DELETE", "/playlists/%s" % key_c16a2)
+    check("a playlist LISTING row carries viewCount and lastViewedAt; the reads do not",
+          listed_c16a2.get("viewCount") == 1
+          and listed_c16a2.get("lastViewedAt") == listed_c16a2.get("addedAt")
+          and "viewCount" not in single_c16a2 and "lastViewedAt" not in single_c16a2
+          and "viewCount" not in created_c16a2 and "lastViewedAt" not in created_c16a2,
+          "listing=%s/%s single=%s create=%s"
+          % (listed_c16a2.get("viewCount"), listed_c16a2.get("lastViewedAt"),
+             "viewCount" in single_c16a2, "viewCount" in created_c16a2))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
