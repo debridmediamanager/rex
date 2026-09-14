@@ -1353,7 +1353,12 @@ class Library:
             rows.append(row)
         if playlist_type:
             rows = [r for r in rows if r.get("playlistType") == playlist_type]
-        return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or ""))
+        # Cycle 16, measured on plexscratch over five lists whose ratingKey, addedAt
+        # and title orders are all different: the SMART ones come first, then
+        # `titleSort` within each group, and every tie under an explicit sort falls
+        # back to the same. plexsim ordered by titleSort alone.
+        return sorted(rows, key=lambda r: (not r.get("smart"),
+                                           str(r.get("titleSort") or r.get("title") or "")))
 
     def create_playlist(self, title, playlist_type, rows, smart=False, uri=None):
         self._next_playlist += 1
