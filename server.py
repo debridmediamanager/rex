@@ -1527,6 +1527,20 @@ def _restamped(row, stamp):
     return row if changed is None else changed
 
 
+def _progress_time(value):
+    """A `/:/progress?time=` as a real PMS reads it, or None when it refuses.
+
+    Cycle 21, measured on plexscratch value by value: a NEGATIVE value and a leading
+    `+` are both 200s -- `-1` and `-500000` store nothing, `+120000` stores 120000 --
+    while `abc`, an empty value, `1.5`, `0x10`, `1e6` and a leading space are 500s.
+    plexsim read the value with `isdigit()`, so the two shapes a real PMS accepts were
+    refused with a 500.
+    """
+    if re.fullmatch(r"[+-]?\d+", str(value or "")) is None:
+        return None
+    return int(value)
+
+
 def _escaped_pref(value):
     """A text preference as a real PMS stores it.
 
@@ -9845,13 +9859,16 @@ class PlexSim:
         offset = query.get("time")
         # Measured on a writable copy of the reference: a missing or unparseable `time`
         # is a 500 here, where plexsim stored 0 and answered 200.
-        row, refusal = self._keyed_row(query, validate=lambda: None if str(offset or "").isdigit()
+        row, refusal = self._keyed_row(query, validate=lambda: None
+                                       if _progress_time(offset) is not None
                                        else ("error", 500, "plexsim: bad time"),
                                        numeric_key=True, any_key=True)
         if refusal:
             return refusal
-        if row is not None:
-            self.library.progress(int(row["ratingKey"]), int(offset),
+        position = _progress_time(offset)
+        if row is not None and position >= 0:
+            # Measured: a negative position is accepted and stores NOTHING.
+            self.library.progress(int(row["ratingKey"]), position,
                                   state=query.get("state") or "stopped", completes=False)
         # Cycle 21, measured on plexscratch: an integer key naming NO row is a 200 here
         # that stores nothing, alone among the four writes -- the other three 404 it.
