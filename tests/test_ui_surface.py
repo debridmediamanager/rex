@@ -13808,6 +13808,64 @@ def main():
               % (mixed_c17b17[0], mixed_c17b17[1], single_c17b17))
         request(base, "DELETE", "/library/collections/%s" % cid_c17b17)
 
+
+    # Cycle 17, re-measured by the driver on plexscratch, every one of the 23 tasks run
+    # singly with a notification socket open: the Scheduled Tasks page's Run button
+    # reports a different sentence for twelve of them, three report SEVERAL messages,
+    # and five report one where plexsim reported none at all. The task LIST is identical
+    # on kids, zen, plexscratch and plexsim -- 23 names, same order, same fields -- and
+    # every `POST /butler/{Task}` is a 200 with an empty body on both, so what differs is
+    # only what the page then prints. The COUNT in each sentence is content and not part
+    # of the rule; the template is.
+    #
+    # The two tasks with an activity of their own differ in it too: `CleanOldBundles` is
+    # titled `Cleaning Bundles` and steps its SUBTITLE through four named phases, and
+    # `OptimizeDatabase` is titled `Optimizing database` with the subtitle `Optimizing
+    # Database` -- plexsim had that pair the other way round.
+    def butler_frames_c17b18(name_c17b18):
+        _, frames_c17b18 = notifications(
+            base, lambda: request(base, "POST", "/butler/%s" % name_c17b18), seconds=4)
+        messages_c17b18 = [row_c17b18.get("message") for frame_c17b18 in frames_c17b18
+                           for row_c17b18 in ((frame_c17b18.get("NotificationContainer")
+                                               or {}).get("ProgressNotification") or [])]
+        activities_c17b18 = [((row_c17b18.get("Activity") or {}).get("type"),
+                              (row_c17b18.get("Activity") or {}).get("title"),
+                              (row_c17b18.get("Activity") or {}).get("subtitle"))
+                             for frame_c17b18 in frames_c17b18
+                             for row_c17b18 in ((frame_c17b18.get("NotificationContainer")
+                                                 or {}).get("ActivityNotification") or [])
+                             if (row_c17b18.get("Activity") or {}).get("type") != "butler"]
+        return messages_c17b18, activities_c17b18
+    logs_c17b18, _ = butler_frames_c17b18("ButlerTaskCleanSupplementalLogFiles")
+    ads_c17b18, _ = butler_frames_c17b18("ButlerTaskGenerateAdMarkers")
+    music_c17b18, _ = butler_frames_c17b18("MusicAnalysis")
+    blobs_c17b18, _ = butler_frames_c17b18("GarbageCollectBlobs")
+    periodic_c17b18, _ = butler_frames_c17b18("RefreshPeriodicMetadata")
+    bundles_c17b18, bundle_acts_c17b18 = butler_frames_c17b18("CleanOldBundles")
+    _, db_acts_c17b18 = butler_frames_c17b18("OptimizeDatabase")
+    check("every butler task reports the reference's own sentence",
+          logs_c17b18 == ["The butler cleaned 0 directories."]
+          and len(ads_c17b18) == 1
+          and ads_c17b18[0].startswith("The butler generated ad markers for ")
+          and ads_c17b18[0].endswith(" show(s).")
+          and music_c17b18 == ["The butler performed sonic analysis on 0 batches of albums."]
+          and blobs_c17b18 == ["The butler collected blob garbage."]
+          and len(periodic_c17b18) == 4
+          and periodic_c17b18[0] == "The butler refreshed 0 artists."
+          and len(bundles_c17b18) == 2
+          and bundles_c17b18[0].startswith("The butler cleaned ")
+          and bundles_c17b18[0].endswith(" media bundles.")
+          and {a_c17b18[1] for a_c17b18 in bundle_acts_c17b18} == {"Cleaning Bundles"}
+          and "Analyzing metadata bundles" in {a_c17b18[2]
+                                               for a_c17b18 in bundle_acts_c17b18}
+          and {a_c17b18[1] for a_c17b18 in db_acts_c17b18} == {"Optimizing database"}
+          and "Optimizing Database" in {a_c17b18[2] for a_c17b18 in db_acts_c17b18},
+          "logs=%s ads=%s music=%s blobs=%s periodic=%d bundles=%s bundle-title=%s "
+          "db-title=%s"
+          % (logs_c17b18, ads_c17b18, music_c17b18, blobs_c17b18, len(periodic_c17b18),
+             bundles_c17b18, {a_c17b18[1] for a_c17b18 in bundle_acts_c17b18},
+             {a_c17b18[1] for a_c17b18 in db_acts_c17b18}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
