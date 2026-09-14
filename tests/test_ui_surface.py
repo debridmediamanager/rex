@@ -15250,6 +15250,52 @@ def main():
           "%s | related %r/%r | grandchildren %r"
           % (codes_c21n, rel_coll_c21n.get("librarySectionID"),
              rel_play_c21n.get("librarySectionID"), grand_c21n.get("viewGroup")))
+
+    _, c21o_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20edit"
+                                            "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                            "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                              % (movie_section, machine, movie))
+    c21o_collection = json.loads(c21o_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    _, c21o_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C21%%20edit&smart=0"
+                                               "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                               "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                 % (machine, movie))
+    c21o_playlist = json.loads(c21o_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+    # Cycle 21, measured on plexscratch: `PUT /library/collections/{id}` is the ITEM edit
+    # path, with the whole grammar -- a form that writes nothing is a 400, an unknown
+    # `.value` is a 400, a pref name there is a 400, and `titleSort.value` with its lock
+    # really stores. plexsim answered 200 to all of them from a second, weaker code path
+    # and dropped the sort title, so a save on the collection page reported success and
+    # lost the edit. And `POST`, `PATCH` and a bare `OPTIONS` are 404s on
+    # `/library/collections/{id}`, on its `/children`, and on `/library/metadata/{id}` for
+    # both list types -- cycle 19's read-only-verb rule, which had never reached these.
+    codes_c21o = {}
+    for label_c21o, query_c21o in (("bare", ""), ("unknown", "?zzz.value=1"),
+                                   ("pref", "?collectionMode=1")):
+        codes_c21o[label_c21o] = request(
+            base, "PUT", "/library/collections/%s%s" % (c21o_collection, query_c21o))[0]
+    codes_c21o["edit"] = request(
+        base, "PUT", "/library/collections/%s?titleSort.value=ZZC21&titleSort.locked=1"
+        % c21o_collection)[0]
+    _, back_c21o, _ = get(base, "/library/metadata/%s" % c21o_collection)
+    sort_c21o = (back_c21o.get("Metadata") or [{}])[0].get("titleSort")
+    verbs_c21o = {}
+    for verb_c21o in ("POST", "PATCH", "OPTIONS"):
+        verbs_c21o[(verb_c21o, "collection")] = request(
+            base, verb_c21o, "/library/collections/%s" % c21o_collection)[0]
+        verbs_c21o[(verb_c21o, "children")] = request(
+            base, verb_c21o, "/library/collections/%s/children" % c21o_collection)[0]
+        verbs_c21o[(verb_c21o, "metadata")] = request(
+            base, verb_c21o, "/library/metadata/%s" % c21o_collection)[0]
+        verbs_c21o[(verb_c21o, "playlist")] = request(
+            base, verb_c21o, "/library/metadata/%s" % c21o_playlist)[0]
+    check("the collections path takes the item edit grammar, and refuses the other verbs",
+          codes_c21o == {"bare": 400, "unknown": 400, "pref": 400, "edit": 200}
+          and sort_c21o == "ZZC21"
+          and set(verbs_c21o.values()) == {404},
+          "%s | titleSort %r | verbs %s"
+          % (codes_c21o, sort_c21o, sorted(set(verbs_c21o.values()))))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
