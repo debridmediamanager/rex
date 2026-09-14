@@ -383,6 +383,49 @@ def _exact(operator, actual, wanted, field=""):
     return False
 
 
+def _tag_column(operator, actual, wanted, field=""):
+    """A `tag`-typed COLUMN under an operator the tag-table fields never take.
+
+    Cycle 19, measured on kids (1.43.4) and zen (1.42.2). `contentRating` is declared
+    `tag` in the Meta like `genre` is, but it is a COLUMN on the row rather than a join
+    against a tag table -- and unlike a tag-table field, which `operator_allowed` closes
+    to `=`/`!=`, it answers all eight:
+
+        zen, 3,887 movies, 2,864 of them with no rating at all
+        contentRating=PG     112     ==PG    112      (exact; `=` is CASE-SENSITIVE,
+        contentRating!=PG   3,775    !==PG  3,775      `==` is not: `==pg` is 112 too
+        contentRating<=PG   3,197    <<=PG  3,085      and `=pg` is 0)
+        contentRating>=PG     802    >>=PG    690
+        contentRating<=      2,864   <<=        0     the empty value compares as ""
+        contentRating>=      3,887   >>=    1,023     so a row with none is the low end
+
+    The four ordering keys partition exactly -- 802 + 3,085 = 3,887 and 3,197 + 690 =
+    3,887 -- so they are `>=`, `<`, `<=`, `>` over the stored string, and the comparison
+    is BYTE-ordered rather than case-folded: `<=pg` answers every row (a lowercase `p`
+    sorts above every rating a real library holds) where `<=PG` answers 3,197. kids
+    agrees on all sixteen counts at its own scale.
+
+    plexsim answered NOTHING to six of the eight, so the Content Rating filter's
+    "is before"/"is after" controls -- and `contentRating>=` with no value, which the
+    client sends as "has any rating" -- came back empty.
+    """
+    values = _values(actual)
+    text = str(values[0]) if values else ""
+    wanted = str(wanted)
+    if wanted == EMPTY_SYNONYM.get(field):
+        wanted = ""
+    if operator in ("==", "!=="):
+        hit = text.lower() == wanted.lower()
+        return hit if operator == "==" else not hit
+    if operator == "<=":
+        return text <= wanted
+    if operator == "<<=":
+        return text < wanted
+    if operator == ">=":
+        return text >= wanted
+    return text > wanted
+
+
 def compare(kind, operator, actual, wanted, field=""):
     """One (type, operator) pair, measured against two real servers.
 
@@ -409,9 +452,20 @@ def compare(kind, operator, actual, wanted, field=""):
         # than an empty result.
         if str(wanted).strip() not in RESOLUTIONS:
             raise FilterError(500, "unknown resolution %r" % wanted)
-        return _exact(operator, actual, wanted)
+        # Cycle 19: every operator answers the same set as `=`, `!=` INCLUDED. On zen
+        # `resolution=1080` and all seven others each answer 3,608 of 3,887; `=sd` and
+        # its seven answer 2; `=720` and its seven answer 6. kids agrees (5 and 0 and 0
+        # on its five clips), and a show library is the same (490 of 507 for every
+        # operator at `1080`). plexsim negated `!=` and answered nothing to the other
+        # six, so a client's "not 4k" filter emptied the grid.
+        return _exact("=", actual, wanted)
 
     if kind in ("tag", "audioLanguage", "subtitleLanguage"):
+        if kind == "tag" and field not in TAG_TABLE_FIELDS and operator not in TAG_OPERATORS:
+            # A tag-typed COLUMN, not a join against the tag table: it takes all eight
+            # operators. `operator_allowed` already closes the tag-TABLE fields to
+            # `=`/`!=`, so nothing else reaches here.
+            return _tag_column(operator, actual, wanted, field)
         return _exact(operator, actual, wanted, field)
 
     if kind == "date":
