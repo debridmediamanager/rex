@@ -26,7 +26,7 @@
    "titleSort": "Tears of Steel",
    "originalTitle": "Tears of Steel.webm",
    "year": 2012,
-   "summary": "The film\u2019s premise is about a group of warriors and scientists, who gathered at the \u201cOude Kerk\u201d in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+   "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
    "duration": 734167,
    "addedAt": 1789180064,
    "updatedAt": 1789180064,
@@ -144,7 +144,7 @@
     },
     {
      "tag": "Rogier Schippers",
-     "role": "Kapit\u00e4n",
+     "role": "Kapitän",
      "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg"
     },
     {
@@ -213,7 +213,7 @@
    "titleSort": "Tears of Steel 2",
    "originalTitle": "Tears of Steel.webm",
    "year": 2012,
-   "summary": "The film\u2019s premise is about a group of warriors and scientists, who gathered at the \u201cOude Kerk\u201d in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+   "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
    "duration": 734167,
    "addedAt": 1789180064,
    "updatedAt": 1789180064,
@@ -331,7 +331,7 @@
     },
     {
      "tag": "Rogier Schippers",
-     "role": "Kapit\u00e4n",
+     "role": "Kapitän",
      "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg"
     },
     {
@@ -400,7 +400,7 @@
    "titleSort": "Tears of Steel 3",
    "originalTitle": "Tears of Steel.webm",
    "year": 2012,
-   "summary": "The film\u2019s premise is about a group of warriors and scientists, who gathered at the \u201cOude Kerk\u201d in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
+   "summary": "The film’s premise is about a group of warriors and scientists, who gathered at the “Oude Kerk” in Amsterdam to stage a crucial event from the past, in a desperate attempt to rescue the world from destructive robots.",
    "duration": 734167,
    "addedAt": 1789180064,
    "updatedAt": 1789180064,
@@ -518,7 +518,7 @@
     },
     {
      "tag": "Rogier Schippers",
-     "role": "Kapit\u00e4n",
+     "role": "Kapitän",
      "thumb": "https://image.tmdb.org/t/p/w185/fUeXGTjkNZPwHK1JZwtiK6SUYmT.jpg"
     },
     {
@@ -2302,6 +2302,22 @@
          "languageCode": "eng",
          "languageTag": "en",
          "displayTitle": "English"
+        },
+        {
+         "id": 1002004,
+         "streamType": 3,
+         "codec": "srt",
+         "index": 2,
+         "default": false,
+         "forced": false,
+         "embeddedInVideo": true,
+         "language": "Français",
+         "languageCode": "fra",
+         "languageTag": "fr",
+         "displayTitle": null,
+         "selected": false,
+         "title": null,
+         "extendedDisplayTitle": null
         }
        ]
       }

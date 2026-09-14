@@ -14449,6 +14449,25 @@ def main():
                                 for entry in deleted),
           "%s" % deleted[:1])
 
+    # Cycle 18, measured on zen (1.42.2) and kids (1.43.4): an item's `audioLanguage` and
+    # `subtitleLanguage` enums are led by the item's OWN stream languages -- bare 639-1
+    # tags, audio first then subtitles, each named in its own language -- before the generic
+    # regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against its episodes'
+    # one audio and fifteen subtitle languages, and show 11113 leads `pa:...|en:English`.
+    # plexsim served the captured fixture list to every item, so a show's own languages could
+    # not be chosen in its Preferences pane. The fixture gains one French subtitle track for
+    # this check: with nothing but English in it the rule is invisible.
+    status, detail, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
+    prefs = {s.get("id"): s.get("enumValues")
+             for s in ((detail.get("Metadata") or [{}])[0].get("Preferences") or {}).get("Setting") or []}
+    head = (prefs.get("audioLanguage") or "").split("ca-ES:")[0]
+    check("the show's own stream languages lead its language enum",
+          status == 200 and head.startswith(":Account default|en:English|fr:")
+          and head == (prefs.get("subtitleLanguage") or "").split("ca-ES:")[0],
+          "%r" % head)
+    check("and the generic regional list still follows",
+          "ca-ES:" in (prefs.get("audioLanguage") or ""), "%r" % (prefs.get("audioLanguage") or "")[:80])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
