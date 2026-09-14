@@ -15555,6 +15555,29 @@ def main():
           >= {str(c20_season_a), str(c20_season_b)},
           "titleSort= %s | search %s | title= %s | #%s"
           % (sorted(matched_c20r), searched_c20r, titled_c20r, bucket_c20r.get("size")))
+
+    # Cycle 20, measured on kids (whose six episodes split three with a stored
+    # `view_count = 0` and three with no settings row at all) and on zen (8,943 of
+    # 9,287 episodes): `viewCount` and `viewOffset` treat a row with NO stored value as
+    # BELOW every value and equal to 0. kids answers `viewCount=0` with all six,
+    # `<<=0` with the three that have no row, `>=0` with the three that have one, and
+    # `!=0` with none. `skipCount` is NOT in this family -- its nulls match nothing,
+    # which is how the two were separated. plexsim answered an empty grid to
+    # `viewCount=0`, the client's own "never played" probe.
+    counts_c20s = {}
+    for spec_c20s in ("viewCount=0", "viewCount%3C%3C=0", "viewCount%3E=0", "viewCount%21=0",
+                      "viewOffset=0", "viewOffset%3C=0", "skipCount=0"):
+        counts_c20s[spec_c20s] = len(get(base, "/library/sections/%s/all?type=4&%s"
+                                         % (show_section, spec_c20s))[1].get("Metadata") or [])
+    total_c20s = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [])
+    check("viewCount and viewOffset read a missing value as below every value",
+          total_c20s and counts_c20s["viewCount=0"] == total_c20s
+          and counts_c20s["viewOffset=0"] == total_c20s
+          and counts_c20s["viewOffset%3C=0"] == total_c20s
+          and counts_c20s["viewCount%21=0"] == 0
+          and counts_c20s["skipCount=0"] == 0,
+          "%s of %s" % (counts_c20s, total_c20s))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

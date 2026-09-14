@@ -238,6 +238,12 @@ def _to_epoch(text, form):
 # `absoluteIndex` and `userRating` take it and answer no rows.
 FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 
+# The two columns whose ABSENCE is read as a value: cycle 20, measured on both
+# references. A row with no stored view state matches `=0` and every `<=`/`<<=`
+# whatever the value, and nothing else. `skipCount` looks identical on a row and is
+# not in the family.
+NULL_IS_ZERO_FIELDS = {"viewCount", "viewOffset"}
+
 
 def as_number(value):
     try:
@@ -591,6 +597,16 @@ def compare(kind, operator, actual, wanted, field=""):
         # The VALUE is still parsed first (cycle 15), so a word is a 500 here whether
         # or not the column is null.
         if actual is None:
+            # ...except on the two per-user columns, where a row with NO stored value
+            # is read as BELOW every value and equal to 0. Cycle 20, measured on kids
+            # -- whose six episodes split three with a stored `view_count = 0` and
+            # three with no settings row at all -- and on zen: `viewCount=0` answers
+            # all six and 8,943 of 9,287, `<<=0` answers only the three with no row,
+            # `>=0` only the three with one, and `!=0` none. `skipCount` is NOT in the
+            # family: its nulls match nothing, which is what separates the two.
+            if field in NULL_IS_ZERO_FIELDS:
+                return (operator in ("<=", "<<=")
+                        or (operator == "=" and target == 0))
             return False
         if operator in ("==", "!=="):
             # ...and this pair is an exact STRING comparison of the stored number, not
