@@ -13277,6 +13277,29 @@ def main():
           % (with_unknown_c17b2, with_bare_c17b2, with_option_c17b2, with_tag_c17b2,
              alone_c17b2, option_alone_c17b2, bare_c17b2))
 
+
+    # Cycle 17, re-measured on plexscratch: on the SECTION save path a form that names
+    # nothing to write is a 200 that edits nothing, not a 400 -- `?type=2&id={id}` on
+    # its own, with a bare unknown name, with `includeGuids=1` or with
+    # `flattenSeasons=1` are all 200s there, because on that path a bare `field=value`
+    # is a FILTER and a filter that matches nothing to write is simply a no-op. The
+    # unknown `.value` form stays a 400 on this path, which is the one place the two
+    # paths genuinely differ (the item path ignores it -- see the check above).
+    def section_c17b3(query_c17b3):
+        status_c17b3, _, _ = request(
+            base, "PUT", "/library/sections/%s/all?type=2&id=%s%s"
+            % (show_section, show, query_c17b3))
+        return status_c17b3
+    check("a section save with nothing to write is a 200",
+          section_c17b3("") == 200 and section_c17b3("&zzzUnknown=1") == 200
+          and section_c17b3("&includeGuids=1") == 200
+          and section_c17b3("&flattenSeasons=1") == 200
+          and section_c17b3("&zzzUnknown.value=1") == 400,
+          "bare=%s unknown=%s include=%s flatten=%s dotvalue=%s"
+          % (section_c17b3(""), section_c17b3("&zzzUnknown=1"),
+             section_c17b3("&includeGuids=1"), section_c17b3("&flattenSeasons=1"),
+             section_c17b3("&zzzUnknown.value=1")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
