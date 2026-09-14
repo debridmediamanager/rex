@@ -4091,6 +4091,33 @@ class PlexSim:
             filters = json.loads(json.dumps(entries).replace("{section}", str(section_id)))
             return self.secondary_container(section_id, section, None,
                                             Directory=filters)
+        if leaf == "firstCharacter" and len(segments) == 5:
+            # Cycle 16, measured on kids and zen: the bucket behind a letter is a real
+            # LISTING, and it is NOT the axis. `title2` reads "Start with '<key>'" with
+            # the key as the client sent it (`%23` decodes, `BB` and a lowercase `b`
+            # are echoed verbatim and match nothing), the rows are the light grid
+            # projection, and the listing grammar applies on top -- `year=2020` on
+            # zen's `B` bucket answers 6 of its 161 rows and `sort=titleSort:desc`
+            # reverses them. The match is on the ROW's own sort title, which is why a
+            # season list's `A` bucket says 64 in the axis and answers 0 rows here.
+            #
+            # plexsim routed on `segments[3]` alone, so the extra segment was dropped
+            # and every bucket answered the AXIS again: clicking a letter in the A-Z
+            # rail redrew the rail.
+            wanted = urllib.parse.unquote(segments[4])
+            self._parsed_type(query, 500)
+            rows = [r for r in self.typed_rows(section_id, query)
+                    if self._first_character_bucket(r) == wanted]
+            rows, _ = self.apply_filters(rows, query, section)
+            rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            # `limit=` is parsed but does nothing here, the way it does nothing on
+            # /children: zen's `B` bucket answers all 161 rows to `limit=2`.
+            extra = {"nocache": True} if section.get("type") == "show" else {}
+            return self.listing_container(
+                section_id, section, [_listing_row(r) for r in rows], query=query,
+                title2="Start with '%s'" % wanted, **extra)
         if leaf == "firstCharacter":
             # Measured on zen's show library: this axis IS scoped by `?type=`, and its
             # counts follow -- 13 `#` and 40 `A` for the shows at type 2, 13 and 64 for
@@ -4263,6 +4290,18 @@ class PlexSim:
         # A leaf a real PMS does not have is a 404 there, not an empty container.
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
+
+    def _first_character_bucket(self, row):
+        """The bucket a row falls in when the LISTING filters on it.
+
+        The row's OWN sort title, first character upper-cased, with every digit
+        sharing `#` -- measured on kids, where "The Train Job" (titleSort "Train Job")
+        answers to `T` and not to `M`, so it really is the sort title. The axis above
+        it counts on a different basis; see `_first_character_basis`.
+        """
+        title = str(row.get("titleSort") or row.get("title") or "")
+        first = (title[:1] or "#").upper()
+        return "#" if first.isdigit() else first
 
     def _first_character_basis(self, row):
         """The row whose sort title the `firstCharacter` AXIS counts this row under.

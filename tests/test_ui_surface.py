@@ -11467,6 +11467,41 @@ def main():
           letters_c16c == want_c16c and want_c16c != own_c16c,
           "axis %s, by show %s, by own title %s" % (letters_c16c, want_c16c, own_c16c))
 
+
+    # Cycle 16, measured on kids and zen: `/library/sections/{id}/firstCharacter/{key}`
+    # is a real LISTING of that bucket's rows -- the light grid row, `title2` reading
+    # "Start with '<key>'", the librarySection triple, and the listing grammar on top
+    # (zen's `B` bucket answers 6 of its 161 rows to `year=2020` and reverses under
+    # `sort=titleSort:desc`). It filters on the ROW's own sort title, which is what
+    # makes it disagree with the axis above it. plexsim routed on the leaf alone, so
+    # the extra segment was dropped and every bucket answered the AXIS again: clicking
+    # a letter in the A-Z rail redrew the rail instead of opening the rows behind it.
+    grid_c16d = (get(base, "/library/sections/%s/all" % movie_section)[1]
+                 .get("Metadata") or [])
+    letter_c16d = str(grid_c16d[0].get("titleSort")
+                      or grid_c16d[0].get("title") or "#")[:1].upper()
+    want_c16d = [r_c16d["ratingKey"] for r_c16d in grid_c16d
+                 if str(r_c16d.get("titleSort") or r_c16d.get("title") or "")[:1].upper()
+                 == letter_c16d]
+    bucket_c16d = get(base, "/library/sections/%s/firstCharacter/%s"
+                      % (movie_section, letter_c16d))
+    lower_c16d = get(base, "/library/sections/%s/firstCharacter/%s"
+                     % (movie_section, letter_c16d.lower()))[1]
+    check("a firstCharacter bucket lists its own rows, case-sensitively",
+          bucket_c16d[0] == 200
+          and [r_c16d["ratingKey"] for r_c16d in bucket_c16d[1].get("Metadata") or []]
+          == want_c16d
+          and bool(want_c16d)
+          and bucket_c16d[1].get("title2") == "Start with '%s'" % letter_c16d
+          and "Directory" not in bucket_c16d[1]
+          and (lower_c16d.get("Metadata") or []) == []
+          and lower_c16d.get("title2") == "Start with '%s'" % letter_c16d.lower(),
+          "%s letter=%r rows=%s want=%s title2=%r lowercase=%d"
+          % (bucket_c16d[0], letter_c16d,
+             [r_c16d.get("title") for r_c16d in bucket_c16d[1].get("Metadata") or []],
+             want_c16d, bucket_c16d[1].get("title2"),
+             len(lower_c16d.get("Metadata") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
