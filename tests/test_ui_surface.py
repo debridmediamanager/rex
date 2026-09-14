@@ -12283,6 +12283,36 @@ def main():
           and refused_c16a8 == (400, 400, 400, 400),
           "%s total=%s refusals=%s" % (sizes_c16a8, total_c16a8, refused_c16a8))
 
+
+    # Cycle 16, measured on plexscratch: EVERY play-queue item delete answers the
+    # container as it stood BEFORE the delete -- the old `playQueueVersion` and
+    # `playQueueTotalCount` -- with the remaining rows; only the SELECTED item's delete
+    # also drops the rows. The next GET carries the stepped version and the new total.
+    # plexsim answered the post-mutation container for a non-selected item, and the
+    # client DISCARDS a queue response whose version it did not expect.
+    fresh_c16a9 = json.loads(request(
+        base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, show)))[1])["MediaContainer"]
+    id_c16a9 = fresh_c16a9["playQueueID"]
+    was_c16a9 = (fresh_c16a9["playQueueVersion"], fresh_c16a9["playQueueTotalCount"],
+                 len(fresh_c16a9["Metadata"]))
+    last_c16a9 = fresh_c16a9["Metadata"][-1]["playQueueItemID"]
+    _, body_c16a9, _ = request(base, "DELETE", "/playQueues/%s/items/%s"
+                               % (id_c16a9, last_c16a9))
+    answer_c16a9 = json.loads(body_c16a9)["MediaContainer"]
+    next_c16a9 = get(base, "/playQueues/%s" % id_c16a9)[1]
+    check("a play-queue item delete answers the container as it stood before",
+          (answer_c16a9["playQueueVersion"], answer_c16a9["playQueueTotalCount"])
+          == was_c16a9[:2]
+          and len(answer_c16a9.get("Metadata") or []) == was_c16a9[2] - 1
+          and next_c16a9["playQueueVersion"] == was_c16a9[0] + 1
+          and next_c16a9["playQueueTotalCount"] == was_c16a9[1] - 1,
+          "was=%s delete=(%s,%s,%d) next=(%s,%s)"
+          % (was_c16a9, answer_c16a9["playQueueVersion"],
+             answer_c16a9["playQueueTotalCount"], len(answer_c16a9.get("Metadata") or []),
+             next_c16a9["playQueueVersion"], next_c16a9["playQueueTotalCount"]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
