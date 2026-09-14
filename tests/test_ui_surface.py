@@ -12710,6 +12710,39 @@ def main():
              len(before_c16a22["movie"]), after_c16a22["movie"],
              len(before_c16a22["season"]), len(after_c16a22["season"][0])))
 
+
+    # Cycle 16, measured on plexscratch twice over: on the SECTION save path the
+    # `state 3` frame carries the row's title from BEFORE the write and the `state 5`
+    # frame the new one, while the ITEM path sends the new title in both. It is visible
+    # only on a TITLE edit of a SHOW -- an episode's frame title is derived from its
+    # show, so it cannot show the difference. plexsim sent the new title in both frames
+    # on the section path; the cost is small (the Dashboard's "Updating Metadata" line
+    # names the new title a beat early) but the frame pair is the thing every other
+    # client keys its refresh off.
+    was_c16a23 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0]["title"]
+    def rename_c16a23():
+        request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&title.value=%s"
+                % (show_section, show, quote("C16A23 Renamed")))
+
+    _, frames_c16a23 = notifications(base, rename_c16a23, seconds=6)
+    states_c16a23 = [(row_c16a23.get("state"), row_c16a23.get("title"))
+                     for frame_c16a23 in frames_c16a23
+                     for row_c16a23 in ((frame_c16a23.get("NotificationContainer") or {})
+                                        .get("TimelineEntry") or [])
+                     if row_c16a23.get("state") in (3, 5)]
+    request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&title.value=%s"
+            % (show_section, show, quote(was_c16a23)))
+    loading_c16a23 = [title_c16a23 for state_c16a23, title_c16a23 in states_c16a23
+                      if state_c16a23 == 3]
+    done_c16a23 = [title_c16a23 for state_c16a23, title_c16a23 in states_c16a23
+                   if state_c16a23 == 5]
+    check("the section save path frames the row's title from before the write",
+          bool(loading_c16a23) and bool(done_c16a23)
+          and was_c16a23.split(" (")[0] in (loading_c16a23[0] or "")
+          and "C16A23 Renamed" in (done_c16a23[0] or ""),
+          "state3=%r state5=%r (was %r)"
+          % (loading_c16a23[:1], done_c16a23[:1], was_c16a23))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

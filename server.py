@@ -6216,6 +6216,14 @@ class PlexSim:
         """
         try:
             if section:
+                # Cycle 16, measured on plexscratch twice over: the `state 3`
+                # frame carries the row's title from BEFORE the write and only
+                # `state 5` carries the new one, where the ITEM path sends the
+                # new title in both. Visible only on a TITLE edit of a SHOW --
+                # an episode's frame title is derived from its show, so it
+                # cannot show the difference -- and plexsim sent the new title
+                # in both. The snapshot has to be taken before the edit runs.
+                was = [dict(row) for row in rows]
                 for row in rows:
                     self.library.edit(row, query, pairs=query.get("_pairs"), section=True)
                 # Measured: a save through the section path frames its rows in LISTING
@@ -6223,8 +6231,11 @@ class PlexSim:
                 # sends every row's state 3 before any row's state 5. A comma-joined key
                 # list keeps the per-row pair, in the order it was given.
                 ordered = sorted(rows, key=self._sort_key("titleSort"))
+                before = {str(row.get("ratingKey")): row for row in was}
                 for row in ordered:
-                    self.notify_timeline(row, self.TIMELINE_QUEUED, metadata_state)
+                    self.notify_timeline(
+                        before.get(str(row.get("ratingKey")), row),
+                        self.TIMELINE_QUEUED, metadata_state)
                 for row in ordered:
                     self.notify_timeline(row, self.TIMELINE_DONE, None)
             else:
