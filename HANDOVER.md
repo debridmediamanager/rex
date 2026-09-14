@@ -400,7 +400,10 @@ suite. Everything cycle 17 used is FREE again: `32511`, `32512`, `32541`, `32543
 check starts; leave both free. Check with `lsof -ti tcp:<port> -sTCP:LISTEN` rather than
 trusting this list — and check it AFTER the agents have finished, not only at cleanup
 (§5 step 12). **Both of this cycle's hunters left their plexsim running**, as cycle 15's
-did; killing them is part of the step, not an afterthought.
+did, and hunt A then restarted its own on `32587` a SECOND time -- after the cycle was
+merged and pushed -- detached through a double fork so it reparented to init, which is
+cycle 15's incident exactly. Kill the listeners, then list them again, and do it once more
+after any late task notification: a finished agent can still act.
 
 `tests/catalog_ui.json` holds movies `1007` Tears of Steel, `1008` and `1009` (fixture copies);
 show `20001` The Simpsons; **four** seasons `30001` (S19), `30002` (S20), `30003` (S21) and
