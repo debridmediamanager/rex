@@ -6140,10 +6140,18 @@ class PlexSim:
     # row's own identity columns, which is consistent with the rest of the set; the
     # earlier probe simply did not try them. `id` became a FILTER field in cycle 11 and
     # was still not a group field.
+    # Cycle 20 swept all 60 candidates again against both references: five MORE
+    # group, and they are exactly the unadvertised columns cycles 14 and 15 found
+    # FILTER -- `originalTitle`, `createdAt`, `mediaCount`, `ratingCount` and
+    # `absoluteIndex` (zen answers 472, 3840, 9, 1 and 1 groups of its 3,887 movies).
+    # So the group surface follows the filter surface rather than the Meta, and the
+    # 500s that remain are the tag joins, the media and the per-user state.
     GROUPABLE = {"title", "titleSort", "studio", "contentRating", "year", "decade",
                  "addedAt", "updatedAt", "originallyAvailableAt", "audienceRating",
                  "rating", "editionTitle", "index", "summary", "tagline",
-                 "contentRatingAge", "type", "guid", "id"}
+                 "contentRatingAge", "type", "guid", "id",
+                 "originalTitle", "createdAt", "mediaCount", "ratingCount",
+                 "absoluteIndex"}
 
     def grouped(self, rows, field):
         """`group=<field>` -- one row per distinct value of that field.
