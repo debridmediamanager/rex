@@ -12403,6 +12403,22 @@ def main():
           "default=%s allLeaves=%s titleSort=%s (renamed %s)"
           % (default_c16a12, leaves_c16a12, sorted_c16a12, last_c16a12))
 
+
+    # Cycle 16, measured on plexscratch: `type=` on the section SAVE path has to parse.
+    # `?type=abc&id=...&summary.value=x` is a 400 and edits nothing, where plexsim
+    # answered 200 having edited nothing -- which reads to the client as a save that
+    # worked. (No `type` at all is a 400 on both, and already implemented.)
+    bad_c16a13 = request(base, "PUT", "/library/sections/%s/all?type=abc&id=%s"
+                         "&summary.value=c16a13" % (show_section, show))
+    none_c16a13 = request(base, "PUT", "/library/sections/%s/all?id=%s"
+                          "&summary.value=c16a13" % (show_section, show))
+    summary_c16a13 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0].get("summary")
+    check("an unparseable type on the section save path is a 400",
+          bad_c16a13[0] == 400 and none_c16a13[0] == 400
+          and summary_c16a13 != "c16a13",
+          "type=abc -> %s, no type -> %s, summary=%r"
+          % (bad_c16a13[0], none_c16a13[0], (summary_c16a13 or "")[:20]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
