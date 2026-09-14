@@ -2077,6 +2077,21 @@ class PlexSim:
             # season three, all captured -- and the list is per TYPE, so serving
             # the show list for a movie offers settings the item does not have.
             settings = ITEM_PREFS.get(row.get("type")) or []
+            # Cycle 16, measured on plexscratch and corroborated read-only on zen: an
+            # UNMATCHED item loses its AGENT-driven settings. A show drops
+            # `languageOverride` and `useOriginalTitle` (zen's six `local://` shows
+            # advertise eight where every matched one advertises the full list); a
+            # MOVIE loses the whole block rather than its rows; a season keeps its
+            # three. plexsim left them all in place, so the settings tab of an
+            # unmatched item offered agent options with no agent behind them.
+            if str(row.get("guid") or "").startswith(("local://", "tv.plex.agents.none://",
+                                                      "none://")):
+                if row.get("type") == "movie":
+                    settings = []
+                else:
+                    settings = [s for s in settings
+                                if s.get("id") not in ("languageOverride",
+                                                       "useOriginalTitle")]
             stored = row.get("_prefs") or {}
             if settings:
                 # An EPISODE has no settings of its own, and the reference omits
