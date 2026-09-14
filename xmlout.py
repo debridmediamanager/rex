@@ -296,7 +296,14 @@ def _render(name, row, out, overrides=None, container=False):
         # out `size`, then `totalSize` and `offset` when the container is paged, then
         # everything else alphabetically. plexsim emitted whatever order its dict held.
         lead = {"size": 0, "totalSize": 1, "offset": 2}
-        attrs.sort(key=lambda pair: (lead.get(pair[0], 3), pair[0]))
+        if any(key == "noHistory" for key, _ in attrs):
+            # Cycle 18, measured on kids and zen: the PLUG-IN FRAMEWORK's container
+            # has an order of its own -- `noHistory, replaceParent, size, identifier`,
+            # with `totalSize` FIRST of all when it is paged. It is the one container
+            # shape cycle 16's rule does not describe, and the only one on the surface
+            # that emits `totalSize` without `offset`.
+            lead = {"totalSize": 0, "noHistory": 1, "replaceParent": 2, "size": 3}
+        attrs.sort(key=lambda pair: (lead.get(pair[0], 4), pair[0]))
     elif name == "Type":
         children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child[0],
                                                               len(_TYPE_CHILD_ORDER)))

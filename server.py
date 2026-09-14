@@ -3172,11 +3172,24 @@ class PlexSim:
             return ("empty", 200)
         if route == "/system":
             # Measured: the system provider's two directories, nothing else.
+            #
+            # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), which agree: this
+            # container PAGES, and it is the counterexample to cycle 9's "a plug-in
+            # framework container (`noHistory`) is left alone" -- a rule inferred from
+            # `/system/scanners/{N}`, which really does ignore paging. `Start=1&Size=1`
+            # answers one row with `totalSize="2"`, `Start=5` answers `size="0"`, both
+            # parameters are required as everywhere else, and the response carries
+            # `X-Plex-Container-Start` and `-Total-Size`. It emits NO `offset` even at
+            # Start=1, alone on the surface, and `totalSize` comes FIRST -- before
+            # `noHistory` -- in the XML.
+            rows = [{"key": "library", "title": "Library Sections",
+                     "name": "Library Sections"},
+                    {"key": "plugins", "title": "Plug-ins", "name": "Plug-ins"}]
+            page, paged, _start, total = self.page_window(rows, query)
+            fields = {"totalSize": total} if paged else {}
             return self.bare_container(
-                size=2, noHistory=0, replaceParent=0, identifier="com.plexapp.system",
-                Directory=[{"key": "library", "title": "Library Sections",
-                            "name": "Library Sections"},
-                           {"key": "plugins", "title": "Plug-ins", "name": "Plug-ins"}])
+                size=len(page), noHistory=0, replaceParent=0,
+                identifier="com.plexapp.system", Directory=page, **fields)
         if route == "/system/proxy":
             # A real PMS refuses this without the headers its own clients send.
             return ("error", 400, "plexsim: bad request")
