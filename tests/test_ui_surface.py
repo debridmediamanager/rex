@@ -10969,6 +10969,28 @@ def main():
           "start %s | item %s | section %s | axis %s"
           % (start_c15w, after_item_c15w, after_section_c15w, axis_c15w))
 
+    # Cycle 15, measured on plexscratch: a member row's `Collection` tag carries the
+    # COLLECTION's own `guid` -- the same `collection://<uuid>` string the collection row
+    # has -- and carries NO `count`, which is consistent with cycle 12's refutation of
+    # `count` on a detail row's tags. Cycle 14 recorded "guid and count"; only the guid
+    # half is real. plexsim emitted neither, so a client could not tie a member's tag to
+    # the collection it names by anything but the title.
+    tg_c15u = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C15u Tagged"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1].get("Metadata") or [{}])[0]
+    mine_c15u = [t_c15u for t_c15u in
+                 ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                  .get("Collection") or [])
+                 if str(t_c15u.get("tag") or "").startswith("C15u")]
+    request(base, "DELETE", "/library/collections/%s" % tg_c15u.get("ratingKey"))
+    check("a member's Collection tag carries the collection's guid and no count",
+          len(mine_c15u) == 1 and mine_c15u[0].get("guid") == tg_c15u.get("guid")
+          and str(mine_c15u[0].get("guid") or "").startswith("collection://")
+          and "count" not in mine_c15u[0],
+          "tag %s | collection guid %r" % (mine_c15u, tg_c15u.get("guid")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

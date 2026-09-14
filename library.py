@@ -1701,6 +1701,22 @@ class Library:
                 self._remove_tags(row, "collection", [collection.get("tag", collection["title"])])
         return True
 
+    def stamp_collection_tags(self, collection):
+        """Put the collection's guid on every member's `Collection` tag. Cycle 15.
+
+        Measured on the copy: the tag carries the COLLECTION's own guid and no
+        `count` -- cycle 14 recorded both and only the guid half is real, which cycle
+        12 had already shown for a detail row's tags in general.
+        """
+        name = collection.get("tag", collection["title"])
+        guid = "collection://plexsim-%s" % collection["ratingKey"]
+        # A SMART collection has no stored member list -- it tags nobody, measured.
+        for member in collection.get("items") or []:
+            row = self.catalog.items.get(int(member))
+            for tag in (row or {}).get("Collection") or []:
+                if tag.get("tag") == name:
+                    tag["guid"] = guid
+
     def collection_children(self, collection):
         if collection.get("smart"):
             return self.smart_rows(collection.get("uri"))
@@ -1735,6 +1751,9 @@ class Library:
         return sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""))
 
     def _collection_row(self, collection):
+        # Cycle 15: the members' tags carry this row's guid. Stamped on every read so
+        # a member added by any path picks it up.
+        self.stamp_collection_tags(collection)
         """Field set measured on a real PMS's POST /library/collections."""
         rows = self.collection_children(collection)
         years = sorted(str(r.get("year")) for r in rows if r.get("year"))
