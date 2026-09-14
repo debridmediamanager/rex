@@ -4738,7 +4738,10 @@ class PlexSim:
         answers to `T` and not to `M`, so it really is the sort title. The axis above
         it counts on a different basis; see `_first_character_basis`.
         """
-        title = str(row.get("titleSort") or row.get("title") or "")
+        # Cycle 18: the STORED sort title, which is empty for a generated title --
+        # so zen's 740 synthesised seasons all answer in `#` and every letter bucket
+        # of a season list answers none.
+        title = str(hierarchy_module.stored_sort_title(row) or "")
         first = (title[:1] or "#").upper()
         return "#" if first.isdigit() else first
 
@@ -5439,8 +5442,10 @@ class PlexSim:
                 # A row with no titleSort of its own sorts by its title -- a
                 # playlist row has only the latter, so keying on titleSort alone
                 # made every playlist compare equal and the direction do nothing.
-                if key == "titleSort" and not value:
-                    value = row.get("title")
+                # Cycle 18: except where the server GENERATED the title, which stores
+                # the empty string and therefore sorts first ascending.
+                if key == "titleSort":
+                    value = hierarchy_module.stored_sort_title(row)
                 # Measured on both servers across eleven keys and four row types: a
                 # row with NO value sorts BELOW every row that has one -- first
                 # ascending, last descending -- so the "missing" flag has to sort
@@ -5722,8 +5727,10 @@ class PlexSim:
             return row.get(self.TAG_FILTER_FIELDS[field])
         if field == "titleSort":
             # A row omits titleSort when it equals the title; the value is still
-            # there to compare (`titleSort=sintel` finds Sintel, measured).
-            return row.get("titleSort") or row.get("title")
+            # there to compare (`titleSort=sintel` finds Sintel, measured). Cycle 18:
+            # a row whose title the SERVER generated stores the EMPTY STRING, which is
+            # what `titleSort=` with no value finds on both references.
+            return hierarchy_module.stored_sort_title(row)
         if field == "index" and row.get("type") == "movie" and "index" not in row:
             # Measured: neither reference emits `index` on a movie row, and `index=1`
             # still matches every movie on both while `index=0` and `index=2` match

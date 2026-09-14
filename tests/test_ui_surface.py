@@ -13977,6 +13977,29 @@ def main():
     check("and an ADVERTISED string field keeps begins-with on <=",
           status == 200 and listing.get("size") == rows, "%s %s" % (status, listing.get("size")))
 
+    # Cycle 18, measured on zen (1.42.2, 14,433 rows) and kids: a row whose title the
+    # SERVER generated stores the EMPTY STRING as its sort title. `titleSort=` with no
+    # value -- an equality on this field -- answers 740 of zen's 741 seasons and 4,630 of
+    # its 9,287 episodes, `titleSort<<=0` answers the same set, and every LETTER bucket of
+    # a season `firstCharacter` listing answers none of them while `#` answers them all.
+    # plexsim read the row's TITLE where it stores no sort title, so its synthesised
+    # seasons filtered and bucketed under `S`.
+    status, listing, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
+    seasons = get(base, "/library/sections/%s/all?type=3" % show_section)[1].get("size")
+    check("a synthesised season stores an EMPTY sort title",
+          status == 200 and listing.get("size") == seasons and seasons,
+          "%s %s of %s" % (status, listing.get("size"), seasons))
+    status, below, _ = get(base, "/library/sections/%s/all?type=3&titleSort%%3C%%3C=0" % show_section)
+    check("and the empty string compares below 0",
+          status == 200 and below.get("size") == seasons,
+          "%s %s" % (status, below.get("size")))
+    status, hashed, _ = get(base, "/library/sections/%s/firstCharacter/%%23?type=3" % show_section)
+    status2, lettered, _ = get(base, "/library/sections/%s/firstCharacter/S?type=3" % show_section)
+    check("so every season is in the # bucket and none under a letter",
+          status == 200 and hashed.get("size") == seasons
+          and status2 == 200 and not lettered.get("size"),
+          "# %s, S %s" % (hashed.get("size"), lettered.get("size")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
