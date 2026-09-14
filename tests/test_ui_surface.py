@@ -12252,6 +12252,37 @@ def main():
           and sorted(orders_c16a7[0]) == sorted(plain_c16a7),
           "%s (plain %s)" % (orders_c16a7, plain_c16a7))
 
+
+    # Cycle 16, measured on plexscratch: `includeBefore` and `includeAfter` window the
+    # queue with NO `window=` at all -- the radius is then unlimited, so
+    # `includeBefore=0&includeAfter=1` answers everything AFTER the selection and
+    # `includeBefore=1&includeAfter=0` everything before it. Both zero is a 400, and so
+    # is any value that is not 0 or 1, an unparseable one and an empty one. Cycle 9
+    # measured these only ever WITH `window=1`, which is why the no-window half was
+    # missing: plexsim answered the whole queue to the first two and 200 to all four
+    # refusals.
+    queued_c16a8 = json.loads(request(
+        base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, show)))[1])["MediaContainer"]
+    id_c16a8 = queued_c16a8["playQueueID"]
+    total_c16a8 = len(queued_c16a8.get("Metadata") or [])
+    sizes_c16a8 = {}
+    for probe_c16a8 in ("", "?includeBefore=0&includeAfter=1",
+                        "?includeBefore=1&includeAfter=0", "?window=1"):
+        sizes_c16a8[probe_c16a8 or "bare"] = get(
+            base, "/playQueues/%s%s" % (id_c16a8, probe_c16a8))[1].get("size")
+    refused_c16a8 = tuple(get(base, "/playQueues/%s?%s" % (id_c16a8, probe_c16a8))[0]
+                          for probe_c16a8 in ("includeBefore=0&includeAfter=0",
+                                              "includeBefore=2&includeAfter=2",
+                                              "includeBefore=abc", "includeBefore="))
+    check("includeBefore/includeAfter window the queue with no window=",
+          sizes_c16a8["bare"] == total_c16a8
+          and sizes_c16a8["?includeBefore=0&includeAfter=1"] == total_c16a8 - 1
+          and sizes_c16a8["?includeBefore=1&includeAfter=0"] == 0
+          and refused_c16a8 == (400, 400, 400, 400),
+          "%s total=%s refusals=%s" % (sizes_c16a8, total_c16a8, refused_c16a8))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
