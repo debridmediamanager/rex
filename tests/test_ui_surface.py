@@ -13345,6 +13345,51 @@ def main():
              section_c17b3("&includeGuids=1"), section_c17b3("&flattenSeasons=1"),
              section_c17b3("&zzzUnknown.value=1")))
 
+
+    # Cycle 17, re-measured by the driver on plexscratch: the collection ITEM paths
+    # answer 404 to every verb they do not implement. `/library/collections/{id}/items`
+    # takes PUT (add) and nothing else; `/items/{ratingKey}` takes DELETE and nothing
+    # else; `/items/{ratingKey}/move` takes PUT and nothing else. plexsim answered 200
+    # with an empty container to POST, DELETE, PATCH and OPTIONS on the list, 200 with
+    # an INVENTED single-item container to a GET of one member, and 200 with the whole
+    # children listing to a GET of `/move` -- fix 4's trap from the inside, where a
+    # client reads any 200 as "this endpoint exists".
+    made_c17b4 = json.loads(request(
+        base, "POST", "/library/collections?type=1&title=c17verbs&smart=0&sectionId=%s"
+                      "&uri=%s"
+        % (movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1])
+    collection_c17b4 = (made_c17b4["MediaContainer"]["Metadata"][0]["ratingKey"]
+                        if (made_c17b4.get("MediaContainer") or {}).get("Metadata")
+                        else None)
+    if not collection_c17b4:
+        skip("the collection item paths 404 the verbs they do not implement",
+             "could not build a collection")
+    else:
+        refused_c17b4 = []
+        for path_c17b4, verbs_c17b4 in (
+                ("/library/collections/%s/items" % collection_c17b4,
+                 ("POST", "DELETE", "PATCH", "OPTIONS")),
+                ("/library/collections/%s/items/%s" % (collection_c17b4, movie),
+                 ("GET", "POST", "PATCH", "OPTIONS", "HEAD")),
+                ("/library/collections/%s/items/%s/move" % (collection_c17b4, movie),
+                 ("GET", "POST", "DELETE", "PATCH", "OPTIONS"))):
+            for verb_c17b4 in verbs_c17b4:
+                status_c17b4, _, _ = request(base, verb_c17b4, path_c17b4)
+                if status_c17b4 != 404:
+                    refused_c17b4.append((verb_c17b4, path_c17b4.split("/")[-1],
+                                          status_c17b4))
+        still_c17b4, _, _ = request(
+            base, "PUT", "/library/collections/%s/items?uri=%s"
+            % (collection_c17b4,
+               quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine, movie))))
+        check("the collection item paths 404 the verbs they do not implement",
+              not refused_c17b4 and still_c17b4 == 200,
+              "not-404=%s; the PUT still adds: %s" % (refused_c17b4[:4], still_c17b4))
+        request(base, "DELETE", "/library/collections/%s" % collection_c17b4)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

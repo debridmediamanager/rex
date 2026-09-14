@@ -11705,6 +11705,12 @@ class Handler(BaseHTTPRequestHandler):
         "/system/agents", "/updater/status",
     )
     READ_ONLY_PREFIXES = ("/system/scanners/",)
+    # Cycle 17, measured on plexscratch: the collection ITEM paths take exactly one
+    # verb each and answer 404 to every other. plexsim answered 200 with an empty
+    # container to four verbs on the list, 200 with an invented single-item container
+    # to a GET of one member, and 200 with the whole children listing to a GET of
+    # `/move` -- a client reads any 200 as "this endpoint exists".
+    COLLECTION_ITEM_VERBS = {"items": ("PUT",), "move": ("PUT",), "member": ("DELETE",)}
     # Item leaves that are pure reads. `extras`, `themes`, `clearLogos`, `posters`
     # and `arts` are NOT here: their POST is the upload path (400 or 406, measured
     # separately), only their PUT and DELETE are refused.
@@ -11751,8 +11757,25 @@ class Handler(BaseHTTPRequestHandler):
             return 500
         return 0
 
+    def _collection_item_refusal(self, method, path):
+        """404 for a verb the collection item paths do not implement. Cycle 17."""
+        parts = [p for p in (path.split("?")[0].rstrip("/") or "/").split("/") if p]
+        if parts[:2] != ["library", "collections"] or len(parts) < 4:
+            return False
+        if parts[3] != "items":
+            return False
+        if len(parts) == 4:
+            return method not in self.COLLECTION_ITEM_VERBS["items"]
+        if len(parts) == 5:
+            return method not in self.COLLECTION_ITEM_VERBS["member"]
+        if len(parts) == 6 and parts[5] == "move":
+            return method not in self.COLLECTION_ITEM_VERBS["move"]
+        return False
+
     def _read_only_refusal(self, method, path):
         """404 for a write to a route that only reads. Cycle 15."""
+        if self._collection_item_refusal(method, path):
+            return True
         if method in ("GET", "HEAD"):
             return False
         route = path.split("?")[0].rstrip("/") or "/"
