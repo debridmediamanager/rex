@@ -15473,6 +15473,30 @@ def main():
                           "euro": "\u20ac", "broken": "", "colon": "a%3ab",
                           "pipe": "a%7cb", "plain": "plainvalue"},
           "%r" % (stored_c21u,))
+
+    _, c21v_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20prefs"
+                                            "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                            "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                              % (movie_section, machine, movie))
+    c21v_collection = json.loads(c21v_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    _, c21v_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C21%%20prefs&smart=0"
+                                               "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                               "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                 % (machine, movie))
+    c21v_playlist = json.loads(c21v_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+    # Cycle 21, measured on plexscratch: `PUT /library/metadata/{playlist}/prefs` is a 400
+    # -- the item prefs writer refuses a name it does not know, exactly as it does on every
+    # other row type -- where plexsim 404'd it, because that path resolved a COLLECTION
+    # and nothing else. A collection's own write is unchanged at 200.
+    check("a playlist answers the item prefs path with the item's own 400",
+          request(base, "PUT", "/library/metadata/%s/prefs?zzz=1" % c21v_playlist)[0] == 400
+          and request(base, "PUT", "/library/metadata/%s/prefs?collectionMode=1"
+                      % c21v_collection)[0] == 200,
+          "playlist %s | collection %s"
+          % (request(base, "PUT", "/library/metadata/%s/prefs?zzz=1" % c21v_playlist)[0],
+             request(base, "PUT", "/library/metadata/%s/prefs?collectionMode=1"
+                     % c21v_collection)[0]))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
