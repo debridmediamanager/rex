@@ -2696,6 +2696,20 @@ class PlexSim:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
 
+        # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
+        # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
+        # single-segment path falls through to the legacy plug-in dispatcher for every
+        # verb it does not implement, exactly as an unknown one does -- `PUT /identity`
+        # and `PUT /hubs` answer `{size: 0, content: "plugins"}`, `PUT /library` the
+        # dispatcher's two rows, `DELETE /devices` its empty one. The recorded rule
+        # that `/identity` and `/hubs` "answer any verb" was their own GET handler
+        # answering; cycle 17 landed the fallthrough for `/butler` and `/devices`
+        # alone. `/log` is excluded because it validates its parameters first, so every
+        # verb there is the same 400.
+        if (len(segments) == 1 and method not in ("GET", "HEAD")
+                and (method, route) not in SINGLE_SEGMENT_WRITERS):
+            return self.bare_container(**plugin_container(route))
+
         # Measured: an id of 2^31 or more is a 400 on the families that parse theirs
         # as a 32-bit integer, where metadata and sections answer 404; and a play
         # queue id that is not a number at all is a 400.
@@ -3039,13 +3053,6 @@ class PlexSim:
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
         if segments[:1] == ["downloadQueue"]:
             return self.download_queue(method, segments, query, headers)
-        if route == "/butler" and method in ("PUT", "PATCH", "OPTIONS"):
-            # Cycle 17, measured on plexscratch: a KNOWN single-segment path falls
-            # through to the legacy plug-in dispatcher for the verbs it does not
-            # implement, exactly as an unknown one does. The recorded rule that a
-            # read-only route 404s every verb but GET and HEAD is the MULTI-segment
-            # rule; plexsim applied it here and 404'd all three.
-            return self.bare_container(size=0, content="plugins")
         if route == "/channels":
             # Measured 200 on both servers with exactly these two rows. The channel
             # APPSTORE paths do 404 (which CLAUDE.md already records) -- bare
