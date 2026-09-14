@@ -16134,6 +16134,37 @@ def main():
               % (own_c20p, kept_c20p, fell_c20p, followed_c20p))
     else:
         skip("an episode's inherited contentRating is read at read time", "no show library")
+
+    # Cycle 20, measured on plexscratch over the same 57 columns: a COLLECTION row and a
+    # PLAYLIST row take the item path's whole validation. An unknown name is a 400
+    # (`addedAtX`, `sortTitle`, `ratingKey`, `childCount`, `flattenSeasons`,
+    # `composite`, `bogusXY`), an unparseable number is a 500 (`year`, `index`), and
+    # `title`, `summary` and `userRating` are the 200s -- identically on both row types,
+    # and nothing is stored either way. plexsim skipped the validation for these two
+    # row types and answered 200 to every name, which is the one place it contradicted
+    # itself: the same field was a 400 on a movie and a 200 on a collection.
+    _status_c20q, made_c20q, _ = request(
+        base, "POST", "/playlists?type=video&title=C20%%20grammar&smart=0"
+                      "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library"
+                      "%%2Flibrary%%2Fmetadata%%2F%s" % (machine, movie))
+    try:
+        playlist_c20q = json.loads(made_c20q)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    except (ValueError, KeyError, IndexError):
+        playlist_c20q = None
+    codes_c20q = {}
+    if playlist_c20q:
+        for field_c20q, want_c20q in (("addedAtX", 400), ("sortTitle", 400), ("ratingKey", 400),
+                                      ("childCount", 400), ("flattenSeasons", 400),
+                                      ("composite", 400), ("bogusXY", 400), ("year", 500),
+                                      ("index", 500), ("title", 200), ("summary", 200),
+                                      ("userRating", 200)):
+            codes_c20q[field_c20q] = (request(base, "PUT", "/library/metadata/%s?%s.value=ZZQ1"
+                                              % (playlist_c20q, field_c20q))[0], want_c20q)
+        request(base, "DELETE", "/playlists/%s" % playlist_c20q)
+    check("a playlist row takes the item edit validation",
+          bool(codes_c20q) and all(got_c20q == want_c20q
+                                   for got_c20q, want_c20q in codes_c20q.values()),
+          "%s" % codes_c20q)
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
