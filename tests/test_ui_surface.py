@@ -93,9 +93,17 @@ def notifications(base, trigger, seconds=8):
         "Host: %s:%d\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
         "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n"
         % (host, port, key)).encode())
+    # The handshake read needs its own timeout: without one a server that accepts
+    # the connection and never answers the upgrade stalls the whole suite instead of
+    # failing this one check. (It happened once, in cycle 20.)
+    sock.settimeout(seconds)
     buffer = b""
     while b"\r\n\r\n" not in buffer:
-        chunk = sock.recv(4096)
+        try:
+            chunk = sock.recv(4096)
+        except socket.timeout:
+            sock.close()
+            return "timeout", []
         if not chunk:
             sock.close()
             return None, []
