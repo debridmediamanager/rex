@@ -3098,6 +3098,16 @@ class PlexSim:
             # blanket empty container told a client each of these existed and was
             # empty; the two collection roots below are the real empty ones.
             return ("error", 404, "plexsim: not found")
+        if route == "/livetv":
+            # Cycle 17, measured read-only on kids (1.43.4) and zen (1.42.2), which
+            # agree exactly: the bare path is the plug-in dispatcher's own THREE-row
+            # container, and it says so with `content="plugins"`. plexsim routed the
+            # whole tree to a bare empty container, so the one path that does answer
+            # said the server had no Live TV surface rather than no tuner.
+            return self.bare_container(size=3, content="plugins", Directory=[
+                {"key": "dvrs", "title": "dvrs"},
+                {"key": "epg", "title": "epg"},
+                {"key": "sessions", "title": "sessions"}])
         if segments[:1] == ["livetv"]:
             # No tuner. `livetv: 0` on /media/providers already hides the UI;
             # this is the shape a real PMS uses when it has no DVR configured.

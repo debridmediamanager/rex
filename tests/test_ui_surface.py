@@ -13444,6 +13444,21 @@ def main():
           "%s" % sorted((k_c17b7[0] + " " + k_c17b7[1], v_c17b7)
                         for k_c17b7, v_c17b7 in fell_c17b7.items())[:4])
 
+
+    # Cycle 17, measured read-only on kids (1.43.4) and zen (1.42.2), which agree
+    # exactly: `GET /livetv` is the plug-in dispatcher's own THREE-row container --
+    # `dvrs`, `epg`, `sessions`, with `content="plugins"` -- not an empty one. plexsim
+    # routed the whole `/livetv` tree to a bare empty container, so the one path that
+    # does answer said the server had no Live TV surface at all rather than no tuner.
+    status_c17b8, livetv_c17b8, _ = get(base, "/livetv")
+    rows_c17b8 = [d_c17b8.get("key") for d_c17b8 in (livetv_c17b8.get("Directory") or [])]
+    check("GET /livetv is the plug-in dispatcher's three-row container",
+          status_c17b8 == 200 and rows_c17b8 == ["dvrs", "epg", "sessions"]
+          and livetv_c17b8.get("content") == "plugins"
+          and livetv_c17b8.get("size") == 3,
+          "size=%s content=%r rows=%s" % (livetv_c17b8.get("size"),
+                                          livetv_c17b8.get("content"), rows_c17b8))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
