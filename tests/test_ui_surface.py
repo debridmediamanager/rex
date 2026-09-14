@@ -12670,6 +12670,46 @@ def main():
           "metadata=%s playlists=%s versioned composite=%s"
           % (real_c16a21, dead_c16a21, versioned_c16a21))
 
+
+    # Cycle 16, measured on plexscratch and corroborated READ-ONLY on zen (1.42.2),
+    # where six `local://` shows advertise exactly eight settings while every
+    # `plex://show/...` advertises the full list: an UNMATCHED item loses its
+    # agent-driven preferences. A show drops `languageOverride` and `useOriginalTitle`;
+    # a MOVIE loses the whole `Preferences` block, not merely its rows; a SEASON keeps
+    # its three. plexsim left every setting in place, so the settings tab of an
+    # unmatched item offered agent options that have no agent behind them.
+    seasons_c16a22 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                         % show)[1].get("Metadata") or []
+    season_c16a22 = seasons_c16a22[0]["ratingKey"]
+    before_c16a22 = {}
+    for label_c16a22, key_c16a22 in (("show", show), ("movie", movie),
+                                     ("season", season_c16a22)):
+        row_c16a22 = get(base, "/library/metadata/%s?includePreferences=1"
+                         % key_c16a22)[1]["Metadata"][0]
+        before_c16a22[label_c16a22] = [s_c16a22["id"] for s_c16a22 in
+                                       (row_c16a22.get("Preferences") or {}).get("Setting") or []]
+    for key_c16a22 in (show, movie, season_c16a22):
+        request(base, "PUT", "/library/metadata/%s/unmatch" % key_c16a22)
+    after_c16a22 = {}
+    for label_c16a22, key_c16a22 in (("show", show), ("movie", movie),
+                                     ("season", season_c16a22)):
+        row_c16a22 = get(base, "/library/metadata/%s?includePreferences=1"
+                         % key_c16a22)[1]["Metadata"][0]
+        after_c16a22[label_c16a22] = (
+            [s_c16a22["id"] for s_c16a22 in
+             (row_c16a22.get("Preferences") or {}).get("Setting") or []],
+            "Preferences" in row_c16a22)
+    check("an unmatched item drops its agent-driven prefs",
+          set(before_c16a22["show"]) - set(after_c16a22["show"][0])
+          == {"languageOverride", "useOriginalTitle"}
+          and after_c16a22["movie"] == ([], False)
+          and after_c16a22["season"][0] == before_c16a22["season"],
+          "show %d->%d (%s) movie %d->%s season %d->%d"
+          % (len(before_c16a22["show"]), len(after_c16a22["show"][0]),
+             sorted(set(before_c16a22["show"]) - set(after_c16a22["show"][0])),
+             len(before_c16a22["movie"]), after_c16a22["movie"],
+             len(before_c16a22["season"]), len(after_c16a22["season"][0])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
