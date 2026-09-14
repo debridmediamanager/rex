@@ -1545,15 +1545,27 @@ def _escaped_pref(value):
     """A text preference as a real PMS stores it.
 
     Cycle 17, measured on plexscratch: `:` and `|` -- the two delimiters of an
-    `enumValues` string -- are stored percent-escaped in LOWERCASE hex, and a value
-    carrying a `%` of its own is stored EMPTY. Every other character round-trips, `/`
-    and a space included. The server is protecting its own encoding; plexsim stored
-    all three verbatim.
+    `enumValues` string -- are stored percent-escaped in LOWERCASE hex. Every other
+    character round-trips, `/` and a space included. The server is protecting its own
+    encoding; plexsim stored all three verbatim.
+
+    Cycle 21, re-measured on plexscratch over eight values: the value is percent-
+    decoded a SECOND time before that. A wire `%2541` arrives here as `%41` and is
+    stored `A`; a wire `%2525` arrives as `%25` and is stored `%25`, which is how the
+    escaping is known to cover `%` as well; `%25E2%2582%25AC` comes out `\u20ac`. A
+    second decode that FAILS -- `a%b`, where `%b` is not an escape -- stores the empty
+    string, and that is the whole of cycle 17's "a value carrying `%` is stored
+    EMPTY": plexsim emptied every value containing one, so a ratings source written
+    with a percent escape was lost rather than decoded.
     """
     text = str(value)
-    if "%" in text:
+    if re.search(r"%(?![0-9A-Fa-f]{2})", text):
         return ""
-    return text.replace(":", "%3a").replace("|", "%7c")
+    try:
+        text = urllib.parse.unquote(text, errors="strict")
+    except (UnicodeDecodeError, ValueError):
+        return ""
+    return text.replace("%", "%25").replace(":", "%3a").replace("|", "%7c")
 
 
 def _candidate_path(rating_key, uri):
