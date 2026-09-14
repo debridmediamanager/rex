@@ -608,12 +608,18 @@ class Library:
     # -- metadata edits --------------------------------------------------
 
     def edit(self, row, params, pairs=None, section=False):
-        if (row.get("type") == "episode"
-                and any(name.split(".")[0] == "contentRating"
-                        for name in (params or {}))):
-            # an explicit write makes the rating the EPISODE's own, and a
-            # later show write leaves it alone -- measured cycle 16
-            row["_own_content_rating"] = True
+        if row.get("type") == "episode":
+            _written = [value for name, value in (params or {}).items()
+                        if name.split(".")[0] == "contentRating"
+                        and not name.endswith(".locked")]
+            if any(str(value).strip() for value in _written):
+                # an explicit write makes the rating the EPISODE's own, and a
+                # later show write leaves it alone -- measured cycle 16
+                row["_own_content_rating"] = True
+            elif _written:
+                # Cycle 20: an EMPTY write gives the row back to the show; see
+                # the re-inherit at the end of `_edit`.
+                row.pop("_own_content_rating", None)
         if section and "titleSort.value" in (params or {}):
             # marks this write as the section path's, which keeps what was
             # typed until the next title write -- measured cycle 16
@@ -830,6 +836,22 @@ class Library:
             written = written | {"title"}
         if written & {"title", "studio", "index", "contentRating"}:
             self._follow_parent(row, written)
+        if row.get("type") == "episode" and "contentRating" in written \
+                and not row.get("contentRating"):
+            # Cycle 20, measured on plexscratch: the inheritance is a READ-TIME
+            # fallback, not a copy made when the show is written. Clearing an
+            # episode's own rating (`contentRating.value=`) makes it read the show's
+            # AT ONCE, and a later show write moves it again. plexsim copied the
+            # show's value onto the episode at load and on a show edit, so a cleared
+            # rating left the episode with none at all and its page drew a blank
+            # badge for the life of the process. Re-inheriting here reproduces every
+            # step of the measured sequence; the read-time hook itself would have to
+            # reach the catalog from the row writer, so this is the write-side proxy
+            # -- see HANDOVER.md 3.3.
+            show = self.catalog.items.get(int(row["grandparentRatingKey"])) \
+                if str(row.get("grandparentRatingKey") or "").isdigit() else None
+            if (show or {}).get("contentRating"):
+                row["contentRating"] = show["contentRating"]
         if row.get("type") == "season" and "year" in written:
             # Cycle 16, measured on plexscratch: a SEASON with no year of its
             # own carries the show's as `parentYear`, and one that LOSES its
