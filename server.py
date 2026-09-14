@@ -6608,6 +6608,13 @@ class PlexSim:
                 # Measured on both servers: `/extras/{n}` is a 404, even for an extra the
                 # item has. plexsim answered the extras container at any depth.
                 return ("error", 404, "plexsim: not found")
+            if method == "POST":
+                # Cycle 16, measured on the copy: a POST here is a 400 whatever the
+                # body -- it is the one candidate list that refuses with a 400 where
+                # the artwork and subtitle lists answer 406. Cycle 15 recorded it and
+                # left the code answering the GET listing, which reads to a client as
+                # an accepted upload.
+                return ("error", 400, "plexsim: bad request")
             return self.tag_container(size=0)
         if leaf == "related":
             # NOTE: this is NOT /hubs/metadata/{id}/related -- the client rewrites

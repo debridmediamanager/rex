@@ -11701,6 +11701,17 @@ def main():
           preflight_c16m(None) == [] and preflight_c16m("http://x.example") != [],
           "none=%s origin=%s" % (preflight_c16m(None), preflight_c16m("http://x.example")))
 
+
+    # Cycle 16, measured on plexscratch: `POST /library/metadata/{id}/extras` is a
+    # 400 for an empty body and for a non-empty one alike -- cycle 15 recorded exactly
+    # that while implementing the 406 its neighbours answer, and the code kept
+    # answering the GET listing. A 200 carrying the extras container reads to a client
+    # as an accepted upload.
+    extras_c16n = request(base, "POST", "/library/metadata/%s/extras" % movie)
+    check("POST to an item's /extras is a 400",
+          extras_c16n[0] == 400,
+          "%s %r" % (extras_c16n[0], extras_c16n[1][:60]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
