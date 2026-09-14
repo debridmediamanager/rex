@@ -11413,6 +11413,23 @@ def main():
           == {"queueID": 1, "event": "queueRegenerated"},
           "%d queue frame(s): %s" % (len(queue_c15n2), queue_c15n2[:1]))
 
+
+    # Cycle 16, measured on kids (1.43.4) and zen (1.42.2) over fifteen paths and
+    # every status they answer: a real PMS sends NO `Server:` header at all.
+    # BaseHTTPRequestHandler adds one from `server_version`, so plexsim announced
+    # itself as `PlexSim/0.1 Python/3.10.20` on every single response -- the one
+    # header on the wire that says the server is not a Plex Media Server.
+    banner_c16a = {}
+    for path_c16a in ("/identity", "/library/sections", "/no/such/path",
+                      "/library/sections/%s/all" % movie_section):
+        _, _, headers_c16a = request(base, "GET", path_c16a)
+        lower_c16a = {k.lower(): v for k, v in headers_c16a.items()}
+        banner_c16a[path_c16a] = (lower_c16a.get("server"), "date" in lower_c16a)
+    check("no response carries a Server banner, and Date survives",
+          all(server_c16a is None and dated_c16a
+              for server_c16a, dated_c16a in banner_c16a.values()),
+          "%s" % banner_c16a)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

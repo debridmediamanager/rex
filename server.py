@@ -10505,6 +10505,21 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "PlexSim/0.1"
 
+    def send_response(self, code, message=None):
+        """A real PMS sends no `Server:` banner -- measured on kids and zen.
+
+        Fifteen paths, JSON and XML, 200/400/404/500 alike: both references answer
+        `X-Plex-Protocol, Content-Type, Content-Length, Connection, Cache-Control,
+        Date` and nothing else. BaseHTTPRequestHandler's own `send_response` adds a
+        `Server:` from `server_version`, so plexsim named itself on every response it
+        has ever sent. Blanking `version_string()` does not help -- `send_header`
+        still puts an empty header on the wire -- so the banner has to be dropped by
+        not sending it. `Date` stays: both references send one.
+        """
+        self.log_request(code)
+        self.send_response_only(code, message)
+        self.send_header("Date", self.date_time_string())
+
     # -- plumbing --------------------------------------------------------
 
     def log_message(self, fmt, *args):
