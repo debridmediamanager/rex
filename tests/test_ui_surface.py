@@ -11320,6 +11320,68 @@ def main():
              len(season_frames_c15r2), sorted(ids_c15r2(season_frames_c15r2)),
              len(show_frames_c15r2), len(ids_c15r2(show_frames_c15r2))))
 
+    # Cycle 15, re-measured on plexscratch with a control write on the same socket
+    # first -- the third of the three cascades HANDOVER 3.3 carried into this cycle.
+    # `PUT /library/metadata/{id}/analyze` is a 200 with an empty body and then, per
+    # LEAF and in tree order, THREE `state 5` frames carrying `mediaState` `analyzing`,
+    # `thumbnailing` and none, followed by ONE `media.generate.chapter.thumbs` activity
+    # (started at -1, ended at 100) whose subtitle is the TARGET's frame title:
+    #
+    #     episode  5 frames    season 11    show 21 (with the queue frame)    movie 5
+    #
+    # Cycle 13's "a per-LEVEL triple" was wrong -- the season and show rows are never
+    # framed themselves, only their leaves. plexsim pushed nothing at all.
+    #
+    # The 21st frame of the show form is a `backgroundProcessingQueue`
+    # `queueRegenerated` at +7.1 s. It is not create-specific and not periodic: cycle 14
+    # saw it +60.8 s after a library create, +2.4 s after a season split and +1.2 s
+    # after a collection add, and this cycle re-measured it at +63.1 s after a create.
+    # It follows a write that leaves work in the queue.
+    def analyze_frames_c15a(key_c15a):
+        return notifications(base, lambda: request(base, "PUT",
+                                                   "/library/metadata/%s/analyze" % key_c15a),
+                             seconds=6)[1]
+
+
+    def states_c15a(frames_c15a):
+        out_c15a = []
+        for f_c15a in frames_c15a:
+            box_c15a = f_c15a.get("NotificationContainer", f_c15a)
+            for e_c15a in (box_c15a.get("TimelineEntry") or []):
+                out_c15a.append((str(e_c15a.get("itemID")), e_c15a.get("mediaState")))
+            for e_c15a in (box_c15a.get("ActivityNotification") or []):
+                out_c15a.append((e_c15a.get("event"),
+                                 (e_c15a.get("Activity") or {}).get("type")))
+        return out_c15a
+
+
+    seasons_c15a = [r_c15a["ratingKey"] for r_c15a in
+                    get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []]
+    leaf_c15a = (get(base, "/library/metadata/%s/children" % seasons_c15a[0])[1]
+                 .get("Metadata") or [{}])[0]["ratingKey"]
+    ep_c15a = states_c15a(analyze_frames_c15a(leaf_c15a))
+    movie_c15a = states_c15a(analyze_frames_c15a(movie))
+    want_c15a = [(str(leaf_c15a), "analyzing"), (str(leaf_c15a), "thumbnailing"),
+                 (str(leaf_c15a), None),
+                 ("started", "media.generate.chapter.thumbs"),
+                 ("ended", "media.generate.chapter.thumbs")]
+    check("an analyze frames every leaf three times and ends in a chapter-thumbs activity",
+          ep_c15a == want_c15a
+          and movie_c15a == [(str(movie), "analyzing"), (str(movie), "thumbnailing"),
+                             (str(movie), None),
+                             ("started", "media.generate.chapter.thumbs"),
+                             ("ended", "media.generate.chapter.thumbs")],
+          "episode %s | movie %s" % (ep_c15a, movie_c15a))
+    season_c15a = states_c15a(analyze_frames_c15a(seasons_c15a[0]))
+    kids_c15a = [r_c15a["ratingKey"] for r_c15a in
+                 get(base, "/library/metadata/%s/children" % seasons_c15a[0])[1]
+                 .get("Metadata") or []]
+    check("a season's analyze frames its EPISODES and never the season row",
+          [i_c15a for i_c15a, _s_c15a in season_c15a if i_c15a not in ("started", "ended")]
+          == [str(k_c15a) for k_c15a in kids_c15a for _n_c15a in range(3)]
+          and str(seasons_c15a[0]) not in [i_c15a for i_c15a, _s_c15a in season_c15a],
+          str(season_c15a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
