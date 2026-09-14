@@ -14247,6 +14247,26 @@ def main():
     check("and it does not page", status == 200 and "totalSize" not in listing,
           "%s %s" % (status, listing))
 
+    # Cycle 18, measured on plexscratch over four `/system` paths and six verbs: the
+    # `/system` subtree is a different server with an envelope of its own -- `PATCH` is a
+    # **405** with an HTML body (the one 405 on the surface, against the library server's
+    # "never 405"), a bare `OPTIONS` is a 200 with an empty body, and every other
+    # unimplemented verb is a 404 with an EMPTY body. plexsim answered its own text/plain
+    # 404 to all of them.
+    for path in ("/system", "/system/agents", "/system/zzz"):
+        status, body, headers = request(base, "PATCH", path, want_json=False)
+        check("PATCH %s is a 405" % path,
+              status == 405 and b"405" in body, "%s %r" % (status, body[:40]))
+        status, body, headers = request(base, "OPTIONS", path, want_json=False)
+        check("OPTIONS %s is an empty 200" % path,
+              status == 200 and not body, "%s %r" % (status, body[:40]))
+    for verb in ("POST", "PUT", "DELETE"):
+        status, body, _ = request(base, verb, "/system/zzz", want_json=False)
+        check("%s /system/zzz is an empty 404" % verb,
+              status == 404 and not body, "%s %r" % (status, body[:40]))
+    status, listing, _ = get(base, "/system")
+    check("and the GET still answers", status == 200 and listing.get("size"), "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
