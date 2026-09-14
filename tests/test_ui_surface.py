@@ -11515,6 +11515,51 @@ def main():
           unwatched_c16e.get("nocache") is True and "nocache" not in movies_c16e,
           "show=%r movie=%r" % (unwatched_c16e.get("nocache"), movies_c16e.get("nocache")))
 
+
+    # Cycle 16, swept across both references and both library types: a section leaf's
+    # EXTRA path segment is never the leaf again. Every leaf that has no bucket --
+    # /all, /onDeck, /recentlyAdded, /newest, /recentlyViewed, /allLeaves,
+    # /collections, /common, /sorts, /filters, /folder, /search, /unwatched, /prefs,
+    # /studio, /audioLanguage, /subtitleLanguage, /videoCodec, /audioCodec,
+    # /audioLayout, /location -- answers 404 to one, and so does a SECOND extra
+    # segment on a leaf that has one (`/genre/24/more`). The leaves that DO have a
+    # bucket answer that bucket's rows: a tag axis keyed by TAG ID with the tag's own
+    # title as `title2` and a 404 for an id the library does not hold, `year` and
+    # `decade` keyed by a non-negative integer (a word or a negative number is a 404),
+    # `contentRating` as "Rated <value>" and `resolution` accepting anything at all.
+    # plexsim routed on the leaf alone and dropped the rest of the path, so every one
+    # of these answered the AXIS -- 200 with a Directory of letters where the client
+    # asked for a list of films.
+    dead_c16g = {}
+    for leaf_c16g in ("all", "onDeck", "recentlyAdded", "newest", "allLeaves",
+                      "collections", "sorts", "filters", "folder", "unwatched",
+                      "studio", "audioLanguage", "subtitleLanguage", "location"):
+        dead_c16g[leaf_c16g] = get(base, "/library/sections/%s/%s/zzz999"
+                                   % (movie_section, leaf_c16g))[0]
+    axis_c16g = get(base, "/library/sections/%s/genre" % movie_section)[1]
+    tag_c16g = (axis_c16g.get("Directory") or [{}])[0]
+    bucket_c16g = get(base, "/library/sections/%s/genre/%s"
+                      % (movie_section, tag_c16g.get("key")))
+    filtered_c16g = get(base, "/library/sections/%s/all?genre=%s"
+                        % (movie_section, tag_c16g.get("key")))[1]
+    check("a section leaf's extra segment is a bucket listing or a 404, never the leaf",
+          all(status_c16g == 404 for status_c16g in dead_c16g.values())
+          and get(base, "/library/sections/%s/genre/%s/more"
+                  % (movie_section, tag_c16g.get("key")))[0] == 404
+          and get(base, "/library/sections/%s/genre/zzz999" % movie_section)[0] == 404
+          and get(base, "/library/sections/%s/year/abc" % movie_section)[0] == 404
+          and get(base, "/library/sections/%s/year/1999" % movie_section)[0] == 200
+          and bucket_c16g[0] == 200
+          and bucket_c16g[1].get("title2") == tag_c16g.get("title")
+          and "Directory" not in bucket_c16g[1]
+          and [r_c16g["ratingKey"] for r_c16g in bucket_c16g[1].get("Metadata") or []]
+          == [r_c16g["ratingKey"] for r_c16g in filtered_c16g.get("Metadata") or []],
+          "dead=%s tag=%r bucket=%s title2=%r rows=%d vs filter %d"
+          % (dead_c16g, tag_c16g.get("title"), bucket_c16g[0],
+             bucket_c16g[1].get("title2"),
+             len(bucket_c16g[1].get("Metadata") or []),
+             len(filtered_c16g.get("Metadata") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

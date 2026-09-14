@@ -3844,6 +3844,26 @@ class PlexSim:
         if method not in allowed:
             return ("error", 404, "plexsim: not found")
 
+        # Cycle 16, swept across kids and zen, both library types: a leaf's EXTRA path
+        # segment is never the leaf again. On a leaf with no bucket it is a flat 404
+        # -- /all/zzz, /onDeck/zzz, /sorts/zzz, /studio/<a real studio key>,
+        # /audioLanguage/en, /location/1 and fourteen more -- and on a leaf WITH one a
+        # second extra segment (`/genre/24/more`) is a 404 too. plexsim routed on
+        # `segments[3]` and dropped the rest of the path, so all of them answered the
+        # leaf: the A-Z rail, the genre list and the sort list came back where the
+        # client had asked for a page of films, which is fix 4's trap one level down --
+        # a 200 reads as "this is the thing I asked for".
+        #
+        # `query/parse`, `indexes/thumbnails`, `extras/all` (cycle 10) and the
+        # VERSIONED `composite/{v}` are real two-segment leaves, and `firstCharacter`
+        # has its own branch below; each of those 404s its own unknown second segment. A trailing slash is already
+        # stripped, so `/year/` is the axis and not an empty bucket -- measured.
+        if len(segments) > 4 and leaf not in ("query", "indexes", "firstCharacter",
+                                             "extras", "composite"):
+            if len(segments) > 5:
+                return ("error", 404, "plexsim: not found")
+            return self.axis_bucket(section_id, section, leaf, segments[4], query)
+
         # -- the write half of Manage > Libraries -------------------------
         if leaf == "refresh":
             if method == "PUT":
@@ -4311,6 +4331,95 @@ class PlexSim:
         if len(parts) > 3 and parts[1] == "library" and parts[2] == "metadata":
             return parts[3] == str(row.get("ratingKey"))
         return True
+
+    # The axes that have a bucket sub-path at all, and how each reads its key.
+    # Measured on kids and zen over 29 leaves x 2 library types: `studio`,
+    # `videoCodec`, `audioCodec`, `audioLayout`, `audioLanguage`, `subtitleLanguage`
+    # and `location` answer 404 even for a key their own axis just listed, so they are
+    # deliberately absent here. `collection` and `label` are tag axes by construction
+    # but neither reference holds one, so their real-key behaviour is INFERRED from the
+    # six tag axes that could be measured (`network` among them, which answers rows).
+    AXIS_BUCKETS = {"genre": "tag", "director": "tag", "writer": "tag",
+                    "producer": "tag", "actor": "tag", "country": "tag",
+                    "network": "tag", "collection": "tag", "label": "tag",
+                    "year": "year", "decade": "decade",
+                    "contentRating": "contentRating", "resolution": "resolution",
+                    "userRating": "userRating"}
+
+    def axis_bucket(self, section_id, section, leaf, key, query):
+        """`/library/sections/{id}/{axis}/{key}` -- the rows behind one axis entry.
+
+        Measured cycle 16. A tag axis keys on the TAG ID and 404s an id the library
+        does not hold; `year` and `decade` take a non-negative integer and 404 a word
+        or a negative number; `contentRating` and `resolution` take anything;
+        `userRating` takes a non-negative integer and 404s `-1`, which is the key of
+        its own "Not rated" bucket. `title2` is the tag's own title, the bare value
+        for year/decade/resolution, `Rated <value>` for contentRating and
+        `<n> Star` for userRating -- none of which is the axis's "By ..." heading.
+        """
+        kind = self.AXIS_BUCKETS.get(leaf)
+        if kind is None:
+            return ("error", 404, "plexsim: not found")
+        wanted = urllib.parse.unquote(key)
+        rows = self.typed_rows(section_id, query)
+        if kind == "tag":
+            column = SECONDARY_TAGS[leaf]
+            if leaf == "label":
+                rows = list(rows) + list(self.library.collections(section_id))
+            title = next((tag.get("tag") for row in rows
+                          for tag in row.get(column) or []
+                          if str(tag.get("id")) == wanted), None)
+            if title is None:
+                return ("error", 404, "plexsim: not found")
+            rows = [r for r in rows
+                    if any(str(t.get("id")) == wanted for t in r.get(column) or [])]
+            title2 = title
+        elif kind in ("year", "decade", "userRating"):
+            if not wanted.isdigit():
+                return ("error", 404, "plexsim: not found")
+            number = int(wanted)
+            if kind == "year":
+                rows = [r for r in rows if str(r.get("year") or "") == wanted]
+                title2 = wanted
+            elif kind == "decade":
+                # Measured on zen: `decade/1995` answers 245 rows where `decade/1990`
+                # answers 108, so the key opens a ten-year window from itself rather
+                # than naming a calendar decade.
+                rows = [r for r in rows if r.get("year")
+                        and number <= int(r["year"]) < number + 10]
+                title2 = wanted
+            else:
+                rows = [r for r in rows
+                        if int(float(r.get("userRating") or 0)) == number]
+                title2 = "%s Star" % wanted
+        elif kind == "contentRating":
+            if wanted == "None":
+                # the empty synonym, the same one the axis's own trailing bucket uses
+                rows = [r for r in rows if not r.get("contentRating")]
+            else:
+                rows = [r for r in rows if str(r.get("contentRating") or "") == wanted]
+            title2 = "Rated %s" % wanted
+        else:
+            known = {"4k", "1080", "720", "576", "480", "sd"}
+            if wanted in known:
+                rows = [r for r in rows
+                        if any(str(m.get("videoResolution") or "") == wanted
+                               for m in r.get("Media") or [])]
+            else:
+                # Measured on both references: a value outside the enum is not refused
+                # here the way it is as a filter -- it matches every row that has a
+                # resolution at all (3867 of zen's 3887).
+                rows = [r for r in rows
+                        if any(m.get("videoResolution") for m in r.get("Media") or [])]
+            title2 = wanted
+        rows, _ = self.apply_filters(rows, query, section)
+        rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
+        if unsupported:
+            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+        extra = {"nocache": True} if section.get("type") == "show" else {}
+        return self.listing_container(section_id, section,
+                                      [_listing_row(r) for r in rows], query=query,
+                                      title2=title2, **extra)
 
     def _first_character_bucket(self, row):
         """The bucket a row falls in when the LISTING filters on it.
