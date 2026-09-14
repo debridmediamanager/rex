@@ -11346,6 +11346,17 @@ class PlexSim:
                 return ("error", 400, "plexsim: bad request")
             rows = sorted(rows, key=lambda r: (r.get(field) is None, r.get(field) or 0),
                           reverse=descending)
+        # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), which agree: this page
+        # takes `limit=` too, and it is a THIRD grammar -- `limit=2` answers 2 of kids'
+        # 5 and 2 of zen's 73, and `limit=-1` answers ZERO where the same value lifts
+        # the cap on `/library/recentlyAdded` and means "every row" on a section
+        # listing. `group=` is refused outright with a 400, `group=` empty included,
+        # where cycle 15 found it reaches the section `allLeaves`. plexsim ignored both.
+        if "group" in query:
+            return ("error", 400, "plexsim: bad request")
+        raw = str(query.get("limit") or "")
+        if raw.lstrip("-").isdigit():
+            rows = rows[:max(int(raw), 0)]
         page, paged, start, total = self.page_window(rows, query)
         fields = {"size": len(page), "Metadata": page}
         if paged:

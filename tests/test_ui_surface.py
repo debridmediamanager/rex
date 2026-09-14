@@ -14142,6 +14142,29 @@ def main():
               status == 200 and listing.get("totalSize", listing.get("size")) == whole,
               "%s %s" % (status, listing.get("totalSize")))
 
+    # Cycle 18, measured on kids and zen: `/status/sessions/history/all` takes `limit=`,
+    # and it is a third grammar again -- `limit=-1` answers ZERO rows where the same value
+    # lifts the cap on `/library/recentlyAdded` and means "every row" on a section listing
+    # -- while `group=` is a 400 there, the empty form included. plexsim ignored both, so
+    # the Activity page asking for a capped page got the whole history and a client error
+    # read as success.
+    # A history row is written by a COMPLETED play, and a play completes only when a beat
+    # CROSSES 90% inside its own session -- so the beat below the threshold comes first.
+    for moment, state in ((90000, "playing"), (870000, "playing"), (870000, "stopped")):
+        request(base, "PUT", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=%s"
+                "&time=%d&duration=900000&identifier=com.plexapp.plugins.library"
+                % (movie, movie, state, moment))
+    status, listing, _ = get(base, "/status/sessions/history/all?type=1")
+    rows = listing.get("totalSize", listing.get("size")) or 0
+    check("the history page has rows to cap", rows >= 1, "%s %s" % (status, rows))
+    for value, want in (("1", 1), ("0", 0), ("-1", 0)):
+        status, listing, _ = get(base, "/status/sessions/history/all?type=1&limit=" + value)
+        check("history limit=%s answers %s rows" % (value, want),
+              status == 200 and listing.get("size") == want, "%s %s" % (status, listing.get("size")))
+    for value in ("year", ""):
+        status, _, _ = get(base, "/status/sessions/history/all?type=1&group=" + value)
+        check("and group=%r is a 400" % value, status == 400, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
