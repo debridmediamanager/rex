@@ -12214,6 +12214,10 @@ class Handler(BaseHTTPRequestHandler):
     # a 404 there too, where plexsim PERFORMED the split on a POST and answered its
     # merge validator's 400. The rule was landed for three of the five leaves.
     ITEM_ACTION_LEAVES = ("refresh", "analyze", "unmatch", "split", "merge")
+    # Cycle 18, measured on plexscratch: `/library/metadata/{id}/subtitles` answers
+    # GET 400, POST 406 (the empty-body check), PUT 400 -- and 404 to DELETE, PATCH and
+    # OPTIONS, where plexsim answered its upload validator's 400 to all three.
+    SUBTITLE_LEAF_VERBS = ("GET", "HEAD", "POST", "PUT")
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `limit=` and `parent=` are
     # PARSED wherever a listing consumes them, and a value that is not a whole number is
@@ -12292,6 +12296,10 @@ class Handler(BaseHTTPRequestHandler):
         if self._collection_item_refusal(method, path):
             return True
         if self._playlist_item_refusal(method, path):
+            return True
+        parts = [p for p in path.split("?")[0].rstrip("/").split("/") if p]
+        if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
+                and parts[3] == "subtitles" and method not in self.SUBTITLE_LEAF_VERBS:
             return True
         parts = [p for p in (path.split("?")[0].rstrip("/") or "/").split("/") if p]
         if method == "POST" and parts[:2] == ["library", "metadata"] \
