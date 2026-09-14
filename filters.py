@@ -517,6 +517,30 @@ def compare(kind, operator, actual, wanted, field=""):
     wanted = str(wanted)
     if field == "title" and operator == "=":
         return _word_prefixes(wanted, text)
+    if field in UNLISTED_STRING_FIELDS and operator in ("<=", "<<=", ">=", ">>="):
+        # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
+        # -- the string fields no Meta advertises -- take `>>`/`<<` where an advertised
+        # one ignores them, and recorded `titleSort>>=ZZZZ` answering 1 row of zen's
+        # 3,887. plexsim allowed the operators and then fell through to CONTAINMENT,
+        # so `titleSort<<=0` matched every row whose title happens to hold a `0`.
+        #
+        # Cycle 18, on zen (1.42.2): all four keys are a case-insensitive
+        # LEXICOGRAPHIC comparison on these fields, and both sides are STRICT.
+        # `titleSort<<=B` answers 127 and `>>=B` 3,760, which partition the library
+        # exactly; `<<=Ba` answers 128, taking in `B2: Stealth at War`; `B` and `b`
+        # agree to the row; `<<=ZZZZ` is 3,886 and `>>=ZZZZ` the one CJK title.
+        # Against a value a row holds EXACTLY -- `titleSort<<=Baasha` and
+        # `>>=Baasha`, 128 + 3,758 = 3,886 of 3,887 -- that row is in NEITHER set,
+        # which is what makes both strict rather than one of them inclusive.
+        #
+        # `<=` and `>=` are NOT begins-with and ends-with here: `titleSort<=B`
+        # answers the same 127 rows as `<<=B`, starting with `01 Kid Krrish`. That
+        # pair keeps its advertised meaning on an ADVERTISED string field -- zen's
+        # `title<=B` is 136 rows all beginning with B and `title>=ing` 26 ending in
+        # `ing` -- so the two families genuinely differ, and the split is the
+        # advertised FieldType's, exactly as cycle 14 found for `>>`/`<<`.
+        lower, target = text.lower(), wanted.lower()
+        return lower < target if operator in ("<=", "<<=") else lower > target
     if field in EXACT_STRING_FIELDS and operator in ("=", "!="):
         # Measured: `titleSort=Sin` and `summary=e` match nothing where
         # `titleSort=sintel` matches, and `titleSort!=Sin` keeps every row -- on
