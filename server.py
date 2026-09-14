@@ -2684,6 +2684,25 @@ class PlexSim:
         # And no `composite` on either view: neither real server sends one here.
         return row
 
+    # The `Meta/Type` row each metadata type number describes, for the `active` flag.
+    META_TYPE_NAMES = {1: "movie", 2: "show", 3: "season", 4: "episode"}
+
+    @staticmethod
+    def _meta_active(meta, active):
+        """Which `Meta/Type` row carries `active="1"`.
+
+        Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: the flag
+        follows the REQUEST, not the library. `/library/sections/2/all?includeMeta=1`
+        marks `show`, `&type=3` marks `season`, `&type=4` marks `episode`, and
+        `?includeDetails=1` marks NONE of the three. plexsim served the flags the
+        captured fixture stores, so the library's tab bar -- which Plex Web lights from
+        exactly this attribute -- kept Shows lit while the user was on Seasons or
+        Episodes.
+        """
+        for entry in meta.get("Type") or []:
+            entry["active"] = entry.get("type") == active
+        return meta
+
     def section_meta(self, section_id, section_type, advanced=False):
         """Per-section filter/sort descriptors, retargeted from the template.
 
@@ -5158,8 +5177,15 @@ class PlexSim:
                   "Directory": [dict(p) for p in pivots]}
         size = len(pivots)
         if query.get("includeDetails") == "1":
+            # Cycle 19: this form honours `includeAdvanced=1` like every other. Both
+            # references answer 9 Sorts and 22 filters (zen; kids 28) to a movie
+            # library's bare `?includeDetails=1` and 15 and 23 once the flag is set --
+            # 17 and 32 on a show library's three Type rows. plexsim passed
+            # `advanced=True` unconditionally, so the six advanced sorts and the
+            # Duplicates filter, which a real PMS hides behind the client's own
+            # toggle, were permanently in the Sort menu.
             meta = self.section_meta(section_id, section.get("type") or "movie",
-                                     advanced=True) or {}
+                                     advanced=query.get("includeAdvanced") == "1") or {}
             # Cycle 16, measured on kids and zen: under `includeDetails` a
             # `Sort` carries no `active`/`activeDirection` and a `Filter` no
             # `advanced`, while the `includeMeta=1` form carries all three.
@@ -5174,6 +5200,16 @@ class PlexSim:
                 for entry in described.get("Filter") or []:
                     entry.pop("advanced", None)
             if meta.get("Type"):
+                # ...and this form carries NO `folder` row and marks none of the
+                # others active: kids and zen both answer exactly one `Type` on a
+                # movie library and three (`show`, `season`, `episode`) on a show one,
+                # every one of them `active="0"`. The `folder` row is real under
+                # `includeMeta=1` on a LISTING, where all three servers agree; it is
+                # this form that omits it. plexsim's spurious row put a Folders entry
+                # wherever the client reads the type list off the section detail.
+                self._meta_active(meta, None)
+                meta["Type"] = [entry for entry in meta["Type"]
+                                if entry.get("type") != "folder"]
                 fields["Type"] = meta["Type"]
                 size += len(meta["Type"])
             if meta.get("FieldType"):
@@ -5296,7 +5332,10 @@ class PlexSim:
             meta = self.section_meta(section_id, section.get("type") or "movie",
                                      advanced=query.get("includeAdvanced") == "1")
             if meta:
-                extra["Meta"] = meta
+                asked = str(query.get("type") or "")
+                extra["Meta"] = self._meta_active(
+                    meta, self.META_TYPE_NAMES.get(int(asked)) if asked.isdigit()
+                    else (section.get("type") or "movie"))
         return self.listing_container(section_id, section, rows, query=query, **extra)
 
     # The subsets a library's pivot bar opens, and the title2 each one carries.
