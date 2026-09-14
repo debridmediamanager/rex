@@ -6376,6 +6376,15 @@ class PlexSim:
         # plexsim read `Media[0]` of the row itself, so every media filter on a show or
         # season grid answered nothing at all.
         media_rows = row.get("Media") or []
+        if field in ("audioLanguage", "subtitleLanguage") and not media_rows:
+            # Cycle 20, measured on kids and zen: the two stream-language columns do
+            # NOT fall back to the leaves. Both references answer nothing at all to
+            # `type=2&audioLanguage=en` and `type=3&subtitleLanguage=en` while the same
+            # probe at type=4 returns a real subset, so a parent row has no such column
+            # -- unlike `duration`, `resolution` and `mediaSize`, which cycle 19
+            # measured reading the leaves. plexsim applied the fallback here too, so
+            # the Audio Language filter on a TV library selected every show.
+            return []
         if not media_rows and row.get("type") in ("show", "season"):
             media_rows = [m for leaf in self.catalog.leaves(row.get("ratingKey")) or []
                           for m in (leaf.get("Media") or [])]
