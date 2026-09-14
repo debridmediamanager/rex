@@ -702,7 +702,12 @@ PLUGIN_ROWS = {
 SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
                           ("POST", "/butler"), ("DELETE", "/butler"),
                           ("POST", "/log"), ("PUT", "/log"), ("DELETE", "/log"),
-                          ("PATCH", "/log"), ("OPTIONS", "/log")}
+                          ("PATCH", "/log"), ("OPTIONS", "/log"),
+                          # plexsim's own download queue, which the reference copy
+                          # 404s in every form (an unclaimed server has none), so its
+                          # verbs cannot be measured there and stay plexsim's.
+                          ("POST", "/downloadQueue"), ("PUT", "/downloadQueue"),
+                          ("DELETE", "/downloadQueue")}
 
 
 def plugin_container(route):
@@ -2808,6 +2813,11 @@ class PlexSim:
                                      "</head><body>405: Method Not Allowed</body></html>")
             if method == "OPTIONS":
                 return ("empty", 200)
+            if method in ("POST", "PUT", "DELETE"):
+                # The same envelope: an empty body, not plexsim's text/plain refusal --
+                # and it has to come BEFORE the `/system` routes, which answered their
+                # own GET to a PUT.
+                return ("empty", 404)
 
         # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
         # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
@@ -3265,10 +3275,6 @@ class PlexSim:
             return self.bare_container(
                 size=len(page), noHistory=0, replaceParent=0,
                 identifier="com.plexapp.system", Directory=page, **fields)
-        if segments[:1] == ["system"] and method in ("POST", "PUT", "DELETE"):
-            # The same envelope: an empty body and no Content-Type, not plexsim's
-            # text/plain refusal.
-            return ("empty", 404)
         if route == "/system/search":
             # Cycle 18, found by sweeping 46 second-level `/system/*` names against both
             # references: this one is a 200 on kids and zen alike, an empty
@@ -3805,6 +3811,18 @@ class PlexSim:
             return self.bare_container(size=0, allowSync=True,
                                        identifier="com.plexapp.plugins.library")
         if segments[:2] == ["hubs", "sections"] and len(segments) == 3:
+            # Cycle 18: the fifteen refusals are the SHOW library's here, measured on
+            # kids' section 2 and on zen's sections 2 and 4; a movie library answers 200
+            # to all of them. The check lives in the route because `section_hubs` never
+            # sees the query -- the first implementation called it from inside that
+            # handler, where the name does not exist, so every show library's
+            # Recommended tab answered a NameError's 500. A check that asserts a 500
+            # cannot tell a refusal from a crash: this is why the suite also reads the
+            # page back.
+            if (self.catalog.section(segments[2]) or {}).get("type") == "show":
+                refusal = hub_refusal(query)
+                if refusal:
+                    return refusal
             return self.section_hubs(segments[2], query.get("count"),
                                      query.get("includeLibraryPlaylists") == "1")
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
@@ -7846,12 +7864,6 @@ class PlexSim:
         """
         section = self.catalog.section(section_id) or {}
         is_show = section.get("type") == "show"
-        # Cycle 18: the refusal is the SHOW library's, measured on kids' section 2 and
-        # on zen's sections 2 and 4; a movie library answers 200 to all fifteen.
-        if is_show:
-            refusal = hub_refusal(query)
-            if refusal:
-                return refusal
         title = section.get("title") or ""
         items = self.catalog.section_items(section_id)
         episodes = [r for r in self.catalog.items.values()
