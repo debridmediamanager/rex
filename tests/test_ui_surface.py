@@ -15936,6 +15936,30 @@ def main():
           "%s -> edit %s -> section %s -> poster %s"
           % (stamp_c20i, edited_c20i.get("updatedAt"), section_c20i.get("updatedAt"),
              art_c20i.get("updatedAt")))
+
+    # Cycle 20, measured over every owned artwork path of both references: an artwork
+    # URL's version IS the row's `updatedAt` -- 726 of 726 on zen (1.42.2) and 12 of 12
+    # on kids (1.43.4), `thumb` and `art` alike, no exception. The copy shows the
+    # mechanism from the write side: `updatedAt.value=1500000000` through the section
+    # save path moves the column AND re-versions the poster to
+    # `/library/metadata/1/thumb/1500000000`, which still serves the image. plexsim
+    # versioned on a hash of the source URL -- a stable version, and not this one.
+    _, rows_c20j, _ = get(base, "/library/sections/%s/all" % movie_section)
+    owned_c20j = []
+    for r_c20j in rows_c20j.get("Metadata") or []:
+        for field_c20j in ("thumb", "art"):
+            value_c20j = str(r_c20j.get(field_c20j) or "")
+            if value_c20j.startswith("/library/metadata/%s/" % r_c20j.get("ratingKey")):
+                owned_c20j.append((r_c20j.get("ratingKey"), field_c20j,
+                                   value_c20j.rsplit("/", 1)[-1], str(r_c20j.get("updatedAt"))))
+    served_c20j = request(base, "GET", "/library/metadata/%s/thumb/%s"
+                          % (owned_c20j[0][0], owned_c20j[0][2]))[0] if owned_c20j else None
+    check("an artwork version is the row's updatedAt",
+          bool(owned_c20j)
+          and all(version_c20j == stamp_c20j
+                  for _rk_c20j, _f_c20j, version_c20j, stamp_c20j in owned_c20j)
+          and served_c20j == 200,
+          "%s | versioned GET %s" % (owned_c20j[:4], served_c20j))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
