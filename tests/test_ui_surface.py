@@ -14341,6 +14341,21 @@ def main():
     status, _, _ = request(base, "PUT", "/library/metadata/%s/merge" % movie)
     check("while PUT /merge is still the no-ids 400", status == 400, "%s" % status)
 
+    # Cycle 18, measured on plexscratch: a write to `/library/parts/{id}` resolves the PART
+    # first -- an unknown number, a malformed id and an unparseable stream value on an
+    # unknown part are all 404s -- where plexsim answered 200 whenever the request named no
+    # usable stream, so a track picker pointed at a stale part id saw its selection applied.
+    for path in ("/library/parts/999999", "/library/parts/abc",
+                 "/library/parts/999999?subtitleStreamID=abc",
+                 "/library/parts/999999?subtitleStreamID=0"):
+        for verb in ("PUT", "POST"):
+            status, _, _ = request(base, verb, path)
+            check("%s %s is a 404" % (verb, path), status == 404, "%s" % status)
+    detail = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    part = detail["Media"][0]["Part"][0]["id"]
+    status, _, _ = request(base, "PUT", "/library/parts/%s" % part)
+    check("and a real part with no parameters is still a 200", status == 200, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

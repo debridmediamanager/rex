@@ -9301,9 +9301,12 @@ class PlexSim:
             # the wrong type is refused. plexsim 400'd the malformed ones.
             if name in query and str(query[name]).isdigit():
                 wanted[stream_type] = query[name]
-        if not wanted:
-            return ("empty", 200)
-
+        # Cycle 18, measured on plexscratch: the PART is resolved before anything else.
+        # `PUT /library/parts/999999`, `/abc` and `999999?subtitleStreamID=abc` are all
+        # 404s there, where plexsim answered 200 to each because it returned early
+        # whenever the request named no usable stream -- so a track picker pointed at a
+        # stale part id was told the selection had been applied.
+        #
         # `allParts=1` means every part of THIS item -- a multi-part movie keeps
         # one track choice across its parts. Applying it to every part in the
         # catalog would retrack the whole library from one dialog.
@@ -9315,6 +9318,8 @@ class PlexSim:
                         owner = row
         if owner is None:
             return ("error", 404, "plexsim: no such part")
+        if not wanted:
+            return ("empty", 200)
         # Measured: a stream id that is not a stream of the right TYPE on this item
         # is a 400, and the selection is left untouched. plexsim accepted anything
         # with a 200 and then cleared every selection, because nothing matched --
