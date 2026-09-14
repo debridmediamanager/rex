@@ -11108,6 +11108,45 @@ def main():
           str({k_c15v2: [(s_c15v2, d_c15v2.get("content")) for s_c15v2, d_c15v2, _ in v_c15v2]
                for k_c15v2, v_c15v2 in plugin_c15v2.items()}))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
+    # `limit=` and `parent=` are PARSED wherever a listing consumes them, and a value
+    # that is not a whole number is a **500** -- `abc`, an empty value and `1.5` alike --
+    # on the section grid, `allLeaves`, `search`, `common`, `/library/all`, an item's
+    # `/children` and `/grandchildren`, `/playlists` and the secondary axes. On
+    # `/status/sessions/history/all` it is a **400** instead, the refusal that page gives
+    # its ids. A GOOD limit still does nothing on `/children` (cycle 11) -- ignoring the
+    # VALUE is not the same as not parsing the string.
+    #
+    # plexsim validated `limit` on three paths and `parent` nowhere, so a caller reading
+    # a 200 with the full listing took it for "that filter applied".
+    bad_c15g = {}
+    for path_c15g in ("/library/sections/%s/all?type=1" % movie_section,
+                      "/library/sections/%s/allLeaves" % show_section,
+                      "/library/sections/%s/search?type=1&query=a" % movie_section,
+                      "/library/sections/%s/common?type=1" % movie_section,
+                      "/library/all?type=1",
+                      "/library/metadata/%s/children" % show,
+                      "/library/metadata/%s/grandchildren" % show,
+                      "/playlists",
+                      "/library/sections/%s/genre" % movie_section,
+                      "/library/sections/%s/firstCharacter" % movie_section):
+        sep_c15g = "&" if "?" in path_c15g else "?"
+        bad_c15g[path_c15g] = [request(base, "GET", path_c15g + sep_c15g + spec_c15g)[0]
+                               for spec_c15g in ("limit=abc", "limit=", "limit=1.5",
+                                                 "parent=abc", "parent=")]
+    check("limit= and parent= are a 500 on every listing that consumes them",
+          all(codes_c15g == [500] * 5 for codes_c15g in bad_c15g.values()),
+          str({k_c15g: v_c15g for k_c15g, v_c15g in bad_c15g.items()
+               if v_c15g != [500] * 5}) or "all 500")
+    hist_c15g = [request(base, "GET", "/status/sessions/history/all?type=1&" + spec_c15g)[0]
+                 for spec_c15g in ("limit=abc", "limit=", "limit=1.5")]
+    check("the history page refuses a malformed limit with a 400, not a 500",
+          hist_c15g == [400, 400, 400]
+          and request(base, "GET", "/status/sessions/history/all?type=1&parent=abc")[0] == 200,
+          "%s | parent %s" % (hist_c15g,
+                              request(base, "GET",
+                                      "/status/sessions/history/all?type=1&parent=abc")[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
