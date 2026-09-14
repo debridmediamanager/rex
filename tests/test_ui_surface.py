@@ -14727,6 +14727,26 @@ def main():
              [("id" in s_c19x) for s_c19x in part_c19x.get("Stream") or []][:3],
              [("id" in g_c19x) for g_c19x in row_c19x.get("Genre") or []][:3]))
 
+    # Cycle 19, measured on kids (4 Image and 1 UltraBlurColors before and after) and zen
+    # (2 and 1): `excludeElements=Image` and `=UltraBlurColors` are no-ops on both servers,
+    # exactly like an unknown name, while every other element the option names really goes.
+    # plexsim removed them, so a client naming Image in a bandwidth-trimming list lost the
+    # artwork rows and the tile colour wash a real PMS still sends.
+    _, plain_c19e, _ = get(base, "/library/metadata/%s" % movie)
+    _, cut_c19e, _ = get(base, "/library/metadata/%s?excludeElements=Image,UltraBlurColors,Genre"
+                         % movie)
+    before_c19e = (plain_c19e.get("Metadata") or [{}])[0]
+    after_c19e = (cut_c19e.get("Metadata") or [{}])[0]
+    check("excludeElements keeps Image and UltraBlurColors and drops the rest",
+          bool(before_c19e.get("Image"))
+          and len(after_c19e.get("Image") or []) == len(before_c19e.get("Image") or [])
+          and ("UltraBlurColors" in after_c19e) == ("UltraBlurColors" in before_c19e)
+          and "Genre" not in after_c19e,
+          "Image %d -> %d  UBC %s -> %s  Genre gone %s"
+          % (len(before_c19e.get("Image") or []), len(after_c19e.get("Image") or []),
+             "UltraBlurColors" in before_c19e, "UltraBlurColors" in after_c19e,
+             "Genre" not in after_c19e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
