@@ -10928,6 +10928,47 @@ def main():
           "alpha-like %s | release-like %s | release %s alpha %s"
           % (same_c15t, fallback_c15t, release_c15t, alpha_c15t))
 
+    # Cycle 15, measured on plexscratch and reproduced on a freshly reset copy: the two
+    # rename paths differ. `PUT /library/collections/{id}?title=` renames the collection
+    # and LEAVES the members' `Collection` tag alone -- cycle 9 measured that, and it
+    # still holds. `PUT /library/sections/{id}/all?type=18&id=&title.value=` renames the
+    # TAG as well, on every member and in the `/collection` axis.
+    #
+    # It matters because the Edit Collection dialog saves through the SECTION path. After
+    # a rename on plexsim every member's page still showed the old collection name and
+    # the library's Collections filter still offered it, and the two never converged.
+    #
+    rn_c15w = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C15w Before"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1].get("Metadata") or [{}])[0].get("ratingKey")
+
+
+    def member_tags_c15w():
+        return [(t_c15w.get("tag"), "guid" in t_c15w, "count" in t_c15w) for t_c15w in
+                ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                 .get("Collection") or []) if str(t_c15w.get("tag") or "").startswith("C15w")]
+
+
+    start_c15w = member_tags_c15w()
+    request(base, "PUT", "/library/collections/%s?title=%s" % (rn_c15w, quote("C15w Item")))
+    after_item_c15w = member_tags_c15w()
+    request(base, "PUT", "/library/sections/%s/all?type=18&id=%s&title.value=%s"
+            % (movie_section, rn_c15w, quote("C15w Section")))
+    after_section_c15w = member_tags_c15w()
+    axis_c15w = [d_c15w.get("title") for d_c15w in
+                 get(base, "/library/sections/%s/collection" % movie_section)[1]
+                 .get("Directory") or [] if str(d_c15w.get("title") or "").startswith("C15w")]
+    request(base, "DELETE", "/library/collections/%s" % rn_c15w)
+    check("the section-path rename renames the members' Collection tag and the item path does not",
+          [t_c15w[0] for t_c15w in start_c15w] == ["C15w Before"]
+          and [t_c15w[0] for t_c15w in after_item_c15w] == ["C15w Before"]
+          and [t_c15w[0] for t_c15w in after_section_c15w] == ["C15w Section"]
+          and axis_c15w == ["C15w Section"],
+          "start %s | item %s | section %s | axis %s"
+          % (start_c15w, after_item_c15w, after_section_c15w, axis_c15w))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
