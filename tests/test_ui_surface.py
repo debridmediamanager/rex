@@ -12207,6 +12207,28 @@ def main():
           "mediaCount=%s leafCount=%s POST=%s PUT=%s"
           % (sorted_c16a5[0], leaf_c16a5, post_c16a5[0], put_c16a5[0]))
 
+
+    # Cycle 16, measured on plexscratch: an EMPTY `title=` on a create is stored
+    # verbatim -- the row reads back `""` -- where plexsim substituted "Untitled". The
+    # *missing*-title 400 both answer is a different case and already recorded. And
+    # `smart=1` over a comma-joined key list is a **400** that creates nothing: a smart
+    # list's uri has to be a LISTING. plexsim created a smart playlist whose stored
+    # query was a key list, so its `content` named a path that selects nothing and the
+    # list was permanently empty.
+    empty_c16a6 = request(base, "POST", "/playlists?title=&type=video&smart=0&uri=%s"
+                          % quote("server://%s/com.plexapp.plugins.library"
+                                  "/library/metadata/%s" % (machine, movie)))
+    made_c16a6 = json.loads(empty_c16a6[1])["MediaContainer"]["Metadata"][0]
+    keylist_c16a6 = request(
+        base, "POST", "/playlists?title=c16smartlist&type=video&smart=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s,%s"
+                % (machine, movie, spare or movie)))
+    request(base, "DELETE", "/playlists/%s" % made_c16a6["ratingKey"])
+    check("an empty title is stored verbatim, and smart over a key list is a 400",
+          empty_c16a6[0] == 200 and made_c16a6.get("title") == ""
+          and keylist_c16a6[0] == 400,
+          "title=%r keylist=%s" % (made_c16a6.get("title"), keylist_c16a6[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
