@@ -14747,6 +14747,20 @@ def main():
              "UltraBlurColors" in before_c19e, "UltraBlurColors" in after_c19e,
              "Genre" not in after_c19e))
 
+    # Cycle 19: the ITEM path has the `/all` form the SECTION path does. Both references
+    # answer `/library/metadata/{id}/extras/all` with the container `/extras` gives -- kids
+    # an empty one, zen a three-clip one -- and plexsim 404'd the segment, which a client
+    # walking to the paged form of a preplay Extras shelf reads as "this item is gone".
+    status_c19q, body_c19q, _ = get(base, "/library/metadata/%s/extras/all" % movie)
+    status_c19r, bare_c19q, _ = get(base, "/library/metadata/%s/extras" % movie)
+    status_c19s, _, _ = get(base, "/library/metadata/%s/extras/3" % movie)
+    check("an item's extras/all answers what /extras answers",
+          status_c19q == 200 and status_c19r == 200
+          and body_c19q.get("size") == bare_c19q.get("size") and status_c19s == 404,
+          "all %s size %r ; bare %s size %r ; /3 %s"
+          % (status_c19q, body_c19q.get("size"), status_c19r, bare_c19q.get("size"),
+             status_c19s))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
