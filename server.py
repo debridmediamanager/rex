@@ -3047,6 +3047,13 @@ class PlexSim:
             }])
         if segments[:1] == ["butler"]:
             return self.butler(method, segments)
+        if segments[:2] == ["library", "sections"] and len(segments) == 4 \
+                and segments[3] == "refresh" and "force" in query \
+                and not str(query["force"]).lstrip("-").isdigit():
+            # Cycle 17, measured on plexscratch: the flag is PARSED -- `abc`, `1.5` and
+            # an empty value are 400s where `0` and `1` are 200s. plexsim took anything
+            # and ran the scan, so a malformed flag triggered a refresh.
+            return ("error", 400, "plexsim: bad request")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
                 and segments[3] == "match" and method in ("GET", "DELETE"):
             # Cycle 17, measured on plexscratch: `/match` answers EVERY verb with its
