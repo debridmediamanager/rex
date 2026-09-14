@@ -12487,6 +12487,31 @@ def main():
           and all(seen_c16a16 == 6 for seen_c16a16 in seasons_c16a16),
           "show=%r seasons=%s" % (show_c16a16, seasons_c16a16))
 
+
+    # Cycle 16, measured on plexscratch: a SEASON whose own `year` is cleared gains
+    # `parentYear` -- the show's -- in the same read. The rule ("only a season without
+    # one falls back to the show's year") is already recorded and already right at
+    # catalog LOAD; plexsim derived it only there, so a season that lost its year at
+    # runtime carried neither, and the season page printed no year at all.
+    seasons_c16a17 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                         % show)[1].get("Metadata") or []
+    season_c16a17 = seasons_c16a17[0]["ratingKey"]
+    request(base, "PUT", "/library/sections/%s/all?type=3&id=%s&year.value=2001"
+            % (show_section, season_c16a17))
+    with_c16a17 = get(base, "/library/metadata/%s" % season_c16a17)[1]["Metadata"][0]
+    request(base, "PUT", "/library/sections/%s/all?type=3&id=%s&year.value="
+            % (show_section, season_c16a17))
+    without_c16a17 = get(base, "/library/metadata/%s" % season_c16a17)[1]["Metadata"][0]
+    parent_c16a17 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0].get("year")
+    check("a season that loses its year falls back to parentYear",
+          with_c16a17.get("year") == 2001 and "parentYear" not in with_c16a17
+          and "year" not in without_c16a17
+          and without_c16a17.get("parentYear") == parent_c16a17
+          and parent_c16a17 is not None,
+          "with=%r/%r without=%r/%r show=%r"
+          % (with_c16a17.get("year"), with_c16a17.get("parentYear"),
+             without_c16a17.get("year"), without_c16a17.get("parentYear"), parent_c16a17))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
