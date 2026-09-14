@@ -46,6 +46,15 @@ _CHILD_ORDER = {name: index for index, name in enumerate((
 _TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
     ("Filter", "Sort", "Field"))}
 
+# Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the two `Type`
+# rows come BEFORE the eight `FieldType` rows -- `Type, Type, FieldType x8` on a movie
+# library's `?includeMeta=1`. plexsim sorted them by the item table, which knows
+# neither name, so the stable sort left the dict's own order and every Meta came out
+# `FieldType x8, Type, Type`. It gets the same pair right where they sit directly on
+# the container (`?includeDetails=1` is `Directory x20, Type, FieldType x8` on all
+# three servers); only the `Meta` wrapper was unordered.
+_META_CHILD_ORDER = {name: index for index, name in enumerate(("Type", "FieldType"))}
+
 
 # Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte:
 # a real PMS escapes an XML attribute value into pure ASCII even though the document
@@ -307,6 +316,9 @@ def _render(name, row, out, overrides=None, container=False):
     elif name == "Type":
         children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child[0],
                                                               len(_TYPE_CHILD_ORDER)))
+    elif name == "Meta":
+        children.sort(key=lambda child: _META_CHILD_ORDER.get(child[0],
+                                                              len(_META_CHILD_ORDER)))
     else:
         children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
     if not container:
