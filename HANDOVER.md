@@ -84,7 +84,7 @@ Coverage, measured from the repository rather than asserted:
 | 13 | 899 | 10,509 | 22 (of 28 reported) |
 | 14 | 926 | 10964 | 29 (of ~40 reported) |
 | 15 | 979 | 11678 | 33 (of 24 reported plus 9 the driver found) |
-| 16 | 1,030 | 12,584 | **49** (of 39 reported plus 6 the driver found, plus 4 the driver split out) |
+| 16 | 1,027 | 12,536 | **49** (of 39 reported plus 6 the driver found, plus 4 corrections) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -110,9 +110,9 @@ Suite results at the head of cycle 17, all run 2026-09-14 against the merged tre
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **979/979**, 6 skipped | was 927 at the head of cycle 15; the skips need a TMDB key, real RD links, or a fixture row the suite has already consumed |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1,027/1,027**, 6 skipped | was 979 at the head of cycle 16; the skips need a TMDB key, real RD links, or a fixture row the suite has already consumed |
 | `tests/test_mediainfo.py` | **27/27** | offline |
-| `tests/test_navigation.py` on the full catalog | **46/46** | 27/27 on the UI fixture |
+| `tests/test_navigation.py` on the full catalog | **47/47** | 28/28 on the UI fixture |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); expected |
 | `tests/test_all.py --skip-decode` | playQueue and decision PASS | byte reads 502 for the same reason |
 
@@ -1149,6 +1149,20 @@ Every one of these cost real time at least once.
   either report depended on them. Recorded here so the claim is not picked up as a rule — it is
   the kind of thing §3.1 class F is for.
 
+- **The scratch disk can fill, and when it does the Bash tool stops entirely** -- it
+  cannot create its own output file, so every command fails before it runs and there is
+  no way to clear space from inside the session. Cycle 16 hit this after ~40 commits.
+  `sdrive.py` re-exports the whole tree per patch and each hunt keeps a frozen tree of
+  its own, so a long cycle accumulates hundreds of megabytes under the scratchpad. Clear
+  `tasks/*.output` (the subagent transcripts, the largest single items) and the frozen
+  trees (`head*`, `oldtree*`, `parent_srv`) as you go.
+- **A worktree is only a checkout: deleting it does NOT lose the commits.** They live in
+  the main repository's object store and the branch ref with them, so
+  `git worktree prune && git worktree add <path> <branch>` brings everything back.
+  Cycle 16's worktree was deleted while recovering disk space and all 40 commits were
+  intact. **Push the branch from the first commit anyway** -- section 5 says so, cycle 16
+  had not been doing it, and that is the difference between a scare and a loss.
+
 **Editing and committing**
 
 - **A replacement that leaves the old block behind DUPLICATES it.** A suite edit that replaced a
@@ -1265,6 +1279,12 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 16: `…/12a3f40a-efad-46c2-85e4-3da3421fe8ea.jsonl` plus its `subagents/agent-*.jsonl`.
+  **Its scratch directory was cleared mid-cycle to recover disk space**, so the patch
+  modules, the assembled prompt files and the re-measurement clients are gone; the
+  territories are in `hunt_prompts.md` and everything measured is in `docs/findings.md`.
+  The one artifact that mattered — the branch — survived, because a worktree is only a
+  checkout and the objects live in the main repository.
 
 The scratch directory of each is
 `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/<session>/scratchpad/`
