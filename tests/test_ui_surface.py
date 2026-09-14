@@ -13426,6 +13426,24 @@ def main():
           and force_c17b6["1.5"] == 400,
           "%s" % force_c17b6)
 
+
+    # Cycle 17, re-measured on plexscratch: a KNOWN single-segment path falls through
+    # to the legacy plug-in dispatcher for the verbs it does not implement. `PUT`,
+    # `PATCH` and `OPTIONS` on `/butler` and on `/devices` answer the dispatcher's
+    # `{"size": 0, "content": "plugins"}`, exactly as an unknown single-segment path
+    # does -- the recorded rule that a read-only route 404s every verb but GET and HEAD
+    # is the rule for MULTI-segment routes. plexsim 404'd them.
+    fell_c17b7 = {}
+    for path_c17b7 in ("/butler", "/devices"):
+        for verb_c17b7 in ("PUT", "PATCH", "OPTIONS"):
+            status_c17b7, body_c17b7, _ = request(base, verb_c17b7, path_c17b7)
+            fell_c17b7[(path_c17b7, verb_c17b7)] = (
+                status_c17b7, b"plugins" in body_c17b7)
+    check("a known single-segment path falls through to the plug-in dispatcher",
+          all(value_c17b7 == (200, True) for value_c17b7 in fell_c17b7.values()),
+          "%s" % sorted((k_c17b7[0] + " " + k_c17b7[1], v_c17b7)
+                        for k_c17b7, v_c17b7 in fell_c17b7.items())[:4])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

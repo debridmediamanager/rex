@@ -2827,6 +2827,11 @@ class PlexSim:
             if method == "POST" and len(segments) == 1:
                 # Measured: the legacy plug-in dispatcher answers this one.
                 return self.bare_container(size=0, content="plugins")
+            if method in ("PUT", "PATCH", "OPTIONS") and len(segments) == 1:
+                # Cycle 17: the bare path falls through to the legacy plug-in
+                # dispatcher for the verbs it does not implement, the same as
+                # `/butler` does -- measured on plexscratch.
+                return self.bare_container(size=0, content="plugins")
             if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
             if len(segments) == 2:
@@ -2947,6 +2952,13 @@ class PlexSim:
             return self.bare_container(size=0, token="transient-" + str(uuid.uuid4()))
         if segments[:1] == ["downloadQueue"]:
             return self.download_queue(method, segments, query, headers)
+        if route == "/butler" and method in ("PUT", "PATCH", "OPTIONS"):
+            # Cycle 17, measured on plexscratch: a KNOWN single-segment path falls
+            # through to the legacy plug-in dispatcher for the verbs it does not
+            # implement, exactly as an unknown one does. The recorded rule that a
+            # read-only route 404s every verb but GET and HEAD is the MULTI-segment
+            # rule; plexsim applied it here and 404'd all three.
+            return self.bare_container(size=0, content="plugins")
         if route == "/channels":
             # Measured 200 on both servers with exactly these two rows. The channel
             # APPSTORE paths do 404 (which CLAUDE.md already records) -- bare
