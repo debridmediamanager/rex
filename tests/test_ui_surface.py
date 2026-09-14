@@ -14992,6 +14992,27 @@ def main():
           container_keys_c19j[:1] == ["size"] or "size" not in container_keys_c19j,
           str(container_keys_c19j[:6]))
 
+    # Cycle 19, measured on plexscratch: `DELETE /devices/{id}` and `DELETE /accounts/{id}`
+    # are 404s for an id the server lists and one it does not, with the list unchanged --
+    # a device or an account is removed through plex.tv, not through the server. plexsim
+    # answered an empty 200 to the device form and the accounts LISTING to the account one,
+    # which a client reads as a successful write. And `PUT /activities/{x}` is a 400 where
+    # the DELETE of the same path is a 404.
+    verbs_c19s = {}
+    for path_c19s in ("/devices/1", "/devices/99999", "/accounts/1", "/accounts/99999"):
+        verbs_c19s[path_c19s] = request(base, "DELETE", path_c19s)[0]
+    check("a DELETE of a device or an account is a 404",
+          all(s_c19s == 404 for s_c19s in verbs_c19s.values())
+          and get(base, "/devices")[0] == 200 and get(base, "/accounts")[0] == 200,
+          str(verbs_c19s))
+    acts_c19s = {m_c19s: request(base, m_c19s,
+                                 "/activities/00000000-0000-0000-0000-000000000000")[0]
+                 for m_c19s in ("PUT", "DELETE", "GET")}
+    check("a PUT to an activity is a 400 and its DELETE a 404",
+          acts_c19s["PUT"] == 400 and acts_c19s["DELETE"] == 404 and acts_c19s["GET"] == 404
+          and request(base, "PUT", "/activities/abc")[0] == 400,
+          str(acts_c19s))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

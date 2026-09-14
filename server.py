@@ -3118,10 +3118,21 @@ class PlexSim:
             return self.bare_container(size=0)
 
         if segments[:1] == ["accounts"]:
+            if method == "DELETE":
+                # Cycle 19: a 404 for a known id and an unknown one alike, measured on
+                # plexscratch. plexsim answered the accounts LISTING to `DELETE
+                # /accounts/1` -- a container where a real PMS refuses, which is the
+                # shape a client reads as a successful write.
+                return ("error", 404, "plexsim: not found")
             return self.accounts(segments[1] if len(segments) > 1 else None)
         if segments[:1] == ["devices"]:
             if method == "DELETE":
-                return ("empty", 200)
+                # Cycle 19, measured on plexscratch: `DELETE /devices/{id}` is a 404 for
+                # an id the server's own `/devices` lists (62 rows there) AND for one it
+                # does not, and the list is unchanged either way -- a device is
+                # unregistered through plex.tv, not through the server. plexsim answered
+                # an empty 200, which a client reads as "removed".
+                return ("error", 404, "plexsim: not found")
             if method == "POST" and len(segments) == 1:
                 # Measured: the legacy plug-in dispatcher answers this one.
                 return self.bare_container(size=0, content="plugins")
@@ -3173,6 +3184,13 @@ class PlexSim:
                 if not self.library.cancel_activity(segments[1]):
                     return ("error", 404, "plexsim: no such activity")
                 return ("empty", 200)
+            if method == "PUT" and len(segments) > 1:
+                # Cycle 19, measured on plexscratch: a PUT to an activity is a 400 --
+                # for a well-formed uuid, `?cancel=1`, a word and a number alike --
+                # where the DELETE of the same path is a 404. plexsim 404'd both, so a
+                # client's cancel could not tell a malformed request from a finished
+                # activity.
+                return ("error", 400, "plexsim: bad request")
             if len(segments) > 1:
                 # Measured: an activity has no read of its own -- `GET /activities/{id}`
                 # is a 404, for a live uuid on fun as well. plexsim answered the list.
