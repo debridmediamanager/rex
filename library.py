@@ -1696,6 +1696,16 @@ class Library:
         sort = str(collection.get("collectionSort") or "0")
         if sort == "2":
             return rows
+        # Cycle 15, measured on the copy over twelve values: ALPHABETICAL for anything
+        # that parses as a plain non-zero integer -- `3`, `99`, `-1`, `01` and `+1` as
+        # well as `1` -- and RELEASE DATE for `0` and for anything that does not parse
+        # (`1.5`, a leading space, `abc`, an empty value). So a leading `+` is allowed
+        # and a decimal point and a leading space are not. plexsim honoured `1` alone
+        # and fell back to release date for every other number, which a free-text pref
+        # can hold easily enough.
+        if sort.lstrip("+-").isdigit() and sort.lstrip("+-").lstrip("0"):
+            return sorted(rows, key=lambda r: str(r.get("titleSort")
+                                                  or r.get("title") or "").lower())
         if sort == "1":
             return sorted(rows, key=lambda r: str(r.get("titleSort") or r.get("title") or "").lower())
         return sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""))
