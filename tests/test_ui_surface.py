@@ -15197,6 +15197,59 @@ def main():
               % (len(entries_c21m), len(leaves_c21m), states_c21m))
     else:
         skip("a show library's analyze frames every episode leaf three times", "no show library")
+
+    _, c21n_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20leaves"
+                                            "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                            "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                              % (movie_section, machine, movie))
+    c21n_collection = json.loads(c21n_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    _, c21n_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C21%%20leaves&smart=0"
+                                               "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                               "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                 % (machine, movie))
+    c21n_playlist = json.loads(c21n_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+    # Cycle 21, measured on plexscratch over a fresh collection and a fresh playlist: both
+    # answer the ITEM action leaves. `/related` is an empty container -- a collection's
+    # with the librarySection triple and `allowSync`, a playlist's with neither -- a
+    # collection's `/allLeaves` and `/grandchildren` are real secondary containers
+    # (`viewGroup: movie`, `viewMode: 65592`, `mixedParents` on the allLeaves) where a
+    # playlist 404s both, `/extras` is the 400 the item path already answers, `/match` its
+    # no-parameters 400, and `/analyze` splits -- 200 on a collection, 400 on a playlist.
+    # The artwork writes land like an item's. plexsim 404'd every one, so Change Poster and
+    # Clear Artwork on a collection page did nothing at all.
+    codes_c21n = {}
+    for label_c21n, key_c21n in (("collection", c21n_collection), ("playlist", c21n_playlist)):
+        for verb_c21n, leaf_c21n in (("PUT", "analyze"), ("PUT", "match"), ("GET", "extras"),
+                                     ("GET", "related"), ("GET", "allLeaves"),
+                                     ("GET", "grandchildren"),
+                                     ("PUT", "poster?url=http%3A%2F%2Fexample.com%2Fc.jpg"),
+                                     ("DELETE", "poster")):
+            codes_c21n[(label_c21n, leaf_c21n.split("?")[0])] = request(
+                base, verb_c21n, "/library/metadata/%s/%s" % (key_c21n, leaf_c21n))[0]
+    _, rel_coll_c21n, _ = get(base, "/library/metadata/%s/related" % c21n_collection)
+    _, rel_play_c21n, _ = get(base, "/library/metadata/%s/related" % c21n_playlist)
+    _, grand_c21n, _ = get(base, "/library/metadata/%s/grandchildren" % c21n_collection)
+    check("a collection and a playlist answer the item action leaves",
+          codes_c21n == {("collection", "analyze"): 200, ("collection", "match"): 400,
+                         ("collection", "extras"): 400, ("collection", "related"): 200,
+                         ("collection", "allLeaves"): 200,
+                         ("collection", "grandchildren"): 200,
+                         ("collection", "poster"): 200,
+                         ("playlist", "analyze"): 400, ("playlist", "match"): 400,
+                         ("playlist", "extras"): 400, ("playlist", "related"): 200,
+                         ("playlist", "allLeaves"): 404,
+                         ("playlist", "grandchildren"): 404,
+                         ("playlist", "poster"): 200}
+          and rel_coll_c21n.get("librarySectionID") is not None
+          and rel_coll_c21n.get("allowSync") is True
+          and rel_play_c21n.get("librarySectionID") is None
+          and "allowSync" not in rel_play_c21n
+          and grand_c21n.get("viewGroup") == "movie"
+          and grand_c21n.get("viewMode") == 65592,
+          "%s | related %r/%r | grandchildren %r"
+          % (codes_c21n, rel_coll_c21n.get("librarySectionID"),
+             rel_play_c21n.get("librarySectionID"), grand_c21n.get("viewGroup")))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
