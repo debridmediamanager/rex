@@ -11902,6 +11902,46 @@ def main():
           and names_c16u[3:] == sorted(names_c16u[3:]),
           "%s" % names_c16u)
 
+
+    # Cycle 16, measured on kids and zen: a malformed request header is a 400 on a
+    # real PMS. A header line with no colon, a TAB anywhere in a value (a space is
+    # fine), a header name over 1024 bytes and a value over 4096 are each a 400.
+    # plexsim accepted every one of them with a 200 and only refused at Python's own
+    # 64 KiB line limit, answering Python's HTML error page rather than a 400.
+    import socket as socket_c16v
+
+    def status_of_c16v(raw_c16v):
+        sock_c16v = socket_c16v.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), timeout=15)
+        sock_c16v.sendall(raw_c16v)
+        seen_c16v = b""
+        try:
+            while b"\r\n" not in seen_c16v:
+                chunk_c16v = sock_c16v.recv(4096)
+                if not chunk_c16v:
+                    break
+                seen_c16v += chunk_c16v
+        except Exception:
+            pass
+        sock_c16v.close()
+        parts_c16v = seen_c16v.split(b"\r\n")[0].split(b" ")
+        return parts_c16v[1] if len(parts_c16v) > 1 else b"?"
+
+    head_c16v = b"GET /identity HTTP/1.1\r\nHost: h\r\nConnection: close\r\n"
+    cases_c16v = {
+        "no colon": head_c16v + b"BadHeaderLine\r\n\r\n",
+        "tab in value": head_c16v + b"X-Foo: a	b\r\n\r\n",
+        "long value": head_c16v + b"X-Foo: " + b"a" * 5000 + b"\r\n\r\n",
+        "long name": head_c16v + b"X" + b"a" * 1100 + b": v\r\n\r\n",
+    }
+    refused_c16v = {label_c16v: status_of_c16v(raw_c16v)
+                    for label_c16v, raw_c16v in cases_c16v.items()}
+    fine_c16v = status_of_c16v(head_c16v + b"X-Foo: a b\r\n\r\n")
+    check("a malformed request header is a 400",
+          all(seen_c16v == b"400" for seen_c16v in refused_c16v.values())
+          and fine_c16v == b"200",
+          "%s ; a space in the value is fine -> %s" % (refused_c16v, fine_c16v))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
