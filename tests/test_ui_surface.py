@@ -11656,6 +11656,25 @@ def main():
           b"100 Continue" not in first_c16k.split(b"\r\n")[0],
           "%r" % first_c16k.split(b"\r\n")[0])
 
+
+    # Cycle 16, measured on kids and zen: the `Accept-Encoding` token is matched
+    # EXACTLY and case-sensitively. `GZIP` and `x-gzip` get a plain body on both
+    # references, `*` gets a plain body, and `gzip;q=0` is still gzipped (the q is
+    # ignored). plexsim lower-cased the whole header and looked for the substring
+    # "gzip", so it compressed for `GZIP` and `x-gzip` where a real PMS does not.
+    encodings_c16l = {}
+    for offer_c16l in ("gzip", "GZIP", "x-gzip", "*", "gzip;q=0"):
+        body_c16l = urllib.request.Request(
+            base + "/library/sections/%s/all" % movie_section,
+            headers={"Accept-Encoding": offer_c16l, "Accept": "application/json",
+                     "User-Agent": UA})
+        with urllib.request.urlopen(body_c16l, timeout=20) as answer_c16l:
+            encodings_c16l[offer_c16l] = answer_c16l.headers.get("Content-Encoding")
+    check("Accept-Encoding tokens are matched exactly and case-sensitively",
+          encodings_c16l == {"gzip": "gzip", "GZIP": None, "x-gzip": None,
+                             "*": None, "gzip;q=0": "gzip"},
+          "%s" % encodings_c16l)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
