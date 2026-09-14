@@ -12468,6 +12468,25 @@ def main():
           and all(seen_c16a15 == "NC-17" for seen_c16a15 in after_c16a15[1:]),
           "%s" % after_c16a15)
 
+
+    # Cycle 16, measured on plexscratch: a SHOW's `index` write cascades onto its
+    # seasons' `parentIndex` -- write `index.value=6` on the show and both seasons read
+    # back `parentIndex: 6`. plexsim moved the show's own index and left every season
+    # claiming the old one. (A season's `index` write already cascaded onto its
+    # episodes' `parentIndex` on both.)
+    request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&index.value=6"
+            % (show_section, show))
+    show_c16a16 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0].get("index")
+    seasons_c16a16 = [r_c16a16.get("parentIndex") for r_c16a16 in get(
+        base, "/library/metadata/%s/children?excludeAllLeaves=1"
+        % show)[1].get("Metadata") or []]
+    request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&index.value=1"
+            % (show_section, show))
+    check("a show's index write cascades onto its seasons' parentIndex",
+          show_c16a16 == 6 and bool(seasons_c16a16)
+          and all(seen_c16a16 == 6 for seen_c16a16 in seasons_c16a16),
+          "show=%r seasons=%s" % (show_c16a16, seasons_c16a16))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
