@@ -6807,6 +6807,13 @@ class PlexSim:
             # and every episode borrows. The row's own stored path names its owner, so
             # comparing the two IS the rule, and it needs no per-type list.
             return ("error", 404, "plexsim: not found")
+        if leaf == "thumb" and method == "DELETE":
+            # Cycle 17, re-measured on plexscratch: the singular `/thumb` CLEARS the
+            # poster exactly as `/poster` does -- cycle 16 recorded the rule for all
+            # three names and plexsim implemented two of them, so this one fell through
+            # to the image read and answered the PNG bytes to a DELETE. A GET of the
+            # same path is still the image.
+            leaf = "poster"
         if leaf in ("poster", "art"):
             # The SINGULAR path is the write, and plexsim had it as the image read.
             # The client's own Change Poster / Change Background builds

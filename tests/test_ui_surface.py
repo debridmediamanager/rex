@@ -13578,6 +13578,29 @@ def main():
           % (len(local_c17b12), len(shaped_c17b12), served_c17b12,
              (local_c17b12[0].get("key") if local_c17b12 else None)))
 
+
+    # Cycle 17, re-measured on plexscratch: `DELETE /library/metadata/{id}/thumb` really
+    # CLEARS the poster -- the field goes and the row's other artwork is re-stamped,
+    # exactly as `/poster` and `/art` already did. Cycle 16 recorded the rule for all
+    # three names and plexsim implemented two of them, so the singular `/thumb` answered
+    # 200 and changed nothing: failure class C, where the docs agree with themselves and
+    # the code does something else.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
+    before_c17b13 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    status_c17b13, body_c17b13, _ = request(
+        base, "DELETE", "/library/metadata/%s/thumb" % movie)
+    after_c17b13 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    bare_c17b13, _, _ = request(base, "GET", "/library/metadata/%s/thumb" % movie,
+                                want_json=False)
+    check("DELETE on the singular thumb clears the poster",
+          status_c17b13 == 200 and body_c17b13 == b""
+          and before_c17b13.get("thumb") and "thumb" not in after_c17b13
+          and bare_c17b13 == 404,
+          "%s body=%r %r -> %r ; bare GET %s"
+          % (status_c17b13, body_c17b13, before_c17b13.get("thumb"),
+             after_c17b13.get("thumb"), bare_c17b13))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
