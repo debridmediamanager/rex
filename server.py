@@ -10967,12 +10967,17 @@ class Handler(BaseHTTPRequestHandler):
         if origin:
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin, X-Plex-Token")
-        self.send_header("Access-Control-Allow-Methods",
-                         "POST, GET, OPTIONS, DELETE, PUT, HEAD")
-        self.send_header("Access-Control-Allow-Headers",
-                         self.headers.get("Access-Control-Request-Headers")
-                         or self.CORS_FALLBACK_HEADERS)
-        self.send_header("Access-Control-Max-Age", "1209600")
+        # Cycle 16, measured on the copy: with no `Origin` the preflight carries NO
+        # CORS headers at all -- not the method list, not the header list, not
+        # Max-Age. plexsim sent all three, answering a question it had not been
+        # asked. A browser always sends Origin, so nothing user-visible turns on it.
+        if origin:
+            self.send_header("Access-Control-Allow-Methods",
+                             "POST, GET, OPTIONS, DELETE, PUT, HEAD")
+            self.send_header("Access-Control-Allow-Headers",
+                             self.headers.get("Access-Control-Request-Headers")
+                             or self.CORS_FALLBACK_HEADERS)
+            self.send_header("Access-Control-Max-Age", "1209600")
         # Measured on the copy: the preflight response carries a Content-Type, and it
         # is `text/plain`. plexsim sent none.
         self.send_header("Content-Type", "text/plain")
