@@ -15133,6 +15133,41 @@ def main():
           and cancel_c19y.get("library.update.section") == {False},
           str({k_c19y: sorted(v_c19y) for k_c19y, v_c19y in cancel_c19y.items()}))
 
+    # Cycle 19, measured on plexscratch behind a control write: `?path=` SCOPES a section
+    # scan. The section's own Location, an empty value and no `path` at all each scan
+    # everything (5 progress rows on its five-movie library); a parent of it and a path the
+    # library does not hold scan NOTHING -- 0 progress rows, the activity running 0 to 100
+    # with an empty subtitle. plexsim ignored the parameter. And a library EDIT refuses a
+    # `type` naming a different type from the library's own (400) while accepting its own,
+    # as a word or as a number.
+    def scan_rows_c19z(query_c19z):
+        _st_c19z, frames_c19z = notifications(
+            base, lambda: request(base, "GET", "/library/sections/%s/refresh%s"
+                                  % (movie_section, query_c19z)))
+        return [p_c19z.get("message") for f_c19z in frames_c19z
+                for p_c19z in ((f_c19z.get("NotificationContainer") or {})
+                               .get("ProgressNotification") or [])]
+
+
+    loc_c19z = (get(base, "/library/sections/%s" % movie_section)[1].get("Location") or [{}])
+    path_c19z = loc_c19z[0].get("path") if loc_c19z else None
+    full_c19z = scan_rows_c19z("")
+    nowhere_c19z = scan_rows_c19z("?path=%2Fnope%2Fnope")
+    check("?path= scopes a section scan",
+          bool(full_c19z) and nowhere_c19z == []
+          and (path_c19z is None or bool(scan_rows_c19z("?path=" + quote(path_c19z)))),
+          "bare %d rows ; nonsense %d rows ; Location %r"
+          % (len(full_c19z), len(nowhere_c19z), path_c19z))
+    own_c19z = request(base, "PUT", "/library/sections/%s?agent=tv.plex.agents.movie&type=movie"
+                       % movie_section)[0]
+    foreign_c19z = request(base, "PUT", "/library/sections/%s?agent=tv.plex.agents.movie&type=2"
+                           % movie_section)[0]
+    numeric_c19z = request(base, "PUT", "/library/sections/%s?agent=tv.plex.agents.movie&type=1"
+                           % movie_section)[0]
+    check("a library edit refuses a type that is not its own",
+          own_c19z == 200 and numeric_c19z == 200 and foreign_c19z == 400,
+          "own %s ; numeric %s ; foreign %s" % (own_c19z, numeric_c19z, foreign_c19z))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

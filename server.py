@@ -1928,6 +1928,42 @@ class PlexSim:
     def notify_progress(self, message):
         self.notify("progress", "ProgressNotification", [{"message": message}])
 
+    def notify_empty_section_scan(self, section_id, section):
+        """The frames a scan of a path the library does not hold pushes.
+
+        Cycle 19, measured on plexscratch: the same `library.update.section` activity
+        and the same subscriptions pair, with NO `progress` rows and an EMPTY subtitle
+        -- the activity simply runs 0 to 100. Nine frames against the full scan's
+        twenty.
+        """
+        title = section.get("title") or ""
+        activity = {"uuid": str(uuid.uuid4()), "type": "library.update.section",
+                    "cancellable": False, "userID": 1, "title": "Scanning", "subtitle": "",
+                    "progress": 0}
+        self.notify_activity(activity, "started")
+        self.notify_status('Scanning the "%s" section' % title)
+        activity["title"] = "Scanning %s" % title
+        self.notify_activity(activity, "updated")
+        activity.update(progress=100, Context={"librarySectionID": str(section_id)})
+        self.notify_activity(activity, "updated")
+        outer = {"uuid": str(uuid.uuid4()), "type": "provider.subscriptions.process",
+                 "cancellable": True, "userID": 1, "title": "Processing subscriptions",
+                 "subtitle": "", "progress": 0}
+        self.notify_activity(outer, "started")
+        self.notify_activity(activity, "ended")
+        self.notify_status("Library scan complete",
+                           description="Extra information may still be downloading from the Internet")
+        outer["progress"] = 100
+        self.notify_activity(outer, "ended")
+
+    # Cycle 19, measured on plexscratch behind a control write: a library EDIT scans
+    # only when the form carries `language` or `scanner`. `agent` alone, `agent` with
+    # `name`, and `agent` with a `prefs[...]` are 200s with ZERO frames; adding either of
+    # those two makes it 20. plexsim scanned on every accepted edit, so renaming a
+    # library or toggling one Advanced preference lit the Dashboard with a full scan and
+    # re-framed every row where a real PMS is silent.
+    SCAN_TRIGGERING_EDIT_FIELDS = ("language", "scanner")
+
     def notify_section_scan(self, section_id, section):
         """The frames a library scan pushes, measured on a writable copy of the reference.
 
@@ -4501,6 +4537,16 @@ class PlexSim:
                     return ("error", 400, "plexsim: bad request")
                 if query["agent"] not in KNOWN_AGENTS:
                     return ("error", 400, "plexsim: bad request")
+                # Cycle 19, measured on plexscratch: a `type` that names a DIFFERENT
+                # type from the library's own is a 400 (`type=2` on a movie library),
+                # while the library's own type -- as a word, as its number, empty, or
+                # absent -- is a 200. plexsim answered 200 and wrote nothing, so a form
+                # that a real PMS refuses looked like it had been saved.
+                asked = str(query.get("type") or "")
+                if asked:
+                    named = self.META_TYPE_NAMES.get(int(asked)) if asked.isdigit() else asked
+                    if named != section.get("type"):
+                        return ("error", 400, "plexsim: bad request")
                 if query.get("scanner") and query["scanner"] not in KNOWN_SCANNERS:
                     return ("error", 400, "plexsim: bad request")
                 if query.get("language") and query["language"] not in KNOWN_LANGUAGES:
@@ -4566,6 +4612,20 @@ class PlexSim:
                 self.refreshing.discard(str(section_id))
                 self.library.clear_activities()
                 logger.info("SECTION refresh cancelled %s", section_id)
+                return ("empty", 200)
+            # Cycle 19, measured on plexscratch: `?path=` SCOPES the scan. The
+            # section's own Location, an EMPTY value and no `path` at all each scan
+            # everything (5 progress rows on its five-movie library, 20 frames); a
+            # parent of it, a child of it and a path the library does not hold scan
+            # NOTHING -- 0 progress rows, 9 frames, the activity running 0 -> 100 with
+            # an empty subtitle. plexsim ignored the parameter, so "Scan Library Files"
+            # on one folder rescanned and re-framed the whole library.
+            paths = [str(location.get("path") or "")
+                     for location in section.get("Location") or []]
+            wanted = query.get("path")
+            if wanted and wanted not in paths:
+                self.notify_empty_section_scan(section_id, section)
+                logger.info("SECTION refresh %s path=%r -> no folder", section_id, wanted)
                 return ("empty", 200)
             self.refreshing.add(str(section_id))
             rows = self.catalog.section_items(section_id)
