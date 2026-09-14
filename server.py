@@ -7156,6 +7156,19 @@ class PlexSim:
             return ("empty", 200)
         if method == "PUT":
             target = collection if collection is not None else playlist
+            # Cycle 20, measured on plexscratch over 57 columns on a collection and a
+            # playlist: both take the ITEM path's whole validation. An unknown name is
+            # a 400 (`sortTitle`, `ratingKey`, `childCount`, `composite`, `bogusXY`),
+            # an unparseable number a 500 (`year`, `index`, `absoluteIndex`, `rating`,
+            # `audienceRating`), and `title`, `summary` and `userRating` are the 200s.
+            # plexsim skipped the validation for these two row types and answered 200
+            # to every name -- the one place it contradicted itself, since the same
+            # field was a 400 on a movie. The grammar is applied to a COPY so the
+            # list-specific writers below stay in charge of what is stored.
+            try:
+                self.library.edit(dict(target), query, pairs=query.get("_pairs"))
+            except library_module.EditError as error:
+                return ("error", error.status, "plexsim: %s" % error.detail)
             title = query.get("title.value")
             if title is None:
                 title = query.get("title")
