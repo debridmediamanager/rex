@@ -10847,8 +10847,14 @@ class Handler(BaseHTTPRequestHandler):
     def _maybe_gzip(self, content_type, payload, names):
         if "content-encoding" in names:
             return payload
-        accepted = (self.headers.get("Accept-Encoding") or "").lower()
-        if "gzip" not in accepted:
+        # Cycle 16, measured on kids and zen: the token is matched EXACTLY and
+        # case-sensitively -- `GZIP`, `x-gzip` and `*` all get a plain body, while
+        # `gzip;q=0` is still gzipped because the q is ignored entirely. plexsim
+        # lower-cased the header and searched for the substring, so it compressed for
+        # three offers a real PMS answers plain.
+        offers = [piece.split(";")[0].strip()
+                  for piece in (self.headers.get("Accept-Encoding") or "").split(",")]
+        if "gzip" not in offers:
             return payload
         if not any(content_type.startswith(kind) for kind in self.GZIP_TYPES):
             return payload
