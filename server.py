@@ -1992,8 +1992,23 @@ class PlexSim:
             # `{"Hub": [...]}`, and an empty OBJECT -- not an absent block -- for an
             # item with none. plexsim always sent the empty object, even where the
             # hubs endpoint had a shelf for the same item.
+            # Cycle 15, measured on zen (kids holds no related items at all, so it
+            # cannot witness this): the INLINE block caps at FIVE rows per hub and
+            # says `more: true`, where the standalone `/hubs/metadata/{id}/related`
+            # answers six for the same row. `includeRelatedCount=N` sets that cap --
+            # `=1` gives one and `=3` gives three -- and does nothing on its own.
+            # plexsim honoured `count=` on the standalone path and ignored this
+            # spelling, so a real catalog's preplay page carried every related row.
             hubs = self.related_hubs(row, query)
-            detail["Related"] = {"Hub": hubs} if hubs else {}
+            cap = query.get("includeRelatedCount")
+            cap = int(cap) if str(cap or "").isdigit() and int(cap) > 0 else 5
+            trimmed = []
+            for hub in hubs:
+                rows = (hub.get("Metadata") or [])[:cap]
+                trimmed.append(dict(hub, Metadata=rows, size=len(rows),
+                                    more=len(hub.get("Metadata") or []) > len(rows)
+                                    or bool(hub.get("more"))))
+            detail["Related"] = {"Hub": trimmed} if trimmed else {}
         for field in (query.get("excludeFields") or "").split(","):
             if field and field in detail:
                 detail.pop(field)

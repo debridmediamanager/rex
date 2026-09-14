@@ -11198,6 +11198,30 @@ def main():
                        "01": 200, "1": 200, "3": 200},
           str(sl_c15q2))
 
+    # Cycle 15, measured on zen (1.42.2 -- the build plexsim reports; kids holds no
+    # related items at all for any row, which is an instrument limit and is stated
+    # rather than hidden): the INLINE `Related` block caps at **5** rows per hub and
+    # says `more: true`, where the standalone `/hubs/metadata/{id}/related` answers 6
+    # for the same row. `includeRelatedCount=N` sets the inline cap -- `=1` gives 1 and
+    # `=3` gives 3, and `more` stays true -- and it does nothing without
+    # `includeRelated=1`. plexsim honoured `count=` on the standalone endpoint and
+    # ignored the inline spelling entirely, so on a real catalog the preplay page's
+    # Related shelf would carry every related row the server had.
+    rel_c15o = {}
+    for spec_c15o in ("?includeRelated=1", "?includeRelated=1&includeRelatedCount=1",
+                      "?includeRelatedCount=1"):
+        row_c15o = (get(base, "/library/metadata/%s%s" % (movie, spec_c15o))[1]
+                    .get("Metadata") or [{}])[0]
+        rel_c15o[spec_c15o] = [h_c15o.get("size") for h_c15o in
+                               ((row_c15o.get("Related") or {}).get("Hub") or [])]
+    check("includeRelatedCount caps the inline Related hubs and needs includeRelated",
+          rel_c15o["?includeRelated=1&includeRelatedCount=1"]
+          == [1] * len(rel_c15o["?includeRelated=1"])
+          and rel_c15o["?includeRelated=1"]
+          and all(n_c15o >= 1 for n_c15o in rel_c15o["?includeRelated=1"])
+          and rel_c15o["?includeRelatedCount=1"] == [],
+          str(rel_c15o))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
