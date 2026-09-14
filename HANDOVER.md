@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 17 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **17**. Cycle 17 had findings, so **cycle 18 is due**. |
+| `main` | cycle 18 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **18**. Cycle 18 had findings, so **cycle 19 is due**. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -86,6 +86,7 @@ Coverage, measured from the repository rather than asserted:
 | 15 | 979 | 11678 | 33 (of 24 reported plus 9 the driver found) |
 | 16 | 1,027 | 12,536 | **49** (of 39 reported plus 6 the driver found, plus 4 corrections) |
 | 17 | 1,057 | 12,928 | **29** (of 23 reported plus 6 the driver found; 1 refuted, 1 corrected) |
+| 18 | 1,186 | 13,357 | **26** (of 23 reported plus 6 the driver found; 1 refuted, 1 corrected) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -232,6 +233,22 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | A read-only route 404s every verb but GET and HEAD, everywhere | That is the MULTI-segment rule: a KNOWN single-segment path (`/butler`, `/devices`) falls through to the legacy plug-in dispatcher for the verbs it does not implement | B | cycle 17 |
 | An episode's borrowed artwork is stamped with its own `addedAt` *(hunt A's reading)* | Only on the show's `/allLeaves`; the section grid disagrees 641 times on zen. A property of the LIST, not of the row | B | cycle 17 |
 
+| `titleSort` is DERIVED for every row | A title the SERVER generated is stored NOWHERE -- an empty sort title (740 of zen's 741 seasons answer `titleSort=`), and absent from the search index and the `title` filter as well. plexsim derived one for every row, so its seasons bucketed under `S` and answered a search for "season" | B | cycle 18 |
+| A section's search box never returns seasons *(hunt A's reading)* | It returns the ones whose title somebody TYPED. Every season on both references is titled `Season N`, which the server generated, so the sample could not separate "seasons" from "generated titles" | B | cycle 18 |
+| The fold is Unicode combining marks | Eleven Latin-1 characters fold that NFD cannot reach (`Æ→E`, `Ø→0`, `ð→O`, `ß→s`, …), swept character by character over U+0080..U+02FF. zen's `Død Kalm` sorts as `D0d Kalm` | B | cycle 18 |
+| `title=` reads the row's title | It reads the ORIGINAL title too, and only the bare `=` does: 1,484 of zen's 3,887 rows against 1,481 | B | cycle 18 |
+| An unlisted string field TAKES `>>`/`<<` | It takes them and COMPARES on them -- plexsim allowed the operator and fell through to containment, so `titleSort<<=0` matched every title holding a `0`. `<=`/`>=` order there too, where an advertised field keeps begins-with/ends-with | C | cycle 18 |
+| `All Movies` and `All Shows` are constants | A MOVIE library COMPOSES it from its own title ("All Zen Movies"); only a SHOW library answers the constant. plexsim had each half wrong in the opposite place, and its own two lines disagreed | B, C | cycle 18 |
+| A section's `/search` container is typed by the library | It is typed by the ASKED `type=`: `type=3` is `viewGroup=season`/`viewMode` 65593 even on a movie library, `type=4` carries `mixedParents` | B | cycle 18 |
+| A plug-in framework container (`noHistory`) ignores paging | `/system` PAGES -- `totalSize` first, no `offset`, response headers -- and only `/system/scanners/{N}` does not. Cycle 9 inferred the rule from that one sample | B, D | cycle 18 |
+| `/identity` and `/hubs` answer any verb | They answer the plug-in DISPATCHER to every verb but GET and HEAD, like every known single-segment path. The recorded rule was plexsim's own GET handler answering | B | cycle 18 |
+| A real PMS never answers 405 | The `/system` subtree does, to PATCH, on every path under it -- it is a different server with its own envelope (a bare OPTIONS is an empty 200, everything else an empty-bodied 404) | B | cycle 18 |
+| `/media`, `/services`, `/status` and `/statistics` are empty | All four are the dispatcher's POPULATED listings, byte-identical on both references, and `/security` is a real container with NO `content` key | B | cycle 18 |
+| `limit=` means one thing | Three endpoints, three meanings: `/library/recentlyAdded` caps and rewrites `totalSize` (negative lifts the cap), the history page caps and `-1` answers NONE, a section listing answers ONE row to 0 | B | cycle 18 |
+| `parentIndex` is a 500 on a listing *(rule right, code wrong)* | Implemented on the section listing alone; `/library/all` and `/playlists` are listings too | C | cycle 18 |
+| `section_prefs_new.json` is version-neutral | The FOURTH fixture found to be per version: 16 of 35 (type, agent) cells differ, and on 1.42.2 the agent's settings are appended whatever the type | B | cycle 18 |
+| An item's language enum is the fixture's | It is led by the ITEM's own stream languages, audio first then subtitles, before the generic list | B | cycle 18 |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -265,6 +282,11 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The `titleSort` punctuation set outside the two swept ranges** | Every character of U+0080..U+00BF and U+2000..U+2FFF strips and every block boundary was probed, but U+0300..U+1FFF and U+3000+ were sampled rather than swept. The eight ASCII members were each written individually | Sweep the gaps, if a title ever lands in one |
 | **Whether an EPISODE refresh runs the SHOW's activity** | The hunt reported it and one of the driver's two captures reproduced it; the other showed the episode's own seven-frame sequence. Two runs of the same request on the same copy disagreed, so only the SUBTITLE half is implemented | Run it repeatedly on a freshly reset copy and see which is the steady state |
 | **The butler's per-task COUNTS** | The message TEMPLATES are measured verbatim on the copy; the numbers in them are that server's content, and plexsim fills in its own. A template whose count plexsim cannot derive honestly (albums, artists, cache files) is hard-coded at 0 | Nothing: plexsim has no music library and no cache |
+
+| **Which titles count as GENERATED** | The rule is measured from three directions and is not in doubt; what plexsim cannot see is the DISTINCTION. kids' season 7 is titled `Season 1` by TMDB and stores it, and 176 of zen's episodes are titled `Episode N` by their agent and store it too, so plexsim decides on the title FORM -- a proxy, and a class-C shape by construction. Every season plexsim holds is one it synthesised itself, so the proxy is exact for its own rows | Nothing short of a column the row does not carry; re-check it if plexsim ever takes season titles from an agent |
+| **The eleven-character fold TABLE** | Swept exhaustively over U+0080..U+02FF on the copy (1.43.4) and witnessed twice on zen (1.42.2), so the rule is not single-version -- but the eleven TARGETS come from the copy alone, and nothing explains why `ø` becomes a digit | Write the eleven on a second writable copy, if one ever exists |
+| **The `/hubs` refusal's scope** | Both references hold a show library, so "the server-wide `/hubs` always refuses" and "it refuses because a show library exists" are the same measurement. plexsim refuses on the same terms | A reference with no show library |
+| **The library delete's frame IDS** | 14 frames for a nine-row library, keyed on the server's own internal metadata ids; nothing in the response explains the id space. plexsim frames the rows it removes | Nothing the API exposes |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -387,6 +409,16 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 18).** Re-checked after both hunters had stopped and every server this
+cycle started was killed: only `32502`, `32596` and `8787` are held -- the same three
+cycle 17 ended with, and the same three that were held when cycle 18 began. Everything
+cycle 18 used is FREE again: `32541`, `32543`, `32546`, `32587`, `32588` (the hunters'),
+`32591` (the driver's probe server), `32592`-`32594` (the proof driver's) and the
+parent-comparison server. Neither hunter left a server running this time -- the first
+cycle since 15 where that is true -- and the driver killed its own. `32599` is
+`test_ui_surface.py`'s own gated server and `32598` the `--web-root` instance its asset
+check starts; leave both free.
 
 **Ports.** Re-checked at the end of cycle 17, after both hunters had stopped and every
 leftover server was killed: only `32502` (another session's plexsim on
@@ -972,7 +1004,90 @@ and merged the spare movie away -- the trap §6 names, hit twice in one cycle. T
 `test:` commit that fixed them also made the Shuffle check non-flaky: cycle 16 made the
 shuffle real, and a real shuffle of three rows matches the plain order one time in six.
 
-### Next: cycle 18
+### Cycle 18 -- the container, the write surface below the collection item, and the title a server generates
+
+Hunters: the CONTAINER, endpoint by endpoint against both references (opus, read-only on
+kids and zen), and the write surface one level below the collection ITEM path -- the
+playlist item verbs, the section prefs family per TYPE and the `/actions/` family (opus,
+on plexscratch). **26 findings implemented** over 28 commits, and 1,186 checks in
+`test_ui_surface.py`.
+
+The cycle's own family came from the driver's round. Cycle 17 settled what `titleSort`
+IS; holding that model out against zen's 14,433 real rows found the half nobody had
+asked: **a title the SERVER generated is stored nowhere at all**. It has an empty sort
+title (740 of zen's 741 seasons answer a bare `titleSort=`), it is in no search index
+(the copy's `Season 2` answers nothing to `query=season` while the same season renamed
+answers at once) and the `title` filter cannot see it either (`type=3&title=Season` is 0
+of 741). That one rule REFUTED territory A's reading that a section's search box never
+returns seasons -- every season on both references is titled `Season N`, so the sample
+could not tell "seasons" from "generated titles" -- and it explains the other half of
+cycle 16's `firstCharacter` split, whose listing side plexsim had implemented by reading
+the row's title.
+
+Beside it, two more corrections to rules this project had already written down: the fold
+is **eleven characters wider** than NFD (`Æ→E`, `Ø→0`, `ð→O`, swept character by
+character), and an unlisted string field does not merely TAKE `>>`/`<<`, it COMPARES on
+them -- plexsim allowed the operator and fell through to containment, so `titleSort<<=0`
+matched every title holding a `0`.
+
+Territory A's own lead was the `/search` container, typed by the ASKED `type=` rather
+than by the library: at `type=3` a real PMS answers `viewMode` 65593 and plexsim answered
+the EPISODE layout for a season list, which is the Seasons bug's exact inversion, on the
+path the library search menu takes. Territory B's was the plug-in dispatcher: four more
+single-segment paths are its POPULATED listings, and a KNOWN single-segment path answers
+it for every verb it does not implement -- `PUT /identity` and `PUT /hubs` included,
+which overturns the recorded "they answer any verb".
+
+**Corrected here:** cycle 9's "a `noHistory` container ignores paging" (`/system` pages,
+and only `/system/scanners/{N}` does not); cycle 15's `parentIndex` refusal (implemented
+on the section listing alone); cycle 5's `/identity` and `/hubs` verb rule; the
+"never 405" rule (the `/system` subtree does); and the fourth fixture found to be per
+VERSION, `section_prefs_new.json`.
+
+**Refuted:** hunt A's reading that `/library/sections/{id}/search?type=3` never answers
+seasons. A season whose title somebody typed answers at once.
+
+**And a defect this cycle introduced and caught.** The first implementation of the
+fifteen hub refusals called `hub_refusal(query)` from inside `section_hubs`, which never
+receives the query, so every show library's Recommended tab answered a `NameError`'s 500
+-- and the patch's own check PASSED, because it asserted a 500 and a crash is also a 500.
+The full suite caught it four checks later on the tab's contents. **A check that asserts
+an error status has to read something back afterwards.**
+
+**One process note.** Three of this cycle's checks passed in isolation and failed at the
+END of the suite, which by then has merged the spare movie away, edited every title and
+given a season a sort title of its own. The `test:` commit that fixed them computes each
+expectation from the rows as they stand rather than from the fixture the suite started
+with -- the trap 6 names, hit three times in one cycle.
+
+### Next: cycle 19
+
+Territories worth taking next, in order of expected yield:
+
+1. **The dimension left after the row and the container is the CHILD ELEMENT.** `Media`,
+   `Part`, `Stream`, `Guid`, `Rating`, `Image`, `UltraBlurColors`, `Field`, `Location`,
+   `Collection`, `Label`, `Setting`, `Chapter`, `Marker`, `Hub`, `Directory` -- which
+   elements each container and row type carries, in which order, with which attributes,
+   under which options. Cycle 17 mapped a row's attribute ORDER and cycle 18 the
+   container's; nobody has censused the elements BETWEEN them.
+2. **zen's section 2 is still the richest unexploited instrument.** Cycle 18 used it for
+   the sort-title sweep and the filter holdout and found four rules in an afternoon; its
+   per-show watch state, its deep paging and its 9,287 episodes' row shapes are still
+   barely touched.
+3. **Run plexsim's OWN engine over a reference's rows.** `fsweep.py` (in this cycle's
+   scratch) fetches every row of zen's movie library once, asks the reference which rows
+   a (field, operator, value) probe matches, then evaluates `filters.compare` locally
+   over the same rows and diffs the SETS. It found the `title=`/`originalTitle` rule in
+   its first run, on real data, with the disagreeing rows named. The same shape works for
+   `sort=`, for `group=` and for the derivation rules in `hierarchy.py`.
+4. **Widen `capture_i18n.py` again**, and check the identity-keying control found this
+   cycle against the paths it now covers: the table is 545 entries over ~130 paths, and
+   the families still off the list are the ones no probe has fetched in another language.
+5. **The three 3.3 entries a second writable copy would settle**: the media-item DELETE
+   (season and show cascades), `terminate` and `/statistics/*`. All three need a CLAIMED
+   copy, which needs plex.tv. Still the user's decision.
+
+### Next: cycle 18 (superseded)
 
 Territories worth taking next, in order of expected yield:
 
@@ -1180,6 +1295,16 @@ reproduced in either driver capture); a remote artwork candidate's `images.plex.
 provenance records why); the non-alphanumeric `firstCharacter` bucket, re-read against zen's
 section 2 and still single-witness; and the butler's per-task COUNTS, whose templates are
 measured verbatim while the numbers are that server's own content.
+
+**Cycle 18:** `/playlists/{id}` resolving any metadata ratingKey (both references
+answer 200 with that item in a bare `{size: 1}` container and 500 on its `/items`, but
+the projection is not stably characterised between them -- kids' movie 1 drops `duration`
+and zen's keeps it -- and no client builds the path); the `/system` 404's MISSING
+`Content-Type` (the status and the empty body are reproduced, the absent header is not);
+the library delete's frame IDS (the server's own internal metadata ids, 14 for a nine-row
+library, with nothing in the response to explain the id space); and the eleven-character
+fold table's MECHANISM (the targets are measured, and nothing explains why `ø` becomes a
+digit).
 
 **Cycle 11:** ~~`/status/sessions/history/all` answering `size 0`~~ (ANSWERED in cycle 15:
 it needs a `type=`); `includeBandwidths=1`; `/library/people/{id}` answering any TAG id;
@@ -1390,6 +1515,7 @@ base from `PLEXSIM_BASE`.
 | `runblock.py` | Runs one patch's check block against one or more servers, in the suite's own namespace. Both drivers call it |
 | `guarded.py` | The write hunt's HTTP client: writes only to plexscratch and `PLEXSIM_BASE`, GET/HEAD only to the references, a `WRITE_GET` refusal list, plus the frame listener and the JSON/XML diffs |
 | `probe.py`, `diff.py` | The python-plexapi sweep: ~460 read calls behind a session that refuses writes and off-host URLs |
+| `fsweep.py` + `rd.py` | **The engine holdout** (cycle 18): fetch every row of a real library once, ask the reference which rows a (field, operator, value) probe matches, then run `filters.compare` locally over the same rows and diff the SETS. A difference is a rule plexsim has wrong, on real data, with the disagreeing rows named. `rd.py` is the guarded GET/HEAD client it reads kids and zen through |
 | `cmp.py`, `m.py`, `xdiff.py` | Fetch one path from several servers and diff the JSON; the cycle-8 triage fetcher; the XML structure diff |
 | `ui_ro.py`, `replay_ro.py`, `replay_remap.py` | `probes/ui_surface.py` and `harness/scripts/replay.py` restricted to GET/HEAD, and a ratingKey remap for replaying a recorded corpus onto plexsim's ids |
 | `territory_a.py`, `territory_b.py` | The cycle-6 notification-frame and malformed-identifier sweeps |
