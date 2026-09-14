@@ -4618,11 +4618,13 @@ def main():
           not wrong, ",".join(str(w) for w in wrong[:3]))
     if c5_season:
         season_row = (get(base, "/library/metadata/%s" % c5_season)[1].get("Metadata") or [{}])[0]
-        # Re-measured in cycle 7: a season with a year of its OWN carries it, with its
-        # title as titleSort and no parentYear; only a season without one falls back.
-        check("a season row carries no skipCount or theme, and a year only with its titleSort",
+        # Re-measured in cycle 7: a season with a year of its OWN carries it and no
+        # parentYear; only a season without one falls back. Cycle 20 overturned the
+        # titleSort half -- a season's sort title follows the title it STORES, and a
+        # generated `Season N` stores none -- so the check now reads the other way round.
+        check("a season row carries no skipCount or theme, and a year without a titleSort",
               not any(k in season_row for k in ("skipCount", "theme"))
-              and ("year" in season_row) == (season_row.get("titleSort") == season_row.get("title"))
+              and "titleSort" not in season_row
               and not ("year" in season_row and "parentYear" in season_row),
               ",".join(k for k in ("year", "skipCount", "theme", "titleSort", "parentYear")
                        if k in season_row))
@@ -5244,8 +5246,8 @@ def main():
               and any("leafCount" in r for r in child_seasons) and not sectioned,
               "listing %s, sectioned %s" % (sorted(listed_seasons[0]) if listed_seasons else [],
                                             sectioned[:2]))
-        check("a season with a year of its own carries it, titled for sorting, no parentYear",
-              season_row7.get("year") and season_row7.get("titleSort") == season_row7.get("title")
+        check("a season with a year of its own carries it, unsorted, no parentYear",
+              season_row7.get("year") and "titleSort" not in season_row7
               and "parentYear" not in season_row7,
               "year=%r titleSort=%r parentYear=%r" % (season_row7.get("year"),
                                                       season_row7.get("titleSort"),
@@ -15248,6 +15250,35 @@ def main():
                   for f_c19u in upd_c19u),
           "%d frames %s" % (len(upd_c19u), rows_c19u))
 
+
+    # Cycle 20, the derivation holdout: every rule `hierarchy.normalize_rows` applies,
+    # checked row by row against zen's 507 shows, 741 seasons and 9,287 episodes. A
+    # season's `titleSort` does NOT follow its `year`. 740 of zen's 741 seasons carry no
+    # `titleSort` at all and the one that does -- One Piece's season 22, the only season
+    # in the library with a `year` -- carries `"Egghead"`, its own stored title, not the
+    # `"Season 22"` it displays. Cycle 7 fitted "a year means titleSort == title" to
+    # kids' season 7, whose `Season 1` came from the agent and IS stored. plexsim
+    # synthesises every season title, so under cycle 18's stored-title rule it stores
+    # none -- and it was contradicting itself: the ROW said `titleSort: "Season 19"`
+    # while `?titleSort=` (an equality on the empty string) matched the same row.
+    _, seasons_c20a, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    rows_c20a = [r_c20a for r_c20a in (seasons_c20a.get("Metadata") or [])
+                 if re.match(r"^Season \d+$", str(r_c20a.get("title") or ""))]
+    # A sort title EQUAL to the title is the one the year branch used to mint; a
+    # different one was written by an earlier check in this suite and is real.
+    minted_c20a = [r_c20a for r_c20a in rows_c20a
+                   if r_c20a.get("titleSort") == r_c20a.get("title")]
+    bare_c20a = [r_c20a for r_c20a in rows_c20a if "titleSort" not in r_c20a]
+    status_c20a, empty_c20a, _ = get(base, "/library/sections/%s/all?type=3&titleSort="
+                                     % show_section)
+    matched_c20a = {str(r_c20a.get("ratingKey")) for r_c20a in (empty_c20a.get("Metadata") or [])}
+    check("a synthesised season sends no titleSort, whatever its year",
+          bool(rows_c20a) and any(r_c20a.get("year") for r_c20a in rows_c20a)
+          and not minted_c20a and bool(bare_c20a) and status_c20a == 200
+          and all(str(r_c20a.get("ratingKey")) in matched_c20a for r_c20a in bare_c20a),
+          "%s | titleSort= matched %s"
+          % ([(r_c20a.get("ratingKey"), r_c20a.get("year"), r_c20a.get("titleSort"))
+              for r_c20a in rows_c20a], sorted(matched_c20a)))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
