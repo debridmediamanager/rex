@@ -13459,6 +13459,30 @@ def main():
           "size=%s content=%r rows=%s" % (livetv_c17b8.get("size"),
                                           livetv_c17b8.get("content"), rows_c17b8))
 
+
+    # Cycle 17, re-measured by the driver on plexscratch: a library PREFERENCE write
+    # moves the section's own `updatedAt`. plexsim left it where it was, and clients
+    # cache a library keyed on that stamp -- so a settings change never invalidated the
+    # cache. The write itself is unchanged: 200 with an empty body and zero frames on
+    # both, exactly as cycle 15 recorded.
+    before_c17b9 = {d_c17b9["key"]: d_c17b9.get("updatedAt") for d_c17b9
+                    in (get(base, "/library/sections")[1].get("Directory") or [])}
+    status_c17b9, body_c17b9, _ = request(
+        base, "PUT", "/library/sections/%s/prefs?enableCinemaTrailers=0" % movie_section)
+    after_c17b9 = {d_c17b9["key"]: d_c17b9.get("updatedAt") for d_c17b9
+                   in (get(base, "/library/sections")[1].get("Directory") or [])}
+    other_c17b9 = [key_c17b9 for key_c17b9 in before_c17b9
+                   if key_c17b9 != str(movie_section)
+                   and before_c17b9[key_c17b9] != after_c17b9.get(key_c17b9)]
+    check("a library preference write moves the section's updatedAt",
+          status_c17b9 == 200 and body_c17b9 == b""
+          and before_c17b9.get(str(movie_section)) != after_c17b9.get(str(movie_section))
+          and after_c17b9.get(str(movie_section)) is not None
+          and not other_c17b9,
+          "%s -> %s (other sections moved: %s)"
+          % (before_c17b9.get(str(movie_section)), after_c17b9.get(str(movie_section)),
+             other_c17b9))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
