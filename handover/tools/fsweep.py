@@ -1,5 +1,9 @@
 """Run plexsim's own filter engine over zen's real rows and diff it against zen.
 
+Cycle 19: `SEC`/`TYPE` select the library and the row type. Pointed at zen's SHOW
+library (SEC=2 TYPE=2) it disagreed 74 times and four filter rules came out of it --
+each one invisible on a library where every row has a value for the column.
+
     ZEN_TOKEN=... PLEXLAB_TOKEN=... python3 fsweep.py [field]
 
 
@@ -27,7 +31,8 @@ import hierarchy
 OPS = {"=": "", "!=": "%21", "==": "%3D", "!==": "%21%3D",
        "<=": "%3C", ">=": "%3E", "<<=": "%3C%3C", ">>=": "%3E%3E"}
 
-SEC, TYPE = 1, 1
+SEC = int(os.environ.get("SEC", "1"))
+TYPE = int(os.environ.get("TYPE", "1"))
 
 
 def zen_rows():
@@ -144,4 +149,4 @@ if __name__ == "__main__":
                              [rows[k].get("title", "")[:18] for k in missing]))
                     bad.append((field, operator, value, len(want), len(got)))
     print("\ndisagreements:", len(bad))
-    json.dump(bad, open("fsweep.json", "w"))
+    json.dump(bad, open("fsweep_%d_%d.json" % (SEC, TYPE), "w"))
