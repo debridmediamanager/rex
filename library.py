@@ -572,6 +572,10 @@ class Library:
     # -- metadata edits --------------------------------------------------
 
     def edit(self, row, params, pairs=None, section=False):
+        if section and "titleSort.value" in (params or {}):
+            # marks this write as the section path's, which keeps what was
+            # typed until the next title write -- measured cycle 16
+            row["_section_title_sort"] = True
         """`PUT /library/metadata/{id}?title.value=X&title.locked=1`.
 
         Four param shapes, all from the client's own `getSaveParams`:
@@ -920,6 +924,14 @@ class Library:
         server would not.
         """
         if any(f.get("name") == "titleSort" and f.get("locked") for f in row.get("Field") or []):
+            return
+        if row.pop("_section_title_sort", None):
+            # Cycle 16, measured on plexscratch: the SECTION save path STORES an
+            # unlocked `titleSort.value=` -- it survives until the next TITLE write,
+            # which re-derives it -- while the ITEM path discards it, which is the rule
+            # already recorded. That recorded rule is the item path's alone; plexsim
+            # applied it to both, so a Sort Title typed into the grid's own edit dialog
+            # vanished the moment it was saved.
             return
         title = row.get("title")
         if not title:

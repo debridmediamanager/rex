@@ -12419,6 +12419,35 @@ def main():
           "type=abc -> %s, no type -> %s, summary=%r"
           % (bad_c16a13[0], none_c16a13[0], (summary_c16a13 or "")[:20]))
 
+
+    # Cycle 16, measured on plexscratch: the SECTION save path STORES an unlocked
+    # `titleSort.value=` -- it survives until the next TITLE write, which re-derives it
+    # -- while the ITEM path discards it outright, which is the rule already recorded
+    # ("an unlocked Sort Title does not stick"). That rule is the item path's alone.
+    # plexsim discarded it on both, at every type, so a Sort Title typed into the grid's
+    # own edit dialog vanished on save.
+    was_c16a14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&title.value=%s"
+            % (movie_section, movie, quote("C16A14 Base")))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&titleSort.value=%s"
+            % (movie_section, movie, quote("ZZZ c16 sort")))
+    stored_c16a14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0].get("titleSort")
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&title.value=%s"
+            % (movie_section, movie, quote("C16A14 Renamed")))
+    rederived_c16a14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0].get("titleSort")
+    request(base, "PUT", "/library/metadata/%s?titleSort.value=%s"
+            % (movie, quote("YYY item sort")))
+    item_c16a14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0].get("titleSort")
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=%s"
+            % (movie, quote(was_c16a14["title"]),
+               1 if any(f_c16a14.get("name") == "title"
+                        for f_c16a14 in was_c16a14.get("Field") or []) else 0))
+    check("the section path stores an unlocked titleSort where the item path discards it",
+          stored_c16a14 == "ZZZ c16 sort" and rederived_c16a14 is None
+          and item_c16a14 is None,
+          "section=%r then a title write=%r item=%r"
+          % (stored_c16a14, rederived_c16a14, item_c16a14))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
