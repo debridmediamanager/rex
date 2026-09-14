@@ -14761,6 +14761,21 @@ def main():
           % (status_c19q, body_c19q.get("size"), status_c19r, bare_c19q.get("size"),
              status_c19s))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: `checkFiles=` takes
+    # a bare decimal whole number that is 0 or 1 -- `0`, `1` and `01` are 200 while `abc`,
+    # an empty value, `2`, `true`, `-1`, `1.5`, a leading space and a trailing one are all
+    # 400. plexsim accepted every one of them. (That plexsim sends `exists`/`accessible`
+    # unconditionally is a deliberate deviation recorded in docs/findings.md; the VALUE
+    # grammar is not part of it.)
+    grammar_c19c = {v_c19c: get(base, "/library/metadata/%s?checkFiles=%s"
+                                % (movie, quote(v_c19c)))[0]
+                    for v_c19c in ("0", "1", "01", "abc", "", "2", "true", "-1", "1.5", " 1", "1 ")}
+    check("checkFiles takes only a bare 0 or 1",
+          all(grammar_c19c[v_c19c] == 200 for v_c19c in ("0", "1", "01"))
+          and all(grammar_c19c[v_c19c] == 400
+                  for v_c19c in ("abc", "", "2", "true", "-1", "1.5", " 1", "1 ")),
+          str(grammar_c19c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
