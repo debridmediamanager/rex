@@ -12946,6 +12946,43 @@ def main():
           % ("Sammlungen" in prefs_c17d3, "Schauspieler" in hubs_c17d3,
              "Datenbank sichern" in butler_c17d3))
 
+
+    # Cycle 17, mapped path by path on kids by diffing a whole item document against
+    # itself in German: inside a `Metadata` row the reference translates exactly three
+    # things -- a GENERATED `Season N`/`Episode N` (already implemented), the
+    # `Preferences` block's `Setting` rows (`label`, `summary` and `enumValues` alike,
+    # at `/library/metadata/{id}?includePreferences=1` on a movie, a show and a season)
+    # and a `Stream`'s language fields -- and nothing else: the row's own `title`,
+    # `summary` and tag names stay English in every language. plexsim's localiser stops
+    # dead at the row boundary, so the whole per-item Advanced pane -- 31 labels, 30
+    # summaries and 19 enum lists -- stayed English for every non-English client while
+    # the same settings on `/library/sections/{id}/prefs` were translated.
+    def de_c17d4(path_c17d4):
+        body_c17d4 = request(base, "GET", path_c17d4 + ("&" if "?" in path_c17d4 else "?")
+                             + "X-Plex-Language=de")[1]
+        return json.loads(body_c17d4)["MediaContainer"]["Metadata"][0]
+    show_de_c17d4 = de_c17d4("/library/metadata/%s?includePreferences=1" % show)
+    show_en_c17d4 = get(base, "/library/metadata/%s?includePreferences=1"
+                        % show)[1]["Metadata"][0]
+    settings_c17d4 = {s_c17d4.get("id"): s_c17d4
+                      for s_c17d4 in ((show_de_c17d4.get("Preferences") or {})
+                                      .get("Setting") or [])}
+    english_c17d4 = {s_c17d4.get("id"): s_c17d4
+                     for s_c17d4 in ((show_en_c17d4.get("Preferences") or {})
+                                     .get("Setting") or [])}
+    ordering_c17d4 = settings_c17d4.get("showOrdering") or {}
+    flatten_c17d4 = settings_c17d4.get("flattenSeasons") or {}
+    check("the localiser reaches a row's Preferences block",
+          ordering_c17d4.get("label") == "Reihenfolge Folgen"
+          and (english_c17d4.get("showOrdering") or {}).get("label") == "Episode ordering"
+          and flatten_c17d4.get("label") == "Staffeln"
+          and "Mediathek-Standard" in str(flatten_c17d4.get("enumValues") or "")
+          and show_de_c17d4.get("title") == show_en_c17d4.get("title"),
+          "ordering=%r flatten=%r enum=%r title-untouched=%s"
+          % (ordering_c17d4.get("label"), flatten_c17d4.get("label"),
+             str(flatten_c17d4.get("enumValues"))[:30],
+             show_de_c17d4.get("title") == show_en_c17d4.get("title")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
