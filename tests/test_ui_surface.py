@@ -15497,6 +15497,26 @@ def main():
           % (request(base, "PUT", "/library/metadata/%s/prefs?zzz=1" % c21v_playlist)[0],
              request(base, "PUT", "/library/metadata/%s/prefs?collectionMode=1"
                      % c21v_collection)[0]))
+
+    # Cycle 21, measured on kids, zen AND plexscratch, every verb over the `/system`
+    # subtree: an empty response there carries NO `Content-Type` header at all. Every 404
+    # -- GET, HEAD, POST, PUT and DELETE, on `/system` itself and on an unknown path under
+    # it -- and the bare `OPTIONS` 200 come back with no body and no type, where a 404
+    # anywhere ELSE on the surface carries `text/html` and a body. Cycle 18 recorded the
+    # empty BODY for the non-GET verbs and implemented it as an empty `text/html`; the GET
+    # was never covered at all, so plexsim answered its own 18-byte `text/plain` refusal
+    # where a real PMS sends nothing.
+    envelope_c21w = {}
+    for verb_c21w in ("GET", "POST", "PUT", "DELETE", "OPTIONS"):
+        for path_c21w in ("/system/zzz", "/system/appstore/updates", "/system/agents/zzz",
+                          "/system/services/zzz"):
+            status_c21w, body_c21w, headers_c21w = request(base, verb_c21w, path_c21w)
+            envelope_c21w[(verb_c21w, path_c21w)] = (
+                status_c21w, len(body_c21w or ""), headers_c21w.get("Content-Type"))
+    wrong_c21w = {k_c21w: v_c21w for k_c21w, v_c21w in envelope_c21w.items()
+                  if v_c21w != ((200 if k_c21w[0] == "OPTIONS" else 404), 0, None)}
+    check("an empty response under /system carries no Content-Type at all",
+          not wrong_c21w, "%r" % (wrong_c21w or envelope_c21w,))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
