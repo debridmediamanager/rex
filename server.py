@@ -7209,12 +7209,54 @@ class PlexSim:
             }
             if rows:
                 hub["Metadata"] = rows
-            if kind in tags:
+            if kind == "collection":
+                # Cycle 15, measured on the copy: a collection is found HERE, as a
+                # `tag` row with `tagType: 2` and the collection's own guid, and it is
+                # NOT found by `/library/search` -- which refutes cycle 14's note.
+                # plexsim's collection hub was empty for every query, so the search
+                # box never found a collection at all.
+                found = []
+                for section in self.catalog.sections:
+                    # `collections()` already answers ROWS, not the stored dicts.
+                    for row in self.library.collections(section["key"]):
+                        words = re.split(r"[^0-9a-z]+",
+                                         str(row.get("title") or "").lower())
+                        if not any(w.startswith(needle) for w in words if w):
+                            continue
+                        found.append(self._collection_tag_result(row, section))
+                if found:
+                    hub["Directory"] = found
+                    hub["size"] = len(found)
+            elif kind in tags:
                 hub["Directory"] = [self._tag_result(entry, kind)
                                     for entry in tags[kind]]
                 hub["size"] = len(hub["Directory"])
             hubs.append(hub)
         return self.bare_container(size=len(hubs), Hub=hubs)
+
+    def _collection_tag_result(self, row, section):
+        """A collection as a search `tag` row. Cycle 15, measured on the copy."""
+        section_id = row["librarySectionID"]
+        return {
+            "key": "/library/sections/%s/all?collection=%s" % (section_id, row["index"]),
+            "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
+            "librarySectionKey": "/library/sections/%s" % section_id,
+            "librarySectionTitle": section.get("title"),
+            "librarySectionType": 2 if section.get("type") == "show" else 1,
+            "reason": "section",
+            "reasonID": int(section_id) if str(section_id).isdigit() else section_id,
+            "reasonTitle": section.get("title"),
+            "score": self._score(0.52),
+            "type": "tag",
+            "id": row["index"],
+            "filter": "collection=%s" % row["index"],
+            "tag": row.get("title"),
+            # Measured: a COLLECTION tag row is tagType 2, beside the actor's 6 and
+            # the director's 4.
+            "tagType": 2,
+            "count": row.get("childCount") or 0,
+            "guid": row.get("guid"),
+        }
 
     def _tag_result(self, entry, hub):
         """One tag row of a search result, field for field off the reference."""

@@ -11030,6 +11030,42 @@ def main():
     check("a label on a collection reaches the /label axis under every type",
           all(v_c15y == ["C15yLabel"] for v_c15y in axis_c15y.values()), str(axis_c15y))
 
+    # Cycle 15, measured on plexscratch: a collection is found by `/hubs/search`, as a
+    # `tag` Directory row in the `collection` hub -- `tagType: 2`, the member count,
+    # the collection's own `guid`, a `key` and `filter` of `collection=<tag id>`, and
+    # `reason`/`reasonID`/`reasonTitle` naming the LIBRARY (`section`, its id, its
+    # title), which is the tag-row shape plexsim already builds for actors and genres.
+    #
+    # `/library/search` finds NOTHING for a collection on the copy, with or without
+    # `includeCollections=1` -- which REFUTES cycle 14's note that it carries the
+    # collection as a tag row. Only `/hubs/search` and the library's own
+    # `?type=18` search box do.
+    #
+    # plexsim's `collection` hub was empty for every query, so typing a collection's
+    # name into Plex Web's search box never found it.
+    sc_c15z = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("Zarquon Collection"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1].get("Metadata") or [{}])[0]
+    hubs_c15z = {h_c15z.get("type"): h_c15z for h_c15z in
+                 get(base, "/hubs/search?query=%s&includeCollections=1" % quote("Zarquon"))[1]
+                 .get("Hub") or []}
+    dirs_c15z = (hubs_c15z.get("collection") or {}).get("Directory") or []
+    flat_c15z = get(base, "/library/search?query=%s&includeCollections=1"
+                    % quote("Zarquon"))[1].get("SearchResult") or []
+    request(base, "DELETE", "/library/collections/%s" % sc_c15z.get("ratingKey"))
+    check("a collection is found by /hubs/search as a tag row and not by /library/search",
+          len(dirs_c15z) == 1 and dirs_c15z[0].get("type") == "tag"
+          and dirs_c15z[0].get("tagType") == 2
+          and dirs_c15z[0].get("tag") == "Zarquon Collection"
+          and dirs_c15z[0].get("guid") == sc_c15z.get("guid")
+          and dirs_c15z[0].get("count") == 1
+          and dirs_c15z[0].get("reason") == "section"
+          and not [r_c15z for r_c15z in flat_c15z
+                   if "Zarquon" in str((r_c15z.get("Metadata") or {}).get("title"))],
+          "hub rows %s | library/search %d" % (dirs_c15z, len(flat_c15z)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
