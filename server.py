@@ -4022,6 +4022,11 @@ class PlexSim:
                 # container paging parameters are ignored on a write.
                 if not query.get("type"):
                     return ("error", 400, "plexsim: bad request")
+                # Cycle 16, measured on plexscratch: the `type=` here has to
+                # PARSE as well -- `type=abc` is a 400 and edits nothing, where
+                # plexsim answered 200 having edited nothing, which reads to
+                # the client as a save that worked.
+                self._parsed_type(query, 400, 400)
                 for name, _ in query.get("_pairs") or []:
                     if name.startswith(("X-Plex-", "include", "exclude")) \
                             or name in ("type", "id") or ".tag.tag" in name \
