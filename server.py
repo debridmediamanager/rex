@@ -6055,6 +6055,23 @@ class PlexSim:
             logger.info("COLLECTION PREF %s %s", rating_key,
                         ",".join(k for k in query if not k.startswith("X-Plex-")))
             return ("empty", 200)
+        if len(segments) == 4 and segments[3] in ("thumbs", "banners"):
+            # Cycle 16, measured on plexscratch: a list answers these two the way an
+            # ITEM does -- 200 with an empty candidate container carrying the
+            # identifier and the media-tag pair. plexsim 404'd both, so a client
+            # probing a list's artwork candidates read "no such endpoint" where a real
+            # PMS says "none yet".
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.tag_container(size=0, _xml={"Metadata": "Photo"})
+        if len(segments) == 4 and segments[3] == "tree":
+            # Cycle 16: a list has a `/tree` too, and it is a single `MetadataItem`
+            # naming the list itself. plexsim 404'd it.
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.bare_container(
+                size=1, MetadataItem=[{"id": int(rating_key)
+                                       if str(rating_key).isdigit() else rating_key}])
         if len(segments) == 4 and segments[3] in ("posters", "arts"):
             # Measured on a writable copy of the reference: a playlist's and a collection's
             # artwork list lives under /library/metadata/{ratingKey} like an item's, and
@@ -9822,12 +9839,18 @@ class PlexSim:
                 smart=summary["smart"],
                 title=summary["title"],
             )
-        if leaf == "composite":
+        if leaf == "composite" and len(segments) > 3:
+            # Cycle 16, measured on plexscratch: only the VERSIONED composite answers
+            # here. The bare `/playlists/{id}/composite` is a 404, as are `posters`,
+            # `arts`, `thumb` and `art` -- a playlist's artwork lives under
+            # `/library/metadata/{ratingKey}/`, which is where its own row points.
+            # plexsim answered all five, so a probe of a path a real PMS does not have
+            # came back 200.
             art = self.composite_for("playlist", segments[1])
             if art:
                 return ("image", self._at_width(art, query.get("width")))
             return ("png", query)
-        return self.bare_container(size=0)
+        return ("error", 404, "plexsim: not found")
 
     # -- play queue ------------------------------------------------------
 
