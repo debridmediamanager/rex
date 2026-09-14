@@ -4688,7 +4688,18 @@ class PlexSim:
                         if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS), None)
         if refused:
             return ("error", 500, "plexsim: cannot filter on %s" % refused)
-        source, unsupported = self._sorted(source, query.get("sort") or "titleSort")
+        # Cycle 16, measured on kids and on zen's 507-show library: a show library's
+        # `type=3` and `type=4` grids default to the SHOW's order -- the show's sort
+        # title, then `parentIndex`, then `index` -- not to a flat `titleSort`.
+        # `typed_rows` already builds them in that order, so the default here is to
+        # leave it alone; an explicit `sort=` still applies. plexsim re-sorted them by
+        # title, so a show library's Episodes tab opened on an alphabetical jumble
+        # across every show. `docs/findings.md` asserted this for `/allLeaves` AND the
+        # section listing; only the allLeaves half was ever implemented.
+        default_sort = ("" if (section.get("type") == "show"
+                               and str(query.get("type") or "") in ("3", "4"))
+                        else "titleSort")
+        source, unsupported = self._sorted(source, query.get("sort") or default_sort)
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
             # than ignoring it. Silently returning the list unsorted is the worse
