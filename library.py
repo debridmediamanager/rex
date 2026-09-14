@@ -1488,17 +1488,16 @@ class Library:
     def refresh(self, row):
         """`PUT /library/metadata/{id}/refresh`.
 
-        plexsim has nothing on disk to re-read, so a refresh re-versions the
-        artwork keys and bumps updatedAt -- which is what makes the client drop
-        its cached poster. Artwork URLs are versioned for exactly this reason:
-        an unversioned /thumb/1 plus ratingKey reuse serves a stale poster.
+        Cycle 21, measured on plexscratch four times on a movie and four on a show:
+        a refresh does NOT move the row's `updatedAt` -- and the reference really ran
+        it, because it pushed the seven-frame sequence each time. Cycle 20 established
+        that an artwork URL's version IS the row's `updatedAt`, so the two move
+        together and neither does: plexsim stamped both, and every Refresh Metadata
+        therefore told every client that an unchanged row's poster and background had
+        changed. (plexscratch is isolated from plex.tv, so what is measured is that
+        running the refresh sequence does not by itself stamp the row.)
         """
-        stamp = _now()
-        row["updatedAt"] = stamp
         self.catalog.number_tags(row)
-        for key, kind in (("thumb", "thumb"), ("art", "art")):
-            if row.get(key):
-                row[key] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], kind, stamp)
         # The activity belongs to the notification SEQUENCE, not to this function:
         # the server runs it start-to-end around the refresh so it also ends. Adding
         # one here as well pushed two `started` frames for one refresh.
