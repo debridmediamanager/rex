@@ -1,11 +1,196 @@
 {
- "_provenance": "The modern (tv.plex.*) agents of a real PMS 1.43.4, captured from GET /system/agents and /system/agents?mediaType=N in XML. `mediaTypes` names which agents each library type lists. The legacy com.plexapp.agents.* plug-ins the reference also lists are deliberately absent: plexsim hosts no plug-in framework, so their prefs, contributors and attribution would all be invented.",
+ "_provenance": "The modern (tv.plex.*) agents of a real PMS 1.43.4, captured from GET /system/agents and /system/agents?mediaType=N in XML. `mediaTypes` names which agents each library type lists. The legacy com.plexapp.agents.* plug-ins the reference also lists are deliberately absent: plexsim hosts no plug-in framework, so their prefs, contributors and attribution would all be invented. Cycle 17: the two `tv.plex.agents.nfo.*` rows are 1.43.4's and are gone -- zen (1.42.2, the build plexsim reports) lists four modern agents on the bare path and two per media type, kids (1.43.4) six and three, measured over the bare path and every `mediaType=`. Offering one to the Add Library dialog is an agent a server of this version does not have.",
  "agents": [
   {
-   "identifier": "tv.plex.agents.movie",
-   "name": "Plex Movie",
+   "Language": [
+    {
+     "code": "ca-ES",
+     "title": "català"
+    },
+    {
+     "code": "cs-CZ",
+     "title": "Čeština"
+    },
+    {
+     "code": "da-DK",
+     "title": "Dansk"
+    },
+    {
+     "code": "de-DE",
+     "title": "Deutsch"
+    },
+    {
+     "code": "et-EE",
+     "title": "eesti"
+    },
+    {
+     "code": "en-US",
+     "default": true,
+     "title": "English"
+    },
+    {
+     "code": "en-AU",
+     "title": "English (Australia)"
+    },
+    {
+     "code": "en-CA",
+     "title": "English (Canada)"
+    },
+    {
+     "code": "en-GB",
+     "title": "English (UK)"
+    },
+    {
+     "code": "es-ES",
+     "title": "Español"
+    },
+    {
+     "code": "es-MX",
+     "title": "Español (México)"
+    },
+    {
+     "code": "fr-FR",
+     "title": "Français"
+    },
+    {
+     "code": "fr-CA",
+     "title": "Français (Canada)"
+    },
+    {
+     "code": "hr-HR",
+     "title": "Hrvatski"
+    },
+    {
+     "code": "id-ID",
+     "title": "Indonesia"
+    },
+    {
+     "code": "is-IS",
+     "title": "íslenska"
+    },
+    {
+     "code": "it-IT",
+     "title": "Italiano"
+    },
+    {
+     "code": "lv-LV",
+     "title": "latviešu"
+    },
+    {
+     "code": "lt-LT",
+     "title": "lietuvių"
+    },
+    {
+     "code": "hu-HU",
+     "title": "magyar"
+    },
+    {
+     "code": "nl-NL",
+     "title": "Nederlands"
+    },
+    {
+     "code": "nb-NO",
+     "title": "norsk bokmål"
+    },
+    {
+     "code": "pl-PL",
+     "title": "polski"
+    },
+    {
+     "code": "pt-BR",
+     "title": "Português"
+    },
+    {
+     "code": "pt-PT",
+     "title": "Português (Portugal)"
+    },
+    {
+     "code": "ro-RO",
+     "title": "română"
+    },
+    {
+     "code": "sk-SK",
+     "title": "Slovenčina"
+    },
+    {
+     "code": "fi-FI",
+     "title": "Suomi"
+    },
+    {
+     "code": "sv-SE",
+     "title": "Svenska"
+    },
+    {
+     "code": "vi-VN",
+     "title": "Tiếng Việt"
+    },
+    {
+     "code": "tr-TR",
+     "title": "Türkçe"
+    },
+    {
+     "code": "el-GR",
+     "title": "Ελληνικά"
+    },
+    {
+     "code": "bg-BG",
+     "title": "български"
+    },
+    {
+     "code": "ru-RU",
+     "title": "Русский"
+    },
+    {
+     "code": "uk-UA",
+     "title": "Українська"
+    },
+    {
+     "code": "he-IL",
+     "title": "עברית"
+    },
+    {
+     "code": "ar-SA",
+     "title": "العربية (المملكة العربية السعودية)"
+    },
+    {
+     "code": "fa-IR",
+     "title": "فارسی"
+    },
+    {
+     "code": "hi-IN",
+     "title": "हिन्दी"
+    },
+    {
+     "code": "th-TH",
+     "title": "ไทย"
+    },
+    {
+     "code": "ko-KR",
+     "title": "한국어"
+    },
+    {
+     "code": "zh-CN",
+     "title": "中文"
+    },
+    {
+     "code": "zh-HK",
+     "title": "中文（中國香港）"
+    },
+    {
+     "code": "zh-TW",
+     "title": "中文（台灣）"
+    },
+    {
+     "code": "ja-JP",
+     "title": "日本語"
+    }
+   ],
    "hasPrefs": false,
    "id": 1,
+   "identifier": "tv.plex.agents.movie",
+   "name": "Plex Movie"
+  },
+  {
    "Language": [
     {
      "code": "ca-ES",
@@ -29,8 +214,8 @@
     },
     {
      "code": "en-US",
-     "title": "English",
-     "default": true
+     "default": true,
+     "title": "English"
     },
     {
      "code": "en-AU",
@@ -188,13 +373,13 @@
      "code": "ja-JP",
      "title": "日本語"
     }
-   ]
-  },
-  {
-   "identifier": "tv.plex.agents.series",
-   "name": "Plex Series",
+   ],
    "hasPrefs": false,
    "id": 2,
+   "identifier": "tv.plex.agents.series",
+   "name": "Plex Series"
+  },
+  {
    "Language": [
     {
      "code": "ca-ES",
@@ -218,8 +403,8 @@
     },
     {
      "code": "en-US",
-     "title": "English",
-     "default": true
+     "default": true,
+     "title": "English"
     },
     {
      "code": "en-AU",
@@ -377,13 +562,13 @@
      "code": "ja-JP",
      "title": "日本語"
     }
-   ]
-  },
-  {
-   "identifier": "tv.plex.agents.music",
-   "name": "Plex Music",
+   ],
    "hasPrefs": false,
    "id": 3,
+   "identifier": "tv.plex.agents.music",
+   "name": "Plex Music"
+  },
+  {
    "Language": [
     {
      "code": "ca-ES",
@@ -407,8 +592,8 @@
     },
     {
      "code": "en-US",
-     "title": "English",
-     "default": true
+     "default": true,
+     "title": "English"
     },
     {
      "code": "en-AU",
@@ -566,602 +751,35 @@
      "code": "ja-JP",
      "title": "日本語"
     }
-   ]
-  },
-  {
-   "identifier": "tv.plex.agents.none",
-   "name": "Plex Personal Media",
+   ],
    "hasPrefs": false,
    "id": 4,
-   "Language": [
-    {
-     "code": "ca-ES",
-     "title": "català"
-    },
-    {
-     "code": "cs-CZ",
-     "title": "Čeština"
-    },
-    {
-     "code": "da-DK",
-     "title": "Dansk"
-    },
-    {
-     "code": "de-DE",
-     "title": "Deutsch"
-    },
-    {
-     "code": "et-EE",
-     "title": "eesti"
-    },
-    {
-     "code": "en-US",
-     "title": "English",
-     "default": true
-    },
-    {
-     "code": "en-AU",
-     "title": "English (Australia)"
-    },
-    {
-     "code": "en-CA",
-     "title": "English (Canada)"
-    },
-    {
-     "code": "en-GB",
-     "title": "English (UK)"
-    },
-    {
-     "code": "es-ES",
-     "title": "Español"
-    },
-    {
-     "code": "es-MX",
-     "title": "Español (México)"
-    },
-    {
-     "code": "fr-FR",
-     "title": "Français"
-    },
-    {
-     "code": "fr-CA",
-     "title": "Français (Canada)"
-    },
-    {
-     "code": "hr-HR",
-     "title": "Hrvatski"
-    },
-    {
-     "code": "id-ID",
-     "title": "Indonesia"
-    },
-    {
-     "code": "is-IS",
-     "title": "íslenska"
-    },
-    {
-     "code": "it-IT",
-     "title": "Italiano"
-    },
-    {
-     "code": "lv-LV",
-     "title": "latviešu"
-    },
-    {
-     "code": "lt-LT",
-     "title": "lietuvių"
-    },
-    {
-     "code": "hu-HU",
-     "title": "magyar"
-    },
-    {
-     "code": "nl-NL",
-     "title": "Nederlands"
-    },
-    {
-     "code": "nb-NO",
-     "title": "norsk bokmål"
-    },
-    {
-     "code": "pl-PL",
-     "title": "polski"
-    },
-    {
-     "code": "pt-BR",
-     "title": "Português"
-    },
-    {
-     "code": "pt-PT",
-     "title": "Português (Portugal)"
-    },
-    {
-     "code": "ro-RO",
-     "title": "română"
-    },
-    {
-     "code": "sk-SK",
-     "title": "Slovenčina"
-    },
-    {
-     "code": "fi-FI",
-     "title": "Suomi"
-    },
-    {
-     "code": "sv-SE",
-     "title": "Svenska"
-    },
-    {
-     "code": "vi-VN",
-     "title": "Tiếng Việt"
-    },
-    {
-     "code": "tr-TR",
-     "title": "Türkçe"
-    },
-    {
-     "code": "el-GR",
-     "title": "Ελληνικά"
-    },
-    {
-     "code": "bg-BG",
-     "title": "български"
-    },
-    {
-     "code": "ru-RU",
-     "title": "Русский"
-    },
-    {
-     "code": "uk-UA",
-     "title": "Українська"
-    },
-    {
-     "code": "he-IL",
-     "title": "עברית"
-    },
-    {
-     "code": "ar-SA",
-     "title": "العربية (المملكة العربية السعودية)"
-    },
-    {
-     "code": "fa-IR",
-     "title": "فارسی"
-    },
-    {
-     "code": "hi-IN",
-     "title": "हिन्दी"
-    },
-    {
-     "code": "th-TH",
-     "title": "ไทย"
-    },
-    {
-     "code": "ko-KR",
-     "title": "한국어"
-    },
-    {
-     "code": "zh-CN",
-     "title": "中文"
-    },
-    {
-     "code": "zh-HK",
-     "title": "中文（中國香港）"
-    },
-    {
-     "code": "zh-TW",
-     "title": "中文（台灣）"
-    },
-    {
-     "code": "ja-JP",
-     "title": "日本語"
-    }
-   ]
-  },
-  {
-   "identifier": "tv.plex.agents.nfo.movie",
-   "name": "Plex NFO Movie",
-   "hasPrefs": false,
-   "id": 5,
-   "Language": [
-    {
-     "code": "ca-ES",
-     "title": "català"
-    },
-    {
-     "code": "cs-CZ",
-     "title": "Čeština"
-    },
-    {
-     "code": "da-DK",
-     "title": "Dansk"
-    },
-    {
-     "code": "de-DE",
-     "title": "Deutsch"
-    },
-    {
-     "code": "et-EE",
-     "title": "eesti"
-    },
-    {
-     "code": "en-US",
-     "title": "English",
-     "default": true
-    },
-    {
-     "code": "en-AU",
-     "title": "English (Australia)"
-    },
-    {
-     "code": "en-CA",
-     "title": "English (Canada)"
-    },
-    {
-     "code": "en-GB",
-     "title": "English (UK)"
-    },
-    {
-     "code": "es-ES",
-     "title": "Español"
-    },
-    {
-     "code": "es-MX",
-     "title": "Español (México)"
-    },
-    {
-     "code": "fr-FR",
-     "title": "Français"
-    },
-    {
-     "code": "fr-CA",
-     "title": "Français (Canada)"
-    },
-    {
-     "code": "hr-HR",
-     "title": "Hrvatski"
-    },
-    {
-     "code": "id-ID",
-     "title": "Indonesia"
-    },
-    {
-     "code": "is-IS",
-     "title": "íslenska"
-    },
-    {
-     "code": "it-IT",
-     "title": "Italiano"
-    },
-    {
-     "code": "lv-LV",
-     "title": "latviešu"
-    },
-    {
-     "code": "lt-LT",
-     "title": "lietuvių"
-    },
-    {
-     "code": "hu-HU",
-     "title": "magyar"
-    },
-    {
-     "code": "nl-NL",
-     "title": "Nederlands"
-    },
-    {
-     "code": "nb-NO",
-     "title": "norsk bokmål"
-    },
-    {
-     "code": "pl-PL",
-     "title": "polski"
-    },
-    {
-     "code": "pt-BR",
-     "title": "Português"
-    },
-    {
-     "code": "pt-PT",
-     "title": "Português (Portugal)"
-    },
-    {
-     "code": "ro-RO",
-     "title": "română"
-    },
-    {
-     "code": "sk-SK",
-     "title": "Slovenčina"
-    },
-    {
-     "code": "fi-FI",
-     "title": "Suomi"
-    },
-    {
-     "code": "sv-SE",
-     "title": "Svenska"
-    },
-    {
-     "code": "vi-VN",
-     "title": "Tiếng Việt"
-    },
-    {
-     "code": "tr-TR",
-     "title": "Türkçe"
-    },
-    {
-     "code": "el-GR",
-     "title": "Ελληνικά"
-    },
-    {
-     "code": "bg-BG",
-     "title": "български"
-    },
-    {
-     "code": "ru-RU",
-     "title": "Русский"
-    },
-    {
-     "code": "uk-UA",
-     "title": "Українська"
-    },
-    {
-     "code": "he-IL",
-     "title": "עברית"
-    },
-    {
-     "code": "ar-SA",
-     "title": "العربية (المملكة العربية السعودية)"
-    },
-    {
-     "code": "fa-IR",
-     "title": "فارسی"
-    },
-    {
-     "code": "hi-IN",
-     "title": "हिन्दी"
-    },
-    {
-     "code": "th-TH",
-     "title": "ไทย"
-    },
-    {
-     "code": "ko-KR",
-     "title": "한국어"
-    },
-    {
-     "code": "zh-CN",
-     "title": "中文"
-    },
-    {
-     "code": "zh-HK",
-     "title": "中文（中國香港）"
-    },
-    {
-     "code": "zh-TW",
-     "title": "中文（台灣）"
-    },
-    {
-     "code": "ja-JP",
-     "title": "日本語"
-    }
-   ]
-  },
-  {
-   "identifier": "tv.plex.agents.nfo.series",
-   "name": "Plex NFO Series",
-   "hasPrefs": false,
-   "id": 6,
-   "Language": [
-    {
-     "code": "ca-ES",
-     "title": "català"
-    },
-    {
-     "code": "cs-CZ",
-     "title": "Čeština"
-    },
-    {
-     "code": "da-DK",
-     "title": "Dansk"
-    },
-    {
-     "code": "de-DE",
-     "title": "Deutsch"
-    },
-    {
-     "code": "et-EE",
-     "title": "eesti"
-    },
-    {
-     "code": "en-US",
-     "title": "English",
-     "default": true
-    },
-    {
-     "code": "en-AU",
-     "title": "English (Australia)"
-    },
-    {
-     "code": "en-CA",
-     "title": "English (Canada)"
-    },
-    {
-     "code": "en-GB",
-     "title": "English (UK)"
-    },
-    {
-     "code": "es-ES",
-     "title": "Español"
-    },
-    {
-     "code": "es-MX",
-     "title": "Español (México)"
-    },
-    {
-     "code": "fr-FR",
-     "title": "Français"
-    },
-    {
-     "code": "fr-CA",
-     "title": "Français (Canada)"
-    },
-    {
-     "code": "hr-HR",
-     "title": "Hrvatski"
-    },
-    {
-     "code": "id-ID",
-     "title": "Indonesia"
-    },
-    {
-     "code": "is-IS",
-     "title": "íslenska"
-    },
-    {
-     "code": "it-IT",
-     "title": "Italiano"
-    },
-    {
-     "code": "lv-LV",
-     "title": "latviešu"
-    },
-    {
-     "code": "lt-LT",
-     "title": "lietuvių"
-    },
-    {
-     "code": "hu-HU",
-     "title": "magyar"
-    },
-    {
-     "code": "nl-NL",
-     "title": "Nederlands"
-    },
-    {
-     "code": "nb-NO",
-     "title": "norsk bokmål"
-    },
-    {
-     "code": "pl-PL",
-     "title": "polski"
-    },
-    {
-     "code": "pt-BR",
-     "title": "Português"
-    },
-    {
-     "code": "pt-PT",
-     "title": "Português (Portugal)"
-    },
-    {
-     "code": "ro-RO",
-     "title": "română"
-    },
-    {
-     "code": "sk-SK",
-     "title": "Slovenčina"
-    },
-    {
-     "code": "fi-FI",
-     "title": "Suomi"
-    },
-    {
-     "code": "sv-SE",
-     "title": "Svenska"
-    },
-    {
-     "code": "vi-VN",
-     "title": "Tiếng Việt"
-    },
-    {
-     "code": "tr-TR",
-     "title": "Türkçe"
-    },
-    {
-     "code": "el-GR",
-     "title": "Ελληνικά"
-    },
-    {
-     "code": "bg-BG",
-     "title": "български"
-    },
-    {
-     "code": "ru-RU",
-     "title": "Русский"
-    },
-    {
-     "code": "uk-UA",
-     "title": "Українська"
-    },
-    {
-     "code": "he-IL",
-     "title": "עברית"
-    },
-    {
-     "code": "ar-SA",
-     "title": "العربية (المملكة العربية السعودية)"
-    },
-    {
-     "code": "fa-IR",
-     "title": "فارسی"
-    },
-    {
-     "code": "hi-IN",
-     "title": "हिन्दी"
-    },
-    {
-     "code": "th-TH",
-     "title": "ไทย"
-    },
-    {
-     "code": "ko-KR",
-     "title": "한국어"
-    },
-    {
-     "code": "zh-CN",
-     "title": "中文"
-    },
-    {
-     "code": "zh-HK",
-     "title": "中文（中國香港）"
-    },
-    {
-     "code": "zh-TW",
-     "title": "中文（台灣）"
-    },
-    {
-     "code": "ja-JP",
-     "title": "日本語"
-    }
-   ]
+   "identifier": "tv.plex.agents.none",
+   "name": "Plex Personal Media"
   }
  ],
  "mediaTypes": {
   "1": [
    "tv.plex.agents.movie",
-   "tv.plex.agents.none",
-   "tv.plex.agents.nfo.movie"
-  ],
-  "2": [
-   "tv.plex.agents.series",
-   "tv.plex.agents.none",
-   "tv.plex.agents.nfo.series"
-  ],
-  "3": [
-   "tv.plex.agents.series",
-   "tv.plex.agents.none",
-   "tv.plex.agents.nfo.series"
-  ],
-  "4": [
-   "tv.plex.agents.series",
-   "tv.plex.agents.none",
-   "tv.plex.agents.nfo.series"
-  ],
-  "8": [
-   "tv.plex.agents.music",
    "tv.plex.agents.none"
   ],
   "13": [
+   "tv.plex.agents.none"
+  ],
+  "2": [
+   "tv.plex.agents.series",
+   "tv.plex.agents.none"
+  ],
+  "3": [
+   "tv.plex.agents.series",
+   "tv.plex.agents.none"
+  ],
+  "4": [
+   "tv.plex.agents.series",
+   "tv.plex.agents.none"
+  ],
+  "8": [
+   "tv.plex.agents.music",
    "tv.plex.agents.none"
   ]
  }
