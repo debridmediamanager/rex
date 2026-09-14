@@ -183,6 +183,50 @@ def main():
             check("%s -> %s" % (path.split("?")[0].split("/")[-1], expect),
                   status == expect, "HTTP %s" % status)
 
+
+    # Cycle 16, measured on kids (season 7, which owns no art) and zen (season 11114,
+    # which owns its own, and its episode 11115): a row that BORROWS its background
+    # carries the owner's path verbatim -- kids' season 7 and episode 8 both carry
+    # `/library/metadata/6/art/...` -- and its own `/art` is a 404. plexsim's
+    # `_stamp_artwork` re-keyed every artwork URL to the row holding it, so a season
+    # and its show claimed to own the same image under two paths and
+    # `/library/metadata/<season>/art` answered 200 where a real PMS answers 404 --
+    # fix 4's trap, a 200 reading to the client as "this row has a background of its
+    # own".
+    base_c16f = args.base
+    sections_c16f = get(base_c16f, "/library/sections")[1]
+    show_section_c16f = next(d_c16f["key"] for d_c16f in sections_c16f.get("Directory") or []
+                             if d_c16f.get("type") == "show")
+    show_c16f = (get(base_c16f, "/library/sections/%s/all?type=2" % show_section_c16f)[1]
+                 .get("Metadata") or [])[0]["ratingKey"]
+    detail_c16f = get(base_c16f, "/library/metadata/%s" % show_c16f)[1]["Metadata"][0]
+    season_c16f = (get(base_c16f, "/library/metadata/%s/children?excludeAllLeaves=1" % show_c16f)[1]
+                   .get("Metadata") or [])[0]["ratingKey"]
+    episode_c16f = (get(base_c16f, "/library/metadata/%s/children" % season_c16f)[1]
+                    .get("Metadata") or [])[0]
+    def art_status_c16f(key_c16f):
+        # the suite's own get() parses JSON, so a 200 carrying image bytes reads as
+        # None; this one wants the status and nothing else
+        try:
+            with urllib.request.urlopen(urllib.request.Request(
+                    base_c16f + "/library/metadata/%s/art" % key_c16f,
+                    headers={"User-Agent": UA}), timeout=30) as response_c16f:
+                return response_c16f.status
+        except urllib.error.HTTPError as error_c16f:
+            return error_c16f.code
+
+    status_c16f = tuple(art_status_c16f(key_c16f)
+                        for key_c16f in (show_c16f, season_c16f, episode_c16f["ratingKey"]))
+    season_row_c16f = get(base_c16f, "/library/metadata/%s" % season_c16f)[1]["Metadata"][0]
+    check("a borrowed background keeps its owner's path and 404s on the borrower",
+          bool(detail_c16f.get("art"))
+          and season_row_c16f.get("art") == detail_c16f.get("art")
+          and episode_c16f.get("art") == detail_c16f.get("art")
+          and status_c16f == (200, 404, 404),
+          "show=%r season=%r episode=%r statuses=%s"
+          % (detail_c16f.get("art"), season_row_c16f.get("art"),
+             episode_c16f.get("art"), status_c16f))
+
     total = len(results)
     passed = sum(1 for _, ok in results if ok)
     print("\n%s  %d/%d checks passed" % (GREEN + "PASS" + OFF if passed == total

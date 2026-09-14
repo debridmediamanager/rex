@@ -177,6 +177,27 @@ def normalize_rows(rows):
       web client asks for whichever it finds when theme music is on.
     """
     by_key = {str(row.get("ratingKey")): row for row in rows}
+    # Cycle 16, measured on kids and zen: a row that borrows its background carries
+    # the OWNER's path, not one of its own. A catalog built before that was measured
+    # carries a re-keyed copy on every season and episode, and the `_art_url` hints
+    # the builder used are stripped from the stored file -- but the VERSION is a hash
+    # of the source image, so a season whose art carries its show's version is showing
+    # its show's picture. Rewrite it to the show's path, then hand it down: an
+    # episode's `art` is its season's resolved value, which is the show's when the
+    # season borrows.
+    for row in rows:
+        if row.get("type") != "season":
+            continue
+        show = by_key.get(str(row.get("parentRatingKey")))
+        art, parent_art = str(row.get("art") or ""), str((show or {}).get("art") or "")
+        if parent_art and art.rsplit("/", 1)[-1] == parent_art.rsplit("/", 1)[-1]:
+            row["art"] = parent_art
+    for row in rows:
+        if row.get("type") != "episode":
+            continue
+        season = by_key.get(str(row.get("parentRatingKey")))
+        if season and season.get("art"):
+            row["art"] = season["art"]
     for row in rows:
         kind = row.get("type")
         title = row.get("title") or ""
@@ -283,6 +304,22 @@ def _stamp_artwork(rows):
 
     # Parent pointers must match the parent's stamped URL, not the old constant.
     by_key = {r["ratingKey"]: r for r in rows}
+    # Cycle 16, measured on kids and zen: a row that owns no background of its own
+    # carries its SHOW's art PATH verbatim -- kids' season 7 and episode 8 both carry
+    # `/library/metadata/6/art/<v>` -- and `/library/metadata/7/art` is a 404 there,
+    # while zen's season 11114, which DOES have art of its own, carries its own path
+    # and answers 200. Stamping re-keyed every borrowed URL to the row holding it, so
+    # three rows claimed the same image under three paths. This runs before the
+    # episode fix-up below, which then inherits the corrected value.
+    for row in rows:
+        if row.get("type") != "season":
+            continue
+        show = by_key.get(str(row.get("parentRatingKey") or ""))
+        if not show or not show.get("art"):
+            continue
+        own = row.get("_art_url")
+        if not own or own == show.get("_art_url"):
+            row["art"] = show["art"]
     for row in rows:
         parent = by_key.get(str(row.get("parentRatingKey") or ""))
         if parent:
