@@ -13039,6 +13039,43 @@ def main():
               % (en_c17d5.get("displayTitle"), de_c17d5.get("language"),
                  de_c17d5.get("displayTitle"), fr_c17d5.get("language")))
 
+
+    # Cycle 17, re-measured by the driver on kids (1.43.4) and zen (1.42.2), which agree:
+    # a SHOW's `/allLeaves` -- and no other container -- stamps every episode's
+    # `grandparentThumb`, `grandparentArt`, `grandparentTheme` and `art` with the
+    # EPISODE's own `addedAt` instead of the show's current artwork version. The
+    # episode's detail row, the season's `/children`, the section grid at `type=4`,
+    # `recentlyAdded`, `newest`, `/library/all` and the hubs all carry the show's
+    # CURRENT stamp; 14 of 14 stamped rows over 140 episodes on zen and 3 of 3 on kids
+    # carry their own. It is the same family as the `studio` this container already
+    # carries: a property of the list, not of the row. The hunt reported it as a
+    # property of an EPISODE row -- it is not, and the section grid disagrees with that
+    # reading 641 times on zen.
+    #
+    # What it costs a client: an episode's grandparent artwork URL on this list is
+    # stable for the life of the row, so a client that caches it keeps a valid URL
+    # across artwork edits. plexsim re-pointed it at the show's newest version, which
+    # invalidates the cached image for every episode of the show on every edit.
+    leaves_c17a1 = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                    .get("Metadata") or [])
+    grid_c17a1 = [r_c17a1 for r_c17a1 in (get(
+        base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or [])]
+    parent_c17a1 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0]
+    stamped_c17a1 = [r_c17a1 for r_c17a1 in leaves_c17a1
+                     if str(r_c17a1.get("grandparentThumb") or "")
+                     .endswith("/%s" % r_c17a1.get("addedAt"))]
+    art_c17a1 = [r_c17a1 for r_c17a1 in leaves_c17a1
+                 if str(r_c17a1.get("art") or "").endswith("/%s" % r_c17a1.get("addedAt"))]
+    current_c17a1 = [r_c17a1 for r_c17a1 in grid_c17a1
+                     if r_c17a1.get("grandparentThumb") == parent_c17a1.get("thumb")]
+    check("a show's allLeaves stamps the grandparent artwork with the leaf's addedAt",
+          bool(leaves_c17a1) and len(stamped_c17a1) == len(leaves_c17a1)
+          and len(art_c17a1) == len(leaves_c17a1)
+          and bool(grid_c17a1) and len(current_c17a1) == len(grid_c17a1),
+          "allLeaves %d/%d stamped, art %d/%d; grid %d/%d on the show's current"
+          % (len(stamped_c17a1), len(leaves_c17a1), len(art_c17a1), len(leaves_c17a1),
+             len(current_c17a1), len(grid_c17a1)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
