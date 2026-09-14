@@ -15279,6 +15279,32 @@ def main():
           "%s | titleSort= matched %s"
           % ([(r_c20a.get("ratingKey"), r_c20a.get("year"), r_c20a.get("titleSort"))
               for r_c20a in rows_c20a], sorted(matched_c20a)))
+
+    # Cycle 20, the derivation holdout, on 9,293 real episodes across both references: a
+    # season hands its `thumb` down as `parentThumb` only when the thumb is its OWN. Of
+    # zen's 681 seasons whose episodes exist, the 654 with a poster of their own give
+    # every episode a `parentThumb` and the 27 whose `thumb` is the SHOW's give none of
+    # them one -- 0 exceptions either way -- and kids reproduces it exactly: season 7 has
+    # its own poster and its three episodes carry `parentThumb`, season 11 carries the
+    # show's and its three carry none. `art` is NOT like this: it is handed down borrowed
+    # or not. plexsim copied the season's thumb down whatever it pointed at, so an
+    # episode row named a poster that belongs to another row.
+    _, seasons_c20b, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    season_thumbs_c20b = {str(r_c20b.get("ratingKey")): str(r_c20b.get("thumb") or "")
+                          for r_c20b in (seasons_c20b.get("Metadata") or [])}
+    own_c20b = {rk_c20b for rk_c20b, thumb_c20b in season_thumbs_c20b.items()
+                if thumb_c20b.startswith("/library/metadata/%s/" % rk_c20b)}
+    borrowed_c20b = set(season_thumbs_c20b) - own_c20b
+    _, eps_c20b, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+    ep_rows_c20b = eps_c20b.get("Metadata") or []
+    carry_c20b = [(str(r_c20b.get("parentRatingKey")), "parentThumb" in r_c20b)
+                  for r_c20b in ep_rows_c20b]
+    check("an episode carries parentThumb only where the season's poster is its own",
+          bool(own_c20b) and bool(borrowed_c20b) and bool(carry_c20b)
+          and all(has_c20b for parent_c20b, has_c20b in carry_c20b if parent_c20b in own_c20b)
+          and not any(has_c20b for parent_c20b, has_c20b in carry_c20b
+                      if parent_c20b in borrowed_c20b),
+          "own %s borrowed %s -> %s" % (sorted(own_c20b), sorted(borrowed_c20b), carry_c20b))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
