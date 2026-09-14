@@ -16537,6 +16537,105 @@ def main():
           all(state_c21j and year_c21j and max(state_c21j) < min(year_c21j)
               for _names_c21j, state_c21j, year_c21j in order_c21j.values()),
           "%s" % {k_c21j: v_c21j[0][:24] for k_c21j, v_c21j in order_c21j.items()})
+
+    _, c21_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20state"
+                                           "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                           "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                             % (movie_section, machine, movie))
+    try:
+        c21_collection = json.loads(c21_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    except (ValueError, KeyError, IndexError):
+        c21_collection = None
+    _, c21_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C21%%20state&smart=0"
+                                              "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                              "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                % (machine, movie))
+    try:
+        c21_playlist = json.loads(c21_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    except (ValueError, KeyError, IndexError):
+        c21_playlist = None
+
+    # Cycle 21, measured on plexscratch with a fresh collection and a fresh playlist:
+    # both take EVERY `/:/` state write, and `rate`, `progress` and `unscrobble` store on
+    # them exactly as they do on an item -- an 8 is `userRating` plus `lastRatedAt`, and
+    # it survives the unscrobble that drops the view state. They split on the SCROBBLE: a
+    # playlist's own `viewCount` counts up from the 1 it is born with (1 -> 2 -> 3) where
+    # a collection's scrobble is a 200 that changes nothing at all -- a collection never
+    # carries `viewCount`. Neither reaches a member. And the block comes back MID-ROW in
+    # a fixed order -- `userRating, viewOffset, viewCount, lastViewedAt, lastRatedAt`,
+    # after a collection's `ratingCount` and after a playlist's `composite` -- on every
+    # read but `/playlists/{id}` and the create response, which omit it whole. plexsim
+    # 404'd all ten writes, so the star rating on a collection page and on a playlist
+    # page errored and never stuck.
+    codes_c21k = {}
+    for label_c21k, key_c21k in (("collection", c21_collection), ("playlist", c21_playlist)):
+        for name_c21k, spec_c21k in (
+                ("scrobble", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"),
+                ("rate", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=8"),
+                ("progress", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=400000&state=played"),
+                ("unscrobble", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library")):
+            codes_c21k[(label_c21k, name_c21k)] = request(base, "GET", spec_c21k % key_c21k)[0]
+    # The rating survives the unscrobble that dropped the view state.
+    _, rated_c21k, _ = get(base, "/library/metadata/%s" % c21_collection)
+    collection_c21k = (rated_c21k.get("Metadata") or [{}])[0]
+    _, playlist_meta_c21k, _ = get(base, "/library/metadata/%s" % c21_playlist)
+    playlist_c21k = (playlist_meta_c21k.get("Metadata") or [{}])[0]
+    _, single_c21k, _ = get(base, "/playlists/%s" % c21_playlist)
+    single_row_c21k = (single_c21k.get("Metadata") or [{}])[0]
+    # Two scrobbles from the cleared state: the playlist counts them, the collection
+    # stays blank.
+    for _ in range(2):
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % c21_playlist)
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % c21_collection)
+    _, playlists2_c21k, _ = get(base, "/playlists")
+    listed_c21k = next((r_c21k for r_c21k in (playlists2_c21k.get("Metadata") or [])
+                        if str(r_c21k.get("ratingKey")) == str(c21_playlist)), {})
+    _, coll2_c21k, _ = get(base, "/library/metadata/%s" % c21_collection)
+    blank_c21k = (coll2_c21k.get("Metadata") or [{}])[0].get("viewCount")
+    _, member_c21k, _ = get(base, "/library/metadata/%s" % movie)
+    # Only the WATCHED half is the collection's no-op: a progress write followed by a
+    # scrobble leaves the offset where an item's scrobble would have cleared it.
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=500000&state=played" % c21_collection)
+    request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+            % c21_collection)
+    _, coll3_c21k, _ = get(base, "/library/metadata/%s" % c21_collection)
+    kept_c21k = (coll3_c21k.get("Metadata") or [{}])[0].get("viewOffset")
+
+    def _state_slot_c21k(row_c21k, anchor_c21k):
+        """Where the state block sits relative to the row's own anchor."""
+        keys_c21k = [k_c21k for k_c21k in row_c21k
+                     if k_c21k in ("userRating", "viewOffset", "viewCount",
+                                   "lastViewedAt", "lastRatedAt", anchor_c21k)]
+        return keys_c21k
+
+    check("a collection and a playlist take every state write",
+          all(code_c21k == 200 for code_c21k in codes_c21k.values())
+          and collection_c21k.get("userRating") == 8.0
+          and playlist_c21k.get("userRating") == 8.0
+          and playlist_c21k.get("viewCount") is None
+          and listed_c21k.get("viewCount") == 2 and blank_c21k is None
+          and (member_c21k.get("Metadata") or [{}])[0].get("userRating") is None
+          and _state_slot_c21k(collection_c21k, "ratingCount")
+          == ["ratingCount", "userRating", "lastRatedAt"]
+          and _state_slot_c21k(listed_c21k, "composite")
+          == ["composite", "userRating", "viewCount", "lastViewedAt", "lastRatedAt"]
+          and list(collection_c21k).index("userRating") < list(collection_c21k).index("thumb")
+          and list(listed_c21k).index("userRating") < list(listed_c21k).index("duration")
+          and not [k_c21k for k_c21k in ("userRating", "viewCount", "lastViewedAt",
+                                         "lastRatedAt", "viewOffset")
+                   if k_c21k in single_row_c21k]
+          and kept_c21k == 500000,
+          "%s | collection %r %s | playlist %r %s | single %s | scrobbled %r/%r"
+          % (codes_c21k, collection_c21k.get("userRating"),
+             _state_slot_c21k(collection_c21k, "ratingCount"),
+             playlist_c21k.get("userRating"), _state_slot_c21k(listed_c21k, "composite"),
+             [k_c21k for k_c21k in ("userRating", "viewCount") if k_c21k in single_row_c21k],
+             listed_c21k.get("viewCount"), blank_c21k)
+          + " | kept %r" % (kept_c21k,))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -9700,7 +9700,7 @@ class PlexSim:
         if refusal:
             return None, refusal
         key = str(raw).rsplit("/", 1)[-1]
-        row = self.catalog.items.get(int(key)) if key.isdigit() else None
+        row = self.library.state_row(int(key)) if key.isdigit() else None
         if row is None or query.get("identifier") != "com.plexapp.plugins.library":
             return None, ("error", 404, "plexsim: no such item")
         return row, None
@@ -10833,9 +10833,11 @@ class PlexSim:
                                      "librarySectionID": -1, "type": "playlist",
                                      "title": ""})
                 # Measured: the CREATE response omits `content` the same way the
-                # list does; only /playlists/{id} carries it.
+                # list does; only /playlists/{id} carries it. Cycle 21: it omits the
+                # per-user-state block too, although the playlist is already born
+                # `viewCount: 1` -- `/playlists` shows the 1 that this response does not.
                 return self.bare_container(
-                    size=1, Metadata=[self.library._playlist_row(playlist)])
+                    size=1, Metadata=[self.library._playlist_row(playlist, state=False)])
             rows = self.library.playlists(query.get("playlistType"))
             # Cycle 16, measured on plexscratch: this listing FILTERS. plexsim honoured
             # only `smart=0`, so a library's Recent Playlists shelf -- keyed by
@@ -10944,7 +10946,8 @@ class PlexSim:
                 return ("empty", 200)
             return self.bare_container(
                 size=1,
-                Metadata=[self.library._playlist_row(playlist, content=True)])
+                Metadata=[self.library._playlist_row(playlist, content=True,
+                                                     state=False)])
 
         leaf = segments[2]
         if leaf == "items":
