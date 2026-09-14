@@ -1958,6 +1958,13 @@ class PlexSim:
             if row.get("type") == "movie":
                 steps.append((label, label))
             elif row.get("type") == "show":
+                # Cycle 19, measured on plexscratch with a control write first: a show
+                # library's scan names the SHOW itself in a `progress` row BEFORE its
+                # seasons -- `Scanning Firefly (2002)`, then `.../Season 02`, `.../Season
+                # 01` -- and that first row has no matching activity update of its own.
+                # plexsim emitted only the per-season rows, so the Dashboard never named
+                # the series being scanned.
+                steps.append((label, None))
                 seasons = sorted(self.catalog.children(row["ratingKey"]),
                                  key=lambda s: -int(s.get("index") or 0))
                 for season in seasons:
@@ -1965,13 +1972,19 @@ class PlexSim:
                     steps.append(("%s/%s" % (label, name), "%s - %s" % (label, name)))
                 if not seasons:
                     steps.append((label, label))
-        for number, (message, subtitle) in enumerate(steps, 1):
+        counted = [step for step in steps if step[1] is not None]
+        number = 0
+        for message, subtitle in steps:
             self.notify_progress("Scanning %s" % message)
+            if subtitle is None:
+                # The show's own row is a `progress` frame and nothing else.
+                continue
+            number += 1
             # The Context names the library the activity belongs to -- measured on every
             # `updated` frame of a scan, and the client keys the Libraries page's progress
             # bar on it. plexsim sent none, so a scan showed no progress against a library.
             activity.update(subtitle=subtitle,
-                            progress=int(round(number * 99.0 / len(steps))),
+                            progress=int(round(number * 99.0 / len(counted))),
                             Context={"librarySectionID": str(section_id)})
             self.notify_activity(activity, "updated")
         activity["progress"] = 100
@@ -1981,8 +1994,13 @@ class PlexSim:
         # between the section activity's last `updated` and its `ended`; the inner one
         # runs after the completion status; then the inner ends and the outer ends. Four
         # frames plexsim pushed none of, and the Activity pane draws a row for each.
+        # Cycle 19: this activity -- and only this one -- is `cancellable: true` on the
+        # reference. Measured across four started/ended pairs on plexscratch while every
+        # `library.update.section` and `library.update.item.metadata` beside them is
+        # false. plexsim sent false, so the Dashboard drew no Cancel control for the one
+        # activity that has one.
         outer = {"uuid": str(uuid.uuid4()), "type": "provider.subscriptions.process",
-                 "cancellable": False, "userID": 1, "title": "Processing subscriptions",
+                 "cancellable": True, "userID": 1, "title": "Processing subscriptions",
                  "subtitle": "", "progress": 0}
         self.notify_activity(outer, "started")
         self.notify_activity(activity, "ended")
