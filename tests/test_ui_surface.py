@@ -4488,10 +4488,22 @@ def main():
           [a.get("identifier") for a in agent_rows]
           == ["tv.plex.agents.movie", "tv.plex.agents.none"],
           ",".join(str(a.get("identifier")) for a in agent_rows))
+    # Cycle 21: the list is read from the XML, because this endpoint writes its
+    # `Language` rows as repeated JSON KEYS and a parser keeps only the last -- which
+    # is what both references do and what plexsim now does. zen carries 150 Language
+    # elements here and kids 195, and exactly one of each agent's carries `default="1"`.
+    _, agents_xml_c21, _ = request(base, "GET", "/system/agents?mediaType=1", want_json=False)
+    movie_agent_xml_c21 = next(
+        (a_c21 for a_c21 in ET.fromstring(agents_xml_c21).iter("Agent")
+         if a_c21.attrib.get("identifier") == "tv.plex.agents.movie"), None)
+    languages_c21 = list(movie_agent_xml_c21.iter("Language")) if movie_agent_xml_c21 is not None else []
     check("an agent's languages carry the default the dialog preselects",
-          len(movie_agent.get("Language") or []) > 20
-          and [l.get("code") for l in movie_agent.get("Language") or [] if l.get("default")]
-          == ["en-US"], "%d language(s)" % len(movie_agent.get("Language") or []))
+          len(languages_c21) > 20
+          and [l_c21.attrib.get("code") for l_c21 in languages_c21
+               if l_c21.attrib.get("default")] == ["en-US"]
+          and isinstance(movie_agent.get("Language"), dict),
+          "%d language(s) in XML, JSON keeps %r"
+          % (len(languages_c21), movie_agent.get("Language")))
     status, _, _ = get(base, "/system/agents?mediaType=abc")
     check("a non-numeric agent media type is a 400", status == 400, "HTTP %s" % status)
     statuses = [get(base, path)[0] for path in (
