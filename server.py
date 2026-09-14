@@ -10768,6 +10768,27 @@ class Handler(BaseHTTPRequestHandler):
     # a ThreadingHTTPServer thread for the life of the process.
     timeout = 20
 
+    def parse_request(self):
+        """Refuse a malformed request header the way a real PMS does -- measured.
+
+        Cycle 16 on kids and zen: a header line with no colon, a TAB anywhere in a
+        value (a space is fine), a name over 1024 bytes and a value over 4096 are each
+        a 400. plexsim accepted all of them and only refused at Python's own 64 KiB
+        line limit, answering Python's HTML error page rather than a 400.
+        """
+        if not BaseHTTPRequestHandler.parse_request(self):
+            return False
+        for name, value in self.headers.items():
+            if len(name) > 1024 or len(value) > 4096 or "\t" in value:
+                self.send_error(400)
+                return False
+        # `email` keeps a line with no colon as a defect rather than a header, so the
+        # header object has to be asked about them directly.
+        if getattr(self.headers, "defects", None):
+            self.send_error(400)
+            return False
+        return True
+
     def handle_expect_100(self):
         """A real PMS never sends `100 Continue` -- measured on kids and zen.
 
