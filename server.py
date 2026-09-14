@@ -4246,9 +4246,14 @@ class PlexSim:
             # "this endpoint exists and is empty" -- so it falls through to the 404.
             rows = [r for r in self.typed_rows(section_id, query)
                     if not r.get("viewCount")]
+            # Cycle 16, measured on kids and zen: like every other container a SHOW
+            # library answers, this one carries `nocache`; a movie library's does not.
+            # plexsim already had the rule on /all and the five subsets and had missed
+            # it here alone.
+            extra = {"nocache": True} if section.get("type") == "show" else {}
             return self.listing_container(
                 section_id, section, [_listing_row(r) for r in rows],
-                title2=SECONDARY_TITLES["unwatched"])
+                title2=SECONDARY_TITLES["unwatched"], **extra)
         if leaf == "search":
             # Measured again, more carefully than the first time: only the form
             # with NO `type` is a 400. With a type this is a real listing, whose

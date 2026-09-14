@@ -11502,6 +11502,19 @@ def main():
              want_c16d, bucket_c16d[1].get("title2"),
              len(lower_c16d.get("Metadata") or [])))
 
+
+    # Cycle 16, measured on kids and zen: a SHOW library's `/unwatched` carries
+    # `nocache: true` like every other container it answers, and a movie library's
+    # does not. plexsim carried it on /all, /newest, /recentlyAdded, /onDeck,
+    # /recentlyViewed, /allLeaves and /folder and dropped it on exactly this one, so
+    # the Unplayed view was the single show-library listing a client was free to
+    # cache.
+    unwatched_c16e = get(base, "/library/sections/%s/unwatched" % show_section)[1]
+    movies_c16e = get(base, "/library/sections/%s/unwatched" % movie_section)[1]
+    check("a show library's /unwatched carries nocache and a movie library's does not",
+          unwatched_c16e.get("nocache") is True and "nocache" not in movies_c16e,
+          "show=%r movie=%r" % (unwatched_c16e.get("nocache"), movies_c16e.get("nocache")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
