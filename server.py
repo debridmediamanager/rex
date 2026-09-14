@@ -3031,10 +3031,15 @@ class PlexSim:
         if route in ("/:/prefs", "/:/prefs/"):
             if method == "PUT":
                 return self.set_prefs(query)
-            if method != "GET":
+            if method not in ("GET", "HEAD"):
                 # Measured: a POST here is a 404 -- plexsim answered the whole
                 # Setting list to any verb, so a client that posted by mistake got
                 # a success and the settings page never showed an error.
+                #
+                # Cycle 19: the HEAD is a 200 on kids (42,920 bytes), zen (43,488) and
+                # plexscratch (33,909) alike, and plexsim 404'd it -- the one
+                # disagreement in a HEAD sweep over sixty paths and four servers, and a
+                # breach of its own rule that a read-only route answers GET and HEAD.
                 return ("error", 404, "plexsim: not found")
             settings = self.server_prefs()
             return self.bare_container(size=len(settings), Setting=settings)
