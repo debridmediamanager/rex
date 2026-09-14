@@ -15521,6 +15521,40 @@ def main():
           all(code_c20h == 200 for code_c20h in grouped_c20h.values())
           and all(code_c20h == 500 for code_c20h in refused_c20h.values()),
           "%s | still refused %s" % (grouped_c20h, refused_c20h))
+
+    # Cycle 20 needs two seasons it can rename; the fixture's four are all `Season N`.
+    c20_seasons = [r_c20.get("ratingKey") for r_c20 in
+                   (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                    .get("Metadata") or [])]
+    c20_season_a = c20_seasons[-1] if c20_seasons else None
+    c20_season_b = c20_seasons[-2] if len(c20_seasons) > 1 else None
+
+    # Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
+    # labels, not one. Beside `Season N` it writes `Specials` for season 0 (4 rows) and
+    # `[Unknown Season]` for a season with no index at all (5 rows), and all three are
+    # stored NOWHERE -- `titleSort=` answers 740 of the 741, `title=Specials` and
+    # `title=Unknown` answer 0, `/search?type=3&query=specials` answers 0, and the `#`
+    # bucket of the firstCharacter listing holds all 740. Cycle 18 built the rule for
+    # `Season N` only, so a Specials season answered the search box, filed under `S`
+    # and sorted among the titled rows.
+    request(base, "PUT", "/library/metadata/%s?title.value=Specials" % c20_season_a)
+    request(base, "PUT", "/library/metadata/%s?title.value=%%5BUnknown%%20Season%%5D"
+            % c20_season_b)
+    _, generated_c20r, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
+    matched_c20r = {str(r_c20r.get("ratingKey"))
+                    for r_c20r in (generated_c20r.get("Metadata") or [])}
+    searched_c20r = get(base, "/library/sections/%s/search?type=3&query=specials"
+                        % show_section)[1].get("size")
+    titled_c20r = get(base, "/library/sections/%s/all?type=3&title=Specials"
+                      % show_section)[1].get("size")
+    _, bucket_c20r, _ = get(base, "/library/sections/%s/firstCharacter/%%23?type=3" % show_section)
+    check("Specials and [Unknown Season] are generated titles too",
+          str(c20_season_a) in matched_c20r and str(c20_season_b) in matched_c20r
+          and searched_c20r == 0 and titled_c20r == 0
+          and {str(r_c20r.get("ratingKey")) for r_c20r in (bucket_c20r.get("Metadata") or [])}
+          >= {str(c20_season_a), str(c20_season_b)},
+          "titleSort= %s | search %s | title= %s | #%s"
+          % (sorted(matched_c20r), searched_c20r, titled_c20r, bucket_c20r.get("size")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
