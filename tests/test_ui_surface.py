@@ -15987,6 +15987,45 @@ def main():
           all(edits_c20k[field_c20k] == (200, True) for field_c20k in lockable_c20k)
           and edits_c20k["bogusXY"] == (400, False) and word_c20k == 500,
           "%s | absoluteIndex=ZZQ1 %s" % (edits_c20k, word_c20k))
+
+    # Cycle 20, measured column by column on plexscratch with `12` and with `ZZQ1`: the
+    # SECTION save path reads every numeric column where the item path reads three.
+    # Seven parse (`addedAt`, `duration`, `parentIndex`, `ratingCount`, `updatedAt`,
+    # `createdAt`, `contentRatingAge`: 200 for the number, 500 for the word) and eight
+    # refuse outright, with a 500 even for a valid number (`viewCount`, `lastViewedAt`,
+    # `skipCount`, `viewOffset`, `type`, `viewedLeafCount`, `mediaCount`, `extraType`).
+    # Five of the seven really STORE -- `updatedAt`, `addedAt`, `ratingCount`,
+    # `contentRatingAge` and an episode's `index` -- while `duration` and `parentIndex`
+    # parse and change nothing. It is the Edit dialog's own save path, so a form
+    # carrying an unreadable number in any of fifteen fields is refused whole by a real
+    # PMS; plexsim answered 200 to all of them.
+    def section_put_c20l(field_c20l, value_c20l):
+        return request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&%s.value=%s"
+                       % (movie_section, movie, field_c20l, value_c20l))[0]
+
+    parsed_c20l = {field_c20l: (section_put_c20l(field_c20l, "12"),
+                                section_put_c20l(field_c20l, "ZZQ1"))
+                   for field_c20l in ("addedAt", "duration", "parentIndex", "ratingCount",
+                                      "createdAt", "contentRatingAge")}
+    refused_c20l = {field_c20l: (section_put_c20l(field_c20l, "12"),
+                                 section_put_c20l(field_c20l, "ZZQ1"))
+                    for field_c20l in ("viewCount", "lastViewedAt", "skipCount", "viewOffset",
+                                       "type", "viewedLeafCount", "mediaCount", "extraType")}
+    section_put_c20l("ratingCount", "43")
+    section_put_c20l("contentRatingAge", "14")
+    status_stamp_c20l = section_put_c20l("updatedAt", "1500000000")
+    _, stored_c20l, _ = get(base, "/library/metadata/%s" % movie)
+    row_c20l = (stored_c20l.get("Metadata") or [{}])[0]
+    check("the section save path reads every numeric column",
+          all(codes_c20l == (200, 500) for codes_c20l in parsed_c20l.values())
+          and all(codes_c20l == (500, 500) for codes_c20l in refused_c20l.values())
+          and status_stamp_c20l == 200 and row_c20l.get("updatedAt") == 1500000000
+          and row_c20l.get("ratingCount") == 43 and row_c20l.get("contentRatingAge") == 14
+          and str(row_c20l.get("thumb") or "").endswith("/1500000000"),
+          "parsed %s | refused %s | stored %s"
+          % (parsed_c20l, refused_c20l,
+             {k_c20l: row_c20l.get(k_c20l)
+              for k_c20l in ("updatedAt", "ratingCount", "contentRatingAge", "thumb")}))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
