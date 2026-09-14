@@ -14180,6 +14180,33 @@ def main():
     status, _, _ = get(base, "/playlists?resolution=1080")
     check("a resolution inside the enum is still a 200", status == 200, "%s" % status)
 
+    # Cycle 18, measured on kids and zen over 76 candidate names: `/hubs` and a SHOW
+    # library's `/hubs/sections/{id}` answer a 500 to exactly fifteen field names with any
+    # non-empty value, whatever operator follows; an empty value is a 200, an unknown field
+    # is a 200, and a MOVIE library's hub page takes all fifteen. plexsim answered 200
+    # everywhere, so anything sweeping the surface read a hub path as "a listing with the
+    # listing grammar", which it is not.
+    fields = ("duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount",
+              "viewOffset", "userRating", "unwatched", "resolution", "hdr", "mediaSize",
+              "file", "parentIndex", "slug", "group")
+    bad = [f for f in fields if get(base, "/hubs?%s=1" % f)[0] != 500]
+    check("/hubs refuses all fifteen", not bad, "%s" % bad[:5])
+    bad = [f for f in fields
+           if get(base, "/hubs/sections/%s?%s=1" % (show_section, f))[0] != 500]
+    check("and a show library's hub page refuses them too", not bad, "%s" % bad[:5])
+    bad = [f for f in fields
+           if get(base, "/hubs/sections/%s?%s=1" % (movie_section, f))[0] != 200]
+    check("while a movie library's takes all fifteen", not bad, "%s" % bad[:5])
+    bad = [f for f in fields if get(base, "/hubs?%s=" % f)[0] != 200]
+    check("an EMPTY value is a 200 on every one", not bad, "%s" % bad[:5])
+    check("and an unknown field is still a 200", get(base, "/hubs?zzznotafield=1")[0] == 200,
+          "%s" % get(base, "/hubs?zzznotafield=1")[0])
+    check("every other hub path still answers",
+          get(base, "/hubs/home/recentlyAdded?unwatched=1")[0] == 200
+          and get(base, "/hubs/search?query=a&unwatched=1")[0] == 200,
+          "%s %s" % (get(base, "/hubs/home/recentlyAdded?unwatched=1")[0],
+                     get(base, "/hubs/search?query=a&unwatched=1")[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

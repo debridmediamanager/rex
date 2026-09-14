@@ -718,6 +718,31 @@ def plugin_container(route):
             "Directory": [{"key": name, "title": name} for name in rows]}
 
 
+# Cycle 18, measured on kids (1.43.4) and zen (1.42.2) over 76 candidate field names:
+# `/hubs`, and a SHOW library's `/hubs/sections/{id}`, answer a 500 to exactly these
+# fifteen -- with ANY non-empty value and whatever operator follows the name
+# (`unwatched=0`, `viewCount>>=1`, `file!=a` alike). An EMPTY value is a clean 200, and
+# an unknown field is a 200. A MOVIE library's `/hubs/sections/{id}` answers 200 to all
+# fifteen, and every other hub path (`/hubs/home/recentlyAdded`, `/hubs/promoted`,
+# `/hubs/search`, `/hubs/metadata/{id}/related`) answers 200 too. plexsim answered 200
+# everywhere. Five runs per case on each server; deterministic.
+#
+# The server-wide `/hubs` half cannot be attributed further than this: both references
+# hold a show library, so "always" and "because a show library exists" are the same
+# measurement there. plexsim refuses on the same terms.
+HUB_REFUSED_FIELDS = ("duration", "lastViewedAt", "lastRatedAt", "viewCount", "skipCount",
+                      "viewOffset", "userRating", "unwatched", "resolution", "hdr",
+                      "mediaSize", "file", "parentIndex", "slug", "group")
+
+
+def hub_refusal(query):
+    """A 500 if this hub request names one of the fifteen with a value."""
+    for key, value in query.items():
+        if key.rstrip("<>=!") in HUB_REFUSED_FIELDS and str(value or "").strip():
+            return ("error", 500, "plexsim: cannot filter a hub on %s" % key)
+    return None
+
+
 class Catalog:
     """The library plexsim serves, loaded from a JSON file.
 
@@ -3582,6 +3607,9 @@ class PlexSim:
 
         # -- hubs --------------------------------------------------------
         if route == "/hubs":
+            refusal = hub_refusal(query)
+            if refusal:
+                return refusal
             return self.hubs(query)
         if route == "/hubs/metadata":
             return ("error", 404, "plexsim: not found")
@@ -7648,6 +7676,12 @@ class PlexSim:
         """
         section = self.catalog.section(section_id) or {}
         is_show = section.get("type") == "show"
+        # Cycle 18: the refusal is the SHOW library's, measured on kids' section 2 and
+        # on zen's sections 2 and 4; a movie library answers 200 to all fifteen.
+        if is_show:
+            refusal = hub_refusal(query)
+            if refusal:
+                return refusal
         title = section.get("title") or ""
         items = self.catalog.section_items(section_id)
         episodes = [r for r in self.catalog.items.values()
