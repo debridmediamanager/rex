@@ -5193,6 +5193,264 @@ written from a refusal list has to say which verbs were on it.
   provenance records why.
 
 
+#### The eighteenth pass — the container, the write surface below the collection item, and the title a server generates
+
+Two hunters and a driver round. **Territory A** took the dimension left after the row:
+the CONTAINER — every `MediaContainer` attribute, endpoint by endpoint, against both
+references. **Territory B** took the write surface one level below the collection item
+path: the playlist item path's verb table, the `/library/sections/{id}/prefs` family per
+TYPE, and the `/actions/` family. The driver's own round started from the one rule the
+row sweep had left half-measured — `titleSort` — and found the family this cycle is
+really about: **a title the server GENERATES is stored nowhere**.
+
+**26 findings implemented** over 28 commits, each re-measured by the driver before any
+code was written and each committed with a check proved to fail against its own parent.
+
+##### A title the server generates is stored nowhere
+
+- **A generated title has no stored sort title.** Measured on zen (1.42.2) over 14,433
+  rows and on kids (1.43.4) over its two-season library, from three directions that
+  agree: `?titleSort=` — a bare, EMPTY value, which on this field is an equality —
+  answers exactly 740 of zen's 741 seasons, 4,630 of its 9,287 episodes, kids' one
+  unmatched season and its three unmatched episodes, and **0** of either library's
+  movies and shows; `?titleSort<<=0` answers the same sets, because the empty string
+  compares below `0`; and `/library/sections/{id}/firstCharacter/%23` answers them while
+  every LETTER bucket of a season list answers none. That last one is the other half of
+  cycle 16's "the axis counts by the SHOW's sort title and the listing filters on the
+  row's own": the listing half was implemented reading the row's TITLE where the row
+  stores no sort title, so plexsim's seasons bucketed under `S`.
+- **And it is not in the search index either.** Measured on plexscratch with a control:
+  the copy's season 11 is titled `Season 2` and `/library/sections/2/search?type=3&
+  query=season` answers NOTHING, while the same season renamed `Zulu Season Probe`
+  answers to `zulu`, to `season` and to `probe`; its three unmatched episodes
+  (`Episode 1`–`3`) answer nothing to `query=episode` while `The Train Job` answers
+  `train`. The `title` FILTER agrees on zen: `type=3&title=Season` is 0 of 741 seasons,
+  and `type=4&title=Episode` is 203 of 9,287 — exactly the agent-supplied `Episode N`
+  titles, the rows carrying `plex://episode` guids. The generated title is composed for
+  DISPLAY and stored in no column a query can reach. It **refutes** territory A's reading
+  that a section's search box never returns seasons: it returns the ones whose title
+  somebody typed.
+- What tells a generated title from an agent-supplied one is not visible on the row:
+  kids' season 7 is titled `Season 1` by TMDB and stores it, and 176 of zen's episodes
+  are titled `Episode N` by their agent and store it too. plexsim generates every season
+  title it has, so it decides on the title FORM — a proxy for the mechanism, recorded in
+  HANDOVER 3.3.
+
+##### The fold reaches eleven characters NFD cannot
+
+- **Eleven Latin-1 characters fold in `titleSort`, and the map is not a
+  transliteration.** Swept character by character on plexscratch over every codepoint
+  from U+0080 to U+02FF that NFD leaves alone — 282 alphabetic and 106 non-alphabetic —
+  by writing a title with each one in the middle and reading back the sort title:
+  `Æ→E`, `Ð→D`, `×→x`, `Ø→0`, `Þ→P`, `ß→s`, `æ→e`, `ð→O`, `÷→/`, `ø→0`, `þ→p`. `Ø` and
+  `ø` become the DIGIT ZERO and `ð` a capital `O`, which is what makes the table a
+  measurement rather than something anyone would write down from a language. Two of the
+  eleven are witnessed on zen's real library — `Død Kalm` sorts as `D0d Kalm` and
+  `Dæmonicus` as `Demonicus` — and that is what found the gap: plexsim folded combining
+  marks only, so both rows carried no `titleSort` at all where a real PMS sends one.
+  Nothing above U+02FF folds, which zen's 51 surviving non-ASCII rows already implied.
+- **The bare `title=` matcher also reads the row's ORIGINAL title, and only it does.**
+  Measured on zen over all 3,887 rows: `title=the` answers 1,484 where the title alone
+  explains 1,481 — the three extras are `Interstate 60` ("Interstate 60: Episodes of the
+  Road"), `Millennial Killer` ("The Millennial Killer") and `Vae Victis` ("The Art of
+  Evil") — `title=B` is 815 against 807 and `title=art` 7 against 6. Held out over 24
+  (operator, value) pairs: `title!=`, `==`, `!==`, `<=` and `>=` all reproduce exactly on
+  the title and DISAGREE once the original title is added. A client searching a foreign
+  film by its own-language title finds it on a real PMS.
+- **On an UNLISTED string field the four ordering keys really ORDER.** Cycle 14 measured
+  that `titleSort`, `summary`, `tagline` and `originalTitle` take `>>`/`<<` where an
+  advertised field ignores them, and plexsim allowed the operators and then fell through
+  to CONTAINMENT — so `titleSort<<=0` matched every row whose title happens to hold a
+  `0`. Measured on zen: all four keys are a case-insensitive LEXICOGRAPHIC comparison and
+  both sides are STRICT. `titleSort<<=B` answers 127 and `>>=B` 3,760, which partition
+  the library exactly; `<<=Ba` answers 128, taking in `B2: Stealth at War`; `B` and `b`
+  agree to the row; and against a value a row holds exactly (`Baasha`) the two answer
+  128 + 3,758 of 3,887 — that row is in NEITHER set. `<=` and `>=` are not begins-with
+  and ends-with here, although they still are on an ADVERTISED string field, where zen's
+  `title<=B` is 136 rows beginning with B and `title>=ing` 26 ending in `ing`.
+
+##### The container, endpoint by endpoint
+
+- **`/library/sections/{id}/search?type=N` types its container from the ASKED type, not
+  from the library.** Measured on kids and zen over two movie libraries and three show
+  ones: `type=3` answers `viewGroup="season"` and `viewMode` **65593**, `type=4` answers
+  `viewGroup="episode"` and `mixedParents: 1`, and a MOVIE library answers both to the
+  same parameters. The section GRID is the other way round and keeps the library's own
+  type, which plexsim had right; only `/search` retypes. `/library/sections/{id}`
+  advertises `search?type=2` and `search?type=4` as its own rows, so this is the path
+  the library search menu takes — and at `type=3` plexsim handed the client the EPISODE
+  layout for a season list, which is the exact inversion behind the Seasons bug.
+- **`All <library title>` for a movie library, the constant `All Shows` for a show
+  one.** Measured on kids ("Movies", "TV Shows"), zen ("Zen Movies", "Zen Shows", "Bench
+  TV") and in both places the string appears — the `/all` container's `title2` and the
+  `all` pivot row. plexsim composed the container's title2 for a show library ("All
+  Debrid TV") and hardcoded "All Movies" for a movie library's pivot row: each half
+  wrong in the opposite place, and the two lines contradicted each other in the same
+  file. Not localised — zen answers the same string in de and fr.
+- **`/library/recentlyAdded?limit=N` really caps, and rewrites `totalSize` with the
+  cap**, so a client cannot page past it. Its grammar is a third one: `limit=0` answers
+  ZERO rows where a section listing answers one, a NEGATIVE value lifts the server's own
+  50-row cap, and an unparseable one is IGNORED where a section listing is a 500.
+- **`/status/sessions/history/all` takes `limit=` too, and refuses `group=` with a
+  400** — the empty form included, where cycle 15 found `group=` reaches the section
+  `allLeaves`. `limit=-1` means ZERO rows here, where the same value lifts the cap on
+  `/library/recentlyAdded` and means "every row" on a section listing: three endpoints,
+  three meanings.
+- **`parentIndex=` and a `resolution=` outside the enum are 500s on `/library/all` and
+  on `/playlists`** as well as on a section listing. Cycle 15 recorded the `parentIndex`
+  rule and it was wired into the section listing alone — the class-C shape — so
+  python-plexapi and the SDKs read plexsim's 200 as "this field filtered nothing".
+- **`/hubs`, and a SHOW library's `/hubs/sections/{id}`, refuse fifteen filter keys with
+  a 500**: `duration`, `lastViewedAt`, `lastRatedAt`, `viewCount`, `skipCount`,
+  `viewOffset`, `userRating`, `unwatched`, `resolution`, `hdr`, `mediaSize`, `file`,
+  `parentIndex`, `slug`, `group`. Enumerated over 76 candidate names on kids' section 2
+  and zen's sections 2 and 4: any non-empty value refuses whatever operator follows, an
+  EMPTY value is a clean 200, an unknown field is a 200, and a MOVIE library's hub page
+  takes all fifteen. The server-wide `/hubs` half cannot be attributed further — both
+  references hold a show library, so "always" and "because a show library exists" are
+  the same measurement there.
+- **`/system` PAGES**, and it is the counterexample to cycle 9's "a plug-in framework
+  container (`noHistory`) is left alone" — a rule inferred from `/system/scanners/{N}`,
+  which really does ignore paging. `Start=1&Size=1` answers one row and `totalSize="2"`,
+  `Start=5` answers `size="0"`, both parameters are required as everywhere else, and the
+  response carries `X-Plex-Container-Start` and `-Total-Size`. It emits NO `offset` even
+  at Start=1, alone on the surface, and in XML the plug-in framework's container is
+  ordered `[totalSize,] noHistory, replaceParent, size, identifier` — the one container
+  shape cycle 16's rule does not describe.
+- **`/system/search` is a real container**: 200 on kids and zen alike, empty, carrying
+  `identifier`, `mediaTagPrefix` and a **`prefsKey`** — the only container attribute
+  either reference emits anywhere that plexsim never did — and it does not page. Found
+  by sweeping 46 second-level `/system/*` names; it is the mirror image of the three
+  endpoints cycle 14's path census found plexsim had INVENTED.
+
+##### The plug-in dispatcher, and what a verb it does not implement answers
+
+- **Four more single-segment paths are the dispatcher's own POPULATED listings**,
+  byte-identical on kids and zen: `/media` names `grabbers`, `providers`,
+  `subscriptions`; `/services` names ten services; `/status` names `sessions`;
+  `/statistics` is its empty 200 where plexsim 404'd. `/security` is the exception in the
+  other direction — a real empty container with **no `content` key at all**, which
+  plexsim had filed under the dispatcher. Cycle 17 found `/livetv` was one of these; this
+  is the rest of the family.
+- **A KNOWN single-segment path answers the dispatcher for EVERY verb it does not
+  implement.** Measured on plexscratch over sixteen paths and seven verbs: `PUT
+  /identity` and `PUT /hubs` answer `{size: 0, content: "plugins"}`, `PUT /library` the
+  dispatcher's two rows (`augmentation`, `shared`), `DELETE /devices` its empty one. The
+  recorded rule that "`/identity` and `/hubs` answer any verb" was plexsim's own GET
+  handler answering; cycle 17 landed the fallthrough for `/butler` and `/devices` alone.
+  The real writers are `POST /playlists`, `POST /playQueues` and `POST`/`DELETE
+  /butler`; `/log` is outside the rule because it validates its parameters first, so
+  every verb there is the same 400.
+- **The `/system` subtree is a different server with an envelope of its own.** Measured
+  on plexscratch over four paths and six verbs: `PATCH` is a **405** with an HTML body —
+  the one 405 on the surface, against the library server's "never 405" — a bare `OPTIONS`
+  is a 200 with an empty body, and every other unimplemented verb, and an unknown path
+  under it, is a 404 with an EMPTY body.
+
+##### The write surface below the collection item path
+
+- **The playlist item paths take one verb each**, exactly as cycle 17 found for the
+  collection's: `/playlists/{id}` GET/HEAD/PUT/DELETE, `/playlists/{id}/items` the same
+  four, `/playlists/{id}/items/{iid}` DELETE (its PUT is a 400), and
+  `.../items/{iid}/move` PUT. plexsim answered 200 to thirteen cells — a GET of ONE
+  member returned the WHOLE item listing, and so did a GET or a DELETE of `/move`. `PUT`
+  at one member is a 400 for a member id and for an unknown number alike and a 404 for an
+  id that is not a number: the SHAPE is checked before membership.
+- **`DELETE /library/metadata/{playlist}` is a 200 with an EMPTY body that deletes
+  nothing**, where `DELETE /playlists/{id}` on the same copy is a 204 that really removes
+  the row — so it is not the copy refusing a delete. plexsim answered the playlist row.
+- **A repeated `id=` on the section save path edits NOTHING** — `?id=1&id=3&
+  summary.value=x` is a 200 and neither row moves, where the comma list edits both. It is
+  the rule repeated parameters follow everywhere else on this server; plexsim took the
+  LAST one, so the same request edited a row at random.
+- **`POST` on `/split` and `/merge` is a 404**, like the three action leaves cycle 17
+  landed. plexsim PERFORMED the split on a POST — a mutation a real PMS refuses to route.
+- **A write to `/library/parts/{id}` resolves the PART first**: an unknown number, a
+  malformed id and an unparseable stream value on an unknown part are all 404s, where
+  plexsim answered 200 whenever the request named no usable stream. A track picker
+  pointed at a stale part id saw its selection applied.
+- **`/library/metadata/{id}/subtitles` answers 404 to DELETE, PATCH and OPTIONS**, where
+  plexsim answered the upload validator's 400 — a 400 says "your request was wrong", a
+  404 says "this verb is not here".
+- **A library DELETE pushes one `state 9` timeline frame per row**, measured with a
+  control write first: `type: 12`, `metadataState: "deleted"`, an EMPTY title and
+  `sectionID` the NEGATIVE section id, between the 10% and 40% activity updates. A
+  nine-row library produced 14 of them on the copy, keyed on the server's own internal
+  metadata ids rather than the ratingKeys. plexsim pushed the eight activity frames and
+  none of the timeline, so a client holding a row from the deleted library was never told
+  it had gone — the failure the whole notification lifecycle exists for.
+
+##### Two more fixtures reading the wrong version, and a wider table
+
+- **`section_prefs_new.json` is the FOURTH fixture found to be per VERSION**, after
+  `Meta.Type[].Filter` (cycle 14), `Meta.Type[].Field` and `system_agents.json` (cycle
+  17). It was captured off kids and differs from zen in **16 of 35** (type, agent) cells:
+  on 1.42.2 the AGENT's own settings are appended whatever the `type=` is, so
+  `type=9&agent=tv.plex.agents.movie` answers the movie agent's 12 settings where 1.43.4
+  answers only `hidden`; on 1.43.4 `tv.plex.agents.none` and `.music` add five or six
+  generic rows at types 1 and 2 that 1.42.2 does not have — the cell the Add Library
+  dialog's own "Personal Media" choice reaches; and `useSeasonTitles` belongs to the
+  SERIES AGENT on 1.42.2 and to the SHOW TYPE on 1.43.4. Every setting's own attributes —
+  type, default, label, summary, enumValues, hidden, advanced, group — are identical on
+  both versions: 0 differences over 35 settings.
+- **An item's `audioLanguage` and `subtitleLanguage` enums are led by the item's OWN
+  stream languages.** Measured on zen and kids: `:Account default`, then the item's
+  stream languages as bare 639-1 tags — audio first, then subtitles, each group ordered
+  by tag and the head deduped, each named in its own language — and then the generic
+  regional list. zen's show 6910 leads `en:English|bg:...|cs:...` against episodes
+  carrying one English audio track and fifteen subtitle languages; its show 11113 leads
+  `pa:...|en:English`; kids' Firefly leads `en:English` alone. plexsim served
+  `item_prefs.json`'s captured list to every item, so a show's own languages could not be
+  chosen in its Preferences pane — and the bare entries at the head of the captured list
+  are the captured item's own, which is what made the fixture look version-neutral.
+- **The translation table is 545 strings**, up from cycle 17's 451, over ~130 paths. The
+  five families added: every `firstCharacter` BUCKET names itself in `title2` ("Start
+  with 'A'" → `Beginne mit „A“`, with the QUOTE MARKS moving too, so the string cannot be
+  composed from a translated stem and the key); `/query/parse`'s `fieldTitle` for every
+  rule a client can build, scoped on a show library ("Show Title", "Episode Year", "Date
+  Episode Added"); the music and photo `/filters` axes (Mood, Style, Record Label, Camera
+  Make, Aperture, Lens, Tag); a music library's own prefs; and the per-library hub page's
+  shelf titles ("Recently Released Movies", "Rediscover", "Recently Watched Episodes").
+  The capture also gained a control it needed: a list item is now keyed by its own
+  `ratingKey`/`hubIdentifier`/`key`/`id` rather than by position, because
+  `/hubs/sections/{id}` picks a random genre and a random actor per request — index 3 of
+  the English document and index 3 of the German one are DIFFERENT rows, and a positional
+  diff read every attribute of them (`container: "mkv"`, an artwork path, an
+  `audienceRatingImage`) as a translation. Fetching each language twice does not catch
+  it; the identity key does, and it is the general form of cycle 17's `/system/agents`
+  exclusion. The new table is a strict superset: 0 entries dropped and 0 changed.
+
+##### A defect this cycle introduced and caught
+
+The first implementation of the fifteen hub refusals called `hub_refusal(query)` from
+inside `section_hubs`, which never receives the query — so every show library's
+Recommended tab answered a `NameError`'s 500. The patch's own check asserted a 500 for
+each refused key and PASSED, because a crash and a refusal have the same status. The full
+suite caught it four checks later, on the tab's contents. **A check that asserts an error
+status has to read something back afterwards**; the refusal now lives in the route, where
+the query exists.
+
+##### Measured and not acted on
+
+- **`/playlists/{id}` resolves any metadata ratingKey.** Both references answer 200 with
+  that item in a bare `{size: 1}` container (no `allowSync`, no identifier, no
+  librarySection triple, no `Media`, no tag lists) and 500 on its `/items`. The
+  projection is not stably characterised between them — kids' movie 1 drops `duration`
+  and zen's movie 17360 keeps it — and no client builds the path, so copying it would be
+  inventing the shape rather than measuring it. plexsim keeps its 404.
+- **The `/system` 404's missing Content-Type.** The reference sends no `Content-Type`
+  header at all on those empty 404s; plexsim's empty answers carry `text/html`. The
+  status and the empty body are reproduced; the missing header is not.
+- **The library delete's frame IDS.** They are the server's own internal metadata ids —
+  14 for a nine-row library — not the ratingKeys, and nothing in the response explains
+  the id space. plexsim frames the rows it actually removes.
+- **The butler's per-task counts, and every write rule's single witness.** As HANDOVER
+  3.3's first row says of the whole family: plexscratch is the only server that can
+  answer a write, so every write rule here has one witness.
+- **The non-English article strip and the non-alphanumeric `firstCharacter` bucket**,
+  both carried forward again: nothing this cycle touched either.
+
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

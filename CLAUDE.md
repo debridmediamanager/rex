@@ -1268,6 +1268,79 @@ precisely how the Seasons bug survived a fix attempt.
   (`/butler`, `/devices`) falls through to the plug-in dispatcher for the verbs it does not
   implement; and `GET /livetv` is that dispatcher's three-row container, not an empty one.
 
+- **A title the SERVER generated is stored NOWHERE.** A season's `Season N` and an
+  unmatched episode's `Episode N` have an EMPTY stored sort title -- `titleSort=` (a bare
+  empty value, an equality here) answers 740 of zen's 741 seasons and 4,630 of its 9,287
+  episodes, `titleSort<<=0` the same set, and every LETTER bucket of a season
+  `firstCharacter` listing answers none while `#` answers them all -- and it is in no
+  search index either: the copy's `Season 2` answers nothing to `search?type=3&
+  query=season` while the same season renamed answers at once, and zen's
+  `type=3&title=Season` is 0 of 741. An agent-supplied `Season 1`/`Episode 1` (kids'
+  season 7, 176 of zen's episodes) IS stored, and nothing on the row tells the two apart.
+- **Eleven Latin-1 characters fold in `titleSort` that NFD cannot reach**, swept
+  character by character over U+0080..U+02FF: `Æ→E Ð→D ×→x Ø→0 Þ→P ß→s æ→e ð→O ÷→/ ø→0
+  þ→p`. `Ø`/`ø` become the DIGIT ZERO and `ð` a capital `O`, so it is a table and not a
+  transliteration; zen witnesses two of them (`Død Kalm` → `D0d Kalm`). Nothing above
+  U+02FF folds.
+- **The bare `title=` matcher also reads the row's ORIGINAL title** -- and only it does:
+  `title=the` is 1,484 of zen's 3,887 where the title alone explains 1,481. `title!=`,
+  `==`, `!==`, `<=` and `>=` read the title alone.
+- **On an UNLISTED string field (`titleSort`, `summary`, `tagline`, `originalTitle`) the
+  four ordering keys really ORDER**: `<=` ≡ `<<=` and `>=` ≡ `>>=`, case-insensitive
+  lexicographic, both STRICT -- a row whose value IS the query is in neither set. They are
+  begins-with and ends-with only on an ADVERTISED string field.
+- **`/library/sections/{id}/search?type=N` types its container from the ASKED type**, not
+  from the library: `type=3` is `viewGroup=season` and `viewMode` **65593**, `type=4` is
+  `viewGroup=episode` with `mixedParents`, and a MOVIE library answers both. The section
+  GRID is the other way round and keeps the library's own type.
+- **`All <library title>` on a movie library, the constant `All Shows` on a show one** --
+  in both places the string appears, the `/all` container's `title2` and the `all` pivot
+  row. Not localised.
+- **Three endpoints, three meanings for `limit=`.** `/library/recentlyAdded?limit=N` caps
+  AND rewrites `totalSize` (0 answers none, a negative value lifts the 50-row cap, an
+  unparseable one is ignored); `/status/sessions/history/all` caps too and `-1` there
+  answers NONE; a section listing's `limit=0` answers ONE row and an unparseable one is a
+  500. `group=` on the history page is a 400.
+- **`parentIndex=` and an out-of-enum `resolution=` refuse on `/library/all` and
+  `/playlists`** as well as on a section listing.
+- **`/hubs`, and a SHOW library's `/hubs/sections/{id}`, 500 fifteen filter keys**
+  (`duration lastViewedAt lastRatedAt viewCount skipCount viewOffset userRating unwatched
+  resolution hdr mediaSize file parentIndex slug group`) for any non-empty value and
+  whatever operator; an EMPTY value and an unknown field are 200s, and a MOVIE library's
+  hub page takes all fifteen.
+- **`/system` PAGES** -- `totalSize` FIRST, no `offset`, and the response headers -- where
+  `/system/scanners/{N}` ignores paging; the plug-in framework's container is ordered
+  `[totalSize,] noHistory, replaceParent, size, identifier`. **`/system/search` is a real
+  empty container** carrying `prefsKey`. And the whole `/system` subtree has its own
+  envelope: **PATCH is a 405** (the only one on the surface), a bare OPTIONS an empty 200,
+  every other verb an EMPTY-bodied 404.
+- **Four more single-segment paths are the plug-in dispatcher's POPULATED listings** --
+  `/media` (grabbers, providers, subscriptions), `/services` (ten), `/status` (sessions),
+  `/statistics` (empty) -- and `/security` is a real empty container with NO `content` key.
+  **A KNOWN single-segment path answers the dispatcher for every verb it does not
+  implement**, `PUT /identity` and `PUT /hubs` included; the real writers are `POST
+  /playlists`, `POST /playQueues` and `POST`/`DELETE /butler`, and `/log` refuses on its
+  parameters first.
+- **The playlist item paths take one verb each**, like the collection's: `/playlists/{id}`
+  and `/items` GET/HEAD/PUT/DELETE, `/items/{iid}` DELETE (PUT is a 400, a non-numeric id
+  a 404), `/items/{iid}/move` PUT. **`DELETE /library/metadata/{playlist}` is an empty 200
+  that deletes NOTHING** where `DELETE /playlists/{id}` is a 204 that does.
+- **A repeated `id=` on the section save path edits nothing** (the comma list edits both);
+  **`POST` on `/split` and `/merge` is a 404** like the other action leaves; **a write to
+  `/library/parts/{id}` resolves the part FIRST** (an unknown or malformed id is a 404
+  whatever the parameters); and **`/subtitles` answers 404 to DELETE, PATCH and OPTIONS**.
+- **A library DELETE pushes one `state 9 deleted` frame per row** -- `type: 12`, an EMPTY
+  title, `sectionID` the NEGATIVE section id -- between the 10% and 40% activity updates.
+- **`section_prefs_new.json` is per VERSION too** (the fourth such fixture): on 1.42.2 the
+  AGENT's settings are appended whatever the `type=`, and 1.43.4 adds five generic rows to
+  `tv.plex.agents.none` at types 1 and 2. Every setting's own attributes are identical.
+- **An item's `audioLanguage`/`subtitleLanguage` enum is led by the ITEM's own stream
+  languages** -- bare 639-1 tags, audio first then subtitles, each named in its own
+  language -- before the generic regional list.
+- **A check that asserts an ERROR status cannot tell a refusal from a crash.** Cycle 18's
+  hub refusal passed its own fail-then-pass proof while raising a `NameError`, because a
+  crash is also a 500. Read something back afterwards.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
