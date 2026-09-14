@@ -6148,8 +6148,20 @@ class PlexSim:
                 # Measured: the plural path is a 404 for a write.
                 return ("error", 404, "plexsim: not found")
             if method == "POST":
+                # Cycle 15, measured on the copy: an empty body is a 406, not the
+                # 400 plexsim answered.
+                if not body:
+                    return ("error", 406, "plexsim: not acceptable")
                 return self.upload_artwork(row, leaf, body)
             return self.artwork_list(row, leaf)
+        if leaf in ("thumbs", "banners", "themes", "clearLogos") and method == "POST":
+            # Cycle 15, measured on the copy: every artwork candidate list answers a
+            # POST the same way an upload with no bytes does -- a 406. plexsim
+            # answered 404 for two of them and the candidate LISTING for the other
+            # two, and a 200 listing reads to a client as an accepted upload.
+            if not body:
+                return ("error", 406, "plexsim: not acceptable")
+            return self.upload_artwork(row, leaf, body)
         if leaf in ("banners", "thumbs"):
             # Cycle 14: two more artwork candidate lists, 200 on kids (1.43.4) AND zen
             # (1.42.2) where plexsim answered 404. `banners` is empty on both servers;
@@ -8180,6 +8192,11 @@ class PlexSim:
         -- and cycle 10 recorded the endpoint as unmeasurable on the copy, from a
         request shape the client does not send.
         """
+        # Cycle 15, measured on the copy: the EMPTY-BODY check runs FIRST. With
+        # neither a title nor bytes the answer is 406, not the 500 a missing title
+        # gets on its own -- plexsim had the two the other way round.
+        if not body:
+            return ("error", 406, "plexsim: not acceptable")
         title = str(query.get("title") or "")
         if not title or "." not in title:
             return ("error", 500, "plexsim: internal error")

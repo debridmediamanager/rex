@@ -10702,6 +10702,31 @@ def main():
           and b"DOCTYPE" not in frob_body_c15v,
           "HTTP %s body %r" % (frob_c15v, frob_body_c15v[:70]))
 
+    # Cycle 15, measured on plexscratch: POSTing an EMPTY body to any artwork or
+    # subtitle candidate list is a **406** -- `/posters`, `/arts`, `/thumbs`,
+    # `/banners`, `/themes`, `/clearLogos` and `/subtitles` alike, all seven identical.
+    # `/extras` is the one that is a 400 instead.
+    #
+    # It also refines a recorded rule. HANDOVER has the subtitle upload's "no `title`
+    # is a 500, an empty body a 406"; with NEITHER, the copy answers 406, so the
+    # empty-body check runs FIRST. plexsim checked the title first and answered 500,
+    # and answered 400/404/200 across the other six -- two of which (`/themes`,
+    # `/clearLogos`) returned the candidate LISTING to a POST, which is fix 4's trap:
+    # a client reads that as an accepted upload.
+    posts_c15n = {leaf_c15n: request(base, "POST", "/library/metadata/%s/%s" % (movie, leaf_c15n))[0]
+                  for leaf_c15n in ("posters", "arts", "thumbs", "banners", "themes",
+                                    "clearLogos", "subtitles")}
+    check("POST with an empty body to any candidate list is a 406",
+          set(posts_c15n.values()) == {406}, str(posts_c15n))
+    check("an empty body is refused before a missing title on the subtitle upload",
+          request(base, "POST", "/library/metadata/%s/subtitles" % movie)[0] == 406
+          and request(base, "POST", "/library/metadata/%s/subtitles?title=a.srt&format=srt"
+                      % movie)[0] == 406,
+          "bare %s | titled but empty %s"
+          % (request(base, "POST", "/library/metadata/%s/subtitles" % movie)[0],
+             request(base, "POST", "/library/metadata/%s/subtitles?title=a.srt&format=srt"
+                     % movie)[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
