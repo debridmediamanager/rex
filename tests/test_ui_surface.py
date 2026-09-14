@@ -15449,6 +15449,30 @@ def main():
           "%s %r -> %r | thumb %r -> %r"
           % (status_c21t, row_before_c21t.get("updatedAt"), row_after_c21t.get("updatedAt"),
              row_before_c21t.get("thumb"), row_after_c21t.get("thumb")))
+
+    # Cycle 21, measured on plexscratch over eight values: a TEXT library preference is
+    # percent-decoded a SECOND time by the setting writer, and only then escaped for
+    # storage. A wire `%%2541` is `%%41` after HTTP and `A` after the second decode; a wire
+    # `%%2525` stores `%%25`, so the stored form escapes `%%` as well as `:` and `|`, in
+    # lowercase hex; a value whose second decode FAILS (`a%%b`) is stored empty. Cycle 17's
+    # "a value carrying `%%` is stored EMPTY" was the malformed half only -- plexsim emptied
+    # every value containing one, so a ratings source with a percent escape was lost.
+    stored_c21u = {}
+    for label_c21u, wire_c21u in (("pct41", "%2541"), ("pct25", "%2525"),
+                                  ("pct3A", "%253A"), ("euro", "%25E2%2582%25AC"),
+                                  ("broken", "a%25b"), ("colon", "a%3Ab"),
+                                  ("pipe", "a%7Cb"), ("plain", "plainvalue")):
+        request(base, "PUT", "/library/sections/%s/prefs?ratingsSource=%s"
+                % (movie_section, wire_c21u))
+        stored_c21u[label_c21u] = next(
+            (s_c21u.get("value") for s_c21u in
+             get(base, "/library/sections/%s/prefs" % movie_section)[1].get("Setting") or []
+             if s_c21u.get("id") == "ratingsSource"), None)
+    check("a TEXT library preference is percent-decoded a second time",
+          stored_c21u == {"pct41": "A", "pct25": "%25", "pct3A": "%3a",
+                          "euro": "\u20ac", "broken": "", "colon": "a%3ab",
+                          "pipe": "a%7cb", "plain": "plainvalue"},
+          "%r" % (stored_c21u,))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
