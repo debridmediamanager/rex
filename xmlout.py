@@ -33,6 +33,14 @@ _METADATA_ELEMENT = {
 # the tags, then the blocks an option adds. plexsim wrote them in whatever order the
 # row dict held them -- Genre before Image, Guid after the people, Preferences after
 # Extras -- 41 pairs inverted. A child not listed keeps its place after these.
+# Cycle 19: a LIGHT row -- a section grid's, a hub shelf's, a search hit's -- puts
+# `Guid` directly after `UltraBlurColors`, before the tags, on both references. The
+# builder marks the projection with a private `_light` key because nothing in the row
+# itself distinguishes the two.
+_LIGHT_CHILD_ORDER = {name: index for index, name in enumerate((
+    "Media", "Image", "UltraBlurColors", "Guid", "Genre", "Country", "Director",
+    "Writer", "Role", "Collection", "Label", "Location"))}
+
 _CHILD_ORDER = {name: index for index, name in enumerate((
     "Media", "Image", "UltraBlurColors", "Genre", "Country", "Guid", "Rating",
     "Collection", "Director", "Writer", "Role", "Producer", "Label", "CommonSenseMedia",
@@ -339,7 +347,10 @@ def _render(name, row, out, overrides=None, container=False):
                 children.append((key, list(value)))
             elif value:
                 attrs.append((key, ",".join(_attr(v) for v in value)))
-        else:
+        elif not str(key).startswith("_"):
+            # A private key is the builder talking to this writer (`_light`), never
+            # an attribute: `_public_row` strips the catalog's own, and these are
+            # added after it.
             attrs.append((key, _format(key, value, row)))
 
     if container:
@@ -363,6 +374,9 @@ def _render(name, row, out, overrides=None, container=False):
     elif name == "Meta":
         children.sort(key=lambda child: _META_CHILD_ORDER.get(child[0],
                                                               len(_META_CHILD_ORDER)))
+    elif row.get("_light"):
+        children.sort(key=lambda child: _LIGHT_CHILD_ORDER.get(child[0],
+                                                               len(_LIGHT_CHILD_ORDER)))
     else:
         children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
     if not container:
