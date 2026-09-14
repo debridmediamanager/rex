@@ -15707,6 +15707,42 @@ def main():
           and typed_c20y["4"][1] == ["episode"] and typed_c20y["1"][2] == 0
           and typed_c20y["3"][3] == "show" and bad_c20y == 500,
           "%s | type=abc %s" % (typed_c20y, bad_c20y))
+
+    # a season to unmatch, so the library holds both kinds
+    c20_unmatched = [r_c20.get("ratingKey") for r_c20 in
+                     (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                      .get("Metadata") or [])][0]
+
+    # Cycle 20, measured on kids' two seasons and zen's 741 over all eight operators
+    # and six values: `unmatched` IGNORES the operator. Only the literal value `1`
+    # selects the unmatched rows, and it does so under `=`, `!=`, `==`, `!==`, `<=`,
+    # `>=`, `<<=` and `>>=` alike; every other value (`0`, `2`, empty, `true`, `01`)
+    # selects the matched ones under all eight. It belongs with `resolution`, which
+    # cycle 19 measured as operator-insensitive, and NOT with `unwatched`, which
+    # follows the boolean rule on both references (the control: `unwatched=1` answers
+    # every season and its seven other operators none). plexsim applied the boolean
+    # rule here, so `unmatched!=1` and `unmatched!=0` were both inverted.
+    request(base, "PUT", "/library/metadata/%s/unmatch" % c20_unmatched)
+    grid_c20z = {}
+    for label_c20z, key_c20z in (("=", ""), ("!=", "%21"), ("==", "%3D"), ("!==", "%21%3D"),
+                                 ("<=", "%3C"), (">=", "%3E"), ("<<=", "%3C%3C"),
+                                 (">>=", "%3E%3E")):
+        for value_c20z in ("1", "0", "2"):
+            rows_c20z = get(base, "/library/sections/%s/all?type=3&unmatched%s=%s"
+                            % (show_section, key_c20z, value_c20z))[1].get("Metadata") or []
+            grid_c20z[(label_c20z, value_c20z)] = sorted(str(r_c20z.get("ratingKey"))
+                                                         for r_c20z in rows_c20z)
+    true_c20z = grid_c20z[("=", "1")]
+    false_c20z = grid_c20z[("=", "0")]
+    check("unmatched ignores the operator and reads the value alone",
+          bool(true_c20z) and bool(false_c20z) and true_c20z != false_c20z
+          and all(rows_c20z == true_c20z for (_op_c20z, value_c20z), rows_c20z
+                  in grid_c20z.items() if value_c20z == "1")
+          and all(rows_c20z == false_c20z for (_op_c20z, value_c20z), rows_c20z
+                  in grid_c20z.items() if value_c20z != "1"),
+          "true %s false %s | %s" % (true_c20z, false_c20z,
+                                     {k_c20z: v_c20z for k_c20z, v_c20z
+                                      in list(grid_c20z.items())[:6]}))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
