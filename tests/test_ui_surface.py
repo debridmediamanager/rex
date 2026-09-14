@@ -12555,6 +12555,31 @@ def main():
              {k_c16a18: row_c16a18.get(k_c16a18)
               for k_c16a18 in ("year", "studio", "thumb", "art", "Field", "userRating")}))
 
+
+    # Cycle 16, correcting this cycle's own earlier commit: `smart=1` is a 400 over a
+    # comma-joined METADATA KEY LIST -- a smart list's uri has to name a LISTING -- and
+    # the first implementation refused it whenever the uri resolved to any rows at all,
+    # which a listing uri does too. So every smart playlist create was a 400. Measured
+    # on plexscratch: a listing uri is a 200 that creates a smart list, a key list is a
+    # 400 that creates nothing.
+    listing_c16f1 = request(
+        base, "POST", "/playlists?title=c16smartok&type=video&smart=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all?type=1"
+                % (machine, movie_section)))
+    keylist_c16f1 = request(
+        base, "POST", "/playlists?title=c16smartbad&type=video&smart=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))
+    made_c16f1 = json.loads(listing_c16f1[1])["MediaContainer"]["Metadata"][0] \
+        if listing_c16f1[0] == 200 else {}
+    if made_c16f1:
+        request(base, "DELETE", "/playlists/%s" % made_c16f1["ratingKey"])
+    check("a smart playlist create takes a listing uri and refuses a key list",
+          listing_c16f1[0] == 200 and made_c16f1.get("smart") is True
+          and keylist_c16f1[0] == 400,
+          "listing=%s smart=%r keylist=%s"
+          % (listing_c16f1[0], made_c16f1.get("smart"), keylist_c16f1[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

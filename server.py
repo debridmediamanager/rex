@@ -9566,7 +9566,12 @@ class PlexSim:
                 # LISTING. plexsim created one whose stored query was a key list, so
                 # its `content` named a path that selects nothing and the list was
                 # permanently empty.
-                if query.get("smart") == "1" and rows:
+                #
+                # The test is the uri's SHAPE, not whether it resolves: this cycle's
+                # first attempt refused any uri that produced rows, and a listing uri
+                # produces rows too, so every smart create became a 400.
+                if query.get("smart") == "1" \
+                        and "/library/metadata/" in (query.get("uri") or ""):
                     return ("error", 400, "plexsim: bad request")
                 playlist = self.library.create_playlist(
                     query.get("title") or "", query.get("type") or "video", rows,
