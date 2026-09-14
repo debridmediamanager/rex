@@ -12643,6 +12643,33 @@ def main():
           all(seen_c16a20 == (0, False, False) for seen_c16a20 in made_c16a20.values()),
           "%s" % made_c16a20)
 
+
+    # Cycle 16, measured on plexscratch: a playlist's artwork lives under
+    # `/library/metadata/{ratingKey}/`, not under `/playlists/{id}/`. There `posters`,
+    # `arts`, `thumbs`, `banners` and `tree` are all 200s; under `/playlists/{id}/` the
+    # same names -- `posters`, `arts`, `thumb`, `art` and the UNVERSIONED `composite` --
+    # are 404s. plexsim had it the other way round on eight of those paths, so a client
+    # following the row's own artwork URL got a 404 while a probe of a path a real PMS
+    # does not have got a 200, which is fix 4's trap from both sides at once.
+    made_c16a21 = json.loads(request(
+        base, "POST", "/playlists?title=c16paths&type=video&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    real_c16a21 = {leaf_c16a21: get(base, "/library/metadata/%s/%s"
+                                    % (made_c16a21, leaf_c16a21))[0]
+                   for leaf_c16a21 in ("posters", "arts", "thumbs", "banners", "tree")}
+    dead_c16a21 = {leaf_c16a21: request(base, "GET", "/playlists/%s/%s"
+                                        % (made_c16a21, leaf_c16a21))[0]
+                   for leaf_c16a21 in ("posters", "arts", "thumb", "art", "composite")}
+    versioned_c16a21 = request(base, "GET", "/playlists/%s/composite/1" % made_c16a21)[0]
+    request(base, "DELETE", "/playlists/%s" % made_c16a21)
+    check("a playlist's artwork paths live under /library/metadata, not /playlists",
+          all(seen_c16a21 == 200 for seen_c16a21 in real_c16a21.values())
+          and all(seen_c16a21 == 404 for seen_c16a21 in dead_c16a21.values())
+          and versioned_c16a21 == 200,
+          "metadata=%s playlists=%s versioned composite=%s"
+          % (real_c16a21, dead_c16a21, versioned_c16a21))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
