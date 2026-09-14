@@ -258,6 +258,10 @@ FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 # not in the family.
 NULL_IS_ZERO_FIELDS = {"viewCount", "viewOffset"}
 
+# The boolean-looking column whose OPERATOR a real PMS ignores: cycle 20, measured on
+# both references. Only the value decides, and only the literal `1` is true.
+OPERATOR_BLIND_BOOLEANS = {"unmatched"}
+
 
 def as_number(value):
     try:
@@ -587,6 +591,15 @@ def compare(kind, operator, actual, wanted, field=""):
         # Unplayed filter inverted for every value the client does not send.
         state = 1 if actual else 0
         wanted = str(wanted)
+        if field in OPERATOR_BLIND_BOOLEANS:
+            # Cycle 20, measured on kids' two seasons and zen's 741 over all eight
+            # operators and six values: `unmatched` IGNORES the operator entirely --
+            # only the literal `1` selects the true rows, and it does so under every
+            # operator, while every other value selects the false ones under every
+            # operator. It is `resolution`'s rule, not `unwatched`'s, and `unwatched`
+            # itself is the control: it follows the two-request boolean rule on both
+            # references. plexsim read it as a boolean, so `unmatched!=1` was inverted.
+            return state == (1 if wanted == "1" else 0)
         if (operator == "=" and wanted == "1") or (operator == "!=" and wanted == "0"):
             return state == 1
         return state == 0
