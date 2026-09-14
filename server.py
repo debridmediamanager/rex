@@ -680,6 +680,44 @@ AGENT_MEDIA_TYPES = _SYSTEM_AGENTS_DOC["mediaTypes"]
 # --------------------------------------------------------------------------
 
 
+# The legacy plug-in dispatcher's own directory listings, measured on kids (1.43.4) and
+# zen (1.42.2), which answer these byte for byte. Cycle 17 found `/livetv` was one of
+# them; cycle 18 swept the rest. A path not named here answers the empty
+# `{size: 0, content: "plugins"}` every unknown single-segment path does -- except
+# `/security`, which carries no `content` key at all.
+PLUGIN_ROWS = {
+    "/library": ["augmentation", "shared"],
+    "/status": ["sessions"],
+    "/media": ["grabbers", "providers", "subscriptions"],
+    "/services": ["browse", "clustering", "codecs", "defaultLibraries", "iva",
+                  "lyricfind", "songkick", "thetvdb", "tmdb", "ultrablur"],
+    "/livetv": ["dvrs", "epg", "sessions"],
+}
+
+# The single-segment paths that really implement a verb other than GET/HEAD. Measured
+# on plexscratch: everything else falls through to the dispatcher, including
+# `PUT /identity` and `PUT /hubs`, which a recorded rule had answering their own GET.
+# `/log` is not here because it validates its parameters before the verb, so every
+# verb on it is the same 400.
+SINGLE_SEGMENT_WRITERS = {("POST", "/playlists"), ("POST", "/playQueues"),
+                          ("POST", "/butler"), ("DELETE", "/butler"),
+                          ("POST", "/log"), ("PUT", "/log"), ("DELETE", "/log"),
+                          ("PATCH", "/log"), ("OPTIONS", "/log")}
+
+
+def plugin_container(route):
+    """The dispatcher's answer for one single-segment path."""
+    if route == "/security":
+        # Measured on both references: a real (empty, paged) container with no
+        # `content` at all -- the one place plexsim let the dispatcher leak.
+        return {"size": 0}
+    rows = PLUGIN_ROWS.get(route)
+    if not rows:
+        return {"size": 0, "content": "plugins"}
+    return {"size": len(rows), "content": "plugins",
+            "Directory": [{"key": name, "title": name} for name in rows]}
+
+
 class Catalog:
     """The library plexsim serves, loaded from a JSON file.
 
@@ -2894,7 +2932,11 @@ class PlexSim:
             return self.bare_container(size=0)
 
         if segments[:1] == ["statistics"]:
-            return self.statistics(segments[1] if len(segments) > 1 else "", query)
+            if len(segments) == 1:
+                # Cycle 18: the BARE path is the plug-in dispatcher's empty 200 on both
+                # references, not the 404 the unknown-leaf branch answered.
+                return self.bare_container(**plugin_container(route))
+            return self.statistics(segments[1], query)
 
         if route == "/updater/status":
             return self.updater_status()
@@ -3149,10 +3191,11 @@ class PlexSim:
             # container, and it says so with `content="plugins"`. plexsim routed the
             # whole tree to a bare empty container, so the one path that does answer
             # said the server had no Live TV surface rather than no tuner.
-            return self.bare_container(size=3, content="plugins", Directory=[
-                {"key": "dvrs", "title": "dvrs"},
-                {"key": "epg", "title": "epg"},
-                {"key": "sessions", "title": "sessions"}])
+            # Cycle 18: `/media`, `/services`, `/status` and `/statistics` are the same
+            # family and were empty here, and `/security` is a container of its own.
+            return self.bare_container(**plugin_container(route))
+        if route in ("/media", "/services", "/status", "/statistics", "/security"):
+            return self.bare_container(**plugin_container(route))
         if segments[:1] == ["livetv"]:
             # No tuner. `livetv: 0` on /media/providers already hides the UI;
             # this is the shape a real PMS uses when it has no DVR configured.

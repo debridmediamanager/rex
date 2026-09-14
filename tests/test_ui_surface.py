@@ -14022,6 +14022,30 @@ def main():
     check("and useSeasonTitles belongs to the SERIES AGENT on 1.42.2",
           status == 200 and "useSeasonTitles" in names, "%s %s" % (status, len(names)))
 
+    # Cycle 18, measured on kids (1.43.4) and zen (1.42.2), byte-identical: four more
+    # single-segment paths are the legacy plug-in dispatcher's own POPULATED listings --
+    # `/media` names grabbers/providers/subscriptions, `/services` ten services, `/status`
+    # sessions -- `/statistics` is its empty 200 where plexsim 404'd, and `/security` is a
+    # real empty container with NO `content` key at all, which plexsim filed under the
+    # dispatcher. Cycle 17 found `/livetv` was one of these; this is the rest of the family.
+    for path, want in (("/media", ["grabbers", "providers", "subscriptions"]),
+                       ("/status", ["sessions"]),
+                       ("/services", ["browse", "clustering", "codecs", "defaultLibraries",
+                                      "iva", "lyricfind", "songkick", "thetvdb", "tmdb",
+                                      "ultrablur"])):
+        status, listing, _ = get(base, path)
+        rows = [d.get("key") for d in listing.get("Directory") or []]
+        check("the dispatcher's %s listing names its children" % path,
+              status == 200 and rows == want and listing.get("content") == "plugins",
+              "%s %s" % (status, rows))
+    status, listing, _ = get(base, "/statistics")
+    check("/statistics is the dispatcher's empty 200, not a 404",
+          status == 200 and listing.get("content") == "plugins" and listing.get("size") == 0,
+          "%s %s" % (status, listing))
+    status, listing, _ = get(base, "/security")
+    check("/security carries no content key",
+          status == 200 and "content" not in listing, "%s %s" % (status, listing))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
