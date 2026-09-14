@@ -879,6 +879,12 @@ class Library:
                     carry(child, "parentTitle", row.get("title"))
                 if "studio" in written:
                     carry(child, "parentStudio", row.get("studio"))
+                if "index" in written and kind == "show":
+                    # Cycle 16, measured on plexscratch: a SHOW's `index` lands on its
+                    # seasons' `parentIndex` the same way a season's lands on its
+                    # episodes'. plexsim moved the show's own index and left every
+                    # season claiming the old one.
+                    child["parentIndex"] = row.get("index")
                 if "index" in written and kind == "season":
                     # Re-measured on the copy: a SEASON's `index` lands on its
                     # episodes' `parentIndex`, on the detail row and in `/children`
