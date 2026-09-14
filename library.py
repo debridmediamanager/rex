@@ -786,8 +786,13 @@ class Library:
                 row["parentYear"] = parent["year"]
             else:
                 row.pop("parentYear", None)
-        if changed:
-            row["updatedAt"] = _now()
+        # Cycle 20, measured on plexscratch behind a control write: an edit does NOT
+        # move `updatedAt`. Five fields written to one movie over half a minute left
+        # the column where it was, on both paths, while a poster write in the same
+        # session moved it -- so the column follows the ARTWORK and the row's own
+        # identity, not its text. It is the cursor python-plexapi and every sync client
+        # polls, and plexsim stamped it on every edit, which made a title fix look like
+        # a new row. The artwork writers stamp it themselves.
         return changed
 
     def _recognised(self, items):

@@ -15905,6 +15905,37 @@ def main():
           all(code_c20ag == 400 for code_c20ag in validation_c20ag.values()),
           "%s" % {"%s?type=%s" % k_c20ag: v_c20ag for k_c20ag, v_c20ag
                   in validation_c20ag.items() if v_c20ag != 400})
+
+    # Cycle 20, measured on plexscratch with a control: a metadata edit does NOT move
+    # `updatedAt`. Five writes to movie 17 (`title`, `summary`, `year`, `studio`,
+    # `contentRating`) over half a minute left it at 1789203303 exactly, on the item
+    # path and the section path alike, while the control -- a poster write -- moved it
+    # to 1789428407 in the same session. The column tracks the ARTWORK and the row's
+    # own identity, not its text. plexsim stamped `_now()` on every edit, and that
+    # column is the cursor python-plexapi and every sync client polls: one title fix
+    # made the whole row look new.
+    _, before_c20i, _ = get(base, "/library/metadata/%s" % movie)
+    stamp_c20i = (before_c20i.get("Metadata") or [{}])[0].get("updatedAt")
+    request(base, "PUT", "/library/metadata/%s?title.value=C20%%20Stamp%%20Probe" % movie)
+    _, after_c20i, _ = get(base, "/library/metadata/%s" % movie)
+    edited_c20i = (after_c20i.get("Metadata") or [{}])[0]
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&summary.value=C20%%20s"
+            % (movie_section, movie))
+    _, after2_c20i, _ = get(base, "/library/metadata/%s" % movie)
+    section_c20i = (after2_c20i.get("Metadata") or [{}])[0]
+    request(base, "PUT",
+            "/library/metadata/%s/poster?url=upload%%3A%%2F%%2Fposters%%2Flocal%%2Fc20" % movie)
+    _, after3_c20i, _ = get(base, "/library/metadata/%s" % movie)
+    art_c20i = (after3_c20i.get("Metadata") or [{}])[0]
+    check("an edit leaves updatedAt alone and an artwork write moves it",
+          bool(stamp_c20i) and edited_c20i.get("title") == "C20 Stamp Probe"
+          and edited_c20i.get("updatedAt") == stamp_c20i
+          and section_c20i.get("summary") == "C20 s"
+          and section_c20i.get("updatedAt") == stamp_c20i
+          and art_c20i.get("updatedAt") != stamp_c20i,
+          "%s -> edit %s -> section %s -> poster %s"
+          % (stamp_c20i, edited_c20i.get("updatedAt"), section_c20i.get("updatedAt"),
+             art_c20i.get("updatedAt")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
