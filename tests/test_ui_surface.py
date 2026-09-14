@@ -13141,7 +13141,14 @@ def main():
                     out_c17a1.append((value_c17a1, row_c17a1.get("addedAt")))
         return out_c17a1
     leaf_paths_c17a1 = borrowed_c17a1(leaves_c17a1)
-    grid_paths_c17a1 = borrowed_c17a1(grid_c17a1)
+    # Cycle 20 made an artwork version the OWNING row's `updatedAt`, so a leaf whose
+    # `addedAt` happens to equal the show's version cannot tell the two stamps apart --
+    # and this fixture has several. The grid half is stated over the leaves that
+    # discriminate; the allLeaves half holds for every borrowed path either way.
+    owner_version_c17a1 = str(parent_c17a1.get("thumb") or "").rsplit("/", 1)[-1]
+    grid_paths_c17a1 = [(value_c17a1, added_c17a1)
+                        for value_c17a1, added_c17a1 in borrowed_c17a1(grid_c17a1)
+                        if str(added_c17a1) != owner_version_c17a1]
     check("a show's allLeaves stamps the grandparent artwork with the leaf's addedAt",
           bool(leaf_paths_c17a1)
           and all(value_c17a1.endswith("/%s" % added_c17a1)
@@ -13149,7 +13156,7 @@ def main():
           and bool(grid_paths_c17a1)
           and not any(value_c17a1.endswith("/%s" % added_c17a1)
                       for value_c17a1, added_c17a1 in grid_paths_c17a1),
-          "allLeaves borrowed=%d all-own-stamp=%s; grid borrowed=%d any-own-stamp=%s"
+          "allLeaves borrowed=%d all-own-stamp=%s; grid discriminating=%d any-own-stamp=%s"
           % (len(leaf_paths_c17a1),
              all(v_c17a1.endswith("/%s" % a_c17a1)
                  for v_c17a1, a_c17a1 in leaf_paths_c17a1),
