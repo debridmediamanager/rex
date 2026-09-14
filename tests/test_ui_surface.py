@@ -12983,6 +12983,62 @@ def main():
              str(flatten_c17d4.get("enumValues"))[:30],
              show_de_c17d4.get("title") == show_en_c17d4.get("title")))
 
+
+    # Cycle 17, measured on kids and held out on zen's real streams in de, fr and es: a
+    # Stream's `language` is localised, and its two display titles are COMPOSED from the
+    # localised name rather than substituted into. The difference shows on zen's movie
+    # 380, whose English subtitle track is TITLED "English": its `displayTitle` moves
+    # `English` -> `Englisch` while its `extendedDisplayTitle` stays `English (SRT)`,
+    # because the language part was already omitted for carrying one of the title's own
+    # words -- the omission is decided on the ENGLISH name and only the rendered name
+    # moves. Its Tamil track goes the other way: `Tamil (Tamil-in-Tamil SRT)` becomes
+    # `Tamil (Tamoul SRT)` in French. plexsim left every stream field English.
+    # The English streams in this fixture are the SHOW's episodes, not the movies.
+    rows_c17d5 = list(get(base, "/library/sections/%s/all" % movie_section)[1]
+                      .get("Metadata") or [])
+    if show:
+        rows_c17d5 += (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                       .get("Metadata") or [])
+    found_c17d5 = None
+    for row_c17d5 in rows_c17d5:
+        detail_c17d5 = (get(base, "/library/metadata/%s" % row_c17d5["ratingKey"])[1]
+                        .get("Metadata") or [{}])[0]
+        for media_c17d5 in detail_c17d5.get("Media") or []:
+            for part_c17d5 in media_c17d5.get("Part") or []:
+                for stream_c17d5 in part_c17d5.get("Stream") or []:
+                    if stream_c17d5.get("language") == "English" and found_c17d5 is None:
+                        found_c17d5 = (row_c17d5["ratingKey"], stream_c17d5.get("id"))
+    if found_c17d5 is None:
+        skip("a Stream's language and titles follow X-Plex-Language",
+             "no English stream in the fixture")
+    else:
+        key_c17d5, stream_id_c17d5 = found_c17d5
+
+        def stream_of_c17d5(lang_c17d5):
+            body_c17d5 = request(base, "GET", "/library/metadata/%s%s"
+                                 % (key_c17d5, "?X-Plex-Language=" + lang_c17d5
+                                    if lang_c17d5 else ""))[1]
+            row_c17d5 = json.loads(body_c17d5)["MediaContainer"]["Metadata"][0]
+            for media_c17d5 in row_c17d5.get("Media") or []:
+                for part_c17d5 in media_c17d5.get("Part") or []:
+                    for s_c17d5 in part_c17d5.get("Stream") or []:
+                        if s_c17d5.get("id") == stream_id_c17d5:
+                            return s_c17d5
+            return {}
+        en_c17d5 = stream_of_c17d5(None)
+        de_c17d5 = stream_of_c17d5("de")
+        fr_c17d5 = stream_of_c17d5("fr")
+        check("a Stream's language and titles follow X-Plex-Language",
+              en_c17d5.get("language") == "English"
+              and de_c17d5.get("language") == "Englisch"
+              and fr_c17d5.get("language") == "Anglais"
+              and str(de_c17d5.get("displayTitle") or "").startswith("Englisch")
+              and str(en_c17d5.get("displayTitle") or "").startswith("English")
+              and "Englisch" in str(de_c17d5.get("extendedDisplayTitle") or ""),
+              "en=%r de=%r/%r fr=%r"
+              % (en_c17d5.get("displayTitle"), de_c17d5.get("language"),
+                 de_c17d5.get("displayTitle"), fr_c17d5.get("language")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -243,11 +243,16 @@ def _subtitle_codec_label(row):
     return codec
 
 
-def stream_titles(row):
+def stream_titles(row, stand_in=None):
     """Set `displayTitle` and `extendedDisplayTitle` on one Stream row, from its own fields.
 
     Called when a stream is built and again when a catalog loads, so a catalog built before
     a rule was measured is corrected rather than needing a rebuild.
+
+    `stand_in` is the row's ENGLISH language name when the row carries a localised one.
+    Measured in cycle 17: the reference decides whether the extended title CARRIES the
+    language part on the ENGLISH name and then renders the localised one, so a track
+    titled "English" keeps `English (SRT)` in German while its plain title moves.
     """
     kind = row.get("streamType")
     title = row.get("title")
@@ -273,7 +278,8 @@ def stream_titles(row):
                                            " ".join(part for part in (codec, channels) if part))
         if title:
             row["extendedDisplayTitle"] = _extended_title(title, [
-                (language, (row.get("languageTag") or "",)), (codec, ()),
+                (language, (row.get("languageTag") or "", stand_in or "")),
+                (codec, ()),
                 (channels, ("2.0",) if channels == "Stereo" else ())])
         else:
             row["extendedDisplayTitle"] = row["displayTitle"]
@@ -286,7 +292,8 @@ def stream_titles(row):
         row["displayTitle"] = plain
         if title:
             row["extendedDisplayTitle"] = _extended_title(title, [
-                (language, (row.get("languageTag") or "",)), (forced, ()), (sdh, ()), (codec, ())])
+                (language, (row.get("languageTag") or "", stand_in or "")),
+                (forced, ()), (sdh, ()), (codec, ())])
         else:
             row["extendedDisplayTitle"] = "%s (%s)" % (plain, codec) if codec else plain
     return row

@@ -113,6 +113,24 @@ try:
 except (OSError, ValueError):
     TRANSLATIONS = {}
 
+# Cycle 17: the reference localises a Stream's `language` and composes its two display
+# titles from the localised name. The names themselves are already in the captured
+# table, inside the `languageOverride`/`audioLanguage` enum lists -- a `code:name` list
+# of 47 languages, per language -- so aligning those lists by CODE gives an
+# English-name -> localised-name map with nothing invented in it. Anything outside those
+# 47 codes stays as it is: the reference's own table is wider, and a name it never
+# showed us is not a name to guess.
+LANGUAGE_NAMES = {}
+for _enum, _translated in (TRANSLATIONS.get("enumValues") or {}).items():
+    if "en:English" not in _enum:
+        continue
+    _english = dict(_pair.split(":", 1) for _pair in _enum.split("|") if ":" in _pair)
+    for _code, _other in _translated.items():
+        _names = dict(_pair.split(":", 1) for _pair in _other.split("|") if ":" in _pair)
+        for _key, _name in _english.items():
+            if _key and _names.get(_key):
+                LANGUAGE_NAMES.setdefault(_code, {}).setdefault(_name, _names[_key])
+
 _SECTION_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_prefs.json")
 try:
     with open(_SECTION_PREFS_PATH) as _handle:
@@ -1267,6 +1285,68 @@ def _with_client_titles(node, product):
                 copy = dict(node) if copy is None else copy
                 copy[key] = changed
     return node if copy is None else copy
+
+
+def request_language(query, headers):
+    """The language a request asks for, by the measured precedence.
+
+    Cycle 16 on kids and zen: `X-Plex-Language` beats `Accept-Language` when both are
+    sent, either may be a regional form (`de-DE` works like `de`), the query string
+    carries `X-Plex-Language` as well as the header, and a language the server does not
+    have falls back to English. Module level because the Stream pass runs inside
+    `PlexSim.handle`, which holds the headers but is not the HTTP handler.
+    """
+    headers = headers or {}
+    wanted = (query or {}).get("X-Plex-Language") or headers.get("X-Plex-Language")
+    if not wanted:
+        accept = headers.get("Accept-Language") or ""
+        wanted = accept.split(",")[0].split(";")[0].strip()
+    primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
+    return primary or None
+
+
+def _with_stream_language(node, language):
+    """A response with every Stream's language fields in the client's language.
+
+    Cycle 17, measured on kids and held out on zen's real multi-language streams: a
+    Stream's `language` is localised and its `displayTitle`/`extendedDisplayTitle` are
+    COMPOSED from the localised name, not substituted into. zen's movie 380 shows it
+    from both sides: its English subtitle track is TITLED "English", so its
+    `displayTitle` moves to `Englisch` while its `extendedDisplayTitle` stays
+    `English (SRT)` -- the language part was already omitted for carrying one of the
+    title's own words, and that omission is decided on the ENGLISH name. Its Tamil
+    track goes the other way, the title untouched and the language name inside it
+    localised. Passing the English name as a stand-in reproduces both.
+
+    Runs BEFORE `_with_client_titles`, which is how a real PMS composes: the client's
+    codec suffix goes onto the already-localised title. Only the dicts and lists on the
+    way to a changed Stream are copied -- a response hands back the catalog's own
+    Media/Part/Stream dicts, and a title written into one would reach every client.
+    """
+    names = LANGUAGE_NAMES.get(language) or {}
+    if not names:
+        return node
+
+    def walk(node):
+        if isinstance(node, list):
+            items = [walk(item) for item in node]
+            return items if any(new is not old for new, old in zip(items, node)) else node
+        if not isinstance(node, dict):
+            return node
+        copy = None
+        english = node.get("language")
+        if node.get("streamType") and english and names.get(english):
+            copy = dict(node, language=names[english])
+            mediainfo_module.stream_titles(copy, stand_in=english)
+        for key, value in node.items():
+            if isinstance(value, (dict, list)):
+                changed = walk(value)
+                if changed is not value:
+                    copy = dict(node) if copy is None else copy
+                    copy[key] = changed
+        return node if copy is None else copy
+
+    return walk(node)
 
 
 def _image_type(body):
@@ -2525,6 +2605,11 @@ class PlexSim:
             result = self._route(method, route, segments, query, body, headers, address)
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
+            language = request_language(query, headers)
+            if isinstance(result, dict) and language and language != "en":
+                # Before the client titles, not after: a real PMS composes the
+                # codec suffix onto the already-localised title.
+                result = _with_stream_language(result, language)
             product = query.get("X-Plex-Product") or (headers or {}).get("X-Plex-Product")
             if isinstance(result, dict) and product in mediainfo_module.CODEC_TITLE_PRODUCTS:
                 result = _with_client_titles(result, product)
@@ -11328,12 +11413,7 @@ class Handler(BaseHTTPRequestHandler):
         if query is None:
             query = dict(urllib.parse.parse_qsl(
                 urllib.parse.urlsplit(self.path).query, keep_blank_values=True))
-        wanted = query.get("X-Plex-Language") or self.headers.get("X-Plex-Language")
-        if not wanted:
-            accept = self.headers.get("Accept-Language") or ""
-            wanted = accept.split(",")[0].split(";")[0].strip()
-        primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
-        return primary or None
+        return request_language(query, self.headers)
 
     # The blocks inside a row that carry the SERVER's vocabulary rather than the
     # user's content, and are therefore translated there. Measured on kids over a
