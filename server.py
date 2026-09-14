@@ -2405,10 +2405,19 @@ class PlexSim:
             # grid needs to decide whether to draw the version picker at all.
             detail["mediaCount"] = len(row.get("Media") or [])
             detail["mediaCountOptimized"] = 0
-        # `checkFiles=1` is the one option here with nothing to do: measured, it
-        # adds `accessible` and `exists` to every Part, and plexsim already sends
-        # both on every Part unconditionally -- deliberately, because plezy
-        # re-fetches metadata in a loop until it sees them. See mediainfo.py.
+        # `checkFiles=1` adds `accessible` and `exists` to every Part, and plexsim
+        # already sends both on every Part unconditionally -- deliberately, because
+        # plezy re-fetches metadata in a loop until it sees them. See mediainfo.py.
+        #
+        # Cycle 19: the option is still VALIDATED, and plexsim accepted anything.
+        # Measured on kids (1.43.4) and zen (1.42.2), identically: `0` and `1` are 200
+        # and so is `01`, while `abc`, an empty value, `2`, `true`, `-1`, `1.5`, ` 1`
+        # and `1 ` are all 400. So the value must parse as a bare decimal whole number
+        # -- no sign, no space, no point -- and be 0 or 1. A client sending a malformed
+        # value got a row where a real PMS refuses the request.
+        raw_check = query.get("checkFiles")
+        if raw_check is not None and not (raw_check.isdigit() and int(raw_check) in (0, 1)):
+            raise filters_module.FilterError(400, "checkFiles %r" % raw_check)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
             # season three, all captured -- and the list is per TYPE, so serving
