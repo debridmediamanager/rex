@@ -14705,7 +14705,10 @@ def main():
     years_c19n = [r_c19n.get("year") for r_c19n in rows_c19n if r_c19n.get("year") is not None]
     one_year_c19n = years_c19n[0] if years_c19n else None
     exact_c19n = num_count_c19n("year%3D=" + quote(one_year_c19n)) if years_c19n else -1
-    float_c19n = num_count_c19n("year%3D=%s%%2E0" % one_year_c19n) if years_c19n else -1
+    # Concatenated, not formatted: a percent-escape inside a `%`-format string is a
+    # format spec, which is how the first version of this line raised instead of failing.
+    float_c19n = (num_count_c19n("year%3D=" + quote(one_year_c19n) + "%2E0")
+                  if years_c19n else -1)
     check("==/!== on a numeric column compare the stored number's TEXT",
           bool(years_c19n) and exact_c19n == years_c19n.count(one_year_c19n)
           and float_c19n == 0
@@ -15022,6 +15025,32 @@ def main():
           and headers_c19p.get("Content-Type", "").startswith("application/json"),
           "HEAD %s (%d bytes, %s) ; GET %s"
           % (head_c19p, len(body_c19p or b""), headers_c19p.get("Content-Type"), get_c19p))
+
+    # Cycle 19, measured on plexscratch: `PlexOnlineUrl`, `TranscoderH264Options`,
+    # `TranscoderH264OptionsOverride` and `allowMediaDeletionLanOnly` answer 403 to a PUT and
+    # push no frame -- even writing back the value already stored -- while the other 147
+    # settings answer 200 (`FriendlyName` is the control). And `ButlerStartHour=abc` and
+    # `ButlerEndHour=abc` are 200s that store nothing, alone among the 38 integer settings;
+    # plexsim 500'd all 38, so an empty hour field could not be saved.
+    protected_c19w = {p_c19w: request(base, "PUT", "/:/prefs?%s=x" % p_c19w)[0]
+                      for p_c19w in ("PlexOnlineUrl", "TranscoderH264Options",
+                                     "TranscoderH264OptionsOverride")}
+    protected_c19w["allowMediaDeletionLanOnly"] = request(
+        base, "PUT", "/:/prefs?allowMediaDeletionLanOnly=1")[0]
+    control_c19w = request(base, "PUT", "/:/prefs?FriendlyName=plexsim")[0]
+    check("four settings refuse a write with a 403",
+          all(s_c19w == 403 for s_c19w in protected_c19w.values()) and control_c19w == 200,
+          "%s ; FriendlyName %s" % (protected_c19w, control_c19w))
+    lenient_c19w = {p_c19w: request(base, "PUT", "/:/prefs?%s=abc" % p_c19w)[0]
+                    for p_c19w in ("ButlerStartHour", "ButlerEndHour", "TranscoderQuality")}
+    stored_c19w = {s_c19w.get("id"): s_c19w.get("value")
+                   for s_c19w in (get(base, "/:/prefs")[1].get("Setting") or [])
+                   if s_c19w.get("id") in ("ButlerStartHour", "ButlerEndHour")}
+    check("the two butler hours take a word and store nothing",
+          lenient_c19w["ButlerStartHour"] == 200 and lenient_c19w["ButlerEndHour"] == 200
+          and lenient_c19w["TranscoderQuality"] == 500
+          and all(isinstance(v_c19w, int) for v_c19w in stored_c19w.values()),
+          "%s ; stored %s" % (lenient_c19w, stored_c19w))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

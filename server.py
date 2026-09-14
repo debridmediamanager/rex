@@ -10950,6 +10950,12 @@ class PlexSim:
             out.append(setting)
         return out
 
+    # Cycle 19, measured on plexscratch: the settings a PUT refuses, and the two that
+    # take a value they cannot parse without refusing. Both sets are the measurement.
+    WRITE_PROTECTED_PREFS = ("PlexOnlineUrl", "TranscoderH264Options",
+                             "TranscoderH264OptionsOverride", "allowMediaDeletionLanOnly")
+    LENIENT_INT_PREFS = ("ButlerStartHour", "ButlerEndHour")
+
     def set_prefs(self, query):
         """`PUT /:/prefs?<id>=<value>` -- one or more settings at a time.
 
@@ -10970,6 +10976,15 @@ class PlexSim:
             if name not in settings:
                 return ("error", 400,
                         "cannot set preference value for unknown preference " + name)
+            if name in self.WRITE_PROTECTED_PREFS:
+                # Cycle 19, measured on plexscratch: four settings answer 403 and push no
+                # frame, EVEN when the value written is the one already stored, where the
+                # other 147 answer 200 and push a `preference` frame each. Nothing in the
+                # row marks them -- `CLDriver` is `hidden: true` too and is writable -- so
+                # the set is the measurement rather than a rule. `PlexOnlineUrl` could be
+                # claim-gated on an unclaimed copy; the other three are not obviously so.
+                # See HANDOVER.md 3.3.
+                return ("error", 403, "plexsim: forbidden")
         typed = []
         for name, value in writes:
             kind = settings[name].get("type")
@@ -10979,6 +10994,13 @@ class PlexSim:
                 try:
                     typed.append((name, int(value) if kind == "int" else float(value)))
                 except ValueError:
+                    if name in self.LENIENT_INT_PREFS:
+                        # ...and these two take a WORD without refusing: `ButlerStartHour
+                        # =abc` and `ButlerEndHour=abc` are 200s that store nothing, alone
+                        # among the 38 integer settings -- the other 36 are 500s. plexsim
+                        # 500'd all 38, so the Scheduled Tasks page could not be saved at
+                        # all with an empty hour field.
+                        continue
                     return ("error", 500, "plexsim: internal error")
             elif kind == "bool":
                 typed.append((name, value in ("1", "true")))
