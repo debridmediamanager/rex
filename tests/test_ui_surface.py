@@ -15106,6 +15106,33 @@ def main():
                       row_c19l.get("type") == "movie", str(row_c19l.get("type")))
             request(base, "DELETE", "/library/sections/%s" % row_c19l["key"])
 
+    # Cycle 19, measured on plexscratch behind a control write: a SHOW library's scan names
+    # the show itself in a `progress` row before its seasons -- `Scanning Firefly (2002)`,
+    # then `.../Season 02`, `.../Season 01` -- and that row has no activity update of its
+    # own. And `provider.subscriptions.process` is the one activity a real PMS marks
+    # `cancellable: true`, where every `library.update.section` and
+    # `library.update.item.metadata` beside it is false; plexsim sent false for all three,
+    # so the Dashboard drew no Cancel control.
+    _status_c19y, frames_c19y = notifications(
+        base, lambda: request(base, "GET", "/library/sections/%s/refresh" % show_section))
+    progress_c19y = [p_c19y.get("message") for f_c19y in frames_c19y
+                     for p_c19y in ((f_c19y.get("NotificationContainer") or {})
+                                    .get("ProgressNotification") or [])]
+    cancel_c19y = {}
+    for f_c19y in frames_c19y:
+        for a_c19y in ((f_c19y.get("NotificationContainer") or {})
+                       .get("ActivityNotification") or []):
+            act_c19y = a_c19y.get("Activity") or {}
+            cancel_c19y.setdefault(act_c19y.get("type"), set()).add(act_c19y.get("cancellable"))
+    check("a show scan names the show before its seasons",
+          bool(progress_c19y) and "/" not in progress_c19y[0]
+          and any("/" in p_c19y for p_c19y in progress_c19y[1:]),
+          str(progress_c19y[:4]))
+    check("and only the subscriptions activity is cancellable",
+          cancel_c19y.get("provider.subscriptions.process") == {True}
+          and cancel_c19y.get("library.update.section") == {False},
+          str({k_c19y: sorted(v_c19y) for k_c19y, v_c19y in cancel_c19y.items()}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
