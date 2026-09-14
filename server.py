@@ -5149,7 +5149,10 @@ class PlexSim:
                 extra["mixedParents"] = True
             found = self.secondary_container(
                 section_id, section, "Search for '%s'" % text,
-                Metadata=[_grid_row(_listing_row(r)) for r in rows],
+                # Cycle 20: and a grid row carries no librarySection fields -- they
+                # are the container's. Neither reference sends one here, on either
+                # library type; plexsim kept the triple on this path alone.
+                Metadata=[_grid_row(_listing_row(r), keep_section=False) for r in rows],
                 viewGroup=typed or section.get("type"), **extra)
             # Measured: this one is NOT a secondary view -- it carries no
             # `content`, and its viewGroup is the library's type.
