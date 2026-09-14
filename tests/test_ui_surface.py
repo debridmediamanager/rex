@@ -12313,6 +12313,32 @@ def main():
              answer_c16a9["playQueueTotalCount"], len(answer_c16a9.get("Metadata") or []),
              next_c16a9["playQueueVersion"], next_c16a9["playQueueTotalCount"]))
 
+
+    # Cycle 16, measured on plexscratch: two move forms a real PMS REFUSES.
+    # `?after=<the moving item's own id>` is a 404 and `?after=` (empty) is a 400,
+    # where plexsim answered 200 and sent the item to the head in both cases. The
+    # client's own move URL is `...move?after={t||-1}`, so `after=-1` -- which really
+    # does move to the front -- is the form that matters and was already right.
+    moved_c16a10 = json.loads(request(
+        base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, show)))[1])["MediaContainer"]
+    id_c16a10 = moved_c16a10["playQueueID"]
+    last_c16a10 = moved_c16a10["Metadata"][-1]["playQueueItemID"]
+    itself_c16a10 = request(base, "PUT", "/playQueues/%s/items/%s/move?after=%s"
+                            % (id_c16a10, last_c16a10, last_c16a10))[0]
+    empty_c16a10 = request(base, "PUT", "/playQueues/%s/items/%s/move?after="
+                           % (id_c16a10, last_c16a10))[0]
+    front_c16a10 = request(base, "PUT", "/playQueues/%s/items/%s/move?after=-1"
+                           % (id_c16a10, last_c16a10))
+    order_c16a10 = [r_c16a10["playQueueItemID"]
+                    for r_c16a10 in json.loads(front_c16a10[1])["MediaContainer"]["Metadata"]]
+    check("a queue move refuses after=itself and an empty after",
+          itself_c16a10 == 404 and empty_c16a10 == 400
+          and front_c16a10[0] == 200 and order_c16a10[0] == last_c16a10,
+          "itself=%s empty=%s front=%s head=%s"
+          % (itself_c16a10, empty_c16a10, front_c16a10[0], order_c16a10[:1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

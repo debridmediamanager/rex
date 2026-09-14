@@ -9933,8 +9933,16 @@ class PlexSim:
                           if str(e["id"]) == str(item_id)), None)
             if index is None:
                 return ("error", 404, "plexsim: no such play queue item")
+            # Cycle 16, measured on plexscratch: an `after` naming the MOVING
+            # item itself is a 404 and an EMPTY `after=` is a 400 -- plexsim moved to
+            # the head for both. `after=-1`, which the client actually sends, is the
+            # form that really does move to the front.
+            if str(after) == str(item_id):
+                return ("error", 404, "plexsim: no such play queue item")
+            if after is not None and str(after) == "":
+                return ("error", 400, "plexsim: bad request")
             moving = items.pop(index)
-            if after is None or str(after) in ("-1", ""):
+            if after is None or str(after) == "-1":
                 items.insert(0, moving)
             else:
                 target = next((i for i, e in enumerate(items)
