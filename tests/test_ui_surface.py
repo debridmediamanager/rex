@@ -14734,6 +14734,384 @@ def main():
                       if parent_c20b in borrowed_c20b),
           "own %s borrowed %s -> %s" % (sorted(own_c20b), sorted(borrowed_c20b), carry_c20b))
 
+
+    # Cycle 20 needs two seasons it can rename; the fixture's four are all `Season N`.
+    c20_seasons = [r_c20.get("ratingKey") for r_c20 in
+                   (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                    .get("Metadata") or [])]
+    c20_season_a = c20_seasons[-1] if c20_seasons else None
+    c20_season_b = c20_seasons[-2] if len(c20_seasons) > 1 else None
+
+    # Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
+    # labels, not one. Beside `Season N` it writes `Specials` for season 0 (4 rows) and
+    # `[Unknown Season]` for a season with no index at all (5 rows), and all three are
+    # stored NOWHERE -- `titleSort=` answers 740 of the 741, `title=Specials` and
+    # `title=Unknown` answer 0, `/search?type=3&query=specials` answers 0, and the `#`
+    # bucket of the firstCharacter listing holds all 740. Cycle 18 built the rule for
+    # `Season N` only, so a Specials season answered the search box, filed under `S`
+    # and sorted among the titled rows.
+    request(base, "PUT", "/library/metadata/%s?title.value=Specials" % c20_season_a)
+    request(base, "PUT", "/library/metadata/%s?title.value=%%5BUnknown%%20Season%%5D"
+            % c20_season_b)
+    _, generated_c20r, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
+    matched_c20r = {str(r_c20r.get("ratingKey"))
+                    for r_c20r in (generated_c20r.get("Metadata") or [])}
+    searched_c20r = get(base, "/library/sections/%s/search?type=3&query=specials"
+                        % show_section)[1].get("size")
+    titled_c20r = get(base, "/library/sections/%s/all?type=3&title=Specials"
+                      % show_section)[1].get("size")
+    _, bucket_c20r, _ = get(base, "/library/sections/%s/firstCharacter/%%23?type=3" % show_section)
+    check("Specials and [Unknown Season] are generated titles too",
+          str(c20_season_a) in matched_c20r and str(c20_season_b) in matched_c20r
+          and searched_c20r == 0 and titled_c20r == 0
+          and {str(r_c20r.get("ratingKey")) for r_c20r in (bucket_c20r.get("Metadata") or [])}
+          >= {str(c20_season_a), str(c20_season_b)},
+          "titleSort= %s | search %s | title= %s | #%s"
+          % (sorted(matched_c20r), searched_c20r, titled_c20r, bucket_c20r.get("size")))
+
+
+    # Cycle 20, measured on kids (whose six episodes split three with a stored
+    # `view_count = 0` and three with no settings row at all) and on zen (8,943 of
+    # 9,287 episodes): `viewCount` and `viewOffset` treat a row with NO stored value as
+    # BELOW every value and equal to 0. kids answers `viewCount=0` with all six,
+    # `<<=0` with the three that have no row, `>=0` with the three that have one, and
+    # `!=0` with none. `skipCount` is NOT in this family -- its nulls match nothing,
+    # which is how the two were separated. plexsim answered an empty grid to
+    # `viewCount=0`, the client's own "never played" probe.
+    counts_c20s = {}
+    for spec_c20s in ("viewCount=0", "viewCount%3C%3C=0", "viewCount%3E=0", "viewCount%21=0",
+                      "viewOffset=0", "viewOffset%3C=0", "skipCount=0"):
+        counts_c20s[spec_c20s] = len(get(base, "/library/sections/%s/all?type=4&%s"
+                                         % (show_section, spec_c20s))[1].get("Metadata") or [])
+    total_c20s = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [])
+    check("viewCount and viewOffset read a missing value as below every value",
+          total_c20s and counts_c20s["viewCount=0"] == total_c20s
+          and counts_c20s["viewOffset=0"] == total_c20s
+          and counts_c20s["viewOffset%3C=0"] == total_c20s
+          and counts_c20s["viewCount%21=0"] == 0
+          and counts_c20s["skipCount=0"] == 0,
+          "%s of %s" % (counts_c20s, total_c20s))
+
+
+    # Cycle 20: `audioLanguage` and `subtitleLanguage` answer their six non-`=`
+    # operators as UNIVERSALLY QUANTIFIED NEGATIONS -- the open question cycle 19 left.
+    # `=v` is "some stream is v"; every other operator is "NO stream satisfies the
+    # comparison", with `!=` and `==` both comparing equality and `!==` inequality. On
+    # kids' six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
+    # `<<=`6 `>>=`6, which is exactly what it answers; zen's 9,287 agree, and a row
+    # with no stream of that type matches every non-`=` operator vacuously (its
+    # `audioLanguage=zz` is 0 and `!=zz` all 3,887). plexsim answered 0 to `!==`,
+    # `<<=` and `>>=`.
+    lang_c20t = {}
+    for label_c20t, key_c20t in (("=", "audioLanguage"), ("!=", "audioLanguage%21"),
+                                 ("==", "audioLanguage%3D"), ("!==", "audioLanguage%21%3D"),
+                                 ("<=", "audioLanguage%3C"), (">=", "audioLanguage%3E"),
+                                 ("<<=", "audioLanguage%3C%3C"), (">>=", "audioLanguage%3E%3E")):
+        lang_c20t[label_c20t] = len(get(base, "/library/sections/%s/all?type=4&%s=en"
+                                        % (show_section, key_c20t))[1].get("Metadata") or [])
+    episodes_c20t = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                        .get("Metadata") or [])
+    check("the stream-language operators are universal negations",
+          episodes_c20t and lang_c20t["="] == episodes_c20t
+          and lang_c20t["!=="] == episodes_c20t
+          and lang_c20t["<<="] == episodes_c20t and lang_c20t[">>="] == episodes_c20t
+          and lang_c20t["!="] == 0 and lang_c20t["=="] == 0
+          and lang_c20t["<="] == 0 and lang_c20t[">="] == 0,
+          "%s of %s episodes" % (lang_c20t, episodes_c20t))
+
+
+    # Cycle 20: a stream-language column does NOT fall back to the leaves. Both
+    # references answer NOTHING to `type=2&audioLanguage=en` and to
+    # `type=3&subtitleLanguage=en` -- zen over 507 shows and 741 seasons, kids over its
+    # one show and two seasons -- while the same probe at `type=4` returns a real
+    # subset on both, so the filter is live and the parent row simply has no such
+    # column. Cycle 19 built the any-leaf fallback for `duration`, `resolution` and
+    # `mediaSize`; plexsim applied it to these two as well and selected every show.
+    parents_c20u = {spec_c20u: len(get(base, "/library/sections/%s/all?%s"
+                                       % (show_section, spec_c20u))[1].get("Metadata") or [])
+                    for spec_c20u in ("type=2&audioLanguage=en", "type=3&audioLanguage=en",
+                                      "type=3&subtitleLanguage=en", "type=2&subtitleLanguage=en")}
+    leaves_c20u = len(get(base, "/library/sections/%s/all?type=4&audioLanguage=en"
+                          % show_section)[1].get("Metadata") or [])
+    check("a stream-language column does not read the leaves",
+          all(count_c20u == 0 for count_c20u in parents_c20u.values()) and leaves_c20u > 0,
+          "%s | episodes %s" % (parents_c20u, leaves_c20u))
+
+
+    # Cycle 20: the media axes of a SHOW library are built from the LEAVES. Both
+    # references answer a populated `/library/sections/{show}/resolution` and
+    # `/audioLanguage` -- zen 6 and 46 entries, kids 1 and 1 -- although no show or
+    # season row has Media of its own. plexsim built them from the section's top-level
+    # rows only and answered an empty container, so the Resolution and Audio Language
+    # menus of a TV library's filter bar were empty while the FILTER behind them worked.
+    axes_c20v = {leaf_c20v: get(base, "/library/sections/%s/%s" % (show_section, leaf_c20v))[1]
+                 for leaf_c20v in ("resolution", "audioLanguage")}
+    movie_axis_c20v = get(base, "/library/sections/%s/resolution" % movie_section)[1]
+    check("a show library's media axes are built from its leaves",
+          all((doc_c20v.get("Directory") or []) for doc_c20v in axes_c20v.values())
+          and bool(movie_axis_c20v.get("Directory")),
+          "%s | movie axis %s"
+          % ({leaf_c20v: [d_c20v.get("key") for d_c20v in doc_c20v.get("Directory") or []]
+              for leaf_c20v, doc_c20v in axes_c20v.items()},
+             [d_c20v.get("key") for d_c20v in movie_axis_c20v.get("Directory") or []]))
+
+
+    # Cycle 20: `file=` refuses a SHOW listing and reads the leaves on a SEASON one.
+    # `type=2&file=/` is a 500 on kids and zen alike -- the only media column that
+    # refuses rather than answering -- while `type=3&file=/` answers every season (zen
+    # 741, kids 2) and `type=4` every episode. plexsim answered a 200 with no rows at
+    # type=2 and nothing at all at type=3: its `file` branch reads the row's own Media
+    # and sits ABOVE the leaves fallback cycle 19 added, so the fallback never ran.
+    fragment_c20w = ""
+    for r_c20w in get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []:
+        for m_c20w in r_c20w.get("Media") or []:
+            for p_c20w in m_c20w.get("Part") or []:
+                fragment_c20w = str(p_c20w.get("file") or "")[:6] or fragment_c20w
+    show_code_c20w = get(base, "/library/sections/%s/all?type=2&file=%%2F" % show_section)[0]
+    season_rows_c20w = len(get(base, "/library/sections/%s/all?type=3&file=%s"
+                               % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
+    episode_rows_c20w = len(get(base, "/library/sections/%s/all?type=4&file=%s"
+                                % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
+    seasons_c20w = len(get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                       .get("Metadata") or [])
+    check("file= refuses a show listing and reads the leaves on a season one",
+          show_code_c20w == 500 and bool(fragment_c20w)
+          and season_rows_c20w == seasons_c20w and episode_rows_c20w > 0,
+          "type=2 %s | seasons %s of %s | episodes %s | fragment %r"
+          % (show_code_c20w, season_rows_c20w, seasons_c20w, episode_rows_c20w, fragment_c20w))
+
+
+    # Cycle 20: `/library/sections/{id}/unwatched` is typed like a listing. Any `type=`
+    # but the library's own top-level type answers EMPTY on both references -- zen and
+    # kids each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
+    # show library -- and the container's `viewGroup` flips to `episode` for every one
+    # of them where a movie library keeps `movie`. An unparseable or empty `type=` is a
+    # 500 there, and on `/onDeck` too, the refusal plexsim already answered on `/all`.
+    unwatched_c20x = {}
+    for spec_c20x in ("", "?type=2", "?type=3", "?type=4", "?type=1"):
+        status_c20x, doc_c20x, _ = get(base, "/library/sections/%s/unwatched%s"
+                                       % (show_section, spec_c20x))
+        unwatched_c20x[spec_c20x or "<bare>"] = (status_c20x, len(doc_c20x.get("Metadata") or []),
+                                                 doc_c20x.get("viewGroup"))
+    refusals_c20x = {leaf_c20x + spec_c20x:
+                     get(base, "/library/sections/%s/%s%s" % (show_section, leaf_c20x, spec_c20x))[0]
+                     for leaf_c20x in ("unwatched", "onDeck")
+                     for spec_c20x in ("?type=abc", "?type=")}
+    check("/unwatched answers only its own type and refuses an unparseable one",
+          unwatched_c20x["?type=2"][1] > 0
+          and unwatched_c20x["?type=3"][1] == 0 and unwatched_c20x["?type=4"][1] == 0
+          and unwatched_c20x["?type=1"][1] == 0
+          and unwatched_c20x["?type=3"][2] == "episode"
+          and all(code_c20x == 500 for code_c20x in refusals_c20x.values()),
+          "%s | refusals %s" % (unwatched_c20x, refusals_c20x))
+
+
+    # Cycle 20: `/recentlyViewedShows?type=N` is a typed QUERY. zen answers 507 shows,
+    # 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, and
+    # both answer 0 to `type=1` and `type=10`, while the container keeps
+    # `viewGroup="show"`, its own `title2` and `allowSync: false` at every type.
+    # plexsim ignored the parameter and always answered the show list.
+    typed_c20y = {}
+    for value_c20y in ("2", "3", "4", "1"):
+        status_c20y, doc_c20y, _ = get(base, "/library/sections/%s/recentlyViewedShows?type=%s"
+                                       % (show_section, value_c20y))
+        typed_c20y[value_c20y] = (status_c20y,
+                                  [str(r_c20y.get("type"))
+                                   for r_c20y in (doc_c20y.get("Metadata") or [])][:1],
+                                  len(doc_c20y.get("Metadata") or []),
+                                  doc_c20y.get("viewGroup"))
+    bad_c20y = get(base, "/library/sections/%s/recentlyViewedShows?type=abc" % show_section)[0]
+    check("recentlyViewedShows is a typed query",
+          typed_c20y["2"][1] == ["show"] and typed_c20y["3"][1] == ["season"]
+          and typed_c20y["4"][1] == ["episode"] and typed_c20y["1"][2] == 0
+          and typed_c20y["3"][3] == "show" and bad_c20y == 500,
+          "%s | type=abc %s" % (typed_c20y, bad_c20y))
+
+
+    # the fixture holds one episode with two Media and seven with one, so its show is
+    # in both halves -- which is the shape zen's 24 overlapping shows have
+    c20_dup_leaf = next((str(r_c20.get("ratingKey")) for r_c20 in
+                         (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                          .get("Metadata") or [])
+                         if len(r_c20.get("Media") or []) > 1), None)
+
+    # Cycle 20, measured on zen: on a PARENT row the Duplicates filter's TRUE and FALSE
+    # sets OVERLAP. `type=2&duplicate=1` answers 44 shows and `!=1` 487, which is 531
+    # of 507 rows -- 24 shows are in both -- and its seasons split 74 / 702 with 35 in
+    # both. Both queries are evaluated per LEAF: `=1` is "some leaf has more than one
+    # Media" and `!=1` is "some leaf has exactly one", so a parent holding both is in
+    # each. plexsim collapsed a parent to one scalar, which makes the two sets
+    # complements by construction and can never overlap -- cycle 19's own any-leaf
+    # rule, implemented as a proxy.
+    _, versions_c20aa, _ = get(base, "/library/metadata/%s" % c20_dup_leaf)
+    leaf_row_c20aa = (versions_c20aa.get("Metadata") or [{}])[0]
+    dup_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
+                 get(base, "/library/sections/%s/all?type=2&duplicate=1"
+                     % show_section)[1].get("Metadata") or []}
+    plain_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
+                   get(base, "/library/sections/%s/all?type=2&duplicate%%21=1"
+                       % show_section)[1].get("Metadata") or []}
+    check("a parent row is in both halves of the Duplicates filter",
+          len(leaf_row_c20aa.get("Media") or []) > 1
+          and bool(dup_c20aa & plain_c20aa),
+          "media %s | dup %s plain %s overlap %s"
+          % (len(leaf_row_c20aa.get("Media") or []), sorted(dup_c20aa), sorted(plain_c20aa),
+             sorted(dup_c20aa & plain_c20aa)))
+
+
+    # Cycle 20, measured on zen's 3,887 movies (1,518 of which carry an
+    # `originallyAvailableAt`) and on kids: a NULL date matches NOTHING, on every
+    # operator. `<=1800-01-01` and `<<=1800-01-01` answer 0 and `<=2100-01-01` answers
+    # exactly the 1,518 with a value, so the 2,369 without one are in neither half --
+    # the same rule cycle 19 measured for a numeric column. And `!=` really compares:
+    # `addedAt!=2020-01-01` answers every row on both references where
+    # plexsim answered none, because the date branch had no `!=` case at all and fell
+    # through to equality. The old "a NULL date matches is-before" was measured on
+    # fun, which is out of scope.
+    dates_c20ab = {}
+    for label_c20ab, key_c20ab in ((">=", "originallyAvailableAt%3E"),
+                                   ("<=", "originallyAvailableAt%3C"),
+                                   ("<<=", "originallyAvailableAt%3C%3C")):
+        dates_c20ab[label_c20ab] = len(
+            get(base, "/library/sections/%s/all?type=3&%s=2100-01-01" % (show_section, key_c20ab))[1]
+            .get("Metadata") or [])
+    total_c20ab = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                      .get("Metadata") or [])
+    unequal_c20ab = len(get(base, "/library/sections/%s/all?type=1&addedAt%%21=2020-01-01"
+                            % movie_section)[1].get("Metadata") or [])
+    check("a null date matches nothing and != really compares",
+          all(count_c20ab == 0 for count_c20ab in dates_c20ab.values())
+          and total_c20ab and unequal_c20ab == total_c20ab,
+          "seasons %s | addedAt!= %s of %s" % (dates_c20ab, unequal_c20ab, total_c20ab))
+
+
+    # a season to unmatch, so the library holds both kinds
+    c20_unmatched = [r_c20.get("ratingKey") for r_c20 in
+                     (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                      .get("Metadata") or [])][0]
+
+    # Cycle 20, measured on kids' two seasons and zen's 741 over all eight operators
+    # and six values: `unmatched` IGNORES the operator. Only the literal value `1`
+    # selects the unmatched rows, and it does so under `=`, `!=`, `==`, `!==`, `<=`,
+    # `>=`, `<<=` and `>>=` alike; every other value (`0`, `2`, empty, `true`, `01`)
+    # selects the matched ones under all eight. It belongs with `resolution`, which
+    # cycle 19 measured as operator-insensitive, and NOT with `unwatched`, which
+    # follows the boolean rule on both references (the control: `unwatched=1` answers
+    # every season and its seven other operators none). plexsim applied the boolean
+    # rule here, so `unmatched!=1` and `unmatched!=0` were both inverted.
+    request(base, "PUT", "/library/metadata/%s/unmatch" % c20_unmatched)
+    grid_c20z = {}
+    for label_c20z, key_c20z in (("=", ""), ("!=", "%21"), ("==", "%3D"), ("!==", "%21%3D"),
+                                 ("<=", "%3C"), (">=", "%3E"), ("<<=", "%3C%3C"),
+                                 (">>=", "%3E%3E")):
+        for value_c20z in ("1", "0", "2"):
+            rows_c20z = get(base, "/library/sections/%s/all?type=3&unmatched%s=%s"
+                            % (show_section, key_c20z, value_c20z))[1].get("Metadata") or []
+            grid_c20z[(label_c20z, value_c20z)] = sorted(str(r_c20z.get("ratingKey"))
+                                                         for r_c20z in rows_c20z)
+    true_c20z = grid_c20z[("=", "1")]
+    false_c20z = grid_c20z[("=", "0")]
+    check("unmatched ignores the operator and reads the value alone",
+          bool(true_c20z) and bool(false_c20z) and true_c20z != false_c20z
+          and all(rows_c20z == true_c20z for (_op_c20z, value_c20z), rows_c20z
+                  in grid_c20z.items() if value_c20z == "1")
+          and all(rows_c20z == false_c20z for (_op_c20z, value_c20z), rows_c20z
+                  in grid_c20z.items() if value_c20z != "1"),
+          "true %s false %s | %s" % (true_c20z, false_c20z,
+                                     {k_c20z: v_c20z for k_c20z, v_c20z
+                                      in list(grid_c20z.items())[:6]}))
+
+
+    c20_one_season = [r_c20.get("ratingKey") for r_c20 in
+                      (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                       .get("Metadata") or [])][0]
+
+    # Cycle 20, measured on both references over two libraries and two row types:
+    # `id==<n>` and `id!==<n>` DO match a number. zen answers `type=3&id==5190` with
+    # that one season and `!==5190` with the other 740, kids `id==7` with season 7,
+    # and the movie libraries agree. Cycle 11 recorded "`==`/`!==` never match a
+    # number" for this column -- measured, it seems, only against a value that was not
+    # one -- and plexsim answered nothing to `id==` and every row to `id!==`.
+    ids_c20ad = {}
+    for label_c20ad, key_c20ad in (("=", "id"), ("==", "id%3D"), ("!==", "id%21%3D"),
+                                   ("!=", "id%21")):
+        ids_c20ad[label_c20ad] = sorted(
+            str(r_c20ad.get("ratingKey")) for r_c20ad in
+            get(base, "/library/sections/%s/all?type=3&%s=%s"
+                % (show_section, key_c20ad, c20_one_season))[1].get("Metadata") or [])
+    check("id== and id!== compare a number",
+          ids_c20ad["=="] == [str(c20_one_season)]
+          and ids_c20ad["=="] == ids_c20ad["="]
+          and ids_c20ad["!=="] == ids_c20ad["!="]
+          and str(c20_one_season) not in ids_c20ad["!=="],
+          "%s" % ids_c20ad)
+
+
+    # Cycle 20: `mediaCount` and `createdAt` are recorded filter fields that could
+    # never select anything in plexsim, because no row carries either attribute and
+    # both were read straight off the row. Both references answer real subsets:
+    # `type=1&mediaCount=1` is 3,673 of zen's 3,887 and all 5 of kids', `type=2` and
+    # `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
+    # answer `>>=1` -- the duplicate sets exactly), and `createdAt>=2000-01-01`
+    # answers every row of every library on both. `sort=mediaCount` is a real
+    # ordering on both too, where plexsim answered 500.
+    counts_c20ae = {}
+    for spec_c20ae in ("type=1&mediaCount=1", "type=1&mediaCount%3E%3E=1",
+                       "type=1&createdAt%3E=2000-01-01"):
+        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
+                                           % (movie_section, spec_c20ae))[1].get("Metadata") or [])
+    for spec_c20ae in ("type=2&mediaCount=1", "type=2&mediaCount%3E%3E=1",
+                       "type=4&mediaCount=1"):
+        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
+                                           % (show_section, spec_c20ae))[1].get("Metadata") or [])
+    movies_c20ae = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                       .get("Metadata") or [])
+    sorted_c20ae = get(base, "/library/sections/%s/all?type=1&sort=mediaCount" % movie_section)[0]
+    check("mediaCount and createdAt select rows, and mediaCount sorts",
+          counts_c20ae["type=1&mediaCount=1"] == movies_c20ae
+          and counts_c20ae["type=1&mediaCount%3E%3E=1"] == 0
+          and counts_c20ae["type=1&createdAt%3E=2000-01-01"] == movies_c20ae
+          and counts_c20ae["type=2&mediaCount=1"] > 0
+          and counts_c20ae["type=2&mediaCount%3E%3E=1"] > 0
+          and counts_c20ae["type=4&mediaCount=1"] > 0
+          and sorted_c20ae == 200,
+          "%s of %s movies | sort %s" % (counts_c20ae, movies_c20ae, sorted_c20ae))
+
+
+    # Cycle 20, measured on plexscratch: an episode's inherited `contentRating` is a
+    # READ-TIME fallback, not a copy made when the show is written. Set the episode's
+    # own to EP-OWN and the show to SHOW-NEW: the episode keeps its own. CLEAR the
+    # episode's (`contentRating.value=`) and it reads SHOW-NEW at once; write the show
+    # again and the episode follows to SHOW-NEW2. plexsim copied the show's rating onto
+    # the episodes at load and on a show edit, so an episode whose own rating was
+    # cleared had none at all and drew a blank badge for the rest of the process.
+    if show_section:
+        _, eps_c20p, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+        leaf_c20p = (eps_c20p.get("Metadata") or [{}])[0]
+        episode_c20p = leaf_c20p.get("ratingKey")
+        parent_c20p = leaf_c20p.get("grandparentRatingKey")
+
+        def rating_c20p():
+            _, doc_c20p, _ = get(base, "/library/metadata/%s" % episode_c20p)
+            return (doc_c20p.get("Metadata") or [{}])[0].get("contentRating")
+
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-EP" % episode_c20p)
+        own_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW" % parent_c20p)
+        kept_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=" % episode_c20p)
+        fell_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW2" % parent_c20p)
+        followed_c20p = rating_c20p()
+        check("an episode's inherited contentRating is read at read time",
+              own_c20p == "C20-EP" and kept_c20p == "C20-EP"
+              and fell_c20p == "C20-SHOW" and followed_c20p == "C20-SHOW2",
+              "own %r kept %r cleared %r followed %r"
+              % (own_c20p, kept_c20p, fell_c20p, followed_c20p))
+    else:
+        skip("an episode's inherited contentRating is read at read time", "no show library")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
@@ -15557,283 +15935,6 @@ def main():
           and all(code_c20h == 500 for code_c20h in refused_c20h.values()),
           "%s | still refused %s" % (grouped_c20h, refused_c20h))
 
-    # Cycle 20 needs two seasons it can rename; the fixture's four are all `Season N`.
-    c20_seasons = [r_c20.get("ratingKey") for r_c20 in
-                   (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
-                    .get("Metadata") or [])]
-    c20_season_a = c20_seasons[-1] if c20_seasons else None
-    c20_season_b = c20_seasons[-2] if len(c20_seasons) > 1 else None
-
-    # Cycle 20, measured on zen's 741 real seasons: a real PMS generates THREE season
-    # labels, not one. Beside `Season N` it writes `Specials` for season 0 (4 rows) and
-    # `[Unknown Season]` for a season with no index at all (5 rows), and all three are
-    # stored NOWHERE -- `titleSort=` answers 740 of the 741, `title=Specials` and
-    # `title=Unknown` answer 0, `/search?type=3&query=specials` answers 0, and the `#`
-    # bucket of the firstCharacter listing holds all 740. Cycle 18 built the rule for
-    # `Season N` only, so a Specials season answered the search box, filed under `S`
-    # and sorted among the titled rows.
-    request(base, "PUT", "/library/metadata/%s?title.value=Specials" % c20_season_a)
-    request(base, "PUT", "/library/metadata/%s?title.value=%%5BUnknown%%20Season%%5D"
-            % c20_season_b)
-    _, generated_c20r, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
-    matched_c20r = {str(r_c20r.get("ratingKey"))
-                    for r_c20r in (generated_c20r.get("Metadata") or [])}
-    searched_c20r = get(base, "/library/sections/%s/search?type=3&query=specials"
-                        % show_section)[1].get("size")
-    titled_c20r = get(base, "/library/sections/%s/all?type=3&title=Specials"
-                      % show_section)[1].get("size")
-    _, bucket_c20r, _ = get(base, "/library/sections/%s/firstCharacter/%%23?type=3" % show_section)
-    check("Specials and [Unknown Season] are generated titles too",
-          str(c20_season_a) in matched_c20r and str(c20_season_b) in matched_c20r
-          and searched_c20r == 0 and titled_c20r == 0
-          and {str(r_c20r.get("ratingKey")) for r_c20r in (bucket_c20r.get("Metadata") or [])}
-          >= {str(c20_season_a), str(c20_season_b)},
-          "titleSort= %s | search %s | title= %s | #%s"
-          % (sorted(matched_c20r), searched_c20r, titled_c20r, bucket_c20r.get("size")))
-
-    # Cycle 20, measured on kids (whose six episodes split three with a stored
-    # `view_count = 0` and three with no settings row at all) and on zen (8,943 of
-    # 9,287 episodes): `viewCount` and `viewOffset` treat a row with NO stored value as
-    # BELOW every value and equal to 0. kids answers `viewCount=0` with all six,
-    # `<<=0` with the three that have no row, `>=0` with the three that have one, and
-    # `!=0` with none. `skipCount` is NOT in this family -- its nulls match nothing,
-    # which is how the two were separated. plexsim answered an empty grid to
-    # `viewCount=0`, the client's own "never played" probe.
-    counts_c20s = {}
-    for spec_c20s in ("viewCount=0", "viewCount%3C%3C=0", "viewCount%3E=0", "viewCount%21=0",
-                      "viewOffset=0", "viewOffset%3C=0", "skipCount=0"):
-        counts_c20s[spec_c20s] = len(get(base, "/library/sections/%s/all?type=4&%s"
-                                         % (show_section, spec_c20s))[1].get("Metadata") or [])
-    total_c20s = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                     .get("Metadata") or [])
-    check("viewCount and viewOffset read a missing value as below every value",
-          total_c20s and counts_c20s["viewCount=0"] == total_c20s
-          and counts_c20s["viewOffset=0"] == total_c20s
-          and counts_c20s["viewOffset%3C=0"] == total_c20s
-          and counts_c20s["viewCount%21=0"] == 0
-          and counts_c20s["skipCount=0"] == 0,
-          "%s of %s" % (counts_c20s, total_c20s))
-
-    # Cycle 20: `audioLanguage` and `subtitleLanguage` answer their six non-`=`
-    # operators as UNIVERSALLY QUANTIFIED NEGATIONS -- the open question cycle 19 left.
-    # `=v` is "some stream is v"; every other operator is "NO stream satisfies the
-    # comparison", with `!=` and `==` both comparing equality and `!==` inequality. On
-    # kids' six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
-    # `<<=`6 `>>=`6, which is exactly what it answers; zen's 9,287 agree, and a row
-    # with no stream of that type matches every non-`=` operator vacuously (its
-    # `audioLanguage=zz` is 0 and `!=zz` all 3,887). plexsim answered 0 to `!==`,
-    # `<<=` and `>>=`.
-    lang_c20t = {}
-    for label_c20t, key_c20t in (("=", "audioLanguage"), ("!=", "audioLanguage%21"),
-                                 ("==", "audioLanguage%3D"), ("!==", "audioLanguage%21%3D"),
-                                 ("<=", "audioLanguage%3C"), (">=", "audioLanguage%3E"),
-                                 ("<<=", "audioLanguage%3C%3C"), (">>=", "audioLanguage%3E%3E")):
-        lang_c20t[label_c20t] = len(get(base, "/library/sections/%s/all?type=4&%s=en"
-                                        % (show_section, key_c20t))[1].get("Metadata") or [])
-    episodes_c20t = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                        .get("Metadata") or [])
-    check("the stream-language operators are universal negations",
-          episodes_c20t and lang_c20t["="] == episodes_c20t
-          and lang_c20t["!=="] == episodes_c20t
-          and lang_c20t["<<="] == episodes_c20t and lang_c20t[">>="] == episodes_c20t
-          and lang_c20t["!="] == 0 and lang_c20t["=="] == 0
-          and lang_c20t["<="] == 0 and lang_c20t[">="] == 0,
-          "%s of %s episodes" % (lang_c20t, episodes_c20t))
-
-    # Cycle 20: a stream-language column does NOT fall back to the leaves. Both
-    # references answer NOTHING to `type=2&audioLanguage=en` and to
-    # `type=3&subtitleLanguage=en` -- zen over 507 shows and 741 seasons, kids over its
-    # one show and two seasons -- while the same probe at `type=4` returns a real
-    # subset on both, so the filter is live and the parent row simply has no such
-    # column. Cycle 19 built the any-leaf fallback for `duration`, `resolution` and
-    # `mediaSize`; plexsim applied it to these two as well and selected every show.
-    parents_c20u = {spec_c20u: len(get(base, "/library/sections/%s/all?%s"
-                                       % (show_section, spec_c20u))[1].get("Metadata") or [])
-                    for spec_c20u in ("type=2&audioLanguage=en", "type=3&audioLanguage=en",
-                                      "type=3&subtitleLanguage=en", "type=2&subtitleLanguage=en")}
-    leaves_c20u = len(get(base, "/library/sections/%s/all?type=4&audioLanguage=en"
-                          % show_section)[1].get("Metadata") or [])
-    check("a stream-language column does not read the leaves",
-          all(count_c20u == 0 for count_c20u in parents_c20u.values()) and leaves_c20u > 0,
-          "%s | episodes %s" % (parents_c20u, leaves_c20u))
-
-    # Cycle 20: the media axes of a SHOW library are built from the LEAVES. Both
-    # references answer a populated `/library/sections/{show}/resolution` and
-    # `/audioLanguage` -- zen 6 and 46 entries, kids 1 and 1 -- although no show or
-    # season row has Media of its own. plexsim built them from the section's top-level
-    # rows only and answered an empty container, so the Resolution and Audio Language
-    # menus of a TV library's filter bar were empty while the FILTER behind them worked.
-    axes_c20v = {leaf_c20v: get(base, "/library/sections/%s/%s" % (show_section, leaf_c20v))[1]
-                 for leaf_c20v in ("resolution", "audioLanguage")}
-    movie_axis_c20v = get(base, "/library/sections/%s/resolution" % movie_section)[1]
-    check("a show library's media axes are built from its leaves",
-          all((doc_c20v.get("Directory") or []) for doc_c20v in axes_c20v.values())
-          and bool(movie_axis_c20v.get("Directory")),
-          "%s | movie axis %s"
-          % ({leaf_c20v: [d_c20v.get("key") for d_c20v in doc_c20v.get("Directory") or []]
-              for leaf_c20v, doc_c20v in axes_c20v.items()},
-             [d_c20v.get("key") for d_c20v in movie_axis_c20v.get("Directory") or []]))
-
-    # Cycle 20: `file=` refuses a SHOW listing and reads the leaves on a SEASON one.
-    # `type=2&file=/` is a 500 on kids and zen alike -- the only media column that
-    # refuses rather than answering -- while `type=3&file=/` answers every season (zen
-    # 741, kids 2) and `type=4` every episode. plexsim answered a 200 with no rows at
-    # type=2 and nothing at all at type=3: its `file` branch reads the row's own Media
-    # and sits ABOVE the leaves fallback cycle 19 added, so the fallback never ran.
-    fragment_c20w = ""
-    for r_c20w in get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []:
-        for m_c20w in r_c20w.get("Media") or []:
-            for p_c20w in m_c20w.get("Part") or []:
-                fragment_c20w = str(p_c20w.get("file") or "")[:6] or fragment_c20w
-    show_code_c20w = get(base, "/library/sections/%s/all?type=2&file=%%2F" % show_section)[0]
-    season_rows_c20w = len(get(base, "/library/sections/%s/all?type=3&file=%s"
-                               % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
-    episode_rows_c20w = len(get(base, "/library/sections/%s/all?type=4&file=%s"
-                                % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
-    seasons_c20w = len(get(base, "/library/sections/%s/all?type=3" % show_section)[1]
-                       .get("Metadata") or [])
-    check("file= refuses a show listing and reads the leaves on a season one",
-          show_code_c20w == 500 and bool(fragment_c20w)
-          and season_rows_c20w == seasons_c20w and episode_rows_c20w > 0,
-          "type=2 %s | seasons %s of %s | episodes %s | fragment %r"
-          % (show_code_c20w, season_rows_c20w, seasons_c20w, episode_rows_c20w, fragment_c20w))
-
-    # Cycle 20: `/library/sections/{id}/unwatched` is typed like a listing. Any `type=`
-    # but the library's own top-level type answers EMPTY on both references -- zen and
-    # kids each answer 0 rows to `?type=1`, `?type=3`, `?type=4` and `?type=10` on a
-    # show library -- and the container's `viewGroup` flips to `episode` for every one
-    # of them where a movie library keeps `movie`. An unparseable or empty `type=` is a
-    # 500 there, and on `/onDeck` too, the refusal plexsim already answered on `/all`.
-    unwatched_c20x = {}
-    for spec_c20x in ("", "?type=2", "?type=3", "?type=4", "?type=1"):
-        status_c20x, doc_c20x, _ = get(base, "/library/sections/%s/unwatched%s"
-                                       % (show_section, spec_c20x))
-        unwatched_c20x[spec_c20x or "<bare>"] = (status_c20x, len(doc_c20x.get("Metadata") or []),
-                                                 doc_c20x.get("viewGroup"))
-    refusals_c20x = {leaf_c20x + spec_c20x:
-                     get(base, "/library/sections/%s/%s%s" % (show_section, leaf_c20x, spec_c20x))[0]
-                     for leaf_c20x in ("unwatched", "onDeck")
-                     for spec_c20x in ("?type=abc", "?type=")}
-    check("/unwatched answers only its own type and refuses an unparseable one",
-          unwatched_c20x["?type=2"][1] > 0
-          and unwatched_c20x["?type=3"][1] == 0 and unwatched_c20x["?type=4"][1] == 0
-          and unwatched_c20x["?type=1"][1] == 0
-          and unwatched_c20x["?type=3"][2] == "episode"
-          and all(code_c20x == 500 for code_c20x in refusals_c20x.values()),
-          "%s | refusals %s" % (unwatched_c20x, refusals_c20x))
-
-    # Cycle 20: `/recentlyViewedShows?type=N` is a typed QUERY. zen answers 507 shows,
-    # 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, and
-    # both answer 0 to `type=1` and `type=10`, while the container keeps
-    # `viewGroup="show"`, its own `title2` and `allowSync: false` at every type.
-    # plexsim ignored the parameter and always answered the show list.
-    typed_c20y = {}
-    for value_c20y in ("2", "3", "4", "1"):
-        status_c20y, doc_c20y, _ = get(base, "/library/sections/%s/recentlyViewedShows?type=%s"
-                                       % (show_section, value_c20y))
-        typed_c20y[value_c20y] = (status_c20y,
-                                  [str(r_c20y.get("type"))
-                                   for r_c20y in (doc_c20y.get("Metadata") or [])][:1],
-                                  len(doc_c20y.get("Metadata") or []),
-                                  doc_c20y.get("viewGroup"))
-    bad_c20y = get(base, "/library/sections/%s/recentlyViewedShows?type=abc" % show_section)[0]
-    check("recentlyViewedShows is a typed query",
-          typed_c20y["2"][1] == ["show"] and typed_c20y["3"][1] == ["season"]
-          and typed_c20y["4"][1] == ["episode"] and typed_c20y["1"][2] == 0
-          and typed_c20y["3"][3] == "show" and bad_c20y == 500,
-          "%s | type=abc %s" % (typed_c20y, bad_c20y))
-
-    # a season to unmatch, so the library holds both kinds
-    c20_unmatched = [r_c20.get("ratingKey") for r_c20 in
-                     (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
-                      .get("Metadata") or [])][0]
-
-    # Cycle 20, measured on kids' two seasons and zen's 741 over all eight operators
-    # and six values: `unmatched` IGNORES the operator. Only the literal value `1`
-    # selects the unmatched rows, and it does so under `=`, `!=`, `==`, `!==`, `<=`,
-    # `>=`, `<<=` and `>>=` alike; every other value (`0`, `2`, empty, `true`, `01`)
-    # selects the matched ones under all eight. It belongs with `resolution`, which
-    # cycle 19 measured as operator-insensitive, and NOT with `unwatched`, which
-    # follows the boolean rule on both references (the control: `unwatched=1` answers
-    # every season and its seven other operators none). plexsim applied the boolean
-    # rule here, so `unmatched!=1` and `unmatched!=0` were both inverted.
-    request(base, "PUT", "/library/metadata/%s/unmatch" % c20_unmatched)
-    grid_c20z = {}
-    for label_c20z, key_c20z in (("=", ""), ("!=", "%21"), ("==", "%3D"), ("!==", "%21%3D"),
-                                 ("<=", "%3C"), (">=", "%3E"), ("<<=", "%3C%3C"),
-                                 (">>=", "%3E%3E")):
-        for value_c20z in ("1", "0", "2"):
-            rows_c20z = get(base, "/library/sections/%s/all?type=3&unmatched%s=%s"
-                            % (show_section, key_c20z, value_c20z))[1].get("Metadata") or []
-            grid_c20z[(label_c20z, value_c20z)] = sorted(str(r_c20z.get("ratingKey"))
-                                                         for r_c20z in rows_c20z)
-    true_c20z = grid_c20z[("=", "1")]
-    false_c20z = grid_c20z[("=", "0")]
-    check("unmatched ignores the operator and reads the value alone",
-          bool(true_c20z) and bool(false_c20z) and true_c20z != false_c20z
-          and all(rows_c20z == true_c20z for (_op_c20z, value_c20z), rows_c20z
-                  in grid_c20z.items() if value_c20z == "1")
-          and all(rows_c20z == false_c20z for (_op_c20z, value_c20z), rows_c20z
-                  in grid_c20z.items() if value_c20z != "1"),
-          "true %s false %s | %s" % (true_c20z, false_c20z,
-                                     {k_c20z: v_c20z for k_c20z, v_c20z
-                                      in list(grid_c20z.items())[:6]}))
-
-    # the fixture holds one episode with two Media and seven with one, so its show is
-    # in both halves -- which is the shape zen's 24 overlapping shows have
-    c20_dup_leaf = next((str(r_c20.get("ratingKey")) for r_c20 in
-                         (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                          .get("Metadata") or [])
-                         if len(r_c20.get("Media") or []) > 1), None)
-
-    # Cycle 20, measured on zen: on a PARENT row the Duplicates filter's TRUE and FALSE
-    # sets OVERLAP. `type=2&duplicate=1` answers 44 shows and `!=1` 487, which is 531
-    # of 507 rows -- 24 shows are in both -- and its seasons split 74 / 702 with 35 in
-    # both. Both queries are evaluated per LEAF: `=1` is "some leaf has more than one
-    # Media" and `!=1` is "some leaf has exactly one", so a parent holding both is in
-    # each. plexsim collapsed a parent to one scalar, which makes the two sets
-    # complements by construction and can never overlap -- cycle 19's own any-leaf
-    # rule, implemented as a proxy.
-    _, versions_c20aa, _ = get(base, "/library/metadata/%s" % c20_dup_leaf)
-    leaf_row_c20aa = (versions_c20aa.get("Metadata") or [{}])[0]
-    dup_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
-                 get(base, "/library/sections/%s/all?type=2&duplicate=1"
-                     % show_section)[1].get("Metadata") or []}
-    plain_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
-                   get(base, "/library/sections/%s/all?type=2&duplicate%%21=1"
-                       % show_section)[1].get("Metadata") or []}
-    check("a parent row is in both halves of the Duplicates filter",
-          len(leaf_row_c20aa.get("Media") or []) > 1
-          and bool(dup_c20aa & plain_c20aa),
-          "media %s | dup %s plain %s overlap %s"
-          % (len(leaf_row_c20aa.get("Media") or []), sorted(dup_c20aa), sorted(plain_c20aa),
-             sorted(dup_c20aa & plain_c20aa)))
-
-    # Cycle 20, measured on zen's 3,887 movies (1,518 of which carry an
-    # `originallyAvailableAt`) and on kids: a NULL date matches NOTHING, on every
-    # operator. `<=1800-01-01` and `<<=1800-01-01` answer 0 and `<=2100-01-01` answers
-    # exactly the 1,518 with a value, so the 2,369 without one are in neither half --
-    # the same rule cycle 19 measured for a numeric column. And `!=` really compares:
-    # `addedAt!=2020-01-01` answers every row on both references where
-    # plexsim answered none, because the date branch had no `!=` case at all and fell
-    # through to equality. The old "a NULL date matches is-before" was measured on
-    # fun, which is out of scope.
-    dates_c20ab = {}
-    for label_c20ab, key_c20ab in ((">=", "originallyAvailableAt%3E"),
-                                   ("<=", "originallyAvailableAt%3C"),
-                                   ("<<=", "originallyAvailableAt%3C%3C")):
-        dates_c20ab[label_c20ab] = len(
-            get(base, "/library/sections/%s/all?type=3&%s=2100-01-01" % (show_section, key_c20ab))[1]
-            .get("Metadata") or [])
-    total_c20ab = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
-                      .get("Metadata") or [])
-    unequal_c20ab = len(get(base, "/library/sections/%s/all?type=1&addedAt%%21=2020-01-01"
-                            % movie_section)[1].get("Metadata") or [])
-    check("a null date matches nothing and != really compares",
-          all(count_c20ab == 0 for count_c20ab in dates_c20ab.values())
-          and total_c20ab and unequal_c20ab == total_c20ab,
-          "seasons %s | addedAt!= %s of %s" % (dates_c20ab, unequal_c20ab, total_c20ab))
-
     # Cycle 20, measured on zen's 3,887 movies and on kids: of the four unlisted string
     # fields only `titleSort` folds case. `titleSort<=b` and `<=B` answer the same 127
     # rows and `<=m`/`<=M` the same 872, while `summary<=b` is 3,884 against `<=B`'s
@@ -15851,60 +15952,6 @@ def main():
           ordered_c20ac[("titleSort", "b")] == ordered_c20ac[("titleSort", "B")]
           and ordered_c20ac[("summary", "b")] != ordered_c20ac[("summary", "B")],
           "%s" % ordered_c20ac)
-
-    c20_one_season = [r_c20.get("ratingKey") for r_c20 in
-                      (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
-                       .get("Metadata") or [])][0]
-
-    # Cycle 20, measured on both references over two libraries and two row types:
-    # `id==<n>` and `id!==<n>` DO match a number. zen answers `type=3&id==5190` with
-    # that one season and `!==5190` with the other 740, kids `id==7` with season 7,
-    # and the movie libraries agree. Cycle 11 recorded "`==`/`!==` never match a
-    # number" for this column -- measured, it seems, only against a value that was not
-    # one -- and plexsim answered nothing to `id==` and every row to `id!==`.
-    ids_c20ad = {}
-    for label_c20ad, key_c20ad in (("=", "id"), ("==", "id%3D"), ("!==", "id%21%3D"),
-                                   ("!=", "id%21")):
-        ids_c20ad[label_c20ad] = sorted(
-            str(r_c20ad.get("ratingKey")) for r_c20ad in
-            get(base, "/library/sections/%s/all?type=3&%s=%s"
-                % (show_section, key_c20ad, c20_one_season))[1].get("Metadata") or [])
-    check("id== and id!== compare a number",
-          ids_c20ad["=="] == [str(c20_one_season)]
-          and ids_c20ad["=="] == ids_c20ad["="]
-          and ids_c20ad["!=="] == ids_c20ad["!="]
-          and str(c20_one_season) not in ids_c20ad["!=="],
-          "%s" % ids_c20ad)
-
-    # Cycle 20: `mediaCount` and `createdAt` are recorded filter fields that could
-    # never select anything in plexsim, because no row carries either attribute and
-    # both were read straight off the row. Both references answer real subsets:
-    # `type=1&mediaCount=1` is 3,673 of zen's 3,887 and all 5 of kids', `type=2` and
-    # `type=3` read the LEAVES (487 shows and 702 seasons answer `=1`, 44 and 74
-    # answer `>>=1` -- the duplicate sets exactly), and `createdAt>=2000-01-01`
-    # answers every row of every library on both. `sort=mediaCount` is a real
-    # ordering on both too, where plexsim answered 500.
-    counts_c20ae = {}
-    for spec_c20ae in ("type=1&mediaCount=1", "type=1&mediaCount%3E%3E=1",
-                       "type=1&createdAt%3E=2000-01-01"):
-        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
-                                           % (movie_section, spec_c20ae))[1].get("Metadata") or [])
-    for spec_c20ae in ("type=2&mediaCount=1", "type=2&mediaCount%3E%3E=1",
-                       "type=4&mediaCount=1"):
-        counts_c20ae[spec_c20ae] = len(get(base, "/library/sections/%s/all?%s"
-                                           % (show_section, spec_c20ae))[1].get("Metadata") or [])
-    movies_c20ae = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
-                       .get("Metadata") or [])
-    sorted_c20ae = get(base, "/library/sections/%s/all?type=1&sort=mediaCount" % movie_section)[0]
-    check("mediaCount and createdAt select rows, and mediaCount sorts",
-          counts_c20ae["type=1&mediaCount=1"] == movies_c20ae
-          and counts_c20ae["type=1&mediaCount%3E%3E=1"] == 0
-          and counts_c20ae["type=1&createdAt%3E=2000-01-01"] == movies_c20ae
-          and counts_c20ae["type=2&mediaCount=1"] > 0
-          and counts_c20ae["type=2&mediaCount%3E%3E=1"] > 0
-          and counts_c20ae["type=4&mediaCount=1"] > 0
-          and sorted_c20ae == 200,
-          "%s of %s movies | sort %s" % (counts_c20ae, movies_c20ae, sorted_c20ae))
 
     # Cycle 20: the section search box answers the LIGHT grid row, and a grid row
     # carries no librarySection fields -- they are on the container. Neither reference
@@ -16136,39 +16183,6 @@ def main():
           "theme %r banner %r updatedAt %s | section %s"
           % (row_c20o.get("theme"), row_c20o.get("banner"), row_c20o.get("updatedAt"),
              section_c20o))
-
-    # Cycle 20, measured on plexscratch: an episode's inherited `contentRating` is a
-    # READ-TIME fallback, not a copy made when the show is written. Set the episode's
-    # own to EP-OWN and the show to SHOW-NEW: the episode keeps its own. CLEAR the
-    # episode's (`contentRating.value=`) and it reads SHOW-NEW at once; write the show
-    # again and the episode follows to SHOW-NEW2. plexsim copied the show's rating onto
-    # the episodes at load and on a show edit, so an episode whose own rating was
-    # cleared had none at all and drew a blank badge for the rest of the process.
-    if show_section:
-        _, eps_c20p, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
-        leaf_c20p = (eps_c20p.get("Metadata") or [{}])[0]
-        episode_c20p = leaf_c20p.get("ratingKey")
-        parent_c20p = leaf_c20p.get("grandparentRatingKey")
-
-        def rating_c20p():
-            _, doc_c20p, _ = get(base, "/library/metadata/%s" % episode_c20p)
-            return (doc_c20p.get("Metadata") or [{}])[0].get("contentRating")
-
-        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-EP" % episode_c20p)
-        own_c20p = rating_c20p()
-        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW" % parent_c20p)
-        kept_c20p = rating_c20p()
-        request(base, "PUT", "/library/metadata/%s?contentRating.value=" % episode_c20p)
-        fell_c20p = rating_c20p()
-        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW2" % parent_c20p)
-        followed_c20p = rating_c20p()
-        check("an episode's inherited contentRating is read at read time",
-              own_c20p == "C20-EP" and kept_c20p == "C20-EP"
-              and fell_c20p == "C20-SHOW" and followed_c20p == "C20-SHOW2",
-              "own %r kept %r cleared %r followed %r"
-              % (own_c20p, kept_c20p, fell_c20p, followed_c20p))
-    else:
-        skip("an episode's inherited contentRating is read at read time", "no show library")
 
     # Cycle 20, measured on plexscratch over the same 57 columns: a COLLECTION row and a
     # PLAYLIST row take the item path's whole validation. An unknown name is a 400
