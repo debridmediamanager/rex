@@ -3190,6 +3190,18 @@ class PlexSim:
             return self.bare_container(
                 size=len(page), noHistory=0, replaceParent=0,
                 identifier="com.plexapp.system", Directory=page, **fields)
+        if route == "/system/search":
+            # Cycle 18, found by sweeping 46 second-level `/system/*` names against both
+            # references: this one is a 200 on kids and zen alike, an empty
+            # `com.plexapp.system` container carrying `mediaTagPrefix` and a `prefsKey`
+            # -- the only container attribute either reference emits anywhere that
+            # plexsim never did. It is unpaged even with both paging headers. plexsim
+            # 404'd it: the mirror image of the three endpoints cycle 14's path census
+            # found plexsim had INVENTED.
+            return self.bare_container(
+                size=0, identifier="com.plexapp.system",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                prefsKey="/:/plugins/com.plexapp.system/prefs")
         if route == "/system/proxy":
             # A real PMS refuses this without the headers its own clients send.
             return ("error", 400, "plexsim: bad request")
@@ -12428,6 +12440,12 @@ class Handler(BaseHTTPRequestHandler):
             return result
         body = result["MediaContainer"]
         if not isinstance(body, dict) or "totalSize" in body or "noHistory" in body:
+            return result
+        if urllib.parse.urlsplit(self.path).path.rstrip("/") == "/system/search":
+            # Cycle 18, measured on kids and zen with both paging headers: this one
+            # does not page at all -- no `totalSize`, no `offset` and no response
+            # headers -- although it carries neither `noHistory` nor a `totalSize` of
+            # its own, which are the two markers the rule above is written from.
             return result
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
                                             keep_blank_values=True))

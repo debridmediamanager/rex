@@ -14232,6 +14232,21 @@ def main():
     check("and the plug-in container's XML leads with totalSize, noHistory, replaceParent",
           head.startswith('totalSize="2" noHistory="0" replaceParent="0" size="1"'), head)
 
+    # Cycle 18: `/system/search` is a 200 on kids and zen alike -- an empty
+    # `com.plexapp.system` container with `mediaTagPrefix` and `prefsKey`, the one container
+    # attribute either reference emits that plexsim never did -- where plexsim 404'd it.
+    status, listing, _ = get(base, "/system/search")
+    check("/system/search is a real container",
+          status == 200 and listing.get("size") == 0
+          and listing.get("identifier") == "com.plexapp.system"
+          and listing.get("prefsKey") == "/:/plugins/com.plexapp.system/prefs"
+          and listing.get("mediaTagPrefix") == "/system/bundle/media/flags/",
+          "%s %s" % (status, listing))
+    status, listing, _ = get(base, "/system/search?X-Plex-Container-Start=0"
+                             "&X-Plex-Container-Size=1")
+    check("and it does not page", status == 200 and "totalSize" not in listing,
+          "%s %s" % (status, listing))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
