@@ -13241,6 +13241,42 @@ def main():
           "before=%r after-item=%r after-section=%r"
           % (original_c17b1, after_item_c17b1, after_section_c17b1))
 
+
+    # Cycle 17, re-measured on plexscratch: the ITEM edit path's 400 means "this
+    # request edits nothing", not "an unknown field". With a real edit beside it the
+    # reference IGNORES every name it does not recognise -- an unknown `.value`, a bare
+    # unknown name, an unknown TAG type and an option like `flattenSeasons=1` all
+    # answer 200 and the edit lands. Each of them ALONE is still a 400, as is a PUT
+    # with no parameters. The recorded rule ("an unknown field or tag type is 400") was
+    # measured with the unknown name alone, which is failure class A: the client sends
+    # its save with whatever options it carries, and plexsim 400'd 34 of the 71 names
+    # swept -- so a client that appends one option plexsim does not know loses the
+    # whole save.
+    def edit_c17b2(query_c17b2):
+        request(base, "PUT", "/library/metadata/%s?title.value=SENTINEL17" % show)
+        status_c17b2, _, _ = request(base, "PUT", "/library/metadata/%s%s"
+                                     % (show, query_c17b2))
+        return status_c17b2, get(base, "/library/metadata/%s"
+                                 % show)[1]["Metadata"][0].get("title")
+    with_unknown_c17b2 = edit_c17b2("?title.value=EDITED17&zzzUnknown.value=1")
+    with_bare_c17b2 = edit_c17b2("?title.value=EDITED17&zzzUnknown=1")
+    with_option_c17b2 = edit_c17b2("?title.value=EDITED17&flattenSeasons=1")
+    with_tag_c17b2 = edit_c17b2("?title.value=EDITED17&zzztag[0].tag.tag=x")
+    alone_c17b2 = edit_c17b2("?zzzUnknown=1")
+    option_alone_c17b2 = edit_c17b2("?flattenSeasons=1")
+    bare_c17b2 = edit_c17b2("")
+    check("the item edit path ignores a name it does not know",
+          with_unknown_c17b2 == (200, "EDITED17")
+          and with_bare_c17b2 == (200, "EDITED17")
+          and with_option_c17b2 == (200, "EDITED17")
+          and with_tag_c17b2 == (200, "EDITED17")
+          and alone_c17b2 == (400, "SENTINEL17")
+          and option_alone_c17b2 == (400, "SENTINEL17")
+          and bare_c17b2 == (400, "SENTINEL17"),
+          "unknown=%s bare=%s option=%s tag=%s alone=%s/%s/%s"
+          % (with_unknown_c17b2, with_bare_c17b2, with_option_c17b2, with_tag_c17b2,
+             alone_c17b2, option_alone_c17b2, bare_c17b2))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
