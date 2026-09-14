@@ -14096,6 +14096,32 @@ def main():
           and not grid.get("mixedParents"),
           "%s %s %s" % (status, grid.get("viewGroup"), grid.get("viewMode")))
 
+    # Cycle 18, measured on kids ("Movies", "TV Shows"), zen ("Zen Movies", "Zen Shows",
+    # "Bench TV"): the `All ...` string is COMPOSED from the library's own title on a movie
+    # library and is the constant "All Shows" on a show library -- in both places it
+    # appears, the `/all` container's `title2` and the `all` pivot row. plexsim composed the
+    # container's title2 for a show library ("All Debrid TV") and hardcoded "All Movies" for
+    # a movie library's pivot row, so it had each half wrong in the opposite place.
+    status, listing, _ = get(base, "/library/sections/%s/all" % show_section)
+    check("a show library's /all title2 is the constant All Shows",
+          status == 200 and listing.get("title2") == "All Shows",
+          "%s %r" % (status, listing.get("title2")))
+    status, listing, _ = get(base, "/library/sections/%s/all" % movie_section)
+    title = get(base, "/library/sections")[1]
+    name = [d.get("title") for d in title.get("Directory") or []
+            if str(d.get("key")) == str(movie_section)][0]
+    check("and a movie library composes its own",
+          status == 200 and listing.get("title2") == "All " + name,
+          "%s %r vs %r" % (status, listing.get("title2"), name))
+    status, pivots, _ = get(base, "/library/sections/%s" % movie_section)
+    row = [d for d in pivots.get("Directory") or [] if d.get("key") == "all"][0]
+    check("the movie pivot row composes too",
+          row.get("title") == "All " + name, "%r" % row.get("title"))
+    status, pivots, _ = get(base, "/library/sections/%s" % show_section)
+    row = [d for d in pivots.get("Directory") or [] if d.get("key") == "all"][0]
+    check("and the show pivot row stays constant",
+          row.get("title") == "All Shows", "%r" % row.get("title"))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
