@@ -169,7 +169,13 @@ _ATTR_ORDER = {
         "ratingKey", "key", "parentRatingKey", "guid", "parentGuid", "parentSlug",
         "parentStudio", "type", "title", "titleSort", "parentKey",
         "librarySectionTitle", "librarySectionID", "librarySectionKey",
-        "parentTitle", "summary", "index", "parentIndex", "year", "parentYear",
+        # Cycle 21: `parentSummary` comes directly after `parentTitle`, before
+        # `summary` -- measured on the season rows of `/library/recentlyAdded`, the one
+        # list that carries it, on both references. plexsim appended it.
+        "parentTitle", "parentSummary", "summary", "index", "parentIndex",
+        "viewCount", "skipCount", "viewOffset", "lastViewedAt", "userRating",
+        "lastRatedAt",
+        "year", "parentYear",
         "thumb", "art", "parentThumb", "parentTheme", "leafCount",
         "viewedLeafCount", "addedAt", "updatedAt", "deletedAt"
     ),
@@ -177,7 +183,11 @@ _ATTR_ORDER = {
         "ratingKey", "key", "guid", "slug", "studio", "type", "title",
         "librarySectionTitle", "librarySectionID", "librarySectionKey",
         "titleSort", "originalTitle", "contentRating", "contentRatingAge",
-        "summary", "index", "audienceRating", "userRating", "lastRatedAt", "year",
+        "summary", "index", "audienceRating", "userRating",
+        # Cycle 21, measured on zen's watched show 19756: `viewCount` and `skipCount`
+        # sit between the rating and `lastViewedAt`, and the whole block precedes
+        # `year`.
+        "viewCount", "skipCount", "viewOffset", "lastViewedAt", "lastRatedAt", "year",
         "tagline", "thumb", "art", "theme", "duration", "originallyAvailableAt",
         "leafCount", "viewedLeafCount", "childCount", "addedAt", "updatedAt",
         "deletedAt", "audienceRatingImage", "episodeSort", "flattenSeasons"
@@ -238,7 +248,15 @@ _ATTR_ORDER = {
         "title", "titleSort", "grandparentKey", "parentKey", "librarySectionTitle",
         "librarySectionID", "librarySectionKey", "grandparentTitle",
         "parentTitle", "contentRating", "summary", "index", "parentIndex",
-        "audienceRating", "year", "thumb", "art", "parentThumb",
+        "audienceRating",
+        # Cycle 21, measured on zen's watched episode 19764: the per-user-state block
+        # sits HERE, after the rating and before the year -- where a movie row has
+        # carried it since cycle 17. Without an entry these names fell out in dict
+        # insertion order, which appended them after `updatedAt`, and cycle 19's "a
+        # real PMS's JSON key order is its XML order" moved both formats with them.
+        "viewCount", "skipCount", "viewOffset", "lastViewedAt", "userRating",
+        "lastRatedAt",
+        "year", "thumb", "art", "parentThumb",
         "grandparentThumb", "grandparentArt", "grandparentTheme", "duration",
         "originallyAvailableAt", "addedAt", "updatedAt", "audienceRatingImage",
         "deletedAt", "chapterSource"
