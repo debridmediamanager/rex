@@ -3444,6 +3444,9 @@ class PlexSim:
             # `type=` with 400 where a section listing answers 500, and both answer
             # 500 to an empty one.
             self._parsed_type(query, status=400)
+            refusal = self._listing_refusals(query)
+            if refusal:
+                return refusal
             if str(query.get("type")) == "18":
                 # Cycle 14, measured on the copy: `/library/all?type=18` lists every
                 # collection the SERVER holds, across libraries, in title order -- the
@@ -5046,10 +5049,9 @@ class PlexSim:
         # Measured on both references: `parentIndex` is a 500 on a listing rather than a
         # filter, whatever operator key follows it. The operator lives in the KEY, so
         # the field is what is left once the operator characters come off the end.
-        refused = next((key for key in query
-                        if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS), None)
-        if refused:
-            return ("error", 500, "plexsim: cannot filter on %s" % refused)
+        refusal = self._listing_refusals(query)
+        if refusal:
+            return refusal
         # Cycle 16, measured on kids and on zen's 507-show library: a show library's
         # `type=3` and `type=4` grids default to the SHOW's order -- the show's sort
         # title, then `parentIndex`, then `index` -- not to a flat `titleSort`.
@@ -5928,6 +5930,26 @@ class PlexSim:
             # trash, so these are honestly false rather than guessed.
             return 0
         return row.get(field)
+
+    def _listing_refusals(self, query):
+        """The refusals a listing answers wherever it consumes a query.
+
+        Cycle 18, measured on kids (1.43.4) and zen (1.42.2): `parentIndex=` is a 500
+        on `/library/all` and on `/playlists` as well as on a section listing, and so
+        is a `resolution=` outside the enum -- `/playlists?resolution=1` is a 500 while
+        `?resolution=1080` is a 200. Cycle 15 recorded the `parentIndex` rule and it was
+        wired into the section listing alone, which is the class-C shape: the docs were
+        right and two of the three paths that consume the grammar did not run it.
+        """
+        refused = next((key for key in query
+                        if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS), None)
+        if refused:
+            return ("error", 500, "plexsim: cannot filter on %s" % refused)
+        for key, value in query.items():
+            if key.rstrip("<>=!") == "resolution" \
+                    and str(value).strip() not in filters_module.RESOLUTIONS:
+                return ("error", 500, "plexsim: unknown resolution %r" % value)
+        return None
 
     def apply_filters(self, rows, query, section=None):
         """Filter rows by the query, or raise the status a real PMS answers with.
@@ -10069,6 +10091,9 @@ class PlexSim:
             if query.get("smart") in ("0", "1"):
                 rows = [r for r in rows
                         if bool(r.get("smart")) == (query["smart"] == "1")]
+            refusal = self._listing_refusals(query)
+            if refusal:
+                return refusal
             if query.get("title") is not None:
                 rows = [r for r in rows if r.get("title") == query["title"]]
             if query.get("sectionID") is not None:
