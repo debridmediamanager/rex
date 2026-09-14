@@ -61,7 +61,7 @@ import hierarchy as hierarchy_module  # noqa: E402
 import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
-from xmlout import to_xml  # noqa: E402
+from xmlout import ordered as ordered_keys, to_xml  # noqa: E402
 
 logger = logging.getLogger("plexsim")
 
@@ -1213,7 +1213,7 @@ def json_body(container):
     decoding a missing key happily chokes on as a null. An empty OBJECT is kept:
     `Related: {}` is exactly what the reference sends for an item with no hubs.
     """
-    return json.dumps(_drop_private(_drop_empty(container))).encode()
+    return json.dumps(ordered_keys(_drop_private(_drop_empty(container)))).encode()
 
 
 # The tree's MediaStream is its own projection, measured: a fixed field set per

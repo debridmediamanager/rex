@@ -14935,6 +14935,43 @@ def main():
                                                  % (movie_section, mres_c19v[0]))[1].get("Metadata") or [])
                                          if mres_c19v else -1))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object keys
+    # come out in exactly its XML order -- the container's, the row's, `Media`'s, `Part`'s
+    # and the row's child element keys, on all four row types. plexsim ordered the XML alone
+    # (cycles 16-19) and left the JSON in dict order, so its two formats disagreed on every
+    # response. Checked here by comparing plexsim's own two renderings of one request, which
+    # is the strongest form the suite can assert: the XML order is already reference-verified.
+    import re as re_c19j
+
+    _s_c19j, raw_c19j, _h_c19j = request(base, "GET", "/library/metadata/%s" % movie,
+                                         want_json=False)
+    text_c19j = raw_c19j.decode("utf-8", "replace")
+    video_c19j = re_c19j.search(r"<Video\b[^>]*>", text_c19j).group()
+    xml_attrs_c19j = re_c19j.findall(r'([A-Za-z0-9_:]+)="', video_c19j)
+    xml_children_c19j = []
+    for name_c19j in re_c19j.findall(r"<([A-Z][A-Za-z0-9]*)\b",
+                                     text_c19j.split("<Video", 1)[1]):
+        if name_c19j not in xml_children_c19j:
+            xml_children_c19j.append(name_c19j)
+    _status_c19j, json_c19j, _ = get(base, "/library/metadata/%s" % movie)
+    row_c19j = (json_c19j.get("Metadata") or [{}])[0]
+    json_attrs_c19j = [k_c19j for k_c19j in row_c19j
+                       if not isinstance(row_c19j[k_c19j], (dict, list))]
+    json_children_c19j = [k_c19j for k_c19j in row_c19j
+                          if isinstance(row_c19j[k_c19j], (dict, list))]
+    check("the JSON writer emits its keys in the XML's order",
+          json_attrs_c19j == [a_c19j for a_c19j in xml_attrs_c19j if a_c19j in json_attrs_c19j]
+          and json_children_c19j == [c_c19j for c_c19j in xml_children_c19j
+                                     if c_c19j in json_children_c19j],
+          "json attrs %s ; xml attrs %s ; json children %s ; xml children %s"
+          % (json_attrs_c19j[:8], xml_attrs_c19j[:8], json_children_c19j,
+             [c_c19j for c_c19j in xml_children_c19j if c_c19j in json_children_c19j]))
+    container_keys_c19j = [k_c19j for k_c19j in json_c19j
+                           if not isinstance(json_c19j[k_c19j], (dict, list))]
+    check("and the container's own keys follow it too",
+          container_keys_c19j[:1] == ["size"] or "size" not in container_keys_c19j,
+          str(container_keys_c19j[:6]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
