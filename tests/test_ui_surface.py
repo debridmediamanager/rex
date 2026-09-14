@@ -14356,6 +14356,16 @@ def main():
     status, _, _ = request(base, "PUT", "/library/parts/%s" % part)
     check("and a real part with no parameters is still a 200", status == 200, "%s" % status)
 
+    # Cycle 18, measured on plexscratch: `/library/metadata/{id}/subtitles` answers 404 to
+    # DELETE, PATCH and OPTIONS, where plexsim answered the upload validator's 400 to all
+    # three -- a 400 says "your request was wrong", a 404 says "this verb is not here".
+    for verb in ("DELETE", "PATCH", "OPTIONS"):
+        status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
+        check("%s on /subtitles is a 404" % verb, status == 404, "%s" % status)
+    for verb, want in (("GET", 400), ("PUT", 400), ("POST", 406)):
+        status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
+        check("%s on /subtitles is still a %s" % (verb, want), status == want, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
