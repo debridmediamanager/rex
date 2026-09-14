@@ -14494,6 +14494,125 @@ def main():
     check("and the generic regional list still follows",
           "ca-ES:" in (prefs.get("audioLanguage") or ""), "%r" % (prefs.get("audioLanguage") or "")[:80])
 
+    # Cycle 19: these three read the SHOW library, and the library-delete check below
+    # removes it -- so they sit here rather than at the suite's usual insertion point.
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). Three rules about the `Meta`
+    # descriptor the library page is built from. (1) `active` follows the REQUEST: a show
+    # library's `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode`, where
+    # plexsim served the captured fixture's stored flags and kept the Shows tab lit. (2)
+    # `?includeDetails=1` honours `includeAdvanced=1` -- bare it is 9 sorts on a movie
+    # library and 17 on a show one, with the flag 15 and 32 -- where plexsim always answered
+    # the advanced list, so six sorts and the Duplicates filter the client hides behind its
+    # own toggle were permanently on show. (3) That form carries no `folder` Type row and
+    # marks none of the others active.
+    status_c19m, meta_c19m, _ = get(base, "/library/sections/%s/all?type=4&includeMeta=1"
+                                    "&X-Plex-Container-Size=1" % show_section)
+    types_c19m = [(t_c19m.get("type"), t_c19m.get("active"))
+                  for t_c19m in ((meta_c19m.get("Meta") or {}).get("Type") or [])]
+    status_c19m3, meta_c19m3, _ = get(base, "/library/sections/%s/all?type=3&includeMeta=1"
+                                      "&X-Plex-Container-Size=1" % show_section)
+    types_c19m3 = [(t_c19m.get("type"), t_c19m.get("active"))
+                   for t_c19m in ((meta_c19m3.get("Meta") or {}).get("Type") or [])]
+    check("a Meta Type's active flag follows the asked type=",
+          dict(types_c19m).get("episode") is True and dict(types_c19m).get("show") is False
+          and dict(types_c19m3).get("season") is True and dict(types_c19m3).get("show") is False,
+          "type=4 %s ; type=3 %s" % (types_c19m, types_c19m3))
+    _, plain_c19m, _ = get(base, "/library/sections/%s?includeDetails=1" % movie_section)
+    _, adv_c19m, _ = get(base, "/library/sections/%s?includeDetails=1&includeAdvanced=1"
+                         % movie_section)
+
+
+    def sorts_c19m(body_c19m):
+        return sum(len(t_c19m.get("Sort") or []) for t_c19m in body_c19m.get("Type") or [])
+
+
+    check("includeDetails=1 honours includeAdvanced and drops the folder row",
+          sorts_c19m(plain_c19m) < sorts_c19m(adv_c19m)
+          and all(t_c19m.get("type") != "folder" for t_c19m in plain_c19m.get("Type") or [])
+          and all(t_c19m.get("active") is False for t_c19m in plain_c19m.get("Type") or [])
+          and bool(plain_c19m.get("Type")),
+          "plain sorts %d types %s ; advanced sorts %d"
+          % (sorts_c19m(plain_c19m),
+             [(t_c19m.get("type"), t_c19m.get("active")) for t_c19m in plain_c19m.get("Type") or []],
+             sorts_c19m(adv_c19m)))
+
+    # Cycle 19, measured on zen (300 of 300 shows and 300 of 300 seasons) and kids (both its
+    # seasons): a row that has children names its CHILD LIST -- `/library/metadata/{id}/
+    # children` -- while an episode keeps the bare item path. Three of the four seasons
+    # cycle 13 added to the fixture by hand carry the bare path, and the client follows
+    # `key` verbatim, so a click on those seasons fetched the season's metadata row instead
+    # of its episode list and the page drew nothing.
+    _, seasons_c19k, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    season_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                        for d_c19k in (seasons_c19k.get("Metadata") or [])]
+    _, shows_c19k, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
+    show_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                      for d_c19k in (shows_c19k.get("Metadata") or [])]
+    _, eps_c19k, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+    ep_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                    for d_c19k in (eps_c19k.get("Metadata") or [])]
+    check("a show's and a season's key names its child list",
+          bool(season_keys_c19k) and bool(show_keys_c19k)
+          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in season_keys_c19k)
+          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in show_keys_c19k)
+          and all(not str(k_c19k).endswith("/children") for _r_c19k, k_c19k in ep_keys_c19k),
+          "seasons %s shows %s episodes %s"
+          % (season_keys_c19k, show_keys_c19k, ep_keys_c19k[:2]))
+    # ...and the key really resolves to the episode list.
+    one_c19k = season_keys_c19k[0][1] if season_keys_c19k else "/library/metadata/0/children"
+    status_c19k, kids_c19k, _ = get(base, one_c19k)
+    check("and following it answers that season's children",
+          status_c19k == 200 and (kids_c19k.get("viewGroup") == "episode"
+                                  or bool(kids_c19k.get("Metadata"))),
+          "%s -> %s viewGroup=%r rows=%d"
+          % (one_c19k, status_c19k, kids_c19k.get("viewGroup"),
+             len(kids_c19k.get("Metadata") or [])))
+
+    # Cycle 19, measured on zen (1.42.2): a MEDIA column is read from the row's Media, and a
+    # row that has none -- a show, a season -- from its LEAVES, matching when ANY leaf does.
+    # zen's show library answers `type=2&duration<=1200000` with 39 and `>=1200000` with 483
+    # of its 505 shows that have a value, which overlap and so cannot be one column on the
+    # show row; `mediaSize` behaves the same. plexsim read `Media[0]` of the row itself, so
+    # every media filter on a show or season grid -- the Resolution control a TV library
+    # actually offers -- answered nothing.
+    leaves_c19v = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+    res_c19v = sorted({m_c19v.get("videoResolution") for l_c19v in leaves_c19v
+                       for m_c19v in (l_c19v.get("Media") or [])
+                       if m_c19v.get("videoResolution")})
+    dur_c19v = sorted(m_c19v.get("duration") for l_c19v in leaves_c19v
+                      for m_c19v in (l_c19v.get("Media") or []) if m_c19v.get("duration"))
+
+
+    def show_count_c19v(key_c19v):
+        body_c19v = get(base, "/library/sections/" + str(show_section) + "/all?type=2&" + key_c19v)[1]
+        return len(body_c19v.get("Metadata") or [])
+
+
+    shows_c19v = len(get(base, "/library/sections/%s/all?type=2" % show_section)[1].get("Metadata") or [])
+    check("a media filter on a show reads its leaves' Media",
+          bool(res_c19v) and bool(dur_c19v)
+          and show_count_c19v("resolution=" + res_c19v[0]) == shows_c19v
+          and show_count_c19v("duration%3E=" + quote(dur_c19v[0])) == shows_c19v
+          and show_count_c19v("duration%3C%3C=1") == 0,
+          "leaf resolutions %s durations %s ; resolution=%s -> %d of %d ; >=%s -> %d ; <<=1 -> %d"
+          % (res_c19v, dur_c19v[:3], res_c19v[0] if res_c19v else None,
+             show_count_c19v("resolution=" + res_c19v[0]) if res_c19v else -1, shows_c19v,
+             dur_c19v[0] if dur_c19v else None,
+             show_count_c19v("duration%3E=" + quote(dur_c19v[0])) if dur_c19v else -1,
+             show_count_c19v("duration%3C%3C=1")))
+    # ...and a movie still filters on its own Media, including a second version's.
+    movies_c19v = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    mres_c19v = sorted({m_c19v.get("videoResolution") for r_c19v in movies_c19v
+                        for m_c19v in (r_c19v.get("Media") or []) if m_c19v.get("videoResolution")})
+    check("and a movie still matches on any of its own Media",
+          bool(mres_c19v)
+          and len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
+                      % (movie_section, mres_c19v[0]))[1].get("Metadata") or []) > 0,
+          "resolutions %s -> %d rows" % (mres_c19v,
+                                         len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
+                                                 % (movie_section, mres_c19v[0]))[1].get("Metadata") or [])
+                                         if mres_c19v else -1))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
@@ -14579,17 +14698,20 @@ def main():
           == len(rated_c19n),
           "rated=%d of %d  by operator %s" % (len(rated_c19n), len(rows_c19n),
                                               sorted(null_keys_c19n.items())))
-    ar_c19n = [r_c19n.get("audienceRating") for r_c19n in rows_c19n
-               if r_c19n.get("audienceRating") is not None]
-    exact_c19n = num_count_c19n("audienceRating%3D=" + quote(ar_c19n[0])) if ar_c19n else -1
-    int_c19n = num_count_c19n("audienceRating%3D=" + quote(int(ar_c19n[0]))) if ar_c19n else -1
+    # The suite has rewritten every rating by this point, so the pair is asserted on the
+    # INTEGER column every row still carries: `year==2012` matches where `year==2012.0`
+    # does not, which is the same rule from the other side (an int renders without a
+    # fraction, a float with one).
+    years_c19n = [r_c19n.get("year") for r_c19n in rows_c19n if r_c19n.get("year") is not None]
+    one_year_c19n = years_c19n[0] if years_c19n else None
+    exact_c19n = num_count_c19n("year%3D=" + quote(one_year_c19n)) if years_c19n else -1
+    float_c19n = num_count_c19n("year%3D=%s%%2E0" % one_year_c19n) if years_c19n else -1
     check("==/!== on a numeric column compare the stored number's TEXT",
-          bool(ar_c19n) and exact_c19n == ar_c19n.count(ar_c19n[0])
-          and int_c19n == 0
-          and num_count_c19n("audienceRating=" + quote(ar_c19n[0])) == ar_c19n.count(ar_c19n[0]),
-          "values %s  ==%r -> %d   ==%r -> %d"
-          % (ar_c19n, ar_c19n[0] if ar_c19n else None, exact_c19n,
-             int(ar_c19n[0]) if ar_c19n else None, int_c19n))
+          bool(years_c19n) and exact_c19n == years_c19n.count(one_year_c19n)
+          and float_c19n == 0
+          and num_count_c19n("year=" + quote(one_year_c19n)) == years_c19n.count(one_year_c19n),
+          "years %s  ==%r -> %d   ==%r.0 -> %d"
+          % (years_c19n, one_year_c19n, exact_c19n, one_year_c19n, float_c19n))
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). `contentRating` is declared
     # `tag` like `genre`, but it is a COLUMN rather than a join, and it answers all eight
@@ -14607,6 +14729,12 @@ def main():
         return len(body_c19t.get("Metadata") or [])
 
 
+    # The Edit dialog checks rewrite `contentRating`, so write the value this one needs
+    # rather than reading whatever is left: the rule is about the OPERATORS, not the data.
+    if not any(rated_c19t):
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=NR" % movie)
+        rows_c19t = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+        rated_c19t = [str(r_c19t.get("contentRating") or "") for r_c19t in rows_c19t]
     one_c19t = next((v_c19t for v_c19t in rated_c19t if v_c19t), "")
     check("a tag COLUMN orders on <=/<<=/>=/>>= and folds case on ==",
           bool(one_c19t)
@@ -14634,78 +14762,6 @@ def main():
                         {op_c19t or "=": tag_count_c19t("resolution" + op_c19t + "=" + pick_c19t)
                          for op_c19t in ("", "%21", "%3D", "%21%3D", "%3C", "%3E", "%3C%3C", "%3E%3E")}
                         if pick_c19t else None))
-
-    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2). Three rules about the `Meta`
-    # descriptor the library page is built from. (1) `active` follows the REQUEST: a show
-    # library's `?type=3&includeMeta=1` marks `season` and `?type=4` marks `episode`, where
-    # plexsim served the captured fixture's stored flags and kept the Shows tab lit. (2)
-    # `?includeDetails=1` honours `includeAdvanced=1` -- bare it is 9 sorts on a movie
-    # library and 17 on a show one, with the flag 15 and 32 -- where plexsim always answered
-    # the advanced list, so six sorts and the Duplicates filter the client hides behind its
-    # own toggle were permanently on show. (3) That form carries no `folder` Type row and
-    # marks none of the others active.
-    status_c19m, meta_c19m, _ = get(base, "/library/sections/%s/all?type=4&includeMeta=1"
-                                    "&X-Plex-Container-Size=1" % show_section)
-    types_c19m = [(t_c19m.get("type"), t_c19m.get("active"))
-                  for t_c19m in ((meta_c19m.get("Meta") or {}).get("Type") or [])]
-    status_c19m3, meta_c19m3, _ = get(base, "/library/sections/%s/all?type=3&includeMeta=1"
-                                      "&X-Plex-Container-Size=1" % show_section)
-    types_c19m3 = [(t_c19m.get("type"), t_c19m.get("active"))
-                   for t_c19m in ((meta_c19m3.get("Meta") or {}).get("Type") or [])]
-    check("a Meta Type's active flag follows the asked type=",
-          dict(types_c19m).get("episode") is True and dict(types_c19m).get("show") is False
-          and dict(types_c19m3).get("season") is True and dict(types_c19m3).get("show") is False,
-          "type=4 %s ; type=3 %s" % (types_c19m, types_c19m3))
-    _, plain_c19m, _ = get(base, "/library/sections/%s?includeDetails=1" % movie_section)
-    _, adv_c19m, _ = get(base, "/library/sections/%s?includeDetails=1&includeAdvanced=1"
-                         % movie_section)
-
-
-    def sorts_c19m(body_c19m):
-        return sum(len(t_c19m.get("Sort") or []) for t_c19m in body_c19m.get("Type") or [])
-
-
-    check("includeDetails=1 honours includeAdvanced and drops the folder row",
-          sorts_c19m(plain_c19m) < sorts_c19m(adv_c19m)
-          and all(t_c19m.get("type") != "folder" for t_c19m in plain_c19m.get("Type") or [])
-          and all(t_c19m.get("active") is False for t_c19m in plain_c19m.get("Type") or [])
-          and bool(plain_c19m.get("Type")),
-          "plain sorts %d types %s ; advanced sorts %d"
-          % (sorts_c19m(plain_c19m),
-             [(t_c19m.get("type"), t_c19m.get("active")) for t_c19m in plain_c19m.get("Type") or []],
-             sorts_c19m(adv_c19m)))
-
-    # Cycle 19, measured on zen (300 of 300 shows and 300 of 300 seasons) and kids (both its
-    # seasons): a row that has children names its CHILD LIST -- `/library/metadata/{id}/
-    # children` -- while an episode keeps the bare item path. Three of the four seasons
-    # cycle 13 added to the fixture by hand carry the bare path, and the client follows
-    # `key` verbatim, so a click on those seasons fetched the season's metadata row instead
-    # of its episode list and the page drew nothing.
-    _, seasons_c19k, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
-    season_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
-                        for d_c19k in (seasons_c19k.get("Metadata") or [])]
-    _, shows_c19k, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
-    show_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
-                      for d_c19k in (shows_c19k.get("Metadata") or [])]
-    _, eps_c19k, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
-    ep_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
-                    for d_c19k in (eps_c19k.get("Metadata") or [])]
-    check("a show's and a season's key names its child list",
-          bool(season_keys_c19k) and bool(show_keys_c19k)
-          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in season_keys_c19k)
-          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in show_keys_c19k)
-          and all(not str(k_c19k).endswith("/children") for _r_c19k, k_c19k in ep_keys_c19k),
-          "seasons %s shows %s episodes %s"
-          % (season_keys_c19k, show_keys_c19k, ep_keys_c19k[:2]))
-    # ...and the key really resolves to the episode list.
-    one_c19k = season_keys_c19k[0][1] if season_keys_c19k else "/library/metadata/0/children"
-    status_c19k, kids_c19k, _ = get(base, one_c19k)
-    check("and following it answers that season's children",
-          status_c19k == 200 and (kids_c19k.get("viewGroup") == "episode"
-                                  or bool(kids_c19k.get("Metadata"))),
-          "%s -> %s viewGroup=%r rows=%d"
-          % (one_c19k, status_c19k, kids_c19k.get("viewGroup"),
-             len(kids_c19k.get("Metadata") or [])))
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2) with eleven field names:
     # `excludeFields=` strips the named field from every CHILD ELEMENT, not only from the
@@ -14871,6 +14927,15 @@ def main():
         return out_c19g
 
 
+    # A light row is only distinguishable from a detail row when the row HAS a tag, and
+    # the suite has replaced every tag list by this point -- so write one first.
+    if "Genre" not in text_c19g:
+        request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=ZetaGenre" % movie)
+        _s_c19g, raw_c19g, _h_c19g = request(
+            base, "GET", "/library/sections/%s/all?type=1&includeGuids=1" % movie_section,
+            want_json=False)
+        text_c19g = raw_c19g.decode("utf-8", "replace")
+        rows_c19g = re_c19g.findall(r"<Video\b.*?</Video>", text_c19g, re_c19g.S)
     listing_c19g = [kids_c19g(r_c19g) for r_c19g in rows_c19g]
     _s_c19g, detail_raw_c19g, _h_c19g = request(base, "GET", "/library/metadata/%s" % movie,
                                                 want_json=False)
@@ -14889,51 +14954,6 @@ def main():
           "xml %s json %s" % ("_light" in text_c19g,
                               "_light" in str(get(base, "/library/sections/%s/all?type=1"
                                                   % movie_section)[1])))
-
-    # Cycle 19, measured on zen (1.42.2): a MEDIA column is read from the row's Media, and a
-    # row that has none -- a show, a season -- from its LEAVES, matching when ANY leaf does.
-    # zen's show library answers `type=2&duration<=1200000` with 39 and `>=1200000` with 483
-    # of its 505 shows that have a value, which overlap and so cannot be one column on the
-    # show row; `mediaSize` behaves the same. plexsim read `Media[0]` of the row itself, so
-    # every media filter on a show or season grid -- the Resolution control a TV library
-    # actually offers -- answered nothing.
-    leaves_c19v = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
-    res_c19v = sorted({m_c19v.get("videoResolution") for l_c19v in leaves_c19v
-                       for m_c19v in (l_c19v.get("Media") or [])
-                       if m_c19v.get("videoResolution")})
-    dur_c19v = sorted(m_c19v.get("duration") for l_c19v in leaves_c19v
-                      for m_c19v in (l_c19v.get("Media") or []) if m_c19v.get("duration"))
-
-
-    def show_count_c19v(key_c19v):
-        body_c19v = get(base, "/library/sections/" + str(show_section) + "/all?type=2&" + key_c19v)[1]
-        return len(body_c19v.get("Metadata") or [])
-
-
-    shows_c19v = len(get(base, "/library/sections/%s/all?type=2" % show_section)[1].get("Metadata") or [])
-    check("a media filter on a show reads its leaves' Media",
-          bool(res_c19v) and bool(dur_c19v)
-          and show_count_c19v("resolution=" + res_c19v[0]) == shows_c19v
-          and show_count_c19v("duration%3E=" + quote(dur_c19v[0])) == shows_c19v
-          and show_count_c19v("duration%3C%3C=1") == 0,
-          "leaf resolutions %s durations %s ; resolution=%s -> %d of %d ; >=%s -> %d ; <<=1 -> %d"
-          % (res_c19v, dur_c19v[:3], res_c19v[0] if res_c19v else None,
-             show_count_c19v("resolution=" + res_c19v[0]) if res_c19v else -1, shows_c19v,
-             dur_c19v[0] if dur_c19v else None,
-             show_count_c19v("duration%3E=" + quote(dur_c19v[0])) if dur_c19v else -1,
-             show_count_c19v("duration%3C%3C=1")))
-    # ...and a movie still filters on its own Media, including a second version's.
-    movies_c19v = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
-    mres_c19v = sorted({m_c19v.get("videoResolution") for r_c19v in movies_c19v
-                        for m_c19v in (r_c19v.get("Media") or []) if m_c19v.get("videoResolution")})
-    check("and a movie still matches on any of its own Media",
-          bool(mres_c19v)
-          and len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
-                      % (movie_section, mres_c19v[0]))[1].get("Metadata") or []) > 0,
-          "resolutions %s -> %d rows" % (mres_c19v,
-                                         len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
-                                                 % (movie_section, mres_c19v[0]))[1].get("Metadata") or [])
-                                         if mres_c19v else -1))
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object keys
     # come out in exactly its XML order -- the container's, the row's, `Media`'s, `Part`'s
