@@ -4296,6 +4296,22 @@ class PlexSim:
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
 
+    def _owns_artwork(self, row, leaf):
+        """Does this row OWN the image behind `/library/metadata/{id}/{leaf}`?
+
+        Measured cycle 16 on kids and zen: only the owner answers 200. A row that
+        borrows -- every episode's background, and a season's when the show supplies
+        it -- carries the OWNER's path in its own `art`/`thumb`, so the stored path's
+        ratingKey is the whole test. A row with no artwork at all owns nothing.
+        """
+        stored = str(row.get("art" if leaf == "art" else "thumb") or "")
+        if not stored:
+            return False
+        parts = stored.split("/")
+        if len(parts) > 3 and parts[1] == "library" and parts[2] == "metadata":
+            return parts[3] == str(row.get("ratingKey"))
+        return True
+
     def _first_character_bucket(self, row):
         """The bucket a row falls in when the LISTING filters on it.
 
@@ -6321,12 +6337,13 @@ class PlexSim:
             return self.item_action(row, leaf, method, query)
         if leaf == "matches":
             return self.matches(row, query)
-        if leaf == "art" and row.get("type") == "episode":
-            # Cycle 15, measured on kids, plexscratch AND zen (episode 11115 of a show
-            # that HAS artwork): an episode owns no background path at all, bare or
-            # versioned, while its `/thumb` and `/poster` are 200s and a SEASON's
-            # `/art` is a 200 on zen. The row ATTRIBUTE is untouched -- an episode's
-            # `art` names its season's, which is the URL a client actually builds.
+        if leaf in ("art", "poster", "thumb") and not self._owns_artwork(row, leaf):
+            # Cycle 16: cycle 15's episode-only rule is the special case of a general
+            # one. Measured on kids and zen, an artwork path is a 200 only on the row
+            # that OWNS the image -- kids' season 7 borrows its show's background and
+            # 404s where zen's season 11114, which has one of its own, answers 200,
+            # and every episode borrows. The row's own stored path names its owner, so
+            # comparing the two IS the rule, and it needs no per-type list.
             return ("error", 404, "plexsim: not found")
         if leaf in ("poster", "art"):
             # The SINGULAR path is the write, and plexsim had it as the image read.
@@ -6546,12 +6563,10 @@ class PlexSim:
             # placeholder where a grey 200 tile gets cached.
             owner = self.catalog.items.get(int(rating_key)) \
                 if str(rating_key).isdigit() else None
-            if leaf == "art" and (owner or {}).get("type") == "episode":
-                # Cycle 15, measured on kids, plexscratch AND zen (episode 11115 of a
-                # show that HAS artwork): an episode owns no background path at all,
-                # bare or versioned, while its `/thumb` and `/poster` are 200s and a
-                # SEASON's `/art` is a 200. The row attribute is untouched -- an
-                # episode's `art` names its season's, which is the URL a client builds.
+            # Cycle 16, the same ownership rule on the VERSIONED path: a borrower's
+            # own key is a 404 there too, and the stamp in the URL belongs to the
+            # owner's path rather than to this row.
+            if owner is not None and not self._owns_artwork(owner, leaf):
                 return ("error", 404, "plexsim: not found")
             if owner is not None and owner.get("thumb" if leaf in ("thumb", "poster")
                                                else "art") is None:
