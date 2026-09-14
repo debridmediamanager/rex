@@ -10937,12 +10937,23 @@ class PlexSim:
                 "MachineIdentifier": self.catalog.machine,
                 "PlexOnlineMail": self._owner() if self._claimed() else ""}
 
+    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and plexsim reports
+    # 1.42.2 -- the fifth fixture found to be per VERSION, after `Meta.Type[].Filter`,
+    # `Meta.Type[].Field`, `system_agents.json` and `section_prefs_new.json`. Measured:
+    # kids answers 174 settings and zen 173, and exactly these two are on kids and not on
+    # zen. Every other row matches zen attribute for attribute. Two extra rows on the
+    # Settings page is the small half; the real one is that a write to `AllowLegacyAgents`
+    # succeeded where a real 1.42.2 refuses the WHOLE request as an unknown preference.
+    VERSION_1_43_PREFS = ("AllowLegacyAgents", "CLDriver")
+
     def server_prefs(self):
         """The setting list, with this server's identity and any written value."""
         identity = self._identity_prefs()
         out = []
         for setting in SERVER_PREFS:
             name = setting.get("id")
+            if name in self.VERSION_1_43_PREFS:
+                continue
             if name in self.pref_overrides:
                 setting = dict(setting, value=self.pref_overrides[name])
             elif name in identity:
@@ -10969,7 +10980,10 @@ class PlexSim:
         * the stored value keeps its TYPE, so the next read still says `40` and
           `false` rather than the strings `"40"` and `"0"` plexsim echoed back.
         """
-        settings = {s.get("id"): s for s in SERVER_PREFS}
+        # ...and the WRITE path reads the same list, or a 1.43.4-only id could be
+        # written on a server reporting 1.42.2, where a real one refuses the whole
+        # request as an unknown preference.
+        settings = {s.get("id"): s for s in self.server_prefs()}
         writes = [(name, value) for name, value in query.items()
                   if not name.startswith("X-Plex-") and name != "_pairs"]
         for name, _value in writes:

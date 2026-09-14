@@ -15052,6 +15052,25 @@ def main():
           and all(isinstance(v_c19w, int) for v_c19w in stored_c19w.values()),
           "%s ; stored %s" % (lenient_c19w, stored_c19w))
 
+    # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and plexsim reports 1.42.2
+    # -- the fifth fixture found to be per VERSION. kids answers 174 settings and zen 173,
+    # and exactly `AllowLegacyAgents` and `CLDriver` are on kids and not on zen. A write to
+    # one of them succeeded on plexsim where a real 1.42.2 refuses the whole request as an
+    # unknown preference.
+    _s_c19v, prefs_c19v, _h_c19v = get(base, "/:/prefs")
+    ids_c19v = [s_c19v.get("id") for s_c19v in (prefs_c19v.get("Setting") or [])]
+    check("the two 1.43.4-only settings are gone",
+          bool(ids_c19v) and "AllowLegacyAgents" not in ids_c19v and "CLDriver" not in ids_c19v
+          and "FriendlyName" in ids_c19v,
+          "%d settings; AllowLegacyAgents=%s CLDriver=%s"
+          % (len(ids_c19v), "AllowLegacyAgents" in ids_c19v, "CLDriver" in ids_c19v))
+    check("and a write to one is refused as an unknown preference",
+          request(base, "PUT", "/:/prefs?AllowLegacyAgents=1")[0] == 400
+          and request(base, "PUT", "/:/prefs?CLDriver=x")[0] == 400,
+          "AllowLegacyAgents %s CLDriver %s"
+          % (request(base, "PUT", "/:/prefs?AllowLegacyAgents=1")[0],
+             request(base, "PUT", "/:/prefs?CLDriver=x")[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
