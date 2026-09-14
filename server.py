@@ -10644,6 +10644,46 @@ class Handler(BaseHTTPRequestHandler):
     READ_ONLY_ITEM_LEAVES = ("allLeaves", "tree", "related", "similar", "matches",
                              "grandchildren")
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `limit=` and `parent=` are
+    # PARSED wherever a listing consumes them, and a value that is not a whole number is
+    # a 500 on every one of these -- `abc`, an empty value and `1.5` alike. A GOOD limit
+    # still does nothing on `/children` (cycle 11), so ignoring the VALUE is not the same
+    # as not parsing the string. `/newest`, `/recentlyAdded`, `/library/onDeck`, the hub
+    # paths, `/sorts`, `/filters` and `/library/sections` ignore both entirely and are
+    # deliberately absent.
+    PARSES_LIMIT = ("all", "allLeaves", "search", "common", "genre", "year", "decade",
+                    "contentRating", "studio", "director", "writer", "producer",
+                    "country", "actor", "label", "collection", "resolution",
+                    "firstCharacter", "userRating", "subtitleLanguage", "audioLanguage",
+                    "hdr", "unwatched", "duplicate", "editionTitle", "unmatched")
+
+    def _query_grammar_refusal(self, method, path):
+        """The status a malformed `limit=`/`parent=` gets, or 0. Cycle 15."""
+        if method not in ("GET", "HEAD"):
+            return 0
+        route, _, raw = path.partition("?")
+        route = route.rstrip("/") or "/"
+        query = dict(urllib.parse.parse_qsl(raw, keep_blank_values=True))
+        bad = [name for name in ("limit", "parent")
+               if name in query and not str(query[name]).lstrip("-").isdigit()]
+        if not bad:
+            return 0
+        if route == "/status/sessions/history/all":
+            # Measured: this page answers 400 where a listing answers 500 -- the same
+            # split it already has for an unknown sort key. `parent` is not validated
+            # here at all.
+            return 400 if "limit" in bad else 0
+        parts = [p for p in route.split("/") if p]
+        if parts[:2] == ["library", "sections"] and len(parts) == 4 \
+                and parts[3] in self.PARSES_LIMIT:
+            return 500
+        if route == "/library/all" or route == "/playlists":
+            return 500
+        if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
+                and parts[3] in ("children", "grandchildren", "allLeaves"):
+            return 500
+        return 0
+
     def _read_only_refusal(self, method, path):
         """404 for a write to a route that only reads. Cycle 15."""
         if method in ("GET", "HEAD"):
@@ -10675,6 +10715,11 @@ class Handler(BaseHTTPRequestHandler):
             # sees `self.path` (an open-redirect guard), so it is read off the request
             # line -- `//identity` otherwise answered the identity document.
             self._send(404, "text/plain", b"plexsim: not found")
+            return
+
+        refusal = self._query_grammar_refusal(method, self.path)
+        if refusal:
+            self._send(refusal, "text/plain", b"plexsim: bad request")
             return
 
         if self._read_only_refusal(method, self.path):
