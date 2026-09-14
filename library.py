@@ -1366,7 +1366,11 @@ class Library:
         stamp = _now()
         playlist = {
             "ratingKey": key,
-            "title": title or "Untitled",
+            # Cycle 16, measured on plexscratch: an EMPTY title is stored
+            # verbatim and reads back as `""`; a single space is kept too.
+            # plexsim substituted "Untitled", inventing a name the user never
+            # typed. (A MISSING title is a 400 on both, refused before this.)
+            "title": title,
             "playlistType": playlist_type or "video",
             "smart": bool(smart),
             "summary": "",

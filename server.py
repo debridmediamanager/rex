@@ -9524,6 +9524,13 @@ class PlexSim:
                 rows = self._items_for_uri(query.get("uri", ""))
                 if query["type"] != "video" and rows:
                     return ("error", 400, "plexsim: bad request")
+                # Cycle 16, measured on plexscratch: `smart=1` over a comma-joined KEY
+                # LIST is a 400 and creates nothing -- a smart list's uri has to name a
+                # LISTING. plexsim created one whose stored query was a key list, so
+                # its `content` named a path that selects nothing and the list was
+                # permanently empty.
+                if query.get("smart") == "1" and rows:
+                    return ("error", 400, "plexsim: bad request")
                 playlist = self.library.create_playlist(
                     query.get("title") or "", query.get("type") or "video", rows,
                     smart=query.get("smart") == "1", uri=query.get("uri"))
