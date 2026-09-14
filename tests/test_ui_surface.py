@@ -15816,6 +15816,30 @@ def main():
           ordered_c20ac[("titleSort", "b")] == ordered_c20ac[("titleSort", "B")]
           and ordered_c20ac[("summary", "b")] != ordered_c20ac[("summary", "B")],
           "%s" % ordered_c20ac)
+
+    c20_one_season = [r_c20.get("ratingKey") for r_c20 in
+                      (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                       .get("Metadata") or [])][0]
+
+    # Cycle 20, measured on both references over two libraries and two row types:
+    # `id==<n>` and `id!==<n>` DO match a number. zen answers `type=3&id==5190` with
+    # that one season and `!==5190` with the other 740, kids `id==7` with season 7,
+    # and the movie libraries agree. Cycle 11 recorded "`==`/`!==` never match a
+    # number" for this column -- measured, it seems, only against a value that was not
+    # one -- and plexsim answered nothing to `id==` and every row to `id!==`.
+    ids_c20ad = {}
+    for label_c20ad, key_c20ad in (("=", "id"), ("==", "id%3D"), ("!==", "id%21%3D"),
+                                   ("!=", "id%21")):
+        ids_c20ad[label_c20ad] = sorted(
+            str(r_c20ad.get("ratingKey")) for r_c20ad in
+            get(base, "/library/sections/%s/all?type=3&%s=%s"
+                % (show_section, key_c20ad, c20_one_season))[1].get("Metadata") or [])
+    check("id== and id!== compare a number",
+          ids_c20ad["=="] == [str(c20_one_season)]
+          and ids_c20ad["=="] == ids_c20ad["="]
+          and ids_c20ad["!=="] == ids_c20ad["!="]
+          and str(c20_one_season) not in ids_c20ad["!=="],
+          "%s" % ids_c20ad)
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
