@@ -6473,8 +6473,16 @@ class PlexSim:
             if len(row.get("Media") or []) > 1:
                 return 1
             if row.get("type") in ("show", "season"):
-                return 1 if any(len(leaf.get("Media") or []) > 1
-                                for leaf in self.catalog.leaves(row.get("ratingKey"))) else 0
+                # Cycle 20, measured on zen: the two halves OVERLAP on a parent row --
+                # 44 shows answer `duplicate=1` and 487 `!=1`, 531 of 507, with 24 in
+                # both, and its seasons 74 / 702 with 35 in both. Both queries are
+                # evaluated per LEAF, so a parent holding one duplicated episode and
+                # one plain one is in each set. Returning the per-leaf LIST is what
+                # lets the ANY rule produce that; a scalar makes the two halves
+                # complements by construction, which is cycle 19's own any-leaf rule
+                # implemented as a proxy.
+                return [1 if len(leaf.get("Media") or []) > 1 else 0
+                        for leaf in self.catalog.leaves(row.get("ratingKey")) or []] or 0
             return 0
         if field in ("hdr", "dovi", "hdr10plus", "atmos", "trash"):
             # plexsim's probe data carries no HDR or Atmos flag and it keeps no

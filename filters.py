@@ -589,6 +589,14 @@ def compare(kind, operator, actual, wanted, field=""):
         # "the column is false". plexsim compared 0/1 numerically, so `unwatched>=0`
         # answered the whole library and `unwatched!=2` the unwatched half -- the
         # Unplayed filter inverted for every value the client does not send.
+        if isinstance(actual, (list, tuple)):
+            # A parent row reads a boolean media column from its LEAVES, and matches
+            # when ANY of them does -- which is what makes the Duplicates filter's two
+            # halves overlap on a show. Same shape as the numeric branch above.
+            values = [v for v in actual if v is not None]
+            if not values:
+                return False
+            return any(compare(kind, operator, v, wanted, field) for v in values)
         state = 1 if actual else 0
         wanted = str(wanted)
         if field in OPERATOR_BLIND_BOOLEANS:
