@@ -15686,6 +15686,27 @@ def main():
           and unwatched_c20x["?type=3"][2] == "episode"
           and all(code_c20x == 500 for code_c20x in refusals_c20x.values()),
           "%s | refusals %s" % (unwatched_c20x, refusals_c20x))
+
+    # Cycle 20: `/recentlyViewedShows?type=N` is a typed QUERY. zen answers 507 shows,
+    # 741 seasons and 9,287 episodes to `type=2`, `3` and `4`, kids 1, 2 and 6, and
+    # both answer 0 to `type=1` and `type=10`, while the container keeps
+    # `viewGroup="show"`, its own `title2` and `allowSync: false` at every type.
+    # plexsim ignored the parameter and always answered the show list.
+    typed_c20y = {}
+    for value_c20y in ("2", "3", "4", "1"):
+        status_c20y, doc_c20y, _ = get(base, "/library/sections/%s/recentlyViewedShows?type=%s"
+                                       % (show_section, value_c20y))
+        typed_c20y[value_c20y] = (status_c20y,
+                                  [str(r_c20y.get("type"))
+                                   for r_c20y in (doc_c20y.get("Metadata") or [])][:1],
+                                  len(doc_c20y.get("Metadata") or []),
+                                  doc_c20y.get("viewGroup"))
+    bad_c20y = get(base, "/library/sections/%s/recentlyViewedShows?type=abc" % show_section)[0]
+    check("recentlyViewedShows is a typed query",
+          typed_c20y["2"][1] == ["show"] and typed_c20y["3"][1] == ["season"]
+          and typed_c20y["4"][1] == ["episode"] and typed_c20y["1"][2] == 0
+          and typed_c20y["3"][3] == "show" and bad_c20y == 500,
+          "%s | type=abc %s" % (typed_c20y, bad_c20y))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

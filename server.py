@@ -5611,8 +5611,13 @@ class PlexSim:
                 extra["title2"] = "Recently Viewed Episodes"
         view_group = "episode" if is_show else "movie"
         if leaf == "recentlyViewedShows":
-            rows, _ = self._sorted(self.typed_rows(section_id, {"type": "2" if is_show else "1"}),
-                                   "titleSort")
+            # Cycle 20, measured on kids and zen: this one is a typed QUERY. `?type=3`
+            # answers the library's seasons and `?type=4` its episodes -- zen 741 and
+            # 9,287 -- while `type=1` and `type=10` answer none and the container keeps
+            # `viewGroup="show"` throughout. plexsim ignored the parameter and always
+            # answered the top-level rows.
+            asked = str((query or {}).get("type") or ("2" if is_show else "1"))
+            rows, _ = self._sorted(self.typed_rows(section_id, {"type": asked}), "titleSort")
             rows.sort(key=lambda r: -self._last_viewed(r))
             extra["allowSync"] = False
             view_group = "show" if is_show else "movie"
