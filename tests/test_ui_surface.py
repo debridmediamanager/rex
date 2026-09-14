@@ -14845,6 +14845,51 @@ def main():
                                             "librarySectionTitle", "librarySectionUUID"]),
           str(recent_c19a[0][:6] if recent_c19a else None))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a LIGHT row's child elements are
+    # ordered differently from a detail row's. On `?type=1&includeGuids=1` every listing row
+    # on both servers answers `Media Image UltraBlurColors Guid Genre Country Director
+    # Writer Role`, where the detail row answers `Media Image UltraBlurColors Genre Country
+    # Guid Rating Director Writer Role Producer`. plexsim used one table for both. XML is
+    # the DEFAULT response format, so this is the document a TV client parses -- and the
+    # private marker that carries the projection must not leak into either format.
+    import re as re_c19g
+
+    _s_c19g, raw_c19g, _h_c19g = request(
+        base, "GET", "/library/sections/%s/all?type=1&includeGuids=1" % movie_section,
+        want_json=False)
+    text_c19g = raw_c19g.decode("utf-8", "replace")
+    rows_c19g = re_c19g.findall(r"<Video\b.*?</Video>", text_c19g, re_c19g.S)
+
+
+    def kids_c19g(chunk_c19g):
+        out_c19g = []
+        for name_c19g in re_c19g.findall(
+                r"<(Media|Image|UltraBlurColors|Guid|Genre|Country|Director|Writer|Role|Rating)\b",
+                chunk_c19g):
+            if not out_c19g or out_c19g[-1] != name_c19g:
+                out_c19g.append(name_c19g)
+        return out_c19g
+
+
+    listing_c19g = [kids_c19g(r_c19g) for r_c19g in rows_c19g]
+    _s_c19g, detail_raw_c19g, _h_c19g = request(base, "GET", "/library/metadata/%s" % movie,
+                                                want_json=False)
+    detail_c19g = kids_c19g(detail_raw_c19g.decode("utf-8", "replace"))
+    with_guid_c19g = [s_c19g for s_c19g in listing_c19g if "Guid" in s_c19g and "Genre" in s_c19g]
+    check("a light row puts Guid before its tags and a detail row after",
+          bool(with_guid_c19g)
+          and all(s_c19g.index("Guid") < s_c19g.index("Genre") for s_c19g in with_guid_c19g)
+          and "Guid" in detail_c19g and "Genre" in detail_c19g
+          and detail_c19g.index("Guid") > detail_c19g.index("Genre"),
+          "listing %s ; detail %s" % (with_guid_c19g[:2], detail_c19g))
+    check("and the private projection marker reaches no client",
+          "_light" not in text_c19g
+          and "_light" not in str(get(base, "/library/sections/%s/all?type=1&includeGuids=1"
+                                      % movie_section)[1]),
+          "xml %s json %s" % ("_light" in text_c19g,
+                              "_light" in str(get(base, "/library/sections/%s/all?type=1"
+                                                  % movie_section)[1])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -1190,6 +1190,19 @@ def _drop_empty(value):
     return value
 
 
+def _drop_private(node):
+    """Every key beginning with `_` is internal and must never reach a client.
+
+    `_public_row` strips the catalog's own private keys early; this catches the ones
+    the PROJECTIONS add afterwards, which only the serializers are meant to read.
+    """
+    if isinstance(node, dict):
+        return {k: _drop_private(v) for k, v in node.items() if not str(k).startswith("_")}
+    if isinstance(node, list):
+        return [_drop_private(v) for v in node]
+    return node
+
+
 def json_body(container):
     """A container as JSON with every `null` and empty list left out.
 
@@ -1200,7 +1213,7 @@ def json_body(container):
     decoding a missing key happily chokes on as a null. An empty OBJECT is kept:
     `Related: {}` is exactly what the reference sends for an item with no hubs.
     """
-    return json.dumps(_drop_empty(container)).encode()
+    return json.dumps(_drop_private(_drop_empty(container))).encode()
 
 
 # The tree's MediaStream is its own projection, measured: a fixed field set per
@@ -1607,6 +1620,16 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
            if k not in ("Rating", "Field", "Producer")
            and (k != "Location" or keep_location)
            and (k != "Guid" or keep_guid)}
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a LIGHT row orders its
+    # child elements differently from a detail row. `Guid` sits directly after
+    # `UltraBlurColors` and BEFORE the tags on a listing --
+    # `Media Image UltraBlurColors Guid Genre Country Director Writer Role` on every
+    # row of `?type=1&includeGuids=1` on both servers -- where a detail row answers
+    # `Media Image UltraBlurColors Genre Country Guid Rating Director Writer Role
+    # Producer`. plexsim used one table for both. Only the builder knows which
+    # projection a row is, so it says so here; `_drop_private` takes the marker off
+    # again on the way out, as it does for `_poster_url`.
+    out["_light"] = True
     if not keep_section:
         for key in ("librarySectionID", "librarySectionTitle", "librarySectionKey"):
             out.pop(key, None)
