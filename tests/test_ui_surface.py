@@ -13510,6 +13510,34 @@ def main():
           and read_c17b10["007"] == "7",
           "%s" % read_c17b10)
 
+
+    # Cycle 17, re-measured on plexscratch: a library TEXT preference is stored
+    # percent-ESCAPED for the two characters that delimit an `enumValues` string --
+    # `:` becomes `%3a` and `|` becomes `%7c`, in lowercase hex -- and a value carrying
+    # a `%` of its own is stored EMPTY. Every other character round-trips, `/` and a
+    # space included. The server is protecting its own encoding; plexsim stored all
+    # three verbatim.
+    def country_c17b11():
+        for s_c17b11 in (get(base, "/library/sections/%s/prefs"
+                             % movie_section)[1].get("Setting") or []):
+            if s_c17b11.get("id") == "country":
+                return s_c17b11.get("value")
+        return None
+    original_c17b11 = country_c17b11()
+    stored_c17b11 = {}
+    for value_c17b11 in ("x:y", "x|y", "x%y", "x/y", "x y"):
+        request(base, "PUT", "/library/sections/%s/prefs?country=%s"
+                % (movie_section, quote(value_c17b11)))
+        stored_c17b11[value_c17b11] = country_c17b11()
+    if original_c17b11 is not None:
+        request(base, "PUT", "/library/sections/%s/prefs?country=%s"
+                % (movie_section, quote(original_c17b11)))
+    check("a library text preference escapes the enum delimiters",
+          stored_c17b11["x:y"] == "x%3ay" and stored_c17b11["x|y"] == "x%7cy"
+          and stored_c17b11["x%y"] == "" and stored_c17b11["x/y"] == "x/y"
+          and stored_c17b11["x y"] == "x y",
+          "%s" % stored_c17b11)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
