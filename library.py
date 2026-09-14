@@ -892,7 +892,12 @@ class Library:
                     or (text and not re.fullmatch(r"[+-]?\d+(\.\d+)?", text)):
                 raise EditError(500, "unparseable %s %r" % (field, value))
             number = float(text) if text else None
-            if number is None or (field == "userRating" and number < 0):
+            if number is None or (number < 0 and field in ("userRating", "rating",
+                                                           "audienceRating")):
+                # Cycle 20, measured on plexscratch: a negative `rating` or
+                # `audienceRating` REMOVES the field, the way a negative year does --
+                # plexsim stored -3.0 and the preplay page printed it. `userRating`
+                # already behaved this way.
                 row.pop(field, None)
                 if field == "userRating":
                     row.pop("lastRatedAt", None)

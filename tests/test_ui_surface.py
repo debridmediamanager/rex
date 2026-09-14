@@ -16052,6 +16052,28 @@ def main():
           and (now_c20m.get("Metadata") or [{}])[0].get("summary") == summary_c20m,
           "%s | mixed %s, summary %r" % (bounds_c20m, mixed_c20m,
                                          (now_c20m.get("Metadata") or [{}])[0].get("summary")))
+
+    # Cycle 20, measured on plexscratch: a NEGATIVE `rating` or `audienceRating`
+    # REMOVES the field, exactly as a negative year does. Everything else in the
+    # column's grammar already agreed (`7.5` stores, `abc` is a 500, `0` stores `0.0`),
+    # and the rule reaches these two and no other float: `userRating` was already
+    # measured as discarded on the item path. plexsim stored `-3.0` and the preplay
+    # page printed it.
+    ratings_c20n = {}
+    for field_c20n in ("rating", "audienceRating"):
+        request(base, "PUT", "/library/metadata/%s?%s.value=7.5" % (movie, field_c20n))
+        status_c20n, _, _ = request(base, "PUT", "/library/metadata/%s?%s.value=-3"
+                                    % (movie, field_c20n))
+        _, doc_c20n, _ = get(base, "/library/metadata/%s" % movie)
+        ratings_c20n[field_c20n] = (status_c20n,
+                                    (doc_c20n.get("Metadata") or [{}])[0].get(field_c20n))
+    request(base, "PUT", "/library/metadata/%s?rating.value=7.5" % movie)
+    _, kept_c20n, _ = get(base, "/library/metadata/%s" % movie)
+    check("a negative rating or audienceRating removes the field",
+          all(codes_c20n == (200, None) for codes_c20n in ratings_c20n.values())
+          and (kept_c20n.get("Metadata") or [{}])[0].get("rating") == 7.5,
+          "%s | 7.5 stores %r" % (ratings_c20n,
+                                  (kept_c20n.get("Metadata") or [{}])[0].get("rating")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
