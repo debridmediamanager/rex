@@ -15013,6 +15013,16 @@ def main():
           and request(base, "PUT", "/activities/abc")[0] == 400,
           str(acts_c19s))
 
+    # Cycle 19: `HEAD /:/prefs` is a 200 on kids, zen and plexscratch and plexsim 404'd it --
+    # the one disagreement in a HEAD sweep over sixty paths and four servers.
+    head_c19p, body_c19p, headers_c19p = request(base, "HEAD", "/:/prefs")
+    get_c19p, gbody_c19p, _gh_c19p = request(base, "GET", "/:/prefs")
+    check("HEAD /:/prefs answers like its GET",
+          head_c19p == 200 and get_c19p == 200 and body_c19p == b""
+          and headers_c19p.get("Content-Type", "").startswith("application/json"),
+          "HEAD %s (%d bytes, %s) ; GET %s"
+          % (head_c19p, len(body_c19p or b""), headers_c19p.get("Content-Type"), get_c19p))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
