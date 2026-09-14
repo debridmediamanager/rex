@@ -13620,6 +13620,48 @@ def main():
           % (after_c17b14.get("thumb"), before_c17b14.get("updatedAt"),
              after_c17b14.get("updatedAt")))
 
+
+    # Cycle 17, re-measured by the driver on plexscratch: a collection's children on the
+    # METADATA path answer the LIGHT grid row inside a container that carries the
+    # librarySection triple and `allowSync: true` and NO `thumb`. plexsim sent the full
+    # detail row -- `Guid`, `Rating`, every tag list with ids, the whole `Stream` table
+    # -- put the librarySection triple on each ROW instead of the container, said
+    # `allowSync: false`, and added a `thumb` the reference does not carry. A client
+    # reading the library off the container got nothing, a mobile client was told the
+    # collection cannot be synced, and every member shipped its stream list.
+    made_c17b15 = json.loads(request(
+        base, "POST", "/library/collections?type=1&title=c17rows&smart=0&sectionId=%s"
+                      "&uri=%s"
+        % (movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1])
+    cid_c17b15 = (made_c17b15["MediaContainer"]["Metadata"][0]["ratingKey"]
+                  if (made_c17b15.get("MediaContainer") or {}).get("Metadata") else None)
+    if not cid_c17b15:
+        skip("a collection's metadata children are the light row", "no collection")
+    else:
+        _, kids_c17b15, _ = get(base, "/library/metadata/%s/children" % cid_c17b15)
+        row_c17b15 = (kids_c17b15.get("Metadata") or [{}])[0]
+        streams_c17b15 = any("Stream" in part_c17b15
+                             for media_c17b15 in (row_c17b15.get("Media") or [])
+                             for part_c17b15 in (media_c17b15.get("Part") or []))
+        check("a collection's metadata children are the light row",
+              kids_c17b15.get("allowSync") is True
+              and kids_c17b15.get("librarySectionID") is not None
+              and kids_c17b15.get("librarySectionTitle")
+              and kids_c17b15.get("librarySectionUUID")
+              and "thumb" not in kids_c17b15
+              and "Guid" not in row_c17b15 and "Rating" not in row_c17b15
+              and not streams_c17b15
+              and "librarySectionID" not in row_c17b15,
+              "allowSync=%r sectionID=%r thumb=%s row: Guid=%s Rating=%s Stream=%s "
+              "triple=%s" % (kids_c17b15.get("allowSync"),
+                             kids_c17b15.get("librarySectionID"),
+                             "thumb" in kids_c17b15, "Guid" in row_c17b15,
+                             "Rating" in row_c17b15, streams_c17b15,
+                             "librarySectionID" in row_c17b15))
+        request(base, "DELETE", "/library/collections/%s" % cid_c17b15)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

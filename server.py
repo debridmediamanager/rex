@@ -6361,6 +6361,21 @@ class PlexSim:
             container["nocache"] = True
             container["parentIndex"] = self.library._collection_row(collection).get("index")
             container["parentTitle"] = collection.get("title")
+            # Cycle 17, re-measured on plexscratch: the rows here are the LIGHT grid
+            # row, like every other listing -- no `Guid`, no `Rating`, no `Stream`, tags
+            # text-only -- and they leave the librarySection triple to the CONTAINER,
+            # which also says `allowSync: true` and carries no `thumb` of its own.
+            # plexsim sent the full detail row with the triple on each of them, said
+            # `allowSync: false` and added a `thumb`: a client reading the library off
+            # the container got nothing, a mobile client was told the collection cannot
+            # be synced, and every member shipped its whole stream table.
+            container["Metadata"] = [_grid_row(row, keep_section=False)
+                                     for row in container.get("Metadata") or []]
+            container["allowSync"] = True
+            container["librarySectionID"] = collection.get("librarySectionID")
+            container["librarySectionTitle"] = section.get("title")
+            container["librarySectionUUID"] = section.get("uuid")
+            container.pop("thumb", None)
             return body
         if len(segments) != 3:
             return ("error", 404, "plexsim: not found")
