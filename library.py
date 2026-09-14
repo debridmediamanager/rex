@@ -162,6 +162,11 @@ def _now():
     return int(time.time())
 
 
+# The Plex type numbers a collection row's `ratingCount` is built from.
+# Measured in cycle 15; see _collection_row.
+TYPE_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4}
+
+
 class Library:
     """Watch state, edits, playlists, collections and play history."""
 
@@ -1717,13 +1722,26 @@ class Library:
             # follows the tag the collection was created under.
             "index": self.catalog.tag_id("Collection",
                                          collection.get("tag", collection["title"])),
-            "ratingCount": len(rows),
+            # Cycle 15, measured on the copy over eleven collections of four member
+            # types and both smart values: this is NOT a count. It is the Plex TYPE
+            # NUMBER of the members -- movie 1, show 2, season 3, episode 4 -- plus
+            # 100 when the collection is smart (101/102/104). Cycle 14 saw the `1` on
+            # a three-member collection and left it unexplained; the rule predicted
+            # 102 and 104 before either was measured. plexsim sent the member count,
+            # which `childCount` already carries.
+            "ratingCount": (TYPE_NUMBERS.get(collection["subtype"], 1)
+                            + (100 if collection.get("smart") else 0)),
             "thumb": "/library/collections/%s/composite/%d?width=400&height=600"
                      % (collection["ratingKey"], stamp),
             "addedAt": collection["addedAt"],
             "updatedAt": stamp,
             "childCount": len(rows),
-            "librarySectionID": collection["librarySectionID"],
+            # Cycle 15: a NUMBER here, as on every other row. plexsim already sent
+            # an int on a movie detail row, so the collection path disagreed with its
+            # own library rows.
+            "librarySectionID": int(collection["librarySectionID"])
+            if str(collection["librarySectionID"]).isdigit()
+            else collection["librarySectionID"],
         }
         section = self.catalog.section(collection["librarySectionID"]) \
             if hasattr(self.catalog, "section") else None
