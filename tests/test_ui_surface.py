@@ -11066,6 +11066,48 @@ def main():
                    if "Zarquon" in str((r_c15z.get("Metadata") or {}).get("title"))],
           "hub rows %s | library/search %d" % (dirs_c15z, len(flat_c15z)))
 
+    # Cycle 15. Nobody had ever swept this surface by METHOD -- a write to a shared
+    # reference is forbidden, so it needed the disposable copy. Re-measured by the
+    # driver across 33 paths, every one of which differed:
+    #
+    #   * A READ-ONLY route answers **404** to PUT, POST and DELETE. plexsim answered
+    #     the GET body with a 200 to all three on twenty of them -- `/`,
+    #     `/library/recentlyAdded`, `/library/onDeck`, `/hubs/promoted`,
+    #     `/hubs/continueWatching`, `/hubs/search`, `/channels/all`, `/services/browse`,
+    #     `/system`, `/system/agents`, `/system/scanners/{n}`, `/updater/status`,
+    #     `/:/plugins`, `/playlists/all`, `/status/sessions/history/all`, and the item
+    #     leaves `allLeaves`, `tree`, `related`, `similar` and `matches`.
+    #   * The legacy single-segment plug-in dispatcher answers **every** method, not
+    #     just GET: `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
+    #     are all 200 with `content="plugins"` on the copy, where plexsim 404'd them.
+    #
+    # HANDOVER already records that verb routing is per (method, path) and not uniform.
+    # It reads to a client -- and to python-plexapi's capability probes, which are
+    # exactly this shape -- as "this endpoint exists and accepts writes".
+    readonly_c15v2 = {}
+    for p_c15v2 in ("/", "/library/recentlyAdded", "/library/onDeck", "/hubs/promoted",
+                    "/hubs/continueWatching", "/channels/all", "/services/browse",
+                    "/system", "/system/agents", "/updater/status", "/:/plugins",
+                    "/library/metadata/%s/tree" % show,
+                    "/library/metadata/%s/allLeaves" % show,
+                    "/library/metadata/%s/related" % show):
+        readonly_c15v2[p_c15v2] = [request(base, m_c15v2, p_c15v2)[0]
+                                   for m_c15v2 in ("PUT", "POST", "DELETE")]
+    check("a read-only route answers 404 to every verb but GET and HEAD",
+          all(codes_c15v2 == [404, 404, 404] for codes_c15v2 in readonly_c15v2.values()),
+          str({k_c15v2: v_c15v2 for k_c15v2, v_c15v2 in readonly_c15v2.items()
+               if v_c15v2 != [404, 404, 404]}) or "all 404")
+    plugin_c15v2 = {}
+    for p_c15v2 in ("/prefs", "/setting", "/users", "/devices.xml"):
+        plugin_c15v2[p_c15v2] = [container(base, m_c15v2, p_c15v2)
+                                 for m_c15v2 in ("PUT", "POST", "DELETE")]
+    check("the single-segment plug-in dispatcher answers every method, not just GET",
+          all(st_c15v2 == 200 and doc_c15v2.get("content") == "plugins"
+              for codes_c15v2 in plugin_c15v2.values()
+              for st_c15v2, doc_c15v2, _ in codes_c15v2),
+          str({k_c15v2: [(s_c15v2, d_c15v2.get("content")) for s_c15v2, d_c15v2, _ in v_c15v2]
+               for k_c15v2, v_c15v2 in plugin_c15v2.items()}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

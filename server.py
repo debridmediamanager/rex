@@ -3415,12 +3415,15 @@ class PlexSim:
         if segments[:1] == ["sync"]:
             return ("error", 404, "plexsim: no sync")
 
-        if len(segments) == 1 and method in ("GET", "HEAD"):
+        if len(segments) == 1:
             # Measured on both reference servers: an unknown SINGLE-segment path
             # falls into the legacy plug-in dispatcher and answers a 200 with
             # `content="plugins"`, where a multi-segment one 404s. `/prefs`,
             # `/settings`, `/login` and `/logout` -- all four named in the client
             # bundle -- are 200 there and were 404 here.
+            # Cycle 15, measured on the copy: it answers EVERY method, not just
+            # GET -- `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
+            # are all 200 with `content="plugins"`. plexsim served the GET alone.
             logger.info("PLUGIN PATH %s %s -- legacy dispatcher", method, route)
             return self.bare_container(size=0, content="plugins")
 
@@ -10618,6 +10621,48 @@ class Handler(BaseHTTPRequestHandler):
             route.query).get("X-Plex-Token", [""])[0]
         return given == wanted
 
+    # Cycle 15, swept by METHOD across 33 paths on the disposable copy -- the sweep
+    # nobody could run before, because it needs writes. A READ-ONLY route answers
+    # **404** to every verb but GET and HEAD; plexsim answered the GET body with a
+    # 200, which reads to a client (and to python-plexapi's capability probes, which
+    # are exactly this shape) as "this endpoint exists and accepts writes".
+    #
+    # Listed rather than inferred: each of these was measured, and the routes that do
+    # take a write -- `/library/sections`, `/playlists`, `/library/collections`,
+    # `/:/prefs`, every item and section leaf that mutates -- are deliberately absent.
+    READ_ONLY_ROUTES = (
+        "/", "/library/recentlyAdded", "/library/onDeck", "/library/tags",
+        "/library/matches", "/playlists/all", "/hubs/promoted",
+        "/hubs/continueWatching", "/hubs/search", "/status/sessions/history/all",
+        "/:/plugins", "/channels/all", "/services/browse", "/system",
+        "/system/agents", "/updater/status",
+    )
+    READ_ONLY_PREFIXES = ("/system/scanners/",)
+    # Item leaves that are pure reads. `extras`, `themes`, `clearLogos`, `posters`
+    # and `arts` are NOT here: their POST is the upload path (400 or 406, measured
+    # separately), only their PUT and DELETE are refused.
+    READ_ONLY_ITEM_LEAVES = ("allLeaves", "tree", "related", "similar", "matches",
+                             "grandchildren")
+
+    def _read_only_refusal(self, method, path):
+        """404 for a write to a route that only reads. Cycle 15."""
+        if method in ("GET", "HEAD"):
+            return False
+        route = path.split("?")[0].rstrip("/") or "/"
+        if route in self.READ_ONLY_ROUTES:
+            return True
+        if any(route.startswith(prefix) for prefix in self.READ_ONLY_PREFIXES):
+            return True
+        parts = [p for p in route.split("/") if p]
+        if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
+                and parts[3] in self.READ_ONLY_ITEM_LEAVES:
+            return True
+        if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
+                and parts[3] in ("extras", "themes", "clearLogos", "posters", "arts") \
+                and method in ("PUT", "DELETE"):
+            return True
+        return False
+
     def _dispatch(self, method):
         sim = self.server.sim
         length = int(self.headers.get("Content-Length") or 0)
@@ -10629,6 +10674,11 @@ class Handler(BaseHTTPRequestHandler):
             # request parser collapses a leading `//` to `/` before this handler ever
             # sees `self.path` (an open-redirect guard), so it is read off the request
             # line -- `//identity` otherwise answered the identity document.
+            self._send(404, "text/plain", b"plexsim: not found")
+            return
+
+        if self._read_only_refusal(method, self.path):
+            logger.info("404 %s %s -- read-only route", method, self.path.split("?")[0])
             self._send(404, "text/plain", b"plexsim: not found")
             return
 
