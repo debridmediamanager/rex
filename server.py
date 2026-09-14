@@ -7788,6 +7788,17 @@ class PlexSim:
         empty queue for it makes the web client show "An error occurred loading
         items to play" without ever calling this endpoint again.
         """
+        # Cycle 16, measured on plexscratch: a uri that is not this server's own
+        # `server://<machine>/...` or a stored `library://` resolves to NOTHING.
+        # A foreign machine, a scheme-less `/library/metadata/1` and a key the
+        # library does not hold all build an EMPTY list -- `leafCount: 0`, no
+        # `composite`, no `duration`. plexsim read the ratingKey out of any uri
+        # shaped like one, so a uri naming another server's item silently
+        # queued its own, and the client's own `leafCountRequested` said 1.
+        if uri and not str(uri).startswith(("server://", "library://")):
+            return []
+        if self._foreign_uri(uri):
+            return []
         path = urllib.parse.unquote(uri or "")
         # A library section, with whatever filter and sort the URI carries. A
         # smart playlist or collection IS that query -- dropping it would make

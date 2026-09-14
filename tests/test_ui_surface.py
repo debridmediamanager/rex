@@ -12618,6 +12618,31 @@ def main():
           "plain=%s smart=%s refusals=%s"
           % (ids_c16a19, smart_ids_c16a19, refusals_c16a19))
 
+
+    # Cycle 16, measured on plexscratch: a create `uri` the server cannot RESOLVE adds
+    # nothing -- a foreign machine, a scheme-less `/library/metadata/1` and a key the
+    # library does not hold all answer 200 with `leafCount: 0` and NO `composite` and
+    # NO `duration`, the shape of a list that was never filled. plexsim resolved the
+    # first two against its own library and created a one-item list, so a uri naming
+    # another server's item silently queued its own.
+    made_c16a20 = {}
+    for label_c16a20, uri_c16a20 in (
+            ("foreign", "server://ffffffffffffffffffffffffffffffffffffffff"
+                        "/com.plexapp.plugins.library/library/metadata/%s" % movie),
+            ("schemeless", "/library/metadata/%s" % movie),
+            ("unknown", "server://%s/com.plexapp.plugins.library"
+                        "/library/metadata/999999" % machine)):
+        answer_c16a20 = json.loads(request(
+            base, "POST", "/playlists?title=c16uri-%s&type=video&smart=0&uri=%s"
+            % (label_c16a20, quote(uri_c16a20)))[1])["MediaContainer"]["Metadata"][0]
+        made_c16a20[label_c16a20] = (answer_c16a20.get("leafCount"),
+                                     "composite" in answer_c16a20,
+                                     "duration" in answer_c16a20)
+        request(base, "DELETE", "/playlists/%s" % answer_c16a20["ratingKey"])
+    check("a create uri the server cannot resolve adds nothing",
+          all(seen_c16a20 == (0, False, False) for seen_c16a20 in made_c16a20.values()),
+          "%s" % made_c16a20)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
