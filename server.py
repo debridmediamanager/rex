@@ -748,6 +748,28 @@ class Catalog:
                 return str(setting.get("value"))
         return "-1"
 
+    def restamp_children(self, row):
+        """Move the borrowed artwork stamp onto the children, as an artwork pick does.
+
+        Cycle 14 measured the cascade for a PICK; a clear is the same write with the
+        field removed, so the children that borrow the field follow it.
+        """
+        for child in self.children(row.get("ratingKey") or ""):
+            for borrowed, own in (("parentThumb", "thumb"), ("parentArt", "art")):
+                if borrowed in child:
+                    if row.get(own) is None:
+                        child.pop(borrowed, None)
+                    else:
+                        child[borrowed] = row[own]
+            for leaf in self.leaves(child.get("ratingKey") or ""):
+                for borrowed, own in (("grandparentThumb", "thumb"),
+                                      ("grandparentArt", "art")):
+                    if borrowed in leaf:
+                        if row.get(own) is None:
+                            leaf.pop(borrowed, None)
+                        else:
+                            leaf[borrowed] = row[own]
+
     def apply_show_prefs(self, show):
         """The row effects of a show's effective `flattenSeasons`, measured on the copy.
 
@@ -6107,6 +6129,19 @@ class PlexSim:
             # blob of PNG.
             if method == "PUT":
                 return self.set_artwork(row, leaf + "s", query)
+            if method == "DELETE":
+                # Cycle 15, measured on plexscratch: the DELETE is real. 200 with an
+                # EMPTY body, the field gone from the row, whatever artwork is left
+                # re-stamped onto a new version, `updatedAt` moved, ONE `state 5`
+                # frame with no `metadataState` (the artwork-pick shape) and nothing
+                # `selected` in the candidate list afterwards. The bare GET of the
+                # deleted path is then a 404.
+                #
+                # plexsim answered the image BYTES to the DELETE and changed nothing:
+                # Remove Poster did nothing, and since Change Poster assigns the
+                # response BODY onto the row, clearing the artwork set the tile's img
+                # src to a blob of JPEG.
+                return self.clear_artwork(row, leaf)
             return ("image-key", row, leaf)
         if leaf in ("posters", "arts"):
             if method == "PUT":
@@ -6284,6 +6319,14 @@ class PlexSim:
             # The same sweep that found `/recentlyReleased`: fetch every leaf from both
             # references and from plexsim, and report only where the references agree
             # and plexsim does not.
+            # Cycle 15: once the field has been DELETED the path is a 404 on the
+            # copy, not a placeholder -- and a 404 lets the client draw its own
+            # placeholder where a grey 200 tile gets cached.
+            owner = self.catalog.items.get(int(rating_key)) \
+                if str(rating_key).isdigit() else None
+            if owner is not None and owner.get("thumb" if leaf in ("thumb", "poster")
+                                               else "art") is None:
+                return ("error", 404, "plexsim: not found")
             resolved = self.artwork_for(rating_key, leaf)
             if resolved:
                 return ("image", self._at_width(resolved, query.get("width")))
@@ -8416,6 +8459,23 @@ class PlexSim:
             metadata_module.enrich(row, self.tmdb, parsed, chosen=chosen)
         except Exception as error:  # a failed lookup must not fail the match
             logger.debug("re-identify failed for %s: %s", guid, error)
+
+    def clear_artwork(self, row, leaf):
+        """Remove one artwork field, re-stamp the rest, and frame it. Cycle 15."""
+        field = "thumb" if leaf in ("poster", "thumb") else leaf
+        stamp = int(time.time())
+        had = row.pop(field, None)
+        row.pop("_poster_url" if field == "thumb" else "_art_url", None)
+        for other in ("thumb", "art"):
+            # Measured: the artwork that is LEFT moves to a new version stamp, the
+            # way an artwork PICK re-versions every field it keeps.
+            if other != field and row.get(other):
+                row[other] = "/library/metadata/%s/%s/%s" % (row["ratingKey"], other, stamp)
+        if had is not None:
+            row["updatedAt"] = stamp
+            self.catalog.restamp_children(row)
+            self.notify_timeline(row, self.TIMELINE_DONE, None)
+        return ("empty", 200)
 
     def artwork_list(self, row, kind):
         """`/library/metadata/{id}/{posters,arts}` -- the Change Artwork picker.
