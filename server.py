@@ -8286,7 +8286,14 @@ class PlexSim:
 
     def recently_added_rows(self, type_id, section_id=None):
         """Newest first, by TYPE (1 movies, 2 shows, 4 episodes); None for others."""
-        wanted = {"1": "movie", "2": "show", "4": "episode"}.get(type_id)
+        # Cycle 21, swept over nine `type=` values on kids and zen: this shelf is
+        # populated at `type=1` and `type=2` ONLY. Both references answer `size 0` to
+        # `type=3`, `4`, `5`, `8`, an unparseable one and an empty one -- and both hold
+        # episodes, so it is not a content difference -- with and without `sectionID`,
+        # `pinnedContentDirectoryID` and `includeMeta`. The EPISODE rows a real PMS
+        # shows here arrive under `type=2`, in the mixed shelf, which is why `4` has
+        # nothing of its own to answer.
+        wanted = {"1": "movie", "2": "show"}.get(type_id)
         if wanted is None:
             return None
         rows = [r for r in self.catalog.items.values() if r.get("type") == wanted]
