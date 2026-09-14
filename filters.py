@@ -552,9 +552,14 @@ def compare(kind, operator, actual, wanted, field=""):
         # unparseable value was never refused at all. Both references 500 it.
         moment = as_epoch(wanted)
         if actual is None:
-            # Measured on a large real library: a NULL date matches "is before"
-            # and fails "is after" (3835 + 21 = 3856 rows either side).
-            return operator in ("<<=", "<=")
+            # Cycle 20, re-measured on zen (1.42.2) and kids (1.43.4): a NULL date
+            # matches NOTHING, on every operator. Of zen's 3,887 movies exactly 1,518
+            # carry an `originallyAvailableAt`, and `<=2100-01-01` answers those 1,518
+            # while `<=1800-01-01` and `<<=1800-01-01` answer 0 -- so the 2,369 without
+            # one are in neither half, which is cycle 19's numeric rule exactly. The
+            # old reading ("a NULL date matches is-before") came from fun, which is out
+            # of scope, and it put every season of a show library into every `<=` set.
+            return False
         # A row may hold a date as an ISO string (`originallyAvailableAt`) or as
         # an epoch (`addedAt`); both are dates to a filter.
         actual = as_epoch(actual) if not str(actual).replace(".", "").isdigit() \
@@ -567,6 +572,11 @@ def compare(kind, operator, actual, wanted, field=""):
             return actual < moment
         if operator in ("<=",):
             return actual <= moment
+        if operator in ("!=", "!=="):
+            # Cycle 20: `!=` really compares. `addedAt!=2020-01-01` answers
+            # every row on both references, where plexsim fell through to the equality
+            # below and answered none.
+            return abs(actual - moment) >= 1
         return abs(actual - moment) < 1
 
     if kind == "boolean":

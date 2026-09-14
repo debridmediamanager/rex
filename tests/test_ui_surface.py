@@ -15773,6 +15773,31 @@ def main():
           "media %s | dup %s plain %s overlap %s"
           % (len(leaf_row_c20aa.get("Media") or []), sorted(dup_c20aa), sorted(plain_c20aa),
              sorted(dup_c20aa & plain_c20aa)))
+
+    # Cycle 20, measured on zen's 3,887 movies (1,518 of which carry an
+    # `originallyAvailableAt`) and on kids: a NULL date matches NOTHING, on every
+    # operator. `<=1800-01-01` and `<<=1800-01-01` answer 0 and `<=2100-01-01` answers
+    # exactly the 1,518 with a value, so the 2,369 without one are in neither half --
+    # the same rule cycle 19 measured for a numeric column. And `!=` really compares:
+    # `addedAt!=2020-01-01` answers every row on both references where
+    # plexsim answered none, because the date branch had no `!=` case at all and fell
+    # through to equality. The old "a NULL date matches is-before" was measured on
+    # fun, which is out of scope.
+    dates_c20ab = {}
+    for label_c20ab, key_c20ab in ((">=", "originallyAvailableAt%3E"),
+                                   ("<=", "originallyAvailableAt%3C"),
+                                   ("<<=", "originallyAvailableAt%3C%3C")):
+        dates_c20ab[label_c20ab] = len(
+            get(base, "/library/sections/%s/all?type=3&%s=2100-01-01" % (show_section, key_c20ab))[1]
+            .get("Metadata") or [])
+    total_c20ab = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                      .get("Metadata") or [])
+    unequal_c20ab = len(get(base, "/library/sections/%s/all?type=1&addedAt%%21=2020-01-01"
+                            % movie_section)[1].get("Metadata") or [])
+    check("a null date matches nothing and != really compares",
+          all(count_c20ab == 0 for count_c20ab in dates_c20ab.values())
+          and total_c20ab and unequal_c20ab == total_c20ab,
+          "seasons %s | addedAt!= %s of %s" % (dates_c20ab, unequal_c20ab, total_c20ab))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
