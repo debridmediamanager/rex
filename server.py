@@ -6892,7 +6892,18 @@ class PlexSim:
         """
         seen = {}
         for row in self.typed_rows(section_id, query or {}):
-            for media in row.get("Media") or []:
+            media_rows = row.get("Media") or []
+            if not media_rows and row.get("type") in ("show", "season"):
+                # Cycle 20, measured on kids and zen: a SHOW library's media axes are
+                # built from the LEAVES. Both answer a populated `/resolution` and
+                # `/audioLanguage` (zen 6 and 46 entries over 507 shows) although no
+                # show row carries Media, and it is the same any-leaf reading cycle 19
+                # measured for the media FILTERS. plexsim read the top-level rows only,
+                # so a TV library's Resolution and Audio Language menus were empty
+                # while the filters behind them worked.
+                media_rows = [m for leaf in self.catalog.leaves(row.get("ratingKey")) or []
+                              for m in (leaf.get("Media") or [])]
+            for media in media_rows:
                 if leaf == "resolution":
                     found = [(media.get("videoResolution"), None)]
                 elif leaf == "audioLayout":

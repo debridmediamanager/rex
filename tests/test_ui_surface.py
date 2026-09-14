@@ -15621,6 +15621,23 @@ def main():
     check("a stream-language column does not read the leaves",
           all(count_c20u == 0 for count_c20u in parents_c20u.values()) and leaves_c20u > 0,
           "%s | episodes %s" % (parents_c20u, leaves_c20u))
+
+    # Cycle 20: the media axes of a SHOW library are built from the LEAVES. Both
+    # references answer a populated `/library/sections/{show}/resolution` and
+    # `/audioLanguage` -- zen 6 and 46 entries, kids 1 and 1 -- although no show or
+    # season row has Media of its own. plexsim built them from the section's top-level
+    # rows only and answered an empty container, so the Resolution and Audio Language
+    # menus of a TV library's filter bar were empty while the FILTER behind them worked.
+    axes_c20v = {leaf_c20v: get(base, "/library/sections/%s/%s" % (show_section, leaf_c20v))[1]
+                 for leaf_c20v in ("resolution", "audioLanguage")}
+    movie_axis_c20v = get(base, "/library/sections/%s/resolution" % movie_section)[1]
+    check("a show library's media axes are built from its leaves",
+          all((doc_c20v.get("Directory") or []) for doc_c20v in axes_c20v.values())
+          and bool(movie_axis_c20v.get("Directory")),
+          "%s | movie axis %s"
+          % ({leaf_c20v: [d_c20v.get("key") for d_c20v in doc_c20v.get("Directory") or []]
+              for leaf_c20v, doc_c20v in axes_c20v.items()},
+             [d_c20v.get("key") for d_c20v in movie_axis_c20v.get("Directory") or []]))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
