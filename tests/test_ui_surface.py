@@ -13390,6 +13390,27 @@ def main():
               "not-404=%s; the PUT still adds: %s" % (refused_c17b4[:4], still_c17b4))
         request(base, "DELETE", "/library/collections/%s" % collection_c17b4)
 
+
+    # Cycle 17, re-measured on plexscratch: `POST` on an item ACTION leaf is a 404 --
+    # `/refresh`, `/analyze` and `/unmatch` all take PUT and refuse POST, where
+    # `POST /library/sections/{id}/refresh` really is a 200. And `/library/metadata/
+    # {id}/match` answers EVERY verb with its own no-parameters refusal: a GET and a
+    # DELETE there are 400, not 404. plexsim ran the action on a POST -- so a client
+    # that got the verb wrong re-matched an item instead of being refused -- and 404'd
+    # the two match reads.
+    post_c17b5 = {}
+    for leaf_c17b5 in ("refresh", "analyze", "unmatch"):
+        post_c17b5[leaf_c17b5] = request(
+            base, "POST", "/library/metadata/%s/%s" % (movie, leaf_c17b5))[0]
+    section_c17b5 = request(base, "POST", "/library/sections/%s/refresh"
+                            % movie_section)[0]
+    match_c17b5 = [request(base, verb_c17b5, "/library/metadata/%s/match" % movie)[0]
+                   for verb_c17b5 in ("GET", "DELETE")]
+    check("POST on an item action leaf is a 404, and a match read is a 400",
+          set(post_c17b5.values()) == {404} and section_c17b5 == 200
+          and match_c17b5 == [400, 400],
+          "post=%s section=%s match=%s" % (post_c17b5, section_c17b5, match_c17b5))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

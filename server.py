@@ -3047,6 +3047,13 @@ class PlexSim:
             }])
         if segments[:1] == ["butler"]:
             return self.butler(method, segments)
+        if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
+                and segments[3] == "match" and method in ("GET", "DELETE"):
+            # Cycle 17, measured on plexscratch: `/match` answers EVERY verb with its
+            # own no-parameters refusal -- a GET and a DELETE there are 400, not 404.
+            # plexsim 404'd both, so the client's own "is this matchable?" read looked
+            # like an endpoint that does not exist.
+            return ("error", 400, "plexsim: bad request")
         if segments[:1] == ["player"]:
             # Player commands go to a PLAYER, not to a server: a real PMS answers
             # 400 for every one of them. plexsim answered 200 with a container,
@@ -11716,6 +11723,11 @@ class Handler(BaseHTTPRequestHandler):
     # separately), only their PUT and DELETE are refused.
     READ_ONLY_ITEM_LEAVES = ("allLeaves", "tree", "related", "similar", "matches",
                              "grandchildren")
+    # Cycle 17, measured on plexscratch: an item ACTION leaf takes PUT and refuses
+    # POST with a 404, where `POST /library/sections/{id}/refresh` really is a 200.
+    # plexsim ran the action on a POST, so a client that got the verb wrong re-matched
+    # or re-analysed an item instead of being refused.
+    ITEM_ACTION_LEAVES = ("refresh", "analyze", "unmatch")
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `limit=` and `parent=` are
     # PARSED wherever a listing consumes them, and a value that is not a whole number is
@@ -11775,6 +11787,10 @@ class Handler(BaseHTTPRequestHandler):
     def _read_only_refusal(self, method, path):
         """404 for a write to a route that only reads. Cycle 15."""
         if self._collection_item_refusal(method, path):
+            return True
+        parts = [p for p in (path.split("?")[0].rstrip("/") or "/").split("/") if p]
+        if method == "POST" and parts[:2] == ["library", "metadata"] \
+                and len(parts) == 4 and parts[3] in self.ITEM_ACTION_LEAVES:
             return True
         if method in ("GET", "HEAD"):
             return False
