@@ -388,17 +388,19 @@ From an agent tool, start servers with `subprocess.Popen(..., start_new_session=
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
 
-**Ports.** Re-checked at the end of cycle 16, after both hunters had stopped and every
+**Ports.** Re-checked at the end of cycle 17, after both hunters had stopped and every
 leftover server was killed: only `32502` (another session's plexsim on
 `catalog.example.json`), `32596` (a plexsim of unverified origin) and `8787` (another
-session's `http.server`) are held — `32400` and `32595`, which cycle 15 listed, are free
-again. A server started on a held port silently fails to bind and every request then goes
-to somebody else's plexsim, which reads as a wildly failing suite. Everything cycle 16
-used is FREE: `32511`, `32512`, `32541`, `32543`, `32581`–`32584`, `32586`, `32592`–`32594`
-and `32598`. `32599` is `test_ui_surface.py`'s own gated server and `32598` is the
-`--web-root` instance its asset check starts; leave both free. Check with
-`lsof -ti tcp:<port> -sTCP:LISTEN` rather than trusting this list — and check it AFTER the
-agents have finished, not only at cleanup (§5 step 12).
+session's `http.server`) are held — the same three cycle 16 ended with, and the same three
+that were held when cycle 17 began. A server started on a held port silently fails to bind
+and every request then goes to somebody else's plexsim, which reads as a wildly failing
+suite. Everything cycle 17 used is FREE again: `32511`, `32512`, `32541`, `32543`,
+`32587`, `32588` (the two hunters') and `32592`–`32594` (the proof driver's). `32599` is
+`test_ui_surface.py`'s own gated server and `32598` is the `--web-root` instance its asset
+check starts; leave both free. Check with `lsof -ti tcp:<port> -sTCP:LISTEN` rather than
+trusting this list — and check it AFTER the agents have finished, not only at cleanup
+(§5 step 12). **Both of this cycle's hunters left their plexsim running**, as cycle 15's
+did; killing them is part of the step, not an afterthought.
 
 `tests/catalog_ui.json` holds movies `1007` Tears of Steel, `1008` and `1009` (fixture copies);
 show `20001` The Simpsons; **four** seasons `30001` (S19), `30002` (S20), `30003` (S21) and
