@@ -13601,6 +13601,25 @@ def main():
           % (status_c17b13, body_c17b13, before_c17b13.get("thumb"),
              after_c17b13.get("thumb"), bare_c17b13))
 
+
+    # Cycle 17, re-measured on plexscratch: an artwork UPLOAD moves `updatedAt` onto the
+    # same stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15
+    # measured that for the pick and plexsim implemented it there only, so a client that
+    # caches on `updatedAt` -- which is what the stamp is for -- never refetched a poster
+    # the user had just uploaded.
+    before_c17b14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
+    after_c17b14 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
+    stamp_c17b14 = str(after_c17b14.get("thumb") or "").rsplit("/", 1)[-1]
+    check("an artwork upload moves updatedAt onto the new stamp",
+          after_c17b14.get("thumb") != before_c17b14.get("thumb")
+          and stamp_c17b14.isdigit()
+          and str(after_c17b14.get("updatedAt")) == stamp_c17b14,
+          "thumb=%r updatedAt %s -> %s"
+          % (after_c17b14.get("thumb"), before_c17b14.get("updatedAt"),
+             after_c17b14.get("updatedAt")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

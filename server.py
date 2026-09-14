@@ -9443,6 +9443,12 @@ class PlexSim:
             if row.get(name):
                 row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
         row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
+        # Cycle 17, measured on plexscratch: the upload moves `updatedAt` onto the SAME
+        # stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15
+        # measured that for the pick and plexsim implemented it there only, so a client
+        # that caches on the stamp -- which is what it is for -- never refetched a
+        # poster the user had just uploaded.
+        row["updatedAt"] = stamp
         logger.info("ARTWORK upload %s %s %d bytes -> %s", row["ratingKey"], kind, len(body), key)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
         return ("empty", 200)
