@@ -113,6 +113,11 @@ def _render(name, row, out, overrides=None, container=False):
     if container:
         # Measured: a listing's `Meta` comes BEFORE its rows; the rest keep their order.
         children.sort(key=lambda child: 0 if child[0] == "Meta" else 1)
+        # Cycle 16, measured on kids and zen over five containers: the ATTRIBUTES come
+        # out `size`, then `totalSize` and `offset` when the container is paged, then
+        # everything else alphabetically. plexsim emitted whatever order its dict held.
+        lead = {"size": 0, "totalSize": 1, "offset": 2}
+        attrs.sort(key=lambda pair: (lead.get(pair[0], 3), pair[0]))
     elif name == "Type":
         children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child[0],
                                                               len(_TYPE_CHILD_ORDER)))

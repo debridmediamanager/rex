@@ -11883,6 +11883,25 @@ def main():
              sorted(k_c16t for k_c16t in (standalone_c16t[0] if standalone_c16t else {})
                     if k_c16t.startswith("librarySection"))))
 
+
+    # Cycle 16, measured on kids and zen across five containers: a MediaContainer's
+    # attributes come out `size`, then `totalSize` and `offset` when it is paged, then
+    # every other attribute in alphabetical order. plexsim emitted them in the order
+    # its dict happened to hold (`size, identifier, mediaTagPrefix, mediaTagVersion,
+    # allowSync, ...`). Nothing a parser cares about -- it is the replay diff that
+    # reads it, and a stable order is what makes that diff mean something.
+    _, xml_c16u, _ = request(base, "GET",
+                             "/library/sections/%s/all?X-Plex-Container-Start=0"
+                             "&X-Plex-Container-Size=1" % movie_section, want_json=False)
+    body_c16u = xml_c16u.decode("utf-8", "replace")
+    start_c16u = body_c16u.find("<MediaContainer")
+    head_c16u = body_c16u[start_c16u:body_c16u.find(">", start_c16u) + 1]
+    names_c16u = re.findall(r"(\w+)=", head_c16u)
+    check("a MediaContainer's attributes are size, the paging pair, then alphabetical",
+          names_c16u[:3] == ["size", "totalSize", "offset"]
+          and names_c16u[3:] == sorted(names_c16u[3:]),
+          "%s" % names_c16u)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
