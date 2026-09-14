@@ -11994,6 +11994,59 @@ def main():
                         "http://example.com:1234/web/index.html", "public", "1.0"),
           "%s" % (seen_c16x,))
 
+    # Cycle 16, measured on kids and zen over every asset the bundle serves:
+    # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges: bytes`,
+    # and NEVER gzipped even when the client offers gzip -- and three content types
+    # that differ from Python's guesses (`.js` is `text/javascript`, `.html` carries
+    # NO charset, `.ico` is `application/octet-stream`). plexsim cached them for an
+    # hour, which keeps an unhashed `index.html` pointing at the previous build's
+    # chunk names for an hour after an upgrade. It needs `--web-root`, so it starts
+    # its own instance the way the token-gate checks do.
+    import tempfile as tempfile_c16y
+    web_root_c16y = tempfile_c16y.mkdtemp(prefix="plexsim-web-")
+    open(os.path.join(web_root_c16y, "index.html"), "w").write("<html>" + "x" * 4000)
+    open(os.path.join(web_root_c16y, "app.js"), "w").write("var a=1;" + "//\n" * 400)
+    open(os.path.join(web_root_c16y, "favicon.ico"), "wb").write(b"\x00" * 300)
+    web_port_c16y = 32598
+    web_c16y = subprocess.Popen(
+        [_sys.executable, "server.py", "--port", str(web_port_c16y),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--web-root", web_root_c16y],
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        env=dict(os.environ, RD_TOKEN="dummy"),
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _attempt in range(40):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:%d/identity" % web_port_c16y,
+                                       timeout=2).read()
+                break
+            except Exception:
+                time.sleep(0.25)
+
+        def asset_c16y(name_c16y):
+            probe_c16y = urllib.request.Request(
+                "http://127.0.0.1:%d/web/%s" % (web_port_c16y, name_c16y),
+                headers={"User-Agent": UA, "Accept-Encoding": "gzip"})
+            with urllib.request.urlopen(probe_c16y, timeout=10) as answer_c16y:
+                answer_c16y.read()
+                return (answer_c16y.headers.get("Content-Type"),
+                        answer_c16y.headers.get("Cache-Control"),
+                        answer_c16y.headers.get("Accept-Ranges"),
+                        answer_c16y.headers.get("Content-Encoding"))
+
+        assets_c16y = {name_c16y: asset_c16y(name_c16y)
+                       for name_c16y in ("index.html", "app.js", "favicon.ico")}
+        check("a /web asset is no-cache, rangeable, never gzipped, and its own type",
+              assets_c16y == {"index.html": ("text/html", "no-cache", "bytes", None),
+                              "app.js": ("text/javascript", "no-cache", "bytes", None),
+                              "favicon.ico": ("application/octet-stream", "no-cache",
+                                              "bytes", None)},
+              "%s" % assets_c16y)
+    finally:
+        web_c16y.terminate()
+        web_c16y.wait(timeout=10)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
