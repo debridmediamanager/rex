@@ -15743,6 +15743,36 @@ def main():
           "true %s false %s | %s" % (true_c20z, false_c20z,
                                      {k_c20z: v_c20z for k_c20z, v_c20z
                                       in list(grid_c20z.items())[:6]}))
+
+    # the fixture holds one episode with two Media and seven with one, so its show is
+    # in both halves -- which is the shape zen's 24 overlapping shows have
+    c20_dup_leaf = next((str(r_c20.get("ratingKey")) for r_c20 in
+                         (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                          .get("Metadata") or [])
+                         if len(r_c20.get("Media") or []) > 1), None)
+
+    # Cycle 20, measured on zen: on a PARENT row the Duplicates filter's TRUE and FALSE
+    # sets OVERLAP. `type=2&duplicate=1` answers 44 shows and `!=1` 487, which is 531
+    # of 507 rows -- 24 shows are in both -- and its seasons split 74 / 702 with 35 in
+    # both. Both queries are evaluated per LEAF: `=1` is "some leaf has more than one
+    # Media" and `!=1` is "some leaf has exactly one", so a parent holding both is in
+    # each. plexsim collapsed a parent to one scalar, which makes the two sets
+    # complements by construction and can never overlap -- cycle 19's own any-leaf
+    # rule, implemented as a proxy.
+    _, versions_c20aa, _ = get(base, "/library/metadata/%s" % c20_dup_leaf)
+    leaf_row_c20aa = (versions_c20aa.get("Metadata") or [{}])[0]
+    dup_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
+                 get(base, "/library/sections/%s/all?type=2&duplicate=1"
+                     % show_section)[1].get("Metadata") or []}
+    plain_c20aa = {str(r_c20aa.get("ratingKey")) for r_c20aa in
+                   get(base, "/library/sections/%s/all?type=2&duplicate%%21=1"
+                       % show_section)[1].get("Metadata") or []}
+    check("a parent row is in both halves of the Duplicates filter",
+          len(leaf_row_c20aa.get("Media") or []) > 1
+          and bool(dup_c20aa & plain_c20aa),
+          "media %s | dup %s plain %s overlap %s"
+          % (len(leaf_row_c20aa.get("Media") or []), sorted(dup_c20aa), sorted(plain_c20aa),
+             sorted(dup_c20aa & plain_c20aa)))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
