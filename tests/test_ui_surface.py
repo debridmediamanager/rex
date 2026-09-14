@@ -16026,6 +16026,32 @@ def main():
           % (parsed_c20l, refused_c20l,
              {k_c20l: row_c20l.get(k_c20l)
               for k_c20l in ("updatedAt", "ratingCount", "contentRatingAge", "thumb")}))
+
+    # Cycle 20, bisected on plexscratch: `year` is bounded to signed 32-bit. 2147483647
+    # and -2147483648 are 200s, 2147483648 and -2147483649 are 500s, and the bound is
+    # `year`'s alone -- the other numeric columns take 9223372036854775807 happily,
+    # because the item path never reads them. And the refusal carries cycle 19's whole-
+    # form rule with it: `summary.value=OK&year.value=<huge>` is a 500 on the copy with
+    # the summary untouched, where plexsim answered 200 and wrote the summary. It was
+    # the last hole in "a save a real PMS refuses writes nothing".
+    _, was_c20m, _ = get(base, "/library/metadata/%s" % movie)
+    summary_c20m = (was_c20m.get("Metadata") or [{}])[0].get("summary")
+    bounds_c20m = {value_c20m: request(base, "PUT", "/library/metadata/%s?year.value=%s"
+                                       % (movie, value_c20m))[0]
+                   for value_c20m in ("2147483647", "2147483648", "-2147483648",
+                                      "-2147483649", "99999999999999999999")}
+    mixed_c20m, _, _ = request(base, "PUT",
+                               "/library/metadata/%s?summary.value=C20%%20mixed&year.value=%s"
+                               % (movie, "99999999999999999999"))
+    _, now_c20m, _ = get(base, "/library/metadata/%s" % movie)
+    check("year is bounded to signed 32-bit and a refused form writes nothing",
+          bounds_c20m["2147483647"] == 200 and bounds_c20m["-2147483648"] == 200
+          and bounds_c20m["2147483648"] == 500 and bounds_c20m["-2147483649"] == 500
+          and bounds_c20m["99999999999999999999"] == 500
+          and mixed_c20m == 500
+          and (now_c20m.get("Metadata") or [{}])[0].get("summary") == summary_c20m,
+          "%s | mixed %s, summary %r" % (bounds_c20m, mixed_c20m,
+                                         (now_c20m.get("Metadata") or [{}])[0].get("summary")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

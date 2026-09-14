@@ -926,6 +926,12 @@ class Library:
                 # Measured: a real PMS answers 500 for `year.value=abc`.
                 raise EditError(500, "unparseable %s %r" % (field, value))
             number = int(text)
+            if field == "year" and not -2147483648 <= number <= 2147483647:
+                # Cycle 20, bisected on plexscratch: the column is a signed 32-bit
+                # integer and the bound is `year`'s alone -- 2147483647 stores and
+                # 2147483648 is a 500, -2147483648 stores and -2147483649 is a 500,
+                # while the columns the item path does not read take anything.
+                raise EditError(500, "year out of range %r" % value)
             if number < 0 or (field == "year" and number == 0):
                 # Measured: a negative year REMOVES the field, and so does 0 -- while
                 # `+2000` is 2000, where plexsim answered 500.
