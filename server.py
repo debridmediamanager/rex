@@ -7903,6 +7903,15 @@ class PlexSim:
         playlist = self.library.playlist(playlist_id) if playlist_id else None
         named = re.match(r"server://([^/]+)/", urllib.parse.unquote(uri or ""))
         foreign = bool(named) and named.group(1) != self.catalog.machine
+        # Cycle 16, measured on plexscratch: a uri naming a PLAYLIST's items builds
+        # a playlist queue, the same shape `playlistID=` builds -- the playlist id and
+        # title, and no `playQueueSourceURI`. plexsim recognised only `playlistID=`,
+        # so the form the client actually sends named a source URI and no playlist.
+        if playlist is None and "/playlists/" in (uri or ""):
+            named = (uri or "").split("/playlists/", 1)[1].split("/")[0]
+            playlist = self.library.playlist(named)
+            if playlist is not None:
+                foreign = False
         if foreign and playlist is None:
             # Measured on a writable copy of the reference: a uri naming ANOTHER server
             # builds an EMPTY queue that echoes the uri verbatim. plexsim resolved the

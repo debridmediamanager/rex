@@ -12339,6 +12339,33 @@ def main():
           "itself=%s empty=%s front=%s head=%s"
           % (itself_c16a10, empty_c16a10, front_c16a10[0], order_c16a10[:1]))
 
+
+    # Cycle 16, measured on plexscratch: a queue built from a PLAYLIST uri
+    # (`uri=server://<machine>/com.plexapp.plugins.library/playlists/{id}/items`) is a
+    # playlist queue -- it carries `playQueuePlaylistID` and `playQueuePlaylistTitle`
+    # and NO `playQueueSourceURI` at all, exactly as `playlistID=` already did. plexsim
+    # recognised only the `playlistID=` form, so the same queue built the way the
+    # client builds it named a source URI and no playlist.
+    list_c16a11 = json.loads(request(
+        base, "POST", "/playlists?title=c16pquri&type=video&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))[1])["MediaContainer"]["Metadata"][0]
+    queued_c16a11 = json.loads(request(
+        base, "POST", "/playQueues?type=video&shuffle=0&own=1&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/playlists/%s/items"
+                % (machine, list_c16a11["ratingKey"])))[1])["MediaContainer"]
+    request(base, "DELETE", "/playlists/%s" % list_c16a11["ratingKey"])
+    check("a queue built from a playlist uri is a playlist queue",
+          str(queued_c16a11.get("playQueuePlaylistID")) == str(list_c16a11["ratingKey"])
+          and queued_c16a11.get("playQueuePlaylistTitle") == list_c16a11["title"]
+          and "playQueueSourceURI" not in queued_c16a11
+          and len(queued_c16a11.get("Metadata") or []) == 1,
+          "id=%r title=%r source=%r rows=%d"
+          % (queued_c16a11.get("playQueuePlaylistID"),
+             queued_c16a11.get("playQueuePlaylistTitle"),
+             queued_c16a11.get("playQueueSourceURI"),
+             len(queued_c16a11.get("Metadata") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
