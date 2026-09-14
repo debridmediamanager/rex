@@ -728,6 +728,18 @@ class Library:
             written = written | {"title"}
         if written & {"title", "studio", "index", "contentRating"}:
             self._follow_parent(row, written)
+        if row.get("type") == "season" and "year" in written:
+            # Cycle 16, measured on plexscratch: a SEASON with no year of its
+            # own carries the show's as `parentYear`, and one that LOSES its
+            # year gains it in the same read. The rule is recorded and already
+            # right at catalog LOAD; plexsim derived it only there, so a season
+            # edited at runtime carried neither year and its page printed none.
+            parent = self.catalog.items.get(int(row["parentRatingKey"])) \
+                if str(row.get("parentRatingKey") or "").isdigit() else None
+            if not row.get("year") and (parent or {}).get("year"):
+                row["parentYear"] = parent["year"]
+            else:
+                row.pop("parentYear", None)
         if changed:
             row["updatedAt"] = _now()
         return changed
