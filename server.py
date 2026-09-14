@@ -1497,9 +1497,23 @@ def _exclude_fields(container, spec):
     if not fields or not isinstance(body, dict):
         return container
 
+    def strip(value):
+        """Cycle 19: the named field goes from every CHILD ELEMENT too, not only from
+        the row. Measured on kids and zen with eleven names: `excludeFields=id` takes
+        `id` off `Media`, `Part`, `Stream`, `Genre` and `Guid`; `file` off `Part`;
+        `url` off `Image`; `value` off `Rating`; `index` and `codec` off `Stream`;
+        `tag` off `Genre` and `Role`; `type` off `Image` and `Rating`; `duration` off
+        `Media` and `Part`. plexsim trimmed the row and the container alone, so a
+        client asking not to be sent `file` still got the full filesystem path and one
+        trimming `id` to shrink a grid got none of the saving."""
+        if isinstance(value, dict):
+            return {k: strip(v) for k, v in value.items() if k not in fields}
+        if isinstance(value, list):
+            return [strip(v) for v in value]
+        return value
+
     def trim(rows):
-        return [{k: v for k, v in row.items() if k not in fields}
-                if isinstance(row, dict) else row for row in rows]
+        return [strip(row) if isinstance(row, dict) else row for row in rows]
 
     body = {k: v for k, v in body.items() if k not in fields}
     if isinstance(body.get("Metadata"), list):
