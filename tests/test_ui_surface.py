@@ -15450,6 +15450,56 @@ def main():
           % (type_parse_c20f, [typed_c20f(s_c20f) for s_c20f in
                                ("type=1&type%3E%3E=1", "type=1&type%3C%3C=99",
                                 "type=1&type%21=1", "type=1&type%21=2")]))
+
+    def parse_doc_c20(path_c20):
+        """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
+        cannot see. Read the body."""
+        status_c20, body_c20, _ = request(base, "GET", path_c20)
+        try:
+            return status_c20, json.loads(body_c20).get("Query") or {}
+        except ValueError:
+            return status_c20, {}
+
+    # Cycle 20: `sourceType` is a parameter both references KNOW, and it is neither a
+    # filter nor an unknown field. It has to parse as a whole number -- `sourceType=`,
+    # `1.5` and `abc` are 500s on a listing and at /query/parse alike, while `1`, `01`,
+    # `0` and `-1` pass -- it constrains no row, and the parser reports NO Rule for it.
+    # What it does do is switch the source: any value but `1` makes the Query carry the
+    # DEFAULT `Order` block (`id`, ascending) that it otherwise omits, with the rules,
+    # the limit and the group untouched, and an explicit `sort=` still wins. plexsim
+    # reported it as an unknown field and ignored every value.
+    status_one_c20g, one_c20g = parse_doc_c20("/library/sections/%s/query/parse?type=1&sourceType=1"
+                                              % movie_section)
+    status_two_c20g, two_c20g = parse_doc_c20("/library/sections/%s/query/parse?type=1&sourceType=2"
+                                              % movie_section)
+    status_rule_c20g, rule_c20g = parse_doc_c20(
+        "/library/sections/%s/query/parse?type=1&year=2007&sourceType=2" % movie_section)
+    status_sort_c20g, sort_c20g = parse_doc_c20(
+        "/library/sections/%s/query/parse?type=1&sort=titleSort&sourceType=2" % movie_section)
+    status_bad_c20g, _ = parse_doc_c20("/library/sections/%s/query/parse?type=1&sourceType=abc"
+                                       % movie_section)
+    listing_c20g = {value_c20g: get(base, "/library/sections/%s/all?type=1&sourceType=%s"
+                                    % (movie_section, value_c20g))[0]
+                    for value_c20g in ("1", "01", "-1", "2", "abc", "1.5", "")}
+    all_c20g = len(get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                   .get("Metadata") or [])
+    kept_c20g = len(get(base, "/library/sections/%s/all?type=1&sourceType=2" % movie_section)[1]
+                    .get("Metadata") or [])
+    check("sourceType parses an integer, orders by id and filters nothing",
+          status_one_c20g == 200 and "Rule" not in one_c20g and "Order" not in one_c20g
+          and status_two_c20g == 200 and "Rule" not in two_c20g
+          and two_c20g.get("Order") == [{"field": "id", "ascending": True}]
+          and status_rule_c20g == 200 and rule_c20g.get("Rule")
+          and rule_c20g.get("Order") == [{"field": "id", "ascending": True}]
+          and status_sort_c20g == 200
+          and sort_c20g.get("Order") == [{"field": "titleSort", "ascending": True}]
+          and status_bad_c20g == 500
+          and [listing_c20g[good_c20g] for good_c20g in ("1", "01", "-1", "2")] == [200] * 4
+          and [listing_c20g[bad_c20g] for bad_c20g in ("abc", "1.5", "")] == [500] * 3
+          and kept_c20g == all_c20g,
+          "one %s two %s rule %s sort %s bad %s | listing %s | %s of %s"
+          % (one_c20g, two_c20g, rule_c20g.get("Order"), sort_c20g.get("Order"),
+             status_bad_c20g, listing_c20g, kept_c20g, all_c20g))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

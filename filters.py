@@ -63,7 +63,10 @@ OPERATOR_SUFFIXES = [
 # `having` is NOT here on purpose: measured, a real PMS reports it as an unknown
 # FIELD at /query/parse, so it has to reach the field lookup and be rejected
 # there rather than be quietly swallowed.
-STRUCTURAL = {"push", "pop", "and", "or", "sort", "type", "group", "limit"}
+# `sourceType` is here for the same reason: measured on both references, the parser
+# reports no Rule and no Error for it and a listing filtered on it keeps every row. It
+# is not a no-op, though -- see `source_order` below and the 500 its value can raise.
+STRUCTURAL = {"push", "pop", "and", "or", "sort", "type", "group", "limit", "sourceType"}
 
 # Request options a real PMS does not treat as fields at all. Measured at
 # /query/parse: `includeGuids`, `includeCollections`, `includeMeta` and
@@ -890,6 +893,27 @@ def describe(tree, title_of, value_title_of):
             leaf["valueTitle"] = name
     leaf["value"] = tree["value"]
     return leaf
+
+
+# The order a real PMS falls back to when the query names a source other than the
+# library's own: cycle 20, measured on kids and zen, `sourceType=2` (or 0, or -1, or any
+# integer but 1) makes /query/parse carry `Order: [{"field": "id", "ascending": true}]`
+# where the same query without it carries no Order at all. An explicit `sort=` still
+# wins, and the Rule, Limit and Group blocks are untouched.
+SOURCE_DEFAULT_ORDER = [{"field": "id", "ascending": True}]
+
+
+def source_order(value):
+    """The Order block a `sourceType=` value implies. Raises for one that cannot parse."""
+    if value is None:
+        return None
+    try:
+        number = int(str(value).strip())
+    except ValueError:
+        # Measured: an empty value, `1.5` and `abc` are each a 500, on a listing and
+        # at /query/parse alike.
+        raise FilterError(500, "bad sourceType %r" % value)
+    return None if number == 1 else list(SOURCE_DEFAULT_ORDER)
 
 
 def document(type_number, tree, order, limit, group, errors,

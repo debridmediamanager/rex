@@ -6453,6 +6453,13 @@ class PlexSim:
             if key.rstrip("<>=!") == "resolution" \
                     and str(value).strip() not in filters_module.RESOLUTIONS:
                 return ("error", 500, "plexsim: unknown resolution %r" % value)
+        if "sourceType" in query:
+            # Cycle 20: it filters nothing, but its VALUE is parsed -- an empty one,
+            # `1.5` and `abc` are 500s on both references wherever a listing reads it.
+            try:
+                filters_module.source_order(query["sourceType"])
+            except filters_module.FilterError as error:
+                return ("error", error.status, "plexsim: %s" % error.detail)
         return None
 
     def apply_filters(self, rows, query, section=None):
@@ -6525,6 +6532,9 @@ class PlexSim:
         tree = filters_module.parse(query.get("_pairs") or [],
                                     parse_field_type, errors=errors)
         order = filters_module.orders(query.get("sort") or "", self._sortable)
+        if not order:
+            # Cycle 20: a `sourceType` other than 1 brings the DEFAULT order with it.
+            order = filters_module.source_order(query.get("sourceType"))
         limit = None
         if query.get("limit"):
             # Measured: `?limit=abc` is a 500, the same refusal a bad filter
