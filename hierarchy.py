@@ -386,7 +386,16 @@ def normalize_rows(rows):
             if not row.get("skipCount"):
                 row.pop("skipCount", None)
             if row.get("year"):
-                row["titleSort"] = title
+                # Cycle 20, held out against zen's 741 real seasons: the `year` does NOT
+                # bring a `titleSort` with it. 740 carry none, and the only one that does
+                # -- the only one with a `year` -- carries `Egghead`, the arc name its
+                # agent stored, where the row DISPLAYS `Season 22`. Cycle 7 read kids'
+                # season 7 (`Season 1`, agent-supplied and therefore stored) as "a year
+                # means titleSort == title"; the year is a coincidence of a season an
+                # agent really identified. plexsim generates every season title, so the
+                # general rule above is the right one: a derived sort title equal to the
+                # title is not sent -- which is what `stored_sort_title` has answered to
+                # `?titleSort=` all along, so the row and the filter now agree.
                 row.pop("parentYear", None)
             else:
                 row.pop("year", None)
