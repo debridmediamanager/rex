@@ -96,6 +96,11 @@ def _fill_real_pms_fields(rows):
             row.setdefault("grandparentSlug", _slug(row.get("grandparentTitle") or ""))
 
 
+# Every field that can name a row's artwork path, its own or one it borrows.
+_ARTWORK_FIELDS = ("thumb", "art", "banner", "theme", "composite",
+                   "parentThumb", "parentArt", "parentTheme",
+                   "grandparentThumb", "grandparentArt", "grandparentTheme")
+
 _ARTICLE = re.compile(r"(?i)^(the|a|an)\s+")
 # Cycle 17, measured on plexscratch character by character: the characters a
 # real PMS drops from the FRONT of a sort title, alongside whitespace. See
@@ -431,6 +436,23 @@ def normalize_rows(rows):
         if kind == "episode":
             if not row.get("Chapter"):
                 row.pop("chapterSource", None)
+    # Cycle 20: an artwork path's version is the OWNING row's `updatedAt` -- 738 of 738
+    # owned paths across the two references. Every reference to a row's artwork follows
+    # it, borrowed or not, so the rewrite is keyed on the ratingKey INSIDE the path
+    # rather than on the row carrying it: a season's `parentThumb` and an episode's
+    # `grandparentArt` name the show's path and have to move with it. Catalogs written
+    # before this carry the old content hash, which is why it runs at LOAD as well as
+    # in `_stamp_artwork`.
+    stamps = {str(row.get("ratingKey")): row.get("updatedAt") or row.get("addedAt") or 1
+              for row in rows}
+    for row in rows:
+        for field in _ARTWORK_FIELDS:
+            value = str(row.get(field) or "")
+            parts = value.split("/")
+            if not value.startswith("/library/metadata/") or len(parts) != 6:
+                continue
+            if parts[3] in stamps:
+                row[field] = "/".join(parts[:5] + [str(stamps[parts[3]])])
     return rows
 
 
@@ -448,15 +470,18 @@ def _stamp_artwork(rows):
     behind it changed: The Simpsons at rk=20001 rendered with The Mentalist's
     poster, cached by the client from a previous build.
 
-    The version is a hash of the artwork URL itself, so it changes exactly when
-    the artwork does and stays stable when it does not.
+    Cycle 20, measured over every owned artwork path of both references: the version
+    is the row's `updatedAt`, exactly -- 726 of 726 on zen and 12 of 12 on kids, `thumb`
+    and `art` alike. The copy shows the mechanism from the write side: writing
+    `updatedAt` through the section save path re-versions the poster onto the new stamp
+    in the same call. A hash of the source URL was a defensible version and not the
+    measured one, and it is a column a client can compare with the row's own.
     """
     for row in rows:
-        for field, source in (("thumb", "_poster_url"), ("art", "_art_url")):
+        for field in ("thumb", "art"):
             if not row.get(field):
                 continue
-            origin = row.get(source) or ""
-            version = hashlib.sha1(origin.encode()).hexdigest()[:10] if origin else "1"
+            version = row.get("updatedAt") or row.get("addedAt") or 1
             row[field] = "/library/metadata/%s/%s/%s" % (row["ratingKey"], field, version)
 
     # Parent pointers must match the parent's stamped URL, not the old constant.
