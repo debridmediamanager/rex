@@ -10703,6 +10703,11 @@ class PlexSim:
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "PlexSim/0.1"
+    # Cycle 16, measured on kids and zen: an idle kept-alive connection is closed by
+    # the server after exactly 20 seconds, which is the number it advertises in
+    # `Keep-Alive: timeout=20`. plexsim never closed one, so an abandoned socket held
+    # a ThreadingHTTPServer thread for the life of the process.
+    timeout = 20
 
     def send_response(self, code, message=None):
         """A real PMS sends no `Server:` banner -- measured on kids and zen.
@@ -10785,6 +10790,17 @@ class Handler(BaseHTTPRequestHandler):
         # not -- so a re-match or a Change Artwork stayed invisible to the browser.
         if "cache-control" not in names:
             self.send_header("Cache-Control", "no-cache")
+        # Cycle 16, measured on kids and zen over every status and both formats: a
+        # real PMS names its connection state on EVERY response -- `Connection:
+        # Keep-Alive` plus `Keep-Alive: timeout=20` when the connection is being
+        # kept, `Connection: close` when it is not. plexsim sent neither, so a
+        # client reading the advertised timeout to schedule reuse got nothing.
+        if "connection" not in names:
+            if self.close_connection:
+                self.send_header("Connection", "close")
+            else:
+                self.send_header("Connection", "Keep-Alive")
+                self.send_header("Keep-Alive", "timeout=20")
         payload = self._maybe_gzip(content_type, payload, names)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
