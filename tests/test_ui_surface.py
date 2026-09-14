@@ -14707,6 +14707,26 @@ def main():
           % (one_c19k, status_c19k, kids_c19k.get("viewGroup"),
              len(kids_c19k.get("Metadata") or [])))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2) with eleven field names:
+    # `excludeFields=` strips the named field from every CHILD ELEMENT, not only from the
+    # row -- `id` off Media/Part/Stream/Genre/Guid, `file` off Part, `url` off Image,
+    # `value` off Rating, `index` and `codec` off Stream, `tag` off Genre and Role. plexsim
+    # trimmed the row and the container alone, so a client asking not to be sent `file`
+    # still got the full filesystem path.
+    status_c19x, detail_c19x, _ = get(base, "/library/metadata/%s?excludeFields=id" % movie)
+    row_c19x = (detail_c19x.get("Metadata") or [{}])[0]
+    media_c19x = (row_c19x.get("Media") or [{}])[0]
+    part_c19x = (media_c19x.get("Part") or [{}])[0]
+    check("excludeFields strips the field from every child element",
+          status_c19x == 200 and bool(media_c19x) and "id" not in media_c19x
+          and "id" not in part_c19x
+          and all("id" not in s_c19x for s_c19x in part_c19x.get("Stream") or [])
+          and all("id" not in g_c19x for g_c19x in row_c19x.get("Genre") or []),
+          "Media has id %s  Part %s  Stream %s  Genre %s"
+          % ("id" in media_c19x, "id" in part_c19x,
+             [("id" in s_c19x) for s_c19x in part_c19x.get("Stream") or []][:3],
+             [("id" in g_c19x) for g_c19x in row_c19x.get("Genre") or []][:3]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
