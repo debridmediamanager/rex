@@ -10727,6 +10727,56 @@ def main():
              request(base, "POST", "/library/metadata/%s/subtitles?title=a.srt&format=srt"
                      % movie)[0]))
 
+    # Cycle 15, measured on plexscratch over eleven collections of four member types and
+    # both smart values: a collection row's `ratingCount` is NOT a count. It is the Plex
+    # TYPE NUMBER of its members, plus 100 when the collection is smart:
+    #
+    #     movie 1   show 2   season 3   episode 4      smart: 101  102  104
+    #
+    # Cycle 14 saw `1` on a three-member collection and left it unexplained. The rule
+    # predicted 102 and 104 before either was measured. plexsim sent the member count,
+    # which is already in `childCount` -- and the 100 offset is a second, independent
+    # signal of `smart`.
+    #
+    # `librarySectionID` is a NUMBER on a collection row too. plexsim already sends an
+    # int on a movie detail row, so its collection path contradicted its own rows.
+    made_c15r = {}
+    for label_c15r, typ_c15r, sec_c15r, key_c15r in (("movie", 1, movie_section, movie),
+                                                     ("show", 2, show_section, show)):
+        u_c15r = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                       % (machine, key_c15r))
+        body_c15r = container(
+            base, "POST",
+            "/library/collections?type=%d&title=%s&smart=0&sectionId=%s&uri=%s"
+            % (typ_c15r, quote("C15r %s" % label_c15r), sec_c15r, u_c15r))[1]
+        made_c15r[label_c15r] = (body_c15r.get("Metadata") or [{}])[0]
+    smart_body_c15r = container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=1&sectionId=%s&uri=%s"
+                          % (quote("C15r smart"), movie_section,
+                             quote("server://%s/com.plexapp.plugins.library"
+                                   "/library/sections/%s/all?type=1"
+                                   % (machine, movie_section))))[1]
+    made_c15r["smart"] = (smart_body_c15r.get("Metadata") or [{}])[0]
+    counts_c15r = {k_c15r: v_c15r.get("ratingCount") for k_c15r, v_c15r in made_c15r.items()}
+    # Read one back from the metadata path as well: the create response and the detail
+    # row are built by the same function, and the section id is what is being checked.
+    detail_c15r = (get(base, "/library/metadata/%s" % made_c15r["movie"].get("ratingKey"))[1]
+                   .get("Metadata") or [{}])[0]
+    for row_c15r in get(base, "/library/sections/%s/collections" % movie_section)[1] \
+            .get("Metadata") or []:
+        if str(row_c15r.get("title") or "").startswith("C15r "):
+            request(base, "DELETE", "/library/collections/%s" % row_c15r["ratingKey"])
+    for row_c15r in get(base, "/library/sections/%s/collections" % show_section)[1] \
+            .get("Metadata") or []:
+        if str(row_c15r.get("title") or "").startswith("C15r "):
+            request(base, "DELETE", "/library/collections/%s" % row_c15r["ratingKey"])
+    check("a collection's ratingCount is its member type number, +100 when smart",
+          counts_c15r == {"movie": 1, "show": 2, "smart": 101}, str(counts_c15r))
+    check("a collection row's librarySectionID is a number",
+          isinstance(detail_c15r.get("librarySectionID"), int),
+          "detail %r | create %r" % (detail_c15r.get("librarySectionID"),
+                                     made_c15r["movie"].get("librarySectionID")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
