@@ -16074,6 +16074,33 @@ def main():
           and (kept_c20n.get("Metadata") or [{}])[0].get("rating") == 7.5,
           "%s | 7.5 stores %r" % (ratings_c20n,
                                   (kept_c20n.get("Metadata") or [{}])[0].get("rating")))
+
+    # Cycle 20, measured on plexscratch: `theme` and `banner` are ARTWORK columns on the
+    # edit path. `theme.value=http://example.invalid/t.mp3` is a 200 and the row comes
+    # back carrying `theme: "/library/metadata/4/theme/1789421253"` -- the URL discarded
+    # and the path minted at the row's current `updatedAt`, exactly as a poster pick
+    # mints one. `banner` behaves identically. plexsim honoured the lock and stored
+    # nothing, so the column never appeared; and on the SECTION path it went further and
+    # 400'd `theme`, `banner` and `slug`, all three of which the copy takes on both
+    # paths.
+    request(base, "PUT", "/library/metadata/%s?theme.value=http%%3A%%2F%%2Fexample.invalid%%2Ft.mp3"
+            % movie)
+    request(base, "PUT", "/library/metadata/%s?banner.value=http%%3A%%2F%%2Fexample.invalid%%2Fb.jpg"
+            % movie)
+    _, doc_c20o, _ = get(base, "/library/metadata/%s" % movie)
+    row_c20o = (doc_c20o.get("Metadata") or [{}])[0]
+    section_c20o = {field_c20o: request(base, "PUT",
+                                        "/library/sections/%s/all?type=1&id=%s&%s.value=x"
+                                        % (movie_section, movie, field_c20o))[0]
+                    for field_c20o in ("theme", "banner", "slug")}
+    check("theme and banner are artwork columns and the section path takes them",
+          str(row_c20o.get("theme") or "").startswith("/library/metadata/%s/theme/" % movie)
+          and str(row_c20o.get("banner") or "").startswith("/library/metadata/%s/banner/" % movie)
+          and str(row_c20o.get("theme") or "").rsplit("/", 1)[-1] == str(row_c20o.get("updatedAt"))
+          and all(code_c20o == 200 for code_c20o in section_c20o.values()),
+          "theme %r banner %r updatedAt %s | section %s"
+          % (row_c20o.get("theme"), row_c20o.get("banner"), row_c20o.get("updatedAt"),
+             section_c20o))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
