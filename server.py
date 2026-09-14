@@ -9639,12 +9639,41 @@ class PlexSim:
                 # Measured: a PUT that names nothing it can write is a 400 -- an
                 # unknown parameter, `smart=1`, or no parameters at all. plexsim
                 # answered 200 to all three.
-                writable = {"title", "summary", "titleSort", "title.value",
-                            "summary.value", "titleSort.value", "type"}
+                # Cycle 16, measured on plexscratch: this takes the whole ITEM
+                # edit grammar. `thumb=`/`art=` mint artwork under
+                # `/library/metadata/{playlist ratingKey}/` and add an `Image` row;
+                # every `.locked` really locks; `year`, `originallyAvailableAt` and
+                # `studio` are stored; `userRating`, `guid`, `duration` and the
+                # timestamps are accepted and DISCARDED. Only the list's own structural
+                # fields, an unknown field and a bare PUT are 400s. plexsim allowed
+                # four fields, so the Edit dialog's Poster and Background pickers and
+                # every lock checkbox answered "There was a problem updating this item".
+                stored = {"title", "summary", "titleSort", "year", "studio",
+                          "originallyAvailableAt", "thumb", "art"}
+                discarded = {"userRating", "guid", "duration", "addedAt", "updatedAt",
+                             "viewCount", "lastViewedAt", "type"}
                 named = [k for k in query
                          if not k.startswith("X-Plex-") and k != "_pairs"]
-                if not named or any(k not in writable for k in named):
+                if not named:
                     return ("error", 400, "plexsim: bad request")
+                for name in named:
+                    field = name.rsplit(".", 1)[0] if name.endswith((".value", ".locked")) \
+                        else name
+                    if field not in stored and field not in discarded:
+                        return ("error", 400, "plexsim: bad request")
+                self.library.edit(playlist, {k: v for k, v in query.items()
+                                             if k in named
+                                             and (k.rsplit(".", 1)[0]
+                                                  if k.endswith((".value", ".locked"))
+                                                  else k) in stored},
+                                  query.get("_pairs"))
+                for name in ("thumb", "art"):
+                    value = query.get(name, query.get(name + ".value"))
+                    if value is not None:
+                        # the path a real PMS mints is under the library metadata tree,
+                        # keyed by the playlist's own ratingKey -- measured
+                        playlist[name] = "/library/metadata/%s/%s/%s" % (
+                            playlist["ratingKey"], name, playlist["updatedAt"])
                 title = query.get("title.value")
                 if title is None:
                     title = query.get("title")

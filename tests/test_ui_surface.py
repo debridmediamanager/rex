@@ -12512,6 +12512,49 @@ def main():
           % (with_c16a17.get("year"), with_c16a17.get("parentYear"),
              without_c16a17.get("year"), without_c16a17.get("parentYear"), parent_c16a17))
 
+
+    # Cycle 16, measured on plexscratch: `PUT /playlists/{id}` takes the whole ITEM edit
+    # grammar, not the four fields plexsim allowed. `thumb=` and `art=` are 200s that
+    # mint artwork under `/library/metadata/{playlist ratingKey}/` and add an `Image`
+    # row; `title.locked=1` and its siblings really lock; `year`, `originallyAvailableAt`
+    # and `studio` are stored; `userRating`, `guid`, `duration` and the timestamps are
+    # accepted and discarded. Only `playlistType`, `smart`, `composite`, `leafCount`,
+    # `key`, `icon`, `content`, `sectionID`, `ratingKey`, `playQueueID`, an unknown
+    # field and a bare PUT are 400s. plexsim 400'd every one of the accepted ones, so
+    # the playlist Edit dialog's Poster and Background pickers and every lock checkbox
+    # answered "There was a problem updating this item".
+    made_c16a18 = json.loads(request(
+        base, "POST", "/playlists?title=c16edit&type=video&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    accepted_c16a18 = {}
+    for probe_c16a18 in ("thumb=/y", "art=/z", "title.locked=1", "year=1999",
+                         "originallyAvailableAt=2001-01-01", "studio=c16studio",
+                         "userRating=5"):
+        accepted_c16a18[probe_c16a18] = request(
+            base, "PUT", "/playlists/%s?%s" % (made_c16a18, probe_c16a18))[0]
+    refused_c16a18 = {probe_c16a18: request(
+        base, "PUT", "/playlists/%s?%s" % (made_c16a18, probe_c16a18))[0]
+        for probe_c16a18 in ("playlistType=audio", "smart=1", "bogus=1")}
+    row_c16a18 = get(base, "/playlists/%s" % made_c16a18)[1]["Metadata"][0]
+    request(base, "DELETE", "/playlists/%s" % made_c16a18)
+    check("a playlist PUT takes the item edit grammar",
+          all(seen_c16a18 == 200 for seen_c16a18 in accepted_c16a18.values())
+          and all(seen_c16a18 == 400 for seen_c16a18 in refused_c16a18.values())
+          and row_c16a18.get("year") == 1999
+          and row_c16a18.get("studio") == "c16studio"
+          and str(row_c16a18.get("thumb") or "").startswith(
+              "/library/metadata/%s/thumb/" % made_c16a18)
+          and str(row_c16a18.get("art") or "").startswith(
+              "/library/metadata/%s/art/" % made_c16a18)
+          and any(f_c16a18.get("name") == "title" and f_c16a18.get("locked")
+                  for f_c16a18 in row_c16a18.get("Field") or [])
+          and "userRating" not in row_c16a18,
+          "accepted=%s refused=%s row=%s"
+          % (accepted_c16a18, refused_c16a18,
+             {k_c16a18: row_c16a18.get(k_c16a18)
+              for k_c16a18 in ("year", "studio", "thumb", "art", "Field", "userRating")}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
