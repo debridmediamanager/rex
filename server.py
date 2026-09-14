@@ -7122,6 +7122,11 @@ class PlexSim:
         if collection is None and playlist is None:
             return ("error", 404, "plexsim: no such item")
         target_row = collection if collection is not None else playlist
+        if method not in ("GET", "HEAD", "PUT", "DELETE"):
+            # Cycle 21, measured on plexscratch: `POST`, `PATCH` and a bare `OPTIONS`
+            # are 404s on a collection's and a playlist's metadata path too. plexsim
+            # fell through to the GET branch and answered the row.
+            return ("error", 404, "plexsim: not found")
         if len(segments) == 4 and segments[3] == "prefs":
             # Measured: the per-item prefs are WRITE-only here (the GET is a 404),
             # and `collectionSort`/`collectionMode` land on the collection row as
@@ -10659,6 +10664,12 @@ class PlexSim:
         collection = self.library.collection(segments[2])
         if collection is None:
             return ("error", 404, "plexsim: no such collection")
+        if method not in ("GET", "HEAD", "PUT", "DELETE"):
+            # Cycle 21, measured on plexscratch: `POST`, `PATCH` and a bare `OPTIONS`
+            # are 404s here and on `/children`, which is cycle 19's read-only-verb
+            # rule -- it had never reached the collection and playlist paths, so
+            # plexsim answered the collection ROW to a POST.
+            return ("error", 404, "plexsim: not found")
 
         if len(segments) == 3:
             if method == "DELETE":
@@ -10681,6 +10692,24 @@ class PlexSim:
                                      "title": ""})
                 return ("empty", 200)
             if method == "PUT":
+                # Cycle 21, measured on plexscratch: this path is the ITEM edit path,
+                # with the whole grammar behind it -- a form that writes nothing is a
+                # 400, an unknown `.value` is a 400, and a PREF name (`collectionMode`)
+                # is a 400 here where `/prefs` takes it. plexsim ran a second, weaker
+                # code path that answered 200 to every form and dropped
+                # `titleSort.value`, so a save on the collection page reported success
+                # and lost the edit. The grammar runs against a COPY, as the metadata
+                # path does, so the collection writers below stay in charge.
+                try:
+                    self.library.edit(dict(collection), query, pairs=query.get("_pairs"))
+                except library_module.EditError as error:
+                    return ("error", error.status, "plexsim: %s" % error.detail)
+                for name in ("titleSort", "contentRating"):
+                    if query.get("%s.value" % name) is not None:
+                        collection[name] = query["%s.value" % name]
+                if query.get("titleSort.locked") is not None:
+                    self.library._set_lock(collection, "titleSort",
+                                           query["titleSort.locked"] == "1")
                 # `title.value=` is an empty title too, which `or` turned into None.
                 title = query.get("title.value")
                 if title is None:
