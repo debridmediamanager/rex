@@ -7683,7 +7683,15 @@ class PlexSim:
             return self.item_action(row, leaf, method, query)
         if leaf == "matches":
             return self.matches(row, query)
-        if leaf in ("art", "poster", "thumb") and not self._owns_artwork(row, leaf):
+        if leaf in ("art", "poster", "thumb") and method in ("GET", "HEAD") \
+                and not self._owns_artwork(row, leaf):
+            # Cycle 21: the guard is the READ's. Measured on plexscratch, a WRITE to a
+            # row that owns nothing is a 200 -- a poster PUT after a poster DELETE
+            # re-mints the path, and a DELETE on a fresh collection with no artwork at
+            # all is a 200 too. plexsim applied the ownership rule to every verb, so
+            # Clear Artwork followed by Change Poster was a dead end: the row could
+            # never regain a poster and the grid drew the placeholder for good.
+            #
             # Cycle 16: cycle 15's episode-only rule is the special case of a general
             # one. Measured on kids and zen, an artwork path is a 200 only on the row
             # that OWNS the image -- kids' season 7 borrows its show's background and
