@@ -12916,6 +12916,36 @@ def main():
           "wrong=%s ascii=%s" % (wrong_c17d2[:2],
                                  all(byte_c17d2 < 128 for byte_c17d2 in body_c17d2)))
 
+
+    # Cycle 17: §3.3 carried "the MECHANISM is measured; the COVERAGE is only as wide as
+    # capture_i18n.py's path list" since cycle 16, and it was right. Sweeping 87 paths
+    # against kids in German found 119 (attribute, string) pairs the reference
+    # translates that the table did not hold, and zen -- 1.42.2, the build plexsim
+    # reports -- moves the same families (43 strings on a library's /prefs, 17 on
+    # /hubs/search, 2 on /butler). The biggest is the PREFERENCES family: every `label`,
+    # `summary` and `enumValues` of the Edit Library dialog and the per-item Advanced
+    # pane, none of which was covered. Beside it: the seventeen typed search hubs, whose
+    # titles the client lays the page out from; the butler's task titles and
+    # descriptions; a GENERATED `Episode N`, the sibling of the `Season N` rule already
+    # in the table; and /query/parse's `fieldTitle`. The table is a strict superset of
+    # cycle 16's -- 451 entries against 342, nothing dropped. (The ITEM Preferences
+    # block needs the next commit as well: the localiser never reached it.)
+    def de_c17d3(path_c17d3):
+        return request(base, "GET", path_c17d3 + ("&" if "?" in path_c17d3 else "?")
+                       + "X-Plex-Language=de")[1].decode("utf-8", "replace")
+    prefs_c17d3 = de_c17d3("/library/sections/%s/prefs" % movie_section)
+    en_prefs_c17d3 = request(base, "GET", "/library/sections/%s/prefs"
+                             % movie_section)[1].decode("utf-8", "replace")
+    hubs_c17d3 = de_c17d3("/hubs/search?query=a")
+    butler_c17d3 = de_c17d3("/butler")
+    check("the translation table covers the prefs, search hub and butler strings",
+          "Sammlungen" in prefs_c17d3 and "Collections" in en_prefs_c17d3
+          and "Schauspieler" in hubs_c17d3 and "Sammlungen" in hubs_c17d3
+          and "Datenbank sichern" in butler_c17d3,
+          "prefs=%s hubs=%s butler=%s"
+          % ("Sammlungen" in prefs_c17d3, "Schauspieler" in hubs_c17d3,
+             "Datenbank sichern" in butler_c17d3))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

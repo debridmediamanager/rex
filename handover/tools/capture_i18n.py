@@ -1,0 +1,210 @@
+"""Capture the reference's own translation table, mechanically.
+
+Cycle 16's first finding: a real PMS LOCALISES by `X-Plex-Language` (falling back to
+`Accept-Language`). Rather than guess at translations, fetch each endpoint in English
+and in every language the reference answers differently, walk the two JSON documents in
+parallel, and record every string that changed AT THE SAME PATH. That gives an English
+-> per-language map with no invention in it at all.
+
+Cycle 17 widened the path list. §3.3 had carried "the MECHANISM is measured; the
+COVERAGE is only as wide as this list" since cycle 16, and it was right: sweeping 87
+paths found 119 (attribute, string) pairs the reference translates that the table did
+not hold -- the whole library and item PREFERENCES family (every `label`, `summary` and
+`enumValues` of the Edit Library dialog and the per-item Advanced pane), the seventeen
+`/hubs/search` hub titles, the butler's task titles and descriptions, a GENERATED
+`Episode N`, and `/query/parse`'s `fieldTitle`.
+
+A string that differs between two ENGLISH fetches of the same path is NOT a
+translation: the random actor/director shelf regenerates per request. Every path is
+therefore fetched in English TWICE and only the stable strings are diffed.
+
+Read-only: GET only.
+
+    PLEXLAB_TOKEN=... python3 capture_i18n.py [OUT]
+"""
+import json
+import os
+import sys
+import urllib.request
+
+BASE = os.environ.get("I18N_BASE", "http://kids:32400")
+TOKEN = os.environ["PLEXLAB_TOKEN"]
+
+LANGUAGES = ['ar', 'ca', 'cs', 'da', 'de', 'es', 'et', 'fi', 'fr', 'he', 'hr', 'hu',
+             'it', 'ja', 'ko', 'lt', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl',
+             'sr', 'sv', 'uk', 'zh']
+
+# Cycle 16's list.
+PATHS = [
+    '/library/sections/1/filters',
+    '/library/sections/1/filters?includeAdvanced=1',
+    '/library/sections/2/filters',
+    '/library/sections/2/filters?includeAdvanced=1',
+    '/library/sections/1/sorts',
+    '/library/sections/1/sorts?includeAdvanced=1',
+    '/library/sections/2/sorts',
+    '/library/sections/2/sorts?includeAdvanced=1',
+    '/library/sections/1',
+    '/library/sections/2',
+    '/library/sections/1/all?includeMeta=1&X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    '/library/sections/2/all?includeMeta=1&X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    '/hubs?X-Plex-Container-Start=0&X-Plex-Container-Size=20',
+    '/hubs/promoted?contentDirectoryID=1&pinnedContentDirectoryID=1',
+    '/hubs/promoted?contentDirectoryID=2&pinnedContentDirectoryID=2',
+    '/:/prefs',
+    '/library/sections/1/genre',
+    '/library/sections/1/year',
+    '/library/sections/1/decade',
+    '/library/sections/1/contentRating',
+    '/library/sections/1/resolution',
+    '/library/sections/1/firstCharacter',
+    '/library/sections/1/userRating',
+    '/library/sections/2/network',
+    '/library/sections/1/unwatched',
+    '/library/metadata/6/children',
+    '/library/metadata/8',
+    '/library/metadata/1',
+    '/playlists?includeMeta=1',
+    '/library/sections',
+    '/media/providers',
+]
+
+# Cycle 17's additions, each of which carries server-authored text the old list never
+# asked for in another language.
+PATHS += [
+    # The library and item PREFERENCES family: label, summary and enumValues. This is
+    # the Edit Library dialog and the per-item Advanced pane, and none of it was
+    # covered -- 31 labels, 30 summaries and 19 enum lists on kids alone.
+    '/library/sections/1/prefs',
+    '/library/sections/2/prefs',
+    '/library/sections/prefs?type=1&agent=tv.plex.agents.movie',
+    '/library/sections/prefs?type=2&agent=tv.plex.agents.series',
+    '/library/metadata/1?includePreferences=1',
+    '/library/metadata/6?includePreferences=1',
+    '/library/metadata/7?includePreferences=1',
+    '/library/metadata/8?includePreferences=1',
+    # The seventeen typed search hubs, whose titles the client lays the page out from.
+    # An empty query is the one that shows every hub, hits included or not.
+    '/hubs/search?query=a',
+    '/hubs/search?query=zzzznothing',
+    '/library/search?query=a',
+    # The butler's task titles and descriptions.
+    '/butler',
+    # A GENERATED `Episode N`, the sibling of the `Season N` rule already in the table.
+    '/library/metadata/11/children',
+    '/library/metadata/11',
+    # `/query/parse`'s own fieldTitle.
+    '/library/sections/1/query/parse?type=1&year=2000&genre=1&unwatched=1',
+    # The Meta at includeAdvanced, and the episode Meta's own Type titles.
+    '/library/sections/1/all?includeMeta=1&includeAdvanced=1'
+    '&X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    '/library/sections/2/all?includeMeta=1&includeAdvanced=1&type=4'
+    '&X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    # The library subsets, each of which names itself in title2.
+    '/library/sections/1/onDeck', '/library/sections/1/recentlyAdded',
+    '/library/sections/1/newest', '/library/sections/1/recentlyViewed',
+    '/library/sections/2/onDeck', '/library/sections/2/recentlyAdded',
+    '/library/sections/2/newest', '/library/sections/2/recentlyViewedShows',
+    '/library/sections/2/unwatched', '/library/sections/1/folder',
+    # The remaining secondary axes of both library types.
+    '/library/sections/1/collection', '/library/sections/1/director',
+    '/library/sections/1/actor', '/library/sections/1/writer',
+    '/library/sections/1/producer', '/library/sections/1/country',
+    '/library/sections/1/studio', '/library/sections/1/label',
+    '/library/sections/1/audioLanguage', '/library/sections/1/subtitleLanguage',
+    '/library/sections/2/genre', '/library/sections/2/year',
+    '/library/sections/2/firstCharacter', '/library/sections/2/userRating',
+    '/library/sections/1/common?type=1',
+    # The server surface.
+    # NOT /system/agents: its Agent.Language list is REORDERED per request language
+    # rather than translated, so a positional diff reads `code` "ja-JP" as a
+    # translation of "vi-VN". The volatility control cannot see it, because the
+    # order is stable between two ENGLISH fetches.
+    '/', '/activities', '/devices', '/accounts',
+    '/playlists/sorts', '/library/all?X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    '/library/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=1',
+    '/library/onDeck', '/status/sessions',
+]
+
+
+def fetch(path, language=None):
+    headers = {'X-Plex-Token': TOKEN, 'Accept': 'application/json',
+               'User-Agent': 'curl/8'}
+    if language:
+        headers['X-Plex-Language'] = language
+    request = urllib.request.Request(BASE + path, headers=headers, method='GET')
+    try:
+        with urllib.request.urlopen(request, timeout=60) as handle:
+            body = handle.read()
+        return json.loads(body) if body else {}
+    except Exception:
+        return None
+
+
+def walk(node, path=()):
+    """Every string in a document, keyed by its structural path."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            for item in walk(value, path + (key,)):
+                yield item
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            for item in walk(value, path + (index,)):
+                yield item
+    elif isinstance(node, str):
+        yield path, node
+
+
+# The English side is fetched once per path, twice, and the volatile strings dropped.
+english = {}
+for path in PATHS:
+    first, second = fetch(path), fetch(path)
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        print('skipped %s' % path, flush=True)
+        continue
+    left, right = dict(walk(first)), dict(walk(second))
+    english[path] = {key: value for key, value in left.items()
+                     if right.get(key) == value and value.strip()}
+
+table = {}
+for language in LANGUAGES:
+    changed = 0
+    for path, stable in english.items():
+        other = fetch(path, language)
+        if not isinstance(other, dict):
+            continue
+        seen_all = dict(walk(other))
+        for key, value in stable.items():
+            seen = seen_all.get(key)
+            if seen is None or seen == value:
+                continue
+            # Keyed by the ATTRIBUTE as well as the string: the reference translates
+            # "By Genre" as a section PIVOT's `title` and leaves the same words alone
+            # as a secondary axis's `title2`, so a flat English map would
+            # over-translate. The attribute is the last dict key on the path.
+            attribute = next((piece for piece in reversed(key)
+                              if isinstance(piece, str)), "")
+            table.setdefault(attribute, {}).setdefault(value, {})[language] = seen
+            changed += 1
+    print('%s %d strings' % (language, changed), flush=True)
+
+out = sys.argv[1] if len(sys.argv) > 1 else 'translations.json'
+payload = {
+    '_provenance': ('Captured from the plexlab reference (Plex 1.43.4) by fetching each '
+                    'endpoint in English and in each language the server answers '
+                    'differently, then diffing the two documents string by string at the '
+                    'same structural path. English key -> language code -> the '
+                    "reference's own translation. Nothing here is invented. Cycle 16 "
+                    'captured 31 paths; cycle 17 widened the list to cover the library '
+                    'and item preferences, the search hubs, the butler and a generated '
+                    'episode title, and dropped the strings that differ between two '
+                    'English fetches of the same path.'),
+    'strings': {attribute: {source: languages
+                            for source, languages in sorted(values.items()) if languages}
+                for attribute, values in sorted(table.items()) if values},
+}
+open(out, 'w').write(json.dumps(payload, ensure_ascii=False, indent=1, sort_keys=True))
+print('%d attributes, %d string entries, %d languages -> %s'
+      % (len(payload['strings']),
+         sum(len(value) for value in payload['strings'].values()),
+         len(LANGUAGES), out))
