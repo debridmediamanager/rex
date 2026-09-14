@@ -10820,6 +10820,57 @@ def main():
           and cand_c15l.get("selected") is True and "provider" not in cand_c15l,
           str(cand_c15l))
 
+    # Cycle 15, measured on plexscratch across four collections of three shapes: a
+    # collection's `includePreferences=1` block carries exactly TWO settings, and which
+    # second one depends on `smart`:
+    #
+    #     plain  ->  collectionMode  +  collectionSort
+    #     smart  ->  collectionMode  +  collectionFilterBasedOnUser
+    #
+    # A smart collection has no collection ORDER at all -- consistent with the write
+    # side, where `PUT .../prefs?collectionSort=` on a smart collection is a 400 (it is
+    # a 200 for `collectionMode`). The block rides on `/library/metadata/{id}` and on
+    # `/library/collections/{id}` alike and never on a listing row.
+    #
+    # plexsim sent no `Preferences` on a collection at all, so the Edit Collection
+    # dialog had no Collection Mode and no Collection order control.
+    def coll_prefs_c15k(smart_c15k):
+        uri_c15k = (quote("server://%s/com.plexapp.plugins.library"
+                          "/library/sections/%s/all?type=1" % (machine, movie_section))
+                    if smart_c15k else
+                    quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                          % (machine, movie)))
+        key_c15k = (container(
+            base, "POST", "/library/collections?type=1&title=%s&smart=%d&sectionId=%s&uri=%s"
+            % (quote("C15k %d" % smart_c15k), smart_c15k, movie_section, uri_c15k))[1]
+            .get("Metadata") or [{}])[0].get("ratingKey")
+        ids_c15k = [s_c15k.get("id") for s_c15k in
+                    (((get(base, "/library/metadata/%s?includePreferences=1" % key_c15k)[1]
+                       .get("Metadata") or [{}])[0].get("Preferences") or {}).get("Setting") or [])]
+        via_c15k = [s_c15k.get("id") for s_c15k in
+                    (((get(base, "/library/collections/%s?includePreferences=1" % key_c15k)[1]
+                       .get("Metadata") or [{}])[0].get("Preferences") or {}).get("Setting") or [])]
+        sort_c15k = request(base, "PUT",
+                            "/library/metadata/%s/prefs?collectionSort=1" % key_c15k)[0]
+        mode_c15k = request(base, "PUT",
+                            "/library/metadata/%s/prefs?collectionMode=1" % key_c15k)[0]
+        request(base, "DELETE", "/library/collections/%s" % key_c15k)
+        return ids_c15k, via_c15k, sort_c15k, mode_c15k
+
+
+    plain_c15k = coll_prefs_c15k(0)
+    smart_c15k = coll_prefs_c15k(1)
+    check("a collection's Preferences are two settings, and smart swaps the second",
+          plain_c15k[0] == ["collectionMode", "collectionSort"]
+          and smart_c15k[0] == ["collectionMode", "collectionFilterBasedOnUser"]
+          and plain_c15k[1] == plain_c15k[0],
+          "plain %s | smart %s | via /collections %s"
+          % (plain_c15k[0], smart_c15k[0], plain_c15k[1]))
+    check("a smart collection refuses collectionSort and takes collectionMode",
+          plain_c15k[2] == 200 and smart_c15k[2] == 400 and smart_c15k[3] == 200,
+          "plain sort %s | smart sort %s | smart mode %s"
+          % (plain_c15k[2], smart_c15k[2], smart_c15k[3]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
