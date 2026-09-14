@@ -15500,6 +15500,25 @@ def main():
           "one %s two %s rule %s sort %s bad %s | listing %s | %s of %s"
           % (one_c20g, two_c20g, rule_c20g.get("Order"), sort_c20g.get("Order"),
              status_bad_c20g, listing_c20g, kept_c20g, all_c20g))
+
+    # Cycle 20, the `group=` holdout across 60 candidate keys on both references: five
+    # more group. `originalTitle`, `createdAt`, `mediaCount`, `ratingCount` and
+    # `absoluteIndex` each answer a 200 on kids and zen (zen: 472, 3840, 9, 1 and 1
+    # groups of its 3,887 movies) where plexsim answered the 500 it answers an unknown
+    # key. They are exactly the unadvertised columns cycle 14 and 15 found FILTER, so
+    # the group surface tracks the filter surface rather than the Meta.
+    grouped_c20h = {field_c20h: get(base, "/library/sections/%s/all?type=1&group=%s"
+                                    % (movie_section, field_c20h))[0]
+                    for field_c20h in ("originalTitle", "createdAt", "mediaCount",
+                                       "ratingCount", "absoluteIndex")}
+    refused_c20h = {field_c20h: get(base, "/library/sections/%s/all?type=1&group=%s"
+                                    % (movie_section, field_c20h))[0]
+                    for field_c20h in ("genre", "duration", "userRating", "viewCount",
+                                       "leafCount", "bogus")}
+    check("group= takes the five unadvertised columns that filter",
+          all(code_c20h == 200 for code_c20h in grouped_c20h.values())
+          and all(code_c20h == 500 for code_c20h in refused_c20h.values()),
+          "%s | still refused %s" % (grouped_c20h, refused_c20h))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
