@@ -11335,6 +11335,11 @@ class Handler(BaseHTTPRequestHandler):
         primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
         return primary or None
 
+    # The blocks inside a row that carry the SERVER's vocabulary rather than the
+    # user's content, and are therefore translated there. Measured on kids over a
+    # movie, a show, a season and an episode with every include option set.
+    _LOCALISED_BLOCKS = frozenset(("Preferences",))
+
     def _localise(self, node, language, attribute=None, in_row=False):
         """Translate the server's own text in a response -- measured, not guessed.
 
@@ -11352,7 +11357,16 @@ class Handler(BaseHTTPRequestHandler):
             # translated, which is the reference's own behaviour (an episode's
             # `parentTitle` is the only `parentTitle` the capture ever saw change).
             row = "ratingKey" in node
-            return {key: self._localise(value, language, key, row or in_row)
+            # Cycle 17, mapped by diffing a whole item document against itself in
+            # German: the `Preferences` block inside a row IS translated -- every
+            # `label`, `summary` and `enumValues` of it, on a movie, a show and a
+            # season -- because those are the server's own vocabulary and not the
+            # user's content. The row guard stopped at the row boundary, so the whole
+            # per-item Advanced pane stayed English while the same settings on
+            # `/library/sections/{id}/prefs` moved.
+            return {key: self._localise(value, language, key,
+                                        False if key in self._LOCALISED_BLOCKS
+                                        else (row or in_row))
                     for key, value in node.items()}
         if isinstance(node, list):
             return [self._localise(value, language, attribute, in_row) for value in node]
