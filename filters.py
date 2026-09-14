@@ -633,12 +633,22 @@ def compare(kind, operator, actual, wanted, field=""):
         # and `!==` are the exact-string pair and never match a number at all.
         # plexsim had no such field, so python-plexapi's `editions()` -- which asks
         # `guid=<x>&id!=<self>` -- reported every item as its own duplicate.
-        if operator in ("==", "!=="):
-            return operator == "!=="
         try:
             target = float(str(wanted).strip())
         except (TypeError, ValueError):
+            # A value that is not a number sorts ABOVE every id: nothing is `>` it,
+            # everything is `<` it, `=` matches none and `!=` all. The exact pair
+            # matches nothing there either, which is what cycle 11 measured -- and
+            # then read onto a numeric value as well.
+            if operator in ("==", "!=="):
+                return operator == "!=="
             return operator in ("!=", "<<=", "<=")
+        if operator in ("==", "!=="):
+            # Cycle 20, measured on kids and zen over two libraries and two row types:
+            # against a NUMBER the exact pair compares like `=`/`!=`. zen's
+            # `type=3&id==5190` is that one season and `!==5190` the other 740.
+            hit = as_number(actual if actual is not None else 0) == target
+            return hit if operator == "==" else not hit
         actual = as_number(actual if actual is not None else 0)
         if operator == ">>=":
             return actual > target
