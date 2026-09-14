@@ -15342,6 +15342,36 @@ def main():
           and ((ord_c20c or {}).get("Rule") or {}).get("operator") == ">>=",
           "parse %s | listing %s | theme>>= %s"
           % (parsed_c20c, listed_c20c, (ord_c20c or {}).get("Rule")))
+
+    # Cycle 20: `slug` is the fifth column of that family. It parses under all eight
+    # operator keys -- plexsim answered an Error for `>>` and `<<` -- and a LISTING
+    # filtered on it is a 500 on both references for every operator, not the 200 plexsim
+    # answered. Cycle 7 recorded the listing half and left it unimplemented; the sweep
+    # that found the artwork columns settled it in the same run.
+
+    def parse_doc_c20(path_c20):
+        """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
+        cannot see. Read the body."""
+        status_c20, body_c20, _ = request(base, "GET", path_c20)
+        try:
+            return status_c20, json.loads(body_c20).get("Query") or {}
+        except ValueError:
+            return status_c20, {}
+    slug_parse_c20d = {}
+    for op_c20d, key_c20d in (("=", "slug"), (">>=", "slug%3E%3E"), ("<<=", "slug%3C%3C"),
+                              ("!=", "slug%21")):
+        status_c20d, doc_c20d = parse_doc_c20("/library/sections/%s/query/parse?type=1&%s=x"
+                                              % (movie_section, key_c20d))
+        slug_parse_c20d[op_c20d] = (status_c20d, (doc_c20d.get("Rule") or {}).get("operator"))
+    slug_list_c20d = {op_c20d: get(base, "/library/sections/%s/all?type=1&%s=x"
+                                   % (movie_section, key_c20d))[0]
+                      for op_c20d, key_c20d in (("=", "slug"), (">>=", "slug%3E%3E"),
+                                                ("!=", "slug%21"))}
+    check("slug parses under every operator and refuses a listing",
+          all(status_c20d == 200 and operator_c20d == op_c20d
+              for op_c20d, (status_c20d, operator_c20d) in slug_parse_c20d.items())
+          and all(code_c20d == 500 for code_c20d in slug_list_c20d.values()),
+          "parse %s | listing %s" % (slug_parse_c20d, slug_list_c20d))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
