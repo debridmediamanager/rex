@@ -11382,6 +11382,37 @@ def main():
           and str(seasons_c15a[0]) not in [i_c15a for i_c15a, _s_c15a in season_c15a],
           str(season_c15a))
 
+    # Cycle 15, re-measured on plexscratch -- the last of the three cascades HANDOVER
+    # 3.3 carried into this cycle. `POST /library/sections` is a 201 with a `Location`
+    # header (plexsim already had both) and then 75 frames: a `library.update.section`
+    # "Scanning" activity stepping through the files with a `status` LIBRARY_UPDATE
+    # frame beside it, a `created` pair per item, each item's refresh sequence, and
+    # finally ONE `backgroundProcessingQueue` `queueRegenerated` at **+63.1 s**.
+    #
+    # The per-item half is over REAL files being scanned. plexsim owns none and a
+    # library it creates is empty by construction, so there is nothing for those frames
+    # to name -- that is an instrument fact and is recorded rather than faked. The queue
+    # frame is not: it follows the write itself, and plexsim never sent it.
+    frames_c15n2 = notifications(
+        base, lambda: request(base, "POST",
+                              "/library/sections?name=C15n&type=movie"
+                              "&agent=tv.plex.agents.movie&scanner=Plex%20Movie"
+                              "&language=en-US&location=%2Fplexsim%2F1"), seconds=6)[1]
+    queue_c15n2 = [f_c15n2 for f_c15n2 in frames_c15n2
+                   if (f_c15n2.get("NotificationContainer", f_c15n2).get("type")
+                       == "backgroundProcessingQueue")]
+    made_c15n2 = [d_c15n2.get("key") for d_c15n2 in
+                  get(base, "/library/sections")[1].get("Directory") or []
+                  if d_c15n2.get("title") == "C15n"]
+    for key_c15n2 in made_c15n2:
+        request(base, "DELETE", "/library/sections/%s" % key_c15n2)
+    check("a library create pushes the backgroundProcessingQueue regeneration frame",
+          len(queue_c15n2) == 1
+          and (queue_c15n2[0].get("NotificationContainer", queue_c15n2[0])
+               .get("BackgroundProcessingQueueEventNotification") or [{}])[0]
+          == {"queueID": 1, "event": "queueRegenerated"},
+          "%d queue frame(s): %s" % (len(queue_c15n2), queue_c15n2[:1]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

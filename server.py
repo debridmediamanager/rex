@@ -10393,6 +10393,11 @@ class PlexSim:
             # `prefs[...]` -- `flattenSeasons` and `episodeSort` read back as sent -- where
             # plexsim dropped them.
             self.library_section(["library", "sections", str(section["key"]), "prefs"], prefs, "PUT")
+        # Cycle 15, re-measured on the copy: a create ends in ONE
+        # `backgroundProcessingQueue` `queueRegenerated` frame (+63.1 s there). The
+        # 75-frame scan that precedes it is over REAL files; a library plexsim
+        # creates is empty by construction, so those frames have nothing to name.
+        self.notify_queue_regenerated()
         # Measured: the create answers a BARE container, with none of the library
         # container's identifier, media-tag pair or allowSync.
         return ("created", self.bare_container(size=1, Directory=[dict(
