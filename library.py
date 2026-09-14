@@ -626,6 +626,24 @@ class Library:
             # Measured: a PUT with no parameters at all is a 400.
             raise EditError(400, "bad request")
 
+        # Cycle 17, measured on plexscratch: a save a real PMS REFUSES writes
+        # NOTHING. `title.value=PARTIAL&year.value=abc` is a 500 there and the title
+        # is untouched, on the item path and the section path alike. plexsim applied
+        # each parameter as it validated it, so everything before the bad one landed
+        # and everything after it did not -- the client is told the save failed, keeps
+        # its old model, and the row on disk has moved, with nothing to tell the user.
+        # A shallow snapshot is enough: every writer below REPLACES a value rather
+        # than mutating one, so the row's nested Media/Part/Stream dicts keep their
+        # identity across a restore.
+        snapshot = dict(row)
+        try:
+            return self._edit(row, items, section)
+        except EditError:
+            row.clear()
+            row.update(snapshot)
+            raise
+
+    def _edit(self, row, items, section):
         old_title = row.get("title")
         # A title write, a sort-title write and a sort-title unlock each re-derive an
         # unlocked Sort Title (`_derive_title_sort`).

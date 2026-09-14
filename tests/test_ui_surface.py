@@ -13221,6 +13221,26 @@ def main():
         check("a leading punctuation run comes off the sort title",
               not wrong_c17a4, "wrong=%s" % wrong_c17a4[:3])
 
+
+    # Cycle 17, re-measured by the driver on plexscratch: a save a real PMS REFUSES
+    # writes nothing at all. `PUT /library/metadata/{id}?title.value=PARTIAL&
+    # year.value=abc` is a 500 there and the title is untouched. plexsim applied each
+    # parameter as it validated it, so everything before the bad one landed and
+    # everything after it did not -- the client is told the save failed, keeps its old
+    # model, and the row on disk has moved. The same on the section save path.
+    original_c17b1 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0]["title"]
+    request(base, "PUT", "/library/metadata/%s?title.value=HALF&year.value=abc" % show)
+    after_item_c17b1 = get(base, "/library/metadata/%s" % show)[1]["Metadata"][0]["title"]
+    request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&title.value=HALF"
+                         "&zzzUnknown.value=1" % (show_section, show))
+    after_section_c17b1 = get(base, "/library/metadata/%s"
+                              % show)[1]["Metadata"][0]["title"]
+    check("a refused save writes nothing",
+          after_item_c17b1 == original_c17b1
+          and after_section_c17b1 == original_c17b1,
+          "before=%r after-item=%r after-section=%r"
+          % (original_c17b1, after_item_c17b1, after_section_c17b1))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
