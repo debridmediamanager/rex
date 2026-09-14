@@ -40,6 +40,13 @@ _CHILD_ORDER = {name: index for index, name in enumerate((
     "Chapter", "Marker", "Review", "Field", "Location", "Preferences", "OnDeck",
     "Extras", "Related", "Children"))}
 
+# Cycle 16, measured on kids and zen: inside a `Meta/Type` the order is
+# `Filter, Sort, Field` -- which is NOT the item order above, where `Field` comes
+# before `Location`. plexsim sorted these three by the item table, which knows only
+# `Field`, so they came out in whatever order the dict held: `Field, Filter, Sort`.
+_TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
+    ("Filter", "Sort", "Field"))}
+
 
 def _attr(value):
     """Render one scalar the way PMS does: bools as 1/0, everything else str."""
@@ -106,6 +113,9 @@ def _render(name, row, out, overrides=None, container=False):
     if container:
         # Measured: a listing's `Meta` comes BEFORE its rows; the rest keep their order.
         children.sort(key=lambda child: 0 if child[0] == "Meta" else 1)
+    elif name == "Type":
+        children.sort(key=lambda child: _TYPE_CHILD_ORDER.get(child[0],
+                                                              len(_TYPE_CHILD_ORDER)))
     else:
         children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
 
