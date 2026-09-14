@@ -13958,6 +13958,25 @@ def main():
           status == 200 and bucket.get("title2") == "Commencer avec 'T'",
           "%s %r" % (status, bucket.get("title2")))
 
+    # Cycle 18, measured on zen (1.42.2) over 3,887 real rows: on a string field no Meta
+    # advertises, `<=`, `<<=`, `>=` and `>>=` are all a case-insensitive LEXICOGRAPHIC
+    # comparison, both sides strict -- `titleSort<<=B` and `>>=B` partition the library
+    # and a row whose sort title IS the value is in neither. plexsim allowed the keys and
+    # fell through to containment, so `titleSort<<=Z` answered no rows at all and
+    # `titleSort>>=A` answered every row whose title holds an `a`.
+    rows = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("size")
+    for key, expected in (("titleSort%3C%3C=Z", rows), ("titleSort%3C=Z", rows),
+                          ("titleSort%3E%3E=Z", 0), ("titleSort%3E=Z", 0),
+                          ("titleSort%3C%3C=A", 0), ("titleSort%3E%3E=A", rows)):
+        status, listing, _ = get(base, "/library/sections/%s/all?type=1&%s"
+                                 % (movie_section, key))
+        check("string ordering: %s answers %s" % (key, expected),
+              status == 200 and listing.get("size") == expected,
+              "%s %s" % (status, listing.get("size")))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=1&title%%3C=T" % movie_section)
+    check("and an ADVERTISED string field keeps begins-with on <=",
+          status == 200 and listing.get("size") == rows, "%s %s" % (status, listing.get("size")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
