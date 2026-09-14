@@ -15870,6 +15870,24 @@ def main():
           and counts_c20ae["type=4&mediaCount=1"] > 0
           and sorted_c20ae == 200,
           "%s of %s movies | sort %s" % (counts_c20ae, movies_c20ae, sorted_c20ae))
+
+    # Cycle 20: the section search box answers the LIGHT grid row, and a grid row
+    # carries no librarySection fields -- they are on the container. Neither reference
+    # sends one on `/library/sections/{id}/search`, on either library type; plexsim
+    # kept the triple on the search path alone after cycle 18 made the rest of the row
+    # light.
+    _, searched_c20af, _ = get(base, "/library/sections/%s/search?type=1&query=a" % movie_section)
+    row_c20af = (searched_c20af.get("Metadata") or [{}])[0]
+    _, grid_c20af, _ = get(base, "/library/sections/%s/all?type=1" % movie_section)
+    grid_row_c20af = (grid_c20af.get("Metadata") or [{}])[0]
+    check("a search row carries no librarySection fields",
+          bool(row_c20af)
+          and not [k_c20af for k_c20af in row_c20af if k_c20af.startswith("librarySection")]
+          and not [k_c20af for k_c20af in grid_row_c20af if k_c20af.startswith("librarySection")]
+          and searched_c20af.get("title2"),
+          "row %s | container title2 %r"
+          % ([k_c20af for k_c20af in row_c20af if k_c20af.startswith("librarySection")],
+             searched_c20af.get("title2")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
