@@ -14675,6 +14675,38 @@ def main():
              [(t_c19m.get("type"), t_c19m.get("active")) for t_c19m in plain_c19m.get("Type") or []],
              sorts_c19m(adv_c19m)))
 
+    # Cycle 19, measured on zen (300 of 300 shows and 300 of 300 seasons) and kids (both its
+    # seasons): a row that has children names its CHILD LIST -- `/library/metadata/{id}/
+    # children` -- while an episode keeps the bare item path. Three of the four seasons
+    # cycle 13 added to the fixture by hand carry the bare path, and the client follows
+    # `key` verbatim, so a click on those seasons fetched the season's metadata row instead
+    # of its episode list and the page drew nothing.
+    _, seasons_c19k, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    season_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                        for d_c19k in (seasons_c19k.get("Metadata") or [])]
+    _, shows_c19k, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
+    show_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                      for d_c19k in (shows_c19k.get("Metadata") or [])]
+    _, eps_c19k, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+    ep_keys_c19k = [(d_c19k.get("ratingKey"), d_c19k.get("key"))
+                    for d_c19k in (eps_c19k.get("Metadata") or [])]
+    check("a show's and a season's key names its child list",
+          bool(season_keys_c19k) and bool(show_keys_c19k)
+          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in season_keys_c19k)
+          and all(str(k_c19k).endswith("/children") for _r_c19k, k_c19k in show_keys_c19k)
+          and all(not str(k_c19k).endswith("/children") for _r_c19k, k_c19k in ep_keys_c19k),
+          "seasons %s shows %s episodes %s"
+          % (season_keys_c19k, show_keys_c19k, ep_keys_c19k[:2]))
+    # ...and the key really resolves to the episode list.
+    one_c19k = season_keys_c19k[0][1] if season_keys_c19k else "/library/metadata/0/children"
+    status_c19k, kids_c19k, _ = get(base, one_c19k)
+    check("and following it answers that season's children",
+          status_c19k == 200 and (kids_c19k.get("viewGroup") == "episode"
+                                  or bool(kids_c19k.get("Metadata"))),
+          "%s -> %s viewGroup=%r rows=%d"
+          % (one_c19k, status_c19k, kids_c19k.get("viewGroup"),
+             len(kids_c19k.get("Metadata") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

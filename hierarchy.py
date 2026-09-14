@@ -313,6 +313,21 @@ def normalize_rows(rows):
         if season and season.get("art"):
             row["art"] = season["art"]
     for row in rows:
+        if row.get("type") not in ("show", "season"):
+            continue
+        # Cycle 19, measured on zen (300 of 300 shows, 300 of 300 seasons) and kids
+        # (both its seasons): a row that HAS children names its child list, not
+        # itself -- `key="/library/metadata/{id}/children"` -- while an episode keeps
+        # the bare item path. `hierarchy` builds one that way, but three of the four
+        # seasons cycle 13 added to `tests/catalog_ui.json` by hand carry the bare
+        # path, and the client follows `key` verbatim: a click on Season 20, 21 or 22
+        # fetched the season's own metadata row instead of its episode list, so the
+        # season page drew nothing. Corrected at LOAD, like the other row rules here,
+        # because the wrong value is baked into catalogs already written.
+        key = str(row.get("key") or "")
+        if key and not key.endswith("/children"):
+            row["key"] = key.rstrip("/") + "/children"
+    for row in rows:
         kind = row.get("type")
         title = row.get("title") or ""
         derived = sort_title(title)
