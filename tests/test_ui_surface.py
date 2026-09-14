@@ -16436,6 +16436,24 @@ def main():
                                             "librarySectionTitle", "librarySectionUUID"]
           and added_lead_c21g == lead_c21g,
           "onDeck %s | recentlyAdded %s" % (lead_c21g, added_lead_c21g))
+
+    # Cycle 21, measured byte for byte on kids and zen: a section's
+    # `/hubs/sections/{id}/continueWatching/items` container is
+    # `{size, allowSync: true, identifier}` and nothing else. plexsim said
+    # `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
+    # container as well as a populated one. Cycle 15's rule is that every hub path says
+    # `allowSync: true` except `/hubs/metadata/{id}/postplay`; plexsim satisfied it on
+    # every hub path but this one.
+    keys_c21h, sync_c21h = {}, {}
+    for section_c21h in (movie_section, show_section):
+        _, doc_c21h, _ = get(base, "/hubs/sections/%s/continueWatching/items" % section_c21h)
+        keys_c21h[section_c21h] = sorted(k_c21h for k_c21h in doc_c21h
+                                         if k_c21h not in ("Metadata", "size"))
+        sync_c21h[section_c21h] = doc_c21h.get("allowSync")
+    check("a section's continueWatching container is allowSync true and nothing else",
+          all(keys_c21h[s_c21h] == ["allowSync", "identifier"] for s_c21h in keys_c21h)
+          and all(sync_c21h[s_c21h] is True for s_c21h in sync_c21h),
+          "%s | allowSync %s" % (keys_c21h, sync_c21h))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

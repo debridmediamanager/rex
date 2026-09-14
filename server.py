@@ -4098,9 +4098,18 @@ class PlexSim:
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
             # The Continue Watching shelf's own "see all" list.
+            #
+            # Cycle 21, measured byte for byte on kids and zen: its container is
+            # `{size, allowSync: true, identifier}` and NOTHING else -- no
+            # `mediaTagPrefix` and no `mediaTagVersion`, on an empty container as on a
+            # populated one. plexsim answered `allowSync: false` and both tag keys,
+            # which is cycle 15's rule ("every hub path says allowSync true except
+            # postplay") satisfied everywhere but here.
             rows = [_listing_row(r) for r in self.continue_watching()
                     if str(r.get("librarySectionID")) == str(segments[2])]
-            return self.container(Metadata=rows)
+            return self.bare_container(size=len(rows), allowSync=True,
+                                       identifier="com.plexapp.plugins.library",
+                                       Metadata=rows)
         if route == "/hubs/search":
             return self.search(query)
         if route == "/hubs/search/voice":
