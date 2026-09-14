@@ -1827,6 +1827,27 @@ class PlexSim:
         self.library.finish_activity(activity)
         self.notify_timeline(show, self.TIMELINE_DONE, None)
 
+    def notify_season_cascade(self, season):
+        """The eighteen frames a SEASON refresh pushes. Cycle 15, measured.
+
+        Season queued, the activity started with the season's own frame title,
+        season processing, season loading; then each episode's FOUR -- state 5
+        `processing`, state 4 `loading` twice, state 5 with no `metadataState` --
+        and finally the activity ended and the season's own state 5. There is no
+        `activity updated` here, unlike the episode form, which has one.
+        """
+        activity = self.library.add_activity(self._frame_title(season), progress=-1)
+        self.notify_timeline(season, self.TIMELINE_QUEUED, "queued")
+        self.notify_timeline(season, self.TIMELINE_QUEUED, "processing")
+        self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
+        for episode in self.catalog.children(season["ratingKey"]):
+            self.notify_timeline(episode, self.TIMELINE_DONE, "processing")
+            self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+            self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+            self.notify_timeline(episode, self.TIMELINE_DONE, None)
+        self.library.finish_activity(activity)
+        self.notify_timeline(season, self.TIMELINE_DONE, None)
+
     def notify_edited(self, row, metadata_state="loading"):
         """The two frames an EDIT pushes: state 3, then done. plexsim pushed none,
         so an edit made here was invisible to every other open client. Measured:
@@ -8477,6 +8498,22 @@ class PlexSim:
 
         if action == "refresh":
             self.library.refresh(row)
+            if row.get("type") in ("show", "season"):
+                # Cycle 15, re-measured on the copy with a control write on the same
+                # socket first: a refresh CASCADES. The episode form is the seven
+                # frames below; a SEASON runs its episodes inside its own activity
+                # (18 frames on a three-episode season) and a SHOW nests a season's
+                # whole block under each season (49 on the two-season Firefly tree).
+                # plexsim sent seven at every level, so Refresh Metadata on a show
+                # told the client one row had changed and left the tree stale.
+                if row["type"] == "show":
+                    self.notify_show_cascade(row)
+                else:
+                    self.notify_season_cascade(row)
+                self.catalog.restamp_children(row)
+                logger.info("REFRESH %s (%s) -- cascaded", row["ratingKey"],
+                            row.get("title"))
+                return ("empty", 200)
             # The FULL seven-frame sequence a real PMS pushes. One timeline(3) is
             # not enough: without state 5 the client never refetches the row it just
             # refreshed, and without the final frame clearing `metadataState` its

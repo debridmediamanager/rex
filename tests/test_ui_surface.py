@@ -11257,6 +11257,69 @@ def main():
     check("a bare OPTIONS is routed and 404s where only a preflight is answered",
           set(bare_c15j.values()) == {404}, str(bare_c15j))
 
+    # Cycle 15, re-measured on plexscratch with a control write on the same socket
+    # first. Cycle 13 recorded this and did not build it; cycle 14 re-measured it and
+    # carried it; HANDOVER 3.3 named it cycle 15's cheapest territory. The frame counts,
+    # on the two-season Firefly tree:
+    #
+    #     PUT /library/metadata/8/refresh   (episode)   7 frames
+    #     PUT /library/metadata/7/refresh   (season)   18 frames
+    #     PUT /library/metadata/6/refresh   (show)     49 frames
+    #
+    # The EPISODE form is the seven-frame sequence plexsim already sends. A SEASON adds
+    # its episodes inside its own activity -- season queued, activity started, season
+    # processing, season loading, then each episode's four (state 5 processing, state 4
+    # loading twice, state 5 with no metadataState), activity ended, season done -- and a
+    # SHOW nests a season's whole block under each season, with an `activity updated`
+    # carrying that SEASON's frame title as its subtitle.
+    #
+    # plexsim answered SEVEN frames at every level, so refreshing a show told the client
+    # one row had been re-read and left every season and episode showing stale metadata
+    # until a reload.
+    def frames_for_c15r2(key_c15r2):
+        # notifications() answers (status, frames).
+        return notifications(base, lambda: request(base, "PUT",
+                                                   "/library/metadata/%s/refresh" % key_c15r2),
+                             seconds=6)[1]
+
+
+    seasons_c15r2 = [r_c15r2["ratingKey"] for r_c15r2 in
+                     get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []]
+    leaves_c15r2 = get(base, "/library/metadata/%s/children" % seasons_c15r2[0])[1] \
+        .get("Metadata") or []
+    ep_frames_c15r2 = frames_for_c15r2(leaves_c15r2[0]["ratingKey"])
+    season_frames_c15r2 = frames_for_c15r2(seasons_c15r2[0])
+    show_frames_c15r2 = frames_for_c15r2(show)
+
+
+    def ids_c15r2(frames_c15r2):
+        out_c15r2 = set()
+        for f_c15r2 in frames_c15r2:
+            box_c15r2 = f_c15r2.get("NotificationContainer", f_c15r2)
+            for e_c15r2 in (box_c15r2.get("TimelineEntry") or []):
+                out_c15r2.add(str(e_c15r2.get("itemID")))
+        return out_c15r2
+
+
+    all_leaves_c15r2 = {str(r_c15r2["ratingKey"]) for r_c15r2 in
+                        get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                        .get("Metadata") or []}
+
+
+    # The COUNT depends on how many rows the tree holds, so what is asserted is which
+    # ROWS the cascade reaches -- which is the whole of the finding.
+    check("a refresh cascades: an episode alone, a season with its episodes, a show with its tree",
+          len(ep_frames_c15r2) == 7
+          and ids_c15r2(ep_frames_c15r2) == {str(leaves_c15r2[0]["ratingKey"])}
+          and ids_c15r2(season_frames_c15r2)
+          == {str(seasons_c15r2[0])} | {str(r_c15r2["ratingKey"]) for r_c15r2 in leaves_c15r2}
+          and ids_c15r2(show_frames_c15r2)
+          >= {str(show)} | {str(k_c15r2) for k_c15r2 in seasons_c15r2} | all_leaves_c15r2,
+          "episode %d frames over %s | season %d over %s | show %d over %d ids"
+          % (len(ep_frames_c15r2), sorted(ids_c15r2(ep_frames_c15r2)),
+             len(season_frames_c15r2), sorted(ids_c15r2(season_frames_c15r2)),
+             len(show_frames_c15r2), len(ids_c15r2(show_frames_c15r2))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
