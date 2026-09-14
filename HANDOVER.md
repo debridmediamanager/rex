@@ -354,11 +354,14 @@ From an agent tool, start servers with `subprocess.Popen(..., start_new_session=
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
 
-**Ports.** Re-checked at the end of cycle 15: `32400`, `32502`, `32595`, `32596` and `8787`
-are held by other sessions — a server started on one of those silently fails to bind and every
-request then goes to somebody else's plexsim, which reads as a wildly failing suite. `32511`,
-`32512`, `32541` and `32586` are FREE. `32599` is `test_ui_surface.py`'s own gated server;
-leave it free. Check with `lsof -ti tcp:<port> -sTCP:LISTEN` rather than trusting this list.
+**Ports.** Re-checked at the end of cycle 15, after the hunters had stopped and their leftover
+servers were killed: `32400`, `32502`, `32595`, `32596` and `8787` are held by other sessions —
+a server started on one of those silently fails to bind and every request then goes to somebody
+else's plexsim, which reads as a wildly failing suite. Everything cycle 15 used is FREE again:
+`32511`, `32512`, `32541`, `32543`, `32581`–`32584` and `32586`. `32599` is
+`test_ui_surface.py`'s own gated server; leave it free. Check with
+`lsof -ti tcp:<port> -sTCP:LISTEN` rather than trusting this list — and check it AFTER the
+agents have finished, not only at cleanup (§5 step 12).
 
 `tests/catalog_ui.json` holds movies `1007` Tears of Steel, `1008` and `1009` (fixture copies);
 show `20001` The Simpsons; **four** seasons `30001` (S19), `30002` (S20), `30003` (S21) and
@@ -373,7 +376,7 @@ to compare and quietly become no-ops.
 
 ## 5. The cycle procedure
 
-One cycle, as run for cycles 8–14:
+One cycle, as run for cycles 8–15:
 
 1. **Snapshot the reference.** `refcheck7.py` against the baseline (read-only); keep the output
    to diff at the end.
@@ -412,6 +415,13 @@ One cycle, as run for cycles 8–14:
     Remove the worktree, `git branch -d cycleN`, `git worktree prune`, confirm
     `HEAD == origin/main`.
 11. **Snapshot the reference again** and diff it against step 1.
+12. **Re-check the ports AFTER the hunters have stopped, not only at cleanup.** A finished
+    agent can still act: cycle 15's write hunt fired two more task notifications after the
+    cycle was merged and pushed, and restarted its plexsim on 32582 both times — the second
+    time detached, reparented to init, so it would have outlived the session. Its housekeeping
+    was well meant and its measurements were unaffected, but a stray server on a port the
+    handover lists as FREE is exactly what §10 says reads as a wildly failing suite. Kill the
+    listeners, then list them again.
 
 Push the work branch to `origin` as you go: it is the only backup of a cycle's commits while the
 scratch directory holds the worktree.
@@ -1041,6 +1051,14 @@ Every one of these cost real time at least once.
 - **`test_ui_surface.py` starts its own gated server on 32599.** A proof server there makes its
   six gate checks measure the ungated one and report 401s that never happened.
 - Run long suites with `run_in_background: true`; a foreground run was cut off once.
+- **A finished agent can still start a server.** See §5 step 12. Twice in cycle 15 the write
+  hunt restarted its plexsim after the cycle had been pushed, the second time with `ppid 1`.
+- **`run_in_background: true` DOES outlive the tool call.** Cycle 15's write hunt reported that
+  it does not on this machine, and that is not reproduced: every background server the driver
+  started that way survived its call, including the ones answering suites for minutes
+  afterwards. The agent's servers exited for some other reason, not chased because nothing in
+  either report depended on them. Recorded here so the claim is not picked up as a rule — it is
+  the kind of thing §3.1 class F is for.
 
 **Editing and committing**
 
@@ -1080,7 +1098,7 @@ Every one of these cost real time at least once.
   way — relaunch against the CURRENT head with the Already-fixed list extended, or the second run
   re-reports the first batch's work.
 
-**Measuring, as of cycle 14**
+**Measuring, as of cycle 15**
 
 - **A "zero frames" measurement needs a control.** A silent notification socket and a broken
   listener look identical. Every cycle-14 frame count was taken by running a write that MUST
@@ -1101,6 +1119,21 @@ Every one of these cost real time at least once.
   check built on it skipped itself silently.
 - **`lastViewedAt` has one-second resolution.** Two timeline beats inside the same second tie,
   and any rule about "most recently viewed" then reads its tie-break instead.
+- **Fit a model, then HOLD OUT a set it has never seen.** Cycle 14 left the `title=` fold's
+  mechanism "unexplained" and §3.3 flagged it as the kind of rule this project gets wrong.
+  Cycle 15 enumerated candidate models, scored each against 27 measured queries, and then ran
+  the winner against 25 queries on five rows it had not been fitted to — which it reproduced
+  exactly. A model that scores 24/27 and a model that scores 27/27 look equally plausible in
+  prose; only the holdout separates them.
+- **Never probe the server a suite is currently running against.** Writing one title to the
+  fixture mid-run cost a whole suite pass and read as a collapse — 889/926 with eleven extra
+  skips, every one of them "need three movies". Use a second port for probes, and if a run
+  looks catastrophic, check the fixture's row count before believing the failures.
+- **Sweep a NEW DIMENSION rather than the same one again.** Cycle 14 swept the surface by PATH;
+  cycle 15 swept it by METHOD (33 paths, every one different) and by PARAMETER
+  (`excludeElements=` turned out to belong to the RESPONSE, not to eight hand-wired handlers).
+  Each sweep produced a batch no amount of re-hunting the previous dimension would have. The
+  dimensions still untouched are HEADERS, response headers, and the XML half.
 
 **plexsim itself**
 
