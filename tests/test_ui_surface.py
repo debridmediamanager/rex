@@ -14000,6 +14000,28 @@ def main():
           and status2 == 200 and not lettered.get("size"),
           "# %s, S %s" % (hashed.get("size"), lettered.get("size")))
 
+    # Cycle 18: `section_prefs_new.json` is the FOURTH fixture found to be per VERSION,
+    # after Meta.Type[].Filter (14), Meta.Type[].Field and system_agents.json (17). It was
+    # captured off kids (1.43.4) and differs from zen (1.42.2, the build plexsim reports)
+    # in 16 of 35 (type, agent) cells: on 1.42.2 the AGENT's settings are appended whatever
+    # the `type=`, and on 1.43.4 `tv.plex.agents.none` adds five generic rows at type 1
+    # that 1.42.2 does not have -- the cell the Add Library dialog's "Personal Media"
+    # choice reaches. Every setting's own attributes are identical on both.
+    status, listing, _ = get(base, "/library/sections/prefs?type=1&agent=tv.plex.agents.none")
+    names = [s.get("id") for s in listing.get("Setting") or []]
+    check("the Add Library prefs list follows 1.42.2, not 1.43.4",
+          status == 200 and "country" not in names and "originalTitles" not in names
+          and "hidden" in names, "%s %s" % (status, names[:8]))
+    status, listing, _ = get(base, "/library/sections/prefs?type=9&agent=tv.plex.agents.movie")
+    names = [s.get("id") for s in listing.get("Setting") or []]
+    check("and a 1.42.2 agent appends its settings whatever the type",
+          status == 200 and len(names) == 12 and "autoCollectionThreshold" in names,
+          "%s %s" % (status, len(names)))
+    status, listing, _ = get(base, "/library/sections/prefs?type=1&agent=tv.plex.agents.series")
+    names = [s.get("id") for s in listing.get("Setting") or []]
+    check("and useSeasonTitles belongs to the SERIES AGENT on 1.42.2",
+          status == 200 and "useSeasonTitles" in names, "%s %s" % (status, len(names)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
