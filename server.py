@@ -4649,10 +4649,25 @@ class PlexSim:
             # identical to their grid row for the same item. plexsim sent the detail
             # row here and only here, so the one listing a user reaches by typing
             # was the fattest response the server had.
+            # Cycle 18, measured on kids (1.43.4) and zen (1.42.2) over two movie
+            # libraries and three show ones: this container is typed by the ASKED
+            # `type=`, not by the library. `type=3` answers `viewGroup="season"` and
+            # `viewMode` 65593 -- the season layout, the inversion behind the Seasons
+            # bug -- `type=4` answers `viewGroup="episode"` and `mixedParents: 1`, and
+            # a MOVIE library answers both to the same parameters. The section GRID is
+            # the other way round and keeps the library's own type, which plexsim had
+            # right; only `/search` retypes. `/library/sections/{id}` advertises
+            # `search?type=2` and `search?type=4` as its own rows, so this is the path
+            # the library search menu takes.
+            typed = {"1": "movie", "2": "show", "3": "season",
+                     "4": "episode"}.get(str(query.get("type") or ""))
+            extra = {"viewMode": 65593} if typed == "season" else {}
+            if typed == "episode":
+                extra["mixedParents"] = True
             found = self.secondary_container(
                 section_id, section, "Search for '%s'" % text,
                 Metadata=[_grid_row(_listing_row(r)) for r in rows],
-                viewGroup=section.get("type"))
+                viewGroup=typed or section.get("type"), **extra)
             # Measured: this one is NOT a secondary view -- it carries no
             # `content`, and its viewGroup is the library's type.
             found["MediaContainer"].pop("content", None)

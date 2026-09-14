@@ -14070,6 +14070,32 @@ def main():
     check("a real single-segment writer still routes",
           status == 400, "%s" % status)
 
+    # Cycle 18, measured on kids and zen across five libraries: the in-library search box
+    # types its container from the ASKED `type=`, not from the library -- `type=3` is
+    # `viewGroup="season"` with `viewMode` 65593 and `type=4` is `viewGroup="episode"` with
+    # `mixedParents: 1`. plexsim answered the library's own type and 65592 to all four, so
+    # a client searching episodes got the show-grid layout with no parent context, and one
+    # searching seasons got the EPISODE layout -- the exact inversion behind the Seasons bug.
+    for typ, group, mode, mixed in ((1, "movie", 65592, False), (2, "show", 65592, False),
+                                    (3, "season", 65593, False), (4, "episode", 65592, True)):
+        status, found, _ = get(base, "/library/sections/%s/search?type=%d&query=e"
+                               % (show_section, typ))
+        check("search?type=%d is a %s container" % (typ, group),
+              status == 200 and found.get("viewGroup") == group
+              and found.get("viewMode") == mode
+              and bool(found.get("mixedParents")) == mixed,
+              "%s %s %s %s" % (status, found.get("viewGroup"), found.get("viewMode"),
+                               found.get("mixedParents")))
+    status, found, _ = get(base, "/library/sections/%s/search?type=3&query=e" % movie_section)
+    check("and a MOVIE library answers the same to type=3",
+          status == 200 and found.get("viewGroup") == "season" and found.get("viewMode") == 65593,
+          "%s %s %s" % (status, found.get("viewGroup"), found.get("viewMode")))
+    status, grid, _ = get(base, "/library/sections/%s/all?type=3" % show_section)
+    check("while the section GRID keeps the library's own type",
+          status == 200 and grid.get("viewGroup") == "show" and grid.get("viewMode") == 65592
+          and not grid.get("mixedParents"),
+          "%s %s %s" % (status, grid.get("viewGroup"), grid.get("viewMode")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
