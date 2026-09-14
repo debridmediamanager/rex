@@ -13700,6 +13700,66 @@ def main():
                  head_c17f2, one_c17f2, move_c17f2))
         request(base, "DELETE", "/library/collections/%s" % cid_c17f2)
 
+
+    # Cycle 17, re-measured on plexscratch, case by case with the order restored before
+    # each: the collection MOVE has a grammar. `after=<the moving item itself>`, an
+    # EMPTY `after=` and an unparseable one are 400s that move nothing; an `after=` that
+    # names no member -- `999999`, `0` -- is a 200 that moves the row to the FRONT, the
+    # same as no `after=` at all; a ratingKey that is not a member is a 400, not a 404;
+    # and the `/children/{ratingKey}/move` alias really moves, where plexsim answered
+    # `{size: 0}` and moved nothing. plexsim answered 200 to every one of them and
+    # moved the row regardless, so drag-to-reorder through the alias silently did
+    # nothing and a stale `after=` left the row where it was instead of moving it.
+    ids_c17b16 = [r_c17b16["ratingKey"] for r_c17b16
+                  in (get(base, "/library/sections/%s/all?type=1"
+                          % movie_section)[1].get("Metadata") or [])]
+    if len(ids_c17b16) < 3:
+        skip("the collection move grammar", "needs three movies")
+    else:
+        def move_c17b16(path_c17b16, subject_c17b16=None):
+            made_c17b16 = json.loads(request(
+                base, "POST", "/library/collections?type=1&title=c17mv&smart=0"
+                              "&sectionId=%s&uri=%s"
+                % (movie_section,
+                   quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(ids_c17b16[:3])))))[1])
+            cid_c17b16 = made_c17b16["MediaContainer"]["Metadata"][0]["ratingKey"]
+            # A collection's children follow `collectionSort`, and a list still on
+            # release date cannot show a custom order at all -- cycle 15's own trap.
+            request(base, "PUT", "/library/metadata/%s/prefs?collectionSort=2"
+                    % cid_c17b16)
+            before_c17b16 = [r_c17b16.get("ratingKey") for r_c17b16
+                             in (get(base, "/library/collections/%s/items"
+                                     % cid_c17b16)[1].get("Metadata") or [])]
+            status_c17b16, _, _ = request(
+                base, "PUT", ("/library/collections/%s" % cid_c17b16) + path_c17b16)
+            after_c17b16 = [r_c17b16.get("ratingKey") for r_c17b16
+                            in (get(base, "/library/collections/%s/items"
+                                    % cid_c17b16)[1].get("Metadata") or [])]
+            request(base, "DELETE", "/library/collections/%s" % cid_c17b16)
+            return status_c17b16, before_c17b16 != after_c17b16, after_c17b16
+        subject_c17b16 = ids_c17b16[1]
+        itself_c17b16 = move_c17b16("/items/%s/move?after=%s"
+                                    % (subject_c17b16, subject_c17b16))
+        empty_c17b16 = move_c17b16("/items/%s/move?after=" % subject_c17b16)
+        word_c17b16 = move_c17b16("/items/%s/move?after=abc" % subject_c17b16)
+        unknown_c17b16 = move_c17b16("/items/%s/move?after=999999" % subject_c17b16)
+        zero_c17b16 = move_c17b16("/items/%s/move?after=0" % subject_c17b16)
+        stranger_c17b16 = move_c17b16("/items/999998/move")
+        alias_c17b16 = move_c17b16("/children/%s/move" % subject_c17b16)
+        check("the collection move grammar",
+              itself_c17b16[:2] == (400, False) and empty_c17b16[:2] == (400, False)
+              and word_c17b16[:2] == (400, False)
+              and unknown_c17b16[0] == 200
+              and unknown_c17b16[2][:1] == [subject_c17b16]
+              and zero_c17b16[0] == 200 and zero_c17b16[2][:1] == [subject_c17b16]
+              and stranger_c17b16[:2] == (400, False)
+              and alias_c17b16[:2] == (200, True),
+              "itself=%s empty=%s abc=%s unknown=%s zero=%s stranger=%s alias=%s"
+              % (itself_c17b16[:2], empty_c17b16[:2], word_c17b16[:2],
+                 unknown_c17b16[:2], zero_c17b16[:2], stranger_c17b16[:2],
+                 alias_c17b16[:2]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

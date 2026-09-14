@@ -1597,7 +1597,11 @@ class Library:
             items.insert(0, moving)
         else:
             index = next((n for n, k in enumerate(items) if str(k) == str(after)), None)
-            items.insert(len(items) if index is None else index + 1, moving)
+            # Cycle 17, measured on plexscratch: an `after=` that names NO member --
+            # `999999`, `0` -- moves the row to the FRONT, exactly as no `after=` does,
+            # rather than to the end. A stale id, from a member another client has just
+            # removed, is the case that reaches this.
+            items.insert(0 if index is None else index + 1, moving)
         collection["collectionSort"] = "2"
         collection["updatedAt"] = _now()
         return True
