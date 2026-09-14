@@ -16411,6 +16411,31 @@ def main():
                   for value_c21f in ("3", "4", "5", "abc", ""))
           and scoped_c21f == 0,
           "%s | type=4&sectionID %s" % (hub_types_c21f, scoped_c21f))
+
+    c21_ondeck = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                  .get("Metadata") or [{}])[0].get("ratingKey")
+
+    # Cycle 21: a `/library/onDeck` row LEADS with `allowSync` and the librarySection
+    # triple, exactly as a `/library/recentlyAdded` row does. zen's on-deck episode
+    # answers `allowSync="1" librarySectionID="4" librarySectionTitle="Bench TV"
+    # librarySectionUUID="c37aa2af-..."` before `ratingKey`; plexsim carried the id,
+    # the title and the UUID but no `allowSync` -- and `allowSync` on the ROW is the
+    # signal `xmlout` keys the whole lead on, so without it the four came out in the
+    # middle of the row. It is cycle 19's own recorded rule, implemented on one of the
+    # two paths it names (kids has nothing in progress, so zen is the live witness).
+    request(base, "PUT", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=playing"
+                         "&time=300000&duration=1320000&identifier=com.plexapp.plugins.library"
+            % (c21_ondeck, c21_ondeck))
+    _, deck_c21g, _ = get(base, "/library/onDeck")
+    rows_c21g = deck_c21g.get("Metadata") or []
+    lead_c21g = list(rows_c21g[0])[:4] if rows_c21g else []
+    _, added_c21g, _ = get(base, "/library/recentlyAdded")
+    added_lead_c21g = list((added_c21g.get("Metadata") or [{}])[0])[:4]
+    check("a /library/onDeck row leads with allowSync and the librarySection triple",
+          bool(rows_c21g) and lead_c21g == ["allowSync", "librarySectionID",
+                                            "librarySectionTitle", "librarySectionUUID"]
+          and added_lead_c21g == lead_c21g,
+          "onDeck %s | recentlyAdded %s" % (lead_c21g, added_lead_c21g))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
