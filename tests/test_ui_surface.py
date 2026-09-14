@@ -16101,6 +16101,39 @@ def main():
           "theme %r banner %r updatedAt %s | section %s"
           % (row_c20o.get("theme"), row_c20o.get("banner"), row_c20o.get("updatedAt"),
              section_c20o))
+
+    # Cycle 20, measured on plexscratch: an episode's inherited `contentRating` is a
+    # READ-TIME fallback, not a copy made when the show is written. Set the episode's
+    # own to EP-OWN and the show to SHOW-NEW: the episode keeps its own. CLEAR the
+    # episode's (`contentRating.value=`) and it reads SHOW-NEW at once; write the show
+    # again and the episode follows to SHOW-NEW2. plexsim copied the show's rating onto
+    # the episodes at load and on a show edit, so an episode whose own rating was
+    # cleared had none at all and drew a blank badge for the rest of the process.
+    if show_section:
+        _, eps_c20p, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+        leaf_c20p = (eps_c20p.get("Metadata") or [{}])[0]
+        episode_c20p = leaf_c20p.get("ratingKey")
+        parent_c20p = leaf_c20p.get("grandparentRatingKey")
+
+        def rating_c20p():
+            _, doc_c20p, _ = get(base, "/library/metadata/%s" % episode_c20p)
+            return (doc_c20p.get("Metadata") or [{}])[0].get("contentRating")
+
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-EP" % episode_c20p)
+        own_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW" % parent_c20p)
+        kept_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=" % episode_c20p)
+        fell_c20p = rating_c20p()
+        request(base, "PUT", "/library/metadata/%s?contentRating.value=C20-SHOW2" % parent_c20p)
+        followed_c20p = rating_c20p()
+        check("an episode's inherited contentRating is read at read time",
+              own_c20p == "C20-EP" and kept_c20p == "C20-EP"
+              and fell_c20p == "C20-SHOW" and followed_c20p == "C20-SHOW2",
+              "own %r kept %r cleared %r followed %r"
+              % (own_c20p, kept_c20p, fell_c20p, followed_c20p))
+    else:
+        skip("an episode's inherited contentRating is read at read time", "no show library")
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
