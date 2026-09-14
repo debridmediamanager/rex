@@ -430,6 +430,13 @@ def ordered(container):
     return {root: walk(root, body)}
 
 
+# Cycle 21, measured on kids and zen: a `Feature` element is never self-closed. All
+# fifteen on `/media/providers` are written as PAIRED empty elements on both servers,
+# where `Directory`, `Action` and `Pivot` in the same document self-close when they have
+# no children. It is the reference writer's own quirk and it is element-specific.
+_ALWAYS_PAIRED = ("Feature",)
+
+
 def _render(name, row, out, overrides=None, container=False):
     attrs, children = _split(name, row, container)
 
@@ -443,7 +450,8 @@ def _render(name, row, out, overrides=None, container=False):
         out.append(" %s=%s" % (key, _escape(_attr(value))))
 
     if not children:
-        out.append(" />")
+        # Cycle 21: a `Feature` is written paired even when it is empty.
+        out.append("></%s>" % name if name in _ALWAYS_PAIRED else " />")
         return
 
     out.append(">")
