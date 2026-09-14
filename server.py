@@ -7160,6 +7160,17 @@ class PlexSim:
         # false either way. plexsim's 30 handed the type-ahead path -- and every client
         # that omits `limit` -- a results page many times the size a real PMS sends,
         # which changes how the search page lays its shelves out.
+        # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
+        # this endpoint refuses in TWO ways. A value it cannot parse -- `abc`, an
+        # empty one, `1.5` -- is a **400**; one that parses but is not a positive
+        # count -- `-1`, `0` -- is a **500**; `01` is fine. plexsim had the two
+        # statuses the wrong way round and let an empty value through.
+        if "limit" in query:
+            raw_limit = str(query.get("limit") or "")
+            if not raw_limit.lstrip("-").isdigit():
+                return ("error", 400, "plexsim: bad request")
+            if int(raw_limit) <= 0:
+                return ("error", 500, "plexsim: internal error")
         limit = int(query.get("limit", 3) or 3)
         typed, tags = self.search_matches(text, limit, tagged_items=True)
         if wanted_section is not None:

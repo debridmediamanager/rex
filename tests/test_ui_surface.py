@@ -11179,6 +11179,25 @@ def main():
     check("the three date columns refuse a word even when no row carries them",
           all(v_c15f == 500 for v_c15f in word_c15f.values()), str(word_c15f))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
+    # `/hubs/search?limit=` refuses in two different ways, and plexsim had them the
+    # wrong way round.
+    #
+    #     abc  ''  1.5   -> 400   (unparseable)
+    #     -1   0         -> 500   (parses, but is not a positive count)
+    #     01   1   3     -> 200
+    #
+    # plexsim answered 500 to the 400 cases, 200 to the 500 cases, and let an empty
+    # value through. No real client sends a malformed limit; it is recorded because it
+    # is a complete two-witness grammar and cheap to hold.
+    sl_c15q2 = {v_c15q2: request(base, "GET", "/hubs/search?query=%s&limit=%s"
+                                 % (quote("a"), quote(v_c15q2)))[0]
+                for v_c15q2 in ("abc", "", "1.5", "-1", "0", "01", "1", "3")}
+    check("/hubs/search refuses an unparseable limit with 400 and a non-positive one with 500",
+          sl_c15q2 == {"abc": 400, "": 400, "1.5": 400, "-1": 500, "0": 500,
+                       "01": 200, "1": 200, "3": 200},
+          str(sl_c15q2))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
