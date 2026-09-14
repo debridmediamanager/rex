@@ -95,7 +95,10 @@ TAG_OPERATORS = {"=", "!="}
 # and 1493, `tagline>>=A` 2 and 977, `originalTitle>>=M` 0 and 393 -- real orderings --
 # while the Meta-ADVERTISED strings `title` and `studio` answer every row to the same
 # key, which is what an ignored unknown field does. These four appear in no Meta.
-UNLISTED_STRING_FIELDS = {"titleSort", "summary", "tagline", "originalTitle"}
+UNLISTED_STRING_FIELDS = {"titleSort", "summary", "tagline", "originalTitle",
+                          # Cycle 20: the artwork columns parse the same way, under
+                          # every operator key including `>>` and `<<`.
+                          "theme", "banner", "art", "thumb"}
 
 # The `resolution` values a real PMS accepts, probed value by value against a
 # 6000-item production library. It is a closed enum, not a continuum: `240`,

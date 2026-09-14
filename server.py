@@ -356,6 +356,15 @@ REFUSED_FILTER_FIELDS = {"parentIndex"}
 # `/query/parse` called the field unknown, so the server contradicted itself.
 PARSE_ONLY_FIELD_TYPES = {"parentIndex": "integer", "guid": "string",
                           "slug": "string", "extraType": "integer"}
+# Cycle 20, swept field by field against both references: four MORE columns parse the
+# same way. `theme`, `banner`, `art` and `thumb` each answer a Rule with an empty
+# `fieldTitle` under every operator key, and a listing filtered on one is a 500 on kids
+# and zen alike -- the `parentIndex` shape exactly. They are the artwork columns, so
+# nothing a client draws depends on filtering by one; what depends on it is the smart-
+# list builder, which reads an Error as "no such field".
+for _bare in ("theme", "banner", "art", "thumb"):
+    PARSE_ONLY_FIELD_TYPES[_bare] = "string"
+    REFUSED_FILTER_FIELDS.add(_bare)
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they

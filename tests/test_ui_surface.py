@@ -15305,6 +15305,43 @@ def main():
           and not any(has_c20b for parent_c20b, has_c20b in carry_c20b
                       if parent_c20b in borrowed_c20b),
           "own %s borrowed %s -> %s" % (sorted(own_c20b), sorted(borrowed_c20b), carry_c20b))
+
+    # Cycle 20, the parser holdout (every field x every operator against both
+    # references): four more columns PARSE. `theme`, `banner`, `art` and `thumb` each
+    # come back as a Rule with an EMPTY `fieldTitle` -- the shape `id`, `guid`, `slug`
+    # and `parentIndex` already had -- under every one of the eight operator keys, and a
+    # LISTING filtered on any of them is a 500 on both servers, the way `parentIndex`
+    # already was. plexsim reported them as unknown fields: an Error where the smart-list
+    # builder draws "that field does not exist", and a listing that answered every row.
+
+    def parse_doc_c20(path_c20):
+        """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
+        cannot see. Read the body."""
+        status_c20, body_c20, _ = request(base, "GET", path_c20)
+        try:
+            return status_c20, json.loads(body_c20).get("Query") or {}
+        except ValueError:
+            return status_c20, {}
+    parsed_c20c = {}
+    listed_c20c = {}
+    for field_c20c in ("theme", "banner", "art", "thumb"):
+        status_c20c, doc_c20c = parse_doc_c20("/library/sections/%s/query/parse?type=1&%s=x"
+                                              % (movie_section, field_c20c))
+        rule_c20c = doc_c20c.get("Rule") if isinstance(doc_c20c, dict) else None
+        parsed_c20c[field_c20c] = (status_c20c, rule_c20c)
+        listed_c20c[field_c20c] = get(base, "/library/sections/%s/all?type=1&%s=x"
+                                      % (movie_section, field_c20c))[0]
+    status_ord_c20c, ord_c20c = parse_doc_c20(
+        "/library/sections/%s/query/parse?type=1&theme%%3E%%3E=x" % movie_section)
+    check("theme, banner, art and thumb parse as rules and refuse a listing",
+          all(status_c20c == 200 and isinstance(rule_c20c, dict)
+              and rule_c20c.get("field") == field_c20c and rule_c20c.get("fieldTitle") == ""
+              for field_c20c, (status_c20c, rule_c20c) in parsed_c20c.items())
+          and all(code_c20c == 500 for code_c20c in listed_c20c.values())
+          and status_ord_c20c == 200
+          and ((ord_c20c or {}).get("Rule") or {}).get("operator") == ">>=",
+          "parse %s | listing %s | theme>>= %s"
+          % (parsed_c20c, listed_c20c, (ord_c20c or {}).get("Rule")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
