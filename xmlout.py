@@ -12,7 +12,6 @@ Booleans go on the wire as 1/0 and `None` is dropped, both because that is what
 a real PMS emits and because plexsim's own clients gate on attribute presence.
 """
 
-from xml.sax.saxutils import quoteattr
 
 # A `Metadata` row's element name comes from its `type`.
 _METADATA_ELEMENT = {
@@ -46,6 +45,39 @@ _CHILD_ORDER = {name: index for index, name in enumerate((
 # `Field`, so they came out in whatever order the dict held: `Field, Filter, Sort`.
 _TYPE_CHILD_ORDER = {name: index for index, name in enumerate(
     ("Filter", "Sort", "Field"))}
+
+
+# Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte:
+# a real PMS escapes an XML attribute value into pure ASCII even though the document
+# declares UTF-8. `&`, `<` and `>` take the named entities; `"` and `'` take NUMERIC
+# ones (`&#34;`, `&#39;`) rather than `&quot;`/`&apos;`; TAB is decimal `&#9;` while
+# NEWLINE and CR are HEX (`&#xA;`, `&#xD;`); every codepoint from U+0080 up becomes its
+# DECIMAL reference, astral plane included (an emoji is `&#128512;`, one reference and
+# not a surrogate pair); and every control character XML 1.0 forbids is replaced with a
+# literal `?`. plexsim used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves
+# `'` alone, sends the newline as decimal and passes every non-ASCII character through
+# raw -- a different body from a real PMS on every response carrying an accent or an
+# apostrophe, which on a real library is most of them.
+_NAMED = {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&#34;", "'": "&#39;",
+          "\t": "&#9;", "\n": "&#xA;", "\r": "&#xD;"}
+_FORBIDDEN = frozenset(
+    [chr(code) for code in list(range(0x00, 0x09)) + [0x0b, 0x0c]
+     + list(range(0x0e, 0x20)) + [0x7f]])
+
+
+def _escape(text):
+    out = []
+    for character in text:
+        named = _NAMED.get(character)
+        if named is not None:
+            out.append(named)
+        elif character in _FORBIDDEN:
+            out.append("?")
+        elif ord(character) >= 0x80:
+            out.append("&#%d;" % ord(character))
+        else:
+            out.append(character)
+    return '"%s"' % "".join(out)
 
 
 def _attr(value):
@@ -126,7 +158,7 @@ def _render(name, row, out, overrides=None, container=False):
 
     out.append("<" + name)
     for key, value in attrs:
-        out.append(" %s=%s" % (key, quoteattr(_attr(value))))
+        out.append(" %s=%s" % (key, _escape(_attr(value))))
 
     if not children:
         out.append(" />")
