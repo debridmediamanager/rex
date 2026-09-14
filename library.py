@@ -121,6 +121,11 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
 # Columns that take a LOCK without being editable fields. Measured: each is a 200 and
 # recorded in `Field`, where plexsim answered 400 "unknown field"; `key`, `ratingImage`
 # and `audienceRatingImage` stay a 400.
+# Cycle 20, measured on plexscratch: `theme` and `banner` are ARTWORK columns on the
+# edit path. The URL written is DISCARDED and the column becomes a versioned path of the
+# row's own, minted at its current `updatedAt` -- the same shape a poster pick produces.
+ARTWORK_VALUE_FIELDS = {"theme", "banner"}
+
 LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt",
                     "viewCount", "network", "parentIndex",
                     # Cycle 20: `lastViewedAt` records a lock as well -- plexsim
@@ -767,6 +772,16 @@ class Library:
                     # columns above, a movie's `duration` and `index`, and a bare tag
                     # name (`genre=Drama`) on the item path, where plexsim stored the
                     # first two and 400'd the rest.
+                    changed = True
+                    continue
+                if field in ARTWORK_VALUE_FIELDS or (section and field == "slug"):
+                    # Cycle 20: the artwork columns take a value on both paths -- the
+                    # url is discarded and the column becomes the row's own versioned
+                    # path -- and `slug` is accepted on the section path where plexsim
+                    # answered 400.
+                    if field in ARTWORK_VALUE_FIELDS:
+                        row[field] = "/library/metadata/%s/%s/%s" % (
+                            row["ratingKey"], field, row.get("updatedAt") or _now())
                     changed = True
                     continue
                 if field not in EDITABLE_FIELDS:
