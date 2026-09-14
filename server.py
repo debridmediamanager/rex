@@ -10832,6 +10832,14 @@ class Handler(BaseHTTPRequestHandler):
                 ("Vary", "Origin, X-Plex-Token")]
 
     def _send(self, status, content_type, payload, extra_headers=()):
+        # Cycle 16, measured on kids and zen: `Range` applies to EVERY
+        # response body -- `/identity`, a grid, `/:/prefs`, artwork,
+        # `/web/index.html` -- answering 206 with a `Content-Range` and the
+        # sliced bytes, 416 past the end, and an unrecognised unit served as
+        # bytes; a 206 is never gzipped. plexsim honoured Range on part reads
+        # alone and answered the whole body with a 200 everywhere else. It runs
+        # before the status line goes out, which is the whole point.
+        payload, status, content_range = self._ranged(status, payload)
         self.send_response(status)
         names = {name.lower() for name, _ in extra_headers}
         # Measured across eight endpoints on both reference servers: a real PMS
@@ -10851,7 +10859,10 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_header("Connection", "Keep-Alive")
                 self.send_header("Keep-Alive", "timeout=20")
-        payload = self._maybe_gzip(content_type, payload, names)
+        if content_range is None:
+            payload = self._maybe_gzip(content_type, payload, names)
+        else:
+            self.send_header("Content-Range", content_range)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Plex-Protocol", "1.0")
@@ -10909,6 +10920,31 @@ class Handler(BaseHTTPRequestHandler):
             return ()
         return (("X-Plex-Container-Start", str(body["offset"])),
                 ("X-Plex-Container-Total-Size", str(body["totalSize"])))
+
+    def _ranged(self, status, payload):
+        """Apply a `Range` header to any body -> (payload, status, Content-Range).
+
+        Measured cycle 16 on kids and zen. Only a 200 is ranged -- a 404 ignores the
+        header -- a multi-range collapses to the whole body as one 206, an
+        unrecognised unit is still read as bytes, and a start past the end is a 416.
+        """
+        header = self.headers.get("Range")
+        if status != 200 or not header or "-" not in header:
+            return payload, status, None
+        spec = header.split("=", 1)[-1].strip()
+        if "," in spec:
+            return payload, 206, "bytes 0-%d/%d" % (len(payload) - 1, len(payload))
+        first, _, last = spec.partition("-")
+        try:
+            start = int(first) if first else max(0, len(payload) - int(last))
+            stop = int(last) + 1 if (first and last) else len(payload)
+        except ValueError:
+            return payload, status, None
+        if start >= len(payload):
+            return b"", 416, None
+        stop = min(stop, len(payload))
+        return (payload[start:stop], 206,
+                "bytes %d-%d/%d" % (start, stop - 1, len(payload)))
 
     def _send_container(self, container):
         # `_xml` names the element a container's rows render as where the rows
