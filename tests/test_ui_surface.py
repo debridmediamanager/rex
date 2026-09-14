@@ -12448,6 +12448,26 @@ def main():
           "section=%r then a title write=%r item=%r"
           % (stored_c16a14, rederived_c16a14, item_c16a14))
 
+
+    # Cycle 16, measured on plexscratch: a SHOW's `contentRating` write reaches only the
+    # episodes that carry none of their own. Three matched episodes with their own
+    # rating kept it while three unmatched ones followed the show; setting one episode
+    # explicitly and writing the show again left that one alone. plexsim stamped the
+    # show's rating on EVERY episode, so an explicit per-episode rating was destroyed by
+    # the next edit of its show.
+    leaves_c16a15 = [r_c16a15["ratingKey"] for r_c16a15 in get(
+        base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+    request(base, "PUT", "/library/metadata/%s?contentRating.value=TV-Y"
+            % leaves_c16a15[0])
+    request(base, "PUT", "/library/sections/%s/all?type=2&id=%s&contentRating.value=NC-17"
+            % (show_section, show))
+    after_c16a15 = [r_c16a15.get("contentRating") for r_c16a15 in get(
+        base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+    check("a show's contentRating reaches only the episodes that carry none",
+          len(after_c16a15) > 1 and after_c16a15[0] == "TV-Y"
+          and all(seen_c16a15 == "NC-17" for seen_c16a15 in after_c16a15[1:]),
+          "%s" % after_c16a15)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

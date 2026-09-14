@@ -484,7 +484,10 @@ def build(leaves):
         leaf["parentGuid"] = season.get("guid") or season.get("parentGuid")
         # Verified against a real episode: `art` points at the SEASON.
         leaf["art"] = season["art"]
-        if show.get("contentRating") and not leaf.get("contentRating"):
+        if leaf.get("contentRating"):
+            # the leaf's OWN rating, which a later show edit must not overwrite
+            leaf["_own_content_rating"] = True
+        elif show.get("contentRating"):
             leaf["contentRating"] = show["contentRating"]
         # The episode's own still, when TMDB had one.
         leaf["_poster_url"] = episode_still or leaf.get("_show_poster")

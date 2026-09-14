@@ -572,6 +572,12 @@ class Library:
     # -- metadata edits --------------------------------------------------
 
     def edit(self, row, params, pairs=None, section=False):
+        if (row.get("type") == "episode"
+                and any(name.split(".")[0] == "contentRating"
+                        for name in (params or {}))):
+            # an explicit write makes the rating the EPISODE's own, and a
+            # later show write leaves it alone -- measured cycle 16
+            row["_own_content_rating"] = True
         if section and "titleSort.value" in (params or {}):
             # marks this write as the section path's, which keeps what was
             # typed until the next title write -- measured cycle 16
@@ -894,7 +900,15 @@ class Library:
                 # left its episodes showing a certificate it no longer had. A real PMS
                 # keeps an episode's OWN agent rating separate and moves only the
                 # inherited ones; plexsim's catalog has one column for both.
-                carry(child, "contentRating", row.get("contentRating"))
+                # Cycle 16, re-measured on plexscratch: the cascade reaches only the
+                # episodes that carry NO rating of their own. Three matched episodes
+                # kept theirs while three unmatched ones followed the show, and an
+                # episode written explicitly survived the next show write. plexsim
+                # stamped the show's rating on every episode, destroying an explicit
+                # per-episode rating on the next edit of its show. The catalog has one
+                # column for both, so the flag records which ones are the row's own.
+                if not child.get("_own_content_rating"):
+                    carry(child, "contentRating", row.get("contentRating"))
 
     def _empty_title(self, row, old_title):
         """An EMPTIED title, measured on a writable copy of the reference.
