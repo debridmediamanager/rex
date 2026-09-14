@@ -9769,12 +9769,25 @@ class PlexSim:
                 self.library.remove_collection_item(collection, row)
             return self.bare_container(
                 size=1, Metadata=[self.library._collection_row(collection)])
-        if leaf == "items" and len(segments) == 6 and segments[5] == "move":
+        if leaf in ("items", "children") and len(segments) == 6 \
+                and segments[5] == "move":
+            # Cycle 17, measured on plexscratch case by case with the order restored
+            # before each: `/children/{ratingKey}/move` is the same endpoint as
+            # `/items/...` and really moves, where plexsim answered `{size: 0}` and
+            # moved nothing. And the grammar refuses three shapes with a 400 --
+            # `after=` naming the moving row itself, an EMPTY `after=`, and one that is
+            # not a number -- while an `after=` that names NO member (`999999`, `0`) is
+            # a 200 that moves the row to the FRONT, exactly as no `after=` does. A
+            # ratingKey that is not a member is a 400, not a 404. plexsim answered 200
+            # to every one and moved the row regardless.
             if method != "PUT":
                 return ("error", 404, "plexsim: not found")
-            if not self.library.move_collection_item(collection, segments[4],
-                                                     query.get("after")):
-                return ("error", 404, "plexsim: not in this collection")
+            after = query.get("after")
+            if after is not None and (after == segments[4]
+                                      or not str(after).lstrip("-").isdigit()):
+                return ("error", 400, "plexsim: bad request")
+            if not self.library.move_collection_item(collection, segments[4], after):
+                return ("error", 400, "plexsim: bad request")
             # Measured: the move answers the collection ROW, where plexsim sent nothing.
             return self.bare_container(
                 size=1, Metadata=[self.library._collection_row(collection)])
