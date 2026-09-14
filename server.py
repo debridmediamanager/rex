@@ -3069,12 +3069,15 @@ class PlexSim:
                 return ("text", 405, "<html><head><title>405: Method Not Allowed</title>"
                                      "</head><body>405: Method Not Allowed</body></html>")
             if method == "OPTIONS":
-                return ("empty", 200)
+                # Cycle 21: "bare" is an empty body with NO Content-Type, which is what
+                # all three references answer here -- cycle 18 measured the empty body
+                # and implemented it as an empty `text/html`.
+                return ("bare", 200)
             if method in ("POST", "PUT", "DELETE"):
                 # The same envelope: an empty body, not plexsim's text/plain refusal --
                 # and it has to come BEFORE the `/system` routes, which answered their
                 # own GET to a PUT.
-                return ("empty", 404)
+                return ("bare", 404)
 
         # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
         # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
@@ -3119,6 +3122,17 @@ class PlexSim:
 
         try:
             result = self._route(method, route, segments, query, body, headers, address)
+            if (segments[:1] == ["system"] and isinstance(result, tuple)
+                    and (result[:2] == ("error", 404) or result[:2] == ("empty", 404)
+                         or result[:2] == ("empty", 200))):
+                # Cycle 21, measured on kids, zen and plexscratch over every verb: an
+                # EMPTY response under `/system` carries no `Content-Type` header at
+                # all -- every 404 and the bare OPTIONS 200 -- where a 404 anywhere
+                # else on the surface carries `text/html` and a body. Cycle 18 recorded
+                # the empty body for the non-GET verbs and implemented it as an empty
+                # `text/html`, and the GET was never covered, so it still carried
+                # plexsim's own 18-byte text/plain refusal.
+                result = ("bare", result[1])
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
             language = request_language(query, headers)
@@ -12768,11 +12782,15 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_header("Connection", "Keep-Alive")
                 self.send_header("Keep-Alive", "timeout=20")
-        if content_range is None:
+        if content_range is None and content_type is not None:
             payload = self._maybe_gzip(content_type, payload, names)
-        else:
+        elif content_range is not None:
             self.send_header("Content-Range", content_range)
-        self.send_header("Content-Type", content_type)
+        if content_type is not None:
+            # Cycle 21: a None type means the response carries no `Content-Type` at
+            # all, the way every empty answer under `/system` does on all three
+            # references.
+            self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
         self.send_header("X-Plex-Protocol", "1.0")
         for key, value in self._cors_headers():
@@ -13376,6 +13394,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if kind == "error":
                 self._send(result[1], "text/plain", result[2].encode())
+                return
+            if kind == "bare":
+                # Cycle 21: an empty body with NO Content-Type, which is what the whole
+                # `/system` subtree answers. `_send` omits the header for a None type.
+                self._send(result[1], None, b"")
                 return
             if kind == "empty":
                 # Every mutating endpoint on a real PMS answers with an empty
