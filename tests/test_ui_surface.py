@@ -15296,6 +15296,39 @@ def main():
           and set(verbs_c21o.values()) == {404},
           "%s | titleSort %r | verbs %s"
           % (codes_c21o, sort_c21o, sorted(set(verbs_c21o.values()))))
+
+    # Cycle 21, measured on plexscratch by sweeping 41 candidate names from both
+    # references' `Meta` keys and every column findings.md records: twenty-nine more names
+    # take an item edit and a real LOCK -- a 200 that adds a `{"locked": true, "name": ...}`
+    # `Field` row -- where plexsim answered 400 "unknown field", while eleven (`album`,
+    # `artist`, `chapterSource`, `childCount`, `hasChapterVideoStream`, `leafCount`,
+    # `logo`, `poster`, `role`, `sourceType`, `track`) are a 400 on both and `hdr10plus`
+    # alone is a 200 that stores nothing. No VALUE is stored for any of them. Five of the
+    # twenty-nine are the media-codec axes cycle 20 established are 1.43.4-only, and
+    # plexscratch is 1.43.4, so their 1.42.2 status is unmeasurable and they are held out:
+    # these twenty-four are the names that are not part of that version split.
+    names_c21p = ('audioLanguage', 'dovi', 'duplicate', 'file', 'format', 'hdr', 'id', 'lastRatedAt', 'make', 'mediaBitrate', 'mediaSize', 'model', 'parent', 'place', 'resolution', 'source', 'subformat', 'subtitleLanguage', 'tag', 'trash', 'unmatched', 'unviewedLeafCount', 'unwatched', 'viewedOrInProgressLeafCount')
+    codes_c21p = {}
+    for name_c21p in names_c21p:
+        codes_c21p[name_c21p] = request(
+            base, "PUT", "/library/metadata/%s?%s.locked=1" % (movie, name_c21p))[0]
+    refused_c21p = {}
+    for name_c21p in ("album", "artist", "chapterSource", "childCount",
+                      "hasChapterVideoStream", "leafCount", "logo", "poster", "role",
+                      "sourceType", "track"):
+        refused_c21p[name_c21p] = request(
+            base, "PUT", "/library/metadata/%s?%s.locked=1" % (movie, name_c21p))[0]
+    _, locked_back_c21p, _ = get(base, "/library/metadata/%s" % movie)
+    fields_c21p = {f_c21p.get("name") for f_c21p
+                   in ((locked_back_c21p.get("Metadata") or [{}])[0].get("Field") or [])
+                   if f_c21p.get("locked")}
+    check("twenty-four more columns take an item edit and a lock",
+          set(codes_c21p.values()) == {200}
+          and set(refused_c21p.values()) == {400}
+          and set(names_c21p) <= fields_c21p,
+          "accepted %r | refused %r | missing from Field %r"
+          % (sorted(set(codes_c21p.values())), sorted(set(refused_c21p.values())),
+             sorted(set(names_c21p) - fields_c21p)))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
