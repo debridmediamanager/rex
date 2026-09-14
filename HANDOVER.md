@@ -873,6 +873,14 @@ rows — and a listing uri resolves to rows too, so every smart playlist create 
 surfaced it. The test is the uri's SHAPE, not whether it resolves: a rule implemented as a
 proxy for itself is exactly what §3.1 class C describes.
 
+**Two housekeeping deviations, recorded rather than hidden.** `docs/findings.md` landed
+inside the `test: the movie prefs check follows the unmatch rule` commit and `CLAUDE.md`
+plus `hunt_prompts.md` inside `fix: a selected-item delete answers the selection as it
+stood` — a `git add -A` swept them in while a code fix was being committed. The content is
+right and complete; the history is not as atomic as section 5 asks. Rewriting it would
+have meant rebasing fifty commits whose whole value is that each was proved against its
+own parent, so it was left alone. **Stage by path when a doc edit is open.**
+
 **One incident, and it cost nothing.** The scratch disk filled mid-cycle and the working
 directory was cleared to recover it, taking the worktree with it. Every commit survived,
 because a worktree is only a checkout — the objects and the branch ref live in the main
