@@ -80,6 +80,149 @@ def _escape(text):
     return '"%s"' % "".join(out)
 
 
+# Cycle 17, derived from kids (1.43.4) and zen (1.42.2) and verified against them: the
+# order a ROW's attributes come out in. Cycle 16 settled the CONTAINER's (`size`, then
+# `totalSize`/`offset` when paged, then alphabetical) and left a row's explicitly
+# unmapped -- it is not alphabetical, and a tag comes out `id, filter, tag`. Each order
+# below is a topological sort of every attribute PAIR the two references were seen to
+# emit, over 25 element buckets and every row type, and each was checked to be a
+# superset of every observed sequence. Only witnessed pairs constrain it; attributes
+# never seen together fall where they fall, which is why an attribute missing from a
+# list keeps its place after the ones that are in it rather than being moved.
+#
+# A row that names its own element (`Video`, `Directory`, `Track`, `Playlist`) is keyed
+# by element plus the row's `type`, except a `/library/sections` row -- the one
+# Directory that carries `agent` -- which has an order of its own.
+_ATTR_ORDER = {
+    "AgeRating": (
+        "type", "rating", "age"
+    ),
+    "CommonSenseMedia": (
+        "id", "oneLiner"
+    ),
+    "Country": (
+        "id", "filter", "tag"
+    ),
+    "Director": (
+        "id", "filter", "tag", "tagKey", "thumb"
+    ),
+    "Directory[SECTION]": (
+        "allowSync", "filters", "refreshing", "key", "type", "title", "agent",
+        "scanner", "language", "metadataAgentProviderGroupId", "uuid",
+        "updatedAt", "createdAt", "scannedAt", "content", "directory",
+        "contentChangedAt", "hidden"
+    ),
+    "Directory[genre]": (
+        "fastKey", "key", "title", "type"
+    ),
+    "Directory[none]": (
+        "leafCount", "thumb", "viewedLeafCount", "key", "title"
+    ),
+    "Directory[season]": (
+        "ratingKey", "key", "parentRatingKey", "guid", "parentGuid", "parentSlug",
+        "parentStudio", "type", "title", "titleSort", "parentKey",
+        "librarySectionTitle", "librarySectionID", "librarySectionKey",
+        "parentTitle", "summary", "index", "parentIndex", "year", "parentYear",
+        "thumb", "art", "parentThumb", "parentTheme", "leafCount",
+        "viewedLeafCount", "addedAt", "updatedAt", "deletedAt"
+    ),
+    "Directory[show]": (
+        "ratingKey", "key", "guid", "slug", "studio", "type", "title",
+        "librarySectionTitle", "librarySectionID", "librarySectionKey",
+        "titleSort", "originalTitle", "contentRating", "contentRatingAge",
+        "summary", "index", "audienceRating", "userRating", "lastRatedAt", "year",
+        "tagline", "thumb", "art", "theme", "duration", "originallyAvailableAt",
+        "leafCount", "viewedLeafCount", "childCount", "addedAt", "updatedAt",
+        "deletedAt", "audienceRatingImage", "episodeSort", "flattenSeasons"
+    ),
+    "Field": (
+        "locked", "name"
+    ),
+    "Genre": (
+        "id", "filter", "tag"
+    ),
+    "Hub": (
+        "hubKey", "key", "title", "type", "hubIdentifier", "context", "size",
+        "more", "style", "promoted"
+    ),
+    "Image": (
+        "alt", "type", "url"
+    ),
+    "Location": (
+        "id", "path"
+    ),
+    "Media": (
+        "id", "duration", "bitrate", "width", "height", "aspectRatio",
+        "audioChannels", "audioCodec", "videoCodec", "videoResolution",
+        "container", "videoFrameRate", "optimizedForStreaming", "audioProfile",
+        "has64bitOffsets", "videoProfile", "deletedAt", "hasVoiceActivity"
+    ),
+    "Part": (
+        "id", "key", "duration", "file", "size", "audioProfile", "container",
+        "failureBIFResultCode", "failureBIFRetryCount", "has64bitOffsets",
+        "hasThumbnail", "indexes", "optimizedForStreaming", "packetLength",
+        "videoProfile"
+    ),
+    "Producer": (
+        "id", "filter", "tag", "tagKey", "thumb"
+    ),
+    "Rating": (
+        "image", "value", "type"
+    ),
+    "Role": (
+        "id", "filter", "tag", "tagKey", "role", "thumb"
+    ),
+    "Stream": (
+        "id", "streamType", "canAutoSync", "selected", "default", "codec",
+        "index", "channels", "bitrate", "language", "languageTag", "languageCode",
+        "bitDepth", "chromaLocation", "chromaSubsampling", "codedHeight",
+        "codedWidth", "audioChannelLayout", "colorPrimaries", "colorRange",
+        "colorSpace", "colorTrc", "frameRate", "hasScalingMatrix", "height",
+        "level", "profile", "refFrames", "scanType", "samplingRate",
+        "streamIdentifier", "hearingImpaired", "title", "width", "displayTitle",
+        "extendedDisplayTitle"
+    ),
+    "UltraBlurColors": (
+        "topLeft", "topRight", "bottomRight", "bottomLeft"
+    ),
+    "Video[episode]": (
+        "ratingKey", "key", "parentRatingKey", "grandparentRatingKey", "guid",
+        "parentGuid", "grandparentGuid", "grandparentSlug", "type", "title",
+        "titleSort", "grandparentKey", "parentKey", "librarySectionTitle",
+        "librarySectionID", "librarySectionKey", "grandparentTitle",
+        "parentTitle", "contentRating", "summary", "index", "parentIndex",
+        "audienceRating", "year", "thumb", "art", "parentThumb",
+        "grandparentThumb", "grandparentArt", "grandparentTheme", "duration",
+        "originallyAvailableAt", "addedAt", "updatedAt", "audienceRatingImage",
+        "deletedAt", "chapterSource"
+    ),
+    "Video[movie]": (
+        "ratingKey", "key", "guid", "slug", "studio", "type", "title",
+        "titleSort", "librarySectionTitle", "librarySectionID",
+        "librarySectionKey", "originalTitle", "contentRating", "contentRatingAge",
+        "summary", "rating", "audienceRating", "userRating", "viewCount",
+        "lastViewedAt", "lastRatedAt", "year", "tagline", "thumb", "art",
+        "duration", "originallyAvailableAt", "addedAt", "updatedAt", "deletedAt",
+        "audienceRatingImage", "chapterSource", "primaryExtraKey",
+        "useOriginalTitle", "ratingImage"
+    ),
+    "Writer": (
+        "id", "filter", "tag", "tagKey", "thumb"
+    ),
+}
+_ATTR_INDEX = {bucket: {name: index for index, name in enumerate(names)}
+               for bucket, names in _ATTR_ORDER.items()}
+
+
+def _attr_bucket(name, row):
+    """The `_ATTR_ORDER` key for one element."""
+    if name in ("Video", "Directory", "Track", "Playlist"):
+        if row.get("agent") is not None or row.get("scanner") is not None:
+            return "Directory[SECTION]"
+        return "%s[%s]" % (name, row.get("type") or "none")
+    return name
+
+
 def _attr(value):
     """Render one scalar the way PMS does: bools as 1/0, everything else str."""
     if value is True:
@@ -155,6 +298,12 @@ def _render(name, row, out, overrides=None, container=False):
                                                               len(_TYPE_CHILD_ORDER)))
     else:
         children.sort(key=lambda child: _CHILD_ORDER.get(child[0], len(_CHILD_ORDER)))
+    if not container:
+        # Cycle 17: a row's attributes come out in a measured order too, not in
+        # whatever order the dict that built the row happened to hold them.
+        index = _ATTR_INDEX.get(_attr_bucket(name, row))
+        if index:
+            attrs.sort(key=lambda pair: index.get(pair[0], len(index)))
 
     out.append("<" + name)
     for key, value in attrs:
