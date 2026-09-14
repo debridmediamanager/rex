@@ -442,19 +442,27 @@ def compare(kind, operator, actual, wanted, field=""):
         # Measured: `unwatched=2` returns the same single row as `unwatched=0`,
         # so the value is not a number being compared -- it is true only when it
         # is exactly `1`, and everything else (an empty value included) is false.
-        target = 1 if str(wanted).strip() == "1" else 0
+        #
+        # Cycle 19 measured the rest of the grammar, on kids (1.43.4) and zen
+        # (1.42.2) alike, over `unwatched` and `duplicate`, seven values and all
+        # eight operators: exactly TWO requests answer the true set -- `field=1`
+        # and `field!=0`. Everything else answers the rows where the column is
+        # FALSE. zen's `unwatched=1` is 3,866 of 3,887 and its `!=1`, `==1`,
+        # `!==1`, `<=1`, `>=1`, `<<=1`, `>>=1`, `=0`, `==0`, `!==0`, `<=0`, `>=0`,
+        # `<<=0`, `>>=0`, `=2`, `!=2`, `=`, `=01`, `=true` and `=1 ` are all the
+        # same 21; `duplicate=1` is 214 and every one of those the other 3,673.
+        #
+        # `!=2` is what rules the obvious model out: a value parsed to 0 and then
+        # negated would answer the true set there, and it does not. So the operator
+        # is honoured only for the two pairs above and the rest is a constant
+        # "the column is false". plexsim compared 0/1 numerically, so `unwatched>=0`
+        # answered the whole library and `unwatched!=2` the unwatched half -- the
+        # Unplayed filter inverted for every value the client does not send.
         state = 1 if actual else 0
-        if operator in ("!=", "!=="):
-            return state != target
-        if operator == ">>=":
-            return state > target
-        if operator == "<<=":
-            return state < target
-        if operator == ">=":
-            return state >= target
-        if operator == "<=":
-            return state <= target
-        return state == target
+        wanted = str(wanted)
+        if (operator == "=" and wanted == "1") or (operator == "!=" and wanted == "0"):
+            return state == 1
+        return state == 0
 
     if kind == "id":
         # `id` is a real filter field on every listing -- measured on kids (1.43.4)

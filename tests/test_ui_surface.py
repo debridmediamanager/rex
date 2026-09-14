@@ -14516,6 +14516,43 @@ def main():
                                 for entry in deleted),
           "%s" % deleted[:1])
 
+    # Cycle 19: a boolean filter field's whole operator grammar, measured on kids and zen
+    # over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
+    # requests answer the TRUE set -- `field=1` and `field!=0`; every other operator and
+    # every other value answers the rows where the column is FALSE. plexsim compared 0/1
+    # numerically, so `unwatched>=0` was the whole library and `unwatched!=2` the unwatched
+    # half. Counted against the rows as they stand rather than against the fixture.
+    rows_c19b = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    watched_c19b = sum(1 for r_c19b in rows_c19b if r_c19b.get("viewCount"))
+    unwatched_c19b = len(rows_c19b) - watched_c19b
+
+
+    def bool_count_c19b(key_c19b):
+        body_c19b = get(base, "/library/sections/%s/all?type=1&%s" % (movie_section, key_c19b))[1]
+        return len(body_c19b.get("Metadata") or [])
+
+
+    true_keys_c19b = {"unwatched=1": bool_count_c19b("unwatched=1"),
+                      "unwatched%21=0": bool_count_c19b("unwatched%21=0")}
+    false_keys_c19b = {k_c19b: bool_count_c19b(k_c19b) for k_c19b in (
+        "unwatched%21=1", "unwatched%3D=1", "unwatched%21%3D=1", "unwatched%3C=1",
+        "unwatched%3E=1", "unwatched%3C%3C=1", "unwatched%3E%3E=1", "unwatched=0",
+        "unwatched%3D=0", "unwatched%21%3D=0", "unwatched%3C=0", "unwatched%3E=0",
+        "unwatched%3C%3C=0", "unwatched%3E%3E=0", "unwatched=2", "unwatched%21=2",
+        "unwatched=", "unwatched=true")}
+    check("a boolean answers the true set only to =1 and !=0",
+          all(n_c19b == unwatched_c19b for n_c19b in true_keys_c19b.values())
+          and all(n_c19b == watched_c19b for n_c19b in false_keys_c19b.values()),
+          "unwatched=%d watched=%d true%s false%s"
+          % (unwatched_c19b, watched_c19b, sorted(set(true_keys_c19b.values())),
+             sorted(set(false_keys_c19b.values()))))
+    check("and `duplicate` follows the same grammar",
+          bool_count_c19b("duplicate%21=2") == bool_count_c19b("duplicate=0")
+          == bool_count_c19b("duplicate%3E=0") == bool_count_c19b("duplicate%21=1"),
+          "!=2 %d  =0 %d  >=0 %d  !=1 %d"
+          % (bool_count_c19b("duplicate%21=2"), bool_count_c19b("duplicate=0"),
+             bool_count_c19b("duplicate%3E=0"), bool_count_c19b("duplicate%21=1")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
