@@ -7795,23 +7795,45 @@ def main():
         return status, [r.get("ratingKey") for r in (body.get("Metadata") or [])]
     every_c11e = ids_c11e("x=1")[1]
     first_c11e = every_c11e[0]
+    others_c11e = [k for k in every_c11e if k != first_c11e]
+    above_c11e = [k for k in every_c11e if int(k) > int(first_c11e)]
+    want_c11e = {
+        "id=<first>": (200, [first_c11e]),
+        "id!=<first>": (200, others_c11e),
+        "id=<a,b>": (200, every_c11e[:2]),
+        # Cycle 20: against a NUMBER the exact pair compares like `=`/`!=` on both
+        # references; cycle 11 measured them against a value that is not one.
+        "id==<first>": (200, [first_c11e]),
+        "id!==<first>": (200, others_c11e),
+        "id==abc": (200, []),
+        "id!==abc": (200, every_c11e),
+        "id>><first>": (200, above_c11e),
+        "id<<<first>": (200, []),
+        "id=abc": (200, []),
+        "id!=abc": (200, every_c11e),
+        "id=<empty>": (200, []),
+        "id=999999999": (200, []),
+    }
+    got_c11e = {
+        "id=<first>": ids_c11e("id=%s" % first_c11e),
+        "id!=<first>": ids_c11e("id%%21=%s" % first_c11e),
+        "id=<a,b>": ids_c11e("id=%s" % ",".join(every_c11e[:2])),
+        "id==<first>": ids_c11e("id%%3D=%s" % first_c11e),
+        "id!==<first>": ids_c11e("id%%21%%3D=%s" % first_c11e),
+        "id==abc": ids_c11e("id%%3D=abc"),
+        "id!==abc": ids_c11e("id%%21%%3D=abc"),
+        "id>><first>": ids_c11e("id%%3E%%3E=%s" % first_c11e),
+        "id<<<first>": ids_c11e("id%%3C%%3C=%s" % first_c11e),
+        "id=abc": ids_c11e("id=abc"),
+        "id!=abc": ids_c11e("id%%21=abc"),
+        "id=<empty>": ids_c11e("id="),
+        "id=999999999": ids_c11e("id=999999999"),
+    }
+    wrong_c11e = {k_c11e: (got_c11e[k_c11e], want_c11e[k_c11e])
+                  for k_c11e in want_c11e if got_c11e[k_c11e] != want_c11e[k_c11e]}
     check("a listing filters by id, and an unparseable id sorts above every row",
-          ids_c11e("id=%s" % first_c11e) == (200, [first_c11e])
-          and ids_c11e("id%%21=%s" % first_c11e) == (200, [k for k in every_c11e if k != first_c11e])
-          and ids_c11e("id=%s" % ",".join(every_c11e[:2])) == (200, every_c11e[:2])
-          and ids_c11e("id%%3D=%s" % first_c11e) == (200, [first_c11e])
-          and ids_c11e("id%%21%%3D=%s" % first_c11e)
-          == (200, [k for k in every_c11e if k != first_c11e])
-          and ids_c11e("id%%3D=abc") == (200, [])
-          and ids_c11e("id%%21%%3D=abc") == (200, every_c11e)
-          and ids_c11e("id%%3E%%3E=%s" % first_c11e)[1] == [k for k in every_c11e if int(k) > int(first_c11e)]
-          and ids_c11e("id%%3C%%3C=%s" % first_c11e) == (200, [])
-          and ids_c11e("id=abc") == (200, []) and ids_c11e("id%%21=abc") == (200, every_c11e)
-          and ids_c11e("id=") == (200, []) and ids_c11e("id=999999999") == (200, []),
-          "all %s, =%s -> %s, != -> %s, == -> %s, abc -> %s"
-          % (every_c11e, first_c11e, ids_c11e("id=%s" % first_c11e)[1],
-             ids_c11e("id%%21=%s" % first_c11e)[1], ids_c11e("id%%3D=%s" % first_c11e)[1],
-             ids_c11e("id=abc")[1]))
+          not wrong_c11e,
+          "rows %s | wrong %s" % (every_c11e, wrong_c11e))
     status_c11e, parsed_c11e, _ = request(base, "GET",
                                           "/library/sections/%s/query/parse?id%%21=1" % movie_section)
     try:
