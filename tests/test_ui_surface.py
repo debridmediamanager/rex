@@ -11783,6 +11783,37 @@ def main():
           "%s" % {k_c16p: v_c16p for k_c16p, v_c16p in accepts_c16p.items()
                   if want_c16p[k_c16p] != v_c16p})
 
+
+    # Cycle 16, measured on kids and zen: `Range` applies to EVERY response body, not
+    # only to media bytes. `Range: bytes=0-9` on `/identity`, a grid, `/:/prefs` or
+    # artwork answers `206 Partial Content` with `Content-Range: bytes 0-9/<len>`;
+    # a range past the end is a `416`; an unrecognised unit (`cheese=0-9`) is served as
+    # bytes; and a 206 is never gzipped even when the client offers gzip. plexsim
+    # answered 200 with the whole body to all of them.
+    ranged_c16q = urllib.request.Request(
+        base + "/identity", headers={"Range": "bytes=0-9", "Accept": "application/json",
+                                     "Accept-Encoding": "gzip", "User-Agent": UA})
+    with urllib.request.urlopen(ranged_c16q, timeout=20) as answer_c16q:
+        status_c16q = answer_c16q.status
+        crange_c16q = answer_c16q.headers.get("Content-Range")
+        enc_c16q = answer_c16q.headers.get("Content-Encoding")
+        size_c16q = len(answer_c16q.read())
+    past_c16q = request(base, "GET", "/identity")
+    try:
+        beyond_c16q = urllib.request.Request(
+            base + "/identity", headers={"Range": "bytes=99999-", "User-Agent": UA,
+                                         "Accept": "application/json"})
+        with urllib.request.urlopen(beyond_c16q, timeout=20) as answer2_c16q:
+            beyond_status_c16q = answer2_c16q.status
+    except urllib.error.HTTPError as refused_c16q:
+        beyond_status_c16q = refused_c16q.code
+    check("Range applies to every response body, not only to media bytes",
+          status_c16q == 206 and size_c16q == 10 and enc_c16q is None
+          and crange_c16q == "bytes 0-9/%d" % len(past_c16q[1])
+          and beyond_status_c16q == 416,
+          "%s %r len=%d enc=%r beyond=%s"
+          % (status_c16q, crange_c16q, size_c16q, enc_c16q, beyond_status_c16q))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
