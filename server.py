@@ -9700,6 +9700,13 @@ class PlexSim:
                 # adds. plexsim answered the item listing with a 200, which reads to a
                 # client as "this endpoint exists and accepts writes".
                 return ("error", 404, "plexsim: not found")
+            if playlist.get("smart") and len(segments) >= 4 \
+                    and method in ("PUT", "DELETE"):
+                # Cycle 16, measured on plexscratch: EVERY item write on a smart list is
+                # a 400 -- the move as well as the single delete and the clear, which
+                # were already right. plexsim answered 404 to the move, which reads as
+                # "no such item" where a real PMS says a smart list has no items to move.
+                return ("error", 400, "plexsim: bad request")
             if len(segments) == 5 and segments[4] == "move" and method == "PUT":
                 if not self.library.move_playlist_item(playlist, segments[3],
                                                        query.get("after")):
