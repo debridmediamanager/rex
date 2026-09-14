@@ -10636,6 +10636,39 @@ def main():
     check("excludeElements=Media reaches every response that carries rows",
           not bad_c15e, "still carrying Media: %s" % bad_c15e)
 
+    # Cycle 15, measured on plexscratch: `DELETE /library/metadata/{id}/{poster,art,thumb}`
+    # is a real endpoint. It answers 200 with an EMPTY body, removes the field from the
+    # row, re-stamps whatever artwork is left onto a new version, moves `updatedAt`, pushes
+    # ONE `state 5` frame with no `metadataState` -- the artwork-pick shape -- and leaves
+    # the candidate list with nothing `selected`. Afterwards the bare GET of the deleted
+    # path is a 404.
+    #
+    # plexsim answered the GET -- 56 KB of JPEG -- to the DELETE and changed nothing. That
+    # is Remove Poster doing nothing, and because Change Poster assigns the response BODY
+    # onto the row (the recorded singular-path rule), a client that clears the artwork sets
+    # the tile's img src to a blob of JPEG.
+    before_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    st_c15d, body_c15d, _ = request(base, "DELETE", "/library/metadata/%s/poster" % movie)
+    after_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("DELETE on an artwork path clears it and answers an empty 200",
+          is_empty_200(st_c15d, body_c15d)
+          and before_c15d.get("thumb") and after_c15d.get("thumb") is None
+          and after_c15d.get("art") != before_c15d.get("art")
+          and get(base, "/library/metadata/%s/thumb" % movie)[0] == 404,
+          "HTTP %s len=%d thumb %r -> %r | art %r -> %r | bare GET %s"
+          % (st_c15d, len(body_c15d), before_c15d.get("thumb"), after_c15d.get("thumb"),
+             before_c15d.get("art"), after_c15d.get("art"),
+             get(base, "/library/metadata/%s/thumb" % movie)[0]))
+    sel_c15d = [r_c15d.get("selected") for r_c15d in
+                get(base, "/library/metadata/%s/posters" % movie)[1].get("Metadata") or []]
+    check("after an artwork delete nothing in the candidate list is selected",
+          not any(sel_c15d), str(sel_c15d))
+    st_c15d, body_c15d, _ = request(base, "DELETE", "/library/metadata/%s/art" % movie)
+    after_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("deleting the background clears art too",
+          is_empty_200(st_c15d, body_c15d) and after_c15d.get("art") is None,
+          "HTTP %s art=%r" % (st_c15d, after_c15d.get("art")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
