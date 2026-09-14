@@ -14046,6 +14046,30 @@ def main():
     check("/security carries no content key",
           status == 200 and "content" not in listing, "%s %s" % (status, listing))
 
+    # Cycle 18, measured on plexscratch over sixteen single-segment paths and seven verbs:
+    # a KNOWN single-segment path answers the plug-in dispatcher for every verb it does not
+    # implement. plexsim answered its own GET handler instead -- `PUT /identity` returned
+    # the identity, `DELETE /hubs` the whole hub list -- so a client that got the verb wrong
+    # read a 200 with real content as acceptance. The recorded "/identity and /hubs answer
+    # any verb" is that bug seen from the inside.
+    for verb, path in (("PUT", "/identity"), ("DELETE", "/hubs"), ("PATCH", "/library"),
+                       ("OPTIONS", "/accounts"), ("DELETE", "/devices"), ("PUT", "/servers")):
+        status, listing, _ = container(base, verb, path)
+        check("%s %s falls through to the dispatcher" % (verb, path),
+              status == 200 and listing.get("content") == "plugins"
+              and not [k for k in listing if k not in ("size", "content", "Directory")],
+              "%s %s" % (status, sorted(listing)[:6]))
+    status, listing, _ = container(base, "PUT", "/library")
+    rows = [d.get("key") for d in listing.get("Directory") or []]
+    check("and PUT /library is the dispatcher's own two rows",
+          status == 200 and rows == ["augmentation", "shared"], "%s %s" % (status, rows))
+    status, listing, _ = container(base, "PUT", "/security")
+    check("while /security keeps its own bare container",
+          status == 200 and "content" not in listing, "%s %s" % (status, listing))
+    status, body, _ = request(base, "POST", "/playlists")
+    check("a real single-segment writer still routes",
+          status == 400, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
