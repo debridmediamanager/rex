@@ -16477,6 +16477,54 @@ def main():
           and codes_c21i["/extra"] == 404 and codes_c21i["/1/2"] == 404
           and art_codes_c21i == 404,
           "%s | art/extra %s" % (codes_c21i, art_codes_c21i))
+
+    c21_state_episode = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                         .get("Metadata") or [{}])[0]
+    c21_state_season = c21_state_episode.get("parentRatingKey")
+    c21_state_show = c21_state_episode.get("grandparentRatingKey")
+    c21_state_episode = c21_state_episode.get("ratingKey")
+
+    # Cycle 21, measured on zen's own watched rows (show 19756, season 19757, episode
+    # 19764) and corroborated on kids' watched MOVIE: the per-user-state block sits in
+    # the MIDDLE of a row -- after the ratings and before `year`/`parentYear` -- on a
+    # show, a season and an episode, exactly as it already did on a movie:
+    #
+    #   show    … index, audienceRating, userRating, viewCount, skipCount,
+    #             lastViewedAt, lastRatedAt, year, tagline, thumb …
+    #   season  … index, parentIndex, viewCount, skipCount, lastViewedAt,
+    #             parentYear, thumb, art …
+    #   episode … index, parentIndex, audienceRating, viewCount, lastViewedAt,
+    #             year, thumb, art …
+    #
+    # `xmlout._ATTR_ORDER` had no entry for those names on the three buckets, so they
+    # fell out in dict insertion order and were APPENDED after `updatedAt` -- and
+    # cycle 19 established that a real PMS's JSON key order is its XML order, so both
+    # formats moved. `parentSummary` is the other half: on a `/library/recentlyAdded`
+    # season row it comes directly after `parentTitle`, before `summary`, where plexsim
+    # put it last.
+    for rating_key_c21j in (c21_state_show, c21_state_season, c21_state_episode):
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % rating_key_c21j)
+        request(base, "PUT", "/:/rate?key=%s&rating=8&identifier=com.plexapp.plugins.library"
+                % rating_key_c21j)
+    order_c21j = {}
+    for label_c21j, rating_key_c21j in (("show", c21_state_show),
+                                        ("season", c21_state_season),
+                                        ("episode", c21_state_episode)):
+        _, body_c21j, _ = request(base, "GET", "/library/metadata/%s" % rating_key_c21j,
+                                  want_json=False)
+        row_c21j = list(ET.fromstring(body_c21j))[0]
+        names_c21j = list(row_c21j.attrib)
+        state_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
+                      if n_c21j in ("viewCount", "lastViewedAt", "userRating",
+                                    "lastRatedAt", "skipCount", "viewOffset")]
+        year_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
+                     if n_c21j in ("year", "parentYear")]
+        order_c21j[label_c21j] = (names_c21j, state_c21j, year_c21j)
+    check("the per-user-state block sits before the year on every row type",
+          all(state_c21j and year_c21j and max(state_c21j) < min(year_c21j)
+              for _names_c21j, state_c21j, year_c21j in order_c21j.values()),
+          "%s" % {k_c21j: v_c21j[0][:24] for k_c21j, v_c21j in order_c21j.items()})
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
