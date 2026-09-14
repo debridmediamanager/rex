@@ -169,6 +169,13 @@ def split_scope(name):
     return scope, (bare or name)
 
 
+# Cycle 20, measured on both references: `guid` takes exactly two operator KEYS,
+# `=` and `<=`, and every other one is reported as an unknown FIELD with the operator
+# still attached (`guid!`, `guid>`) and ignored by a listing. It is the only field whose
+# key set is neither the tag pair nor the string six.
+GUID_OPERATORS = {"=", "<="}
+
+
 def operator_allowed(kind, field, operator):
     """Whether this (field, operator) pair is a key a real PMS recognises.
 
@@ -178,6 +185,8 @@ def operator_allowed(kind, field, operator):
     """
     if field in TAG_TABLE_FIELDS:
         return operator in TAG_OPERATORS
+    if field == "guid":
+        return operator in GUID_OPERATORS
     if kind == "string":
         return field in UNLISTED_STRING_FIELDS or operator in STRING_OPERATORS
     return True
@@ -756,6 +765,10 @@ def parse(pairs, field_type, structural=STRUCTURAL, errors=None):
         # negating operator, where it is an AND: measured, `?genre!=6,27` returns
         # the rows with NEITHER tag, so it is not(6) and not(27). Read as an OR
         # it would match everything that is missing either one, i.e. everything.
+        if bare == "guid" and operator == "=":
+            # Measured: the parser echoes a bare `guid=` back as `<=`, because that is
+            # what it does -- cycle 13 measured the prefix match from the listing side.
+            operator = "<="
         alternatives = [v for v in value.split(",") if v != ""] or [value]
         leaves = [{"field": bare, "scope": scope, "operator": operator,
                    "value": v, "type": kind} for v in alternatives]
