@@ -10725,7 +10725,10 @@ class Handler(BaseHTTPRequestHandler):
             return True
         if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
                 and parts[3] in ("extras", "themes", "clearLogos", "posters", "arts") \
-                and method in ("PUT", "DELETE"):
+                and method != "POST":
+            # Cycle 15: everything but the POST -- which is the upload path, and a
+            # 400 or a 406 of its own. A bare OPTIONS lands here too, and the copy
+            # 404s it: only a genuine preflight is answered.
             return True
         return False
 
