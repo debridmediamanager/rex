@@ -251,10 +251,21 @@ class Library:
         marking a show played without updating its leaves leaves the menu
         offering "Mark as Played" forever.
         """
-        row = self.catalog.items.get(rating_key)
+        row = self.state_row(rating_key)
         if row is None:
             return []
         targets = self._leaves_or_self(row)
+        if watched and self._collections.get(int(row["ratingKey"])) is row:
+            # Cycle 21, measured on a writable copy of the reference: a SCROBBLE is
+            # where the two list types part. A collection's is a 200 that changes
+            # NOTHING -- it never carries `viewCount`, and it does not even clear a
+            # `viewOffset` a progress write left -- while its UNSCROBBLE really
+            # clears the view state, so only the watched half is the no-op. A
+            # playlist counts both halves, up from the 1 it is born with (1 -> 2 ->
+            # 3) and back to nothing. Neither reaches a member. The test is identity,
+            # because a STORED list row carries no `type` of its own: the projection
+            # mints it.
+            targets = []
         for leaf in targets:
             if watched:
                 leaf["viewCount"] = int(leaf.get("viewCount", 0)) + 1
@@ -293,9 +304,24 @@ class Library:
         self.recount(row)
         return targets
 
+    def state_row(self, rating_key):
+        """The row a `/:/` state write lands on -- an item, a collection or a playlist.
+
+        Cycle 21, measured on a writable copy of the reference with a fresh collection
+        and a fresh playlist: both take EVERY write in this family, and `rate`,
+        `progress` and `unscrobble` store on them exactly as they do on an item -- an 8
+        is `userRating` plus `lastRatedAt`, and it survives the unscrobble that drops
+        the view state. plexsim resolved the catalog alone, so all ten writes were a
+        404 and the star rating on a collection page and on a playlist page errored.
+        """
+        row = self.catalog.items.get(rating_key)
+        if row is None:
+            row = self.collection(rating_key) or self.playlist(rating_key)
+        return row
+
     def rate(self, rating_key, rating):
         """`/:/rate?key=&rating=` -- the star rating. -1 clears it."""
-        row = self.catalog.items.get(rating_key)
+        row = self.state_row(rating_key)
         if row is None:
             return None
         if rating is None or rating == -1:
@@ -325,7 +351,7 @@ class Library:
         `device_id` is the client that played: the history row names it, and a
         real PMS lists every such id in the Dashboard's Device block.
         """
-        row = self.catalog.items.get(rating_key)
+        row = self.state_row(rating_key)
         if row is None:
             return None
         # The duration the BEAT carries, and nothing else: measured on a writable copy of
@@ -1572,15 +1598,7 @@ class Library:
     def playlists(self, playlist_type=None):
         rows = []
         for playlist in self._playlists.values():
-            row = self._playlist_row(playlist)
-            # Cycle 16, measured on plexscratch: a playlist is born `viewCount: 1`
-            # with `lastViewedAt` equal to its `addedAt`, and the pair appears on the
-            # LISTING row only -- never on `/playlists/{id}` and never on the create
-            # response. plexsim carried neither anywhere, so the Home shelf keyed
-            # `sort=lastViewedAt:desc` had nothing to order by.
-            row["viewCount"] = playlist.get("viewCount", 1)
-            row["lastViewedAt"] = playlist.get("lastViewedAt", playlist["addedAt"])
-            rows.append(row)
+            rows.append(self._playlist_row(playlist))
         if playlist_type:
             rows = [r for r in rows if r.get("playlistType") == playlist_type]
         # Cycle 16, measured on plexscratch over five lists whose ratingKey, addedAt
@@ -1610,6 +1628,12 @@ class Library:
             "addedAt": stamp,
             "updatedAt": stamp,
             "items": [],
+            # Cycle 16, measured on plexscratch: a playlist is born `viewCount: 1`
+            # with `lastViewedAt` equal to its `addedAt`. Cycle 21 moved the pair onto
+            # the STORED row, because a scrobble counts up from it (1 -> 2 -> 3) and
+            # an unscrobble clears it.
+            "viewCount": 1,
+            "lastViewedAt": stamp,
             # The query a smart playlist re-evaluates, kept verbatim so the
             # engine sees exactly what the client sent.
             "uri": uri if smart else None,
@@ -1792,7 +1816,7 @@ class Library:
         """How many completed views of this row the server has ever recorded."""
         return self._views.get(str(row.get("ratingKey")), 0)
 
-    def _playlist_row(self, playlist, content=False):
+    def _playlist_row(self, playlist, content=False, state=True):
         """Field set measured on a real PMS's POST /playlists response.
 
         `content` is measured to be conditional: the LIST at /playlists omits it
@@ -1847,6 +1871,14 @@ class Library:
             row["icon"] = "playlist://image.smart"
             if content and playlist.get("uri"):
                 row["content"] = self.playlist_content(playlist["uri"])
+        if state:
+            # Cycle 21, measured on plexscratch: the per-user-state block is on
+            # `/playlists` AND on `/library/metadata/{id}`, and omitted by
+            # `/playlists/{id}` and by the create response. It is a SEPARATE switch
+            # from `content`, which `/library/metadata/{id}` also carries. Cycle 16
+            # saw only the listing and called the pair the listing row's own.
+            row = self._with_list_state(
+                row, playlist, "composite" if "composite" in row else "playlistType")
         return row
 
     # -- collections -----------------------------------------------------
@@ -2114,9 +2146,29 @@ class Library:
             # computed them from whatever the query matched at that moment.
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]
-        return row
+        return self._with_list_state(row, collection, "ratingCount")
 
     # -- helpers ---------------------------------------------------------
+
+    # Cycle 21, measured on a writable copy of the reference over a collection and a
+    # playlist taken through every `/:/` write: the per-user state comes back in THIS
+    # order and in the MIDDLE of the row -- after a collection's `ratingCount` and
+    # before its `thumb`, after a playlist's `composite` and before its `duration`.
+    # A collection never carries `viewCount` at all, whatever is scrobbled at it.
+    _LIST_STATE = ("userRating", "viewOffset", "viewCount", "lastViewedAt", "lastRatedAt")
+
+    def _with_list_state(self, row, stored, after):
+        """Splice a list row's per-user state in after `after`, where it is measured."""
+        state = {name: stored[name] for name in self._LIST_STATE
+                 if stored.get(name) is not None}
+        if not state or after not in row:
+            return row
+        spliced = {}
+        for key, value in row.items():
+            spliced[key] = value
+            if key == after:
+                spliced.update(state)
+        return spliced
 
     def _leaves_or_self(self, row):
         if row.get("type") in ("show", "season"):
