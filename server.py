@@ -5083,13 +5083,24 @@ class PlexSim:
             # CLAUDE.md or in either suite: it was never measured, only assumed. A
             # 200 there is fix 4's trap from the inside -- the client reads it as
             # "this endpoint exists and is empty" -- so it falls through to the 404.
-            rows = [r for r in self.typed_rows(section_id, query)
-                    if not r.get("viewCount")]
+            # Cycle 20, measured on kids and zen: this leaf is typed like a
+            # listing and answers ONLY the library's own top-level type. `?type=3`,
+            # `?type=4`, `?type=1` and `?type=10` each answer an EMPTY container on a
+            # show library, and the container's `viewGroup` flips to `episode` for
+            # every one of them; a movie library keeps `movie`. An unparseable or
+            # empty `type=` is a 500, the refusal `/all` already answered.
+            self._parsed_type(query)
+            own = TYPE_NUMBERS.get(section.get("type") or "movie", 1)
+            asked = str(query.get("type") or own)
+            rows = [] if asked != str(own) else [
+                r for r in self.typed_rows(section_id, query) if not r.get("viewCount")]
             # Cycle 16, measured on kids and zen: like every other container a SHOW
             # library answers, this one carries `nocache`; a movie library's does not.
             # plexsim already had the rule on /all and the five subsets and had missed
             # it here alone.
             extra = {"nocache": True} if section.get("type") == "show" else {}
+            if section.get("type") == "show" and asked != str(own):
+                extra["view_group"] = "episode"
             return self.listing_container(
                 section_id, section, [_listing_row(r) for r in rows],
                 title2=SECONDARY_TITLES["unwatched"], **extra)
@@ -5588,6 +5599,9 @@ class PlexSim:
         - Recently Added and Recently Viewed stop at 100 rows: fun's totalSize is
           exactly 100 on both of its libraries, and 6 or 60 on the others.
         """
+        # Cycle 20: the subsets parse `type=` the way a listing does -- `?type=abc`
+        # and an empty `?type=` are 500s on both references, on `/onDeck` as on `/all`.
+        self._parsed_type(query or {})
         is_show = section.get("type") == "show"
         extra = {"title2": self.SUBSET_TITLES[leaf], "allowSync": True}
         if is_show:
