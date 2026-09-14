@@ -41,7 +41,11 @@ import zlib
 from hierarchy import _GENERATED_TITLE as GENERATED_SEASON_TITLE, sort_title
 
 # Fields a row carries as a number. The client sends every edit as a string.
-INTEGER_FIELDS = {"year", "index", "parentIndex", "duration", "viewOffset",
+# The columns whose VALUE the ITEM edit path really reads. Cycle 20, measured one at a
+# time on plexscratch with `12` and with `ZZQ1`: exactly three answer 500 to the word,
+# and every other numeric column answers 200 to both -- accepted and discarded. The
+# SECTION path reads far more of them; see SECTION_INTEGER_FIELDS.
+INTEGER_FIELDS = {"year", "index", "absoluteIndex", "parentIndex", "duration", "viewOffset",
                   "viewCount", "leafCount", "childCount"}
 
 DATE_FIELDS = {"originallyAvailableAt"}
@@ -54,6 +58,12 @@ EDITABLE_FIELDS = {
     "title", "titleSort", "originalTitle", "studio", "tagline", "summary",
     "contentRating", "originallyAvailableAt", "year", "index", "editionTitle",
     "userRating", "audienceRating", "rating", "duration",
+    # Cycle 20: eleven more columns are edits too -- each a 200 on the item path with
+    # its lock recorded, where an unknown name is a 400. Ten of them are discarded
+    # there (IGNORED_VALUE_FIELDS) and read on the section path; `absoluteIndex` is
+    # read on both.
+    "updatedAt", "createdAt", "skipCount", "viewOffset", "ratingCount", "type",
+    "viewedLeafCount", "contentRatingAge", "mediaCount", "extraType", "absoluteIndex",
 }
 
 # Accepted, locked, and DISCARDED on the ITEM path: the star rating is written
@@ -66,7 +76,13 @@ IGNORED_EDIT_FIELDS = {"userRating"}
 # nothing, where plexsim refused each as an unknown field. Artwork is written through
 # the poster and art endpoints, play state through /:/scrobble.
 IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "viewCount",
-                        "parentIndex"}
+                        "parentIndex",
+                        # Cycle 20: ten more are accepted and discarded on the ITEM
+                        # path -- 200 for a number and 200 for a word alike, and
+                        # nothing stored. The section path reads every one of them.
+                        "updatedAt", "createdAt", "skipCount", "ratingCount", "type",
+                        "viewedLeafCount", "contentRatingAge", "mediaCount",
+                        "extraType", "viewOffset", "duration"}
 
 # A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
 # nothing visible, where plexsim 400'd it.
@@ -94,7 +110,10 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
 # recorded in `Field`, where plexsim answered 400 "unknown field"; `key`, `ratingImage`
 # and `audienceRatingImage` stay a 400.
 LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt",
-                    "viewCount", "network", "parentIndex"}
+                    "viewCount", "network", "parentIndex",
+                    # Cycle 20: `lastViewedAt` records a lock as well -- plexsim
+                    # accepted the write and left the `Field` list alone.
+                    "lastViewedAt"}
 
 
 class EditError(Exception):
