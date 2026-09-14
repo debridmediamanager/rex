@@ -16636,6 +16636,29 @@ def main():
              [k_c21k for k_c21k in ("userRating", "viewCount") if k_c21k in single_row_c21k],
              listed_c21k.get("viewCount"), blank_c21k)
           + " | kept %r" % (kept_c21k,))
+
+    # Cycle 21, measured on plexscratch over three artwork fields and two rows: a write
+    # after a DELETE is a 200 that re-mints the path. plexsim answered 404 to every
+    # later `PUT .../poster`, `.../thumb` and `.../art` on a row whose artwork had been
+    # cleared -- the ownership guard cycle 16 added reads the row's CURRENT value, and a
+    # cleared row owns nothing -- so Clear Artwork followed by Change Poster was a dead
+    # end and the grid drew the placeholder for good.
+    codes_c21l = {}
+    for field_c21l in ("poster", "art"):
+        codes_c21l[(field_c21l, "set")] = request(
+            base, "PUT", "/library/metadata/%s/%s?url=http%%3A%%2F%%2Fexample.com%%2Fc21.jpg"
+            % (c21_art_row, field_c21l))[0]
+        codes_c21l[(field_c21l, "clear")] = request(
+            base, "DELETE", "/library/metadata/%s/%s" % (c21_art_row, field_c21l))[0]
+        codes_c21l[(field_c21l, "again")] = request(
+            base, "PUT", "/library/metadata/%s/%s?url=http%%3A%%2F%%2Fexample.com%%2Fc21.jpg"
+            % (c21_art_row, field_c21l))[0]
+    _, back_c21l, _ = get(base, "/library/metadata/%s" % c21_art_row)
+    row_c21l = (back_c21l.get("Metadata") or [{}])[0]
+    check("an artwork write after a clear is accepted",
+          all(code_c21l == 200 for code_c21l in codes_c21l.values())
+          and str(row_c21l.get("thumb") or "").startswith("/library/metadata/%s/" % c21_art_row),
+          "%s | thumb %r" % (codes_c21l, row_c21l.get("thumb")))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
