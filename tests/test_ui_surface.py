@@ -12177,6 +12177,36 @@ def main():
                           ("c16o-a-plain", False), ("c16o-d-plain", False)],
           "%s" % order_c16a4)
 
+
+    # Cycle 16, measured on plexscratch: `sort=mediaCount` on `/playlists` is a real
+    # ordering by item count -- it is the sixth sort plexsim's own
+    # `/playlists?includeMeta=1` advertises, as "Item Count" -- while `leafCount` is a
+    # 500 on both. plexsim 500'd mediaCount too, so picking "Item Count" in the sort
+    # menu got an error page. And `POST /playlists/{id}/items` is a plain 404 on a real
+    # PMS: only PUT adds. plexsim answered the item LISTING with a 200, which tells a
+    # client -- and python-plexapi's capability probes, which are exactly this shape --
+    # that the endpoint exists and accepts writes.
+    holder_c16a5 = json.loads(request(
+        base, "POST", "/playlists?title=c16sorts&type=video&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    sorted_c16a5 = get(base, "/playlists?sort=mediaCount:desc")
+    leaf_c16a5 = get(base, "/playlists?sort=leafCount:desc")[0]
+    post_c16a5 = request(base, "POST", "/playlists/%s/items?uri=%s"
+                         % (holder_c16a5,
+                            quote("server://%s/com.plexapp.plugins.library"
+                                  "/library/metadata/%s" % (machine, movie))))
+    put_c16a5 = request(base, "PUT", "/playlists/%s/items?uri=%s"
+                        % (holder_c16a5,
+                           quote("server://%s/com.plexapp.plugins.library"
+                                 "/library/metadata/%s" % (machine, movie))))
+    request(base, "DELETE", "/playlists/%s" % holder_c16a5)
+    check("sort=mediaCount orders /playlists, and POST to its items is a 404",
+          sorted_c16a5[0] == 200 and leaf_c16a5 == 500
+          and post_c16a5[0] == 404 and put_c16a5[0] == 200,
+          "mediaCount=%s leafCount=%s POST=%s PUT=%s"
+          % (sorted_c16a5[0], leaf_c16a5, post_c16a5[0], put_c16a5[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
