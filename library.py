@@ -1622,6 +1622,19 @@ class Library:
         }
         if playlist.get("titleSort"):
             row["titleSort"] = playlist["titleSort"]
+        # Cycle 16, measured on plexscratch: `PUT /playlists/{id}` takes the whole ITEM
+        # edit grammar, so the row has to carry back what it stored -- `year`, `studio`,
+        # `originallyAvailableAt`, the locks, and artwork minted under
+        # `/library/metadata/{ratingKey}/`, which also shows up as an `Image` row.
+        for stored in ("year", "studio", "originallyAvailableAt", "thumb", "art",
+                       "Field"):
+            if playlist.get(stored) not in (None, "", []):
+                row[stored] = playlist[stored]
+        images = [{"alt": playlist["title"], "type": kind, "url": playlist[field]}
+                  for field, kind in (("thumb", "coverPoster"), ("art", "background"))
+                  if playlist.get(field)]
+        if images:
+            row["Image"] = images
         if rows:
             # Measured: an EMPTY playlist -- never filled, or emptied -- carries
             # neither a composite nor a duration. plexsim kept both, with the
