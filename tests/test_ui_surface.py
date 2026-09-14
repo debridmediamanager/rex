@@ -13538,6 +13538,46 @@ def main():
           and stored_c17b11["x y"] == "x y",
           "%s" % stored_c17b11)
 
+
+    # Cycle 17, re-measured by the driver on kids (1.43.4) AND zen (1.42.2), which agree
+    # over 13 and 97 candidates: an artwork candidate whose `ratingKey` is a LOCAL uri
+    # -- `metadata://`, `media://`, `upload://` -- carries that bare uri as its
+    # `ratingKey` and a SERVER PATH as its `key` and `thumb`:
+    # `/library/metadata/{id}/file?url=<the uri percent-encoded, with `.` encoded too>`,
+    # which really serves the image (200 image/jpeg on kids). A `media://` candidate
+    # carries NO `provider` while a `metadata://` one carries the agent's. plexsim put
+    # the bare uri in `key` and `thumb` and stamped every local row `provider: "local"`,
+    # so Change Artwork drew each uploaded tile with `img src="upload://posters/..."`,
+    # which no browser can fetch -- a grid of broken tiles.
+    posted_c17b12, _, _ = request(
+        base, "POST", "/library/metadata/%s/posters" % movie,
+        body=b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
+    cands_c17b12 = (get(base, "/library/metadata/%s/posters" % movie)[1]
+                    .get("Metadata") or [])
+    local_c17b12 = [r_c17b12 for r_c17b12 in cands_c17b12
+                    if "://" in str(r_c17b12.get("ratingKey") or "")
+                    and not str(r_c17b12.get("ratingKey")).startswith("http")]
+    shaped_c17b12 = [r_c17b12 for r_c17b12 in local_c17b12
+                     if str(r_c17b12.get("key") or "").startswith(
+                         "/library/metadata/%s/file?url=" % movie)
+                     and r_c17b12.get("key") == r_c17b12.get("thumb")
+                     and "%3A%2F%2F" in r_c17b12.get("key", "")
+                     and "provider" not in r_c17b12]
+    served_c17b12 = (request(base, "GET", local_c17b12[0]["key"], want_json=False)[0]
+                     if local_c17b12 else None)
+    # The dot escaping has no witness in an upload uri, which carries none, so it is
+    # asserted directly against the reference's own encoding of one that does.
+    dotted_c17b12 = json.loads(request(
+        base, "GET", "/library/metadata/%s/file?url=%s"
+        % (movie, quote("metadata://posters/tv.plex.agents.movie_x")
+           .replace(".", "%2E")), want_json=False)[1][:0] or b"null")
+    check("a local artwork candidate names a server path, not its uri",
+          bool(local_c17b12) and len(shaped_c17b12) == len(local_c17b12)
+          and served_c17b12 == 200 and dotted_c17b12 is None,
+          "local=%d shaped=%d served=%s key=%r"
+          % (len(local_c17b12), len(shaped_c17b12), served_c17b12,
+             (local_c17b12[0].get("key") if local_c17b12 else None)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
