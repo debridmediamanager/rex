@@ -16391,6 +16391,26 @@ def main():
           and len(show_tree_c21e) > len(episode_tree_c21e),
           "episode %s | season %d | show %d"
           % (episode_tree_c21e, len(season_tree_c21e), len(show_tree_c21e)))
+
+    # Cycle 21, swept over nine `type=` values on all three servers:
+    # `/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` ONLY. Both
+    # references answer `size 0` to `type=3`, `type=4`, `type=5`, `type=8`, an
+    # unparseable one and an empty one -- and both HOLD episodes, so it is not a
+    # content difference -- with and without `sectionID`, `pinnedContentDirectoryID`
+    # and `includeMeta`. plexsim answered eight episode rows at `type=4`, a shelf a
+    # real PMS does not have.
+    hub_types_c21f = {}
+    for value_c21f in ("1", "2", "3", "4", "5", "abc", ""):
+        status_c21f, doc_c21f, _ = get(base, "/hubs/home/recentlyAdded?type=%s" % value_c21f)
+        hub_types_c21f[value_c21f] = (status_c21f, doc_c21f.get("size"))
+    scoped_c21f = get(base, "/hubs/home/recentlyAdded?type=4&sectionID=%s"
+                      % show_section)[1].get("size")
+    check("/hubs/home/recentlyAdded is populated at type 1 and 2 only",
+          hub_types_c21f["1"][1] > 0 and hub_types_c21f["2"][1] > 0
+          and all(hub_types_c21f[value_c21f][1] == 0
+                  for value_c21f in ("3", "4", "5", "abc", ""))
+          and scoped_c21f == 0,
+          "%s | type=4&sectionID %s" % (hub_types_c21f, scoped_c21f))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
