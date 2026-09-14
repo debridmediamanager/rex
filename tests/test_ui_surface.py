@@ -12113,6 +12113,39 @@ def main():
           % (listed_c16a2.get("viewCount"), listed_c16a2.get("lastViewedAt"),
              "viewCount" in single_c16a2, "viewCount" in created_c16a2))
 
+
+    # Cycle 16, measured on plexscratch: `/playlists` is a filtered listing.
+    # `?title=` matches, `?smart=1` selects the smart ones (plexsim only ever honoured
+    # `smart=0`), `?sectionID=` selects the lists whose members live in that library --
+    # a mixed list answers to BOTH its libraries -- an unknown section answers none,
+    # `?type=1` answers none because a playlist is type 15, and `?type=abc` is a 500.
+    # plexsim answered every playlist to all of them, so a library's Recent Playlists
+    # shelf showed every playlist on the server.
+    smart_uri_c16a3 = ("server://%s/com.plexapp.plugins.library/library/sections/%s/all"
+                       "?type=1" % (machine, movie_section))
+    plain_c16a3 = json.loads(request(
+        base, "POST", "/playlists?title=c16plain&type=video&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    smart_c16a3 = json.loads(request(
+        base, "POST", "/playlists?title=c16smart&type=video&smart=1&uri=%s"
+        % quote(smart_uri_c16a3))[1])["MediaContainer"]["Metadata"][0]["ratingKey"]
+    sizes_c16a3 = {}
+    for probe_c16a3 in ("?title=c16plain", "?title=nope", "?smart=1", "?smart=0",
+                        "?sectionID=%s" % movie_section, "?sectionID=99", "?type=1"):
+        sizes_c16a3[probe_c16a3] = get(base, "/playlists" + probe_c16a3)[1].get("size")
+    bad_c16a3 = get(base, "/playlists?type=abc")[0]
+    request(base, "DELETE", "/playlists/%s" % plain_c16a3)
+    request(base, "DELETE", "/playlists/%s" % smart_c16a3)
+    check("/playlists filters by title, smart, sectionID and type",
+          sizes_c16a3["?title=c16plain"] == 1 and sizes_c16a3["?title=nope"] == 0
+          and sizes_c16a3["?smart=1"] >= 1
+          and sizes_c16a3["?smart=1"] < sizes_c16a3["?smart=0"] + sizes_c16a3["?smart=1"]
+          and sizes_c16a3["?sectionID=99"] == 0
+          and sizes_c16a3["?sectionID=%s" % movie_section] >= 1
+          and sizes_c16a3["?type=1"] == 0 and bad_c16a3 == 500,
+          "%s type=abc -> %s" % (sizes_c16a3, bad_c16a3))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
