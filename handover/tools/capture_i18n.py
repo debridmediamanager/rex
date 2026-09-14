@@ -127,6 +127,42 @@ PATHS += [
 ]
 
 
+# Cycle 18's additions. §3.3 has carried "the mechanism is measured; the coverage is only
+# as wide as this list" since cycle 16, and a third sweep found five more families.
+PATHS += [
+    # Every `firstCharacter` BUCKET names itself in `title2` -- "Start with 'A'" -- and
+    # the QUOTE MARKS move with the language too (`Beginne mit „A“` in German), so the
+    # string cannot be composed from a translated stem and the key. Each bucket is its
+    # own entry; kids answers 27 of them on a movie library.
+    *['/library/sections/1/firstCharacter/%s' % key for key in
+      ['%23'] + [chr(c) for c in range(ord('A'), ord('Z') + 1)]],
+    # `/query/parse` names every rule's field in `fieldTitle`. Cycle 17 captured the four
+    # fields one query happened to carry; a client builds rules on all of them, and a
+    # show library's are SCOPED ("Show Title", "Episode Year", "Date Episode Added").
+    '/library/sections/1/query/parse?type=1&title=a&resolution=1080&contentRating=G'
+    '&studio=x&decade=2000&actor=1&collection=1&label=1&audioLanguage=en'
+    '&subtitleLanguage=en&duplicate=1&unmatched=1&hdr=1&addedAt>>=1&lastViewedAt>>=1'
+    '&userRating>>=1&viewCount>>=1',
+    '/library/sections/2/query/parse?type=2&show.title=a&episode.title=b&show.unwatched=1',
+    '/library/sections/2/query/parse?type=4&episode.title=a&episode.year=2000'
+    '&episode.unwatched=1&episode.resolution=1080&episode.addedAt>>=1',
+    # `/filters` is keyed by the asked `type=`, and the types a movie library does not
+    # hold still answer a list: the music and photo axes (Mood, Style, Record Label,
+    # Camera Make, Aperture, Lens, Tag) are server vocabulary plexsim answers too.
+    '/library/sections/1/filters?type=8', '/library/sections/1/filters?type=9',
+    '/library/sections/1/filters?type=10', '/library/sections/1/filters?type=13',
+    # The Add Library dialog's own prefs list for a MUSIC library: 24 labels, summaries
+    # and enum lists no other type carries.
+    '/library/sections/prefs?type=8&agent=tv.plex.agents.music',
+    # The per-library hub page's own shelf titles ("Recently Released Movies",
+    # "Rediscover", "Recently Watched Episodes"). This path also carries the RANDOM
+    # genre and actor shelves, whose genre changes per request -- which is why the
+    # volatility control below fetches the target language twice as well as English.
+    '/hubs/sections/1?X-Plex-Container-Size=20',
+    '/hubs/sections/2?X-Plex-Container-Size=20',
+]
+
+
 def fetch(path, language=None):
     headers = {'X-Plex-Token': TOKEN, 'Accept': 'application/json',
                'User-Agent': 'curl/8'}
@@ -141,6 +177,25 @@ def fetch(path, language=None):
         return None
 
 
+# A list item is keyed by its own identity where it has one. Cycle 18: the per-library
+# hub page picks a random genre and a random actor per request, so index 3 of the English
+# document and index 3 of the German one are DIFFERENT rows, and a positional diff reads
+# every attribute of them -- `container`, `art`, an `audienceRatingImage` -- as a
+# translation. Fetching each language twice does not catch it, because the pick is stable
+# inside one language's pair. This is the general form of cycle 17's `/system/agents`
+# exclusion, whose `Language` list is REORDERED per request language.
+_IDENTITY = ('ratingKey', 'hubIdentifier', 'key', 'id', 'code', 'guid', 'filter')
+
+
+def item_key(value, index):
+    if isinstance(value, dict):
+        for name in _IDENTITY:
+            found = value.get(name)
+            if isinstance(found, (str, int)) and not isinstance(found, bool):
+                return '%s=%s' % (name, found)
+    return index
+
+
 def walk(node, path=()):
     """Every string in a document, keyed by its structural path."""
     if isinstance(node, dict):
@@ -149,7 +204,7 @@ def walk(node, path=()):
                 yield item
     elif isinstance(node, list):
         for index, value in enumerate(node):
-            for item in walk(value, path + (index,)):
+            for item in walk(value, path + (item_key(value, index),)):
                 yield item
     elif isinstance(node, str):
         yield path, node
@@ -170,10 +225,17 @@ table = {}
 for language in LANGUAGES:
     changed = 0
     for path, stable in english.items():
-        other = fetch(path, language)
-        if not isinstance(other, dict):
+        other, again = fetch(path, language), fetch(path, language)
+        if not isinstance(other, dict) or not isinstance(again, dict):
             continue
-        seen_all = dict(walk(other))
+        seen_all, repeat = dict(walk(other)), dict(walk(again))
+        # Cycle 18: a string that differs between two fetches IN THE TARGET LANGUAGE is
+        # not a translation either. `/hubs/sections/{id}` picks a random genre and a
+        # random actor per request, so its shelf titles read as translations of each
+        # other ("Top Movies in Drama" -> "Top-Filme in Action") whenever the two
+        # English fetches happen to agree.
+        seen_all = {key: value for key, value in seen_all.items()
+                    if repeat.get(key) == value}
         for key, value in stable.items():
             seen = seen_all.get(key)
             if seen is None or seen == value:
@@ -183,7 +245,7 @@ for language in LANGUAGES:
             # as a secondary axis's `title2`, so a flat English map would
             # over-translate. The attribute is the last dict key on the path.
             attribute = next((piece for piece in reversed(key)
-                              if isinstance(piece, str)), "")
+                              if isinstance(piece, str) and '=' not in piece), "")
             table.setdefault(attribute, {}).setdefault(value, {})[language] = seen
             changed += 1
     print('%s %d strings' % (language, changed), flush=True)
@@ -198,7 +260,12 @@ payload = {
                     'captured 31 paths; cycle 17 widened the list to cover the library '
                     'and item preferences, the search hubs, the butler and a generated '
                     'episode title, and dropped the strings that differ between two '
-                    'English fetches of the same path.'),
+                    'English fetches of the same path. Cycle 18 added the '
+                    'firstCharacter buckets, /query/parse fieldTitles, the '
+                    'music and photo filter axes, a music library prefs list '
+                    'and the per-library hub page, and dropped the strings '
+                    'that differ between two fetches in the TARGET language '
+                    'as well.'),
     'strings': {attribute: {source: languages
                             for source, languages in sorted(values.items()) if languages}
                 for attribute, values in sorted(table.items()) if values},
