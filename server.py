@@ -4583,6 +4583,19 @@ class PlexSim:
         if query.get("includeDetails") == "1":
             meta = self.section_meta(section_id, section.get("type") or "movie",
                                      advanced=True) or {}
+            # Cycle 16, measured on kids and zen: under `includeDetails` a
+            # `Sort` carries no `active`/`activeDirection` and a `Filter` no
+            # `advanced`, while the `includeMeta=1` form carries all three.
+            # plexsim sent the includeMeta shape to both, so the Edit Library
+            # dialog's descriptor claimed a sort was selected when the client
+            # had asked for none.
+            meta = json.loads(json.dumps(meta))
+            for described in meta.get("Type") or []:
+                for sort in described.get("Sort") or []:
+                    sort.pop("active", None)
+                    sort.pop("activeDirection", None)
+                for entry in described.get("Filter") or []:
+                    entry.pop("advanced", None)
             if meta.get("Type"):
                 fields["Type"] = meta["Type"]
                 size += len(meta["Type"])

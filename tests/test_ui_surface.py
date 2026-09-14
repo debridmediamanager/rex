@@ -11834,6 +11834,31 @@ def main():
           order_c16r == ["Filter", "Sort", "Field"],
           "%s" % order_c16r)
 
+
+    # Cycle 16, measured on kids and zen: under `includeDetails=1` a `Sort` carries
+    # NO `active`/`activeDirection` and a `Filter` no `advanced` -- those three belong
+    # to the `includeMeta=1` form, where all of them appear. The `includeDetails` Type
+    # blocks sit at the TOP level of the container rather than inside a `Meta`.
+    # plexsim stamped `active` and `activeDirection` on every Sort under
+    # includeDetails, so the Edit Library dialog's descriptor claimed a sort was
+    # selected when the client had asked for none.
+    details_c16s = get(base, "/library/sections/%s?includeDetails=1" % movie_section)[1]
+    meta_c16s = get(base, "/library/sections/%s/all?includeMeta=1"
+                    "&X-Plex-Container-Size=1" % movie_section)[1]
+    detail_sorts_c16s = [sort_c16s for type_c16s in details_c16s.get("Type") or []
+                         for sort_c16s in type_c16s.get("Sort") or []]
+    meta_sorts_c16s = [sort_c16s
+                       for type_c16s in (meta_c16s.get("Meta") or {}).get("Type") or []
+                       for sort_c16s in type_c16s.get("Sort") or []]
+    check("includeDetails carries no active/activeDirection where includeMeta does",
+          bool(detail_sorts_c16s) and bool(meta_sorts_c16s)
+          and not any("active" in sort_c16s or "activeDirection" in sort_c16s
+                      for sort_c16s in detail_sorts_c16s)
+          and any("active" in sort_c16s for sort_c16s in meta_sorts_c16s),
+          "details=%s meta=%s"
+          % (sorted(detail_sorts_c16s[0]) if detail_sorts_c16s else None,
+             sorted(meta_sorts_c16s[0]) if meta_sorts_c16s else None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
