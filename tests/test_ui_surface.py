@@ -11009,6 +11009,27 @@ def main():
           and arts_c15x["thumb"] == 200 and arts_c15x["poster"] == 200,
           str(arts_c15x))
 
+    # Cycle 15, measured on plexscratch: a label written onto a COLLECTION reaches the
+    # library's `/label` axis -- under a bare call, under `?type=18` and under `?type=1`
+    # alike, consistent with cycle 14's note that the axis is global. plexsim's axis
+    # listed a label written onto a MOVIE and never looked at collections, so a label
+    # used to organise collections could not be filtered on at all.
+    lb_c15y = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C15y Labelled"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1].get("Metadata") or [{}])[0].get("ratingKey")
+    request(base, "PUT", "/library/metadata/%s?label%%5B0%%5D.tag.tag=%s"
+            % (lb_c15y, quote("C15yLabel")))
+    axis_c15y = {spec_c15y: [d_c15y.get("title") for d_c15y in
+                             get(base, "/library/sections/%s/label%s" % (movie_section, spec_c15y))[1]
+                             .get("Directory") or []
+                             if str(d_c15y.get("title") or "").startswith("C15y")]
+                 for spec_c15y in ("", "?type=18", "?type=1")}
+    request(base, "DELETE", "/library/collections/%s" % lb_c15y)
+    check("a label on a collection reaches the /label axis under every type",
+          all(v_c15y == ["C15yLabel"] for v_c15y in axis_c15y.values()), str(axis_c15y))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

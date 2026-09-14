@@ -5555,6 +5555,12 @@ class PlexSim:
         the reference's own; it is reproduced so the replay diff stays clean.
         """
         rows = self.typed_rows(section_id, query or {})
+        if leaf == "label":
+            # Cycle 15, measured on the copy: a label written onto a COLLECTION is in
+            # this axis too, under a bare call and under every `type=`. plexsim built
+            # the axis from library ITEMS alone, so a label used to organise
+            # collections could not be filtered on at all.
+            rows = list(rows) + list(self.library.collections(section_id))
         entries = []
         if leaf in SECONDARY_TAGS:
             key = SECONDARY_TAGS[leaf]
