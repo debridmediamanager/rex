@@ -1392,6 +1392,18 @@ def _escaped_pref(value):
     return text.replace(":", "%3a").replace("|", "%7c")
 
 
+def _candidate_path(rating_key, uri):
+    """The `key`/`thumb` a real PMS gives an artwork candidate that is a local uri.
+
+    Measured on kids and zen: `/library/metadata/{id}/file?url=<uri>`, where the uri is
+    percent-encoded with `.` escaped as well -- `metadata://posters/tv.plex.agents...`
+    comes out `metadata%3A%2F%2Fposters%2Ftv%2Eplex%2Eagents...`. Python's own quote()
+    leaves a dot alone, so it is escaped explicitly.
+    """
+    return "/library/metadata/%s/file?url=%s" % (
+        rating_key, urllib.parse.quote(uri, safe="").replace(".", "%2E"))
+
+
 def _image_type(body):
     """The content type of an uploaded image, from its magic bytes."""
     if body[:8] == b"\x89PNG\r\n\x1a\n":
@@ -6702,11 +6714,18 @@ class PlexSim:
             # Measured: `/children` of an item that cannot have any -- a movie, an
             # episode -- is a 400, where its `/allLeaves` is still a 200.
             return ("error", 400, "plexsim: bad request")
-        if leaf == "file" and method in ("GET", "HEAD") and not query.get("url"):
+        if leaf == "file" and method in ("GET", "HEAD"):
             # Measured on both servers: the item's file endpoint without its `url` is a
-            # 400. (With a `url` the two servers disagree -- 400 on one, 404 on the
-            # other -- so that form stays the unrouted 404.)
-            return ("error", 400, "plexsim: bad request")
+            # 400. Cycle 17: WITH a `url` naming one of this row's own candidates it
+            # serves that image -- 200 image/jpeg on kids -- which is what makes the
+            # `key`/`thumb` a real PMS puts on a local candidate usable as an img src.
+            # A url the row has no candidate for stays a 404.
+            if not query.get("url"):
+                return ("error", 400, "plexsim: bad request")
+            wanted = urllib.parse.unquote(query["url"].replace("%2E", "."))
+            if wanted in self.uploads:
+                return ("image", wanted)
+            return ("error", 404, "plexsim: not found")
         if leaf == "grandchildren":
             if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
@@ -9322,8 +9341,17 @@ class PlexSim:
                    if key.startswith("upload://posters" if kind == "posters" else "upload://art")
                    and (row.get("type") not in ("season", "episode") or str(row.get("index")) in key)]
         for key in uploads:
-            entries.append({"key": key, "ratingKey": key, "thumb": key,
-                            "selected": stored == key, "provider": "local"})
+            # Cycle 17, measured on kids and zen over 13 and 97 candidates: a LOCAL
+            # candidate's `ratingKey` is the bare uri and its `key` and `thumb` are a
+            # SERVER PATH that really serves the image. A `media://` (and an
+            # `upload://`) candidate carries no `provider` at all; only an agent-
+            # supplied `metadata://` one does. plexsim put the bare uri in all three
+            # and stamped `provider: "local"`, so Change Artwork drew every uploaded
+            # tile with `img src="upload://posters/..."` -- a broken tile.
+            entries.append({"key": _candidate_path(row["ratingKey"], key),
+                            "ratingKey": key,
+                            "thumb": _candidate_path(row["ratingKey"], key),
+                            "selected": stored == key})
         if stored in uploads:
             stored = None
         current = row.get(field)
