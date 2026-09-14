@@ -88,6 +88,18 @@ IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "view
 # nothing visible, where plexsim 400'd it.
 IGNORED_TAG_TYPES = {"network"}
 
+# Cycle 20, measured one column at a time on plexscratch: the SECTION save path reads
+# every numeric column, where the item path reads three. These seven parse -- a number
+# is a 200 and a word a 500 -- and the eight below are refused outright, 500 even for a
+# valid number. Of the seven, `updatedAt`, `addedAt`, `ratingCount` and
+# `contentRatingAge` really store (and an episode's `index`); `duration` and
+# `parentIndex` parse and change nothing, which is why they are read and then dropped.
+SECTION_INTEGER_FIELDS = {"addedAt", "duration", "parentIndex", "ratingCount", "updatedAt",
+                          "createdAt", "contentRatingAge"}
+SECTION_STORED_FIELDS = {"addedAt", "ratingCount", "updatedAt", "contentRatingAge"}
+SECTION_REFUSED_FIELDS = {"viewCount", "lastViewedAt", "skipCount", "viewOffset", "type",
+                          "viewedLeafCount", "mediaCount", "extraType"}
+
 # Stored as NUMBERS. Measured: `audienceRating.value=5.5` reads back 5.5, not "5.5".
 FLOAT_FIELDS = {"audienceRating", "rating", "userRating"}
 
@@ -738,6 +750,16 @@ class Library:
                 changed = True
             else:
                 field = name[: -len(".value")] if name.endswith(".value") else name
+                if section and field in SECTION_REFUSED_FIELDS:
+                    # Cycle 20: eight columns the item path accepts are a 500 on the
+                    # section path for ANY value, a valid number included.
+                    raise EditError(500, "refused %s on the section path" % field)
+                if section and field in SECTION_INTEGER_FIELDS:
+                    # ...and seven more are really parsed there. `_set_field` writes the
+                    # ones that store and drops the two that do not.
+                    self._set_field(row, field, value, section)
+                    changed = True
+                    continue
                 if field in IGNORED_VALUE_FIELDS \
                         or (field in ("duration", "index") and row.get("type") == "movie") \
                         or (field in TAG_KEYS and not name.endswith(".value")):
@@ -836,6 +858,24 @@ class Library:
 
     def _set_field(self, row, field, value, section=False):
         """One scalar field, with the coercions a real PMS applies."""
+        if section and field in SECTION_INTEGER_FIELDS:
+            # Cycle 20: parsed as an integer -- a word is a 500 -- and then stored only
+            # if it is one of the four columns that really store. `duration` and
+            # `parentIndex` are read and dropped, which is what the copy does.
+            text = str(value).strip()
+            if not re.fullmatch(r"[+-]?\d+", text):
+                raise EditError(500, "unparseable %s %r" % (field, value))
+            if field in SECTION_STORED_FIELDS:
+                row[field] = int(text)
+                if field == "updatedAt":
+                    # The artwork version IS this column, so it moves with it -- the
+                    # copy re-versions the poster in the same call.
+                    for artwork in ("thumb", "art"):
+                        current = str(row.get(artwork) or "")
+                        head, slash, _ = current.rpartition("/")
+                        if slash and head.startswith("/library/metadata/%s/" % row["ratingKey"]):
+                            row[artwork] = "%s/%s" % (head, int(text))
+            return
         if field in IGNORED_EDIT_FIELDS and not section:
             # Measured: accepted, lock recorded, value discarded -- the star
             # rating is written through /:/rate, not through the item path.
