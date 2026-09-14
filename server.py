@@ -10724,6 +10724,16 @@ class Handler(BaseHTTPRequestHandler):
     # a ThreadingHTTPServer thread for the life of the process.
     timeout = 20
 
+    def handle_expect_100(self):
+        """A real PMS never sends `100 Continue` -- measured on kids and zen.
+
+        Both answer the 200 directly to `Expect: 100-continue` on a GET, and the copy
+        waits for the body on a POST rather than inviting it.
+        BaseHTTPRequestHandler's default writes the interim response, so plexsim sent
+        one on every path. Returning True here keeps the request going without it.
+        """
+        return True
+
     def send_response(self, code, message=None):
         """A real PMS sends no `Server:` banner -- measured on kids and zen.
 

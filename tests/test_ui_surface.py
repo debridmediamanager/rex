@@ -11634,6 +11634,28 @@ def main():
           bare_c16j[0] == 404 and versioned_c16j[0] == 200,
           "bare=%s versioned=%s" % (bare_c16j[0], versioned_c16j[0]))
 
+
+    # Cycle 16, measured on kids and zen: a real PMS never sends `100 Continue`. With
+    # `Expect: 100-continue` on a GET both references answer the 200 directly, while
+    # plexsim wrote `HTTP/1.1 100 Continue` first (BaseHTTPRequestHandler's default
+    # `handle_expect_100`). A client that counts responses, or a proxy, sees an extra
+    # one that a real server never sends.
+    import socket as socket_c16k
+    sock_c16k = socket_c16k.create_connection(
+        (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), timeout=20)
+    sock_c16k.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nExpect: 100-continue\r\n"
+                      b"Accept: application/json\r\nConnection: close\r\n\r\n")
+    first_c16k = b""
+    while b"\r\n" not in first_c16k:
+        chunk_c16k = sock_c16k.recv(4096)
+        if not chunk_c16k:
+            break
+        first_c16k += chunk_c16k
+    sock_c16k.close()
+    check("a real PMS never answers 100 Continue",
+          b"100 Continue" not in first_c16k.split(b"\r\n")[0],
+          "%r" % first_c16k.split(b"\r\n")[0])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
