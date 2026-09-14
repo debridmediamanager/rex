@@ -12366,6 +12366,43 @@ def main():
              queued_c16a11.get("playQueueSourceURI"),
              len(queued_c16a11.get("Metadata") or [])))
 
+
+    # Cycle 16, measured on kids and on zen's 507-show / 9287-episode library: a show
+    # library's `?type=3` and `?type=4` grids default to the SHOW's order -- grouped by
+    # the show's sort title, then `parentIndex`, then `index` -- and NOT to a flat
+    # `titleSort`. kids' episode grid opens "The Train Job, Bushwhacked, Our Mrs.
+    # Reynolds, Episode 1, 2, 3" where `sort=titleSort` gives "Episode 1, 2, 3,
+    # Bushwhacked, Our Mrs. Reynolds, The Train Job"; zen's, 2000 rows in, is one
+    # show's episodes in broadcast order where `sort=titleSort` is an alphabetical
+    # jumble across shows. plexsim answered its own titleSort order to both, so opening
+    # a show library's Episodes or Seasons tab gave an alphabetical shuffle.
+    # `docs/findings.md` already asserted "`/allLeaves` AND the section listing keep
+    # broadcast order"; only the allLeaves half had been implemented.
+    #
+    # The fixture's title order and its broadcast order coincide, so the check has to
+    # make them DISAGREE before it can tell the two apart -- measuring an order on rows
+    # that cannot disagree is exactly the class-B mistake this project keeps making.
+    leaves_c16a12 = [r_c16a12["ratingKey"] for r_c16a12 in get(
+        base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+    last_c16a12 = leaves_c16a12[-1]
+    was_c16a12 = get(base, "/library/metadata/%s" % last_c16a12)[1]["Metadata"][0]["title"]
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+            % (last_c16a12, quote("AAA c16 sorts first")))
+    default_c16a12 = [r_c16a12["ratingKey"] for r_c16a12 in get(
+        base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []]
+    sorted_c16a12 = [r_c16a12["ratingKey"] for r_c16a12 in get(
+        base, "/library/sections/%s/all?type=4&sort=titleSort"
+        % show_section)[1].get("Metadata") or []]
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+            % (last_c16a12, quote(was_c16a12)))
+    check("a show library's typed grid defaults to broadcast order, not titleSort",
+          len(leaves_c16a12) > 2
+          and default_c16a12 == leaves_c16a12
+          and sorted_c16a12[0] == last_c16a12
+          and default_c16a12 != sorted_c16a12,
+          "default=%s allLeaves=%s titleSort=%s (renamed %s)"
+          % (default_c16a12, leaves_c16a12, sorted_c16a12, last_c16a12))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
