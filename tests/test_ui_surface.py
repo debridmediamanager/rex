@@ -12872,6 +12872,50 @@ def main():
              filtered_c17d1, all_c17d1,
              "Error" if parsed_c17d1.get("Error") else "Rule"))
 
+
+    # Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte
+    # over the whole table: an XML attribute value is escaped as `&` -> `&amp;`,
+    # `<` -> `&lt;`, `>` -> `&gt;`, `"` -> `&#34;` and `'` -> `&#39;` (NUMERIC, not
+    # `&quot;`/`&apos;`); TAB -> `&#9;` in decimal but NEWLINE and CR -> `&#xA;`/`&#xD;`
+    # in HEX; every codepoint from U+0080 up -> its DECIMAL numeric reference, astral
+    # plane included (an emoji is `&#128512;`, not a surrogate pair); and every control
+    # character XML 1.0 forbids -- U+0001..U+0008, U+000B, U+000C, U+000E..U+001F and
+    # U+007F -- is replaced with a literal `?`. So a real PMS's XML is pure ASCII even
+    # though it declares UTF-8. plexsim used `xml.sax.saxutils.quoteattr`, which writes
+    # `&quot;`, leaves `'` alone, sends `\n`/`\r` as decimal and passes every non-ASCII
+    # character through raw -- a different body on every response carrying an accent or
+    # an apostrophe, which on a real library is most of them.
+    def xml_title2_c17d2(value_c17d2):
+        return re.search(r'title2="([^"]*)"', request(
+            base, "GET", "/library/sections/%s/firstCharacter/%s"
+            % (movie_section, quote(value_c17d2)), want_json=False)[1]
+            .decode("utf-8", "replace"))
+    cases_c17d2 = [
+        ("a<b>c&d", "Start with &#39;a&lt;b&gt;c&amp;d&#39;"),
+        ('"', "Start with &#39;&#34;&#39;"),
+        ("'", "Start with &#39;&#39;&#39;"),
+        ("\t", "Start with &#39;&#9;&#39;"),
+        ("\n", "Start with &#39;&#xA;&#39;"),
+        ("\r", "Start with &#39;&#xD;&#39;"),
+        ("\x7f", "Start with &#39;?&#39;"),
+        ("\x0b", "Start with &#39;?&#39;"),
+        ("\u00e9", "Start with &#39;&#233;&#39;"),
+        ("\u20ac", "Start with &#39;&#8364;&#39;"),
+        ("\U0001f600", "Start with &#39;&#128512;&#39;"),
+    ]
+    wrong_c17d2 = []
+    for value_c17d2, want_c17d2 in cases_c17d2:
+        found_c17d2 = xml_title2_c17d2(value_c17d2)
+        got_c17d2 = found_c17d2.group(1) if found_c17d2 else None
+        if got_c17d2 != want_c17d2:
+            wrong_c17d2.append((value_c17d2, got_c17d2, want_c17d2))
+    body_c17d2 = request(base, "GET", "/library/sections/%s/firstCharacter/%s"
+                         % (movie_section, quote("\u00e9")), want_json=False)[1]
+    check("XML escapes like a real PMS: numeric refs, ASCII-only body",
+          not wrong_c17d2 and all(byte_c17d2 < 128 for byte_c17d2 in body_c17d2),
+          "wrong=%s ascii=%s" % (wrong_c17d2[:2],
+                                 all(byte_c17d2 < 128 for byte_c17d2 in body_c17d2)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
