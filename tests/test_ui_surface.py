@@ -14267,6 +14267,35 @@ def main():
     status, listing, _ = get(base, "/system")
     check("and the GET still answers", status == 200 and listing.get("size"), "%s" % status)
 
+    # Cycle 18, measured on plexscratch with all seven verbs on each path: the playlist item
+    # paths refuse the verbs they do not implement, exactly as the collection's do. plexsim
+    # answered 200 to thirteen cells -- a GET of ONE member returned the whole item listing,
+    # and so did a GET or a DELETE of `/move`, which a client reads as acceptance.
+    status, body, _ = request(base, "POST", "/playlists?type=video&title=VerbChk&smart=0"
+                              "&uri=server://%s/com.plexapp.plugins.library"
+                              "/library/metadata/%s" % (machine, movie))
+    created = json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    items = get(base, "/playlists/%s/items" % created)[1].get("Metadata") or []
+    item_id = items[0]["playlistItemID"]
+    for path, allowed in (("/playlists/%s" % created, ("GET", "HEAD", "PUT", "DELETE")),
+                          ("/playlists/%s/items" % created, ("GET", "HEAD", "PUT", "DELETE")),
+                          ("/playlists/%s/items/%s" % (created, item_id), ("DELETE", "PUT")),
+                          ("/playlists/%s/items/%s/move" % (created, item_id), ("PUT",))):
+        refused = [verb for verb in ("POST", "PATCH", "OPTIONS", "GET")
+                   if verb not in allowed
+                   and request(base, verb, path)[0] != 404]
+        check("%s refuses the verbs it does not take" % path.replace(str(created), "{id}"),
+              not refused, "%s" % refused)
+    status, _, _ = request(base, "PUT", "/playlists/%s/items/%s" % (created, item_id))
+    check("and a PUT at one member is a 400", status == 400, "%s" % status)
+    status, _, _ = request(base, "PUT", "/playlists/%s/items/999999" % created)
+    check("for an unknown number too", status == 400, "%s" % status)
+    status, _, _ = request(base, "PUT", "/playlists/%s/items/abc" % created)
+    check("while a malformed id is the verb table's 404", status == 404, "%s" % status)
+    status, listing, _ = get(base, "/playlists/%s/items" % created)
+    check("the member listing still answers", status == 200 and listing.get("size"),
+          "%s %s" % (status, listing.get("size")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

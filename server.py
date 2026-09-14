@@ -10303,6 +10303,14 @@ class PlexSim:
                                           or (len(segments) == 4 and method == "DELETE")):
                 # A smart playlist's items cannot be removed or cleared either.
                 return ("error", 400, "plexsim: bad request")
+            if len(segments) == 4 and method == "PUT":
+                # Cycle 18, measured on plexscratch: a PUT at ONE member is a 400 for a
+                # member id and for an unknown number alike, and a 404 for an id that is
+                # not a number -- the SHAPE is checked before membership. plexsim ran
+                # the ADD here and answered 200 with `leafCountAdded: 0`.
+                if not segments[3].isdigit():
+                    return ("error", 404, "plexsim: no such playlist item")
+                return ("error", 400, "plexsim: bad request")
             if len(segments) == 4 and method == "DELETE":
                 if not self.library.remove_playlist_item(playlist, segments[3]):
                     # Measured: an item id the playlist does not hold is a 404 -- and a
@@ -12156,6 +12164,20 @@ class Handler(BaseHTTPRequestHandler):
     # The verbs measured as 404s on the list were POST, DELETE, PATCH and OPTIONS.
     COLLECTION_ITEM_VERBS = {"items": ("GET", "HEAD", "PUT"), "move": ("PUT",),
                              "member": ("DELETE",)}
+    # Cycle 18, measured on plexscratch with all seven verbs (GET, HEAD, POST, PUT,
+    # DELETE, PATCH, OPTIONS) tried on each path: the PLAYLIST item paths have the same
+    # shape as the collection's and plexsim answered 200 to thirteen cells the reference
+    # refuses -- a GET of one member returned the WHOLE item listing, and so did a GET
+    # or a DELETE of `/move`. The verbs each path really takes:
+    #   /playlists/{id}              GET HEAD PUT DELETE   (POST/PATCH/OPTIONS 404)
+    #   /playlists/{id}/items        GET HEAD PUT DELETE   (POST/PATCH/OPTIONS 404)
+    #   /playlists/{id}/items/{iid}  DELETE, and PUT is a 400 for a numeric id
+    #   /playlists/{id}/items/{iid}/move   PUT
+    # `PUT /playlists/{id}/items/{iid}` is a 400 for a member and a non-member alike and
+    # a 404 for a malformed id: the SHAPE is checked before membership.
+    PLAYLIST_ITEM_VERBS = {"list": ("GET", "HEAD", "PUT", "DELETE"),
+                           "items": ("GET", "HEAD", "PUT", "DELETE"),
+                           "member": ("DELETE", "PUT"), "move": ("PUT",)}
     # Item leaves that are pure reads. `extras`, `themes`, `clearLogos`, `posters`
     # and `arts` are NOT here: their POST is the upload path (400 or 406, measured
     # separately), only their PUT and DELETE are refused.
@@ -12222,9 +12244,28 @@ class Handler(BaseHTTPRequestHandler):
             return method not in self.COLLECTION_ITEM_VERBS["move"]
         return False
 
+    def _playlist_item_refusal(self, method, path):
+        """404 for a verb a playlist path does not take. Cycle 18."""
+        parts = [p for p in path.split("?")[0].rstrip("/").split("/") if p]
+        if parts[:1] != ["playlists"] or len(parts) < 2 or not parts[1].isdigit():
+            return False
+        if len(parts) == 2:
+            return method not in self.PLAYLIST_ITEM_VERBS["list"]
+        if parts[2] != "items":
+            return False
+        if len(parts) == 3:
+            return method not in self.PLAYLIST_ITEM_VERBS["items"]
+        if len(parts) == 4:
+            return method not in self.PLAYLIST_ITEM_VERBS["member"]
+        if len(parts) == 5 and parts[4] == "move":
+            return method not in self.PLAYLIST_ITEM_VERBS["move"]
+        return False
+
     def _read_only_refusal(self, method, path):
         """404 for a write to a route that only reads. Cycle 15."""
         if self._collection_item_refusal(method, path):
+            return True
+        if self._playlist_item_refusal(method, path):
             return True
         parts = [p for p in (path.split("?")[0].rstrip("/") or "/").split("/") if p]
         if method == "POST" and parts[:2] == ["library", "metadata"] \
