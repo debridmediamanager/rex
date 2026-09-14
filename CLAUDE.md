@@ -1043,6 +1043,77 @@ precisely how the Seasons bug survived a fix attempt.
   a collection row's `index` is its own tag id, and `/library/all?type=18` lists every
   collection the server holds across libraries in title order.
 
+- **`/status/sessions/history/all` lists NOTHING without a `type=`** -- and the `type` is the
+  row's `viewType`, not its metadata type. kids' history is five MOVIES and zen's is 73
+  EPISODES and both answer to `type=1`, while `type=0/2/3/4/5` answer none on either;
+  `type=abc` and an empty one are 400s and every listing row carries `viewType: 1`. That is
+  the whole of the `size 0` cycle 11 could not explain.
+- **`titleSort` trims the LEFT only.** A trailing space survives into the sort title -- which
+  is why a title written with one carries no `titleSort` at all, the derived string being
+  equal to the title. `'  Zeta Both  '` sorts as `'Zeta Both  '`.
+- **`flattenSeasons` and `episodeSort` are a TRI-STATE on an item**: `-1` INHERITS the
+  library's value and `0`/`1` override it in both directions. The library-level write --
+  where the Edit Library dialog puts them -- produces exactly the row effects the item path
+  does, and an unwritten show reports `-1`, not the `0` a stale capture recorded.
+- **`title=` folds across a SPACE.** Cycle 14's "the fold stops once the query has a space"
+  was a colon: a row matches if EITHER the raw word-prefix matcher matches, OR a folded pass
+  in which every term but the LAST must equal a whole whitespace word of the title. So
+  `Adoravel Trapalhao` finds its row, `Bogota City` does not (the word is `Bogota:`), and
+  `Bogot City` does. A query with an empty term -- a trailing or doubled space -- fails the
+  folded pass. Punctuation rides inside a term: `tournee` misses `(tournee`.
+- **The section search box answers the LIGHT grid row**, like every other listing -- no
+  `Guid`, `Rating`, tag ids or `Stream`. It was the one listing plexsim answered in full.
+- **`excludeElements=` is a property of the RESPONSE, as paging is.** Every container that
+  carries rows honours it, `/library/all`, `/library/recentlyAdded`, a section's
+  `recentlyAdded`/`newest`/`search`/`common`, `/grandchildren` and every hub path included.
+- **Four more columns filter and eight more PARSE.** `parent=` (the immediate
+  `parentRatingKey`), `rating=`, `audienceRating=` and `file=` (a case-insensitive substring
+  of ANY Part's path) all constrain a listing; `/query/parse` additionally echoes
+  `parentIndex`, `guid`, `slug` and `extraType` as Rules with an empty `fieldTitle`. The
+  parse surface is WIDER than the filter surface.
+- **`contentDirectoryID` scopes and VALIDATES `/hubs/search` alone** -- a value naming no
+  section is a 404 there and ignored on every other hub path.
+- **`/playlists?includeMeta=1` and `/hubs/home/recentlyAdded?type=N&includeMeta=1` carry a
+  `Meta`.** The playlist list's six sorts end in `mediaCount` "Item Count", NOT the
+  `updatedAt` of `/playlists/sorts`; the hub's one row is `movie`/true at `type=1`,
+  `mixed`/false at `type=2` and absent for every other type.
+- **`includeChildren=1` inlines a `Children` block on a SHOW and on nothing else.**
+- **The inline `Related` block caps at FIVE and obeys `includeRelatedCount`**, where the
+  standalone `/hubs/metadata/{id}/related` answers six.
+- **`limit=` and `parent=` are PARSED wherever a listing consumes them**: an unparseable
+  value is a 500 there and a 400 on `/status/sessions/history/all`. A good `limit` still does
+  nothing on `/children` -- ignoring the VALUE is not the same as not parsing the string.
+  `/hubs/search?limit=` has its own grammar: unparseable 400, non-positive 500.
+- **A FRACTIONAL value refuses on seven columns only** -- `viewCount`, `viewOffset`,
+  `lastViewedAt`, `lastRatedAt`, `addedAt`, `updatedAt`, `createdAt` -- and not on `year`,
+  `duration` or the rest. `lastRatedAt`, `createdAt` and `lastViewedAt` refuse a word too:
+  the VALUE is parsed before the row's own is looked at, so a null column does not excuse it.
+- **A READ-ONLY route answers 404 to every verb but GET and HEAD**, while the legacy
+  single-segment plug-in dispatcher answers EVERY method. `PATCH` and a bare `OPTIONS` are
+  ROUTED like any other verb, so a bare OPTIONS 404s wherever a GET-only route does; a
+  method a real PMS does not recognise at all is a **500**, never a 501.
+- **POSTing an EMPTY body to any artwork or subtitle candidate list is a 406**, `/extras`
+  being the 400. On the subtitle upload the empty-body check runs BEFORE the title check.
+- **`DELETE /library/metadata/{id}/{poster,art,thumb}` CLEARS the artwork**: 200 with an
+  empty body, the field gone, the artwork left re-stamped, one `state 5` frame, nothing
+  `selected` afterwards and a 404 on the bare GET. An EPISODE owns no `/art` path at all.
+- **A collection's `ratingCount` is its member TYPE number, +100 when smart** (movie 1, show
+  2, season 3, episode 4; 101/102/104), its `librarySectionID` is a NUMBER, its
+  `includePreferences` block is two settings -- `collectionMode` plus `collectionSort`, or
+  `collectionFilterBasedOnUser` when smart, which also 400s a `collectionSort` write -- and
+  `GET /library/collections/{id}/prefs` is a 404. `collectionSort` is alphabetical for any
+  plain non-zero integer it can parse and by release date otherwise.
+- **A `type=18` SECTION save renames the members' `Collection` TAG and the item path does
+  not**; the tag keeps its id. A member's tag carries the collection's `guid` and no `count`,
+  a label on a collection reaches the `/label` axis, and a collection is found by
+  `/hubs/search` as a `tagType: 2` row -- but never by `/library/search`.
+- **A refresh CASCADES**: 7 frames on an episode, 18 on a season (its episodes inside its own
+  activity, with no `activity updated`), 49 on a two-season show. An **analyze** frames every
+  LEAF three times -- `mediaState` analyzing, thumbnailing, none -- and ends in one
+  `media.generate.chapter.thumbs` activity; a season and a show row are never framed
+  themselves. A library **create** ends in a `backgroundProcessingQueue` `queueRegenerated`
+  frame, which follows any write that leaves work in the queue.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
