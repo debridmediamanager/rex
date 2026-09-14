@@ -1508,6 +1508,19 @@ MANAGED_HUBS = {
 }
 
 
+def _all_title(section):
+    """The `All ...` string a library answers, measured on kids and zen.
+
+    A MOVIE library composes it from its own title ("All Zen Movies"); a SHOW library
+    answers the constant "All Shows" whatever it is called ("Bench TV" answers it too).
+    Both the `/all` container's `title2` and the `all` pivot row follow this rule, and
+    plexsim had each half wrong in the opposite place.
+    """
+    if section.get("type") == "show":
+        return "All Shows"
+    return "All " + str(section.get("title") or "")
+
+
 def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
 
@@ -4864,7 +4877,10 @@ class PlexSim:
     # `secondary` on the axes and `search`/`prompt` on the search entries.
     SECTION_PIVOTS = {
         "movie": [
-            {"key": "all", "title": "All Movies"},
+            # The title is composed from the library's own on a MOVIE library
+            # (`{title}` is filled in below); a SHOW library's is the constant
+            # "All Shows". Measured on kids and zen, cycle 18.
+            {"key": "all", "title": "All {title}"},
             {"key": "unwatched", "title": "Unwatched"},
             {"key": "newest", "title": "Recently Released"},
             {"key": "recentlyAdded", "title": "Recently Added"},
@@ -4920,6 +4936,9 @@ class PlexSim:
         """
         pivots = (self.SECTION_PIVOTS.get(section.get("type"))
                   or self.SECTION_PIVOTS["movie"])
+        pivots = [dict(row, title=row["title"].replace("{title}",
+                                                       str(section.get("title") or "")))
+                  if "{title}" in row.get("title", "") else row for row in pivots]
         fields = {"librarySectionID": int(section_id) if str(section_id).isdigit()
                   else section_id,
                   "Directory": [dict(p) for p in pivots]}
@@ -6086,7 +6105,14 @@ class PlexSim:
             "librarySectionTitle": section.get("title"),
             "librarySectionUUID": section.get("uuid"),
             "title1": section.get("title"),
-            "title2": "All " + str(section.get("title") or ""),
+            # Cycle 18, measured on kids ("Movies"/"TV Shows"), zen ("Zen Movies"/"Zen
+            # Shows"/"Bench TV") and in both places the string appears: a MOVIE library
+            # COMPOSES this from its own title -- zen answers "All Zen Movies" -- and a
+            # SHOW library answers the constant "All Shows" whatever it is called.
+            # plexsim composed for both, so a show library read "All Debrid TV" where a
+            # real server says "All Shows". Not localised: zen answers the same string
+            # in de and fr.
+            "title2": _all_title(section),
             "viewGroup": view_group or section.get("type"),
             # Matched against a real PMS movie section; the web client's
             # grid reads these alongside Meta.
