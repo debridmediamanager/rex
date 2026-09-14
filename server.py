@@ -6186,23 +6186,44 @@ class PlexSim:
                 if row.get("type") in ("show", "season") else []
             return sum(1 for leaf in leaves
                        if leaf.get("viewCount") or leaf.get("viewOffset"))
-        media = (row.get("Media") or [{}])[0]
+        # Cycle 19, measured on zen (1.42.2) and kids (1.43.4): a MEDIA column is read
+        # from the row's Media, and a row that has none -- a show, a season -- is read
+        # from its LEAVES, matching when ANY leaf matches. zen's show library answers
+        # `type=2&duration<=1200000` with 39 and `>=1200000` with 483 of the 505 shows
+        # that have a value: 522 between them, so the two OVERLAP and it cannot be a
+        # single column on the show row. `mediaSize` behaves the same way, and the
+        # resolution axis is the filter a client actually offers on a TV library.
+        # plexsim read `Media[0]` of the row itself, so every media filter on a show or
+        # season grid answered nothing at all.
+        media_rows = row.get("Media") or []
+        if not media_rows and row.get("type") in ("show", "season"):
+            media_rows = [m for leaf in self.catalog.leaves(row.get("ratingKey")) or []
+                          for m in (leaf.get("Media") or [])]
+        media = (media_rows or [{}])[0]
         parts = media.get("Part") or [{}]
+        if field == "duration":
+            # ...and `duration` is one of them: zen answers `duration=5700000` with 0
+            # rows although a movie's own `duration` column is exactly that, because the
+            # filter reads the MEDIA. On plexsim's own catalog the two are equal for a
+            # movie, so this only changes a show or a season -- but it is the column the
+            # reference reads, and saying so is the point.
+            return [m.get("duration") for m in media_rows] or row.get("duration")
         if field == "resolution":
             # Cycle 19: `resolution=` matches ANY of the row's Media, not the first.
             # Measured on zen's multi-version movies -- 4093 The Breadwinner carries a
             # `4k` and a `1080` and answers BOTH `resolution=4k` and `resolution=1080`;
             # 401 The Devil's Mouth answers `1080` and `720` the same way. plexsim read
             # `Media[0]`, so a row's second version was invisible to the filter.
-            return [m.get("videoResolution") for m in row.get("Media") or []]
+            return [m.get("videoResolution") for m in media_rows]
         if field in ("videoCodec", "audioCodec", "container"):
-            return media.get(field)
+            return [m.get(field) for m in media_rows]
         if field == "audioLayout":
-            return media.get("audioChannelLayout")
+            return [m.get("audioChannelLayout") for m in media_rows]
         if field == "mediaBitrate":
-            return media.get("bitrate")
+            return [m.get("bitrate") for m in media_rows] or None
         if field == "mediaSize":
-            return parts[0].get("size")
+            return [p.get("size") for m in media_rows
+                    for p in (m.get("Part") or [])] or None
         if field == "location":
             # "Folder Location" compares a section LOCATION ID, not a path:
             # measured, `?location=1` returns the whole of section 1 and

@@ -14890,6 +14890,51 @@ def main():
                               "_light" in str(get(base, "/library/sections/%s/all?type=1"
                                                   % movie_section)[1])))
 
+    # Cycle 19, measured on zen (1.42.2): a MEDIA column is read from the row's Media, and a
+    # row that has none -- a show, a season -- from its LEAVES, matching when ANY leaf does.
+    # zen's show library answers `type=2&duration<=1200000` with 39 and `>=1200000` with 483
+    # of its 505 shows that have a value, which overlap and so cannot be one column on the
+    # show row; `mediaSize` behaves the same. plexsim read `Media[0]` of the row itself, so
+    # every media filter on a show or season grid -- the Resolution control a TV library
+    # actually offers -- answered nothing.
+    leaves_c19v = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+    res_c19v = sorted({m_c19v.get("videoResolution") for l_c19v in leaves_c19v
+                       for m_c19v in (l_c19v.get("Media") or [])
+                       if m_c19v.get("videoResolution")})
+    dur_c19v = sorted(m_c19v.get("duration") for l_c19v in leaves_c19v
+                      for m_c19v in (l_c19v.get("Media") or []) if m_c19v.get("duration"))
+
+
+    def show_count_c19v(key_c19v):
+        body_c19v = get(base, "/library/sections/" + str(show_section) + "/all?type=2&" + key_c19v)[1]
+        return len(body_c19v.get("Metadata") or [])
+
+
+    shows_c19v = len(get(base, "/library/sections/%s/all?type=2" % show_section)[1].get("Metadata") or [])
+    check("a media filter on a show reads its leaves' Media",
+          bool(res_c19v) and bool(dur_c19v)
+          and show_count_c19v("resolution=" + res_c19v[0]) == shows_c19v
+          and show_count_c19v("duration%3E=" + quote(dur_c19v[0])) == shows_c19v
+          and show_count_c19v("duration%3C%3C=1") == 0,
+          "leaf resolutions %s durations %s ; resolution=%s -> %d of %d ; >=%s -> %d ; <<=1 -> %d"
+          % (res_c19v, dur_c19v[:3], res_c19v[0] if res_c19v else None,
+             show_count_c19v("resolution=" + res_c19v[0]) if res_c19v else -1, shows_c19v,
+             dur_c19v[0] if dur_c19v else None,
+             show_count_c19v("duration%3E=" + quote(dur_c19v[0])) if dur_c19v else -1,
+             show_count_c19v("duration%3C%3C=1")))
+    # ...and a movie still filters on its own Media, including a second version's.
+    movies_c19v = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    mres_c19v = sorted({m_c19v.get("videoResolution") for r_c19v in movies_c19v
+                        for m_c19v in (r_c19v.get("Media") or []) if m_c19v.get("videoResolution")})
+    check("and a movie still matches on any of its own Media",
+          bool(mres_c19v)
+          and len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
+                      % (movie_section, mres_c19v[0]))[1].get("Metadata") or []) > 0,
+          "resolutions %s -> %d rows" % (mres_c19v,
+                                         len(get(base, "/library/sections/%s/all?type=1&resolution=%s"
+                                                 % (movie_section, mres_c19v[0]))[1].get("Metadata") or [])
+                                         if mres_c19v else -1))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
