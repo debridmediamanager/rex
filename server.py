@@ -2432,7 +2432,14 @@ class PlexSim:
         # a header, and the one response that depends on it -- iOS types a show's "All
         # episodes" row -- has to see either.
         for name in ("X-Plex-Container-Start", "X-Plex-Container-Size", "X-Plex-Platform"):
-            if name not in query and headers.get(name) is not None:
+            # Cycle 16, measured on kids and zen: when BOTH are sent the
+            # HEADER wins, per parameter -- query `Start=0&Size=2` with
+            # header `Start=1&Size=1` answers offset 1 size 1, a header
+            # naming only the size takes the size from the header and the
+            # offset from the query, and a header `Start=abc` beside a
+            # valid query is a 500. plexsim only read a header the query
+            # had not named, so a client sending both got the query's page.
+            if headers.get(name) is not None:
                 query[name] = headers.get(name)
         segments = [s for s in route.split("/") if s]
 
@@ -10841,16 +10848,30 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Plex-Content-Compressed-Length", str(len(squeezed)))
         return squeezed
 
+    def _paging_headers(self, body):
+        """The window a paged container answers in its response HEADERS.
+
+        Cycle 16, measured on kids and zen: every container that pages carries
+        `X-Plex-Container-Start` and `X-Plex-Container-Total-Size` beside the body's
+        own `offset`/`totalSize` -- `/identity` answers Total-Size 0 -- and an unpaged
+        one carries neither. plexsim sent no such header at all.
+        """
+        if not isinstance(body, dict) or "offset" not in body or "totalSize" not in body:
+            return ()
+        return (("X-Plex-Container-Start", str(body["offset"])),
+                ("X-Plex-Container-Total-Size", str(body["totalSize"])))
+
     def _send_container(self, container):
         # `_xml` names the element a container's rows render as where the rows
         # cannot name it themselves (an artwork list is <Photo>, a folder list
         # <Directory>). It is internal: it must never reach the JSON body.
         body_dict = next(iter(container.values()))
         elements = body_dict.pop("_xml", None) if isinstance(body_dict, dict) else None
+        window = self._paging_headers(body_dict)
         if self._wants_xml():
-            self._send(200, "text/xml;charset=utf-8", to_xml(container, elements))
+            self._send(200, "text/xml;charset=utf-8", to_xml(container, elements), window)
         else:
-            self._send(200, "application/json", json_body(container))
+            self._send(200, "application/json", json_body(container), window)
 
     # -- verbs -----------------------------------------------------------
 
@@ -11240,7 +11261,14 @@ class Handler(BaseHTTPRequestHandler):
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
                                             keep_blank_values=True))
         for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
-            if name not in query and self.headers.get(name) is not None:
+            # Cycle 16, measured on kids and zen: when BOTH are sent the
+            # HEADER wins, per parameter -- query `Start=0&Size=2` with
+            # header `Start=1&Size=1` answers offset 1 size 1, a header
+            # naming only the size takes the size from the header and the
+            # offset from the query, and a header `Start=abc` beside a
+            # valid query is a 500. plexsim only read a header the query
+            # had not named, so a client sending both got the query's page.
+            if self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
         lists = [key for key, value in body.items() if isinstance(value, list)]
         # Measured on kids (1.43.4) and zen (1.42.2): a statistics container does NOT
