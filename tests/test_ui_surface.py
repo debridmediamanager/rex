@@ -12701,37 +12701,50 @@ def main():
     # a MOVIE loses the whole `Preferences` block, not merely its rows; a SEASON keeps
     # its three. plexsim left every setting in place, so the settings tab of an
     # unmatched item offered agent options that have no agent behind them.
-    seasons_c16a22 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
-                         % show)[1].get("Metadata") or []
-    season_c16a22 = seasons_c16a22[0]["ratingKey"]
-    before_c16a22 = {}
-    for label_c16a22, key_c16a22 in (("show", show), ("movie", movie),
-                                     ("season", season_c16a22)):
+    #
+    # Asserted as the RULE rather than as a transition: by this point in the suite the
+    # fixture movie and its show have already been unmatched by earlier checks, so a
+    # before/after pair here measures nothing. Every row is classified by its own guid.
+    def prefs_of_c16a22(key_c16a22):
         row_c16a22 = get(base, "/library/metadata/%s?includePreferences=1"
                          % key_c16a22)[1]["Metadata"][0]
-        before_c16a22[label_c16a22] = [s_c16a22["id"] for s_c16a22 in
-                                       (row_c16a22.get("Preferences") or {}).get("Setting") or []]
-    for key_c16a22 in (show, movie, season_c16a22):
-        request(base, "PUT", "/library/metadata/%s/unmatch" % key_c16a22)
-    after_c16a22 = {}
-    for label_c16a22, key_c16a22 in (("show", show), ("movie", movie),
-                                     ("season", season_c16a22)):
-        row_c16a22 = get(base, "/library/metadata/%s?includePreferences=1"
-                         % key_c16a22)[1]["Metadata"][0]
-        after_c16a22[label_c16a22] = (
-            [s_c16a22["id"] for s_c16a22 in
-             (row_c16a22.get("Preferences") or {}).get("Setting") or []],
-            "Preferences" in row_c16a22)
+        return (str(row_c16a22.get("guid") or ""),
+                [s_c16a22["id"] for s_c16a22 in
+                 (row_c16a22.get("Preferences") or {}).get("Setting") or []],
+                "Preferences" in row_c16a22)
+
+    # On a freshly started server nothing is unmatched yet, so the check makes the
+    # state it needs; in the suite's own run `movie` and its show are already unmatched
+    # by earlier checks and this is a no-op. `movie` is deleted by the check that
+    # follows, so nothing later is starved of it.
+    if all(str(get(base, "/library/metadata/%s" % r_c16a22["ratingKey"])[1]["Metadata"][0]
+                   .get("guid") or "").startswith("plex://")
+           for r_c16a22 in get(base, "/library/sections/%s/all" % movie_section)[1]
+           .get("Metadata") or []):
+        request(base, "PUT", "/library/metadata/%s/unmatch" % movie)
+    seen_c16a22 = []
+    for row_c16a22 in get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []:
+        seen_c16a22.append(("movie",) + prefs_of_c16a22(row_c16a22["ratingKey"]))
+    for row_c16a22 in get(base, "/library/sections/%s/all?type=2" % show_section)[1].get("Metadata") or []:
+        seen_c16a22.append(("show",) + prefs_of_c16a22(row_c16a22["ratingKey"]))
+    unmatched_c16a22 = [r_c16a22 for r_c16a22 in seen_c16a22
+                        if not r_c16a22[1].startswith("plex://")]
+    matched_c16a22 = [r_c16a22 for r_c16a22 in seen_c16a22
+                      if r_c16a22[1].startswith("plex://")]
+    agent_c16a22 = {"languageOverride", "useOriginalTitle"}
     check("an unmatched item drops its agent-driven prefs",
-          set(before_c16a22["show"]) - set(after_c16a22["show"][0])
-          == {"languageOverride", "useOriginalTitle"}
-          and after_c16a22["movie"] == ([], False)
-          and after_c16a22["season"][0] == before_c16a22["season"],
-          "show %d->%d (%s) movie %d->%s season %d->%d"
-          % (len(before_c16a22["show"]), len(after_c16a22["show"][0]),
-             sorted(set(before_c16a22["show"]) - set(after_c16a22["show"][0])),
-             len(before_c16a22["movie"]), after_c16a22["movie"],
-             len(before_c16a22["season"]), len(after_c16a22["season"][0])))
+          bool(unmatched_c16a22)
+          and all(not carries_c16a22 for kind_c16a22, _, _, carries_c16a22
+                  in unmatched_c16a22 if kind_c16a22 == "movie")
+          and all(not (agent_c16a22 & set(names_c16a22))
+                  for kind_c16a22, _, names_c16a22, _ in unmatched_c16a22
+                  if kind_c16a22 == "show")
+          and all(agent_c16a22 <= set(names_c16a22)
+                  for kind_c16a22, _, names_c16a22, _ in matched_c16a22),
+          "unmatched=%s matched=%s"
+          % ([(k_c16a22, len(n_c16a22), c_c16a22)
+              for k_c16a22, _, n_c16a22, c_c16a22 in unmatched_c16a22],
+             [(k_c16a22, len(n_c16a22)) for k_c16a22, _, n_c16a22, _ in matched_c16a22]))
 
 
     # Cycle 16, measured on plexscratch twice over: on the SECTION save path the
