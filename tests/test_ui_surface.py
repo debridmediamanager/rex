@@ -11560,6 +11560,45 @@ def main():
              len(bucket_c16g[1].get("Metadata") or []),
              len(filtered_c16g.get("Metadata") or [])))
 
+
+    # Cycle 16, measured on kids (1.43.4) and zen (1.42.2), every status and both
+    # formats: a real PMS NAMES its connection state on every response. With
+    # `Connection: keep-alive` (or HTTP/1.1 and no Connection header) it answers
+    # `Connection: Keep-Alive` and `Keep-Alive: timeout=20`; with `Connection: close`
+    # or HTTP/1.0 it answers `Connection: close` and no Keep-Alive. plexsim sent
+    # neither header on any response, so a client that reads the timeout to schedule
+    # reuse got nothing -- and an abandoned keep-alive socket pinned a thread for the
+    # life of the process, because nothing closed an idle connection either.
+    # urllib always sends `Connection: close`, so this one speaks HTTP itself.
+    import socket as socket_c16h
+
+    def envelope_c16h(want_c16h):
+        sock_c16h = socket_c16h.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), timeout=20)
+        sock_c16h.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\nConnection: %s\r\n"
+                           "Accept: application/json\r\n\r\n" % want_c16h).encode())
+        seen_c16h = b""
+        while b"\r\n\r\n" not in seen_c16h:
+            chunk_c16h = sock_c16h.recv(4096)
+            if not chunk_c16h:
+                break
+            seen_c16h += chunk_c16h
+        sock_c16h.close()
+        lines_c16h = seen_c16h.split(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        found_c16h = {}
+        for line_c16h in lines_c16h[1:]:
+            if ":" in line_c16h:
+                name_c16h, _, value_c16h = line_c16h.partition(":")
+                found_c16h[name_c16h.strip().lower()] = value_c16h.strip()
+        return found_c16h.get("connection"), found_c16h.get("keep-alive")
+
+    conn_c16h = {want_c16h: envelope_c16h(want_c16h)
+                 for want_c16h in ("keep-alive", "close")}
+    check("every response names its connection state",
+          conn_c16h == {"keep-alive": ("Keep-Alive", "timeout=20"),
+                        "close": ("close", None)},
+          "%s" % conn_c16h)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
