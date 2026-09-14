@@ -7782,8 +7782,11 @@ def main():
     # Measured on kids (1.43.4) and zen (1.42.2): `id` filters every listing although
     # no Meta advertises it -- /query/parse echoes it as a Rule with an EMPTY
     # fieldTitle. `=` is exact, `!=` excludes, a comma list is an OR, `>>`/`<<`/`>=`/`<=`
-    # compare numerically, and `==`/`!==` -- the exact-string pair -- never match a
-    # number. A value that is not a number sorts above every id: `id=abc` matches
+    # compare numerically. Cycle 20 overturned the `==`/`!==` half: measured on both
+    # references over two libraries and two row types, against a NUMBER they compare
+    # like `=`/`!=` -- cycle 11 measured them against a value that was not one, where
+    # they really do match nothing, and recorded that as the whole rule. A value that
+    # is not a number sorts above every id: `id=abc` matches
     # nothing and `id!=abc` everything. plexsim reported it as an unknown field, so
     # python-plexapi's editions() (`guid=<x>&id!=<self>`) called every item its own
     # duplicate.
@@ -7796,8 +7799,11 @@ def main():
           ids_c11e("id=%s" % first_c11e) == (200, [first_c11e])
           and ids_c11e("id%%21=%s" % first_c11e) == (200, [k for k in every_c11e if k != first_c11e])
           and ids_c11e("id=%s" % ",".join(every_c11e[:2])) == (200, every_c11e[:2])
-          and ids_c11e("id%%3D=%s" % first_c11e) == (200, [])
-          and ids_c11e("id%%21%%3D=%s" % first_c11e) == (200, every_c11e)
+          and ids_c11e("id%%3D=%s" % first_c11e) == (200, [first_c11e])
+          and ids_c11e("id%%21%%3D=%s" % first_c11e)
+          == (200, [k for k in every_c11e if k != first_c11e])
+          and ids_c11e("id%%3D=abc") == (200, [])
+          and ids_c11e("id%%21%%3D=abc") == (200, every_c11e)
           and ids_c11e("id%%3E%%3E=%s" % first_c11e)[1] == [k for k in every_c11e if int(k) > int(first_c11e)]
           and ids_c11e("id%%3C%%3C=%s" % first_c11e) == (200, [])
           and ids_c11e("id=abc") == (200, []) and ids_c11e("id%%21=abc") == (200, every_c11e)
