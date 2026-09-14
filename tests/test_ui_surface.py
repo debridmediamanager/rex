@@ -14776,6 +14776,22 @@ def main():
                   for v_c19c in ("abc", "", "2", "true", "-1", "1.5", " 1", "1 ")),
           str(grammar_c19c))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): inside a `Meta` the `Type` rows
+    # come BEFORE the `FieldType` rows. plexsim sorted a Meta's children by the item table,
+    # which knows neither name, so they came out in dict order -- FieldType first. XML is
+    # the DEFAULT response format, so this is the shape a TV or mobile client reads.
+    status_c19o, raw_c19o, _ = request(
+        base, "GET", "/library/sections/%s/all?type=1&includeMeta=1&X-Plex-Container-Size=1"
+        % movie_section, want_json=False)
+    text_c19o = raw_c19o.decode("utf-8", "replace")
+    inside_c19o = text_c19o.split("<Meta", 1)[-1].split("</Meta>", 1)[0]
+    order_c19o = [m_c19o for m_c19o in __import__("re").findall(r"<(Type|FieldType)\b", inside_c19o)]
+    check("a Meta's Type rows come before its FieldType rows",
+          status_c19o == 200 and bool(order_c19o)
+          and order_c19o == sorted(order_c19o, key=lambda n_c19o: 0 if n_c19o == "Type" else 1)
+          and "Type" in order_c19o and "FieldType" in order_c19o,
+          str(order_c19o[:12]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
