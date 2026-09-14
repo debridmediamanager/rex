@@ -11859,6 +11859,30 @@ def main():
           % (sorted(detail_sorts_c16s[0]) if detail_sorts_c16s else None,
              sorted(meta_sorts_c16s[0]) if meta_sorts_c16s else None))
 
+
+    # Cycle 16, measured on kids and zen: the rows inlined by `includeChildren=1` carry
+    # NO `librarySectionID`, `librarySectionKey` or `librarySectionTitle` -- and
+    # neither do the same rows fetched through `/children`, which is where plexsim
+    # already had it right. The inline block was built from the FULL row instead of the
+    # child projection, so it alone carried the triple, and a client reading the
+    # inlined season rows saw a shape no real PMS sends.
+    inline_c16t = get(base, "/library/metadata/%s?includeChildren=1" % show)[1]
+    rows_c16t = ((inline_c16t.get("Metadata") or [{}])[0].get("Children")
+                 or {}).get("Metadata") or []
+    standalone_c16t = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                          % show)[1].get("Metadata") or []
+    check("the rows includeChildren inlines carry no librarySection triple",
+          bool(rows_c16t) and bool(standalone_c16t)
+          and not any(key_c16t.startswith("librarySection")
+                      for row_c16t in rows_c16t for key_c16t in row_c16t)
+          and not any(key_c16t.startswith("librarySection")
+                      for row_c16t in standalone_c16t for key_c16t in row_c16t),
+          "inline=%s standalone=%s"
+          % (sorted(k_c16t for k_c16t in (rows_c16t[0] if rows_c16t else {})
+                    if k_c16t.startswith("librarySection")),
+             sorted(k_c16t for k_c16t in (standalone_c16t[0] if standalone_c16t else {})
+                    if k_c16t.startswith("librarySection"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
