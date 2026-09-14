@@ -622,8 +622,17 @@ class Library:
             # `studio=` is applied). So which it means depends on the path.
             items = [(k, v) for k, v in items
                      if k.endswith((".value", ".locked")) or ".tag.tag" in k]
-        if not items:
+        if not items or (not section and not self._recognised(items)):
             # Measured: a PUT with no parameters at all is a 400.
+            #
+            # Cycle 17, measured on plexscratch: on the ITEM path the 400 means "this
+            # request edits NOTHING", not "an unknown field". With a real edit beside
+            # it the reference ignores every name it does not recognise -- an unknown
+            # `.value`, a bare unknown name, an unknown TAG type and an option like
+            # `flattenSeasons=1` all answer 200 and the edit lands -- while each of
+            # them ALONE is a 400. The recorded rule was measured with the unknown
+            # name alone, which is failure class A: a client appends its own options
+            # to the save, and plexsim refused 34 of the 71 names swept.
             raise EditError(400, "bad request")
 
         # Cycle 17, measured on plexscratch: a save a real PMS REFUSES writes
@@ -656,6 +665,8 @@ class Library:
             if ".tag.tag-" in name:
                 tag_type = name.split("[", 1)[0].lower()
                 if tag_type not in TAG_KEYS:
+                    if not section:
+                        continue
                     raise EditError(400, "unknown tag field %r" % tag_type)
                 # The client double-encodes the list: each name is quoted, then the
                 # comma-joined list is quoted again (`Label%2520A%2CLabel%2520B`).
@@ -670,6 +681,8 @@ class Library:
             elif ".tag.tag" in name:
                 tag_type = name.split("[", 1)[0].lower()
                 if tag_type not in TAG_KEYS:
+                    if not section:
+                        continue
                     raise EditError(400, "unknown tag field %r" % tag_type)
                 # Measured: the INDEX orders the list, not the parameter's position --
                 # `genre[1]=Second&genre[0]=First` is [First, Second].
@@ -681,6 +694,8 @@ class Library:
                 field = name[: -len(".locked")]
                 if field not in EDITABLE_FIELDS and field not in TAG_KEYS \
                         and field not in LOCK_ONLY_FIELDS:
+                    if not section:
+                        continue
                     raise EditError(400, "unknown field %r" % field)
                 if section:
                     # Measured: the section path PARSES the lock as an integer that must
@@ -706,6 +721,11 @@ class Library:
                     changed = True
                     continue
                 if field not in EDITABLE_FIELDS:
+                    # Cycle 17: on the ITEM path an unrecognised name is IGNORED when
+                    # the form edits something else. See `_recognised` for the whole
+                    # rule and what the recorded one was measured without.
+                    if not section:
+                        continue
                     raise EditError(400, "unknown field %r" % field)
                 self._set_field(row, field, value, section)
                 changed = True
@@ -761,6 +781,26 @@ class Library:
         if changed:
             row["updatedAt"] = _now()
         return changed
+
+    def _recognised(self, items):
+        """Does this form name anything the ITEM edit path can write?
+
+        Cycle 17: the item path's 400 is "nothing here is an edit". A name counts
+        when it is an editable field (with or without `.value`), a lock on one, a
+        known tag type, or one of the names the path accepts and discards.
+        """
+        for name, _ in items:
+            if ".tag.tag" in name or re.match(r"^actor\[\d*\]\.tagRole$", name):
+                if name.split("[", 1)[0].lower() in TAG_KEYS \
+                        or name.split("[", 1)[0].lower() in IGNORED_TAG_TYPES:
+                    return True
+                continue
+            field = name[: -len(".locked")] if name.endswith(".locked") else name
+            field = field[: -len(".value")] if field.endswith(".value") else field
+            if field in EDITABLE_FIELDS or field in TAG_KEYS \
+                    or field in LOCK_ONLY_FIELDS or field in IGNORED_VALUE_FIELDS:
+                return True
+        return False
 
     def _set_field(self, row, field, value, section=False):
         """One scalar field, with the coercions a real PMS applies."""
