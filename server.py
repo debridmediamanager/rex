@@ -11327,7 +11327,7 @@ class Handler(BaseHTTPRequestHandler):
         primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
         return primary or None
 
-    def _localise(self, node, language, attribute=None):
+    def _localise(self, node, language, attribute=None, in_row=False):
         """Translate the server's own text in a response -- measured, not guessed.
 
         Every string is looked up by the ATTRIBUTE it appears in and then by its
@@ -11336,14 +11336,23 @@ class Handler(BaseHTTPRequestHandler):
         `title2` and `Unplayed` stay English in every language on a real PMS too.
         """
         if isinstance(node, dict):
-            return {key: self._localise(value, language, key)
+            # A LIBRARY ROW is the one place the reference does not translate: its
+            # titles are the user's own content. The table holds plain words -- "Actor",
+            # "All", "Bitrate" -- as a filter's or a pivot's `title`, and a film really
+            # called "Actor" must keep its name. A row is recognised by carrying a
+            # `ratingKey`; inside one only a GENERATED `Season N`/`Episode N` is
+            # translated, which is the reference's own behaviour (an episode's
+            # `parentTitle` is the only `parentTitle` the capture ever saw change).
+            row = "ratingKey" in node
+            return {key: self._localise(value, language, key, row or in_row)
                     for key, value in node.items()}
         if isinstance(node, list):
-            return [self._localise(value, language, attribute) for value in node]
+            return [self._localise(value, language, attribute, in_row) for value in node]
         if isinstance(node, str) and attribute:
-            found = (TRANSLATIONS.get(attribute) or {}).get(node)
-            if found and language in found:
-                return found[language]
+            if not in_row:
+                found = (TRANSLATIONS.get(attribute) or {}).get(node)
+                if found and language in found:
+                    return found[language]
             # A GENERATED title carries a number: `Season 1` is in the table and
             # `Season 19` is not, so the word is taken from the numbered form the
             # reference did translate and the row's own number kept.
