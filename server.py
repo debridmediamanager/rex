@@ -9554,9 +9554,21 @@ class PlexSim:
                 self._parsed_type(query, 500, 500)
                 if str(query["type"]) != "15":
                     rows = []
-            rows, unsupported = self._sorted(rows, query.get("sort") or "")
-            if unsupported:
-                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            # Cycle 16, measured on plexscratch: `mediaCount` is a real ordering
+            # here -- by the number of items -- and it is the sixth sort this
+            # endpoint's own Meta advertises, as "Item Count". plexsim 500'd it
+            # alongside `leafCount`, which really is a 500 on both servers, so the
+            # sort menu's last entry answered an error page.
+            spec = query.get("sort") or ""
+            if spec.split(":")[0] == "mediaCount":
+                descending = spec.endswith(":desc")
+                rows = sorted(rows, key=lambda r: int(r.get("leafCount") or 0),
+                              reverse=descending)
+            else:
+                rows, unsupported = self._sorted(rows, spec)
+                if unsupported:
+                    return ("error", 500,
+                            "plexsim: unsupported sort key %s" % unsupported)
             answer = self.paged_container(rows, query)
             if query.get("includeMeta") == "1":
                 # Measured on both references, byte-identical: the playlist page's
@@ -9604,6 +9616,12 @@ class PlexSim:
 
         leaf = segments[2]
         if leaf == "items":
+            if method == "POST":
+                # Cycle 16, measured on plexscratch: a POST here is a plain 404 in
+                # every form -- with a uri, with an empty one, with none. Only PUT
+                # adds. plexsim answered the item listing with a 200, which reads to a
+                # client as "this endpoint exists and accepts writes".
+                return ("error", 404, "plexsim: not found")
             if len(segments) == 5 and segments[4] == "move" and method == "PUT":
                 if not self.library.move_playlist_item(playlist, segments[3],
                                                        query.get("after")):
