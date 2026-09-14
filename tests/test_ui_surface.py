@@ -13147,6 +13147,31 @@ def main():
           "sorts=%s firstCharacter=%s filters=%s"
           % (sorts_c17a3[:4], chars_c17a3, filters_c17a3[:3]))
 
+
+    # Cycle 17, measured on kids (1.43.4) and zen (1.42.2) over the bare path and every
+    # `mediaType=`: `tv.plex.agents.nfo.movie` and `tv.plex.agents.nfo.series` exist on
+    # 1.43.4 and on NOTHING on 1.42.2, which lists four modern agents where 1.43.4 lists
+    # six. `system_agents.json` was captured off kids, so plexsim -- which reports
+    # 1.42.2 -- offered the Add Library and Edit Library dialogs an agent a server of
+    # its version does not have; picking it is a scanner/agent pair a real 1.42.2 would
+    # refuse. Same family as this cycle's Meta Field split: a fixture captured off the
+    # wrong version. The three legacy `com.plexapp.agents.*` rows both references also
+    # list stay deliberately absent -- plexsim hosts no plug-in framework, and that is
+    # recorded in the fixture's own provenance.
+    def agents_c17d6(query_c17d6):
+        return [a_c17d6.get("identifier") for a_c17d6
+                in (get(base, "/system/agents%s" % query_c17d6)[1].get("Agent") or [])]
+    bare_c17d6 = agents_c17d6("")
+    movie_c17d6 = agents_c17d6("?mediaType=1")
+    show_c17d6 = agents_c17d6("?mediaType=2")
+    check("the NFO agents are 1.43.4's and not 1.42.2's",
+          not [a_c17d6 for a_c17d6 in bare_c17d6 if "nfo" in str(a_c17d6)]
+          and bare_c17d6 == ["tv.plex.agents.movie", "tv.plex.agents.series",
+                             "tv.plex.agents.music", "tv.plex.agents.none"]
+          and movie_c17d6 == ["tv.plex.agents.movie", "tv.plex.agents.none"]
+          and show_c17d6 == ["tv.plex.agents.series", "tv.plex.agents.none"],
+          "bare=%s movie=%s show=%s" % (bare_c17d6, movie_c17d6, show_c17d6))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
