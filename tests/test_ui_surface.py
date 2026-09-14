@@ -14207,6 +14207,31 @@ def main():
           "%s %s" % (get(base, "/hubs/home/recentlyAdded?unwatched=1")[0],
                      get(base, "/hubs/search?query=a&unwatched=1")[0]))
 
+    # Cycle 18, measured on kids and zen: `/system` PAGES -- `Start=1&Size=1` answers one
+    # row and `totalSize 2`, `Start=5` answers none -- where cycle 9 recorded that a
+    # `noHistory` container is left alone, a rule inferred from `/system/scanners/{N}`,
+    # which really does ignore paging. The paged form emits NO `offset`, alone on the
+    # surface, and in XML the plug-in framework's container is ordered
+    # `[totalSize,] noHistory, replaceParent, size, identifier`.
+    status, listing, _ = get(base, "/system?X-Plex-Container-Start=1&X-Plex-Container-Size=1")
+    check("/system pages", status == 200 and listing.get("size") == 1
+          and listing.get("totalSize") == 2 and "offset" not in listing,
+          "%s %s" % (status, listing))
+    status, listing, _ = get(base, "/system?X-Plex-Container-Start=5&X-Plex-Container-Size=1")
+    check("and answers nothing past the end",
+          status == 200 and listing.get("size") == 0 and listing.get("totalSize") == 2,
+          "%s %s" % (status, listing))
+    status, listing, _ = get(base, "/system/scanners/1?X-Plex-Container-Start=1"
+                             "&X-Plex-Container-Size=1")
+    check("while /system/scanners ignores paging entirely",
+          status == 200 and "totalSize" not in listing and listing.get("size") == 4,
+          "%s %s" % (status, listing.get("size")))
+    status, body, _ = request(base, "GET", "/system?X-Plex-Container-Start=1"
+                              "&X-Plex-Container-Size=1", want_json=False)
+    head = body.decode("utf8").split("<MediaContainer ", 1)[-1][:90]
+    check("and the plug-in container's XML leads with totalSize, noHistory, replaceParent",
+          head.startswith('totalSize="2" noHistory="0" replaceParent="0" size="1"'), head)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
