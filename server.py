@@ -6187,6 +6187,13 @@ class PlexSim:
             return self.item_action(row, leaf, method, query)
         if leaf == "matches":
             return self.matches(row, query)
+        if leaf == "art" and row.get("type") == "episode":
+            # Cycle 15, measured on kids, plexscratch AND zen (episode 11115 of a show
+            # that HAS artwork): an episode owns no background path at all, bare or
+            # versioned, while its `/thumb` and `/poster` are 200s and a SEASON's
+            # `/art` is a 200 on zen. The row ATTRIBUTE is untouched -- an episode's
+            # `art` names its season's, which is the URL a client actually builds.
+            return ("error", 404, "plexsim: not found")
         if leaf in ("poster", "art"):
             # The SINGULAR path is the write, and plexsim had it as the image read.
             # The client's own Change Poster / Change Background builds
@@ -6405,6 +6412,13 @@ class PlexSim:
             # placeholder where a grey 200 tile gets cached.
             owner = self.catalog.items.get(int(rating_key)) \
                 if str(rating_key).isdigit() else None
+            if leaf == "art" and (owner or {}).get("type") == "episode":
+                # Cycle 15, measured on kids, plexscratch AND zen (episode 11115 of a
+                # show that HAS artwork): an episode owns no background path at all,
+                # bare or versioned, while its `/thumb` and `/poster` are 200s and a
+                # SEASON's `/art` is a 200. The row attribute is untouched -- an
+                # episode's `art` names its season's, which is the URL a client builds.
+                return ("error", 404, "plexsim: not found")
             if owner is not None and owner.get("thumb" if leaf in ("thumb", "poster")
                                                else "art") is None:
                 return ("error", 404, "plexsim: not found")

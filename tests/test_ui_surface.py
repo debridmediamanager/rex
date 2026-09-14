@@ -10991,6 +10991,24 @@ def main():
           and "count" not in mine_c15u[0],
           "tag %s | collection guid %r" % (mine_c15u, tg_c15u.get("guid")))
 
+    # Cycle 15, measured on THREE servers -- kids (1.43.4), plexscratch and zen (1.42.2),
+    # the last on episode 11115 of a show that does have artwork: an episode's own
+    # `/library/metadata/{id}/art` path is a 404, bare and versioned. Its `/thumb` and
+    # `/poster` are 200s, and a SEASON's `/art` is a 200 on zen, so this belongs to the
+    # episode alone. The row ATTRIBUTE is not affected: an episode's `art` names its
+    # season's, exactly as plexsim's does, and that is the URL a client actually builds.
+    leaf_c15x = (get(base, "/library/metadata/%s/children"
+                     % (get(base, "/library/metadata/%s/children" % show)[1]
+                        .get("Metadata") or [{}])[0]["ratingKey"])[1]
+                 .get("Metadata") or [{}])[0]["ratingKey"]
+    arts_c15x = {name_c15x: request(base, "GET", "/library/metadata/%s/%s"
+                                    % (leaf_c15x, name_c15x))[0]
+                 for name_c15x in ("art", "art/1", "thumb", "poster")}
+    check("an episode has no art path of its own, and keeps its thumb and poster",
+          arts_c15x["art"] == 404 and arts_c15x["art/1"] == 404
+          and arts_c15x["thumb"] == 200 and arts_c15x["poster"] == 200,
+          str(arts_c15x))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
