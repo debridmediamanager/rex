@@ -2474,7 +2474,10 @@ class PlexSim:
             "language": section.get("language") or "en-US",
             "metadataAgentProviderGroupId": 2 if is_show else 1,
             "uuid": section.get("uuid"),
-            "updatedAt": newest,
+            # Cycle 17: a library PREFERENCE write stamps the section, and that stamp
+            # wins over the derived one -- measured on plexscratch, where writing a
+            # pref moves this field and leaves every other section's alone.
+            "updatedAt": section.get("updatedAt") or newest,
             "createdAt": newest,
             "scannedAt": newest,
             "contentChangedAt": len(rows),
@@ -4194,6 +4197,13 @@ class PlexSim:
                         # These two change the ROWS, not just the setting list,
                         # and a show whose own value is `-1` inherits them.
                         self.catalog.set_section_show_pref(section_id, name, value)
+                if writes:
+                    # Cycle 17, measured on plexscratch: the write moves the SECTION's
+                    # own `updatedAt` -- and nothing else's. Clients cache a library
+                    # keyed on that stamp, so on plexsim a settings change never
+                    # invalidated the cache. The write itself is unchanged: 200 with an
+                    # empty body and zero frames.
+                    section["updatedAt"] = int(time.time())
                 return ("empty", 200)
             if query.get("agent"):
                 # Measured: `?agent=` RESHAPES an existing library's list exactly as
