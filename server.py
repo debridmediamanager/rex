@@ -2510,7 +2510,13 @@ class PlexSim:
         entries = [piece for piece in str(stored or "").split("|")]
         generic = next((index for index, piece in enumerate(entries)
                         if "-" in piece.split(":", 1)[0]), len(entries))
-        return "|".join([":Account default"] + head + entries[generic:])
+        # Cycle 21, measured on kids and zen over four seasons: a SEASON inherits from
+        # its SHOW and its inherit option reads `:Series default`, where a show's reads
+        # `:Account default`. The captured fixture has it right for both row types and
+        # for `subtitleMode`; this rebuild hardcoded the account label, so a season's
+        # two language pickers named the wrong fallback.
+        inherit = ":Series default" if row.get("type") == "season" else ":Account default"
+        return "|".join([inherit] + head + entries[generic:])
 
     def apply_detail_options(self, row, detail, query):
         """The `include*` / `exclude*` / `checkFiles` effects, measured one by one.

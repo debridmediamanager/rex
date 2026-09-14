@@ -16329,6 +16329,36 @@ def main():
           % (len(re.findall(r"<Feature [^>]*/>", xml_c21c)),
              len(re.findall(r"<Feature [^>]*></Feature>", xml_c21c)),
              len(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c))))
+
+    c21_season = [r_c21.get("ratingKey") for r_c21 in
+                  (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                   .get("Metadata") or [])][0]
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2) over four seasons: the
+    # inherit option of a SEASON's `audioLanguage` and `subtitleLanguage` is
+    # `:Series default`, not `:Account default` -- a season inherits from its SHOW.
+    # `subtitleMode` already says `-1:Series default` in the captured fixture and
+    # plexsim had that one right; the two enum-valued language settings are rebuilt at
+    # read time (cycle 19's "led by the item's own streams") and the rebuild hardcoded
+    # the account label. A SHOW says `:Account default` on both references, which is
+    # what makes it the row type's rule rather than a constant.
+    _, season_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1"
+                                  % c21_season)
+    season_rows_c21d = (((season_prefs_c21d.get("Metadata") or [{}])[0]
+                         .get("Preferences") or {}).get("Setting") or [])
+    _, show_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
+    show_rows_c21d = (((show_prefs_c21d.get("Metadata") or [{}])[0]
+                       .get("Preferences") or {}).get("Setting") or [])
+    leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
+                  for s_c21d in season_rows_c21d}
+    show_leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
+                       for s_c21d in show_rows_c21d}
+    check("a season's language settings inherit from the series, not the account",
+          leads_c21d.get("audioLanguage") == ":Series default"
+          and leads_c21d.get("subtitleLanguage") == ":Series default"
+          and leads_c21d.get("subtitleMode") == "-1:Series default"
+          and show_leads_c21d.get("audioLanguage") == ":Account default",
+          "season %s | show %s" % (leads_c21d, show_leads_c21d))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
