@@ -4180,13 +4180,18 @@ class PlexSim:
                 for name, value in writes:
                     kind = known[name].get("type")
                     if kind == "int":
-                        # Measured: a value that is not an integer -- `abc`, `4.5`,
-                        # empty -- is IGNORED with a 200. `-1` and an out-of-enum `7`
-                        # are integers and are stored.
+                        # Cycle 17, re-measured on plexscratch by reading the value
+                        # back: a value that is not an integer -- `abc`, an empty
+                        # value, `1.5`, a space, `0x3` -- is stored as **0**, not
+                        # ignored. `007` stores 7 and `-1` and an out-of-enum `7` are
+                        # integers and are stored. The recorded rule ("ignored on a
+                        # library") was measured by watching the write answer 200
+                        # without reading the setting back, so clearing the field in
+                        # the Edit Library dialog kept the old number here.
                         try:
                             value = str(int(value))
                         except ValueError:
-                            continue
+                            value = "0"
                     elif kind == "bool":
                         # Measured: exactly `1` and `true` store "true"; `TRUE`,
                         # `yes`, `0` and an empty value all store "false".

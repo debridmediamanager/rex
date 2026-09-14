@@ -13483,6 +13483,33 @@ def main():
           % (before_c17b9.get(str(movie_section)), after_c17b9.get(str(movie_section)),
              other_c17b9))
 
+
+    # Cycle 17, re-measured on plexscratch: an INT library preference whose value does
+    # not parse is stored as **0**, not ignored. `abc`, an empty value, `1.5`, a space
+    # and `0x3` all read back as `0` where `007` reads back as `7`. This corrects the
+    # recorded rule -- "a bad int is a 500 on /:/prefs, IGNORED on a library" -- whose
+    # second half was measured by watching the write answer 200 without reading the
+    # value back. Clearing "Minimum automatic collection size" in the Edit Library
+    # dialog is exactly this request, and on plexsim it silently kept the old number.
+    def threshold_c17b10():
+        for s_c17b10 in (get(base, "/library/sections/%s/prefs"
+                             % movie_section)[1].get("Setting") or []):
+            if s_c17b10.get("id") == "autoCollectionThreshold":
+                return s_c17b10.get("value")
+        return None
+    read_c17b10 = {}
+    for value_c17b10 in ("abc", "", "1.5", "0x3", "007"):
+        request(base, "PUT", "/library/sections/%s/prefs?autoCollectionThreshold=7"
+                % movie_section)
+        request(base, "PUT", "/library/sections/%s/prefs?autoCollectionThreshold=%s"
+                % (movie_section, quote(value_c17b10)))
+        read_c17b10[value_c17b10] = threshold_c17b10()
+    check("an int library preference that does not parse is stored as 0",
+          read_c17b10["abc"] == "0" and read_c17b10[""] == "0"
+          and read_c17b10["1.5"] == "0" and read_c17b10["0x3"] == "0"
+          and read_c17b10["007"] == "7",
+          "%s" % read_c17b10)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
