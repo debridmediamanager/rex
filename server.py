@@ -11092,6 +11092,64 @@ class Handler(BaseHTTPRequestHandler):
     # WWW-Authenticate header.
     OPEN_PATHS = ("/identity", "/web")
 
+    # A GET that WRITES. An unauthenticated caller must never reach one, so the
+    # routing probe below refuses to run them and answers 401 -- which is what both
+    # references answer for these paths in any case, since they exist.
+    WRITE_SHAPED = re.compile(
+        r"/:/(scrobble|unscrobble|rate|progress|timeline)|/refresh|/analyze|/emptyTrash"
+        r"|/optimize|/clean|/match|/unmatch|/split|/merge|/actions/|/updater"
+        r"|/myplex/claim|/downloadQueue|/playQueues|/security/token|/sync|/diagnostics"
+        r"|/:/prefs\?|/servers/|/transcode/universal/|/video/:/transcode|[?&]url=")
+
+    UNAUTHORISED_BODY = (b"<html><head><title>Unauthorized</title></head><body>"
+                         b"<h1>401 Unauthorized</h1></body></html>")
+    # The root's refusal carries a script that walks a browser into the web client --
+    # 193 bytes, measured byte-for-byte on kids and zen.
+    UNAUTHORISED_ROOT = (b"<html><head><script>window.location = "
+                         b"window.location.href.match(/(^.+\\/)[^\\/]*$/)[1] + "
+                         b"'web/index.html';</script><title>Unauthorized</title></head>"
+                         b"<body><h1>401 Unauthorized</h1></body></html>")
+    FORBIDDEN_BODY = (b"<html><head><title>Forbidden</title></head><body>"
+                      b"<h1>403 Forbidden</h1></body></html>")
+
+    # Cycle 16, measured path by path on kids AND zen, which agree exactly: of the
+    # single-segment paths, only these eleven answer 401 without a token. Every other
+    # one -- `/statistics`, `/updater`, `/status`, `/system`, `/photo`, `/video`,
+    # `/media`, `/transcode`, `/services`, `/myplex`, `/livetv`, `/resources`,
+    # `/setting`, `/channels`, `/prefs`, `/nearest`, `/diagnostics`, `/websockets`,
+    # and anything unrouted -- is a 403, whether or not the server answers it when a
+    # token IS given (`/channels` is a real two-row Directory with one). It is not a
+    # rule about the plug-in framework, and not about whether the path exists: it is
+    # this list.
+    UNAUTHORISED_401_ROOTS = ("library", "hubs", "playlists", "devices", "butler",
+                              "servers", "clients", "accounts", "activities",
+                              "playQueues", "log")
+
+    def _unauthorised(self, method):
+        """(status, body) for a request that carries no usable token -- measured.
+
+        Routing comes first: a path that does not exist is a 404 even unauthenticated,
+        a single segment outside the list above is a 403, the root is a 401 carrying
+        the web client's redirect, and everything else that exists is the plain 401.
+        """
+        route = urllib.parse.urlsplit(self.path).path
+        if route in ("", "/"):
+            return 401, self.UNAUTHORISED_ROOT
+        segments = [piece for piece in route.split("/") if piece]
+        if len(segments) == 1 and segments[0] not in self.UNAUTHORISED_401_ROOTS:
+            return 403, self.FORBIDDEN_BODY
+        if method in ("GET", "HEAD") and not self.WRITE_SHAPED.search(self.path):
+            # The routing probe runs the dispatcher, which is why it is limited to GET
+            # and HEAD and to paths that cannot write.
+            try:
+                probe = self.server.sim.handle(method, self.path, b"", self.headers,
+                                               None)
+            except Exception:
+                probe = None
+            if isinstance(probe, tuple) and probe[:2] == ("error", 404):
+                return 404, b"plexsim: not found"
+        return 401, self.UNAUTHORISED_BODY
+
     def _authorised(self, path):
         """Whether this request carries the server's token, if one is required."""
         wanted = self.server.sim.token
@@ -11100,7 +11158,7 @@ class Handler(BaseHTTPRequestHandler):
         route = urllib.parse.urlparse(path)
         if route.path == "/identity" or route.path.startswith("/web"):
             return True
-        if route.path == "/security/token":
+        if route.path in ("/security", "/security/token"):
             # Measured: this one is NOT a 401 -- it answers its own 400 with no
             # parameters and 403 with a token that is not good enough, which is how
             # a client tells "you did not ask properly" from "you may not have one".
@@ -11219,12 +11277,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if not self._authorised(self.path):
-            # Byte-for-byte the reference's refusal: the HTML shell, text/html,
-            # no-cache, and `Connection: close`.
-            logger.warning("401 %s %s -- no valid token", method, self.path.split("?")[0])
-            self._send(401, "text/html",
-                       b"<html><head><title>Unauthorized</title></head><body>"
-                       b"<h1>401 Unauthorized</h1></body></html>",
+            # Cycle 16, measured on kids and zen with no token at all: a real PMS
+            # ROUTES before it authenticates. A path that does not exist is a 404 even
+            # unauthenticated -- `/no/such/path`, an unknown ratingKey, an unknown
+            # section -- and only a path that DOES exist answers 401. The legacy
+            # single-segment plug-in dispatcher is a 403 with its own body, and `GET /`
+            # is a 401 whose body carries the script that walks a browser into the web
+            # client. plexsim answered one generic 401 to all of them.
+            #
+            # The routing probe runs the dispatcher, so it is limited to GET and HEAD
+            # and to paths that cannot write: several PMS GETs mutate, and an
+            # unauthenticated caller must not reach one. Those answer 401 directly,
+            # which is what both references answer for them anyway -- they exist.
+            refusal, body = self._unauthorised(method)
+            logger.warning("%d %s %s -- no valid token", refusal, method,
+                           self.path.split("?")[0])
+            self._send(refusal, "text/plain" if refusal == 404 else "text/html", body,
                        extra_headers=[("Connection", "close")])
             return
 
