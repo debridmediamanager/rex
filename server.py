@@ -2026,8 +2026,14 @@ class PlexSim:
             # the same list again from /children.
             children = self.catalog.children(row["ratingKey"])
             if children:
-                detail["Children"] = {"size": len(children),
-                                      "Metadata": [_full(c) for c in children]}
+                # Cycle 16, measured on kids and zen: an INLINED child row
+                # carries no `librarySectionID`, `librarySectionKey` or
+                # `librarySectionTitle`, where the same row fetched through
+                # `/children` carries all three. plexsim kept them on both.
+                inlined = [{key: value for key, value in _full(child).items()
+                            if not key.startswith("librarySection")}
+                           for child in children]
+                detail["Children"] = {"size": len(inlined), "Metadata": inlined}
         if query.get("includeRelated") == "1":
             # Measured on the reference: the item's related hubs as
             # `{"Hub": [...]}`, and an empty OBJECT -- not an absent block -- for an
