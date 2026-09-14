@@ -3394,8 +3394,21 @@ class PlexSim:
             # Measured on both servers: these rows are the light projection (text
             # tags, no Guid, no Rating), and each names its section by ID, title and
             # UUID -- not by key -- and carries `allowSync`.
+            # Cycle 18, measured on kids (1.43.4) and zen (1.42.2): `limit=` on THIS
+            # path really caps, and it rewrites `totalSize` with it so a client cannot
+            # page past the cap -- `limit=2` answers `size 2 / totalSize 2` where the
+            # bare path answers 7 and 50. Its grammar is not the section listing's:
+            # `limit=0` answers ZERO rows here (a section listing answers one), a
+            # NEGATIVE one lifts the 50-row cap instead of meaning "every row", and an
+            # unparseable one (`abc`, `1.5`, empty) is IGNORED where a section listing
+            # is a 500. plexsim ignored the parameter entirely.
+            cap = 50
+            raw = str(query.get("limit") or "")
+            if raw.lstrip("-").isdigit():
+                cap = None if int(raw) < 0 else int(raw)
+            dated = dated[:cap] if cap is not None else dated
             rows = []
-            for added, row in dated[:50]:
+            for added, row in dated:
                 entry = _grid_row(_listing_row(row))
                 if row.get("type") == "season":
                     # Measured on both servers: a SEASON row here -- and nowhere else on
