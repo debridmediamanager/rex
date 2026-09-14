@@ -10354,6 +10354,30 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self._dispatch("DELETE")
 
+    def do_PATCH(self):
+        # Cycle 15, measured on the copy across nine paths: `PATCH` is ROUTED, not
+        # refused -- `/identity`, `/hubs` and `/playlists` answer 200 to it (the
+        # recorded "these answer any verb" rule) and every other path 404s it. The
+        # hunt that reported this read it as a blanket 404; nine paths say otherwise.
+        self._dispatch("PATCH")
+
+    # Python's BaseHTTPRequestHandler answers 501 with its own error page and a
+    # `Server:` banner for any method it has no `do_` for. A real PMS answers a
+    # **500** with its own four-line html body -- measured on the copy for `FROB`,
+    # `TRACE` and a wrong-case `Get`, on every path. HANDOVER already records that a
+    # real PMS never answers 405; it never answers 501 either.
+    UNKNOWN_METHOD_BODY = (b"<html><head><title>Internal Server Error</title></head>"
+                           b"<body><h1>500 Internal Server Error</h1></body></html>")
+
+    def __getattr__(self, name):
+        # Only reached when normal lookup fails, so every real `do_*` above still wins.
+        if name.startswith("do_"):
+            return self._unknown_method
+        raise AttributeError(name)
+
+    def _unknown_method(self):
+        self._send(500, "text/html", self.UNKNOWN_METHOD_BODY)
+
     # What a real PMS allows on a preflight, measured. It ECHOES the requested
     # header list rather than publishing a fixed one, which is the only way to
     # be sure of not blocking a header a client legitimately sends: plexsim's
@@ -10369,6 +10393,14 @@ class Handler(BaseHTTPRequestHandler):
                              "content-type,range")
 
     def do_OPTIONS(self):
+        if not self.headers.get("Access-Control-Request-Method"):
+            # Cycle 15, measured on the copy: a BARE OPTIONS is routed like any other
+            # verb -- 200 on `/identity`, `/hubs` and `/playlists`, 404 everywhere
+            # else. Only a genuine preflight gets the CORS answer below. plexsim
+            # answered every OPTIONS with the preflight, so a probe of any path read
+            # as "this endpoint exists".
+            self._dispatch("OPTIONS")
+            return
         self.send_response(200)
         self.send_header("X-Plex-Protocol", "1.0")
         origin = self.headers.get("Origin")
@@ -10381,6 +10413,9 @@ class Handler(BaseHTTPRequestHandler):
                          self.headers.get("Access-Control-Request-Headers")
                          or self.CORS_FALLBACK_HEADERS)
         self.send_header("Access-Control-Max-Age", "1209600")
+        # Measured on the copy: the preflight response carries a Content-Type, and it
+        # is `text/plain`. plexsim sent none.
+        self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", "0")
         self.end_headers()
 
