@@ -12205,7 +12205,10 @@ class Handler(BaseHTTPRequestHandler):
     # POST with a 404, where `POST /library/sections/{id}/refresh` really is a 200.
     # plexsim ran the action on a POST, so a client that got the verb wrong re-matched
     # or re-analysed an item instead of being refused.
-    ITEM_ACTION_LEAVES = ("refresh", "analyze", "unmatch")
+    # Cycle 18 adds `split` and `merge`, measured on plexscratch: `POST` on either is
+    # a 404 there too, where plexsim PERFORMED the split on a POST and answered its
+    # merge validator's 400. The rule was landed for three of the five leaves.
+    ITEM_ACTION_LEAVES = ("refresh", "analyze", "unmatch", "split", "merge")
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `limit=` and `parent=` are
     # PARSED wherever a listing consumes them, and a value that is not a whole number is

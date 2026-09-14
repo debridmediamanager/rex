@@ -14331,6 +14331,16 @@ def main():
     check("while the comma list still edits both",
           status == 200 and after == "CommaChk", "%s %r" % (status, after))
 
+    # Cycle 18, measured on plexscratch: `POST /library/metadata/{id}/split` and `.../merge`
+    # are 404s, exactly as `/refresh`, `/analyze` and `/unmatch` are -- cycle 17 landed the
+    # rule for three of the five leaves. plexsim PERFORMED the split on a POST, which is a
+    # mutation a real PMS refuses to route at all.
+    for leaf in ("split", "merge", "refresh", "analyze", "unmatch"):
+        status, _, _ = request(base, "POST", "/library/metadata/%s/%s" % (movie, leaf))
+        check("POST on /%s is a 404" % leaf, status == 404, "%s" % status)
+    status, _, _ = request(base, "PUT", "/library/metadata/%s/merge" % movie)
+    check("while PUT /merge is still the no-ids 400", status == 400, "%s" % status)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
