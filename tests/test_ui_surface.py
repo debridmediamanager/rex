@@ -14296,6 +14296,24 @@ def main():
     check("the member listing still answers", status == 200 and listing.get("size"),
           "%s %s" % (status, listing.get("size")))
 
+    # Cycle 18, measured on plexscratch: `DELETE /library/metadata/{playlist}` is a 200 with
+    # an EMPTY body that deletes nothing, where `DELETE /playlists/{id}` on the same copy is
+    # a 204 that really removes the row -- so it is not the copy refusing a delete. plexsim
+    # answered the playlist row, a MediaContainer where a real PMS sends no body at all.
+    status, body, _ = request(base, "POST", "/playlists?type=video&title=DelChk&smart=0"
+                              "&uri=server://%s/com.plexapp.plugins.library"
+                              "/library/metadata/%s" % (machine, movie))
+    created = json.loads(body)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    status, body, _ = request(base, "DELETE", "/library/metadata/%s" % created)
+    check("the metadata alias answers an empty 200", status == 200 and not body,
+          "%s %r" % (status, body[:40]))
+    check("and the playlist is still there", get(base, "/playlists/%s" % created)[0] == 200,
+          "%s" % get(base, "/playlists/%s" % created)[0])
+    status, _, _ = request(base, "DELETE", "/playlists/%s" % created)
+    check("while the playlist path really deletes it",
+          status == 204 and get(base, "/playlists/%s" % created)[0] == 404,
+          "%s %s" % (status, get(base, "/playlists/%s" % created)[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

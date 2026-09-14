@@ -6598,6 +6598,14 @@ class PlexSim:
             return body
         if len(segments) != 3:
             return ("error", 404, "plexsim: not found")
+        if method == "DELETE" and playlist is not None and collection is None:
+            # Cycle 18, measured on plexscratch: `DELETE /library/metadata/{playlist}`
+            # answers 200 with an EMPTY body and deletes NOTHING -- the row is still
+            # there afterwards, while `DELETE /playlists/{id}` on the same copy is a 204
+            # that really removes it. plexsim answered the playlist ROW here, which is
+            # the shape CLAUDE.md's "a mutating endpoint answers 200 with an EMPTY body"
+            # is about, one path further on.
+            return ("empty", 200)
         if method == "PUT":
             target = collection if collection is not None else playlist
             title = query.get("title.value")
