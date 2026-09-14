@@ -1377,6 +1377,21 @@ def _restamped(row, stamp):
     return row if changed is None else changed
 
 
+def _escaped_pref(value):
+    """A text preference as a real PMS stores it.
+
+    Cycle 17, measured on plexscratch: `:` and `|` -- the two delimiters of an
+    `enumValues` string -- are stored percent-escaped in LOWERCASE hex, and a value
+    carrying a `%` of its own is stored EMPTY. Every other character round-trips, `/`
+    and a space included. The server is protecting its own encoding; plexsim stored
+    all three verbatim.
+    """
+    text = str(value)
+    if "%" in text:
+        return ""
+    return text.replace(":", "%3a").replace("|", "%7c")
+
+
 def _image_type(body):
     """The content type of an uploaded image, from its magic bytes."""
     if body[:8] == b"\x89PNG\r\n\x1a\n":
@@ -4192,6 +4207,8 @@ class PlexSim:
                             value = str(int(value))
                         except ValueError:
                             value = "0"
+                    elif kind == "text":
+                        value = _escaped_pref(value)
                     elif kind == "bool":
                         # Measured: exactly `1` and `true` store "true"; `TRUE`,
                         # `yes`, `0` and an empty value all store "false".
