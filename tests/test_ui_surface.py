@@ -15165,6 +15165,38 @@ def main():
     else:
         skip("an episode's inherited contentRating is read at read time", "no show library")
 
+
+    # Cycle 21, measured on plexscratch three times with an idle-socket control (0 frames)
+    # between the runs: a SHOW library's `PUT /library/sections/{id}/analyze` pushes three
+    # frames per EPISODE LEAF -- `mediaState` analyzing, thumbnailing, none -- and no
+    # activity, exactly the item-analyze shape. Eighteen for its six episodes; the movie
+    # library's fifteen for five movies is the same rule. plexsim framed only rows whose
+    # own `type` is `movie`, so a show library's Analyze pushed NOTHING and every
+    # `!!mediaState` gate in the client stayed as it was.
+    if show_section:
+        leaves_c21m = [r_c21m.get("ratingKey") for r_c21m in
+                       get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                       .get("Metadata") or []]
+        _status_c21m, frames_c21m = notifications(
+            base, lambda: request(base, "PUT", "/library/sections/%s/analyze" % show_section),
+            seconds=8)
+        entries_c21m = [e_c21m for f_c21m in frames_c21m
+                        for e_c21m in ((f_c21m.get("NotificationContainer") or {})
+                                       .get("TimelineEntry") or [])]
+        states_c21m = {}
+        for e_c21m in entries_c21m:
+            states_c21m.setdefault(str(e_c21m.get("itemID")), []).append(e_c21m.get("mediaState"))
+        check("a show library's analyze frames every episode leaf three times",
+              len(leaves_c21m) > 0
+              and set(states_c21m) == {str(k_c21m) for k_c21m in leaves_c21m}
+              and all(v_c21m == ["analyzing", "thumbnailing", None]
+                      for v_c21m in states_c21m.values())
+              and not [f_c21m for f_c21m in frames_c21m
+                       if (f_c21m.get("NotificationContainer") or {}).get("type") == "activity"],
+              "%d frame(s) over %d leaf/leaves: %r"
+              % (len(entries_c21m), len(leaves_c21m), states_c21m))
+    else:
+        skip("a show library's analyze frames every episode leaf three times", "no show library")
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

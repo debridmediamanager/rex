@@ -4771,8 +4771,20 @@ class PlexSim:
                 # each movie in title order, a state-5 frame with `mediaState:
                 # analyzing`, one with `thumbnailing`, and a plain state 5. plexsim
                 # pushed nothing.
-                movies = [r for r in self.catalog.section_items(section_id) if r.get("type") == "movie"]
-                for row in sorted(movies, key=self._sort_key("titleSort")):
+                # Cycle 21, re-measured on plexscratch three times with an idle-socket
+                # control between the runs: it is the LEAVES that are framed, so a SHOW
+                # library pushes three frames per EPISODE -- eighteen for its six --
+                # exactly as the item-analyze path does and with no activity of its own.
+                # plexsim framed only rows whose own `type` is `movie`, so a show
+                # library's Analyze pushed nothing at all.
+                leaves = []
+                for row in sorted(self.catalog.section_items(section_id),
+                                  key=self._sort_key("titleSort")):
+                    if row.get("type") in ("season", "episode"):
+                        continue
+                    leaves += (self.catalog.leaves(row["ratingKey"])
+                               if row.get("type") in ("show", "season") else [row])
+                for row in leaves:
                     for media_state in ("analyzing", "thumbnailing", None):
                         self.notify_timeline(row, self.TIMELINE_DONE, None, media_state=media_state)
             logger.info("SECTION %s %s -- nothing to %s, plexsim owns no files",
