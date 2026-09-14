@@ -6295,6 +6295,17 @@ class PlexSim:
             # newline rather than returned as a list, because a LIST routes through the
             # tag-style set membership and would compare whole paths for equality; a
             # newline cannot occur inside a path, so no match can span the join.
+            if row.get("type") == "show":
+                # Cycle 20, measured on kids and zen: `file=` is a 500 on a SHOW
+                # listing -- the only media column that refuses rather than answering
+                # -- while a SEASON listing reads the leaves like every other media
+                # column and answers every season.
+                raise filters_module.FilterError(500, "cannot filter a show on file")
+            if not row.get("Media") and row.get("type") == "season":
+                return chr(10).join(part.get("file") or ""
+                                    for leaf in self.catalog.leaves(row.get("ratingKey")) or []
+                                    for media in leaf.get("Media") or []
+                                    for part in media.get("Part") or [])
             return chr(10).join(part.get("file") or ""
                               for media in row.get("Media") or []
                               for part in media.get("Part") or [])
