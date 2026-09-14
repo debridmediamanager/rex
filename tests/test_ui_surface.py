@@ -14792,6 +14792,59 @@ def main():
           and "Type" in order_c19o and "FieldType" in order_c19o,
           str(order_c19o[:12]))
 
+    # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), which agree on every sequence:
+    # five element buckets plexsim had no `_ATTR_ORDER` entry for (`Common`, `Feature`,
+    # `Type`, the `/media/providers` library `Directory`, and `count`/`hubKey` inside
+    # `Directory[none]`), plus the rows of `/library/recentlyAdded` and `/library/onDeck`,
+    # which LEAD with `allowSync` and the librarySection triple before `ratingKey` where
+    # every other row carries them in the middle. XML is the DEFAULT response format, so
+    # this is the document a TV or mobile client actually parses.
+    import re as re_c19a
+
+
+    def attr_seq_c19a(path_c19a, element_c19a):
+        _s_c19a, raw_c19a, _h_c19a = request(base, "GET", path_c19a, want_json=False)
+        tags_c19a = re_c19a.findall("<%s\\b[^>]*>" % element_c19a,
+                                    raw_c19a.decode("utf-8", "replace"))
+        return [re_c19a.findall(r'([A-Za-z0-9_:]+)="', t_c19a) for t_c19a in tags_c19a]
+
+
+    common_c19a = attr_seq_c19a("/library/sections/%s/common?type=1&id=%s"
+                                % (movie_section, movie), "Common")
+    types_c19a = attr_seq_c19a("/library/sections/%s/all?type=1&includeMeta=1"
+                               "&X-Plex-Container-Size=1" % movie_section, "Type")
+    feature_c19a = [s_c19a for s_c19a in attr_seq_c19a("/media/providers", "Feature")
+                    if "scrobbleKey" in s_c19a]
+    provider_c19a = [s_c19a for s_c19a in attr_seq_c19a("/media/providers", "Directory")
+                     if "agent" in s_c19a]
+    root_c19a = attr_seq_c19a("/", "Directory")
+    recent_c19a = attr_seq_c19a("/library/recentlyAdded?X-Plex-Container-Size=1", "Video")
+
+
+    def leads_c19a(seq_c19a, wanted_c19a):
+        return seq_c19a[:len(wanted_c19a)] == wanted_c19a
+
+
+    check("five more XML attribute-order buckets follow the reference",
+          bool(common_c19a) and common_c19a[0][:4] == ["mixedFields", "ratingKey", "key", "guid"]
+          and bool(types_c19a) and types_c19a[0][:4] == ["key", "type", "title", "active"]
+          and bool(feature_c19a)
+          and feature_c19a[0] == ["scrobbleKey", "unscrobbleKey", "key", "type"]
+          and bool(provider_c19a)
+          and provider_c19a[0][:6] == ["agent", "language", "refreshing", "scanner", "uuid", "id"]
+          and bool(root_c19a) and root_c19a[0][:3] == ["count", "key", "title"],
+          "Common %s ; Type %s ; Feature %s ; provider %s ; root %s"
+          % (common_c19a[0][:5] if common_c19a else None,
+             types_c19a[0][:4] if types_c19a else None,
+             feature_c19a[0] if feature_c19a else None,
+             provider_c19a[0][:6] if provider_c19a else None,
+             root_c19a[0][:3] if root_c19a else None))
+    check("a recentlyAdded row leads with allowSync and the librarySection triple",
+          bool(recent_c19a) and leads_c19a(recent_c19a[0],
+                                           ["allowSync", "librarySectionID",
+                                            "librarySectionTitle", "librarySectionUUID"]),
+          str(recent_c19a[0][:6] if recent_c19a else None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
