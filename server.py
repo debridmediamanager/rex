@@ -9781,7 +9781,8 @@ class PlexSim:
             rows.append(item)
         return rows
 
-    def _keyed_row(self, query, validate=None):
+    def _keyed_row(self, query, validate=None, numeric_key=False, any_key=False,
+                   validate_first=False, empty_key_ok=False):
         """The row a `key=` parameter names, or the refusal a real PMS answers.
 
         Measured on every one of these state writes: a MISSING key is a 400 and a
@@ -9794,16 +9795,41 @@ class PlexSim:
         an unknown key a 404. plexsim never read the identifier.
         """
         raw = query.get("key")
-        if raw is None or raw == "":
+        if raw is None:
+            return None, ("error", 400, "plexsim: bad request")
+        # Cycle 21, measured on plexscratch: an EMPTY key is a 400 on scrobble,
+        # unscrobble and progress, and a 500 on `/:/rate` alone -- it has no such check
+        # and falls through to the int parse below.
+        if raw == "" and not empty_key_ok:
             return None, ("error", 400, "plexsim: bad request")
         if not query.get("identifier"):
             return None, ("error", 400, "plexsim: bad request")
-        refusal = validate() if validate is not None else None
-        if refusal:
-            return None, refusal
-        key = str(raw).rsplit("/", 1)[-1]
-        row = self.library.state_row(int(key)) if key.isdigit() else None
-        if row is None or query.get("identifier") != "com.plexapp.plugins.library":
+        # `rate` validates its `rating` before the identifier; `progress` validates the
+        # identifier before its `time`. Measured both ways round on plexscratch.
+        if validate is not None and validate_first:
+            refusal = validate()
+            if refusal:
+                return None, refusal
+        if query.get("identifier") != "com.plexapp.plugins.library":
+            return None, ("error", 404, "plexsim: no such item")
+        if validate is not None and not validate_first:
+            refusal = validate()
+            if refusal:
+                return None, refusal
+        # Cycle 21, measured on plexscratch over eight key shapes: the key is a BARE
+        # ratingKey. The path form -- `/library/metadata/17`, which the client builds
+        # for `/:/timeline` -- is a 404 on scrobble and unscrobble and a 500 on rate
+        # and progress, where plexsim took the last path segment and accepted it. The
+        # accepted spelling is an optional sign then digits: `+17` and `017` parse and
+        # a leading space does not.
+        key = str(raw)
+        parsed = re.fullmatch(r"[+-]?\d+", key)
+        if numeric_key and parsed is None:
+            # `rate` and `progress` int-parse the key and answer 500 when it will not,
+            # the empty value included; scrobble and unscrobble just look it up.
+            return None, ("error", 500, "plexsim: bad key")
+        row = self.library.state_row(int(key)) if parsed else None
+        if row is None and not any_key:
             return None, ("error", 404, "plexsim: no such item")
         return row, None
 
@@ -9820,12 +9846,17 @@ class PlexSim:
         # Measured on a writable copy of the reference: a missing or unparseable `time`
         # is a 500 here, where plexsim stored 0 and answered 200.
         row, refusal = self._keyed_row(query, validate=lambda: None if str(offset or "").isdigit()
-                                       else ("error", 500, "plexsim: bad time"))
+                                       else ("error", 500, "plexsim: bad time"),
+                                       numeric_key=True, any_key=True)
         if refusal:
             return refusal
-        self.library.progress(int(row["ratingKey"]), int(offset),
-                              state=query.get("state") or "stopped", completes=False)
-        logger.info("PROGRESS %s t=%sms state=%s", row["ratingKey"], offset,
+        if row is not None:
+            self.library.progress(int(row["ratingKey"]), int(offset),
+                                  state=query.get("state") or "stopped", completes=False)
+        # Cycle 21, measured on plexscratch: an integer key naming NO row is a 200 here
+        # that stores nothing, alone among the four writes -- the other three 404 it.
+        logger.info("PROGRESS %s t=%sms state=%s",
+                    row["ratingKey"] if row is not None else query.get("key"), offset,
                     query.get("state"))
         return ("empty", 200)
 
@@ -9858,7 +9889,9 @@ class PlexSim:
         # rating instead -- and it is refused before a foreign identifier or an unknown
         # key would be.
         row, refusal = self._keyed_row(query, validate=lambda: None if value is not None
-                                       else ("error", 400, "plexsim: bad request"))
+                                       else ("error", 400, "plexsim: bad request"),
+                                       numeric_key=True, validate_first=True,
+                                       empty_key_ok=True)
         if refusal:
             return refusal
         self.library.rate(int(row["ratingKey"]), value)

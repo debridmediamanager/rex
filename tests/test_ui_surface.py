@@ -15329,6 +15329,51 @@ def main():
           "accepted %r | refused %r | missing from Field %r"
           % (sorted(set(codes_c21p.values())), sorted(set(refused_c21p.values())),
              sorted(set(names_c21p) - fields_c21p)))
+
+    # Cycle 21, measured on plexscratch over eight key shapes and three identifier shapes
+    # on all four `/:/` writes: the `key=` is a BARE ratingKey, not a path. The path form
+    # the client builds elsewhere -- `/library/metadata/17` -- is a 404 on scrobble and
+    # unscrobble and a 500 on rate and progress, where plexsim took the last path segment
+    # and accepted it. Past that the four diverge: `rate` and `progress` INT-PARSE the key
+    # (`abc`, `1.5`, a leading space and an empty key are 500s; `+17` and `017` parse) where
+    # scrobble and unscrobble just look it up and 404; `progress` accepts ANY integer key,
+    # present or not, with a 200 that stores nothing, where the other three 404 an unknown
+    # one. `rate` validates its `rating` BEFORE the identifier and `progress` validates the
+    # identifier before its `time`. findings.md recorded a single 400/404 rule for all four.
+    grid_c21q = {}
+    for name_c21q, extra_c21q in (("scrobble", ""), ("unscrobble", ""),
+                                  ("rate", "&rating=8"),
+                                  ("progress", "&time=400000&state=played")):
+        for label_c21q, key_c21q in (("path", "%2Flibrary%2Fmetadata%2F" + str(movie)),
+                                     ("word", "abc"), ("missing", "999999"),
+                                     ("empty", "")):
+            grid_c21q[(name_c21q, label_c21q)] = request(
+                base, "GET", "/:/%s?key=%s&identifier=com.plexapp.plugins.library%s"
+                % (name_c21q, key_c21q, extra_c21q))[0]
+    order_c21q = {
+        "rate rating first": request(
+            base, "GET", "/:/rate?key=%s&identifier=com.plexapp.plugins.zzz&rating=abc"
+            % movie)[0],
+        "progress ident first": request(
+            base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.zzz&time=abc"
+            % movie)[0],
+        "plus key": request(
+            base, "GET", "/:/rate?key=%%2B%s&identifier=com.plexapp.plugins.library&rating=8"
+            % movie)[0],
+    }
+    check("a state write's key is a bare ratingKey, and the four parse it differently",
+          grid_c21q == {
+              ("scrobble", "path"): 404, ("scrobble", "word"): 404,
+              ("scrobble", "missing"): 404, ("scrobble", "empty"): 400,
+              ("unscrobble", "path"): 404, ("unscrobble", "word"): 404,
+              ("unscrobble", "missing"): 404, ("unscrobble", "empty"): 400,
+              ("rate", "path"): 500, ("rate", "word"): 500,
+              ("rate", "missing"): 404, ("rate", "empty"): 500,
+              ("progress", "path"): 500, ("progress", "word"): 500,
+              ("progress", "missing"): 200, ("progress", "empty"): 400}
+          and order_c21q == {"rate rating first": 400, "progress ident first": 404,
+                             "plus key": 200},
+          "%s | %s" % (sorted(grid_c21q.items()), order_c21q))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
