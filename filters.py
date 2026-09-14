@@ -37,6 +37,8 @@ is how the Edit Filters dialog reopens a smart filter it saved. `describe()` and
 `document()` render a parsed query as that endpoint's `Query` document.
 """
 
+import json
+import os
 import re
 import time
 
@@ -124,6 +126,18 @@ _RELATIVE = re.compile(r"^([-+]?)(\d+)(s|m|h|d|w|mon|y|days|weeks)$")
 _SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800,
             "mon": 2592000, "y": 31536000, "days": 86400, "weeks": 604800}
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# 639-2/T -> 639-1, the same table `mediainfo` names a track's language with. A stream
+# carries both spellings and a client may filter with either; cycle 20 measured that the
+# two answer identically under every operator, so both sides fold to the tag here.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "languages.json")) as _handle:
+    _LANGUAGE_TAGS = {code: tag for code, (_name, tag) in json.load(_handle).items()}
+
+
+def language_code(value):
+    """One canonical spelling of a language code."""
+    text = str(value)
+    return _LANGUAGE_TAGS.get(text, text)
 _ISO_DATETIME = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}")
 
 
@@ -481,8 +495,46 @@ def compare(kind, operator, actual, wanted, field=""):
         # six, so a client's "not 4k" filter emptied the grid.
         return _exact("=", actual, wanted)
 
-    if kind in ("tag", "audioLanguage", "subtitleLanguage"):
-        if kind == "tag" and field not in TAG_TABLE_FIELDS and operator not in TAG_OPERATORS:
+    if kind in ("audioLanguage", "subtitleLanguage"):
+        # Cycle 20, and the answer to the question cycle 19 left open. A bare `=` is
+        # "SOME stream of that type has this language"; every other operator is "NO
+        # stream satisfies the operator's own comparison" -- a universally quantified
+        # negation -- with `!=` and `==` both comparing EQUALITY and `!==` inequality.
+        # Measured on kids' six all-English episodes (`=`6 `!=`0 `==`0 `!==`6 `<=`0
+        # `>=`0 `<<=`6 `>>=`6) and reproduced over zen's 9,287 episodes and 3,887
+        # movies, including a code no row holds (`=zz` 0, `!=zz` 3,887, `<=zz` 21 --
+        # the rows with no audio stream at all, which match every non-`=` operator
+        # vacuously). The three-letter code normalises for every operator alike.
+        values = [language_code(v)
+                  for v in (actual if isinstance(actual, (list, tuple)) else [actual])
+                  if v is not None]
+        # The three-letter code normalises for EVERY operator, not just `=`: zen
+        # answers `audioLanguage=eng` and `=en` with the same 2,375 rows and
+        # `<=eng`/`<=en` with the same 1,330, so both sides are folded to the
+        # 639-1 tag before anything is compared.
+        wanted = language_code(wanted)
+        values = list(dict.fromkeys(values))
+        if operator == "=":
+            return any(str(v) == wanted for v in values)
+
+        def holds(one):
+            one = str(one)
+            if operator in ("!=", "=="):
+                return one == wanted
+            if operator == "!==":
+                return one != wanted
+            if operator == "<=":
+                return one <= wanted
+            if operator == "<<=":
+                return one < wanted
+            if operator == ">=":
+                return one >= wanted
+            return one > wanted
+
+        return not any(holds(v) for v in values)
+
+    if kind == "tag":
+        if field not in TAG_TABLE_FIELDS and operator not in TAG_OPERATORS:
             # A tag-typed COLUMN, not a join against the tag table: it takes all eight
             # operators. `operator_allowed` already closes the tag-TABLE fields to
             # `=`/`!=`, so nothing else reaches here.

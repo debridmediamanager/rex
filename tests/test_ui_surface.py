@@ -15578,6 +15578,32 @@ def main():
           and counts_c20s["viewCount%21=0"] == 0
           and counts_c20s["skipCount=0"] == 0,
           "%s of %s" % (counts_c20s, total_c20s))
+
+    # Cycle 20: `audioLanguage` and `subtitleLanguage` answer their six non-`=`
+    # operators as UNIVERSALLY QUANTIFIED NEGATIONS -- the open question cycle 19 left.
+    # `=v` is "some stream is v"; every other operator is "NO stream satisfies the
+    # comparison", with `!=` and `==` both comparing equality and `!==` inequality. On
+    # kids' six all-English episodes that predicts `=`6 `!=`0 `==`0 `!==`6 `<=`0 `>=`0
+    # `<<=`6 `>>=`6, which is exactly what it answers; zen's 9,287 agree, and a row
+    # with no stream of that type matches every non-`=` operator vacuously (its
+    # `audioLanguage=zz` is 0 and `!=zz` all 3,887). plexsim answered 0 to `!==`,
+    # `<<=` and `>>=`.
+    lang_c20t = {}
+    for label_c20t, key_c20t in (("=", "audioLanguage"), ("!=", "audioLanguage%21"),
+                                 ("==", "audioLanguage%3D"), ("!==", "audioLanguage%21%3D"),
+                                 ("<=", "audioLanguage%3C"), (">=", "audioLanguage%3E"),
+                                 ("<<=", "audioLanguage%3C%3C"), (">>=", "audioLanguage%3E%3E")):
+        lang_c20t[label_c20t] = len(get(base, "/library/sections/%s/all?type=4&%s=en"
+                                        % (show_section, key_c20t))[1].get("Metadata") or [])
+    episodes_c20t = len(get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                        .get("Metadata") or [])
+    check("the stream-language operators are universal negations",
+          episodes_c20t and lang_c20t["="] == episodes_c20t
+          and lang_c20t["!=="] == episodes_c20t
+          and lang_c20t["<<="] == episodes_c20t and lang_c20t[">>="] == episodes_c20t
+          and lang_c20t["!="] == 0 and lang_c20t["=="] == 0
+          and lang_c20t["<="] == 0 and lang_c20t[">="] == 0,
+          "%s of %s episodes" % (lang_c20t, episodes_c20t))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
