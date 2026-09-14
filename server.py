@@ -9465,6 +9465,19 @@ class PlexSim:
              "active": False},
         ]}
 
+    def _playlist_sections(self, row):
+        """Every librarySectionID a playlist's members live in -- measured.
+
+        Cycle 16 on plexscratch: `?sectionID=` selects the lists whose MEMBERS belong
+        to that library, and a list holding a movie and an episode answers to both.
+        """
+        playlist = self.library.playlist(row.get("ratingKey"))
+        if playlist is None:
+            return set()
+        return {str(item.get("librarySectionID"))
+                for item, _ in self.library.playlist_items(playlist)
+                if item.get("librarySectionID") is not None}
+
     def _playlist_ancestry(self, row):
         """A member row and the parents a `type=` above it selects -- measured.
 
@@ -9524,8 +9537,23 @@ class PlexSim:
                 return self.bare_container(
                     size=1, Metadata=[self.library._playlist_row(playlist)])
             rows = self.library.playlists(query.get("playlistType"))
-            if query.get("smart") == "0":
-                rows = [r for r in rows if not r.get("smart")]
+            # Cycle 16, measured on plexscratch: this listing FILTERS. plexsim honoured
+            # only `smart=0`, so a library's Recent Playlists shelf -- keyed by
+            # `sectionID` -- showed every playlist on the server.
+            if query.get("smart") in ("0", "1"):
+                rows = [r for r in rows
+                        if bool(r.get("smart")) == (query["smart"] == "1")]
+            if query.get("title") is not None:
+                rows = [r for r in rows if r.get("title") == query["title"]]
+            if query.get("sectionID") is not None:
+                rows = [r for r in rows
+                        if str(query["sectionID"]) in self._playlist_sections(r)]
+            if query.get("type") is not None:
+                # A playlist is type 15; every other number selects none, and one that
+                # does not parse is a 500 like any listing's.
+                self._parsed_type(query, 500, 500)
+                if str(query["type"]) != "15":
+                    rows = []
             rows, unsupported = self._sorted(rows, query.get("sort") or "")
             if unsupported:
                 return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
