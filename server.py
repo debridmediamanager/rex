@@ -3933,6 +3933,14 @@ class PlexSim:
                                        if k not in ("type", "id")]
                     for key in (query.get("id") or "").split(","):
                         if key.strip().isdigit() and self.library.collection(key.strip()):
+                            # Cycle 15, measured on the copy: the SECTION path renames
+                            # the members' `Collection` TAG as well, where the item
+                            # path (cycle 9) leaves it alone. The Edit Collection
+                            # dialog saves through here, so on plexsim every member's
+                            # page kept the old name for ever.
+                            self.library.rename_collection_tag(
+                                self.library.collection(key.strip()),
+                                edits.get("title.value", edits.get("title")))
                             self.library_list_item(int(key), ["library", "metadata", key.strip()],
                                                    edits, "PUT")
                     return ("empty", 200)

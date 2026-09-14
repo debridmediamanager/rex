@@ -1667,6 +1667,30 @@ class Library:
             collection["summary"] = summary
         collection["updatedAt"] = _now()
 
+    def rename_collection_tag(self, collection, title):
+        """Move the members' `Collection` tag to a new name. Cycle 15.
+
+        The section-path save does this and the item path does not, measured on the
+        copy twice over. The tag keeps its ID -- a real PMS keeps a tag TABLE and the
+        row is renamed in place, so the `/collection` axis key does not move.
+        """
+        if collection is None or not title:
+            return
+        old = collection.get("tag", collection["title"])
+        if title == old:
+            return
+        # The tag keeps its ID across the rename -- measured on the copy, where tag 239
+        # stayed 239 through it. plexsim derives a tag id by hashing the NAME, so the
+        # id the members already carry has to be pinned onto the collection before the
+        # name moves, or the row's `index` and the axis key would jump.
+        collection.setdefault("tagID", self.catalog.tag_id("Collection", old))
+        for member in collection["items"]:
+            row = self.catalog.items.get(int(member))
+            for tag in (row or {}).get("Collection") or []:
+                if tag.get("tag") == old:
+                    tag["tag"] = title
+        collection["tag"] = title
+
     def delete_collection(self, key):
         collection = self._collections.pop(int(key), None)
         if collection is None:
@@ -1730,8 +1754,9 @@ class Library:
             # number the client uses to tie a row to its tag was the same on all of
             # them. The tag id comes from the catalog's own allocator, so a rename
             # follows the tag the collection was created under.
-            "index": self.catalog.tag_id("Collection",
-                                         collection.get("tag", collection["title"])),
+            "index": (collection.get("tagID")
+                      or self.catalog.tag_id("Collection",
+                                             collection.get("tag", collection["title"]))),
             # Cycle 15, measured on the copy over eleven collections of four member
             # types and both smart values: this is NOT a count. It is the Plex TYPE
             # NUMBER of the members -- movie 1, show 2, season 3, episode 4 -- plus
