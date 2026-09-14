@@ -15888,6 +15888,23 @@ def main():
           "row %s | container title2 %r"
           % ([k_c20af for k_c20af in row_c20af if k_c20af.startswith("librarySection")],
              searched_c20af.get("title2")))
+
+    # Cycle 20: four small leaves validate `type=` and plexsim refused the wrong half
+    # of each. On both references `?type=abc`, `?type=`, `?type=1.5` and `?type=%20`
+    # are each a 400 on `/sorts`, `/filters`, `/common` and `/search` -- sixteen cells,
+    # all 400 -- where plexsim answered 200 to the empty value on the first two and to
+    # the three unparseable ones on the last two.
+    validation_c20ag = {}
+    for leaf_c20ag, tail_c20ag in (("sorts", ""), ("filters", ""),
+                                   ("common", "&id=%s" % movie), ("search", "&query=a")):
+        for value_c20ag in ("abc", "", "1.5", "%20"):
+            validation_c20ag[(leaf_c20ag, value_c20ag)] = get(
+                base, "/library/sections/%s/%s?type=%s%s"
+                % (movie_section, leaf_c20ag, value_c20ag, tail_c20ag))[0]
+    check("four small leaves refuse every unparseable type",
+          all(code_c20ag == 400 for code_c20ag in validation_c20ag.values()),
+          "%s" % {"%s?type=%s" % k_c20ag: v_c20ag for k_c20ag, v_c20ag
+                  in validation_c20ag.items() if v_c20ag != 400})
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

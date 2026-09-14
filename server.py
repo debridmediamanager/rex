@@ -4861,6 +4861,10 @@ class PlexSim:
         if leaf == "common":
             if method != "GET":
                 return ("error", 404, "plexsim: not found")
+            if query.get("type") is not None \
+                    and not str(query.get("type")).strip().lstrip("-").isdigit():
+                # Cycle 20: an unparseable `type=` is a 400 on both references.
+                return ("error", 400, "plexsim: bad request")
             return self.common_fields(section_id, section, query)
         if leaf in self.SUBSET_TITLES:
             return self.section_subset(section_id, section, leaf, query)
@@ -4904,10 +4908,12 @@ class PlexSim:
             # non-number a 400. plexsim read the library's own Meta, so a movie library
             # had no sorts for any type but its own and answered the movie list to
             # `type=8`. The lists are `section_sorts.json`, captured from the reference.
+            # Cycle 20: an EMPTY `type=` is a 400 here too, on both references --
+            # plexsim read it as "no type" and answered the library's own list.
             raw = query.get("type")
-            if raw in (None, ""):
+            if raw is None:
                 wanted = "2" if section.get("type") == "show" else "1"
-            elif raw.lstrip("-").isdigit():
+            elif str(raw).lstrip("-").isdigit():
                 wanted = str(int(raw))
             else:
                 return ("error", 400, "plexsim: bad request")
@@ -4917,10 +4923,12 @@ class PlexSim:
             return self.secondary_container(section_id, section, None,
                                             Directory=sorts)
         if leaf == "filters":
+            # Cycle 20: an EMPTY `type=` is a 400 here too, on both references --
+            # plexsim read it as "no type" and answered the library's own list.
             raw = query.get("type")
-            if raw in (None, ""):
+            if raw is None:
                 wanted = "2" if section.get("type") == "show" else "1"
-            elif raw.lstrip("-").isdigit():
+            elif str(raw).lstrip("-").isdigit():
                 wanted = str(int(raw))
             else:
                 return ("error", 400, "plexsim: bad request")
@@ -5109,7 +5117,11 @@ class PlexSim:
             # with NO `type` is a 400. With a type this is a real listing, whose
             # title2 is "Search for '<query>'" -- it is the in-library search box,
             # and plexsim refused every form of it.
-            if not query.get("type"):
+            #
+            # Cycle 20: and the type has to PARSE. `?type=abc`, `?type=1.5` and a
+            # single space are each a 400 on both references, here and on `/common`,
+            # where plexsim answered a listing.
+            if not str(query.get("type") or "").strip().lstrip("-").isdigit():
                 return ("error", 400, "plexsim: bad request")
             rows = self.typed_rows(section_id, query)
             text = (query.get("query") or "").strip().lower()
