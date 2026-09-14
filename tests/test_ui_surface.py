@@ -10871,6 +10871,63 @@ def main():
           "plain sort %s | smart sort %s | smart mode %s"
           % (plain_c15k[2], smart_c15k[2], smart_c15k[3]))
 
+    # Cycle 15, measured on plexscratch over twelve values: `collectionSort` sorts a
+    # collection's children ALPHABETICALLY for anything that parses as a plain non-zero
+    # integer -- `1`, `2`, `3`, `99`, `-1`, `01` and `+1` all do -- and by RELEASE DATE
+    # for `0` and for anything that does not parse: `1.5`, a leading space, `abc`, and an
+    # empty value (which also removes the field). So a leading `+` is allowed, a decimal
+    # point and a leading space are not. plexsim honoured only `1` and `2` and fell back
+    # to release date for every other number, so a stored value the free-text pref can
+    # easily hold drew the collection in the wrong order.
+    # The fixture's three movies share a release date and sort alphabetically in
+    # ratingKey order, so release order and alphabetical order coincide and nothing can
+    # discriminate. Give them dates that REVERSE the alphabetical order first, and put
+    # them back afterwards.
+    members_c15t = [r_c15t["ratingKey"] for r_c15t in
+                    get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                    .get("Metadata") or []]
+    was_c15t = {k_c15t: (get(base, "/library/metadata/%s" % k_c15t)[1]
+                         .get("Metadata") or [{}])[0].get("originallyAvailableAt")
+                for k_c15t in members_c15t}
+    for n_c15t, k_c15t in enumerate(reversed(members_c15t)):
+        request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s"
+                % (k_c15t, quote("200%d-01-01" % n_c15t)))
+    sortcoll_c15t = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C15 Sort"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, ",".join(members_c15t)))))[1]
+        .get("Metadata") or [{}])[0].get("ratingKey")
+
+
+    def order_c15t(value_c15t):
+        request(base, "PUT", "/library/metadata/%s/prefs?collectionSort=%s"
+                % (sortcoll_c15t, quote(value_c15t)))
+        return [r_c15t.get("ratingKey") for r_c15t in
+                get(base, "/library/metadata/%s/children" % sortcoll_c15t)[1]
+                .get("Metadata") or []]
+
+
+    release_c15t = order_c15t("0")
+    alpha_c15t = order_c15t("1")
+    # `2` is left out deliberately: it is the CUSTOM order a move writes (cycle 9), and
+    # on this fixture the custom, insertion and alphabetical orders coincide, so it
+    # cannot discriminate. The other five are unambiguous.
+    same_c15t = {v_c15t: order_c15t(v_c15t) == alpha_c15t
+                 for v_c15t in ("3", "99", "-1", "01", "+1")}
+    fallback_c15t = {v_c15t: order_c15t(v_c15t) == release_c15t
+                     for v_c15t in ("1.5", " 1", "abc", "")}
+    request(base, "DELETE", "/library/collections/%s" % sortcoll_c15t)
+    for k_c15t, when_c15t in was_c15t.items():
+        if when_c15t:
+            request(base, "PUT", "/library/metadata/%s?originallyAvailableAt.value=%s"
+                    % (k_c15t, quote(when_c15t)))
+    check("collectionSort sorts alphabetically for any non-zero integer it can parse",
+          all(same_c15t.values()) and all(fallback_c15t.values())
+          and release_c15t != alpha_c15t,
+          "alpha-like %s | release-like %s | release %s alpha %s"
+          % (same_c15t, fallback_c15t, release_c15t, alpha_c15t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
