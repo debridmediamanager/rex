@@ -338,6 +338,14 @@ FILTER_FIELD_TYPES.setdefault("originalTitle", "string")
 # which is the `string` type's bare `=` exactly. plexsim ignored all four, and an
 # ignored filter is worse than a refused one: it answered every row to
 # `audienceRating>>=9` AND to `audienceRating<<=1`.
+# Cycle 20, measured on kids (1.43.4) and zen (1.42.2): `type` is a real numeric
+# column once an OPERATOR is attached to the key. A bare `type=` is the listing's own
+# type selector and stays structural, but `type>>=1` is 0 of zen's 3,887 movies,
+# `type<<=99` every one of them, `type=4&type!=4` 0 of 9,287 episodes and
+# `type=4&type>>=3` all of them -- it compares the row's TYPE NUMBER, not its name --
+# and it reaches `/library/all` too. Its Rule is the one on the whole surface with no
+# `fieldTitle` key at all; see filters.describe.
+FILTER_FIELD_TYPES.setdefault("type", "integer")
 FILTER_FIELD_TYPES.setdefault("parent", "integer")
 for _bare in ("rating", "audienceRating"):
     FILTER_FIELD_TYPES.setdefault(_bare, "integer")
@@ -6258,6 +6266,11 @@ class PlexSim:
             # The row's own key: `id=` is the client's "is there another copy of this?"
             # probe, sent beside `guid=`.
             return row.get("ratingKey")
+        if field == "type":
+            # Cycle 20: the column is the type NUMBER a real PMS stores, not the name
+            # the row prints. `group=type` reads the same value and is unaffected --
+            # one group per distinct type either way.
+            return TYPE_NUMBERS.get(row.get("type"), row.get("type"))
         if field == "parent":
             # Cycle 15: the row's IMMEDIATE parent, so `type=4&parent=<season>` is that
             # season's episodes and `parent=<show>` is none of them -- measured 6 -> 3

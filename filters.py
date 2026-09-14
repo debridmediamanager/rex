@@ -877,7 +877,11 @@ def describe(tree, title_of, value_title_of):
     # Measured: the title is looked up for (scope, field) and is the EMPTY string
     # when the scope has no such field -- `?type=3&title=x` answers
     # `fieldTitle: ""`, it does not omit it and it is not an error.
-    leaf["fieldTitle"] = title_of(tree["field"], tree.get("scope") or "")
+    if tree["field"] != "type":
+        # Cycle 20: `type` is the one field whose Rule carries no `fieldTitle` KEY at
+        # all -- not an empty one -- on both references. Every other unadvertised
+        # column (`id`, `guid`, `slug`, the artwork four) carries `""`.
+        leaf["fieldTitle"] = title_of(tree["field"], tree.get("scope") or "")
     if tree["field"] in TAG_TABLE_FIELDS:
         # Measured: only a value that resolves in the tag table gets a title --
         # `genre=6` is "Animation", `genre=Animation` and `genre=99999` get none.

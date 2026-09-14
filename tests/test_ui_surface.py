@@ -15406,6 +15406,50 @@ def main():
                   for bad_c20e in ("!=", ">=", ">>=", "<<="))
           and refused_c20e.get("size") == all_rows_c20e,
           "%s | guid!= listed %s of %s" % (guid_c20e, refused_c20e.get("size"), all_rows_c20e))
+
+    def parse_doc_c20(path_c20):
+        """/query/parse answers a `Query` root, which `get` (a MediaContainer reader)
+        cannot see. Read the body."""
+        status_c20, body_c20, _ = request(base, "GET", path_c20)
+        try:
+            return status_c20, json.loads(body_c20).get("Query") or {}
+        except ValueError:
+            return status_c20, {}
+
+    # Cycle 20, the parser holdout: `type` is a real column once an operator is attached
+    # to it. `type=1` is the listing's own type selector, but `type>>=1`, `type<<=4`,
+    # `type!=1`, `type>=3` and `type<=2` each parse into a Rule -- the only rule on the
+    # surface with NO `fieldTitle` key at all -- and each really filters, on the row's
+    # TYPE NUMBER: zen answers 0 rows to `type=1&type>>=1` and 3,887 to `type<<=99`, 0
+    # to `type=4&type!=4` and 9,287 to `type=4&type>>=3`, and kids agrees on all four.
+    # It reaches `/library/all` as well. plexsim called the key an unknown field, so the
+    # parser reported an Error and the listing answered every row.
+    type_parse_c20f = {}
+    for label_c20f, key_c20f in ((">>=", "type%3E%3E"), ("<<=", "type%3C%3C"),
+                                 ("!=", "type%21"), (">=", "type%3E"), ("<=", "type%3C")):
+        status_c20f, doc_c20f = parse_doc_c20("/library/sections/%s/query/parse?type=1&%s=1"
+                                              % (movie_section, key_c20f))
+        rule_c20f = doc_c20f.get("Rule") or {}
+        type_parse_c20f[label_c20f] = (status_c20f, rule_c20f.get("operator"),
+                                       "fieldTitle" in rule_c20f)
+
+    def typed_c20f(spec_c20f):
+        status_c20f, body_c20f, _ = get(base, "/library/sections/%s/all?%s"
+                                        % (movie_section, spec_c20f))
+        return status_c20f, len(body_c20f.get("Metadata") or [])
+
+    all_movies_c20f = typed_c20f("type=1")[1]
+    check("type with an operator parses and filters on the type number",
+          all(status_c20f == 200 and operator_c20f == label_c20f and not titled_c20f
+              for label_c20f, (status_c20f, operator_c20f, titled_c20f) in type_parse_c20f.items())
+          and typed_c20f("type=1&type%3E%3E=1") == (200, 0)
+          and typed_c20f("type=1&type%3C%3C=99") == (200, all_movies_c20f)
+          and typed_c20f("type=1&type%21=1") == (200, 0)
+          and typed_c20f("type=1&type%21=2") == (200, all_movies_c20f),
+          "%s | listings %s"
+          % (type_parse_c20f, [typed_c20f(s_c20f) for s_c20f in
+                               ("type=1&type%3E%3E=1", "type=1&type%3C%3C=99",
+                                "type=1&type%21=1", "type=1&type%21=2")]))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
