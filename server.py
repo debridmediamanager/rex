@@ -1865,23 +1865,7 @@ class PlexSim:
 
         `metadata_state=None` omits the field, which is what state 5 does.
         """
-        title = row.get("title") or ""
-        kind = row.get("type")
-        if kind in ("movie", "show") and row.get("year"):
-            # Measured: a movie's and a show's frames title them with the year,
-            # `Elephants Dream (2006)`, `Firefly (2002)` -- an emptied title still gets
-            # it, ` (2010)` -- which the Activity pane prints.
-            title = "%s (%s)" % (title, row["year"])
-        elif kind in ("season", "episode"):
-            # Measured on a writable copy of the reference: a season's frames say
-            # `Firefly S01` and an episode's `Firefly S01 E07`, from the SHOW's title and
-            # the current indexes, where plexsim sent the row's own title.
-            show_key = str(row.get("parentRatingKey" if kind == "season" else "grandparentRatingKey") or "")
-            show = self.catalog.items.get(int(show_key)) if show_key.isdigit() else None
-            season_index = row.get("index") if kind == "season" else row.get("parentIndex")
-            title = "%s S%02d" % ((show or {}).get("title") or "", int(season_index or 0))
-            if kind == "episode":
-                title += " E%02d" % int(row.get("index") or 0)
+        title = self.frame_title(row)
         entry = {
             "identifier": "com.plexapp.plugins.library",
             "sectionID": str(row.get("librarySectionID", "")),
@@ -1916,13 +1900,44 @@ class PlexSim:
 
     @staticmethod
     def _frame_title(row):
-        """A row's name as an activity subtitle prints it: `title (year)`.
+        """A row's name as a frame or an activity subtitle prints it.
 
         Measured on the copy: the refresh activity's subtitle is `Sintel (2010)`, the
         same form the scan activity uses for each item it steps through.
+
+        Cycle 17, re-measured on plexscratch: it is the row's FRAME title and not its
+        own title, so a SEASON's is `<show> S01` and an EPISODE's `<show> S01 E01` --
+        the Dashboard printed `Season 19 (2007)` where a real PMS prints `The Simpsons
+        S19`. The rule is recorded in CLAUDE.md for the timeline frames and was
+        implemented in `notify_timeline` alone; this helper beside it kept the movie and
+        show form for every type. It is a method now, because the season and episode
+        forms need the SHOW's title, which only the catalog can supply.
+        """
+        return row.get("title") or ""
+
+    def frame_title(self, row):
+        """The string a row's frames -- and its activity's subtitle -- carry.
+
+        Measured on a writable copy of the reference: a movie's and a show's frames
+        title them with the year (`Elephants Dream (2006)`, `Firefly (2002)`, and an
+        emptied title still gets it: ` (2010)`), while a SEASON's say `Firefly S01` and
+        an EPISODE's `Firefly S01 E07` -- from the SHOW's title and the current indexes,
+        where plexsim sent the row's own title. Cycle 17: the ACTIVITY subtitle takes
+        the same string, which `_frame_title` did not.
         """
         title = row.get("title") or ""
-        return "%s (%s)" % (title, row["year"]) if row.get("year") else title
+        kind = row.get("type")
+        if kind in ("movie", "show") and row.get("year"):
+            return "%s (%s)" % (title, row["year"])
+        if kind in ("season", "episode"):
+            show_key = str(row.get("parentRatingKey" if kind == "season"
+                                   else "grandparentRatingKey") or "")
+            show = self.catalog.items.get(int(show_key)) if show_key.isdigit() else None
+            index = row.get("index") if kind == "season" else row.get("parentIndex")
+            title = "%s S%02d" % ((show or {}).get("title") or "", int(index or 0))
+            if kind == "episode":
+                title += " E%02d" % int(row.get("index") or 0)
+        return title
 
     def notify_refreshed(self, row):
         """The seven-frame sequence a real PMS pushes for a metadata refresh.
@@ -1944,7 +1959,7 @@ class PlexSim:
         # finish_activity, after `loading` -- the rule was recorded right and implemented
         # as something else. The subtitle is the row's `title (year)`, as the scan
         # activity's is; plexsim sent the bare title.
-        activity = self.library.add_activity(self._frame_title(row), progress=-1)
+        activity = self.library.add_activity(self.frame_title(row), progress=-1)
         activity["progress"] = 49
         self.library.notify_activity(activity, "updated")
         self.notify_timeline(row, self.TIMELINE_QUEUED, "processing")
@@ -1963,7 +1978,7 @@ class PlexSim:
         state 5 ends the cascade. Forty frames for a two-season show, and the shape is what
         clears every `!!metadataState` gate the client latches on.
         """
-        activity = self.library.add_activity(show.get("title") or "", progress=-1)
+        activity = self.library.add_activity(self.frame_title(show), progress=-1)
         self.notify_timeline(show, self.TIMELINE_QUEUED, "queued")
         self.notify_timeline(show, self.TIMELINE_QUEUED, "processing")
         self.notify_timeline(show, self.TIMELINE_LOADING, "loading")
@@ -2015,7 +2030,7 @@ class PlexSim:
         and finally the activity ended and the season's own state 5. There is no
         `activity updated` here, unlike the episode form, which has one.
         """
-        activity = self.library.add_activity(self._frame_title(season), progress=-1)
+        activity = self.library.add_activity(self.frame_title(season), progress=-1)
         self.notify_timeline(season, self.TIMELINE_QUEUED, "queued")
         self.notify_timeline(season, self.TIMELINE_QUEUED, "processing")
         self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
@@ -9166,7 +9181,7 @@ class PlexSim:
                     self.notify_timeline(leaf, self.TIMELINE_DONE, None,
                                          media_state=media_state)
             activity = self.library.add_activity(
-                self._frame_title(row), title="Generating video chapter thumbnails",
+                self.frame_title(row), title="Generating video chapter thumbnails",
                 kind="media.generate.chapter.thumbs", progress=-1)
             # started then ENDED, with no `updated` between them -- measured. The
             # refresh sequence's `finish_activity` inserts one, so this ends the

@@ -13896,6 +13896,49 @@ def main():
               % (word_c17b19, unknown_c17b19, real_c17b19))
         request(base, "DELETE", "/library/collections/%s" % cid_c17b19)
 
+
+    # Cycle 17, re-measured by the driver on plexscratch: an ACTIVITY's subtitle is the
+    # row's FRAME title, which is not the row's own title -- a season's is `<show> S01`
+    # and an episode's `<show> S01 E01`, the same strings their timeline frames carry.
+    # plexsim used `title (year)` for every type, which is the MOVIE and SHOW form, so
+    # the Dashboard printed `Season 19 (2007)` where a real PMS prints `The Simpsons
+    # S19`. The rule is recorded in CLAUDE.md for the timeline frames and was
+    # implemented there only: `notify_timeline` computed it correctly and `_frame_title`
+    # beside it did not -- failure class C again.
+    def subtitles_c17b20(key_c17b20):
+        _, frames_c17b20 = notifications(
+            base, lambda: request(base, "PUT", "/library/metadata/%s/refresh" % key_c17b20),
+            seconds=4)
+        return [(row_c17b20.get("Activity") or {}).get("subtitle")
+                for frame_c17b20 in frames_c17b20
+                for row_c17b20 in ((frame_c17b20.get("NotificationContainer")
+                                    or {}).get("ActivityNotification") or [])]
+    seasons_c17b20 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                         % show)[1].get("Metadata") or []
+    episodes_c17b20 = get(base, "/library/metadata/%s/allLeaves"
+                          % show)[1].get("Metadata") or []
+    if not seasons_c17b20 or not episodes_c17b20:
+        skip("an activity's subtitle is the row's frame title", "no season or episode")
+    else:
+        season_c17b20 = seasons_c17b20[0]
+        episode_c17b20 = episodes_c17b20[0]
+        want_season_c17b20 = "%s S%02d" % (
+            season_c17b20.get("parentTitle") or "", int(season_c17b20.get("index") or 0))
+        want_episode_c17b20 = "%s S%02d E%02d" % (
+            episode_c17b20.get("grandparentTitle") or "",
+            int(episode_c17b20.get("parentIndex") or 0),
+            int(episode_c17b20.get("index") or 0))
+        got_season_c17b20 = subtitles_c17b20(season_c17b20["ratingKey"])
+        got_episode_c17b20 = subtitles_c17b20(episode_c17b20["ratingKey"])
+        check("an activity's subtitle is the row's frame title",
+              bool(got_season_c17b20)
+              and set(got_season_c17b20) == {want_season_c17b20}
+              and bool(got_episode_c17b20)
+              and set(got_episode_c17b20) == {want_episode_c17b20},
+              "season %s (wanted %r) episode %s (wanted %r)"
+              % (sorted(set(got_season_c17b20)), want_season_c17b20,
+                 sorted(set(got_episode_c17b20)), want_episode_c17b20))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
