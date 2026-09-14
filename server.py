@@ -8014,13 +8014,20 @@ class PlexSim:
         if str(centre).isdigit():
             offset = next((i for i, m in enumerate(metadata)
                            if m["playQueueItemID"] == int(centre)), offset)
-        if str(window).isdigit():
-            span = int(window)
+        # Cycle 16, re-measured on plexscratch: the two flags window the queue with NO
+        # `window=` at all -- `window` is the RADIUS and is unlimited when absent, so
+        # `includeBefore=0&includeAfter=1` answers everything after the selection.
+        # Each flag is a boolean: any value but 0 or 1, an unparseable one and an
+        # empty one are all 400s, and both zero is a 400 too. Cycle 9 measured them
+        # only ever WITH `window=1`, which is why the no-window half was missing.
+        for name in ("includeBefore", "includeAfter"):
+            if name in query and str(query[name]) not in ("0", "1"):
+                return ("error", 400, "plexsim: bad request")
+        if query.get("includeBefore") == "0" and query.get("includeAfter") == "0":
+            return ("error", 400, "plexsim: bad request")
+        if str(window).isdigit() or "includeBefore" in query or "includeAfter" in query:
+            span = int(window) if str(window).isdigit() else len(metadata)
             low = max(0, offset - span)
-            # Measured on a writable copy of the reference: `includeBefore` and
-            # `includeAfter` (both on by default) choose the sides of the window, and the
-            # selected item itself comes back only when both are on -- after-only answers
-            # just the rows after it. plexsim ignored both flags.
             before = query.get("includeBefore") != "0"
             after = query.get("includeAfter") != "0"
             metadata = ((metadata[low:offset] if before else [])
