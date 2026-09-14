@@ -15604,6 +15604,23 @@ def main():
           and lang_c20t["!="] == 0 and lang_c20t["=="] == 0
           and lang_c20t["<="] == 0 and lang_c20t[">="] == 0,
           "%s of %s episodes" % (lang_c20t, episodes_c20t))
+
+    # Cycle 20: a stream-language column does NOT fall back to the leaves. Both
+    # references answer NOTHING to `type=2&audioLanguage=en` and to
+    # `type=3&subtitleLanguage=en` -- zen over 507 shows and 741 seasons, kids over its
+    # one show and two seasons -- while the same probe at `type=4` returns a real
+    # subset on both, so the filter is live and the parent row simply has no such
+    # column. Cycle 19 built the any-leaf fallback for `duration`, `resolution` and
+    # `mediaSize`; plexsim applied it to these two as well and selected every show.
+    parents_c20u = {spec_c20u: len(get(base, "/library/sections/%s/all?%s"
+                                       % (show_section, spec_c20u))[1].get("Metadata") or [])
+                    for spec_c20u in ("type=2&audioLanguage=en", "type=3&audioLanguage=en",
+                                      "type=3&subtitleLanguage=en", "type=2&subtitleLanguage=en")}
+    leaves_c20u = len(get(base, "/library/sections/%s/all?type=4&audioLanguage=en"
+                          % show_section)[1].get("Metadata") or [])
+    check("a stream-language column does not read the leaves",
+          all(count_c20u == 0 for count_c20u in parents_c20u.values()) and leaves_c20u > 0,
+          "%s | episodes %s" % (parents_c20u, leaves_c20u))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
