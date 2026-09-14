@@ -15638,6 +15638,30 @@ def main():
           % ({leaf_c20v: [d_c20v.get("key") for d_c20v in doc_c20v.get("Directory") or []]
               for leaf_c20v, doc_c20v in axes_c20v.items()},
              [d_c20v.get("key") for d_c20v in movie_axis_c20v.get("Directory") or []]))
+
+    # Cycle 20: `file=` refuses a SHOW listing and reads the leaves on a SEASON one.
+    # `type=2&file=/` is a 500 on kids and zen alike -- the only media column that
+    # refuses rather than answering -- while `type=3&file=/` answers every season (zen
+    # 741, kids 2) and `type=4` every episode. plexsim answered a 200 with no rows at
+    # type=2 and nothing at all at type=3: its `file` branch reads the row's own Media
+    # and sits ABOVE the leaves fallback cycle 19 added, so the fallback never ran.
+    fragment_c20w = ""
+    for r_c20w in get(base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []:
+        for m_c20w in r_c20w.get("Media") or []:
+            for p_c20w in m_c20w.get("Part") or []:
+                fragment_c20w = str(p_c20w.get("file") or "")[:6] or fragment_c20w
+    show_code_c20w = get(base, "/library/sections/%s/all?type=2&file=%%2F" % show_section)[0]
+    season_rows_c20w = len(get(base, "/library/sections/%s/all?type=3&file=%s"
+                               % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
+    episode_rows_c20w = len(get(base, "/library/sections/%s/all?type=4&file=%s"
+                                % (show_section, quote(fragment_c20w)))[1].get("Metadata") or [])
+    seasons_c20w = len(get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                       .get("Metadata") or [])
+    check("file= refuses a show listing and reads the leaves on a season one",
+          show_code_c20w == 500 and bool(fragment_c20w)
+          and season_rows_c20w == seasons_c20w and episode_rows_c20w > 0,
+          "type=2 %s | seasons %s of %s | episodes %s | fragment %r"
+          % (show_code_c20w, season_rows_c20w, seasons_c20w, episode_rows_c20w, fragment_c20w))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
