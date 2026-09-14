@@ -10968,24 +10968,50 @@ class PlexSim:
     # reference: the message it ends with, and the activity it runs inside (a task with no
     # activity of its own reports only its message). Every run sits inside ONE `butler`
     # activity called "Butler tasks", which is what the Dashboard draws while it runs.
+    # Cycle 17 re-measured every one of the 23 tasks, run singly with a notification
+    # socket open: twelve reported a different sentence, three report SEVERAL messages
+    # and five report one where plexsim reported none. The message is a template with
+    # the run's own count in it; the COUNT is content and not part of the rule, so
+    # plexsim fills in what it actually has. The two tasks with an activity of their own
+    # differ in it too -- `CleanOldBundles` is titled `Cleaning Bundles` and steps its
+    # SUBTITLE through four phases, and `OptimizeDatabase` is titled `Optimizing
+    # database` with the subtitle `Optimizing Database`, which plexsim had swapped.
     BUTLER_MESSAGES = {
-        "BackupDatabase": ("The butler backed up your database.",
+        "BackupDatabase": (["The butler backed up your database."],
                            ("general.db.backup", "Database", "Backing up database")),
-        "OptimizeDatabase": ("The butler optimized your database.",
-                             ("general.db.optimize", "Database", "Optimizing database")),
-        "CleanOldBundles": ("The butler cleaned up your old bundles.",
-                            ("general.bundle.clean", "Bundles", "Cleaning old bundles")),
-        "CleanOldCacheFiles": ("The butler deleted 0 old cache files.", None),
-        "GarbageCollectBlobs": ("The butler collected 0 old blobs.", None),
-        "RefreshLocalMedia": ("The butler refreshed 0 movies.", None),
-        "RefreshPeriodicMetadata": ("The butler refreshed 0 shows.", None),
-        "UpgradeMediaAnalysis": ("The butler upgraded 0 items.", None),
-        "LoudnessAnalysis": ("The butler analyzed the loudness of 0 tracks.", None),
-        "GenerateChapterThumbs": ("The butler generated 0 chapter thumbnails.", None),
-        "DeepMediaAnalysis": ("The butler analyzed 0 items.", None),
-        "GenerateMediaIndexFiles": ("The butler generated 0 index files.", None),
-        "RefreshLibraries": ("The butler refreshed all libraries.", None),
+        "OptimizeDatabase": (["The butler optimized your database."],
+                             ("general.db.optimize", "Optimizing database",
+                              "Optimizing Database")),
+        "CleanOldBundles": (["The butler cleaned %d media bundles.",
+                             "The butler cleaned %d metadata bundles."],
+                            ("general.bundle.clean", "Cleaning Bundles", None)),
+        "CleanOldCacheFiles": (["The butler deleted 0 old cache files."], None),
+        "GarbageCollectBlobs": (["The butler collected blob garbage."], None),
+        "RefreshLocalMedia": (["The butler refreshed %d items."], None),
+        "RefreshPeriodicMetadata": (["The butler refreshed 0 artists.",
+                                     "The butler refreshed 0 seasons.",
+                                     "The butler refreshed %d movies.",
+                                     "The butler refreshed %d shows."], None),
+        "UpgradeMediaAnalysis": (["The butler analyzed %d items."], None),
+        "LoudnessAnalysis": (["The butler performed loudness analysis on 0 albums."], None),
+        "GenerateChapterThumbs": (["The butler generated chapter thumbnails for %d files."],
+                                  None),
+        "DeepMediaAnalysis": (["The butler performed deep analysis on %d files."], None),
+        "GenerateMediaIndexFiles": (["The butler generated %d video preview thumbnails."],
+                                    None),
+        "RefreshLibraries": (["The butler refreshed all libraries."], None),
+        "ButlerTaskCleanSupplementalLogFiles": (["The butler cleaned 0 directories."], None),
+        "ButlerTaskGenerateAdMarkers":
+            (["The butler generated ad markers for %d show(s)."], None),
+        "MusicAnalysis": (["The butler performed sonic analysis on 0 batches of albums."],
+                          None),
     }
+    # The four phases `CleanOldBundles`'s own activity steps its SUBTITLE through, and
+    # the progress it carries at each -- measured on plexscratch.
+    BUNDLE_CLEAN_PHASES = (("Analyzing media bundles", -1),
+                           ("Deleting %d media bundles", 75),
+                           ("Deleting %d media bundles", 100),
+                           ("Analyzing metadata bundles", 100))
 
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
@@ -11025,25 +11051,49 @@ class PlexSim:
         wrapper = {"uuid": str(uuid.uuid4()), "type": "butler", "cancellable": False,
                    "userID": 1, "title": "Butler tasks", "subtitle": "", "progress": -1}
         self.notify_activity(wrapper, "started")
+        # The counts a template fills in: what this server actually has.
+        leaves = sum(1 for row in self.catalog.items.values()
+                     if row.get("type") in ("movie", "episode"))
+        counts = {"movies": sum(1 for row in self.catalog.items.values()
+                                if row.get("type") == "movie"),
+                  "shows": sum(1 for row in self.catalog.items.values()
+                               if row.get("type") == "show"),
+                  "leaves": leaves}
         for name in names:
-            message, inner = self.BUTLER_MESSAGES.get(name, ("", None))
+            messages, inner = self.BUTLER_MESSAGES.get(name, ([], None))
             if inner:
                 kind, title, subtitle = inner
-                # The task's own activity, measured: started at -1 with its subtitle already
-                # set, stepping to 100, then ended.
+                # The task's own activity, measured: started at -1 with its subtitle
+                # already set, stepping to 100, then ended.
                 activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
-                            "userID": 1, "title": title, "subtitle": subtitle, "progress": -1}
+                            "userID": 1, "title": title,
+                            "subtitle": subtitle or "", "progress": -1}
                 self.notify_activity(activity, "started")
-                for step in (10, 53, 100):
-                    activity["progress"] = step
-                    self.notify_activity(activity, "updated")
+                if subtitle is None:
+                    # Cycle 17: `CleanOldBundles` steps its SUBTITLE through four named
+                    # phases rather than stepping a progress bar under one subtitle.
+                    for phase, step in self.BUNDLE_CLEAN_PHASES:
+                        activity["subtitle"] = (phase % leaves) if "%d" in phase else phase
+                        activity["progress"] = step
+                        self.notify_activity(activity, "updated")
+                else:
+                    for step in (10, 53, 100):
+                        activity["progress"] = step
+                        self.notify_activity(activity, "updated")
                 self.notify_activity(activity, "ended")
             if name == "RefreshLibraries":
                 for section in self.catalog.sections:
                     for row in self.catalog.section_items(section["key"]):
                         self.library.finish_activity(
                             self.library.add_activity(row.get("title") or "", progress=-1))
-            if message:
+            for message in messages:
+                if "%d" in message:
+                    if "movies" in message:
+                        message = message % counts["movies"]
+                    elif "shows" in message or "show(s)" in message:
+                        message = message % counts["shows"]
+                    else:
+                        message = message % counts["leaves"]
                 self.notify_progress(message)
             logger.info("BUTLER ran %s", name)
         wrapper["progress"] = 100
