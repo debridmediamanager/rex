@@ -11814,6 +11814,26 @@ def main():
           "%s %r len=%d enc=%r beyond=%s"
           % (status_c16q, crange_c16q, size_c16q, enc_c16q, beyond_status_c16q))
 
+
+    # Cycle 16, measured on kids and zen in XML: a `Meta/Type` element's children come
+    # out `Filter, Sort, Field`. plexsim wrote `Field, Filter, Sort` --
+    # `xmlout._CHILD_ORDER` knew the item-level `Field` and nothing about these three,
+    # so they fell out in the order the dict happened to hold them. XML child order is
+    # load-bearing in this project's history, which is why that table exists at all.
+    _, meta_c16r, _ = request(base, "GET",
+                              "/library/sections/%s/all?includeMeta=1"
+                              "&X-Plex-Container-Size=1" % movie_section,
+                              want_json=False)
+    body_c16r = meta_c16r.decode("utf-8", "replace")
+    block_c16r = body_c16r[body_c16r.find("<Type"):body_c16r.find("</Type>")]
+    order_c16r = []
+    for name_c16r in re.findall(r"<(\w+)", block_c16r)[1:]:
+        if name_c16r not in order_c16r:
+            order_c16r.append(name_c16r)
+    check("a Meta/Type element orders its children Filter, Sort, Field",
+          order_c16r == ["Filter", "Sort", "Field"],
+          "%s" % order_c16r)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
