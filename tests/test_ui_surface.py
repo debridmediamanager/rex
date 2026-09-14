@@ -15071,6 +15071,41 @@ def main():
           % (request(base, "PUT", "/:/prefs?AllowLegacyAgents=1")[0],
              request(base, "PUT", "/:/prefs?CLDriver=x")[0]))
 
+    # Cycle 19, measured on plexscratch: four differences in the Add Library form's
+    # validation at once. A missing `language` and an unparseable one (`zz-ZZ`) are both
+    # 400s where plexsim created the library; an EMPTY `location` is a 201 where plexsim
+    # refused it; and a NUMERIC `type` is accepted and creates a library of that type
+    # (`type=1` a movie library) where plexsim refused it.
+    FORM_C19L = ("name=CycleNineteen&agent=tv.plex.agents.movie&scanner=Plex%20Movie")
+
+
+    def create_c19l(extra_c19l):
+        status_c19l, body_c19l, _h_c19l = request(
+            base, "POST", "/library/sections?" + FORM_C19L + extra_c19l)
+        return status_c19l, body_c19l
+
+
+    no_lang_c19l = create_c19l("&location=%2Fdata")[0]
+    bad_lang_c19l = create_c19l("&language=zz-ZZ&location=%2Fdata")[0]
+    empty_loc_c19l = create_c19l("&language=en-US&type=movie&location=")
+    numeric_c19l = create_c19l("&language=en-US&type=1&location=%2Fdata")
+    check("the Add Library form refuses a missing or unparseable language",
+          no_lang_c19l == 400 and bad_lang_c19l == 400,
+          "no language %s ; zz-ZZ %s" % (no_lang_c19l, bad_lang_c19l))
+    check("and accepts an empty location and a numeric type",
+          empty_loc_c19l[0] == 201 and numeric_c19l[0] == 201,
+          "empty location %s ; numeric type %s" % (empty_loc_c19l[0], numeric_c19l[0]))
+    # ...and the numeric one really made a MOVIE library. Clean both up after.
+    import json as json_c19l
+
+    for made_c19l in (empty_loc_c19l, numeric_c19l):
+        if made_c19l[0] == 201:
+            row_c19l = json_c19l.loads(made_c19l[1])["MediaContainer"]["Directory"][0]
+            if made_c19l is numeric_c19l:
+                check("a numeric type creates a library of that type",
+                      row_c19l.get("type") == "movie", str(row_c19l.get("type")))
+            request(base, "DELETE", "/library/sections/%s" % row_c19l["key"])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

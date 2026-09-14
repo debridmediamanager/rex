@@ -1694,6 +1694,30 @@ def _png(width, height, rgb):
 # --------------------------------------------------------------------------
 
 
+# Cycle 19: the Add Library form REFUSES a `language` that is not one of the agent's
+# own -- measured on plexscratch, where `en-US`, `de-DE`, `fr-FR`, `pt-BR`, `zh-CN`,
+# `nb-NO` and even `EN-US` are 201s while `en`, `de`, `xx`, `zz-ZZ`, `yue-HK`, `en_US`
+# and an empty value are all 400s carrying exactly `'language' is invalid`. The set is
+# read off the captured `languageOverride` enum rather than typed out here, so it is the
+# reference's own list and not a constant nobody measured.
+def _known_languages():
+    for key, settings in ITEM_PREFS.items():
+        if key.startswith("_") or not isinstance(settings, list):
+            continue
+        for setting in settings:
+            if not isinstance(setting, dict):
+                continue
+            if setting.get("id") == "languageOverride":
+                return frozenset(
+                    entry.split(":", 1)[0].lower()
+                    for entry in str(setting.get("enumValues") or "").split("|")
+                    if "-" in entry.split(":", 1)[0])
+    return frozenset()
+
+
+KNOWN_LANGUAGES = _known_languages()
+
+
 class PlexSim:
     def __init__(self, catalog, resolver, *, part_mode="proxy", public_url=None,
                  owner_username="plexsim", claim=None, web_root=None,
@@ -11853,9 +11877,22 @@ class PlexSim:
         # accepted every malformed form with a 201 and created a library with
         # `type="bogus"` or titled "New Library", which then sat in the sidebar.
         # A nonexistent location and a duplicate name ARE both accepted (201).
-        if "location" not in query or not query.get("location"):
+        # Cycle 19, measured on plexscratch, four differences at once. An EMPTY
+        # `location` is accepted (201, a library with no folder) where plexsim refused
+        # it; `location` missing altogether is still the 400. A NUMERIC `type` is
+        # accepted and creates a library of that type -- `type=1` makes a movie library
+        # -- where plexsim refused it. A missing `language` is a 400 and an unparseable
+        # one (`zz-ZZ`) is a 400 naming the field, where plexsim accepted both. So the
+        # Add Library dialog's own numeric type worked on a real PMS and not here, and
+        # two malformed forms were created rather than refused.
+        if "location" not in query:
             return ("error", 400, "'location' is missing or invalid. ")
-        if query.get("type") not in ("movie", "show", "photo", "artist"):
+        kind = query.get("type")
+        if str(kind).isdigit():
+            kind = {"1": "movie", "2": "show", "8": "artist", "13": "photo"}.get(str(kind))
+            if kind:
+                query = dict(query, type=kind)
+        if kind not in ("movie", "show", "photo", "artist"):
             return ("error", 400,
                     "'type' is missing or invalid (must be one of 'movie', 'show', "
                     "'photo' or 'artist') 'agent' is invalid for the selected "
@@ -11868,8 +11905,13 @@ class PlexSim:
             return ("error", 400, "new scanner needs to be paired with new agent ")
         if not query.get("name"):
             return ("error", 400, "'name' is missing or invalid ")
+        if str(query.get("language") or "").lower() not in KNOWN_LANGUAGES:
+            # Measured on plexscratch: no `language` at all is a 400 and `zz-ZZ` is a
+            # 400 whose body is exactly `'language' is invalid`. The client's own form
+            # always sends one; plexsim created the library regardless.
+            return ("error", 400, "'language' is invalid ")
         title = query.get("name") or query.get("title") or "New Library"
-        section_type = query["type"]
+        section_type = kind
         seed = "%s-%s" % (title, section_type)
         section = self.catalog.add_section(
             title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))
