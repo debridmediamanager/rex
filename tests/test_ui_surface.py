@@ -11147,6 +11147,38 @@ def main():
                               request(base, "GET",
                                       "/status/sessions/history/all?type=1&parent=abc")[0]))
 
+    # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree exactly: a
+    # FRACTIONAL value is a 500 on seven columns and on no others.
+    #
+    #   500 on `=1.5`:  viewCount  viewOffset  lastViewedAt  lastRatedAt
+    #                   addedAt    updatedAt   createdAt
+    #   0 rows, no refusal: year duration index skipCount ratingCount mediaCount
+    #                       absoluteIndex userRating
+    #
+    # So it is not the python type -- `year` and `duration` are integers too. It is the
+    # timestamp and per-user-state family. And `lastRatedAt`, `createdAt` and
+    # `lastViewedAt` refuse `abc` and an empty value as well, which plexsim missed for a
+    # reason worth writing down: its date branch returns early when the ROW's value is
+    # null, so on a library where nothing carries the column the VALUE was never parsed.
+    # A real PMS parses the value first.
+    frac_c15f = {col_c15f: request(base, "GET", "/library/sections/%s/all?type=1&%s=1.5"
+                                   % (movie_section, col_c15f))[0]
+                 for col_c15f in ("viewCount", "viewOffset", "lastViewedAt", "lastRatedAt",
+                                  "addedAt", "updatedAt", "createdAt")}
+    ok_c15f = {col_c15f: request(base, "GET", "/library/sections/%s/all?type=1&%s=1.5"
+                                 % (movie_section, col_c15f))[0]
+               for col_c15f in ("year", "duration", "index", "skipCount", "ratingCount",
+                                "mediaCount", "absoluteIndex", "userRating")}
+    word_c15f = {col_c15f: request(base, "GET", "/library/sections/%s/all?type=1&%s=abc"
+                                   % (movie_section, col_c15f))[0]
+                 for col_c15f in ("lastRatedAt", "createdAt", "lastViewedAt")}
+    check("a fractional value refuses on the seven timestamp and state columns only",
+          all(v_c15f == 500 for v_c15f in frac_c15f.values())
+          and all(v_c15f == 200 for v_c15f in ok_c15f.values()),
+          "refuse %s | allow %s" % (frac_c15f, ok_c15f))
+    check("the three date columns refuse a word even when no row carries them",
+          all(v_c15f == 500 for v_c15f in word_c15f.values()), str(word_c15f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

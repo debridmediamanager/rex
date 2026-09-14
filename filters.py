@@ -189,6 +189,10 @@ def as_epoch(value, now=None):
     """
     now = now if now is not None else time.time()
     value = str(value).strip()
+    if "." in value and value.replace(".", "", 1).lstrip("-").isdigit():
+        # Cycle 15: a fractional epoch is a 500 on both references -- `addedAt=1.5`,
+        # `updatedAt=1.5` and the other three alike.
+        raise FilterError(500, "fractional date %r" % value)
     match = _RELATIVE.match(value)
     if match:
         sign, amount, unit = match.groups()
@@ -211,6 +215,13 @@ def _to_epoch(text, form):
         return time.mktime(time.strptime(text, form))
     except ValueError:
         raise FilterError(500, "unparseable date %r" % text)
+
+
+# Cycle 15, measured on kids (1.43.4) and zen (1.42.2): the two per-user-state
+# columns that refuse a FRACTIONAL value. The five date columns refuse one through
+# `as_epoch`; `year`, `duration`, `index`, `skipCount`, `ratingCount`, `mediaCount`,
+# `absoluteIndex` and `userRating` take it and answer no rows.
+FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 
 
 def as_number(value):
@@ -404,11 +415,15 @@ def compare(kind, operator, actual, wanted, field=""):
         return _exact(operator, actual, wanted, field)
 
     if kind == "date":
+        # Cycle 15: the VALUE is parsed before the row's own is looked at. plexsim
+        # returned here first, so on a library where nothing carries the column --
+        # `lastRatedAt`, `createdAt`, `lastViewedAt` on most of them -- an
+        # unparseable value was never refused at all. Both references 500 it.
+        moment = as_epoch(wanted)
         if actual is None:
             # Measured on a large real library: a NULL date matches "is before"
             # and fails "is after" (3835 + 21 = 3856 rows either side).
             return operator in ("<<=", "<=")
-        moment = as_epoch(wanted)
         # A row may hold a date as an ISO string (`originallyAvailableAt`) or as
         # an epoch (`addedAt`); both are dates to a filter.
         actual = as_epoch(actual) if not str(actual).replace(".", "").isdigit() \
@@ -472,6 +487,11 @@ def compare(kind, operator, actual, wanted, field=""):
         return actual == target
 
     if kind == "integer":
+        if field in FRACTIONAL_REFUSED and "." in str(wanted):
+            # Cycle 15: a fractional value is a 500 on the per-user-state columns and
+            # NOT on `year`, `duration`, `index` and the rest -- so it is the family,
+            # not the python type. Measured on both references.
+            raise FilterError(500, "fractional value %r on %s" % (wanted, field))
         target = as_number(wanted)
         if actual is None:
             actual = 0
