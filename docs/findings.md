@@ -4922,6 +4922,277 @@ teaching: a rule implemented as a proxy for itself is the kind that survives.
   `mediaTagPrefix`, `mediaTagVersion`) — measured on the copy, not implemented: plexsim's
   bare container there carries `size` alone, and the paths that matter now answer.
 
+#### The seventeenth pass — the row itself, the write surface below the playlist, and three fixtures captured off the wrong version
+
+Two hunters and a driver sweep. **Territory A** took the dimension nobody had swept — the
+ROW: every attribute of every row type, in every container that carries one, against both
+references, plus the XML attribute order cycle 16 had explicitly left unmapped.
+**Territory B** took the write surface one level below the playlist: the collection ITEM
+path, the `/library/sections/{id}/prefs` family, the butler's individual tasks and the item
+writes nobody had reached. The driver's own round began where cycle 16's localisation
+finding left off and found that the version split cycle 14 applied to one fixture belongs to
+three.
+
+**29 findings implemented** over 32 commits. Every one was re-measured by the driver before
+any code was written, and every one is committed with a check proved to fail against its own
+parent commit.
+
+##### Three fixtures were captured off the wrong version
+
+- **The Meta `Field` list is per VERSION, exactly as the Filter list is.** Cycle 14 split
+  `Meta.Type[].Filter` (1.42.2 advertises 22 movie filters and 9 episode ones, 1.43.4 28 and
+  17) and left `Field` at 1.43.4's, because both Meta fixtures were captured off kids. zen —
+  1.42.2, the build plexsim reports — advertises **34** movie Fields and **20** episode ones
+  against kids' 40 and 26, differing in exactly the six media-codec axes (`hdr10plus`,
+  `atmos`, `videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`). And on 1.42.2 those
+  six are UNKNOWN fields: `videoCodec=h264` answers all 3,887 of zen's movies, and
+  `/query/parse` reports each as an `Error` rather than a `Rule`. plexsim advertised all six
+  in the smart-filter builder, filtered on them (0 rows) and parsed them as real Rules.
+- **`tv.plex.agents.nfo.movie` and `tv.plex.agents.nfo.series` are 1.43.4-only.** Measured
+  over the bare path and every `mediaType=`: 1.42.2 lists four modern agents and two per
+  media type where 1.43.4 lists six and three. `system_agents.json` was captured off kids,
+  so plexsim offered the Add Library and Edit Library dialogs an agent a server of its
+  version does not have.
+- **`translations.json`'s coverage was only as wide as its capture script's path list**, as
+  §3.3 had said since cycle 16. Sweeping 87 paths against kids in German found **119
+  (attribute, string) pairs** the reference translates that the table did not hold, and zen
+  moves the same families (43 strings on a library's `/prefs`, 17 on `/hubs/search`, 2 on
+  `/butler`). The biggest is the PREFERENCES family — every `label`, `summary` and
+  `enumValues` of the Edit Library dialog and the per-item Advanced pane, 31 labels, 30
+  summaries and 19 enum lists. Beside it: the seventeen typed search hubs, whose titles the
+  client lays the page out from; the butler's task titles and descriptions; a GENERATED
+  `Episode N`, the sibling of the `Season N` rule already in the table; and `/query/parse`'s
+  `fieldTitle`. The table is a strict superset of cycle 16's — 451 entries against 342,
+  nothing dropped. A string that differs between two ENGLISH fetches of the same path is not
+  a translation, so the capture now fetches each path in English twice and diffs only the
+  stable strings; `/system/agents` is out of the list because its `Language` list is
+  REORDERED per request language rather than translated, which a positional diff reads as
+  `code: "ja-JP"` translating to `"vi-VN"`.
+
+##### The localiser stopped at the row boundary
+
+- **Inside a `Metadata` row the reference translates exactly three things**, mapped by
+  diffing a whole item document against itself in German with every include option set: a
+  GENERATED `Season N`/`Episode N` (already implemented), the `Preferences` block's `Setting`
+  rows — `label`, `summary` and `enumValues` alike, on a movie, a show and a season — and a
+  `Stream`'s language fields. The row's own `title`, `summary` and tag names stay English in
+  every language. plexsim's guard stopped dead at the row, so the whole per-item Advanced
+  pane stayed English for every non-English client while the same settings on
+  `/library/sections/{id}/prefs` were translated.
+- **A Stream's `language` is localised and its two display titles are COMPOSED from the
+  localised name**, not substituted into. Held out on zen's real multi-language streams in
+  de, fr and es: movie 380's English subtitle track is TITLED "English", so its
+  `displayTitle` moves `English` → `Englisch` while its `extendedDisplayTitle` stays
+  `English (SRT)` — the language part was already omitted for carrying one of the title's own
+  words, and that omission is decided on the ENGLISH name. Its Tamil track goes the other
+  way: `Tamil (தமிழ் SRT)` becomes `Tamil (Tamoul SRT)` in French, the title untouched and
+  the language name inside it localised. Passing the English name as a stand-in to the
+  extended-title composer reproduces both. The names themselves were already in the captured
+  table, inside the `languageOverride`/`audioLanguage` enum lists — a `code:name` list of 47
+  languages per language — so aligning those lists by CODE gives an English-name →
+  localised-name map with nothing invented in it.
+
+##### The XML the wire actually carries
+
+- **A real PMS escapes an XML attribute value into pure ASCII**, even though the document
+  declares UTF-8. Measured on kids and zen, which agree byte for byte over the whole table:
+  `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`; `"` → `&#34;` and `'` → `&#39;`, NUMERIC rather
+  than `&quot;`/`&apos;`; TAB → `&#9;` in decimal but NEWLINE and CR → `&#xA;`/`&#xD;` in
+  HEX; every codepoint from U+0080 up → its DECIMAL reference, astral plane included (an
+  emoji is `&#128512;`, one reference and not a surrogate pair); and every control character
+  XML 1.0 forbids — U+0001..U+0008, U+000B, U+000C, U+000E..U+001F and U+007F — replaced with
+  a literal `?`. plexsim used `xml.sax.saxutils.quoteattr`, which writes `&quot;`, leaves `'`
+  alone, sends the newline as decimal and passes every non-ASCII character through raw. The
+  surface carries no element TEXT at all, so the rule is the attribute rule entire.
+- **A ROW's XML attribute order**, which cycle 16 settled for the CONTAINER and explicitly
+  left for this cycle. It is not alphabetical and not the order the row dict was built in: a
+  tag is `id, filter, tag`, a movie leads `ratingKey, key, guid, slug, studio, type, title,
+  titleSort`, a Hub leads `hubKey, key, title, type, hubIdentifier`, and a `/library/sections`
+  row leads `allowSync, filters, refreshing, key, type, title, agent`. Derived as a
+  topological sort of every attribute PAIR the two references were seen to emit across 25
+  element buckets, each verified to be a superset of every observed sequence; plexsim
+  inverted a witnessed pair in 11 of them, **634 pairs** in all, and 0 remain. The untyped
+  `Directory` rows needed a second pass: a SORT row is `default, defaultDirection, descKey,
+  firstCharacterKey, key, title` and a `firstCharacter` bucket `size, key, title`, and the
+  first table's one untyped order came from the "All episodes" row alone. Costs a real client
+  nothing — every Plex client uses a real XML parser — and is fixed because the corpus replay
+  compares attribute presence and values but not order, so nothing else in the programme
+  would catch it.
+
+##### What the row itself showed
+
+- **A leading run of PUNCTUATION comes off `titleSort`, before the article.** zen's episode
+  10866 is titled `'Til Death Do Us Art` and sorts as `Til Death Do Us Art`; its episode
+  `firstCharacter` axis has 27 buckets — `#` then A–Z, no apostrophe bucket — and the `T`
+  bucket holds that row, so the rule holds on 1.42.2 as well as on the copy where the table
+  was measured character by character. The set is NOT a Unicode category and cannot be
+  written as one: in ASCII exactly eight characters strip (`"` `'` `(` `-` `.` `[` `{` `~`)
+  while `! # $ % & ) * + , / : ; < = > ? @ \ ] ^ _ ` | }` do not, so it is neither "opening
+  brackets" nor `Po` nor `Sm`. Outside ASCII it is two whole ranges: every character from
+  U+0080 to U+00BF and every character from U+2000 to U+2FFF strips — 85 of 85 tested across
+  them, and every block boundary probed — while U+0100..U+1FFF and everything from U+3000 up
+  does not, so the CJK and fullwidth brackets stay. The run may mix those characters with
+  whitespace and repeat (`((( Zulu Probe` and ` . - Zulu Probe` both sort as `Zulu Probe`),
+  it comes off BEFORE the article (`-The Zulu Probe` → `Zulu Probe`) and only once at the raw
+  string start (`The (Zulu Probe` → `(Zulu Probe`), the fold still applies, and a title made
+  of nothing but strippable characters keeps its own text rather than sorting as the empty
+  string.
+- **A show's `/allLeaves` — and no other container — stamps a leaf's BORROWED artwork with
+  the LEAF's own `addedAt`.** `grandparentThumb`, `grandparentArt`, `grandparentTheme` and
+  `art` all carry it there (14 of 14 stamped rows over 140 episodes on zen, 3 of 3 on kids),
+  while the episode's detail row, the season's `/children`, the section grid at `type=4`,
+  `recentlyAdded`, `newest`, `/library/all` and the hubs all carry the show's CURRENT stamp.
+  It is the same family as the `studio` that container already carries: a property of the
+  LIST, not of the row. The hunt reported it as a property of an episode row, and the section
+  grid disagrees with that reading 641 times on zen. What it costs a client: an episode's
+  grandparent artwork URL on this list is stable for the life of the row, so a cached image
+  stays valid across artwork edits; plexsim re-pointed all of them on every edit.
+
+##### The edit path's refusal grammar
+
+- **A save a real PMS REFUSES writes NOTHING.** `PUT /library/metadata/{id}?title.value=
+  PARTIAL&year.value=abc` is a 500 there and the title is untouched, on the item path and the
+  section path alike. plexsim applied each parameter as it validated it, so everything before
+  the bad one landed and everything after it did not — the client is told the save failed,
+  keeps its old model, and the row on disk has moved, with nothing to tell the user. The
+  highest-impact finding of the pass.
+- **The ITEM edit path's 400 means "this request edits nothing", not "an unknown field".**
+  With a real edit beside it the reference IGNORES every name it does not recognise — an
+  unknown `.value`, a bare unknown name, an unknown TAG type and an option like
+  `flattenSeasons=1` all answer 200 and the edit lands — while each of them ALONE is still a
+  400, as is a PUT with no parameters. The recorded rule was measured with the unknown name
+  alone, which is failure class **A**: a client sends its save with whatever options it
+  carries, and plexsim refused 34 of the 71 names swept.
+- **On the SECTION save path a form that names nothing to write is a 200** that edits nothing
+  — `?type=2&id={id}` alone, with a bare unknown name, with `includeGuids=1` or with an
+  item-prefs option — because a bare `field=value` is a FILTER there. The unknown `.value`
+  form stays a 400 on that path, which is where the two paths genuinely differ.
+
+##### The collection item path
+
+- **A collection's children on the METADATA path are the LIGHT grid row** inside a container
+  that carries the librarySection triple and `allowSync: true` and NO `thumb`. plexsim sent
+  the full detail row — `Guid`, `Rating`, every tag list with ids, the whole `Stream` table —
+  put the triple on each ROW instead, said `allowSync: false` and added a `thumb`.
+- **The MOVE has a grammar.** `after=<the moving item itself>`, an EMPTY `after=` and an
+  unparseable one are 400s that move nothing; an `after=` that names NO member (`999999`,
+  `0`) is a 200 that moves the row to the FRONT, the same as no `after=`; a ratingKey that is
+  not a member is a 400, not a 404; and `/children/{ratingKey}/move` is the same endpoint and
+  really moves, where plexsim answered `{size: 0}`. plexsim answered 200 to every one and
+  moved the row regardless.
+- **A comma-joined `uri` TOLERATES the members it cannot use**: a movie and an episode into a
+  movie collection is a 200 that adds the movie and drops the episode, and an unknown key
+  beside a real one adds the real one. Only a SINGLE-key uri of the wrong type is the 400
+  cycle 9 recorded. plexsim refused the whole batch, so "Add to Collection" over a
+  multi-select lost every row when one was wrong.
+- **The item paths answer 404 to the verbs they do not implement**: POST, DELETE, PATCH and
+  OPTIONS on `/items`, every verb but DELETE on `/items/{ratingKey}`, every verb but PUT on
+  `/move`. plexsim answered 200 with an empty container to the first, 200 with an INVENTED
+  single-item container to a GET of one member, and 200 with the whole children listing to a
+  GET of `/move`. **A ratingKey that is not a number on the DELETE is a 404** where an
+  unknown number is a 200 that removes nothing — recorded in cycle 14 and left unimplemented.
+
+##### The artwork surface
+
+- **An artwork candidate whose `ratingKey` is a LOCAL uri names a SERVER PATH.** Measured on
+  kids and zen over 13 and 97 candidates: `ratingKey` is the bare uri (`metadata://`,
+  `media://`, `upload://`) and `key` and `thumb` are
+  `/library/metadata/{id}/file?url=<the uri percent-encoded, with `.` escaped as `%2E`>`,
+  which really serves the image (200 image/jpeg). A `media://` candidate carries NO
+  `provider` while an agent-supplied `metadata://` one does. plexsim put the bare uri in all
+  three and stamped every local row `provider: "local"`, so Change Artwork drew each uploaded
+  tile with `img src="upload://posters/..."` — a grid of broken tiles.
+- **`DELETE /library/metadata/{id}/thumb` clears the poster** exactly as `/poster` does.
+  Cycle 16 recorded the rule for all three names and plexsim implemented two, so the singular
+  `/thumb` fell through to the image read and answered the PNG bytes to a DELETE.
+- **An artwork UPLOAD moves `updatedAt` onto the same stamp the new artwork path carries**,
+  as a PICK does. Cycle 15 measured it for the pick and plexsim implemented it there only, so
+  a client that caches on the stamp never refetched a poster just uploaded.
+
+##### The prefs family, the butler and the verb table
+
+- **A library PREFERENCE write moves the SECTION's own `updatedAt`** and nothing else's.
+  Clients cache a library keyed on that stamp, so on plexsim a settings change never
+  invalidated the cache. The write itself is unchanged: 200, empty body, zero frames.
+- **An INT library preference whose value does not parse is stored as 0**, not ignored:
+  `abc`, an empty value, `1.5`, a space and `0x3` all read back as `0` where `007` reads back
+  as `7`. This corrects the recorded rule — "a bad int is a 500 on `/:/prefs`, IGNORED on a
+  library" — whose second half was measured by watching the write answer 200 without reading
+  the value back. Clearing "Minimum automatic collection size" in the Edit Library dialog is
+  exactly this request.
+- **A library TEXT preference is stored percent-ESCAPED for the two characters that delimit
+  an `enumValues` string** — `:` becomes `%3a` and `|` becomes `%7c`, lowercase hex — and a
+  value carrying a `%` of its own is stored EMPTY. Every other character round-trips.
+- **Twelve of the twenty-three butler tasks report a different sentence**, three report
+  SEVERAL, and five report one where plexsim reported none. The task LIST is identical on
+  kids, zen, plexscratch and plexsim, and every `POST /butler/{Task}` is a 200 with an empty
+  body on both, so what differs is only what the Scheduled Tasks page then prints. The two
+  tasks with an activity of their own differ in it too: `CleanOldBundles` is titled `Cleaning
+  Bundles` and steps its SUBTITLE through four named phases (`Analyzing media bundles`,
+  `Deleting N media bundles` at 75 and 100, `Analyzing metadata bundles`), and
+  `OptimizeDatabase` is titled `Optimizing database` with the subtitle `Optimizing Database`
+  — plexsim had that pair the other way round. The COUNT in each sentence is content and not
+  part of the rule.
+- **An ACTIVITY's subtitle is the row's FRAME title**, which is not the row's own title: a
+  season's is `<show> S01` and an episode's `<show> S01 E01`. plexsim used `title (year)` for
+  every type — the movie and show form — so the Dashboard printed `Season 19 (2007)` where a
+  real PMS prints `The Simpsons S19`. The rule is recorded for the timeline frames and was
+  implemented in `notify_timeline` alone; the helper beside it kept the wrong form. Failure
+  class **C**.
+- **`POST` on an item ACTION leaf is a 404** — `/refresh`, `/analyze` and `/unmatch` take PUT
+  — where `POST /library/sections/{id}/refresh` really is a 200, and **`/library/metadata/
+  {id}/match` answers every verb with its own no-parameters refusal**, so a GET and a DELETE
+  there are 400 rather than 404. plexsim ran the action on a POST, so a client that got the
+  verb wrong re-matched an item instead of being refused.
+- **`GET /library/sections/{id}/refresh?force=` PARSES the flag**: `abc`, `1.5` and an empty
+  value are 400s where `0` and `1` are 200s. plexsim took anything and ran the scan.
+- **A KNOWN single-segment path falls through to the legacy plug-in dispatcher for the verbs
+  it does not implement**: `PUT`, `PATCH` and `OPTIONS` on `/butler` and on `/devices` answer
+  `{"size": 0, "content": "plugins"}`, exactly as an unknown single-segment path does. The
+  recorded rule that a read-only route 404s every verb but GET and HEAD is the MULTI-segment
+  rule.
+- **`GET /livetv` is the plug-in dispatcher's own THREE-row container** — `dvrs`, `epg`,
+  `sessions`, with `content="plugins"` — on kids and zen alike. plexsim routed the whole
+  `/livetv` tree to a bare empty container, so the one path that does answer said the server
+  had no Live TV surface rather than no tuner.
+
+##### A defect this cycle introduced and caught
+
+The first implementation of "the collection item paths 404 the verbs they do not implement"
+encoded `/items` as PUT-only — but the verbs measured on the reference were POST, DELETE,
+PATCH and OPTIONS, and GET was never among them. `GET /library/collections/{id}/items` is the
+member LIST, recorded since cycle 14, and the table took it out; the next finding's own
+measurement showed a collection with three members answering an empty list. It is the lesson
+§3.1 keeps teaching from the other side: a rule is scoped to what was TRIED, and a table
+written from a refusal list has to say which verbs were on it.
+
+##### Measured and not acted on
+
+- **`PUT /library/metadata/{id}/poster?url=nonsense` — REFUTED.** The hunt reported the
+  reference answering 200 and re-versioning where plexsim 404s. Re-measured on a row with
+  artwork: both answer 200 and both re-version, twice in a row with a distinct stamp each
+  time. Nothing to change.
+- **An EPISODE refresh running the SHOW's activity.** The hunt reported it and one of the
+  driver's two captures reproduced it — `started 'Firefly (2002)'`, then one `updated` per
+  season — while the other showed the episode's own seven-frame sequence with the episode's
+  frame title. Two runs of the same request on the same copy disagreed, so only the SUBTITLE
+  half (which both agree on) is implemented and the activity-ownership half is recorded
+  rather than built.
+- **A `state 2` / `metadataState "matching"` opener on a season or episode refresh**,
+  reported by the hunt and not reproduced in either of the driver's captures.
+- **A remote artwork candidate's `thumb` is an `images.plex.tv` proxy.** plex.tv is out of
+  scope, so plexsim keeps the upstream URL there.
+- **The non-alphanumeric `firstCharacter` bucket**, re-measured against zen's section 2 —
+  507 shows, 741 seasons, 9,287 episodes, the instrument that did not exist when §3.3 first
+  flagged it. Section 2 contributes no non-digit non-letter-led title at all, so the "its own
+  bucket, listed after Z" half still rests on the single `『` row in section 1.
+- **Every write rule here has plexscratch as its ONLY witness**, as §3.3's first row says of
+  the whole family.
+- **The three legacy `com.plexapp.agents.*` rows** both references list at `/system/agents`
+  stay deliberately absent: plexsim hosts no plug-in framework, and the fixture's own
+  provenance records why.
+
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
