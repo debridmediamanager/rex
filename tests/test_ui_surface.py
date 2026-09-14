@@ -14387,6 +14387,25 @@ def main():
     check("and so does the negation", status == 200 and str(spare) in keys,
           "%s %s" % (status, keys))
 
+    # Cycle 18, swept character by character on plexscratch over every codepoint from U+0080
+    # to U+02FF that NFD leaves alone: exactly eleven fold, and two of them are witnessed on
+    # zen's real library -- `D\u00f8d Kalm` sorts as `D0d Kalm` and `D\u00e6monicus` as
+    # `Demonicus`. plexsim folded combining marks only, so those rows carried no `titleSort`
+    # at all where a real PMS sends one.
+    pairs = ((u"\u00c6ther Probe", "Ether Probe"), (u"D\u00f8d Probe", "D0d Probe"),
+             (u"D\u00e6mon Probe", "Demon Probe"), (u"Wei\u00df Probe", "Weis Probe"),
+             (u"\u00d0elta Probe", "Delta Probe"))
+    for title, expected in pairs:
+        request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s"
+                % (spare, spare, urllib.parse.quote(title)))
+        row = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
+        check("%r folds to %r" % (title, expected), row.get("titleSort") == expected,
+              "%r" % row.get("titleSort"))
+    request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s"
+            % (spare, spare, urllib.parse.quote(u"\u041c\u043e\u0441\u043a\u0432\u0430 Probe")))
+    row = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
+    check("and nothing above U+02FF folds", not row.get("titleSort"), "%r" % row.get("titleSort"))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
