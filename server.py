@@ -9796,14 +9796,19 @@ class PlexSim:
             return self.save_smart_query(collection, query, "collection")
         if leaf == "items" and method == "PUT":
             rows = self._items_for_uri(query.get("uri", ""), expand=False)
-            if not rows or any(
-                    r.get("type") != collection.get("subtype") for r in rows):
-                # Measured on a writable copy of the reference: a smart collection's
-                # members are its query, and an add with no uri, an unknown key, or a row
-                # of another type -- an episode into a movie collection -- is a 400.
-                # plexsim added whatever the uri named.
+            # Measured on a writable copy of the reference: a smart collection's members
+            # are its query, and an add with no uri or an unknown key is a 400.
+            #
+            # Cycle 17, re-measured on plexscratch: a COMMA-JOINED uri TOLERATES the
+            # members it cannot use -- a movie and an episode into a movie collection is
+            # a 200 that adds the movie and drops the episode, and an unknown key beside
+            # a real one adds the real one. Only a SINGLE-key uri of the wrong type is
+            # the 400 cycle 9 recorded. plexsim refused the whole batch, so "Add to
+            # Collection" over a multi-select lost every row when one was wrong.
+            usable = [r for r in rows if r.get("type") == collection.get("subtype")]
+            if not rows or (len(rows) == 1 and not usable):
                 return ("error", 400, "plexsim: bad request")
-            self.library.add_collection_items(collection, rows)
+            self.library.add_collection_items(collection, usable)
             # Measured: a collection add answers the collection ROW -- with its new
             # childCount and year span -- and not the leafCountAdded/Requested pair a
             # PLAYLIST add answers. plexsim sent the playlist shape here, so the
