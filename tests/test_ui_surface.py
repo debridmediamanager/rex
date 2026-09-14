@@ -13939,6 +13939,25 @@ def main():
               % (sorted(set(got_season_c17b20)), want_season_c17b20,
                  sorted(set(got_episode_c17b20)), want_episode_c17b20))
 
+
+    # Cycle 18: the translation table is only as wide as `capture_i18n.py`'s path list,
+    # which 3.3 has said since cycle 16. A third sweep found five more families the
+    # reference translates: every `firstCharacter` BUCKET names itself in `title2`
+    # ("Start with 'A'" -> `Beginne mit „A“`, with the QUOTE MARKS moving too, so
+    # the string cannot be composed from a stem and the key), `/query/parse`'s
+    # `fieldTitle` for every rule a client can build, the music and photo `/filters`
+    # axes, a music library's own prefs, and the per-library hub page's shelf titles.
+    status, bucket, _ = get(base, "/library/sections/%s/firstCharacter/T?X-Plex-Language=de"
+                            % movie_section)
+    check("firstCharacter bucket title2 is translated",
+          status == 200 and bucket.get("title2") == "Beginne mit „T“",
+          "%s %r" % (status, bucket.get("title2")))
+    status, bucket, _ = get(base, "/library/sections/%s/firstCharacter/T?X-Plex-Language=fr"
+                            % movie_section)
+    check("and the French form carries plain quotes, as the reference sends them",
+          status == 200 and bucket.get("title2") == "Commencer avec 'T'",
+          "%s %r" % (status, bucket.get("title2")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
