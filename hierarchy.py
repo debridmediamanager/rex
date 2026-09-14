@@ -196,6 +196,28 @@ def sort_title(title):
 _GENERATED_TITLE = re.compile(r"^Season (\d+)$")
 
 
+def stored_title(row):
+    """The title a real PMS stores for a row, which is "" where it GENERATED one.
+
+    Cycle 18, measured on plexscratch with a control and corroborated on zen and kids:
+    a row whose title the server made up is not in the query surface at all. The
+    reference's season 11 is titled `Season 2` and `/library/sections/2/search?type=3&
+    query=season` answers NOTHING, while the same season renamed `Zulu Season Probe`
+    answers to `zulu`, to `season` and to `probe`; its three unmatched episodes
+    (`Episode 1`-`3`) answer nothing to `query=episode` while `The Train Job` answers
+    `train`. The `title` FILTER agrees: zen's `type=3&title=Season` is 0 of 741 seasons
+    and its `type=4&title=Episode` is 203 -- the agent-supplied `Episode N` titles, the
+    ones carrying `plex://episode` guids -- of 9,287 episodes.
+
+    It is the same rule `stored_sort_title` reads from the other side: the generated
+    title is composed for DISPLAY and stored nowhere, so nothing that queries the
+    column can see it. plexsim synthesises every season title, so its seasons answered
+    a search for "season" where a real PMS answers none.
+    """
+    return "" if _GENERATED_TITLE.match(row.get("title") or "") \
+        and row.get("type") == "season" else (row.get("title") or "")
+
+
 def stored_sort_title(row):
     """The sort title a real PMS STORES, which is not the one it sends.
 

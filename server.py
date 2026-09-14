@@ -4764,8 +4764,12 @@ class PlexSim:
                 # `?query=ear` finds "Tears of Steel" and `?query=a` finds three
                 # rows. plexsim routed it through the hub matcher, so the in-library
                 # search box found nothing that did not start a word.
+                # Cycle 18: a GENERATED title is not in the search index either --
+                # measured on plexscratch, where the reference's `Season 2` and its
+                # three unmatched `Episode N` rows answer nothing and the same season
+                # renamed answers at once.
                 rows = [r for r in rows
-                        if text in str(r.get("title") or "").lower()
+                        if text in hierarchy_module.stored_title(r).lower()
                         or text in str(r.get("originalTitle") or "").lower()]
             # Cycle 15, measured on kids and zen: this row is the LIGHT grid
             # projection, like every other listing's -- no `Guid`, no `Rating`, no
@@ -5920,11 +5924,15 @@ class PlexSim:
         if field in self.TAG_FILTER_FIELDS:
             return row.get(self.TAG_FILTER_FIELDS[field])
         if field == "title":
+            # Cycle 18: a title the SERVER generated is stored nowhere, so the column
+            # this filter reads is empty for it -- measured on plexscratch and on zen,
+            # where `type=3&title=Season` answers 0 of 741 seasons.
             # The title, carrying the row's ORIGINAL title for the bare `=` matcher --
             # which is the only operator that reads it (cycle 18, measured on zen).
             # A str subclass rather than a list: a list routes through set membership
             # and would break the other five operators.
-            return _TitleValue(row.get("title") or "", row.get("originalTitle") or "")
+            return _TitleValue(hierarchy_module.stored_title(row),
+                               row.get("originalTitle") or "")
         if field == "titleSort":
             # A row omits titleSort when it equals the title; the value is still
             # there to compare (`titleSort=sintel` finds Sintel, measured). Cycle 18:
