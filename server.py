@@ -1483,6 +1483,16 @@ def _image_type(body):
     return "application/octet-stream"
 
 
+# `excludeElements=` names these and a real PMS keeps them anyway. Cycle 19, measured
+# on kids (4 `Image` and 1 `UltraBlurColors` before and after) and zen (2 and 1): every
+# other element the option names really goes -- `Media`, `Genre`, `Country`, `Guid`,
+# `Rating`, `Director`, `Writer`, `Role`, `Producer` -- while these two behave exactly
+# like an unknown name, which is a no-op on both servers. plexsim removed them, so a
+# client naming `Image` in a bandwidth-trimming list lost the artwork rows and the tile
+# colour wash a real PMS still sends.
+NEVER_EXCLUDED = {"Image", "UltraBlurColors"}
+
+
 def _exclude_fields(container, spec):
     """`excludeFields=` applied to a whole response, as a real PMS applies it.
 
@@ -2387,6 +2397,8 @@ class PlexSim:
                 detail.pop(field)
         excluded = [e for e in (query.get("excludeElements") or "").split(",") if e]
         for element in excluded:
+            if element in NEVER_EXCLUDED:
+                continue
             detail.pop(element, None)
         if "Media" in excluded:
             # Measured: dropping Media substitutes two COUNTS, which is what a
@@ -2583,7 +2595,8 @@ class PlexSim:
                                   for r in self._guid_gate([_full(r) for r in page], query)]
             fields["offset"] = start
             fields["totalSize"] = total
-        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",") if e]
+        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",")
+                    if e and e not in NEVER_EXCLUDED]
         if "Media" in excluded:
             # Measured on both servers: `excludeElements=Media` on a child list gives
             # every row the two counts the detail read gets -- `mediaCount` 0 on a
@@ -6346,7 +6359,8 @@ class PlexSim:
         so a client that asked for the cheap list to lay a page out was handed the
         expensive one and no count to draw the badge from.
         """
-        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",") if e]
+        excluded = [e for e in ((query or {}).get("excludeElements") or "").split(",")
+                    if e and e not in NEVER_EXCLUDED]
         if not excluded:
             return rows
         trimmed = []
@@ -12680,7 +12694,8 @@ class Handler(BaseHTTPRequestHandler):
             return result
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
                                             keep_blank_values=True))
-        if not [e for e in (query.get("excludeElements") or "").split(",") if e]:
+        if not [e for e in (query.get("excludeElements") or "").split(",")
+                if e and e not in NEVER_EXCLUDED]:
             return result
         trim = self.server.sim._excluded_elements
 
