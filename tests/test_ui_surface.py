@@ -11712,6 +11712,36 @@ def main():
           extras_c16n[0] == 400,
           "%s %r" % (extras_c16n[0], extras_c16n[1][:60]))
 
+
+    # Cycle 16, measured on kids and zen: `X-Plex-Platform: Roku` (header or query,
+    # that exact spelling -- `roku`, iOS, tvOS, Chrome, Windows and the rest change
+    # nothing) strips `id` AND the whole `Pivot` list from every library `Directory`
+    # of `/media/providers`, leaving the other nine attributes untouched. plexsim sent
+    # the same rows to every platform, so a Roku client is handed pivots a real server
+    # withholds from it.
+    def library_rows_c16o(platform_c16o):
+        probe_c16o = urllib.request.Request(
+            base + "/media/providers",
+            headers={"Accept": "application/json", "User-Agent": UA,
+                     "X-Plex-Platform": platform_c16o})
+        with urllib.request.urlopen(probe_c16o, timeout=20) as answer_c16o:
+            body_c16o = json.load(answer_c16o)["MediaContainer"]
+        return [row_c16o for provider_c16o in body_c16o.get("MediaProvider") or []
+                for feature_c16o in provider_c16o.get("Feature") or []
+                for row_c16o in feature_c16o.get("Directory") or []
+                if row_c16o.get("key")]
+
+    roku_c16o = library_rows_c16o("Roku")
+    chrome_c16o = library_rows_c16o("Chrome")
+    check("X-Plex-Platform: Roku strips id and Pivot from the library rows",
+          bool(chrome_c16o)
+          and all("id" in row_c16o and "Pivot" in row_c16o for row_c16o in chrome_c16o)
+          and all("id" not in row_c16o and "Pivot" not in row_c16o for row_c16o in roku_c16o)
+          and all(sorted(set(chrome_c16o[n_c16o]) - {"id", "Pivot"}) == sorted(roku_c16o[n_c16o])
+                  for n_c16o in range(len(roku_c16o))),
+          "roku=%s chrome=%s" % (sorted(roku_c16o[0]) if roku_c16o else None,
+                                 sorted(chrome_c16o[0]) if chrome_c16o else None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
