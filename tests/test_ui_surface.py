@@ -14122,6 +14122,26 @@ def main():
     check("and the show pivot row stays constant",
           row.get("title") == "All Shows", "%r" % row.get("title"))
 
+    # Cycle 18, measured on kids and zen: `/library/recentlyAdded?limit=N` really caps and
+    # rewrites `totalSize` with the cap, and its grammar is a third one -- `limit=0` answers
+    # ZERO rows (a section listing answers one), a negative value lifts the server's own
+    # 50-row cap, and an unparseable one is IGNORED (a section listing is a 500). plexsim
+    # ignored `limit=` on this path, so a client asking for the top N got the whole list and
+    # paged against a totalSize a real server would have capped.
+    status, listing, _ = get(base, "/library/recentlyAdded")
+    whole = listing.get("totalSize", listing.get("size"))
+    for value, want in (("2", 2), ("1", 1), ("0", 0)):
+        status, listing, _ = get(base, "/library/recentlyAdded?limit=" + value)
+        check("recentlyAdded limit=%s caps and rewrites totalSize" % value,
+              status == 200 and listing.get("size") == want
+              and listing.get("totalSize", listing.get("size")) == want,
+              "%s size=%s total=%s" % (status, listing.get("size"), listing.get("totalSize")))
+    for value in ("abc", "1.5", ""):
+        status, listing, _ = get(base, "/library/recentlyAdded?limit=" + value)
+        check("and an unparseable limit=%r is ignored" % value,
+              status == 200 and listing.get("totalSize", listing.get("size")) == whole,
+              "%s %s" % (status, listing.get("totalSize")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
