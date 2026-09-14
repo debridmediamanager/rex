@@ -12823,6 +12823,55 @@ def main():
           % (english_c16i, german_c16i, regional_c16i, accepted_c16i, both_c16i,
              unknown_c16i, seasons_c16i[:2], plain_seasons_c16i[:2]))
 
+
+    # Cycle 17: the Meta Field list is per VERSION, like the Filter list. Cycle 14 split
+    # `Meta.Type[].Filter` per version and left `Field` at 1.43.4's, because BOTH Meta
+    # fixtures were captured off kids. Measured on zen (1.42.2, the build plexsim
+    # reports): 34 movie Fields and 20 episode ones against kids' 40 and 26, differing in
+    # exactly the six media-codec axes -- and on 1.42.2 those six are UNKNOWN fields, so a
+    # listing filtered on one answers EVERY row (3887 of zen's 3887) and /query/parse
+    # reports an `Error` rather than a `Rule`. plexsim advertised all six in the smart
+    # filter builder, filtered on them (0 rows) and parsed them as real Rules.
+    meta_c17d1 = get(base, "/library/sections/%s/all?includeMeta=1"
+                     "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
+                     % movie_section)[1].get("Meta") or {}
+    movie_fields_c17d1 = []
+    for t_c17d1 in meta_c17d1.get("Type") or []:
+        if t_c17d1.get("type") == "movie":
+            movie_fields_c17d1 = [f_c17d1.get("key")
+                                  for f_c17d1 in (t_c17d1.get("Field") or [])]
+    ep_fields_c17d1 = []
+    if show_section:
+        smeta_c17d1 = get(base, "/library/sections/%s/all?includeMeta=1&type=4"
+                                "&X-Plex-Container-Start=0&X-Plex-Container-Size=0" % show_section)[1].get("Meta") or {}
+        for t_c17d1 in smeta_c17d1.get("Type") or []:
+            if t_c17d1.get("type") == "episode":
+                ep_fields_c17d1 = [f_c17d1.get("key")
+                                   for f_c17d1 in (t_c17d1.get("Field") or [])]
+    codecs_c17d1 = ("hdr10plus", "atmos", "videoCodec", "audioCodec", "subtitleCodec",
+                    "audioLayout")
+    advertised_c17d1 = [k_c17d1 for k_c17d1 in movie_fields_c17d1 + ep_fields_c17d1
+                        if str(k_c17d1).rpartition(".")[2] in codecs_c17d1]
+    all_c17d1 = get(base, "/library/sections/%s/all?type=1"
+                    "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
+                    % movie_section)[1].get("totalSize")
+    filtered_c17d1 = get(base, "/library/sections/%s/all?type=1&videoCodec=h264"
+                               "&X-Plex-Container-Start=0&X-Plex-Container-Size=0" % movie_section)[1].get("totalSize")
+    # /query/parse answers a root `Query`, not a MediaContainer, so the suite's own
+    # get() -- which reads MediaContainer -- hands back an empty dict here.
+    parsed_c17d1 = json.loads(request(
+        base, "GET", "/library/sections/%s/query/parse?type=1&atmos=1"
+        % movie_section)[1]).get("Query") or {}
+    check("the Meta Field list is 1.42.2's, not 1.43.4's",
+          advertised_c17d1 == [] and len(movie_fields_c17d1) == 34
+          and (not show_section or len(ep_fields_c17d1) == 20)
+          and filtered_c17d1 == all_c17d1 and all_c17d1
+          and bool(parsed_c17d1.get("Error")) and not parsed_c17d1.get("Rule"),
+          "movie=%d episode=%d codecs=%s videoCodec=%s/%s parse=%s"
+          % (len(movie_fields_c17d1), len(ep_fields_c17d1), advertised_c17d1,
+             filtered_c17d1, all_c17d1,
+             "Error" if parsed_c17d1.get("Error") else "Rule"))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

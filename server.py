@@ -135,6 +135,14 @@ except (OSError, ValueError):
 # episode, folder) with their own filters and sorts, so retargeting the movie
 # template onto a show library gave the client a show grid whose filter bar
 # could only talk about movies.
+# The Field list is per VERSION as well as the Filter list, and both fixtures
+# were captured off kids (1.43.4): the six media-codec axes (hdr10plus, atmos,
+# videoCodec, audioCodec, subtitleCodec, audioLayout) are 1.43.4's. On zen --
+# 1.42.2, the build plexsim reports -- they are UNKNOWN fields, so a listing
+# filtered on one answers EVERY row and /query/parse reports an Error rather
+# than a Rule. Stripping them from the fixtures also takes them out of
+# FILTER_FIELD_TYPES below, which is what makes the engine treat them as the
+# unknown fields they are.
 SECTION_META = {}
 for _kind, _name in (("movie", "section_meta.json"), ("show", "section_meta_show.json")):
     _path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _name)
