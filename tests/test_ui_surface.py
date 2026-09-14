@@ -16261,6 +16261,31 @@ def main():
           bool(codes_c20q) and all(got_c20q == want_c20q
                                    for got_c20q, want_c20q in codes_c20q.values()),
           "%s" % codes_c20q)
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2), which agree agent for agent:
+    # the two forms of `/system/agents` carry DIFFERENT child elements. The bare form
+    # carries a `MediaType` row per media type the agent serves and NO `Language` at
+    # all -- zen's `com.plexapp.agents.none` has five MediaTypes, `imdb` one, and every
+    # one of its fifteen agents has zero Languages -- while `?mediaType=N` is the other
+    # way round: a Language list per agent (26, 33 or 45 rows) and no MediaType. plexsim
+    # sent its 45 Languages in both forms and a MediaType in neither, so the Agents page
+    # could not say which agent serves which library type.
+    _, bare_c21a, _ = get(base, "/system/agents")
+    _, typed_c21a, _ = get(base, "/system/agents?mediaType=1")
+
+    def shape_c21a(doc_c21a):
+        rows_c21a = doc_c21a.get("Agent") or []
+        return [(r_c21a.get("identifier"),
+                 len(r_c21a.get("Language") or []), len(r_c21a.get("MediaType") or []))
+                for r_c21a in rows_c21a]
+
+    check("the two forms of /system/agents carry different child elements",
+          bool(shape_c21a(bare_c21a)) and bool(shape_c21a(typed_c21a))
+          and all(langs_c21a == 0 and types_c21a > 0
+                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(bare_c21a))
+          and all(langs_c21a > 0 and types_c21a == 0
+                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(typed_c21a)),
+          "bare %s | mediaType=1 %s" % (shape_c21a(bare_c21a), shape_c21a(typed_c21a)))
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

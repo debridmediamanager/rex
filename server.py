@@ -11555,9 +11555,22 @@ class PlexSim:
         type offers (a movie library: Plex Movie, Personal Media, NFO Movie), a type
         no agent serves is `size: 0`, and a non-number is a 400.
         """
+        # Cycle 21, measured on kids and zen agent for agent: the two forms carry
+        # DIFFERENT child elements. The BARE form carries a `MediaType` row per media
+        # type the agent serves and NO `Language` at all -- zen's fifteen agents have
+        # zero Languages between them -- while `?mediaType=N` carries the Language list
+        # and no MediaType. plexsim sent its Language list in both forms and a
+        # MediaType in neither, so the Agents page could not say what an agent serves.
         wanted = query.get("mediaType")
         if not wanted:
-            return self.bare_container(size=len(SYSTEM_AGENTS), Agent=SYSTEM_AGENTS)
+            agents = [{k: v for k, v in agent.items() if k != "Language"}
+                      for agent in SYSTEM_AGENTS]
+            for agent in agents:
+                serves = [int(number) for number, names in AGENT_MEDIA_TYPES.items()
+                          if agent["identifier"] in names]
+                if serves:
+                    agent["MediaType"] = [{"mediaType": number} for number in sorted(serves)]
+            return self.bare_container(size=len(agents), Agent=agents)
         if not wanted.lstrip("-").isdigit():
             return ("error", 400, "plexsim: bad request")
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
