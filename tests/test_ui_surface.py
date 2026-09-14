@@ -14366,6 +14366,27 @@ def main():
         status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
         check("%s on /subtitles is still a %s" % (verb, want), status == want, "%s" % status)
 
+    # Cycle 18, measured on zen over all 3,887 rows of a real movie library and held out on
+    # 24 (operator, value) pairs: the bare `title=` matcher ALSO reads the row's
+    # `originalTitle` -- `title=the` answers 1,484 rows where the title alone explains 1,481
+    # -- while `title!=`, `==`, `!==`, `<=` and `>=` all read the title alone. A client
+    # searching a foreign film by its own-language title finds it on a real PMS and did not
+    # here.
+    request(base, "PUT", "/library/metadata/%s?type=1&id=%s&originalTitle.value=Zulu%%20Origin"
+            % (spare, spare))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=1&title=Zulu" % movie_section)
+    keys = [r.get("ratingKey") for r in listing.get("Metadata") or []]
+    check("the bare title= matcher reads originalTitle",
+          status == 200 and str(spare) in [str(k) for k in keys], "%s %s" % (status, keys))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=1&title%%3D=Zulu%%20Origin"
+                             % movie_section)
+    check("while the exact operator reads the title alone",
+          status == 200 and not listing.get("size"), "%s %s" % (status, listing.get("size")))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=1&title%%21=Zulu" % movie_section)
+    keys = [str(r.get("ratingKey")) for r in listing.get("Metadata") or []]
+    check("and so does the negation", status == 200 and str(spare) in keys,
+          "%s %s" % (status, keys))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

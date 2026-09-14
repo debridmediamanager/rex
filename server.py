@@ -1546,6 +1546,20 @@ def _all_title(section):
     return "All " + str(section.get("title") or "")
 
 
+class _TitleValue(str):
+    """A row's title with its original title carried alongside.
+
+    Cycle 18: the bare `title=` matcher reads BOTH, and every other operator on the
+    field reads the title alone -- so the extra string travels with the value rather
+    than being spliced into it.
+    """
+
+    def __new__(cls, title, original):
+        value = str.__new__(cls, title)
+        value.original = original
+        return value
+
+
 def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     """A row as a GRID or a HUB shelf carries it -- lighter than the detail row.
 
@@ -5905,6 +5919,12 @@ class PlexSim:
                               for part in media.get("Part") or [])
         if field in self.TAG_FILTER_FIELDS:
             return row.get(self.TAG_FILTER_FIELDS[field])
+        if field == "title":
+            # The title, carrying the row's ORIGINAL title for the bare `=` matcher --
+            # which is the only operator that reads it (cycle 18, measured on zen).
+            # A str subclass rather than a list: a list routes through set membership
+            # and would break the other five operators.
+            return _TitleValue(row.get("title") or "", row.get("originalTitle") or "")
         if field == "titleSort":
             # A row omits titleSort when it equals the title; the value is still
             # there to compare (`titleSort=sintel` finds Sintel, measured). Cycle 18:
