@@ -14406,6 +14406,27 @@ def main():
     row = get(base, "/library/metadata/%s" % spare)[1]["Metadata"][0]
     check("and nothing above U+02FF folds", not row.get("titleSort"), "%r" % row.get("titleSort"))
 
+    # Cycle 18, measured on plexscratch with a control and corroborated on zen: a row whose
+    # title the SERVER generated is not in the query surface at all. The reference's season
+    # `Season 2` answers nothing to `search?type=3&query=season` while the same season
+    # renamed answers at once, and zen's `type=3&title=Season` is 0 of 741 seasons. plexsim
+    # synthesises every season title, so its seasons answered both.
+    status, found, _ = get(base, "/library/sections/%s/search?type=3&query=season" % show_section)
+    check("a generated season title is not in the search index",
+          status == 200 and not found.get("size"), "%s %s" % (status, found.get("size")))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=3&title=Season" % show_section)
+    check("nor in the title filter", status == 200 and not listing.get("size"),
+          "%s %s" % (status, listing.get("size")))
+    season = get(base, "/library/sections/%s/all?type=3" % show_section)[1]["Metadata"][0]
+    request(base, "PUT", "/library/metadata/%s?type=3&id=%s&title.value=Zulu%%20Season%%20Probe"
+            % (season["ratingKey"], season["ratingKey"]))
+    status, found, _ = get(base, "/library/sections/%s/search?type=3&query=zulu" % show_section)
+    check("while a title a user typed answers at once",
+          status == 200 and found.get("size") == 1, "%s %s" % (status, found.get("size")))
+    status, listing, _ = get(base, "/library/sections/%s/all?type=3&title=Zulu" % show_section)
+    check("and so does the filter", status == 200 and listing.get("size") == 1,
+          "%s %s" % (status, listing.get("size")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
