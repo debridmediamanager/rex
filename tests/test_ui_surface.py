@@ -10777,6 +10777,49 @@ def main():
           "detail %r | create %r" % (detail_c15r.get("librarySectionID"),
                                      made_c15r["movie"].get("librarySectionID")))
 
+    # Cycle 15, measured on plexscratch. Three separate defects on the collection leaves:
+    #
+    #   GET /library/collections/{id}/prefs  is a **404** -- smart and plain alike --
+    #       where plexsim answered an empty 200. That is fix 4's trap from the inside:
+    #       the client reads a 200 as "this endpoint exists and is empty" and stops
+    #       looking for the settings, which live in the includePreferences block.
+    #   GET /library/collections/{id}/posters carries the container's identifying
+    #       triple (identifier, mediaTagPrefix, mediaTagVersion) and ONE `default://`
+    #       candidate -- the collection's own composite -- marked selected, with NO
+    #       `provider` key. /arts is an empty container carrying the same triple.
+    #       plexsim answered a bare `{size: 0}` to both, so Change Poster on a
+    #       collection page offered nothing.
+    #   GET /library/metadata/{collection}/arts must be EMPTY as well; plexsim handed
+    #       back the POSTER there, so Change Background offered the poster.
+    coll_c15l = (container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C15 Leaves"), movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))[1].get("Metadata") or [{}])[0].get("ratingKey")
+    prefs_c15l = request(base, "GET", "/library/collections/%s/prefs" % coll_c15l)[0]
+    posters_c15l = get(base, "/library/collections/%s/posters" % coll_c15l)[1]
+    arts_c15l = get(base, "/library/collections/%s/arts" % coll_c15l)[1]
+    meta_arts_c15l = get(base, "/library/metadata/%s/arts" % coll_c15l)[1]
+    request(base, "DELETE", "/library/collections/%s" % coll_c15l)
+    triple_c15l = ("identifier", "mediaTagPrefix", "mediaTagVersion")
+    check("a collection's /prefs is a 404 and its artwork lists carry the container triple",
+          prefs_c15l == 404
+          and all(k_c15l in posters_c15l for k_c15l in triple_c15l)
+          and all(k_c15l in arts_c15l for k_c15l in triple_c15l)
+          and (posters_c15l.get("size") or 0) == 1
+          and (arts_c15l.get("size") or 0) == 0
+          and (meta_arts_c15l.get("size") or 0) == 0,
+          "prefs %s | posters %s size=%s | arts %s size=%s | metadata/arts size=%s"
+          % (prefs_c15l, sorted(k_c15l for k_c15l in posters_c15l if k_c15l != "Metadata"),
+             posters_c15l.get("size"),
+             sorted(k_c15l for k_c15l in arts_c15l if k_c15l != "Metadata"),
+             arts_c15l.get("size"), meta_arts_c15l.get("size")))
+    cand_c15l = (posters_c15l.get("Metadata") or [{}])[0]
+    check("the collection poster candidate is its own composite, selected, with no provider",
+          str(cand_c15l.get("ratingKey") or "").startswith("default://")
+          and cand_c15l.get("selected") is True and "provider" not in cand_c15l,
+          str(cand_c15l))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

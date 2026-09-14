@@ -5684,12 +5684,18 @@ class PlexSim:
             row = (self.library._collection_row(collection) if collection is not None
                    else self.library._playlist_row(target))
             composite = (row.get("composite") or row.get("thumb") or "").split("?")[0]
+            entries = []
+            if segments[3] == "posters":
+                # Cycle 15, measured on the copy: `/arts` is EMPTY on a collection --
+                # plexsim handed back the POSTER there, so Change Background offered
+                # the poster. And the `default://` row carries no `provider`: the
+                # agent rows do, so the omission belongs to this row alone.
+                entries = [{"key": "%s?width=400&height=600" % composite,
+                            "ratingKey": "default://",
+                            "thumb": "%s?width=200&height=300" % composite,
+                            "selected": True}]
             return self.tag_container(
-                size=1, Metadata=[{"key": "%s?width=400&height=600" % composite,
-                                   "ratingKey": "default://",
-                                   "thumb": "%s?width=200&height=300" % composite,
-                                   "selected": True, "provider": "default"}],
-                _xml={"Metadata": "Photo"})
+                size=len(entries), Metadata=entries, _xml={"Metadata": "Photo"})
         if len(segments) == 4 and segments[3] == "children" and collection is not None:
             # Cycle 14, measured on the copy: a collection answers `/children` on the
             # METADATA path with a full secondary container -- `key` (the bare id),
@@ -8851,6 +8857,33 @@ class PlexSim:
             )
 
         leaf = segments[3]
+        if leaf == "prefs":
+            # Cycle 15, measured on the copy: a 404 on a smart collection and on a
+            # plain one alike. plexsim answered an empty 200, which the client reads
+            # as "this endpoint exists and is empty" -- so it never looks for the
+            # settings, which ride in the `includePreferences=1` block instead.
+            return ("error", 404, "plexsim: not found")
+        if leaf in ("posters", "arts") and method in ("GET", "HEAD"):
+            # Cycle 15, measured on the copy: both carry the container's identifying
+            # triple, and `/posters` lists exactly one candidate -- the collection's
+            # own composite, keyed `default://`, `selected`, and with NO `provider`
+            # (the agent rows do carry one, so its absence is specific to this row).
+            # `/arts` is empty. plexsim answered a bare `{size: 0}` to both, so
+            # Change Poster on a collection page offered nothing at all.
+            entries = []
+            if leaf == "posters":
+                composite = ("/library/collections/%s/composite/%d"
+                             % (collection["ratingKey"], collection["updatedAt"]))
+                entries = [{"key": composite + "?width=400&height=600",
+                            "ratingKey": "default://",
+                            "thumb": composite + "?width=200&height=300",
+                            "selected": True}]
+            return self.bare_container(
+                size=len(entries),
+                identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
+                Metadata=entries, _xml={"Metadata": "Photo"})
         if leaf in ("children", "items") and method == "GET":
             # Measured: `/items` answers the same members as `/children` -- plexsim
             # answered an empty container to it, so the Edit Collection dialog's
