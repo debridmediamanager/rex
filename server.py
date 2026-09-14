@@ -365,6 +365,9 @@ PARSE_ONLY_FIELD_TYPES = {"parentIndex": "integer", "guid": "string",
 for _bare in ("theme", "banner", "art", "thumb"):
     PARSE_ONLY_FIELD_TYPES[_bare] = "string"
     REFUSED_FILTER_FIELDS.add(_bare)
+# And `slug` is the fifth: cycle 7 measured its listing 500 and left it alone, and the
+# cycle-20 sweep measured the same 500 for every operator on both references.
+REFUSED_FILTER_FIELDS.add("slug")
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
