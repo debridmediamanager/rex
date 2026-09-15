@@ -4331,11 +4331,24 @@ class PlexSim:
             # Big Buck Bunny reported `globalViewCount: 1` with no `viewCount` at
             # all, because it had been played and then marked unplayed: the row's
             # counter is current state, this shelf is the history.
-            wanted = {"1": "movie", "2": "show", "4": "episode"}.get(query.get("type"))
-            if wanted is None:
+            # Cycle 27, from the founding instrument -- the Dashboard's Top Played
+            # panel, recorded through a real client -- and swept over 17 values on kids
+            # and zen, which agree on every one: any type NUMBER is answered, 0, 3, 8,
+            # 9, 10, 12, 13, 15, 18, 20 and -1 included, and only a value that does not
+            # PARSE is a 400 (`abc`, an empty one, `1.5`). A type this server holds no
+            # rows of is an empty 200, which is the same shape a section listing gives.
+            #
+            # plexsim refused everything but 1, 2 and 4 -- and the web client asks for
+            # movie, show and ARTIST inside one `all([...])` under a single try/catch,
+            # so the `type=8` refusal rejected the whole batch and the Dashboard's
+            # entire Top Played panel failed, movies and TV with it, on a server that
+            # has no music library to answer for in the first place.
+            raw = query.get("type")
+            if raw is None or not str(raw).lstrip("+-").isdigit():
                 return ("error", 400, "plexsim: bad request")
+            wanted = {"1": "movie", "2": "show", "4": "episode"}.get(str(int(raw)))
             plays, viewers = {}, {}
-            for entry in self.library.history():
+            for entry in (self.library.history() if wanted else ()):
                 key = entry.get("ratingKey")
                 row = catalog.items.get(int(key)) if str(key).isdigit() else None
                 if row is None or row.get("type") != wanted:
