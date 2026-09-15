@@ -12860,58 +12860,77 @@ class PlexSim:
                   "leaves": leaves}
         for name in names:
             messages, inner = self.BUTLER_MESSAGES.get(name, ([], None))
-            if inner:
-                kind, title, subtitle = inner
-                # The task's own activity, measured: started at -1 with its subtitle
-                # already set, stepping to 100, then ended.
-                # Cycle 19: `general.db.optimize` STARTS at 0 with an empty subtitle
-                # and gains the subtitle on its first `updated`; `general.bundle.clean`
-                # starts at -1 with an empty one. Measured on plexscratch.
-                activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
-                            "userID": 1, "title": title, "subtitle": "",
-                            "progress": 0 if subtitle else -1}
-                self.notify_activity(activity, "started")
-                activity["subtitle"] = subtitle or ""
-                if subtitle is None:
-                    # Cycle 17: `CleanOldBundles` steps its SUBTITLE through four named
-                    # phases rather than stepping a progress bar under one subtitle.
-                    for phase, step in self.BUNDLE_CLEAN_PHASES:
-                        activity["subtitle"] = (phase % leaves) if "%d" in phase else phase
-                        activity["progress"] = step
-                        self.notify_activity(activity, "updated")
-                else:
-                    # Cycle 19, measured on plexscratch over three runs: the progression
-                    # is `started` at 0 with an EMPTY subtitle, then `updated` at 0 with
-                    # the subtitle set, then 10, 40, 60, then `ended` at 100. plexsim
-                    # started at -1 with the subtitle already there and stepped
-                    # 10/53/100 -- and its own `PUT /library/optimize` already answered
-                    # the reference's sequence, so the two paths disagreed with each
-                    # other as well as with the reference.
-                    for step in (0, 10, 40, 60):
-                        activity["progress"] = step
-                        self.notify_activity(activity, "updated")
-                # ...and the `ended` frame carries 100 whatever the last update was.
-                activity["progress"] = 100
-                self.notify_activity(activity, "ended")
-            if name == "RefreshLibraries":
-                # Cycle 19, measured on plexscratch: this task runs a section SCAN per
-                # library -- a `library.update.section` activity titled `Scanning
-                # <library>` with the per-item `progress` rows and the subscriptions
-                # pair -- not a metadata refresh per row. plexsim pushed one
-                # `library.update.item.metadata` triple per item and no progress rows at
-                # all, so the Dashboard named the wrong operation for the one task that
-                # runs daily.
-                for section in self.catalog.sections:
-                    self.notify_section_scan(section["key"], section)
-            for message in messages:
-                if "%d" in message:
-                    if "movies" in message:
-                        message = message % counts["movies"]
-                    elif "shows" in message or "show(s)" in message:
-                        message = message % counts["shows"]
+            # Cycle 25, re-measured on plexscratch on an uncontended socket, twice over:
+            # `POST /butler/BackupDatabase` runs its `general.db.backup` activity TWICE,
+            # each a complete started/updated/ended with its own progress message, both
+            # inside the one `butler` wrapper. Cycle 22 measured the doubling and cycle
+            # 23 again; this makes four runs, and no other task does it.
+            #
+            # The two runs are not the same SHAPE -- the first steps through eleven
+            # updates and the second through two -- but that count is the database's
+            # size, which section 8 already records as content. What is emulated is the
+            # doubling and the envelope.
+            for _run in range(2 if name == "BackupDatabase" else 1):
+                if inner:
+                    kind, title, subtitle = inner
+                    # The task's own activity, measured: started at -1 with its subtitle
+                    # already set, stepping to 100, then ended.
+                    # Cycle 19: `general.db.optimize` STARTS at 0 with an empty subtitle
+                    # and gains the subtitle on its first `updated`; `general.bundle.clean`
+                    # starts at -1 with an empty one. Measured on plexscratch.
+                    # Cycle 25, re-measured on plexscratch: the two tasks with an activity
+                    # of their own OPEN differently, and plexsim had one shape for both.
+                    # `general.db.optimize` starts at 0 with an EMPTY subtitle and gains it
+                    # on its first `updated` (cycle 19, still right); `general.db.backup`
+                    # starts at -1 with its subtitle ALREADY SET. The old test keyed on
+                    # whether the task has a subtitle at all, which is true of both.
+                    opens_empty = kind == "general.db.optimize"
+                    activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
+                                "userID": 1, "title": title,
+                                "subtitle": "" if opens_empty else (subtitle or ""),
+                                "progress": 0 if opens_empty else -1}
+                    self.notify_activity(activity, "started")
+                    activity["subtitle"] = subtitle or ""
+                    if subtitle is None:
+                        # Cycle 17: `CleanOldBundles` steps its SUBTITLE through four named
+                        # phases rather than stepping a progress bar under one subtitle.
+                        for phase, step in self.BUNDLE_CLEAN_PHASES:
+                            activity["subtitle"] = (phase % leaves) if "%d" in phase else phase
+                            activity["progress"] = step
+                            self.notify_activity(activity, "updated")
                     else:
-                        message = message % counts["leaves"]
-                self.notify_progress(message)
+                        # Cycle 19, measured on plexscratch over three runs: the progression
+                        # is `started` at 0 with an EMPTY subtitle, then `updated` at 0 with
+                        # the subtitle set, then 10, 40, 60, then `ended` at 100. plexsim
+                        # started at -1 with the subtitle already there and stepped
+                        # 10/53/100 -- and its own `PUT /library/optimize` already answered
+                        # the reference's sequence, so the two paths disagreed with each
+                        # other as well as with the reference.
+                        for step in (0, 10, 40, 60):
+                            activity["progress"] = step
+                            self.notify_activity(activity, "updated")
+                    # ...and the `ended` frame carries 100 whatever the last update was.
+                    activity["progress"] = 100
+                    self.notify_activity(activity, "ended")
+                if name == "RefreshLibraries":
+                    # Cycle 19, measured on plexscratch: this task runs a section SCAN per
+                    # library -- a `library.update.section` activity titled `Scanning
+                    # <library>` with the per-item `progress` rows and the subscriptions
+                    # pair -- not a metadata refresh per row. plexsim pushed one
+                    # `library.update.item.metadata` triple per item and no progress rows at
+                    # all, so the Dashboard named the wrong operation for the one task that
+                    # runs daily.
+                    for section in self.catalog.sections:
+                        self.notify_section_scan(section["key"], section)
+                for message in messages:
+                    if "%d" in message:
+                        if "movies" in message:
+                            message = message % counts["movies"]
+                        elif "shows" in message or "show(s)" in message:
+                            message = message % counts["shows"]
+                        else:
+                            message = message % counts["leaves"]
+                    self.notify_progress(message)
             logger.info("BUTLER ran %s", name)
         wrapper["progress"] = 100
         self.notify_activity(wrapper, "updated")

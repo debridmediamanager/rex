@@ -17413,6 +17413,83 @@ def main():
                for r_c25s in library_c25s]))
     request(base, "DELETE", "/playlists/%s" % key_c25s)
 
+
+    # Cycle 25, re-measured on plexscratch on an uncontended socket, twice over:
+    # `POST /butler/BackupDatabase` runs its `general.db.backup` activity TWICE, each a
+    # complete started/updated/ended with its own progress message, inside the one
+    # `butler` wrapper -- four runs agree now, counting cycles 22 and 23. And the two
+    # tasks with an activity of their own OPEN differently: `general.db.optimize` starts
+    # at 0 with an empty subtitle, `general.db.backup` at -1 with its subtitle already
+    # set. plexsim ran the backup once and opened both the optimize way.
+    #
+    # Two cycle-23 claims did NOT reproduce and are recorded as refuted rather than
+    # implemented: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly
+    # reset copy, not after a 7-9 second queue delay, and `/activities` is EMPTY the
+    # moment the run returns.
+    def butler_frames_c25t(task_c25t):
+        import threading
+        request_c25t = urllib.request.Request(
+            base.rstrip("/") + "/:/eventsource/notifications",
+            headers={"Accept": "text/event-stream", "User-Agent": UA})
+        try:
+            response_c25t = urllib.request.urlopen(request_c25t, timeout=25)
+        except Exception:
+            return []
+        threading.Timer(0.5,
+                        lambda: request(base, "POST", "/butler/%s" % task_c25t)).start()
+        out_c25t, name_c25t = [], None
+        deadline_c25t = time.time() + 12
+        try:
+            while time.time() < deadline_c25t and len(out_c25t) < 90:
+                line_c25t = response_c25t.readline()
+                if not line_c25t:
+                    break
+                text_c25t = line_c25t.decode("utf-8", "replace").strip()
+                if text_c25t.startswith("event:"):
+                    name_c25t = text_c25t.split(":", 1)[1].strip()
+                elif text_c25t.startswith("data:") and name_c25t:
+                    if name_c25t != "ping":
+                        out_c25t.append((name_c25t,
+                                         json.loads(text_c25t.split(":", 1)[1].strip())))
+                    name_c25t = None
+        finally:
+            response_c25t.close()
+        return out_c25t
+
+    backup_c25t = butler_frames_c25t("BackupDatabase")
+    acts_c25t = [(row_c25t.get("ActivityNotification") or {}) for name_c25t, row_c25t
+                 in backup_c25t if name_c25t == "activity"]
+    db_c25t = [a_c25t for a_c25t in acts_c25t
+               if (a_c25t.get("Activity") or {}).get("type") == "general.db.backup"]
+    messages_c25t = [(row_c25t.get("ProgressNotification") or {}).get("message")
+                     for name_c25t, row_c25t in backup_c25t if name_c25t == "progress"]
+    opens_c25t = [(a_c25t.get("Activity") or {}).get("progress") for a_c25t in db_c25t
+                  if a_c25t.get("event") == "started"]
+    subtitles_c25t = [(a_c25t.get("Activity") or {}).get("subtitle") for a_c25t in db_c25t
+                      if a_c25t.get("event") == "started"]
+    check("the database backup runs its own activity TWICE",
+          len([a_c25t for a_c25t in db_c25t if a_c25t.get("event") == "started"]) == 2
+          and len([a_c25t for a_c25t in db_c25t if a_c25t.get("event") == "ended"]) == 2,
+          str([a_c25t.get("event") for a_c25t in db_c25t]))
+    check("each run reports its own message",
+          messages_c25t.count("The butler backed up your database.") == 2,
+          str(messages_c25t))
+    check("and each opens at -1 with its subtitle already set",
+          opens_c25t == [-1, -1] and subtitles_c25t == ["Backing up database"] * 2,
+          "%s %s" % (opens_c25t, subtitles_c25t))
+    optimize_c25t = butler_frames_c25t("OptimizeDatabase")
+    opt_c25t = [(row_c25t.get("ActivityNotification") or {})
+                for name_c25t, row_c25t in optimize_c25t if name_c25t == "activity"]
+    opt_started_c25t = [(a_c25t.get("Activity") or {}) for a_c25t in opt_c25t
+                        if a_c25t.get("event") == "started"
+                        and (a_c25t.get("Activity") or {}).get("type")
+                        == "general.db.optimize"]
+    check("the database optimize still opens at 0 with an EMPTY subtitle",
+          opt_started_c25t
+          and opt_started_c25t[0].get("progress") == 0
+          and opt_started_c25t[0].get("subtitle") == "",
+          str(opt_started_c25t[:1]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
