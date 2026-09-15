@@ -11895,7 +11895,15 @@ class PlexSim:
         for other in ("thumb", "art"):
             # Measured: the artwork that is LEFT moves to a new version stamp, the
             # way an artwork PICK re-versions every field it keeps.
-            if other != field and row.get(other):
+            #
+            # Cycle 29, measured on plexscratch by clearing the THUMB of a season that
+            # owned its poster and borrowed its backdrop: the borrowed `art` is left
+            # exactly as it was, naming `/library/metadata/<show>/art/<the show's stamp>`.
+            # plexsim rewrote it as `/library/metadata/<season>/art/<now>` -- a row
+            # claiming an image the server has none of, which the derivation then handed
+            # to every episode under it. The re-stamp is for the artwork the row OWNS,
+            # which is the same gate the PICK path has had since cycle 27.
+            if other != field and row.get(other) and self._owns(row, other):
                 row[other] = "/library/metadata/%s/%s/%s" % (row["ratingKey"], other, stamp)
         if field == "thumb" and row.get("parentThumb"):
             # Cycle 27, measured on the copy on a SEASON and on an EPISODE: clearing a
