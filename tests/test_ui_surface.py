@@ -19106,6 +19106,75 @@ def main():
               top_c27u[:2] == [newer_c27u, older_c27u],
               "%s (scrobbled %s then %s)" % (top_c27u, older_c27u, newer_c27u))
 
+
+    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2) over nine values each, which
+    # agree edge case for edge case: `contentDirectoryID` SCOPES `/hubs` and the three
+    # `/hubs/home/*` leaves, and on `/hubs` it also REMOVES the `home.playlists` shelf.
+    # A non-empty value narrows every shelf to that library, an EMPTY one scopes
+    # nothing, the match is an exact STRING (`01` selects section 1 on neither
+    # reference), and a COMMA LIST selects several.
+    #
+    # CLAUDE.md recorded that the parameter "scopes and VALIDATES `/hubs/search` alone
+    # -- ignored on every other hub path". That is right for `/hubs/sections/{id}`,
+    # which really does ignore it, and wrong for these four. It is not academic: Plex
+    # Web's Home saga builds every hubs request as
+    # `{contentDirectoryID: pinned.join(","), pinnedContentDirectoryID, includeMeta,
+    # excludeFields}`, so on plexsim an unpinned library's Continue Watching and On Deck
+    # rows leaked onto Home and a library filter did nothing at all.
+    def hubs_c28a(value_c28a):
+        path_c28a = "/hubs?q=%s" % quote(str(value_c28a))
+        if value_c28a is not None:
+            path_c28a += "&contentDirectoryID=%s" % quote(str(value_c28a))
+        hubs_list_c28a = get(base, path_c28a)[1].get("Hub") or []
+        return {h_c28a.get("hubIdentifier"): h_c28a.get("size")
+                for h_c28a in hubs_list_c28a}
+
+    bare_c28a = hubs_c28a(None)
+    movie_c28a = hubs_c28a(movie_section)
+    show_c28a = hubs_c28a(show_section)
+    both_c28a = hubs_c28a("%s,%s" % (movie_section, show_section))
+    empty_c28a = hubs_c28a("")
+    junk_c28a = hubs_c28a("abc")
+    check("contentDirectoryID scopes /hubs and drops the playlists shelf",
+          "home.playlists" in bare_c28a and "home.playlists" in empty_c28a
+          and "home.playlists" not in movie_c28a
+          and "home.playlists" not in show_c28a
+          and "home.playlists" not in junk_c28a
+          and movie_c28a.get("home.television.recent") == 0
+          and show_c28a.get("home.movies.recent") == 0
+          and movie_c28a.get("home.movies.recent") == bare_c28a.get("home.movies.recent")
+          and both_c28a.get("home.movies.recent") == bare_c28a.get("home.movies.recent")
+          and both_c28a.get("home.television.recent") == bare_c28a.get("home.television.recent")
+          and junk_c28a.get("home.movies.recent") == 0
+          and junk_c28a.get("home.television.recent") == 0,
+          "bare %s | movie %s | show %s | both %s | junk %s"
+          % (bare_c28a, movie_c28a, show_c28a, both_c28a, junk_c28a))
+    leaf_c28a = {
+        "movies under the show library":
+            get(base, "/hubs/home/recentlyAdded?type=1&contentDirectoryID=%s" % show_section)[1].get("size"),
+        "movies under their own":
+            get(base, "/hubs/home/recentlyAdded?type=1&contentDirectoryID=%s" % movie_section)[1].get("size"),
+        "onDeck under the movie library":
+            get(base, "/hubs/home/onDeck?contentDirectoryID=%s" % movie_section)[1].get("size"),
+        "onDeck under junk":
+            get(base, "/hubs/home/onDeck?contentDirectoryID=abc")[1].get("size"),
+    }
+    check("and it scopes the /hubs/home leaves too",
+          leaf_c28a["movies under the show library"] == 0
+          and leaf_c28a["movies under their own"] > 0
+          and leaf_c28a["onDeck under the movie library"] == 0
+          and leaf_c28a["onDeck under junk"] == 0,
+          str(leaf_c28a))
+    promoted_c28a = [h_c28a.get("hubIdentifier") for h_c28a in
+                     (get(base, "/hubs/promoted?contentDirectoryID=%s,%s"
+                          % (movie_section, show_section))[1].get("Hub") or [])]
+    check("and /hubs/promoted takes the comma list the client sends",
+          any("recentlyadded.%s" % movie_section in (i_c28a or "")
+              for i_c28a in promoted_c28a)
+          and any("recentlyadded.%s" % show_section in (i_c28a or "")
+                  for i_c28a in promoted_c28a),
+          str(promoted_c28a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
