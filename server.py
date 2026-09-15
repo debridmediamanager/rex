@@ -1414,6 +1414,28 @@ GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "La
 # X-Plex-Client-Profile-Name, X-Plex-Platform or X-Plex-Device names one of them
 # exactly: `Chrome`, `Windows` and `Microsoft Edge` are accepted, where `Edge`,
 # `Darwin`, `Kodi`, `webOS`, `chrome` and `Chrome ` are all 400s.
+# The client profiles that DIRECT PLAY an h264/aac item without `hasMDE=1`, measured on
+# kids (1.43.4) and zen (1.42.2) across four items in both containers. A decision with no
+# `hasMDE` runs the client's own profile against the item and answers one of three shapes:
+#
+#   Roku, Xbox One                      -> directPlay 1000 / general 1000, the Metadata row
+#                                          and `resourceSession`, and NO transcode codes
+#   Chrome, Safari, Chromecast,         -> directPlay 3000 / general 1001 / transcode 1001,
+#   Plex Desktop, Konvergo,                "Conversion OK" -- which plexsim cannot answer,
+#   HTML TV App, Opera                     because it has no encoder (section 8)
+#   Firefox, Microsoft Edge, Generic,   -> directPlay 3000 / general 2000 / transcode 4005,
+#   Plexamp                                "Neither direct play nor conversion is available"
+#
+# plexsim answered the THIRD shape to every client that does not send `hasMDE=1` -- Roku,
+# plex-for-kodi's `ServerDecision`, python-plexapi and the older TV apps -- so a server
+# whose whole purpose is direct play told them its catalog was unplayable.
+#
+# This list is the profiles measured to direct play, not a model of Plex's
+# `Resources/Profiles` matrix, which plexsim does not hold. `Android` and
+# `PlayStation 4 App` direct-played some of the four items and not others on the same
+# server, so they are deliberately OUT: an item-dependent answer needs the matrix.
+DIRECT_PLAY_PROFILES = frozenset(["Roku", "Xbox One"])
+
 CLIENT_PROFILES = frozenset([
     "Android", "Asus Transformer Prime TF201", "Chrome", "Chromecast", "Firefox",
     "Generic", "HTML TV App", "Internet Explorer", "Konvergo", "Microsoft Edge",
@@ -9973,6 +9995,27 @@ class PlexSim:
             "librarySectionUUID": section.get("uuid"),
         }
         path = query.get("path", "")
+        if (query.get("hasMDE") != "1" and query.get("directPlay") != "0"
+                and any(param(name) in DIRECT_PLAY_PROFILES for name in
+                        ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device"))):
+            # Measured on kids and zen: a decision with NO `hasMDE` from a profile that
+            # direct plays the item answers the directPlay/general PAIR -- both 1000,
+            # both "Direct play OK." -- with NO transcode codes, and it carries the same
+            # Metadata row and `resourceSession` the MDE form does. The row is BYTE
+            # IDENTICAL between the two forms; only the container's codes differ.
+            #
+            # CLAUDE.md's "a direct play is ONLY `mdeDecisionCode: 1000`" is the MDE
+            # form's rule and stays right; this is the other form, which plexsim never
+            # emitted at all.
+            self.decided.add(int(row["ratingKey"]))
+            fields["resourceSession"] = (param("X-Plex-Session-Identifier")
+                                         or param("X-Plex-Client-Identifier") or "")
+            fields.update(directPlayDecisionCode=1000,
+                          directPlayDecisionText="Direct play OK.",
+                          generalDecisionCode=1000,
+                          generalDecisionText="Direct play OK.")
+            logger.info("DECISION direct play (no MDE) for path=%s", path)
+            return self.container(Metadata=[self._decision_row(row, query)], **fields)
         if query.get("directPlay") == "0" or query.get("hasMDE") != "1":
             # Direct play refused -- and plexsim cannot convert, so this is the
             # measured "neither" answer, not the "Conversion OK" a PMS with an

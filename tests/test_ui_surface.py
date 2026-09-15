@@ -17566,6 +17566,64 @@ def main():
           and unmatch_sub_c25u != refresh_sub_c25u,
           "%r vs %r" % (unmatch_sub_c25u, refresh_sub_c25u))
 
+
+    # Cycle 26, measured on kids (1.43.4) and zen (1.42.2) across four items in both
+    # containers: a decision with NO `hasMDE=1` from a profile that direct plays the item
+    # answers the directPlay/general PAIR -- both 1000, both "Direct play OK." -- with NO
+    # transcode codes, the same Metadata row the MDE form carries, and `resourceSession`.
+    # plexsim answered its "neither" refusal to every client that does not send `hasMDE`
+    # -- Roku, plex-for-kodi, python-plexapi and the older TV apps -- so a server whose
+    # whole purpose is direct play told them the catalog was unplayable.
+    def decide_c26a(platform_c26a, extra_c26a=""):
+        path_c26a = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                     "&partIndex=0&protocol=http&directPlay=1&directStream=1"
+                     "&session=c26a%s"
+                     % (quote("/library/metadata/%s" % movie), extra_c26a))
+        request_c26a = urllib.request.Request(
+            base.rstrip("/") + path_c26a,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Platform": platform_c26a}, method="GET")
+        try:
+            with urllib.request.urlopen(request_c26a, timeout=30) as response_c26a:
+                body_c26a = json.loads(response_c26a.read() or b"{}")
+            return response_c26a.status, body_c26a.get("MediaContainer", {})
+        except urllib.error.HTTPError as error_c26a:
+            return error_c26a.code, {}
+
+    status_c26a, roku_c26a = decide_c26a("Roku")
+    _s_c26a, generic_c26a = decide_c26a("Generic")
+    _s2_c26a, mde_c26a = decide_c26a("Chrome", "&hasMDE=1")
+    codes_c26a = {k_c26a: v_c26a for k_c26a, v_c26a in roku_c26a.items()
+                  if k_c26a.endswith("DecisionCode")}
+    check("a direct-play profile without hasMDE gets the directPlay/general PAIR",
+          status_c26a == 200
+          and codes_c26a == {"directPlayDecisionCode": 1000, "generalDecisionCode": 1000}
+          and roku_c26a.get("directPlayDecisionText") == "Direct play OK."
+          and roku_c26a.get("generalDecisionText") == "Direct play OK.",
+          str(codes_c26a))
+    check("and it carries the Metadata row and resourceSession",
+          len(roku_c26a.get("Metadata") or []) == 1
+          and "resourceSession" in roku_c26a,
+          "size=%s session=%r" % (roku_c26a.get("size"),
+                                  roku_c26a.get("resourceSession")))
+    check("the row is the one the MDE form answers, unchanged",
+          (roku_c26a.get("Metadata") or [None])[0]
+          == (mde_c26a.get("Metadata") or [None])[0],
+          str(sorted((roku_c26a.get("Metadata") or [{}])[0])[:6]))
+    check("a profile with no conversion target still gets the refusal",
+          {k_c26a: v_c26a for k_c26a, v_c26a in generic_c26a.items()
+           if k_c26a.endswith("DecisionCode")}
+          == {"directPlayDecisionCode": 3000, "generalDecisionCode": 2000,
+              "transcodeDecisionCode": 4005}
+          and not generic_c26a.get("Metadata"),
+          str({k_c26a: v_c26a for k_c26a, v_c26a in generic_c26a.items()
+               if k_c26a.endswith("DecisionCode")}))
+    check("and the MDE form still answers its own single pair",
+          {k_c26a: v_c26a for k_c26a, v_c26a in mde_c26a.items()
+           if k_c26a.endswith("DecisionCode")} == {"mdeDecisionCode": 1000},
+          str({k_c26a: v_c26a for k_c26a, v_c26a in mde_c26a.items()
+               if k_c26a.endswith("DecisionCode")}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
