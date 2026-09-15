@@ -20300,6 +20300,30 @@ def main():
           and seen_c29l["/web/zzz.js"][0] == 404,
           "%s" % seen_c29l)
 
+
+    # Cycle 29, measured on plexscratch: `/library/metadata/{id}/extras/all` and
+    # `/library/sections/{id}/extras/all` answer 404 to PUT, DELETE, PATCH, POST and a bare
+    # OPTIONS, like every other read-only route, where the bare `/extras` keeps its POST
+    # 400. plexsim's verb gate matched a FOUR-segment path and cycle 18's `/extras/all` is
+    # five, so all five verbs answered the extras container with a 200 -- the last hole in
+    # cycle 18's own rule.
+    verbs_c29s = {}
+    for path_c29s in ("/library/metadata/%s/extras/all" % movie,
+                      "/library/sections/%s/extras/all" % movie_section,
+                      "/library/metadata/%s/extras" % movie):
+        verbs_c29s[path_c29s] = {verb_c29s: request(base, verb_c29s, path_c29s)[0]
+                                 for verb_c29s in ("GET", "HEAD", "PUT", "DELETE",
+                                                   "PATCH", "OPTIONS", "POST")}
+    check("/extras/all answers 404 to every verb but GET and HEAD",
+          all(table_c29s["GET"] == 200 and table_c29s["HEAD"] == 200
+              for table_c29s in verbs_c29s.values())
+          and all(verbs_c29s[path_c29s][verb_c29s] == 404
+                  for path_c29s in ("/library/metadata/%s/extras/all" % movie,
+                                    "/library/sections/%s/extras/all" % movie_section)
+                  for verb_c29s in ("PUT", "DELETE", "PATCH", "OPTIONS", "POST"))
+          and verbs_c29s["/library/metadata/%s/extras" % movie]["POST"] == 400,
+          "%s" % verbs_c29s)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
