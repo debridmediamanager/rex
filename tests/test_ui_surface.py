@@ -18888,6 +18888,26 @@ def main():
               and re.findall(r"(\w+)=", found_c27m.group(0)) == got_c27m,
               found_c27m.group(0)[:200] if found_c27m else "no Video")
 
+
+    # Cycle 27, from the founding instrument: the Dashboard's Top Played panel asks this
+    # path once per media type, and a real PMS answers an empty 200 to ANY type number
+    # that PARSES -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1 included -- and a 400 only
+    # to a value that does not (`abc`, an empty one, `1.5`). Measured over 17 values on
+    # kids and zen, which agree on every one. plexsim refused everything but 1, 2 and 4.
+    #
+    # What it costs a real client: the web client issues movie, show and ARTIST inside
+    # one `all([...])` under a single try/catch, so the `type=8` refusal rejects the
+    # whole batch and the Dashboard's entire Top Played panel fails -- movies and TV with
+    # it -- on a server that has no music library to answer for in the first place.
+    top_c27q = {v_c27q: request(base, "GET", "/library/all/top?type=%s&limit=2" % v_c27q)[0]
+                for v_c27q in ("0", "1", "2", "3", "4", "8", "9", "10", "12", "13", "15",
+                               "18", "20", "-1", "abc", "", "1.5")}
+    check("/library/all/top answers any type NUMBER and refuses only a non-number",
+          all(status_c27q == 200 for value_c27q, status_c27q in top_c27q.items()
+              if value_c27q not in ("abc", "", "1.5"))
+          and all(top_c27q[bad_c27q] == 400 for bad_c27q in ("abc", "", "1.5")),
+          str(top_c27q))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
