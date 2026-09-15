@@ -19690,6 +19690,44 @@ def main():
               "bare %s | movies %s | tv %s | limit=3 %s | %s | hubs %s"
               % (bare_c28r, movies_c28r, tv_c28r, capped_c28r, limits_c28r, hubs_c28r))
 
+
+    # Cycle 28, re-measured against plexscratch (1.43.4) beside zen (1.42.2): the two
+    # VERSIONS answer the On Deck row differently, the sixth per-version shape on the
+    # surface. zen's row is the DETAIL row plus `allowSync`, `librarySectionUUID` and
+    # `lastViewedAt`, `librarySectionKey` included; 1.43.4's drops that key and `Guid`,
+    # `Rating` and `Producer` with it, and stamps the show's `studio` instead. plexsim
+    # reports 1.42.2, so `/library/onDeck` keeps the key -- and cycle 21's "named by
+    # UUID, not by key" was 1.43.4's answer read as the rule.
+    ident_c28t = ("X-Plex-Client-Identifier=c28t&X-Plex-Session-Identifier=c28t"
+                  "&X-Plex-Product=Plex+Web&X-Plex-Platform=Chrome")
+    leaf_c28t = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                 .get("Metadata") or [{}])[0].get("ratingKey")
+    if not leaf_c28t:
+        skip("the On Deck row keeps librarySectionKey, as 1.42.2 sends it", "no episode")
+    else:
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=300000&%s" % (leaf_c28t, ident_c28t))
+        deck_c28t = next((r_c28t for r_c28t in
+                          (get(base, "/library/onDeck")[1].get("Metadata") or [])
+                          if str(r_c28t.get("ratingKey")) == str(leaf_c28t)), {})
+        home_c28t = next((r_c28t for r_c28t in
+                          (get(base, "/hubs/home/onDeck")[1].get("Metadata") or [])
+                          if str(r_c28t.get("ratingKey")) == str(leaf_c28t)), {})
+        check("the On Deck row keeps librarySectionKey, as 1.42.2 sends it",
+              deck_c28t.get("librarySectionKey") == "/library/sections/%s" % show_section
+              and bool(deck_c28t.get("librarySectionUUID"))
+              and deck_c28t.get("allowSync") is True
+              and home_c28t.get("librarySectionKey")
+              == "/library/sections/%s" % show_section
+              and "librarySectionUUID" not in home_c28t
+              and "studio" not in deck_c28t,
+              "onDeck %s | home %s"
+              % ({k_c28t: deck_c28t.get(k_c28t) for k_c28t in
+                  ("librarySectionID", "librarySectionKey", "librarySectionUUID",
+                   "allowSync", "studio")},
+                 {k_c28t: home_c28t.get(k_c28t) for k_c28t in
+                  ("librarySectionKey", "librarySectionUUID")}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -4271,8 +4271,14 @@ class PlexSim:
                 #
                 # Single-witness by instrument: kids' On Deck is empty on every path, so
                 # only zen can show it. See HANDOVER 3.3.
+                # Cycle 28, re-measured against plexscratch (1.43.4) beside zen
+                # (1.42.2), and the two VERSIONS differ -- so this is the sixth
+                # per-version shape on the surface. zen keeps `librarySectionKey` on
+                # the On Deck row, as the detail row carries it; 1.43.4 drops the key
+                # AND `Guid`, `Rating` and `Producer`, and stamps `studio` instead.
+                # plexsim reports 1.42.2, so it follows zen -- and the absence cycle 21
+                # recorded was 1.43.4's answer read as though it were the rule.
                 entry = _listing_row(row)
-                entry.pop("librarySectionKey", None)
                 # Cycle 21, measured on zen's own on-deck row: this list's rows LEAD
                 # with `allowSync` and the librarySection triple, exactly as
                 # `/library/recentlyAdded`'s do -- and `allowSync` on the ROW is the
