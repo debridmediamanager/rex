@@ -11308,9 +11308,18 @@ class PlexSim:
             # way an artwork PICK re-versions every field it keeps.
             if other != field and row.get(other):
                 row[other] = "/library/metadata/%s/%s/%s" % (row["ratingKey"], other, stamp)
+        if field == "thumb" and row.get("parentThumb"):
+            # Cycle 27, measured on the copy on a SEASON and on an EPISODE: clearing a
+            # row's own poster does not leave it with none -- the row falls back to its
+            # PARENT's, which is the same path its own `parentThumb` already names
+            # (season 7's `thumb` became the show's, episode 8's became the season's).
+            # plexsim dropped the field, so the tile drew nothing where a real PMS draws
+            # the parent's poster. Cycle 23's "the field gone" was measured on a MOVIE,
+            # which has no parent to borrow from.
+            row[field] = row["parentThumb"]
         if had is not None:
             row["updatedAt"] = stamp
-            self.catalog.restamp_children(row)
+            self.cascade_artwork(row)
             self.notify_timeline(row, self.TIMELINE_DONE, None)
         return ("empty", 200)
 
@@ -11376,15 +11385,49 @@ class PlexSim:
         return self.tag_container(size=len(entries), Metadata=entries,
                                   _xml={"Metadata": "Photo"})
 
-    def cascade_artwork(self, row):
-        """Copy a row's re-versioned artwork onto the children that point at it.
+    @staticmethod
+    def _owns_thumb(row):
+        """Whether this row's poster is its OWN rather than one it borrows.
 
-        Measured on the copy after a poster pick on a show: the season's
-        `parentThumb` and `art` and the episode's `grandparentThumb`,
-        `grandparentArt` and `grandparentTheme` all move to the show's new stamp,
-        while the season's own `thumb` does not. The same shape one level down for a
-        pick on a SEASON: its episodes' `parentThumb` follows and the show is
-        untouched.
+        Cycle 16: a borrowing row carries the OWNER's path verbatim, so the stored
+        string is the only thing that tells the two apart -- a `thumb` naming another
+        ratingKey IS the borrowed case. `hierarchy.normalize_rows` already reads it
+        this way at load; a write has to read it the same way.
+        """
+        return str(row.get("thumb") or "").startswith(
+            "/library/metadata/%s/" % row.get("ratingKey"))
+
+    @staticmethod
+    def _borrows_from(child, field, owner):
+        """Whether `child[field]` is a path naming `owner`'s copy of that artwork."""
+        return owner.get(field) is not None and str(child.get(field) or "").startswith(
+            "/library/metadata/%s/" % owner.get("ratingKey"))
+
+    def cascade_artwork(self, row):
+        """Re-derive every borrowed artwork field under a row whose artwork changed.
+
+        Cycle 27, measured on the copy over three writes (a show poster pick, an
+        episode and a season poster DELETE, a season poster pick), reading the show,
+        both seasons and two episodes back after each: a borrowed artwork field is
+        DERIVED from its owner, not stored, so a write to the owner re-derives it on
+        every borrower -- including CREATING it and including the borrower's own
+        `thumb`. Cycle 25 measured the move-where-present half and plexsim built only
+        that, so three things stayed stale:
+
+          * an episode's own `art` did not follow a SHOW pick, although its
+            `grandparentArt` did -- the same image under two names, one moved and one
+            not, so the preplay backdrop kept a version the server no longer serves
+          * a season that BORROWS the show's poster kept the old stamp on its own
+            `thumb` (kids' unmatched season 11 is such a row, and the copy's followed
+            the show's new stamp on both `thumb` and `parentThumb`)
+          * episodes whose season had no poster of its own never GAINED `parentThumb`
+            when one was picked for that season, because the cascade only moved a
+            field that was already there. That was HANDOVER 3.3's open question --
+            "whether a cascade CREATES a borrowed artwork field" -- and it does.
+
+        A season's own `thumb` is still untouched when the season OWNS it, which is
+        what cycle 25 measured; the two rules are the same one read off the stored
+        path.
         """
         kind = row.get("type")
         if kind not in ("show", "season"):
@@ -11393,16 +11436,37 @@ class PlexSim:
             if kind == "show":
                 for name in ("thumb", "art", "theme"):
                     target = "parent" + name.capitalize() if name == "thumb" else name
-                    if row.get(name) and child.get(target) is not None:
+                    if row.get(name) is None:
+                        child.pop(target, None)
+                    else:
                         child[target] = row[name]
             else:
-                if row.get("thumb") and child.get("parentThumb") is not None:
+                # The episodes of a season that owns its poster all carry it; the
+                # episodes of a season that borrows the show's carry none at all.
+                if self._owns_thumb(row):
                     child["parentThumb"] = row["thumb"]
+                else:
+                    child.pop("parentThumb", None)
+            if self._borrows_from(child, "thumb", row):
+                # A row that borrows THIS row's poster shows it, so its own `thumb`
+                # follows the new stamp. Only this row's: a value naming some other
+                # ratingKey is a shape a real PMS cannot produce (a season borrows from
+                # its show and an episode from its season) and is left alone.
+                child["thumb"] = row["thumb"]
             for leaf in self.catalog.leaves(child["ratingKey"]) if kind == "show" else []:
                 for name in ("thumb", "art", "theme"):
                     target = "grandparent" + name.capitalize()
-                    if row.get(name) and leaf.get(target) is not None:
+                    if row.get(name) is None:
+                        leaf.pop(target, None)
+                    else:
                         leaf[target] = row[name]
+                # `art` is handed down borrowed or not (cycle 20), so an episode's own
+                # `art` IS the show's and moves with it -- the half plexsim left out,
+                # which left `art` and `grandparentArt` naming the same image at two
+                # different versions on the same row.
+                for name in ("art", "theme"):
+                    if self._borrows_from(leaf, name, row):
+                        leaf[name] = row[name]
 
     def upload_artwork(self, row, kind, body):
         """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
