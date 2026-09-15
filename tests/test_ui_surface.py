@@ -16814,6 +16814,37 @@ def main():
           not any("_searchhit" in row for row in hub_rows_c25d),
           str([k for row in hub_rows_c25d for k in row if k.startswith("_")]))
 
+
+    # Cycle 25, measured on kids and zen in de and fr: `/library`'s three `Directory`
+    # titles are localised like every other piece of the server's own vocabulary --
+    # `Bibliothek-Bereiche`, `Zuletzt hinzugefuegter Inhalt`, `Aktuelle Inhalte`. The
+    # three strings were literals here and in no translation table, so a non-English
+    # client read English labels on the first path python-plexapi asks for. `/system`
+    # carries the SAME English string and a real PMS does NOT translate it there.
+    def titles_c25e(path_c25e, lang_c25e):
+        # The language rides in the QUERY here -- measured as equivalent to the header
+        # on both references, and the suite's own client sends a fixed header set.
+        joiner_c25e = "&" if "?" in path_c25e else "?"
+        body_c25e = get(base, path_c25e + joiner_c25e
+                        + "X-Plex-Language=" + lang_c25e)[1]
+        return {row_c25e.get("key"): row_c25e.get("title")
+                for row_c25e in body_c25e.get("Directory") or []}
+
+    lib_c25e = {lang_c25e: titles_c25e("/library", lang_c25e)
+                for lang_c25e in ("en", "de", "fr")}
+    sys_c25e = {lang_c25e: titles_c25e("/system", lang_c25e)
+                for lang_c25e in ("en", "de")}
+    check("/library's three Directory titles are localised",
+          lib_c25e["de"].get("sections") == "Bibliothek-Bereiche"
+          and lib_c25e["de"].get("onDeck") == "Aktuelle Inhalte"
+          and lib_c25e["fr"].get("sections") == "Sections de biblioth\u00e8que"
+          and lib_c25e["en"].get("sections") == "Library Sections",
+          str(lib_c25e["de"]))
+    check("/system's identical string is NOT localised",
+          sys_c25e["en"].get("library") == "Library Sections"
+          and sys_c25e["de"].get("library") == "Library Sections",
+          str(sys_c25e["de"]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
