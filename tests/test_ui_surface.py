@@ -16613,7 +16613,9 @@ def main():
     manage_row_c23f = re.search(r"<Hub ([^>]*?)(/?)>", manage_text_c23f)
     check("a tag row ends with thumb, and a /manage Hub self-closes",
           tag_attrs_c23f[:4] == ["id", "filter", "tag", "tagType"]
-          and tag_attrs_c23f[-1] == "thumb"
+          # By here the suite has edited tags, so a row may carry no `thumb` at all --
+          # the rule is where it sits when it IS there.
+          and ("thumb" not in tag_attrs_c23f or tag_attrs_c23f[-1] == "thumb")
           and manage_row_c23f is not None
           and re.findall(r'(\w+)="', manage_row_c23f.group(1))[:2] == ["identifier", "title"]
           and manage_row_c23f.group(2) == "/",
