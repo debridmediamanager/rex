@@ -4302,19 +4302,22 @@ class PlexSim:
             # home screen's `home.continue`), its key is its OWN items endpoint,
             # and its style is `hero`. plexsim answered a bare hub whose key was
             # /library/all, so the shelf had nowhere to expand to.
-            rows = [_listing_row(r) for r in self.continue_watching()]
+            rows = [_listing_row(r) for r in self.resuming()]
             return self.hub_container(Hub=[self.home_hub(
                 "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
                 rows, query, kind="mixed", style="hero")])
         if route == "/hubs/continueWatching/items":
-            rows = [_listing_row(r) for r in self.continue_watching()]
+            rows = [_listing_row(r) for r in self.resuming()]
             return self.hub_container(size=len(rows), Metadata=rows)
         if route == "/hubs/promoted":
             return self.promoted_hubs(query)
         if route.startswith("/hubs/home"):
             if route == "/hubs/home/continueWatching":
                 # Measured on fun: the light projection, like the shelf it expands.
-                rows = [_grid_row(_listing_row(r)) for r in self.continue_watching()]
+                # Cycle 25: the LIST is `resuming()`, not `continue_watching()` -- see
+                # that helper. A next-up episode with no stored offset is On Deck and is
+                # not here.
+                rows = [_grid_row(_listing_row(r)) for r in self.resuming()]
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/onDeck":
                 rows = [_listing_row(r) for r in self.continue_watching()
@@ -8672,7 +8675,7 @@ class PlexSim:
         if query.get("excludeContinueWatching") != "1":
             hubs.append(self.home_hub(
                 "home.continue", "Continue Watching", "/hubs/home/continueWatching",
-                [_listing_row(r) for r in self.continue_watching()], query,
+                [_listing_row(r) for r in self.resuming()], query,
                 style="hero", promoted=True))
         hubs.append(self.home_hub(
             "home.ondeck", "On Deck", "/hubs/home/onDeck",
@@ -8910,7 +8913,7 @@ class PlexSim:
         wanted = [i for i in (query.get("identifier") or "").split(",") if i]
         watching = [_listing_row(r) for r in self.continue_watching()]
         rows = {
-            "home.continue": watching,
+            "home.continue": [_listing_row(r) for r in self.resuming()],
             "home.ondeck": [r for r in watching if r.get("type") == "episode"],
             "home.movies.recent": [_listing_row(r) for r in self.recently_added_rows("1")],
             "home.television.recent": [_listing_row(r)
@@ -10386,6 +10389,23 @@ class PlexSim:
             # an empty 200 for anything at all.
             return ("error", 404, "plexsim: no such item")
         return self.bare_container(size=0)
+
+    def resuming(self):
+        """Rows for CONTINUE WATCHING, which is not On Deck.
+
+        Cycle 25, measured on plexscratch through four states: this list holds only the
+        rows with a STORED `viewOffset`, movies and episodes alike, where On Deck holds
+        one row per show -- its in-progress episode, or the one after the last watched,
+        which has no offset at all. Scrobbling episode 8 puts episode 9 on deck with a
+        null offset and leaves Continue Watching EMPTY; a `/:/progress` on a movie puts
+        the movie in Continue Watching and not on deck.
+
+        plexsim answered `continue_watching()` to both, so its hero shelf offered
+        episodes nobody had started and with no resume position -- and, because the two
+        lists were then always equal, the de-duplication below would have fired on every
+        state instead of on the one it belongs to.
+        """
+        return [row for row in self.continue_watching() if row.get("viewOffset")]
 
     def continue_watching(self):
         """Rows for Continue Watching and On Deck, newest first.
