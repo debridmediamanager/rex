@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 27 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **27**. Cycle 27 swept the HTTP ENVELOPE below the API -- the request line, the header caps, the URL bound, `Content-Length` -- which twenty-six cycles had taken from Python, and the SERIALISER dimension cycle 26 opened by accident. |
+| `main` | cycle 28 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **28**. Cycle 28 took HOME -- every hub path with the parameters the official client actually sends on each one -- and SEARCH, both endpoints row by row, with plexscratch holding the collections and playlists neither read-only reference has. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -96,6 +96,7 @@ Coverage, measured from the repository rather than asserted:
 | 25 | 1375 (+2 in `test_mediainfo`, 29 -> 31) | 14,852 | **21** (of 13 reported across two hunts plus 6 the driver found and 1 regression it caught in its own patch; 1 hunter negative refuted on re-measurement and re-confirmed, 3 recorded rules overturned, 2 cycle-23 butler claims refuted) |
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
+| 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work. **The ceiling has been the instrument, not the effort**: every time the
@@ -165,6 +166,16 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 28, run 2026-09-15 against the merged tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle: no `mediainfo` finding |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1472 PASS / 0 FAIL / 10 skipped** | ~14 minutes. The 10 skips are the fixture's own limits (no TMDB key, dead RD links, two movies left by the end); cycle 28's own three skips were REFITTED to make the state they need -- see section 10 |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | run each against its OWN server, and **never two suites at once** -- see section 10 |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline, unchanged: cycle 27 settled that all nine are the fixture's dead Real-Debrid links |
+| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
 
 Suite results at the head of cycle 27, run 2026-09-15 against the merged tree:
 
@@ -410,6 +421,19 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | An artwork cascade moves a borrowed field where it already exists | It DERIVES it: it creates the field where there was none, moves a borrowing row's own `thumb` and `art`, and removes the borrower's copy when the owner's goes | B | cycle 27 |
 | `/library/all/top` takes `type=1`, `2` or `4` and 400s the rest | It answers an empty 200 to any type NUMBER and refuses only a value that does not parse. The rule was written from the three types plexsim holds rows of | B | cycle 27 |
 
+**Cycle 28 added these eight.**
+
+| Belief as recorded | What it actually is | Class | Corrected in |
+|---|---|---|---|
+| `contentDirectoryID` "scopes and VALIDATES `/hubs/search` alone -- ignored on every other hub path" | It scopes `/hubs` and all three `/hubs/home/*` leaves, removes `home.playlists` from `/hubs`, takes a COMMA LIST, and is VALIDATED on `/hubs/continueWatching` and its `/items` leaf as well. Only `/hubs/sections/{id}` ignores it | B | cycle 28 |
+| A COLLECTION is NOT found by `/library/search` | It is, as a `tagType: 2` row. Cycle 15 measured it on a copy that held no collection at all, so the absence was the fixture's | **E** | cycle 28 |
+| On Deck and Continue Watching rows are the LIGHT projection, On Deck's named by UUID and not by key | On 1.42.2 an On Deck row is the DETAIL row with `librarySectionKey` on it. Cycle 21 measured it on fun, which had nothing in progress, so the shape was inferred from an empty list -- and 1.43.4 really does drop the key, `Guid`, `Rating` and `Producer`, which is why the two could never be reconciled | **E** | cycle 28 |
+| `/hubs/home/recentlyAdded?type=2` is the list of recently added SHOWS | It is a MIXED list, rolled up: two or more recently-added siblings collapse into their parent, recursively, and a parent row is dated by its NEWEST leaf | B | cycle 28 |
+| A shelf's rows are the sorted head of its key, `random="1"` or not | 29 of 32 non-empty shelves are exactly that head; the three exceptions are the random ones, which are a random SAMPLE of the whole key set in random order | D | cycle 28 |
+| `/clients/profiles` is empty because plexsim hosts no client | It is the server's own CLIENT PROFILE catalogue: 78 rows bare, seven at `type=42`, a 400 for every other value. True of `/clients`, not of this | B | cycle 28 |
+| A search tag hit is one row per tag NAME, counting every row that carries it | It is one row per LIBRARY, and the count is the size of the listing the row's own `key` names | B | cycle 28 |
+| A `/library/search` tag row is the `/hubs/search` row | It drops `reason`, `reasonID`, `reasonTitle` and its own `score` -- the score is the `SearchResult` wrapper's alone, a number in JSON and five decimals in XML | B | cycle 28 |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -521,6 +545,17 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **What a real PMS does to a borrower when the OWNER's artwork is cleared** | The three positive halves are measured on the copy; the removal half is the completion of the same rule rather than a measurement, and it is what the cycle-14 cascade check caught as a regression | Clear a show's `/art` on the copy and read its episodes back |
 | **Whether a leaf with NO `art` GAINS one when its show does** | The move half is measured on the copy (an episode's `art` names the show and follows its new stamp) and the CREATE half is not: the only way to produce a leaf with no `art` at all is a show unmatch, which drops it, and the copy was not driven through unmatch-then-re-add. `parentThumb`'s create half IS measured; `art`'s is not, and cycle 20's "handed down borrowed or not" predicts it would be | Unmatch a show on the copy, give it an `art` back, and read the leaves |
 | **A lower-case method holding the connection** | Both references answer nothing and hold the socket to their own 20-second idle close. plexsim closes it at once -- the same silence, sooner -- because holding a thread for twenty seconds per malformed line is a self-inflicted denial of service | Nothing worth settling |
+
+**Cycle 28 added these.**
+
+| Item | Why it is thin | How to settle it |
+|---|---|---|
+| **The Recently Added TV ROLL-UP threshold** | The mechanism reproduces on all 50 of zen's rows with no counterexample and is corroborated on kids, but "two or more siblings collapse" is FITTED: what is in scope as "recently added" at all is not pinned, so a library where the boundary falls differently could separate the threshold from the scope | A library with a known add history -- plexscratch, driven by adding files in batches |
+| **`TV_RECENT_CAP = 50`** | A bare constant with ONE witness: zen answers `size 50, totalSize 50` at a 100-row window and pages to `offset 50`, and neither `limit=` nor `count=` moves it. Nothing on the surface explains the number, and kids' library is too small to reach it | A second big library |
+| **The On Deck row's projection is per VERSION, one witness each side** | zen (1.42.2) answers the detail row with `librarySectionKey`; plexscratch (1.43.4) drops that key, `Guid`, `Rating` and `Producer` and stamps `studio`. kids' On Deck is empty, so each side of the split rests on one instrument -- and plexsim follows zen because it reports 1.42.2 | A second 1.42.2 server with a row on deck, or kids driven into having one |
+| **1.42.2's CONTINUE WATCHING row projection** | Unmeasurable as things stand: the shelf holds only rows with a stored `viewOffset`, zen has none and is read-only, and the copy is 1.43.4. plexsim answers the light row there, which is 1.43.4's shape rather than a measurement | A writable 1.42.2 copy |
+| **`searchTypes=otherVideos`'s metadata half, and `music`/`photos`** | No instrument holds an Other Videos, music or photo library, so only the TAG half of `otherVideos` is witnessed (it selects the movie library's tag rows and not its movies, which is what "a type-1 library too" predicts). The two other tokens are recorded from their empty answers alone | A library of each type on the copy |
+| **`/clients/profiles?type=42`'s seven names** | Byte-identical on kids and zen, and there is no principle behind the membership: it is the references' own `Resources/Profiles` subset for a LOCAL optimise target, like the 78-name list beside it | Read the profile files, if a reference is ever shell-accessible |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -654,6 +689,17 @@ and so a pre-existing listener there would have been killed without a record. It
 proved either way; every later run went back to `32592`/`32593`. **Neither hunter left a server
 running**, as in cycles 18 and 19. `32599` is `test_ui_surface.py`'s own gated server and
 `32598` the `--web-root` instance its asset check starts; leave both free.
+
+**Ports (cycle 28).** Re-checked after both hunters had stopped and every server this cycle
+started was killed: `32502` and `8787` are held -- the same two every cycle since 17 has ended
+with. Everything cycle 28 used is FREE again: `32587`/`32588` (the hunters'), `32592`/`32593`
+(the proof driver's), `32500`/`32501`/`32503`/`32505`/`32506` (the suite runs and the probes)
+and `32594`-`32597` (the by-hand `runblock` proofs of the refitted checks, which need a server
+per parent tree). **Neither hunter left a server running** and no launchd job was registered.
+`32599` is `test_ui_surface.py`'s own gated server and `32598` the `--web-root` instance its
+asset check starts; leave both free. One suite run was killed mid-flight by a harness timeout
+this cycle -- its server stayed up and had to be killed by hand before the next run, because a
+suite pointed at a fixture another run has written to reads as a collapse (section 10).
 
 **Ports (cycle 27).** Re-checked after both hunters had stopped and every server this cycle
 started was killed: `32502` and `8787` are held -- the same two every cycle since 17 has ended
@@ -2024,7 +2070,96 @@ wants: the driver's own spot-check of "only three headers move anything" flagged
 `X-Plex-Features` on `/hubs`, and interleaving the requests showed the difference was kids'
 drifting clip durations and bitrates, not the header. The negative stands.
 
-### Next: cycle 28
+### Cycle 28 -- Home's own parameters, the shelf as its own key, and the search row's identity
+
+Two hunts and a driver round: 19 findings in 18 commits, **eight recorded beliefs overturned**,
+one of them a per-VERSION split that only plexscratch could show.
+
+**Territory A swept HOME** -- every hub path, with the parameters the official client actually
+sends on each one. Its result is that the hub PARAMETERS had never been run. CLAUDE.md recorded
+from cycle 15 that `contentDirectoryID` "scopes and VALIDATES `/hubs/search` alone -- ignored on
+every other hub path"; measured again over nine values on both references, that is true of
+`/hubs/sections/{id}` and false of four other paths. It scopes `/hubs` and all three
+`/hubs/home/*` leaves and removes the `home.playlists` shelf from `/hubs`; it takes a COMMA LIST,
+which is the form Plex Web's own Home saga sends, joining its array of pinned ids; and
+`/hubs/continueWatching` with its `/items` leaf VALIDATES it -- one comma member must be a
+positive integer, and `abc`, `0`, `-1`, `1.5` and a space are 404s. Beside it,
+`excludeContinueWatching` is true for the integer 1 alone and drops BOTH resume shelves on both
+paths, where plexsim compared the raw string and dropped one shelf on one path.
+
+**A shelf is its own `key`.** At `count=40`, 29 of 32 non-empty shelves on both references answer
+exactly the head of the listing their own `key` names, in that listing's order, byte for byte --
+and the three that do not are the ones advertising `random="1"`, which are a random SAMPLE of the
+whole key set. That single measurement settled three findings at once: plexsim's random shelves
+were the deterministic sorted head, so Top Unwatched would have shown the same six titles for
+ever; its Recently Watched shelf published `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and
+honoured neither clause, so a row in progress sat on the shelf and vanished when the user clicked
+that shelf's own See All; and `count=`'s negative edge is `len(rows) + count` clamped at zero with
+`more: false`, where `count=0` answers none with `more: true`.
+
+**Recently Added TV is a mixed, rolled-up list.** zen's `/hubs/home/recentlyAdded?type=2` is 50
+rows: 12 shows, 31 seasons and 7 episodes. Two or more recently-added siblings collapse into their
+parent, recursively -- one new episode in an old season stays an episode, two become the season,
+six or 161 of a show's only season still become that SEASON because one season is not two, and two
+new seasons become the show -- and a parent row is dated by its NEWEST leaf, the opposite
+aggregation from `/library/recentlyAdded`. plexsim filtered `type == "show"`, so a new episode or
+season of an existing show was invisible on Home.
+
+**Territory B swept SEARCH**, both endpoints, row by row -- and the driver's re-measurement of its
+one reported finding turned into seven. The reported finding is the grammar: `searchTypes=` is
+`/library/search`'s own filter, ignored on `/hubs/search`, with six exact case-sensitive tokens, a
+comma list a union and unknown tokens dropped; and `limit=` caps the WHOLE list, not each hub,
+refusing an unparseable value with a 400 and a non-positive one with a 500. Re-measuring it needed
+a query that hit several kinds at once, which is how the SIX other defects in the same rows
+appeared: a tag hit is per LIBRARY rather than per NAME (kids' `drama` is two `Drama` rows against
+one tag id); its `count` is the size of the listing its own `key` names; a person row carries the
+24-hex `tagKey` cycle 27 minted for the detail row and never put here, so a search hit's Cast &
+Crew link was `/library/people/undefined`; the FLAT form drops the reason triple and the row's own
+score, which lives on the `SearchResult` wrapper as a number and prints five decimals in XML; a
+COLLECTION is found by `/library/search` after all; and `contentDirectoryID` scopes every row
+family there, plexsim having compared the tag ENTRIES on a key they never carried, so a scoped
+search answered no tag rows at all.
+
+**The cycle's sharpest lesson is about single witnesses.** Hunt A's On Deck finding -- all three
+On Deck paths answer the FULL detail row, where cycle 21 recorded the light one from fun, which
+had nothing in progress -- was implemented from zen alone, with a §3.3 note saying so, because
+kids' On Deck is empty on every path. The cycle-21 suite check then went red, and re-measuring it
+against **plexscratch** showed why: 1.43.4 answers the same row MINUS `librarySectionKey`, `Guid`,
+`Rating` and `Producer` and stamps `studio` instead. The two versions disagree, plexsim reports
+1.42.2, and the writable copy -- which is a version-bearing instrument nobody had pointed at this
+question -- is what turned a single-witness guess into a measured per-version split. That is the
+sixth per-version shape on the surface, and §10 now carries the rule.
+
+**Two leaves were not what plexsim thought they were**, both found by sweeping the parameters
+rather than the paths: `/clients/profiles` is the server's own CLIENT PROFILE catalogue -- 78 rows,
+seven at `type=42`, a 400 for every other value -- and not the hosted-client list plexsim answered
+empty; and the `/collections` leaf is the `/all` listing with a default `type=18`, running the
+same query and making the same three 500s, where plexsim answered 200 and `size 0` to every one
+of them.
+
+### Next: cycle 29
+
+1. **Run the hunts on a dimension nobody has swept.** Closed and not to be re-swept: path,
+   method/parameter, header, row, container, child element, attribute order, child-element
+   order, the filter engine, client identity, the cross-endpoint cascade, the playback path, the
+   JSON value-TYPE dimension, the HTTP envelope, and now Home's hub parameters and the search
+   surface. Candidates nobody has taken: the **response BODY below the container** -- the bytes
+   of an artwork asset, a `/web/*` asset and a part read, which only cycle 16 has looked at; the
+   **fresh client-session capture** through the harness (cycle 27's hunt A had it -- read that
+   report before re-commissioning it); and the **non-Plex-Web client parameter sets** driven end
+   to end.
+2. **Re-measure every single-witness shape against plexscratch first.** Cycle 28's On Deck
+   finding is the model: zen alone said "the detail row", the copy said otherwise, and the
+   disagreement was the finding. §3.3's cycle-28 block lists four more shapes standing on one
+   instrument, and the copy is a 1.43.4 witness for each of them.
+3. **`tests/conformance.py`'s nine failures**, untouched since cycle 7 and re-confirmed in cycle
+   27 as the fixture's dead Real-Debrid links. Prove that or find the real cause.
+4. **The serialiser sweep's single-witness half** (cycle 27's item 2): `playQueueItemID` leading
+   a play-queue row, `playlistItemID` mid-row and the decision row's string ids, all on the copy
+   alone and all 1.43.4.
+5. **The session cutoff's bisection** (§3.3), if it is ever worth ~200 s a sample.
+
+### Next: cycle 28 (superseded)
 
 1. **Run the hunts on a dimension nobody has swept.** Closed and not to be re-swept: path,
    method/parameter, header, row, container, child element, attribute order, child-element
@@ -2462,6 +2597,20 @@ too), which the one-name-one-tag `languages.json` shape cannot express; and
 `pixelAspectRatio`/`anamorphic`, whose derivation is pinned but whose `anamorphic` threshold
 is only BRACKETED to (1.028, 1.067).
 
+**Cycle 28:** the `/library/search` flat list's ORDER, which is the reference's own relevance
+engine -- for `comedy` zen answers movie, show, episode and THEN the two genre rows, which is
+neither the hub base order (`show` first) nor a global score sort (the genre rows score 0.92 and
+come last), while for `c26act` plexscratch answers the collection rows before the playlist rows at
+an identical 0.52; in the same family, a fuzzy person row scoring 0.32 is DROPPED from the bare
+list and kept when `searchTypes=people` asks for it alone (kids and the copy, `sintel` ->
+Katherine Kendall). Both need Plex's own scorer, so plexsim keeps its hub order and the three-band
+score model cycle 15 recorded. Held out because the references DISAGREE, which is the same test
+applied everywhere else: hunt A's Related-shelf composition, the `tv.moreingenre` slot included --
+kids and zen do not carry the same shelves on a preplay page. Held out deliberately: **1.43.4's On
+Deck projection**, which drops `librarySectionKey`, `Guid`, `Rating` and `Producer` and stamps
+`studio`, because plexsim reports 1.42.2 and follows zen (§3.2, §3.3); and
+`searchTypes=music`/`photos`, which name libraries plexsim cannot hold.
+
 **Cycle 27:** the `width`/`height` 500s of `/photo/:/transcode` (they depend on the image's
 own aspect ratio and on a resizer plexsim does not have, where the five other parameters'
 validation IS built); the `format=` parameter of the same endpoint (`format=png` answers
@@ -2732,6 +2881,22 @@ Every one of these cost real time at least once.
   fixture mid-run cost a whole suite pass and read as a collapse — 889/926 with eleven extra
   skips, every one of them "need three movies". Use a second port for probes, and if a run
   looks catastrophic, check the fixture's row count before believing the failures.
+- **A single-witness SHAPE must be checked against plexscratch before it is implemented.** Cycle
+  28 implemented "all three On Deck paths answer the full detail row" from zen alone, because
+  kids' On Deck is empty -- the §3.3 note said so -- and the cycle-21 suite check then went red.
+  The copy answered the question in one request: 1.43.4 drops `librarySectionKey`, `Guid`,
+  `Rating` and `Producer` there and stamps `studio`. The copy is not only the WRITE reference; it
+  is a **second version-bearing instrument**, and for any shape only one reference can show, it
+  is the difference between a single-witness guess and a measured per-version split. Ask it first,
+  not after the suite disagrees.
+- **A check proved with `sdrive` can still fail inside the suite: prove it, then MAKE its
+  state.** The driver runs a block against a freshly started fixture server, where the catalog's
+  own tags and titles are intact. By the time the same block runs inside the whole suite, ~1,400
+  checks have rewritten them -- an indexed tag write REPLACES the list on the item path -- so
+  cycle 28's four search-tag checks queried a genre no row carried any more, and four proved
+  findings read as failures. Write the state the check needs inside the check, with a
+  MERGE-path write, and re-prove the edited block by hand (`runblock.py` against the pre-patch
+  tree and HEAD), because `sdrive`'s parent is the fix itself once the patch is committed.
 - **Sweep a NEW DIMENSION rather than the same one again.** Cycle 14 swept the surface by PATH;
   cycle 15 swept it by METHOD (33 paths, every one different) and by PARAMETER
   (`excludeElements=` turned out to belong to the RESPONSE, not to eight hand-wired handlers).
@@ -2783,6 +2948,12 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 28: the same session as cycle 27 (`…/eba8c320-…jsonl`). Its scratch directory
+  (`c28/`) holds both hunt prompts, `cl.py` (the driver's guarded client), `patch1.py` to
+  `patch9.py`, `fix_c21_check.py`, the doc and handover edit scripts, and the suite logs --
+  `ui28.txt`, the run a harness timeout killed at check 1376, and `ui28b.txt`, the full one.
+  The copy keeps one artefact of this cycle: a `C28TVPL` playlist of a Firefly episode, made to
+  settle which `searchTypes` token owns a playlist. `./scratch.sh reset` removes it
 - cycle 27: `…/eba8c320-d873-4c99-aafd-f3823d6c0fe0.jsonl` plus its `subagents/agent-*.jsonl`.
   Its scratch directory (`c27/`) holds both hunt prompts, `cl.py` (the driver's guarded client),
   `profiles.json` (the 78-name `Player.profile` sweep), the thirteen patch modules, the doc and

@@ -1071,8 +1071,10 @@ precisely how the Seasons bug survived a fix attempt.
   of ANY Part's path) all constrain a listing; `/query/parse` additionally echoes
   `parentIndex`, `guid`, `slug` and `extraType` as Rules with an empty `fieldTitle`. The
   parse surface is WIDER than the filter surface.
-- **`contentDirectoryID` scopes and VALIDATES `/hubs/search` alone** -- a value naming no
-  section is a 404 there and ignored on every other hub path.
+- **`contentDirectoryID` scopes and VALIDATES `/hubs/search`** -- a value naming no section is
+  a 404 there. "Ignored on every other hub path" was REFUTED in cycle 28: it scopes `/hubs` and
+  all three `/hubs/home/*` leaves as well, and `/hubs/continueWatching` validates it. See the
+  cycle-28 bullet below.
 - **`/playlists?includeMeta=1` and `/hubs/home/recentlyAdded?type=N&includeMeta=1` carry a
   `Meta`.** The playlist list's six sorts end in `mediaCount` "Item Count", NOT the
   `updatedAt` of `/playlists/sorts`; the hub's one row is `movie`/true at `type=1`,
@@ -1106,7 +1108,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **A `type=18` SECTION save renames the members' `Collection` TAG and the item path does
   not**; the tag keeps its id. A member's tag carries the collection's `guid` and no `count`,
   a label on a collection reaches the `/label` axis, and a collection is found by
-  `/hubs/search` as a `tagType: 2` row -- but never by `/library/search`.
+  `/hubs/search` as a `tagType: 2` row -- and by `/library/search` too, which cycle 28
+  re-measured once the copy held a collection at all (the old "never" was the fixture's).
 - **A refresh CASCADES**: 7 frames on an episode, 18 on a season (its episodes inside its own
   activity, with no `activity updated`), 49 on a two-season show. An **analyze** frames every
   LEAF three times -- `mediaState` analyzing, thumbnailing, none -- and ends in one
@@ -1883,6 +1886,60 @@ precisely how the Seasons bug survived a fix attempt.
   The client builds every Cast & Crew link as `/library/people/${tag.tagKey}`, so a tag without
   one links to `/library/people/undefined`. plexsim MINTS the value (sha1 of the name) and
   resolves the minted key on `/library/people/{key}` as a real PMS resolves both forms.
+
+- **`contentDirectoryID` scopes `/hubs` and all three `/hubs/home/*` leaves** -- and on
+  `/hubs` it also REMOVES the `home.playlists` shelf. A comma LIST selects several (the form
+  Plex Web sends, joining its pinned array), an EMPTY value scopes nothing, and the match is
+  an exact STRING, so `01` selects no section. Cycle 15's "`/hubs/search` alone" is true of
+  `/hubs/sections/{id}` only. **`/hubs/continueWatching` and its `/items` leaf VALIDATE it**:
+  one comma member must be a POSITIVE INTEGER (`01`, `999`, `abc,1`, `1,` pass; `abc`, `0`,
+  `-1`, `1.5` and a space are 404s) -- the SHAPE, not whether the section exists.
+- **`excludeContinueWatching` is true for the integer 1 alone** (`1` and `01`) and drops BOTH
+  `home.continue` and `home.ondeck`, on `/hubs` and `/hubs/promoted` alike. No other
+  `exclude<Name>=1` spelling does anything.
+- **A shelf's rows are the HEAD of its own `key` listing** -- 29 of 32 non-empty shelves byte
+  for byte at `count=40` -- and the three exceptions are the `random="1"` ones, which are a
+  random SAMPLE of the whole key set in random order. plexsim's Recently Watched shelf
+  published `unwatched=0&viewOffset=0` and honoured neither. A NEGATIVE `count` is
+  `len(rows) + count` clamped at 0 and says `more: false`, where `count=0` says `more: TRUE`.
+- **`/hubs/home/recentlyAdded?type=2` is a MIXED, ROLLED-UP list**, capped at 50: two or more
+  recently-added siblings collapse into their parent, recursively (one new episode stays an
+  EPISODE, two become the SEASON, two new seasons become the SHOW), and a parent row is dated
+  by its NEWEST leaf -- the opposite aggregation from `/library/recentlyAdded`, which dates a
+  season by its earliest.
+- **On Deck answers the DETAIL row on 1.42.2**, on all three paths, `librarySectionKey`
+  included, plus `allowSync`, `librarySectionUUID` and `lastViewedAt` on `/library/onDeck`
+  (the home shelf carries the key and no UUID). 1.43.4 drops the key, `Guid`, `Rating` and
+  `Producer` and stamps `studio`: the SIXTH per-version shape. Cycle 21's "light, named by
+  UUID" was read off a server with nothing in progress.
+- **`/clients/profiles` is the client PROFILE catalogue**, not the hosted-client list: 78 rows
+  bare and at `type=0`/`00`, SEVEN at `type=42` (`LOCAL` in the client's own enum) -- Android,
+  iOS, Universal Mobile, Universal TV, Windows Phone, Windows, Xbox One -- every other value a
+  400, an extra segment a 404, a trailing slash a 200.
+- **The `/collections` leaf is the `/all` listing with a default `type=18`** and runs the same
+  query: a `type=` the library holds answers those rows instead, an unknown `sort`, an
+  unparseable `type` and an unparseable `limit` are each a 500, and `subtype`, `smart` and an
+  empty `sort` are accepted and ignored.
+- **A search tag hit is per LIBRARY, not per NAME** (kids' `drama` is two `Drama` rows against
+  one tag id; zen's `comedy` carries 590 and 179), and its `count` is the size of the listing
+  its own `key` names -- the library's top-level type. **A PERSON row carries its 24-hex
+  `tagKey`**, after `tagType` and before the `thumb`, with `count` last; a `Genre` row carries
+  none.
+- **A `/library/search` tag row is the `/hubs/search` row minus `reason`, `reasonID`,
+  `reasonTitle` and its own `score`** -- there the score is the `SearchResult` wrapper's alone,
+  a NUMBER in JSON and FIVE decimals in XML (`score="0.52000"`).
+- **A COLLECTION is found by `/library/search`** too, as a `tagType: 2` row: cycle 15's note
+  was a copy that held no collection. And **`contentDirectoryID` scopes every row family** of
+  `/hubs/search` -- the tag rows per library, the collections by library, a playlist by its
+  MEMBERS' library.
+- **`searchTypes=` is `/library/search`'s own filter and `/hubs/search` IGNORES it.** Six
+  tokens -- `movies tv otherVideos music photos people` -- EXACT, case-sensitive and never
+  trimmed (`Movies`, ` movies`, `zzz` select nothing), a comma list a UNION with unrecognised
+  tokens dropped (`zzz,movies` is `movies`), an empty value everything. `collections`,
+  `playlists` and `tags` are NOT tokens. `otherVideos` takes the movie library's TAG rows
+  WITHOUT its movies, because an Other Videos library is a type-1 library too.
+- **`/library/search?limit=` caps the WHOLE list**, not each hub, and refuses twice over like
+  `/hubs/search`: a value it cannot parse is a 400, a non-positive one a 500, `01` fine.
 
 ## Conventions
 
