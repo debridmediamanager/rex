@@ -20053,6 +20053,46 @@ def main():
               % (after_c29e.get("thumb"), after_c29e.get("art"), before_c29e.get("art"),
                  sorted({str(leaf_c29e.get("parentThumb")) for leaf_c29e in kids_c29e})))
 
+
+    # Cycle 29, measured on kids and zen over fifteen `url=` shapes, agreeing on every one:
+    # the DIMENSIONS are validated first, then the url -- a missing `url=` is a 400, an
+    # EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does
+    # not hold a 404, one the row does not OWN a 404 (the transcoder answers what the
+    # direct path answers), a server path that is not artwork a 500, and a url with a
+    # SCHEME or no leading slash a 404. plexsim fell through to a GENERATED grey tile for
+    # five of those, with `max-age=259200` on it, so a browser kept the grey square for
+    # three days where a real PMS refuses and the client draws its own placeholder.
+    leaf_c29g = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                 .get("Metadata") or [{}])[0].get("ratingKey")
+
+    def photo_c29g(url_c29g, dims_c29g="width=200&height=300"):
+        path_c29g = "/photo/:/transcode?" + dims_c29g
+        if url_c29g is not None:
+            path_c29g += "&url=" + quote(url_c29g)
+        return request(base, "GET", path_c29g, want_json=False)[0]
+
+    shapes_c29g = {
+        "own": photo_c29g("/library/metadata/%s/thumb/1" % movie),
+        "unknown row": photo_c29g("/library/metadata/987654/thumb/1"),
+        "identity": photo_c29g("/identity"),
+        "listing": photo_c29g("/library/sections/%s/all" % movie_section),
+        "no slash": photo_c29g("library/metadata/%s/thumb/1" % movie),
+        "file scheme": photo_c29g("file:///etc/hostname"),
+        "empty": photo_c29g(""),
+        "absent": photo_c29g(None),
+        "bad dims": photo_c29g("", "width=abc&height=300"),
+    }
+    borrowed_c29g = (photo_c29g("/library/metadata/%s/art" % leaf_c29g)
+                     if leaf_c29g else None)
+    direct_c29g = (request(base, "GET", "/library/metadata/%s/art" % leaf_c29g)[0]
+                   if leaf_c29g else None)
+    check("the transcoder's url grammar, and it answers what the direct path answers",
+          shapes_c29g == {"own": 200, "unknown row": 404, "identity": 500, "listing": 500,
+                          "no slash": 404, "file scheme": 404, "empty": 404,
+                          "absent": 400, "bad dims": 400}
+          and borrowed_c29g == direct_c29g == 404,
+          "%s | borrowed %s vs direct %s" % (shapes_c29g, borrowed_c29g, direct_c29g))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

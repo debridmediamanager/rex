@@ -4785,8 +4785,6 @@ class PlexSim:
             # does not have. plexsim answered a 200 grey tile to all four, so a client
             # that would have drawn its own title-card placeholder drew -- and could
             # cache -- plexsim's instead.
-            if not query.get("url"):
-                return ("error", 400, "plexsim: bad request")
             for name in ("width", "height"):
                 if not query.get(name):
                     return ("error", 400, "plexsim: bad request")
@@ -4818,10 +4816,54 @@ class PlexSim:
                     return ("error", 400, "plexsim: bad request")
                 if name == "blur" and int(value) < 0:
                     return ("error", 500, "plexsim: server error")
-            inner = urllib.parse.urlparse(urllib.parse.unquote(query["url"])).path
-            owner = re.match(r"^/library/metadata/(\d+)/", inner)
-            if owner and int(owner.group(1)) not in catalog.items:
-                return ("error", 404, "plexsim: no such item")
+            # Cycle 29, measured on kids and zen over fifteen `url=` shapes, which agree
+            # on every one this implements. The DIMENSIONS are validated first -- `url=`
+            # empty with `width=abc` is a 400 -- and only then the url:
+            #
+            #   no `url=` parameter at all              400
+            #   `url=` present and EMPTY                404
+            #   an item artwork path of a row it holds  200 (the image)
+            #   ... of a row it does not hold           404
+            #   ... the row does not OWN                404, exactly as the direct path
+            #   a server path that is not artwork      500 (`/identity`, a grid)
+            #   a url with a SCHEME or no leading `/`   404 (`file://`, `upload://`,
+            #                                           `media://`, `library/metadata/...`)
+            #
+            # plexsim resolved the url through one regex and fell through to a GENERATED
+            # grey tile for everything else -- a 200 carrying `max-age=259200`, so a
+            # browser kept the grey square for three days. That is CLAUDE.md's own trap
+            # read from the other side: cycle 14 closed the unknown-row door and left five
+            # others open, and any client composing a url plexsim's regex misses (a
+            # relative path, a `file://`, an API caller's guess) cached a grey tile where a
+            # real PMS refuses and the client draws its own placeholder.
+            if "url" not in query:
+                return ("error", 400, "plexsim: bad request")
+            parsed = urllib.parse.urlparse(urllib.parse.unquote(query["url"]))
+            inner = parsed.path
+            if parsed.scheme not in ("http", "https"):
+                if parsed.scheme or not inner.startswith("/"):
+                    return ("error", 404, "plexsim: not found")
+                owner = re.match(
+                    r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)", inner)
+                if owner is None:
+                    # A real server path that is not an item's artwork: the reference
+                    # reads the bytes and fails to decode them. (A `/library/parts/...`
+                    # url is the one shape the two references answer differently -- kids
+                    # 500, zen 404 -- so it is not a rule; this takes kids' answer, which
+                    # is also the general one.)
+                    return ("error", 500, "plexsim: server error")
+                row = catalog.items.get(int(owner.group(1)))
+                if row is None:
+                    return ("error", 404, "plexsim: no such item")
+                field = {"poster": "thumb", "background": "art"}.get(
+                    owner.group(2), owner.group(2))
+                if not self._owns(row, field):
+                    # The transcoder does not re-resolve: it answers what the direct path
+                    # answers, and a row that BORROWS this field 404s there (cycle 26).
+                    # plexsim resolved through `artwork_for`, which falls back to the
+                    # parent's image, so the transcoder served a picture the direct path
+                    # refuses.
+                    return ("error", 404, "plexsim: not found")
             # The client asks for artwork through the transcoder, passing the
             # real path in `url`. Resolve that to the row's TMDB image when
             # there is one; only fall back to a generated tile when there is not.
