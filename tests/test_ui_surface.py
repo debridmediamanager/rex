@@ -18348,6 +18348,47 @@ def main():
                            "&duration=600000&%s"
               % (movie, quote("/library/metadata/%s" % movie), ident_c26m))
 
+
+    # Cycle 27, measured on the writable copy with a Plex Web client and a Roku one:
+    # every tag element inside a `/status/sessions` row is plainly ALPHABETICAL (a
+    # `Role` there is `filter, id, role, tag, tagKey, thumb`, which refutes cycle 26's
+    # "alphabetical AFTER filter"), and `Player` is the one element with an order of its
+    # own -- the string-valued attributes alphabetically, then `local, relayed, secure,
+    # userID`. plexsim wrote whatever order its builder's dict held, so a Player came out
+    # `address, state, local, relayed, secure, userID, profile, machineIdentifier, ...`.
+    ident_c27a = ("X-Plex-Client-Identifier=c27a-client"
+                  "&X-Plex-Session-Identifier=c27a-sess&X-Plex-Product=Plex+for+Roku"
+                  "&X-Plex-Device-Name=Front+Room&X-Plex-Device=Roku"
+                  "&X-Plex-Platform=Roku&X-Plex-Platform-Version=12.0"
+                  "&X-Plex-Model=4660X&X-Plex-Version=9.9.9")
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ident_c27a))
+    xml_c27a = request(base, "GET", "/status/sessions?%s" % ident_c27a,
+                       want_json=False)[1].decode("utf-8", "replace")
+    found_c27a = [e_c27a for e_c27a in re.findall(r"<Player [^>]*?/?>", xml_c27a)
+                  if 'machineIdentifier="c27a-client"' in e_c27a]
+    names_c27a = re.findall(r"(\w+)=", found_c27a[0]) if found_c27a else []
+    tail_c27a = ("local", "relayed", "secure", "userID")
+    strings_c27a = [n_c27a for n_c27a in names_c27a if n_c27a not in tail_c27a]
+    nonstr_c27a = [n_c27a for n_c27a in names_c27a if n_c27a in tail_c27a]
+    check("a session row's Player writes its strings first, then its non-strings",
+          len(names_c27a) >= 10
+          and names_c27a == strings_c27a + nonstr_c27a
+          and strings_c27a == sorted(strings_c27a)
+          and nonstr_c27a == sorted(nonstr_c27a),
+          str(names_c27a))
+    json_c27a = [r_c27a for r_c27a in
+                 get(base, "/status/sessions?%s" % ident_c27a)[1].get("Metadata") or []
+                 if (r_c27a.get("Player") or {}).get("machineIdentifier") == "c27a-client"]
+    keys_c27a = list((json_c27a[0].get("Player") or {}).keys()) if json_c27a else []
+    check("and the JSON writer agrees with it",
+          bool(keys_c27a) and keys_c27a == names_c27a,
+          "%s vs %s" % (keys_c27a, names_c27a))
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ident_c27a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
