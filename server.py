@@ -16156,10 +16156,24 @@ class Handler(BaseHTTPRequestHandler):
             if download:
                 # Both forms, the way a real PMS sends them: the plain one for
                 # old clients and the RFC 5987 one for names that are not ASCII.
+                # Cycle 29, measured on kids and zen: the `filename*` form's escaper is
+                # "unreserved minus the dot" -- `.` comes out `%2E` and `+` `%2B`, while
+                # `-` is left alone (`Big%20Buck%20Bunny%20%282008%29%20-%201080p%2Emkv`).
+                # It is the same escaper CLAUDE.md already records for a local artwork
+                # candidate's `/file?url=`, so this generalises it. `urllib.parse.quote`
+                # keeps `.`, `-`, `_` and `~`, so plexsim's name came out with a bare dot.
+                #
+                # No suite check reaches this: the header is only sent on a part read
+                # that resolves, and the fixture's Real-Debrid links are dead (the
+                # suite already skips `download serves an attachment named after the
+                # media file` for the same reason). It was proved against kids' own
+                # `Content-Disposition` by escaping that server's filename with both
+                # forms and diffing the result.
                 self.send_header(
                     "Content-Disposition",
                     'attachment; filename="%s"; filename*=UTF-8\'\'%s'
-                    % (download.replace('"', ""), urllib.parse.quote(download)))
+                    % (download.replace('"', ""),
+                       urllib.parse.quote(download, safe="").replace(".", "%2E")))
             if content_length:
                 self.send_header("Content-Length", content_length)
             if content_range:
