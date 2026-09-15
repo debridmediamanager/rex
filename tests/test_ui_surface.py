@@ -16380,6 +16380,40 @@ def main():
           set(verbs_c22p.values()) == {404}
           and set(proxy_c22p.values()) == {400},
           "%s | /system/proxy %s" % (verbs_c22p, proxy_c22p))
+
+    # Cycle 23, measured on plexscratch twice over and re-measured by the driver: a MOVIE's
+    # unmatch pushes twelve frames and plexsim pushed NONE. The sequence opens on two
+    # `matching` frames -- `state 2` and then `state 3`, a pair plexsim emitted nowhere --
+    # and the activity inside it steps through a second TITLE, `Analyzing Media`, before
+    # returning to `Updating Metadata`:
+    #   2/matching, 3/matching, 3/queued, activity started(-1, Updating Metadata),
+    #   updated(-1, Analyzing Media), updated(25, Analyzing Media),
+    #   updated(25, Updating Metadata), updated(50, Updating Metadata),
+    #   3/processing, 4/loading, activity ended(100), 5
+    # An unmatch rewrites the whole row -- title, guid, the people lists -- so a client
+    # told nothing keeps the old one until a reload, and the Dashboard shows no activity
+    # for the largest single write on the item menu.
+    _, frames_c23a = notifications(
+        base, lambda: request(base, "PUT", "/library/metadata/%s/unmatch" % movie), seconds=8)
+    entries_c23a = [(e_c23a.get("state"), e_c23a.get("metadataState")) for f_c23a in frames_c23a
+                    for e_c23a in ((f_c23a.get("NotificationContainer") or {})
+                                   .get("TimelineEntry") or [])]
+    activities_c23a = [(a_c23a.get("event"),
+                        (a_c23a.get("Activity") or {}).get("title"),
+                        (a_c23a.get("Activity") or {}).get("progress"))
+                       for f_c23a in frames_c23a
+                       for a_c23a in ((f_c23a.get("NotificationContainer") or {})
+                                      .get("ActivityNotification") or [])]
+    check("a movie's unmatch pushes the full twelve-frame sequence",
+          entries_c23a == [(2, "matching"), (3, "matching"), (3, "queued"),
+                           (3, "processing"), (4, "loading"), (5, None)]
+          and [a_c23a[0] for a_c23a in activities_c23a]
+          == ["started", "updated", "updated", "updated", "updated", "ended"]
+          and [a_c23a[1] for a_c23a in activities_c23a]
+          == ["Updating Metadata", "Analyzing Media", "Analyzing Media",
+              "Updating Metadata", "Updating Metadata", "Updating Metadata"]
+          and [a_c23a[2] for a_c23a in activities_c23a] == [-1, -1, 25, 25, 50, 100],
+          "timeline %s | activity %s" % (entries_c23a, activities_c23a))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -10419,6 +10419,30 @@ class PlexSim:
                     self.notify_refreshed(row)
                 else:
                     self.notify_timeline(row, self.TIMELINE_DONE, None)
+            elif row.get("type") == "movie":
+                # Cycle 23, measured on plexscratch twice over: a MOVIE's unmatch pushes
+                # TWELVE frames where plexsim pushed none. It opens on two `matching`
+                # frames -- `state 2` then `state 3`, a pair this server emitted nowhere
+                # -- and the activity inside it steps through a second TITLE,
+                # `Analyzing Media`, before returning to `Updating Metadata`. An unmatch
+                # rewrites the whole row, so a client told nothing keeps the old title,
+                # guid and people lists until a reload.
+                self.notify_timeline(row, 2, "matching")
+                self.notify_timeline(row, self.TIMELINE_QUEUED, "matching")
+                self.notify_timeline(row, self.TIMELINE_QUEUED, "queued")
+                activity = self.library.add_activity(self.frame_title(row), progress=-1)
+                for title, progress in (("Analyzing Media", -1), ("Analyzing Media", 25),
+                                        ("Updating Metadata", 25),
+                                        ("Updating Metadata", 50)):
+                    activity["title"] = title
+                    activity["progress"] = progress
+                    self.library.notify_activity(activity, "updated")
+                self.notify_timeline(row, self.TIMELINE_QUEUED, "processing")
+                self.notify_timeline(row, self.TIMELINE_LOADING, "loading")
+                activity["title"] = "Updating Metadata"
+                activity["progress"] = 100
+                self.library.end_activity_quietly(activity)
+                self.notify_timeline(row, self.TIMELINE_DONE, None)
             logger.info("UNMATCH %s -> guid=%s", row["ratingKey"], row.get("guid"))
         elif action == "match":
             guid = query.get("guid") or ""
