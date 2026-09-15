@@ -227,9 +227,19 @@ _ATTR_ORDER = {
     "Hub": (
         # Cycle 23: the `/hubs/sections/{id}/manage` rows lead with `identifier`, not
         # `title`, on both references.
+        # Cycle 27: `random` comes BEFORE `style` on both -- measured on the Rediscover
+        # and Start-Watching shelves of `/hubs/sections/{id}`, which are the only rows
+        # that carry it. It was absent from this bucket, so it fell to the end.
         "identifier",
         "hubKey", "key", "title", "type", "hubIdentifier", "context", "size",
-        "more", "style", "promoted"
+        "more", "random", "style", "promoted"
+    ),
+    "Sort": (
+        # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort`
+        # row leads with the ACTIVE pair, not with `default`. plexsim had no `Sort`
+        # bucket, so the two flags it adds last came out last.
+        "active", "activeDirection", "default", "defaultDirection", "descKey",
+        "firstCharacterKey", "key", "title"
     ),
     "Image": (
         "alt", "type", "url"
