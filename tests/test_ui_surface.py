@@ -18704,6 +18704,29 @@ def main():
           and isinstance(stored_c27h.get("storageTotal"), str),
           "%r %r" % (stored_c27h.get("durationTotal"), stored_c27h.get("storageTotal")))
 
+
+    # Cycle 27, re-measured on kids (1.43.4) and zen (1.42.2) agent by agent, which
+    # agree: the BARE `/system/agents` form carries the modern agents' 45 `Language`
+    # rows and NO `MediaType`. Cycle 21 read the opposite off the legacy plug-in rows,
+    # where it is true -- `com.plexapp.agents.imdb` really does carry a `MediaType` in
+    # the bare form and none in the typed one -- and generalised it to every agent.
+    # plexsim holds the modern agents only, so it stripped exactly the rows the Agents
+    # page reads to build each agent's language selector.
+    bare_c27i = request(base, "GET", "/system/agents", want_json=False)[1].decode(
+        "utf-8", "replace")
+    typed_c27i = request(base, "GET", "/system/agents?mediaType=1",
+                         want_json=False)[1].decode("utf-8", "replace")
+    first_c27i = re.search(r"<Agent\b[^>]*>(.*?)</Agent>", bare_c27i, re.S)
+    body_c27i = first_c27i.group(1) if first_c27i else ""
+    check("the bare /system/agents carries the Language rows and no MediaType",
+          body_c27i.count("<Language") >= 40 and body_c27i.count("<MediaType") == 0
+          and bare_c27i.count("<Language") == typed_c27i.count("<Language")
+          * (bare_c27i.count("<Agent") / max(1, typed_c27i.count("<Agent"))),
+          "bare lang=%d mediatype=%d agents=%d | typed lang=%d agents=%d"
+          % (bare_c27i.count("<Language"), bare_c27i.count("<MediaType"),
+             bare_c27i.count("<Agent"), typed_c27i.count("<Language"),
+             typed_c27i.count("<Agent")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

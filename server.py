@@ -12863,28 +12863,30 @@ class PlexSim:
         type offers (a movie library: Plex Movie, Personal Media, NFO Movie), a type
         no agent serves is `size: 0`, and a non-number is a 400.
         """
-        # Cycle 21, measured on kids and zen agent for agent: the two forms carry
-        # DIFFERENT child elements. The BARE form carries a `MediaType` row per media
-        # type the agent serves and NO `Language` at all -- zen's fifteen agents have
-        # zero Languages between them -- while `?mediaType=N` carries the Language list
-        # and no MediaType. plexsim sent its Language list in both forms and a
-        # MediaType in neither, so the Agents page could not say what an agent serves.
+        # Cycle 21 recorded that the two forms carry DIFFERENT child elements -- the
+        # bare one a `MediaType` row per media type and NO `Language`, the
+        # `?mediaType=N` one the Language list and no MediaType. Cycle 27 re-measured
+        # it agent by agent on both references and that rule belongs to the LEGACY
+        # plug-in agents alone:
+        #
+        #   com.plexapp.agents.imdb   bare: 33 Language + 1 MediaType | typed: 33 + 0
+        #   tv.plex.agents.movie      bare: 45 Language + 0 MediaType | typed: 45 + 0
+        #
+        # All six modern `tv.plex.agents.*` rows carry their 45 `Language` rows in BOTH
+        # forms and a `MediaType` in neither, identically on kids (1.43.4) and zen
+        # (1.42.2), so it is not version drift. plexsim holds the modern agents only
+        # (the legacy plug-ins are section 8), so the bare form is the typed form's
+        # children -- and it stripped exactly the rows the Agents page reads to build
+        # each agent's language selector, handing it a lone `MediaType` instead.
+        #
+        # `AGENT_MEDIA_TYPES` still decides WHICH agents a `?mediaType=N` lists; what is
+        # gone is the invented `MediaType` child.
         wanted = query.get("mediaType")
-        if not wanted:
-            agents = [{k: v for k, v in agent.items() if k != "Language"}
-                      for agent in SYSTEM_AGENTS]
-            for agent in agents:
-                serves = [int(number) for number, names in AGENT_MEDIA_TYPES.items()
-                          if agent["identifier"] in names]
-                if serves:
-                    agent["MediaType"] = [{"mediaType": number} for number in sorted(serves)]
-            return self.bare_container(size=len(agents), Agent=agents,
-                                   _repeatKeys=True)
-        if not wanted.lstrip("-").isdigit():
+        if wanted and not wanted.lstrip("-").isdigit():
             return ("error", 400, "plexsim: bad request")
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
-        agents = [by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
-                  if name in by_id]
+        agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
+                   if name in by_id] if wanted else list(SYSTEM_AGENTS))
         # Cycle 25: the list is per LANGUAGE -- titles and order both. All six modern
         # agents share one list, measured agent by agent in every language, so one
         # lookup answers them all. An unrecognised language takes the no-header list.
