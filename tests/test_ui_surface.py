@@ -16235,6 +16235,36 @@ def main():
           and "Guid" in xml_order_c22k
           and xml_order_c22k.index("Guid") < xml_order_c22k.index("Genre"),
           "XML %s | JSON %s" % (xml_order_c22k, json_order_c22k))
+
+    # Cycle 22, measured on zen and kids: four `include*` options parse their value as an
+    # INTEGER -- `01` and `001` turn them on, `2` and `true` do not -- while
+    # `includePreferences` compares the string and takes `1` alone. plexsim tested `== "1"`
+    # for all five, so a client sending the zero-padded form got a response with the block
+    # missing: fix 4's failure mode, a valid document short a section.
+    zeros_c22l = {}
+    for option_c22l, block_c22l, target_c22l in (
+            ("includeExtras", "Extras", movie), ("includeRelated", "Related", movie),
+            ("includeChildren", "Children", show), ("includeOnDeck", "OnDeck", show),
+            ("includePreferences", "Preferences", movie)):
+        if target_c22l is None:
+            continue
+        for value_c22l in ("1", "01", "2"):
+            _, doc_c22l, _ = get(base, "/library/metadata/%s?%s=%s"
+                                 % (target_c22l, option_c22l, value_c22l))
+            zeros_c22l[(option_c22l, value_c22l)] = block_c22l in (
+                (doc_c22l.get("Metadata") or [{}])[0])
+    want_c22l = {}
+    for option_c22l in ("includeExtras", "includeRelated", "includeChildren",
+                        "includeOnDeck", "includePreferences"):
+        if (option_c22l, "1") not in zeros_c22l:
+            continue
+        want_c22l[(option_c22l, "1")] = True
+        want_c22l[(option_c22l, "01")] = option_c22l != "includePreferences"
+        want_c22l[(option_c22l, "2")] = False
+    check("four include* options parse their value as an integer",
+          zeros_c22l == want_c22l,
+          "%s" % sorted(k_c22l for k_c22l in zeros_c22l
+                        if zeros_c22l[k_c22l] != want_c22l.get(k_c22l)))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
