@@ -18453,6 +18453,57 @@ def main():
           all(want_c27b == have_c27b for _t_c27b, want_c27b, have_c27b in got_c27b),
           str(got_c27b))
 
+
+    # Cycle 27, measured on the writable copy over three writes, reading the show, both
+    # seasons and two episodes back after each: a BORROWED artwork field is DERIVED from
+    # its owner rather than stored, so a write to the owner re-derives it on every
+    # borrower -- creating it where it was absent and moving the borrower's own `thumb`
+    # with it. Cycle 25 built the move-where-present half only.
+    kids_of_c27c = lambda rk_c27c: (
+        get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % rk_c27c)[1]
+        .get("Metadata") or [])
+    detail_c27c = lambda rk_c27c: (
+        get(base, "/library/metadata/%s" % rk_c27c)[1].get("Metadata") or [{}])[0]
+    seasons_c27c = [s_c27c for s_c27c in kids_of_c27c(show) if s_c27c.get("type") == "season"]
+    owner_c27c = next((s_c27c for s_c27c in seasons_c27c
+                       if str(s_c27c.get("thumb") or "").startswith(
+                           "/library/metadata/%s/" % s_c27c.get("ratingKey"))
+                       and kids_of_c27c(s_c27c["ratingKey"])), None)
+    request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+            % (show, quote("https://example.invalid/c27c.jpg")))
+    show_art_c27c = detail_c27c(show).get("art")
+    leaf_art_c27c = [(e_c27c.get("ratingKey"), e_c27c.get("art"),
+                      e_c27c.get("grandparentArt"))
+                     for s_c27c in seasons_c27c
+                     for e_c27c in kids_of_c27c(s_c27c["ratingKey"])]
+    check("a show poster pick moves its episodes' own art, not just grandparentArt",
+          bool(show_art_c27c) and bool(leaf_art_c27c)
+          and all(art_c27c == show_art_c27c and gp_c27c == show_art_c27c
+                  for _rk_c27c, art_c27c, gp_c27c in leaf_art_c27c),
+          "show=%s leaves=%s" % (show_art_c27c, leaf_art_c27c[:3]))
+    if owner_c27c is not None:
+        request(base, "DELETE", "/library/metadata/%s/thumb" % owner_c27c["ratingKey"])
+        cleared_c27c = detail_c27c(owner_c27c["ratingKey"])
+        check("clearing a season's own poster falls back to the show's, not to nothing",
+              cleared_c27c.get("thumb") == detail_c27c(show).get("thumb"),
+              "season=%s show=%s" % (cleared_c27c.get("thumb"),
+                                     detail_c27c(show).get("thumb")))
+        check("and its episodes then carry no parentThumb",
+              all(e_c27c.get("parentThumb") is None
+                  for e_c27c in kids_of_c27c(owner_c27c["ratingKey"])),
+              str([e_c27c.get("parentThumb")
+                   for e_c27c in kids_of_c27c(owner_c27c["ratingKey"])]))
+        request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+                % (owner_c27c["ratingKey"],
+                   quote("https://example.invalid/c27c2.jpg")))
+        picked_c27c = detail_c27c(owner_c27c["ratingKey"]).get("thumb")
+        regained_c27c = [e_c27c.get("parentThumb")
+                         for e_c27c in kids_of_c27c(owner_c27c["ratingKey"])]
+        check("and picking one back CREATES parentThumb on every episode",
+              bool(picked_c27c) and bool(regained_c27c)
+              and all(p_c27c == picked_c27c for p_c27c in regained_c27c),
+              "season=%s episodes=%s" % (picked_c27c, regained_c27c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
