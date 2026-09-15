@@ -16077,6 +16077,28 @@ def main():
           "removed %s | kept %s | Part-> partCount %r parts %d"
           % (sorted(gone_c22d), sorted(kept_c22d), media_c22d.get("partCount"),
              len(media_c22d.get("Part") or [])))
+
+    # Cycle 22, measured on zen and kids: `excludeElements=` reaches the rows INSIDE the
+    # inline `Related` and `Extras` blocks, not just the top-level row. With
+    # `excludeElements=Media` the nested related rows lose their Media and gain
+    # `mediaCount`; with `=Genre` they lose their Genre. plexsim applied the option to the
+    # top row alone, so a client trimming a preplay page still received every `Media`,
+    # `Part` and `Stream` of five related rows.
+    _, nested_c22e, _ = get(base, "/library/metadata/%s?includeRelated=1&includeExtras=1"
+                                  "&excludeElements=Media" % movie)
+    row_c22e = (nested_c22e.get("Metadata") or [{}])[0]
+    related_c22e = [r_c22e for hub_c22e in ((row_c22e.get("Related") or {}).get("Hub") or [])
+                    for r_c22e in (hub_c22e.get("Metadata") or [])]
+    extras_c22e = ((row_c22e.get("Extras") or {}).get("Metadata") or [])
+    nested_rows_c22e = related_c22e + extras_c22e
+    check("excludeElements reaches the rows inside Related and Extras",
+          bool(nested_rows_c22e)
+          and all("Media" not in r_c22e for r_c22e in nested_rows_c22e)
+          and all(r_c22e.get("mediaCount") is not None for r_c22e in nested_rows_c22e),
+          "%d nested row(s); with Media %d; with mediaCount %d"
+          % (len(nested_rows_c22e),
+             sum(1 for r_c22e in nested_rows_c22e if "Media" in r_c22e),
+             sum(1 for r_c22e in nested_rows_c22e if r_c22e.get("mediaCount") is not None)))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
