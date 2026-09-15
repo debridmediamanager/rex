@@ -4528,10 +4528,17 @@ class PlexSim:
                 # Cycle 25: the LIST is `resuming()`, not `continue_watching()` -- see
                 # that helper. A next-up episode with no stored offset is On Deck and is
                 # not here.
-                rows = [_grid_row(_listing_row(r)) for r in self.resuming()]
+                # Cycle 28: `contentDirectoryID` scopes this leaf too -- see
+                # `content_directories`. `sectionID` does NOT (zen answers its
+                # section-4 row to `?sectionID=1`).
+                directories = self.content_directories(query)
+                rows = [_grid_row(_listing_row(r)) for r in
+                        self.in_directories(self.resuming(), directories)]
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/onDeck":
-                rows = [_listing_row(r) for r in self.continue_watching()
+                directories = self.content_directories(query)
+                rows = [_listing_row(r) for r in
+                        self.in_directories(self.continue_watching(), directories)
                         if r.get("type") == "episode"]
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/recentlyAdded":
@@ -4540,6 +4547,8 @@ class PlexSim:
                 # every show library. plexsim had it the other way round, so the
                 # TV shelf's "see all" opened an empty page.
                 rows = self.recently_added_rows(query.get("type"), query.get("sectionID"))
+                rows = (None if rows is None
+                        else self.in_directories(rows, self.content_directories(query)))
                 meta = (HOME_RECENT_META.get(str(query.get("type") or ""))
                         if query.get("includeMeta") == "1" else None)
                 if rows is None:
@@ -9014,9 +9023,13 @@ class PlexSim:
                 "home.ondeck", "On Deck", "/hubs/home/onDeck",
                 [_listing_row(r) for r in self.continue_watching()
                  if r.get("type") == "episode"], query, kind="episode", promoted=True))
-        wanted = query.get("contentDirectoryID")
+        # Cycle 28: a COMMA LIST selects several libraries here, which is the form the
+        # web client's Home saga sends (it joins an array of pinned ids). plexsim
+        # compared the whole string with one section key, so `contentDirectoryID=1,2`
+        # answered no library shelf at all.
+        wanted = self.content_directories(query)
         for section in self.catalog.sections:
-            if wanted and str(section["key"]) != str(wanted):
+            if wanted is not None and str(section["key"]) not in wanted:
                 continue
             is_show = section.get("type") == "show"
             rows = sorted(self.catalog.section_items(section["key"]),
@@ -9193,6 +9206,30 @@ class PlexSim:
             "/library/metadata/%s/similar" % row["ratingKey"], rows, query, kind=kind,
             full=True)]
 
+    @staticmethod
+    def content_directories(query):
+        """The library ids `contentDirectoryID=` scopes a hub request to, or None.
+
+        Cycle 28, measured on kids (1.43.4) and zen (1.42.2) over nine values each:
+        the parameter is NOT "ignored on every other hub path" (cycle 18's rule, which
+        holds for `/hubs/sections/{id}` and is refuted for `/hubs` and the three
+        `/hubs/home/*` leaves). A non-empty value scopes every shelf to that library; an
+        EMPTY one scopes nothing; the match is an exact STRING, so `01` selects section
+        1 on neither reference; and a COMMA LIST selects several -- which is the form
+        the web client sends, because its own saga joins an ARRAY of pinned ids.
+        """
+        raw = query.get("contentDirectoryID")
+        if not raw:
+            return None
+        return {value for value in str(raw).split(",") if value}
+
+    @classmethod
+    def in_directories(cls, rows, wanted):
+        """`rows` narrowed to the libraries `contentDirectoryID` named."""
+        if wanted is None:
+            return rows
+        return [r for r in rows if str(r.get("librarySectionID")) in wanted]
+
     def recently_added_rows(self, type_id, section_id=None):
         """Newest first, by TYPE (1 movies, 2 shows, 4 episodes); None for others."""
         # Cycle 21, swept over nine `type=` values on kids and zen: this shelf is
@@ -9244,13 +9281,30 @@ class PlexSim:
         playlist history, so those four shelves are the reference's own empty ones.
         """
         wanted = [i for i in (query.get("identifier") or "").split(",") if i]
-        watching = [_listing_row(r) for r in self.continue_watching()]
+        # Cycle 28, measured on kids and zen over nine values each: `contentDirectoryID`
+        # SCOPES this page. A non-empty value narrows every shelf to that library and
+        # REMOVES `home.playlists` -- seven hubs instead of eight -- while an empty one
+        # changes nothing. `abc`, `-1`, `1.5` and `01` are all accepted and select no
+        # library, so every shelf comes back empty rather than refused.
+        #
+        # plexsim ignored it, which is not academic: Plex Web's Home saga builds every
+        # hubs request with `{contentDirectoryID: pinned.join(","), ...}`, so an
+        # unpinned library's Continue Watching and On Deck rows leaked onto Home and a
+        # library filter did nothing at all. CLAUDE.md said the parameter scopes
+        # `/hubs/search` alone; that is right for `/hubs/sections/{id}` and wrong here.
+        directories = self.content_directories(query)
+        watching = [_listing_row(r) for r in
+                    self.in_directories(self.continue_watching(), directories)]
         rows = {
-            "home.continue": [_listing_row(r) for r in self.resuming()],
+            "home.continue": [_listing_row(r) for r in
+                              self.in_directories(self.resuming(), directories)],
             "home.ondeck": [r for r in watching if r.get("type") == "episode"],
-            "home.movies.recent": [_listing_row(r) for r in self.recently_added_rows("1")],
-            "home.television.recent": [_listing_row(r)
-                                       for r in self.recently_added_rows("2")],
+            "home.movies.recent": [
+                _listing_row(r) for r in
+                self.in_directories(self.recently_added_rows("1"), directories)],
+            "home.television.recent": [
+                _listing_row(r) for r in
+                self.in_directories(self.recently_added_rows("2"), directories)],
             # Cycle 25: the shelf is populated -- see `recent_playlists`.
             "home.playlists": self.recent_playlists(),
         }
@@ -9259,7 +9313,8 @@ class PlexSim:
                               kind=kind, style=style, promoted=True)
                 for identifier, title, key, kind, style in self.GLOBAL_HUBS
                 if (not wanted or identifier in wanted)
-                and not (identifier == "home.ondeck" and hidden)]
+                and not (identifier == "home.ondeck" and hidden)
+                and not (identifier == "home.playlists" and directories is not None)]
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
