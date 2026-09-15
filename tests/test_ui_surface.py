@@ -5744,10 +5744,15 @@ def main():
                sorted(k for k, v in (detail_of(r.get("ratingKey")) or {}).items()
                       if isinstance(v, list)))
               for r in deck8]
-    check("On Deck rows are the detail row, named by key and UUID (1.42.2)",
+    # Cycle 30 corrected both halves on plexscratch42, a writable copy of the version
+    # plexsim reports: the row is the detail row MINUS `Field`, and it carries NO
+    # `librarySectionKey` -- on a movie and an episode alike, as plexscratch (1.43.4) and
+    # cycle 21's fun also said. zen's one on-deck row is the outlier (HANDOVER 3.3).
+    check("On Deck rows are the detail row minus Field, named by UUID and not by key",
           deck8 and home_deck8
-          and all(row8 == detail8 for row8, detail8 in shape8)
-          and all(r.get("librarySectionKey") and r.get("librarySectionUUID")
+          and all(set(detail8) - set(row8) <= {"Field"} and not set(row8) - set(detail8)
+                  for row8, detail8 in shape8)
+          and all("librarySectionKey" not in r and r.get("librarySectionUUID")
                   for r in deck8)
           and all(r.get("librarySectionKey") and "librarySectionUUID" not in r
                   for r in home_deck8),
@@ -11272,16 +11277,25 @@ def main():
     flat_c15z = get(base, "/library/search?query=%s&includeCollections=1"
                     % quote("Zarquon"))[1].get("SearchResult") or []
     request(base, "DELETE", "/library/collections/%s" % sc_c15z.get("ratingKey"))
-    check("a collection is found by /hubs/search as a tag row and not by /library/search",
+    # Cycle 28 overturned the "and not by `/library/search`" half on the copy once it
+    # held collections at all, and cycle 30 found what tells the two kinds of hit apart:
+    # an ITEM-backed collection's row carries a `guid` and a tag-only one does not. Both
+    # endpoints answer the tag row; the flat form drops the reason triple and the score
+    # (cycle 29).
+    flat_rows_c15z = [r_c15z["Directory"] for r_c15z in flat_c15z
+                      if r_c15z.get("Directory")
+                      and "Zarquon" in str(r_c15z["Directory"].get("tag"))]
+    check("a collection is found by both search endpoints as a tag row with a guid",
           len(dirs_c15z) == 1 and dirs_c15z[0].get("type") == "tag"
           and dirs_c15z[0].get("tagType") == 2
           and dirs_c15z[0].get("tag") == "Zarquon Collection"
           and dirs_c15z[0].get("guid") == sc_c15z.get("guid")
           and dirs_c15z[0].get("count") == 1
           and dirs_c15z[0].get("reason") == "section"
-          and not [r_c15z for r_c15z in flat_c15z
-                   if "Zarquon" in str((r_c15z.get("Metadata") or {}).get("title"))],
-          "hub rows %s | library/search %d" % (dirs_c15z, len(flat_c15z)))
+          and len(flat_rows_c15z) == 1
+          and flat_rows_c15z[0].get("guid") == sc_c15z.get("guid")
+          and "reason" not in flat_rows_c15z[0] and "score" not in flat_rows_c15z[0],
+          "hub rows %s | flat rows %s" % (dirs_c15z, flat_rows_c15z))
 
     # Cycle 15. Nobody had ever swept this surface by METHOD -- a write to a shared
     # reference is forbidden, so it needed the disposable copy. Re-measured by the
@@ -19465,8 +19479,11 @@ def main():
         skip("a random shelf really is random",
              "the topunwatched shelf has %d row(s)" % count_c28i)
     else:
-        check("a random shelf really is random, and a plain one is steady",
-              bool(flagged_c28i) and len(orders_c28i) > 1
+        # Cycle 30 corrected this on zen: the sample is a SAMPLE of the key set and it
+        # is STABLE -- 21 reads over seven minutes answered the identical rows. Cycle 28
+        # asserted the order varying, which was plexsim's own bug.
+        check("a random shelf advertises the flag and answers a steady sample",
+              bool(flagged_c28i) and len(orders_c28i) == 1
               and steady_c28i is not None and len(steady_c28i) == 1,
               "random gave %d distinct orders of %d rows; the plain shelf gave %d"
               % (len(orders_c28i), count_c28i,
@@ -19771,43 +19788,11 @@ def main():
               % (bare_c28r, movies_c28r, tv_c28r, capped_c28r, limits_c28r, hubs_c28r))
 
 
-    # Cycle 28, re-measured against plexscratch (1.43.4) beside zen (1.42.2): the two
-    # VERSIONS answer the On Deck row differently, the sixth per-version shape on the
-    # surface. zen's row is the DETAIL row plus `allowSync`, `librarySectionUUID` and
-    # `lastViewedAt`, `librarySectionKey` included; 1.43.4's drops that key and `Guid`,
-    # `Rating` and `Producer` with it, and stamps the show's `studio` instead. plexsim
-    # reports 1.42.2, so `/library/onDeck` keeps the key -- and cycle 21's "named by
-    # UUID, not by key" was 1.43.4's answer read as the rule.
-    ident_c28t = ("X-Plex-Client-Identifier=c28t&X-Plex-Session-Identifier=c28t"
-                  "&X-Plex-Product=Plex+Web&X-Plex-Platform=Chrome")
-    leaf_c28t = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
-                 .get("Metadata") or [{}])[0].get("ratingKey")
-    if not leaf_c28t:
-        skip("the On Deck row keeps librarySectionKey, as 1.42.2 sends it", "no episode")
-    else:
-        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
-                             "&time=300000&%s" % (leaf_c28t, ident_c28t))
-        deck_c28t = next((r_c28t for r_c28t in
-                          (get(base, "/library/onDeck")[1].get("Metadata") or [])
-                          if str(r_c28t.get("ratingKey")) == str(leaf_c28t)), {})
-        home_c28t = next((r_c28t for r_c28t in
-                          (get(base, "/hubs/home/onDeck")[1].get("Metadata") or [])
-                          if str(r_c28t.get("ratingKey")) == str(leaf_c28t)), {})
-        check("the On Deck row keeps librarySectionKey, as 1.42.2 sends it",
-              deck_c28t.get("librarySectionKey") == "/library/sections/%s" % show_section
-              and bool(deck_c28t.get("librarySectionUUID"))
-              and deck_c28t.get("allowSync") is True
-              and home_c28t.get("librarySectionKey")
-              == "/library/sections/%s" % show_section
-              and "librarySectionUUID" not in home_c28t
-              and "studio" not in deck_c28t,
-              "onDeck %s | home %s"
-              % ({k_c28t: deck_c28t.get(k_c28t) for k_c28t in
-                  ("librarySectionID", "librarySectionKey", "librarySectionUUID",
-                   "allowSync", "studio")},
-                 {k_c28t: home_c28t.get(k_c28t) for k_c28t in
-                  ("librarySectionKey", "librarySectionUUID")}))
-
+    # Cycle 28 asserted here that `/library/onDeck` KEEPS `librarySectionKey`, read off
+    # zen's single on-deck row. Cycle 30 built a writable 1.42.2 copy for that question and
+    # it says the key is absent, as plexscratch (1.43.4) and cycle 21's fun both did -- so
+    # the check that remains is cycle 30's own, further down, and this one is gone rather
+    # than inverted twice in the same file.
 
     # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading its
     # three episodes back: an artwork UPLOAD cascades exactly as a pick does -- the
@@ -20705,10 +20690,17 @@ def main():
             sock_c30f.close()
         return status_c30f, reused_c30f
 
-    pair_c30f = reuse_c30f("/library/sections/%s/all?justakey" % movie_section)
-    identity_c30f = reuse_c30f("/identity?justakey")
-    other_c30f = reuse_c30f("/library/sections/%s/all?type=abc" % movie_section)
-    missing_c30f = reuse_c30f("/library/metadata/999999")
+    def reuse_thrice_c30f(path_c30f):
+        """Three attempts: a busy server can time a read out, and a false "it closed" is
+        the failure mode -- so a socket counts as reusable if ANY attempt reused it, and
+        as closed only if all three agree."""
+        results_c30f = [reuse_c30f(path_c30f) for _attempt_c30f in range(3)]
+        return (results_c30f[0][0], any(result_c30f[1] for result_c30f in results_c30f))
+
+    pair_c30f = reuse_thrice_c30f("/library/sections/%s/all?justakey" % movie_section)
+    identity_c30f = reuse_thrice_c30f("/identity?justakey")
+    other_c30f = reuse_thrice_c30f("/library/sections/%s/all?type=abc" % movie_section)
+    missing_c30f = reuse_thrice_c30f("/library/metadata/999999")
     check("the malformed-pair 400 closes the connection, and no other refusal does",
           pair_c30f == (400, False) and identity_c30f == (400, False)
           and other_c30f == (500, True) and missing_c30f == (404, True),
@@ -21253,8 +21245,15 @@ def main():
     protected_c19w["allowMediaDeletionLanOnly"] = request(
         base, "PUT", "/:/prefs?allowMediaDeletionLanOnly=1")[0]
     control_c19w = request(base, "PUT", "/:/prefs?FriendlyName=plexsim")[0]
-    check("four settings refuse a write with a 403",
-          all(s_c19w == 403 for s_c19w in protected_c19w.values()) and control_c19w == 200,
+    # Cycle 30, on plexscratch42 (1.42.2, the build plexsim reports): the list is TWO
+    # there. `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a write with
+    # a 200 and store it, where 1.43.4 -- the copy cycle 19 had -- answers 403 for both.
+    check("two settings refuse a write with a 403 on 1.42.2",
+          protected_c19w["PlexOnlineUrl"] == 403
+          and protected_c19w["allowMediaDeletionLanOnly"] == 403
+          and protected_c19w["TranscoderH264Options"] == 200
+          and protected_c19w["TranscoderH264OptionsOverride"] == 200
+          and control_c19w == 200,
           "%s ; FriendlyName %s" % (protected_c19w, control_c19w))
     lenient_c19w = {p_c19w: request(base, "PUT", "/:/prefs?%s=abc" % p_c19w)[0]
                     for p_c19w in ("ButlerStartHour", "ButlerEndHour", "TranscoderQuality")}
