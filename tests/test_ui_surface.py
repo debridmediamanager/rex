@@ -17114,6 +17114,14 @@ def main():
     episodes_c25l = [r_c25l.get("ratingKey") for r_c25l in
                      get(base, "/library/metadata/%s/allLeaves" % show)[1]
                      .get("Metadata") or []]
+    # Clear EVERY row with a stored offset, not just this show's. By the time the suite
+    # reaches here other checks have left resume points on rows these four states know
+    # nothing about, and the rule being checked is about the SET the two shelves show.
+    for row_c25l in (get(base, "/library/all")[1].get("Metadata") or []):
+        if row_c25l.get("viewOffset") or row_c25l.get("ratingKey") in episodes_c25l:
+            request(base, "GET",
+                    "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % row_c25l.get("ratingKey"))
     for key_c25l in episodes_c25l + [movie]:
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
                 % key_c25l)
@@ -17153,6 +17161,12 @@ def main():
     leaves_c25m = [r_c25m.get("ratingKey") for r_c25m in
                    get(base, "/library/metadata/%s/allLeaves" % show)[1]
                    .get("Metadata") or []]
+    # As above: every stored offset, not just this show's.
+    for row_c25m in (get(base, "/library/all")[1].get("Metadata") or []):
+        if row_c25m.get("viewOffset") or row_c25m.get("ratingKey") in leaves_c25m:
+            request(base, "GET",
+                    "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % row_c25m.get("ratingKey"))
     for key_c25m in leaves_c25m + [movie]:
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
                 % key_c25m)
@@ -17353,18 +17367,22 @@ def main():
     typed_c25r = (get(base, "/library/all?type=18")[1].get("Metadata") or [])
     untyped_row_c25r = next((r_c25r for r_c25r in
                              get(base, "/library/all")[1].get("Metadata") or []
-                             if r_c25r.get("type") == "collection"), None)
+                             if r_c25r.get("type") == "collection"
+                             and r_c25r.get("ratingKey") == str(key_c25r)), None)
     request(base, "DELETE", "/library/collections/%s" % key_c25r)
     removed_c25r = all_types_c25r()
+    # The DELTA is the rule: by this point in the suite other checks have left
+    # collections of their own behind, so "no collection before" is not available.
     check("the untyped /library/all gains the collection",
           len(after_c25r) == len(before_c25r) + 1
           and (str(key_c25r), "collection") in after_c25r
-          and not any(t_c25r == "collection" for _k_c25r, t_c25r in before_c25r),
+          and (str(key_c25r), "collection") not in before_c25r,
           "%d -> %d" % (len(before_c25r), len(after_c25r)))
     check("the row is the one ?type=18 answers",
           untyped_row_c25r is not None and typed_c25r
           and untyped_row_c25r == next(r_c25r for r_c25r in typed_c25r
-                                       if r_c25r.get("ratingKey") == str(key_c25r)),
+                                       if r_c25r.get("ratingKey")
+                                       == untyped_row_c25r.get("ratingKey")),
           str(sorted(untyped_row_c25r or {})[:6]))
     check("and it is sorted in by ratingKey",
           after_c25r == sorted(after_c25r, key=lambda pair_c25r: int(pair_c25r[0])),
@@ -17395,14 +17413,19 @@ def main():
                  for h_c25s in get(base, "/hubs/search?query=c25shelf")[1].get("Hub") or []
                  if h_c25s.get("size")]
     library_c25s = get(base, "/library/search?query=c25shelf")[1].get("SearchResult") or []
+    # By this point the suite has built playlists of its own, so the rule is that the
+    # new one is THERE and leads the shelf (`lastViewedAt:desc`, and it was just made),
+    # not that it is alone.
+    shelf_keys_c25s = [r_c25s.get("ratingKey")
+                       for r_c25s in shelf_c25s.get("Metadata") or []]
+    promoted_keys_c25s = [r_c25s.get("ratingKey")
+                          for r_c25s in promoted_c25s.get("Metadata") or []]
     check("Home's Recent Playlists shelf carries the playlist",
-          [r_c25s.get("ratingKey") for r_c25s in shelf_c25s.get("Metadata") or []]
-          == [str(key_c25s)]
-          and [r_c25s.get("ratingKey") for r_c25s in promoted_c25s.get("Metadata") or []]
-          == [str(key_c25s)],
-          "hubs=%s promoted=%s" % (shelf_c25s.get("size"), promoted_c25s.get("size")))
+          shelf_keys_c25s[:1] == [str(key_c25s)]
+          and promoted_keys_c25s[:1] == [str(key_c25s)],
+          "hubs=%s promoted=%s" % (shelf_keys_c25s[:3], promoted_keys_c25s[:3]))
     check("and its hubKey names its own rows",
-          shelf_c25s.get("hubKey") == "/library/metadata/%s" % key_c25s,
+          shelf_c25s.get("hubKey") == "/library/metadata/%s" % ",".join(shelf_keys_c25s),
           str(shelf_c25s.get("hubKey")))
     check("/hubs/search finds the playlist",
           ("playlist", [str(key_c25s)]) in hits_c25s, str(hits_c25s))
@@ -17815,7 +17838,13 @@ def main():
 
 
     check("five more XML attribute-order buckets follow the reference",
-          bool(common_c19a) and common_c19a[0][:4] == ["mixedFields", "ratingKey", "key", "guid"]
+          # Cycle 25: `userRating` sits directly after `mixedFields` when the selected
+          # rows all share one, which they do by this point in the suite. The rest of
+          # the sequence is unchanged, so the check skips over it rather than pinning a
+          # field that is only sometimes there.
+          bool(common_c19a)
+          and [n_c19a for n_c19a in common_c19a[0][:5] if n_c19a != "userRating"][:4]
+          == ["mixedFields", "ratingKey", "key", "guid"]
           and bool(types_c19a) and types_c19a[0][:4] == ["key", "type", "title", "active"]
           and bool(feature_c19a)
           and feature_c19a[0] == ["scrobbleKey", "unscrobbleKey", "key", "type"]
