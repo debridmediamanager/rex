@@ -214,6 +214,13 @@ _ATTR_ORDER = {
     "Field": (
         "locked", "name"
     ),
+    "Agent": (
+        # Cycle 27, measured on kids and zen: a MODERN agent row leads `identifier,
+        # name`, where plexsim emitted its builder's dict order. Cycle 19 parked "the
+        # Agent element's attribute order" on the LEGACY pairs (`hasPrefs < identifier
+        # < primary`), which the rows plexsim actually emits do not carry.
+        "identifier", "name", "hasPrefs", "id", "primary"
+    ),
     "Genre": (
         "id", "filter", "tag"
     ),
