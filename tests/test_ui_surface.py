@@ -17086,6 +17086,55 @@ def main():
           == [["en-US"], ["en-US"], ["de-DE"], ["fr-FR"], ["ja-JP"], ["en-US"]],
           str([default_lang_c25k(lang_c25k) for lang_c25k in (None, "de", "ja")]))
 
+
+    # Cycle 25, measured on plexscratch through four driven states: Continue Watching is
+    # NOT On Deck. It holds only the rows with a stored `viewOffset` -- movies and
+    # episodes alike -- where On Deck holds one row per show, its in-progress episode or
+    # the one after the last watched, which has no offset at all. plexsim answered the
+    # same list to both, so its hero shelf offered episodes nobody had started.
+    #
+    #   cleared            onDeck []          contW []
+    #   scrobble ep 8      onDeck [9, null]   contW []
+    #   progress ep 9      onDeck [9, 400000] contW [9, 400000]
+    #   + progress m 17    onDeck [9, 400000] contW [9, 400000], [17, 400000]
+    def ondeck_c25l():
+        return [(r_c25l.get("ratingKey"), r_c25l.get("viewOffset"))
+                for r_c25l in get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]
+
+    def resuming_c25l():
+        return [(r_c25l.get("ratingKey"), r_c25l.get("viewOffset"))
+                for r_c25l in
+                get(base, "/hubs/home/continueWatching")[1].get("Metadata") or []]
+
+    episodes_c25l = [r_c25l.get("ratingKey") for r_c25l in
+                     get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                     .get("Metadata") or []]
+    for key_c25l in episodes_c25l + [movie]:
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % key_c25l)
+    cleared_c25l = (ondeck_c25l(), resuming_c25l())
+    request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+            % episodes_c25l[0])
+    nextup_c25l = (ondeck_c25l(), resuming_c25l())
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=400000" % episodes_c25l[1])
+    progress_c25l = (ondeck_c25l(), resuming_c25l())
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=400000" % movie)
+    both_c25l = (ondeck_c25l(), resuming_c25l())
+    check("Continue Watching is empty while On Deck offers the next-up episode",
+          nextup_c25l[0] and nextup_c25l[0][0][1] is None and nextup_c25l[1] == [],
+          "onDeck=%s contW=%s" % nextup_c25l)
+    check("a row with a stored offset is in both",
+          progress_c25l[0] and progress_c25l[0] == progress_c25l[1],
+          "onDeck=%s contW=%s" % progress_c25l)
+    check("a MOVIE with an offset is in Continue Watching and not on deck",
+          str(movie) in [k_c25l for k_c25l, _o_c25l in both_c25l[1]]
+          and str(movie) not in [k_c25l for k_c25l, _o_c25l in both_c25l[0]],
+          "onDeck=%s contW=%s" % both_c25l)
+    check("and both are empty when nothing is started or part-watched",
+          cleared_c25l == ([], []), str(cleared_c25l))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
