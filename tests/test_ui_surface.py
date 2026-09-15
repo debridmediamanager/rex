@@ -8024,7 +8024,14 @@ def main():
     def storage_c11i(path):
         status, body, _ = get(base, path)
         rows_c11i = body.get("Metadata") or []
-        return status, [(r.get("durationTotal"), r.get("storageTotal")) for r in rows_c11i]
+        # Cycle 27: both are JSON STRINGS on a real PMS -- `"10031"` on kids and
+        # `"1440171"`/`"573936917"` on zen -- where this check was written against
+        # plexsim's integers. The value is compared as a number, with the type asserted
+        # by the cycle-27 check that measured it; comparing the raw strings here would
+        # make this check duplicate that one and fail for the wrong reason.
+        return status, [(None if r.get("durationTotal") is None else int(r["durationTotal"]),
+                         None if r.get("storageTotal") is None else int(r["storageTotal"]))
+                        for r in rows_c11i]
     movies_c11i = storage_c11i("/library/sections/%s/all?includeStorage=1" % movie_section)
     plain_c11i = storage_c11i("/library/sections/%s/all" % movie_section)
     shows_c11i = storage_c11i("/library/sections/%s/all?includeStorage=1" % show_section)
