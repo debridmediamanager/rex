@@ -164,6 +164,11 @@ _ATTR_ORDER = {
         "fastKey", "key", "title", "type"
     ),
     "Directory[none]": (
+        # Cycle 23, measured on kids and zen: a `/library/tags` and
+        # `/library/people/{id}` row is `id, filter, tag, tagType, tagKey, thumb` --
+        # `thumb` LAST. This bucket knew `thumb` and none of the other five, so they
+        # all fell behind it and the tag row came out led by its image.
+        "id", "filter", "tag", "tagType", "tagKey",
         # Cycle 22: a section's PIVOT rows lead with these on both references --
         # `<Directory secondary="1" key="genre" title="By Genre" />` and
         # `<Directory prompt="Search ..." search="1" key="search?type=1" ... />`.
@@ -206,6 +211,9 @@ _ATTR_ORDER = {
         "id", "filter", "tag"
     ),
     "Hub": (
+        # Cycle 23: the `/hubs/sections/{id}/manage` rows lead with `identifier`, not
+        # `title`, on both references.
+        "identifier",
         "hubKey", "key", "title", "type", "hubIdentifier", "context", "size",
         "more", "style", "promoted"
     ),
@@ -473,8 +481,15 @@ def ordered(container):
 # children" -- the same shape cycle 21 concluded for `Feature`. `Directory` is left
 # out on purpose: both references write it BOTH ways and which is which is an
 # attribute-level rule this cycle did not isolate.
-_ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Hub", "Extras", "Media",
+# Cycle 23: `Hub` comes OUT of the flat list. Measured on kids and zen, the
+# `/hubs/sections/{id}/manage` Hub -- which has no child collection at all -- is
+# SELF-CLOSED, while an ordinary hub path's `size="0"` Hub is paired on all three
+# servers. Cycle 22 censused ~45 paths and none of them was `/manage`, so it read a
+# name rule where the rule is the one it left open for `Directory`: paired when the
+# element carries a (possibly empty) child collection, self-closed when it carries none.
+_ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
                   "Activity")
+_PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
 
 
 def _render(name, row, out, overrides=None, container=False):
@@ -492,7 +507,13 @@ def _render(name, row, out, overrides=None, container=False):
     if not children:
         # Cycle 21: a `Feature` is written paired even when it is empty.
         # Cycle 22: every tag ends its own LINE -- see `to_xml`.
-        out.append(">\n</%s>\n" % name if name in _ALWAYS_PAIRED else " />\n")
+        # Cycle 23: a `Hub` is paired only when it CARRIES a child collection, even an
+        # empty one -- `/manage`'s, which has none, self-closes on both references.
+        paired = name in _ALWAYS_PAIRED or (
+            name in _PAIRED_WITH_EMPTY_CHILDREN
+            and any(isinstance(value, (list, tuple, dict))
+                    for key, value in row.items() if not str(key).startswith("_")))
+        out.append(">\n</%s>\n" % name if paired else " />\n")
         return
 
     out.append(">\n")
