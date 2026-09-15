@@ -5958,6 +5958,199 @@ the same field was a 400 on a movie.
 - The `updatedAt` rule's write half is plexscratch's alone, as every write rule is; the
   artwork-version half is read off both references and is not.
 
+#### The twenty-first pass — the detail read of a season and an episode, the prefs families, and the writers held out again
+
+Two hunts and a driver round. Territory A took the **detail read** of a season and an
+episode and the **hub shelves** those two row types appear on — the dimension cycle 20
+left when it swept the listing grammar at type 3 and type 4. Territory B took the
+**write surface below the item**: the `/library/sections/{id}/prefs` family per library
+type, the per-item prefs, the `/:/` write family swept as a set, and the writers this
+project has never sent. The driver's round held plexsim's remaining **writers** out
+against real rows: `xsweep.py` (new) compares every XML attribute and child-element
+sequence both references agree on with plexsim's own, per path, and the parser's
+composite grammar, the container attribute sets and the python-plexapi corpus were each
+re-run as controls.
+
+---
+
+**The two forms of `/system/agents` carry different child elements.** The bare form
+carries a `MediaType` row per media type the agent serves and NO `Language` at all —
+zen's `com.plexapp.agents.none` has five MediaTypes and its fifteen agents have zero
+Languages between them — while `?mediaType=N` is the other way round: a Language list
+per agent (26, 33 or 45 rows) and no MediaType. plexsim sent its 45 Languages in both
+forms and a MediaType in neither, so the Agents page could not say what an agent serves.
+
+**`/system/agents` is the one endpoint whose JSON repeats a child element's KEY instead
+of writing an array.** The raw body reads
+`"Language":{"code":"ar"},"Language":{"code":"ca"},…` — 150 occurrences on zen and 195
+on kids — and `MediaType` is written the same way, while every other repeated child on
+every other path is a proper array (`Setting`, `Agent`, `Genre`, `Media`, `Role`,
+`Image`, `Action`, `Directory`, `Feature`, `Pivot`). A JSON parser keeps the LAST of the
+repeated keys, so a client sees exactly one language per agent where plexsim showed it
+forty-five. The whole list is in the XML, which is where the `default="1"` the Add
+Library dialog preselects is visible.
+
+**A `Feature` element is never self-closed.** All fifteen on `/media/providers` are
+written as paired empty elements on both servers, where `Directory`, `Action` and
+`Pivot` in the same document self-close when they have no children.
+
+---
+
+**A SEASON's language settings inherit from the SERIES.** `includePreferences=1` on a
+season answers `audioLanguage` and `subtitleLanguage` whose first enum entry is
+`:Series default`, not `:Account default` — measured on four seasons across both
+references, in three languages. A SHOW says `:Account default` and a movie has no such
+setting, so the row type decides it. plexsim rebuilds that enum at read time (cycle 19's
+"led by the item's own streams") and the rebuild hardcoded the account label.
+
+**An EPISODE's `/tree` is the ancestor CHAIN.** Exactly three `MetadataItem` nodes — the
+show, THAT episode's season and the episode — on five witnesses across both references.
+No sibling season, no sibling episode. plexsim rooted it at the show and then answered
+the WHOLE show, so the response grew with the show and the node the caller asked about
+was no longer identifiable as the leaf.
+
+**`/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` only.** Both
+references answer `size 0` to `type=3`, `4`, `5`, `8`, an unparseable one and an empty
+one — and both hold episodes, so it is not a content difference — with and without
+`sectionID`, `pinnedContentDirectoryID` and `includeMeta`. plexsim answered an
+eight-row episode shelf at `type=4`.
+
+**A `/library/onDeck` row LEADS with `allowSync` and the librarySection triple**, exactly
+as a `/library/recentlyAdded` row does. Cycle 19 recorded the rule for both paths and
+plexsim carried it on one — and `allowSync` on the ROW is the signal the XML writer keys
+the whole lead on, so without it the four came out mid-row.
+
+**A section's `/hubs/sections/{id}/continueWatching/items` container is
+`{size, allowSync: true, identifier}` and nothing else.** plexsim said
+`allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
+container as on a populated one — cycle 15's "every hub path says allowSync true except
+postplay", satisfied everywhere but here.
+
+**An artwork path with an EXTRA SEGMENT after the version is a 404.**
+`/library/metadata/{id}/thumb/{v}/x` and `/thumb/{v}/1/2` both, on `thumb`, `art` and
+`poster`, on every row type. A single trailing slash stays a 200, and so does a bad
+version. plexsim served the image for anything that merely STARTED like an artwork path.
+
+**The per-user-state block sits in the MIDDLE of a row, before the year.** Measured on
+zen's own watched rows: a show reads `index, audienceRating, userRating, viewCount,
+skipCount, lastViewedAt, lastRatedAt, year`, a season `index, parentIndex, viewCount,
+skipCount, lastViewedAt, parentYear` and an episode `index, parentIndex, audienceRating,
+viewCount, lastViewedAt, year`. `xmlout._ATTR_ORDER` had no entry for those names on the
+three buckets, so they fell out in dict insertion order and were appended after
+`updatedAt` — and cycle 19 established that a real PMS's JSON key order is its XML
+order, so both formats moved. `parentSummary` is the other half: on a
+`/library/recentlyAdded` season row it comes directly after `parentTitle`.
+
+---
+
+**A collection and a playlist take EVERY `/:/` state write.** Measured on plexscratch
+with a fresh collection and a fresh playlist born from `POST /library/collections` and
+`POST /playlists`: `scrobble`, `unscrobble`, `rate`, `progress` and `timeline` are each a
+200, and `rate`, `progress` and `unscrobble` store on them exactly as they do on an item —
+an 8 is `userRating` plus `lastRatedAt`, and it survives the unscrobble that drops the
+view state. The two part on the SCROBBLE: a playlist's own `viewCount` counts up from the
+1 it is born with (1 → 2 → 3) and its unscrobble clears it with `lastViewedAt`, while a
+collection's scrobble is a 200 that changes nothing at all — it never carries `viewCount`,
+and it does not even clear a `viewOffset` a progress write left, so only the watched half
+is the no-op. Neither reaches a member. plexsim 404'd all ten writes, so the star rating
+on a collection page and on a playlist page errored and never stuck.
+
+**And the state comes back MID-ROW, in its own order.** `userRating, viewOffset,
+viewCount, lastViewedAt, lastRatedAt` — after a collection's `ratingCount` and before its
+`thumb`, after a playlist's `composite` and before its `duration`. It is on every read of
+a collection row (the detail, the `type=18` listing, `/library/collections/{id}`,
+`/library/all?type=18`, `/collections`) and on every read of a playlist row EXCEPT
+`/playlists/{id}` and the create response, which omit the block whole. That is the precise
+shape of cycle 16's "the pair is on the LISTING row only": cycle 16 saw `/playlists` and
+called it the listing's own, and the pair belongs to `/library/metadata/{id}` too.
+
+**A SHOW library's `PUT /library/sections/{id}/analyze` frames every episode LEAF three
+times.** `mediaState` analyzing, thumbnailing, none — eighteen frames for plexscratch's six
+episodes, no activity, and an idle-socket control between three runs showed zero noise.
+The movie library's fifteen for five movies is the same rule read from the leaves. plexsim
+framed only rows whose own `type` is `movie`, so a show library's Analyze pushed NOTHING
+and every `!!mediaState` gate in the client stayed as it was.
+
+**A collection and a playlist answer the ITEM action leaves**, and the four that differ
+differ by row type rather than by leaf. `/analyze` is a 200 on a collection and a 400 on a
+playlist; `/allLeaves` and `/grandchildren` are real secondary containers on a collection
+(`viewGroup: movie`, `viewMode: 65592`, `mixedParents` and the librarySection triple on the
+allLeaves) and 404s on a playlist; `/related` is an empty container on both but carries the
+triple and `allowSync` only on a collection; `/extras` is the item path's 400 and `/match`
+its no-parameters 400; and `PUT`/`DELETE` of `/poster`, `/art` and `/thumb` land like an
+item's. plexsim 404'd every one, so Change Poster and Clear Artwork on a collection page
+did nothing at all.
+
+**`PUT /library/collections/{id}` is the ITEM edit path.** A form that writes nothing is a
+400, an unknown `.value` is a 400, a PREF name (`collectionMode`) is a 400 there where
+`/prefs` takes it, and `titleSort.value` with its lock really stores. plexsim ran a second,
+weaker code path that answered 200 to every form and dropped the sort title, so a save on
+the collection page reported success and lost the edit — while the same forms through
+`/library/metadata/{collection}` were already right, which is what made it two code paths
+rather than one rule. **And `POST`, `PATCH` and a bare `OPTIONS` are 404s** on
+`/library/collections/{id}`, on its `/children`, and on `/library/metadata/{id}` for both
+list types: cycle 19's read-only-verb rule, which had never reached these paths.
+
+**Twenty-nine more columns take an item edit and a real LOCK.** Swept on plexscratch over
+41 candidate names drawn from both references' `Meta` `Filter`/`Field`/`Sort` keys and
+every column findings.md records: each is a 200 that stores a `{"locked": true, "name":
+…}` `Field` row and stores no VALUE, where plexsim answered 400 "unknown field". Eleven
+names are a 400 on both — `album`, `artist`, `chapterSource`, `childCount`,
+`hasChapterVideoStream`, `leafCount`, `logo`, `poster`, `role`, `sourceType`, `track` — so
+the boundary is measured rather than assumed, and `hdr10plus` alone is a 200 that stores
+nothing. Five of the twenty-nine (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`,
+`videoCodec`) are the media-codec family cycle 20 established is 1.43.4-only; plexscratch
+is 1.43.4 and zen cannot be written, so their 1.42.2 status — the build plexsim reports —
+is not measurable, and they are held out. The other twenty-four are implemented.
+
+**A state write's `key=` is a BARE ratingKey, and the four writes parse it differently.**
+The path form the client builds for `/:/timeline` — `/library/metadata/17` — is a 404 on
+scrobble and unscrobble and a 500 on rate and progress, where plexsim took the last path
+segment and accepted it. Past that: `rate` and `progress` int-parse the key (`abc`, `1.5`,
+a leading space and, for `rate`, an empty value are 500s; `+17` and `017` parse) where
+scrobble and unscrobble just look it up and 404; `progress` accepts ANY integer key,
+present or not, with a 200 that stores nothing, where the other three 404 an unknown one;
+`rate` validates its `rating` BEFORE the identifier and `progress` validates the identifier
+before its `time`. findings.md recorded a single 400/404 rule for all four.
+
+**`/:/progress?time=` takes a negative value and a leading `+`.** `-1` and `-500000` are
+200s that store nothing and `+120000` stores 120000, while `abc`, an empty value, `1.5`,
+`0x10`, `1e6` and a leading space stay 500s. plexsim read the value with `isdigit()`, so
+the two shapes a real PMS accepts were refused.
+
+**`DELETE /library/sections/{id}/indexes` moves the SECTION's `updatedAt`.** Measured five
+times; the write still answers 200 with an empty body and zero frames, and every row's
+`updatedAt` and `scannedAt` stay put. It is the container half of cycle 20's "an edit does
+not move `updatedAt`, an artwork write does" — clients cache a library keyed on that stamp.
+
+**A `PUT /library/metadata/{id}/refresh` does NOT move the row's `updatedAt`.** Four runs
+on a movie and four on a show, and the reference really ran the refresh, because it pushed
+its seven-frame sequence each time. Cycle 20 established that an artwork URL's version IS
+the row's `updatedAt`, so the two move together and neither does: plexsim stamped both, and
+every Refresh Metadata therefore told every client that an unchanged row's poster and
+background had changed. plexscratch is isolated from plex.tv, so what is established is
+that running the refresh sequence does not by itself stamp the row.
+
+**A TEXT library preference is percent-decoded a SECOND time.** A wire `%2541` is `%41`
+after HTTP and stores `A`; a wire `%2525` stores `%25`, which is how the storage escaping
+is known to cover `%` as well as `:` and `|`; `%25E2%2582%25AC` stores `€`; and a second
+decode that FAILS — `a%b`, where `%b` is not an escape — stores the empty string. That
+last case is the whole of cycle 17's "a value carrying `%` is stored EMPTY": plexsim
+emptied every value containing one, so a ratings source written with a percent escape was
+lost rather than decoded.
+
+**`PUT /library/metadata/{playlist}/prefs` is a 400**, the item prefs writer's own refusal
+for a name it does not know, where plexsim 404'd it because that branch resolved a
+collection and nothing else.
+
+**An EMPTY response under `/system` carries no `Content-Type` header at all.** Measured on
+kids, zen AND plexscratch over every verb: every 404 — GET, HEAD, POST, PUT and DELETE, on
+`/system` itself and on an unknown path under it — and the bare `OPTIONS` 200 come back
+with no body and no type, where a 404 anywhere else on the surface carries `text/html` and
+a body. Cycle 18 recorded the empty body for the non-GET verbs and implemented it as an
+empty `text/html`; the GET was never covered, so it still carried plexsim's own 18-byte
+`text/plain` refusal.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
