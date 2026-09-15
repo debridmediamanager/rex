@@ -325,6 +325,14 @@ def main():
         print("no movies in the catalog")
         return 1
     movie = movies[0]["ratingKey"]
+    # The row's REMOTE poster candidate, read before any check writes artwork: once an
+    # `upload://` candidate is picked the remote one is gone from `/posters`, so a later
+    # check that needs a versioned artwork path to actually serve bytes cannot find its
+    # way back. Two checks depended on it and passed or failed on suite order alone.
+    original_poster = next(
+        (str(c_op.get("ratingKey")) for c_op in
+         (get(base, "/library/metadata/%s/posters" % movie)[1].get("Metadata") or [])
+         if str(c_op.get("ratingKey") or "").startswith("http")), None)
     spare = movies[-1]["ratingKey"] if len(movies) > 1 else None
     show = shows[0]["ratingKey"] if shows else None
 
@@ -905,21 +913,30 @@ def main():
     print("\n=== context menu: Refresh Metadata / Analyze ===")
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     before_thumb = (detail.get("Metadata") or [{}])[0].get("thumb")
-    # An artwork version is a unix SECOND, so a refresh inside the same second as
-    # the row's last version produces the same key and the check fails for a
-    # reason that is not a bug. Wait for the clock to tick first.
+    before_stamp_c21 = (detail.get("Metadata") or [{}])[0].get("updatedAt")
+    # Cycle 21, re-measured on plexscratch four times on a movie and four on a show: a
+    # refresh does NOT re-version the artwork -- and the reference really ran it, because
+    # it pushed the seven-frame sequence each time. Cycle 20 established that an artwork
+    # URL's version IS the row's `updatedAt`, so the two move together and neither does.
+    # This check used to assert the opposite, which is what plexsim did: every Refresh
+    # Metadata told every client that an unchanged row's poster had changed. The clock is
+    # still let tick, so a version that DID move would be visible.
     edge = time.time()
     while int(time.time()) == int(edge):
         time.sleep(0.05)
     status, body, _ = request(base, "PUT", "/library/metadata/%s/refresh" % movie)
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     after_thumb = (detail.get("Metadata") or [{}])[0].get("thumb")
+    after_stamp_c21 = (detail.get("Metadata") or [{}])[0].get("updatedAt")
     check("refresh answers an empty 200", is_empty_200(status, body), "HTTP %s" % status)
     if before_thumb:
-        check("refresh re-versions the artwork key", after_thumb != before_thumb,
-              "%s -> %s" % (before_thumb, after_thumb))
+        check("refresh leaves the artwork key and updatedAt alone",
+              after_thumb == before_thumb and after_stamp_c21 == before_stamp_c21,
+              "%s -> %s | %s -> %s" % (before_thumb, after_thumb,
+                                       before_stamp_c21, after_stamp_c21))
     else:
-        skip("refresh re-versions the artwork key", "row has no artwork to version")
+        skip("refresh leaves the artwork key and updatedAt alone",
+             "row has no artwork to version")
     # Re-measured: a refresh's activity ENDS. plexsim only ever fired `started`, so
     # an activity that nothing cancelled stayed in /activities for the life of the
     # process and the header's spinner never stopped -- this check used to assert
@@ -1399,7 +1416,10 @@ def main():
           "HTTP %s body=%r viewOffset=%s" % (status, body[:20], stored))
     for path_, want, why in (
             ("/:/progress?time=1", 400, "progress with no key"),
-            ("/:/progress?key=999999&time=1&identifier=com.plexapp.plugins.library", 404, "progress for an unknown key"),
+            # Cycle 21, measured on plexscratch: `/:/progress` accepts ANY integer key,
+            # present or not, with a 200 that stores nothing -- it is the one write of the
+            # four that never looks the row up. The other three still 404 it.
+            ("/:/progress?key=999999&time=1&identifier=com.plexapp.plugins.library", 200, "progress for an unknown key"),
             ("/:/scrobble", 400, "scrobble with no key"),
             ("/:/scrobble?key=999999&identifier=com.plexapp.plugins.library", 404, "scrobble for an unknown key"),
             ("/:/unscrobble?key=999999&identifier=com.plexapp.plugins.library", 404, "unscrobble for an unknown key"),
@@ -15547,6 +15567,8 @@ def main():
     # read but `/playlists/{id}` and the create response, which omit it whole. plexsim
     # 404'd all ten writes, so the star rating on a collection page and on a playlist
     # page errored and never stuck.
+    member_before_c21k = (get(base, "/library/metadata/%s" % movie)[1]
+                          .get("Metadata") or [{}])[0].get("userRating")
     codes_c21k = {}
     for label_c21k, key_c21k in (("collection", c21_collection), ("playlist", c21_playlist)):
         for name_c21k, spec_c21k in (
@@ -15575,6 +15597,8 @@ def main():
                         if str(r_c21k.get("ratingKey")) == str(c21_playlist)), {})
     _, coll2_c21k, _ = get(base, "/library/metadata/%s" % c21_collection)
     blank_c21k = (coll2_c21k.get("Metadata") or [{}])[0].get("viewCount")
+    # The member's own rating is read as a BEFORE/AFTER pair: the suite rates `movie`
+    # elsewhere, so "it has none" is a fact about the fixture and not about this write.
     _, member_c21k, _ = get(base, "/library/metadata/%s" % movie)
     # Only the WATCHED half is the collection's no-op: a progress write followed by a
     # scrobble leaves the offset where an item's scrobble would have cleared it.
@@ -15598,7 +15622,7 @@ def main():
           and playlist_c21k.get("userRating") == 8.0
           and playlist_c21k.get("viewCount") is None
           and listed_c21k.get("viewCount") == 2 and blank_c21k is None
-          and (member_c21k.get("Metadata") or [{}])[0].get("userRating") is None
+          and (member_c21k.get("Metadata") or [{}])[0].get("userRating") == member_before_c21k
           and _state_slot_c21k(collection_c21k, "ratingCount")
           == ["ratingCount", "userRating", "lastRatedAt"]
           and _state_slot_c21k(listed_c21k, "composite")
@@ -15643,6 +15667,289 @@ def main():
           all(code_c21l == 200 for code_c21l in codes_c21l.values())
           and str(row_c21l.get("thumb") or "").startswith("/library/metadata/%s/" % c21_art_row),
           "%s | thumb %r" % (codes_c21l, row_c21l.get("thumb")))
+
+    def restore_poster_c21(rating_key_c21):
+        """Pick the row's ORIGINAL remote candidate again, so its versioned path serves.
+
+        Earlier checks pick an `upload://` candidate and an unreachable http one, and
+        plexsim has bytes for neither -- and once an upload is picked the remote candidate
+        is no longer listed at `/posters`, so the url has to come from the copy taken
+        before any artwork was written. Two checks passed or failed on suite order alone.
+        """
+        if not original_poster:
+            return None
+        request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+                % (rating_key_c21, urllib.parse.quote(original_poster, safe="")))
+        return original_poster
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2), which agree agent for agent:
+    # the two forms of `/system/agents` carry DIFFERENT child elements. The bare form
+    # carries a `MediaType` row per media type the agent serves and NO `Language` at
+    # all -- zen's `com.plexapp.agents.none` has five MediaTypes, `imdb` one, and every
+    # one of its fifteen agents has zero Languages -- while `?mediaType=N` is the other
+    # way round: a Language list per agent (26, 33 or 45 rows) and no MediaType. plexsim
+    # sent its 45 Languages in both forms and a MediaType in neither, so the Agents page
+    # could not say which agent serves which library type.
+    _, bare_c21a, _ = get(base, "/system/agents")
+    _, typed_c21a, _ = get(base, "/system/agents?mediaType=1")
+
+    def shape_c21a(doc_c21a):
+        rows_c21a = doc_c21a.get("Agent") or []
+        return [(r_c21a.get("identifier"),
+                 len(r_c21a.get("Language") or []), len(r_c21a.get("MediaType") or []))
+                for r_c21a in rows_c21a]
+
+    check("the two forms of /system/agents carry different child elements",
+          bool(shape_c21a(bare_c21a)) and bool(shape_c21a(typed_c21a))
+          and all(langs_c21a == 0 and types_c21a > 0
+                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(bare_c21a))
+          and all(langs_c21a > 0 and types_c21a == 0
+                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(typed_c21a)),
+          "bare %s | mediaType=1 %s" % (shape_c21a(bare_c21a), shape_c21a(typed_c21a)))
+
+    # Cycle 21: `/system/agents` is the ONE endpoint whose JSON repeats a child
+    # element's KEY instead of emitting an array. Measured on both references: the raw
+    # body reads `"Language":{"code":"ar"},"Language":{"code":"ca"},...` -- 150
+    # occurrences on zen and 195 on kids -- and `MediaType` is written the same way,
+    # while every other repeated child on every other path is a proper array (`Setting`
+    # on `/:/prefs`, `Agent` here, `Genre`, `Media`, `Role`, `Image` on a row,
+    # `Action`, `Directory`, `Feature`, `Pivot` on `/media/providers`). A JSON parser
+    # keeps the LAST of the repeated keys, so a client sees exactly one language per
+    # agent where plexsim showed it forty-five.
+    status_c21b, body_c21b, _ = request(base, "GET", "/system/agents?mediaType=1")
+    text_c21b = body_c21b.decode("utf-8", "replace").replace(" ", "")
+    _, providers_c21b, _ = request(base, "GET", "/media/providers")
+    control_c21b = providers_c21b.decode("utf-8", "replace").replace(" ", "")
+    parsed_c21b = json.loads(body_c21b)["MediaContainer"].get("Agent") or []
+    check("only /system/agents repeats a child element's JSON key",
+          status_c21b == 200 and text_c21b.count('"Language":{') > 1
+          and '"Language":[' not in text_c21b
+          and '"Feature":[' in control_c21b
+          and all(isinstance(a_c21b.get("Language"), dict) for a_c21b in parsed_c21b),
+          "repeats %d | array %s | control Feature array %s"
+          % (text_c21b.count('"Language":{'), '"Language":[' in text_c21b,
+             '"Feature":[' in control_c21b))
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2): a `Feature` element is never
+    # self-closed. Every one of the fifteen on `/media/providers` is written as a PAIRED
+    # empty element (`<Feature key="/hubs/search" type="search"></Feature>`) on both
+    # servers, while `Directory`, `Action` and `Pivot` in the same document self-close
+    # when they have no children. plexsim self-closed all fifteen. It is the writer's
+    # own quirk rather than anything a parser can see, and it is the last byte-level
+    # difference on that document.
+    # XML is the default format, and `request` asks for JSON unless told otherwise.
+    _, providers_c21c, _ = request(base, "GET", "/media/providers", want_json=False)
+    xml_c21c = providers_c21c.decode("utf-8", "replace")
+    check("a Feature element is never self-closed",
+          "<Feature " in xml_c21c
+          and not re.findall(r"<Feature [^>]*/>", xml_c21c)
+          and bool(re.findall(r"<Feature [^>]*></Feature>", xml_c21c))
+          and bool(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c)),
+          "self-closed %d | paired %d | other self-closed %d"
+          % (len(re.findall(r"<Feature [^>]*/>", xml_c21c)),
+             len(re.findall(r"<Feature [^>]*></Feature>", xml_c21c)),
+             len(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c))))
+
+    c21_season = [r_c21.get("ratingKey") for r_c21 in
+                  (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
+                   .get("Metadata") or [])][0]
+
+    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2) over four seasons: the
+    # inherit option of a SEASON's `audioLanguage` and `subtitleLanguage` is
+    # `:Series default`, not `:Account default` -- a season inherits from its SHOW.
+    # `subtitleMode` already says `-1:Series default` in the captured fixture and
+    # plexsim had that one right; the two enum-valued language settings are rebuilt at
+    # read time (cycle 19's "led by the item's own streams") and the rebuild hardcoded
+    # the account label. A SHOW says `:Account default` on both references, which is
+    # what makes it the row type's rule rather than a constant.
+    _, season_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1"
+                                  % c21_season)
+    season_rows_c21d = (((season_prefs_c21d.get("Metadata") or [{}])[0]
+                         .get("Preferences") or {}).get("Setting") or [])
+    _, show_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
+    show_rows_c21d = (((show_prefs_c21d.get("Metadata") or [{}])[0]
+                       .get("Preferences") or {}).get("Setting") or [])
+    leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
+                  for s_c21d in season_rows_c21d}
+    show_leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
+                       for s_c21d in show_rows_c21d}
+    check("a season's language settings inherit from the series, not the account",
+          leads_c21d.get("audioLanguage") == ":Series default"
+          and leads_c21d.get("subtitleLanguage") == ":Series default"
+          and leads_c21d.get("subtitleMode") == "-1:Series default"
+          and show_leads_c21d.get("audioLanguage") == ":Account default",
+          "season %s | show %s" % (leads_c21d, show_leads_c21d))
+
+    c21_leaf_row = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                    .get("Metadata") or [{}])[0]
+    c21_episode = c21_leaf_row.get("ratingKey")
+    c21_season2 = c21_leaf_row.get("parentRatingKey")
+
+    # Cycle 21, measured on kids (episodes 8, 10, 13) and zen (5191, 19741, 13160): an
+    # EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
+    # `MetadataItem` nodes, the show, THAT episode's season and the episode. No sibling
+    # season and no sibling episode. The controls agree on both references: a SEASON's
+    # tree is the season plus its own episodes and a SHOW's is the whole tree. plexsim
+    # rooted an episode's tree at the show and then answered the WHOLE show, so the
+    # response grew with the show and the node the caller asked about was no longer
+    # identifiable as the leaf.
+    def tree_ids_c21e(rating_key_c21e):
+        status_c21e, body_c21e, _ = request(base, "GET", "/library/metadata/%s/tree"
+                                            % rating_key_c21e, want_json=False)
+        if status_c21e != 200:
+            return status_c21e, []
+        return status_c21e, [node_c21e.attrib.get("id") for node_c21e
+                             in ET.fromstring(body_c21e).iter("MetadataItem")]
+
+    status_ep_c21e, episode_tree_c21e = tree_ids_c21e(c21_episode)
+    _, season_tree_c21e = tree_ids_c21e(c21_season2)
+    _, show_tree_c21e = tree_ids_c21e(show)
+    check("an episode's tree is the ancestor chain",
+          status_ep_c21e == 200 and len(episode_tree_c21e) == 3
+          and str(c21_episode) in [str(i_c21e) for i_c21e in episode_tree_c21e]
+          and len(season_tree_c21e) >= 2
+          and len(show_tree_c21e) > len(episode_tree_c21e),
+          "episode %s | season %d | show %d"
+          % (episode_tree_c21e, len(season_tree_c21e), len(show_tree_c21e)))
+
+    # Cycle 21, swept over nine `type=` values on all three servers:
+    # `/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` ONLY. Both
+    # references answer `size 0` to `type=3`, `type=4`, `type=5`, `type=8`, an
+    # unparseable one and an empty one -- and both HOLD episodes, so it is not a
+    # content difference -- with and without `sectionID`, `pinnedContentDirectoryID`
+    # and `includeMeta`. plexsim answered eight episode rows at `type=4`, a shelf a
+    # real PMS does not have.
+    hub_types_c21f = {}
+    for value_c21f in ("1", "2", "3", "4", "5", "abc", ""):
+        status_c21f, doc_c21f, _ = get(base, "/hubs/home/recentlyAdded?type=%s" % value_c21f)
+        hub_types_c21f[value_c21f] = (status_c21f, doc_c21f.get("size"))
+    scoped_c21f = get(base, "/hubs/home/recentlyAdded?type=4&sectionID=%s"
+                      % show_section)[1].get("size")
+    check("/hubs/home/recentlyAdded is populated at type 1 and 2 only",
+          hub_types_c21f["1"][1] > 0 and hub_types_c21f["2"][1] > 0
+          and all(hub_types_c21f[value_c21f][1] == 0
+                  for value_c21f in ("3", "4", "5", "abc", ""))
+          and scoped_c21f == 0,
+          "%s | type=4&sectionID %s" % (hub_types_c21f, scoped_c21f))
+
+    c21_ondeck = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                  .get("Metadata") or [{}])[0].get("ratingKey")
+
+    # Cycle 21: a `/library/onDeck` row LEADS with `allowSync` and the librarySection
+    # triple, exactly as a `/library/recentlyAdded` row does. zen's on-deck episode
+    # answers `allowSync="1" librarySectionID="4" librarySectionTitle="Bench TV"
+    # librarySectionUUID="c37aa2af-..."` before `ratingKey`; plexsim carried the id,
+    # the title and the UUID but no `allowSync` -- and `allowSync` on the ROW is the
+    # signal `xmlout` keys the whole lead on, so without it the four came out in the
+    # middle of the row. It is cycle 19's own recorded rule, implemented on one of the
+    # two paths it names (kids has nothing in progress, so zen is the live witness).
+    request(base, "PUT", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=playing"
+                         "&time=300000&duration=1320000&identifier=com.plexapp.plugins.library"
+            % (c21_ondeck, c21_ondeck))
+    _, deck_c21g, _ = get(base, "/library/onDeck")
+    rows_c21g = deck_c21g.get("Metadata") or []
+    lead_c21g = list(rows_c21g[0])[:4] if rows_c21g else []
+    _, added_c21g, _ = get(base, "/library/recentlyAdded")
+    added_lead_c21g = list((added_c21g.get("Metadata") or [{}])[0])[:4]
+    check("a /library/onDeck row leads with allowSync and the librarySection triple",
+          bool(rows_c21g) and lead_c21g == ["allowSync", "librarySectionID",
+                                            "librarySectionTitle", "librarySectionUUID"]
+          and added_lead_c21g == lead_c21g,
+          "onDeck %s | recentlyAdded %s" % (lead_c21g, added_lead_c21g))
+
+    # Cycle 21, measured byte for byte on kids and zen: a section's
+    # `/hubs/sections/{id}/continueWatching/items` container is
+    # `{size, allowSync: true, identifier}` and nothing else. plexsim said
+    # `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
+    # container as well as a populated one. Cycle 15's rule is that every hub path says
+    # `allowSync: true` except `/hubs/metadata/{id}/postplay`; plexsim satisfied it on
+    # every hub path but this one.
+    keys_c21h, sync_c21h = {}, {}
+    for section_c21h in (movie_section, show_section):
+        _, doc_c21h, _ = get(base, "/hubs/sections/%s/continueWatching/items" % section_c21h)
+        keys_c21h[section_c21h] = sorted(k_c21h for k_c21h in doc_c21h
+                                         if k_c21h not in ("Metadata", "size"))
+        sync_c21h[section_c21h] = doc_c21h.get("allowSync")
+    check("a section's continueWatching container is allowSync true and nothing else",
+          all(keys_c21h[s_c21h] == ["allowSync", "identifier"] for s_c21h in keys_c21h)
+          and all(sync_c21h[s_c21h] is True for s_c21h in sync_c21h),
+          "%s | allowSync %s" % (keys_c21h, sync_c21h))
+
+    # Cycle 21, measured on kids and zen over four row types: an artwork path with an
+    # EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
+    # and `/thumb/{v}/1/2` both, on `thumb`, `poster` and `art`. A single trailing slash
+    # is a 200 on all three (the recorded "one trailing slash is harmless") and so is a
+    # bad version. plexsim served the image for anything that merely STARTED like an
+    # artwork path, which is the inverse of the `/photo/:/transcode` rule: a 404 lets
+    # the client draw its own placeholder where a 200 gets cached.
+    restore_poster_c21(movie)
+    _, art_row_c21i, _ = get(base, "/library/metadata/%s" % movie)
+    row_c21i = (art_row_c21i.get("Metadata") or [{}])[0]
+    version_c21i = str(row_c21i.get("thumb") or "").rsplit("/", 1)[-1] or "1"
+    codes_c21i = {}
+    for suffix_c21i in ("", "/", "/extra", "/1/2"):
+        codes_c21i[suffix_c21i or "<bare>"] = request(
+            base, "GET", "/library/metadata/%s/thumb/%s%s" % (movie, version_c21i, suffix_c21i),
+            want_json=False)[0]
+    art_codes_c21i = request(base, "GET", "/library/metadata/%s/art/%s/extra"
+                             % (movie, version_c21i), want_json=False)[0]
+    check("an artwork path with an extra segment is a 404",
+          codes_c21i["<bare>"] == 200 and codes_c21i["/"] == 200
+          and codes_c21i["/extra"] == 404 and codes_c21i["/1/2"] == 404
+          and art_codes_c21i == 404,
+          "%s | art/extra %s" % (codes_c21i, art_codes_c21i))
+
+    c21_state_episode = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                         .get("Metadata") or [{}])[0]
+    c21_state_season = c21_state_episode.get("parentRatingKey")
+    c21_state_show = c21_state_episode.get("grandparentRatingKey")
+    c21_state_episode = c21_state_episode.get("ratingKey")
+
+    # Cycle 21, measured on zen's own watched rows (show 19756, season 19757, episode
+    # 19764) and corroborated on kids' watched MOVIE: the per-user-state block sits in
+    # the MIDDLE of a row -- after the ratings and before `year`/`parentYear` -- on a
+    # show, a season and an episode, exactly as it already did on a movie:
+    #
+    #   show    … index, audienceRating, userRating, viewCount, skipCount,
+    #             lastViewedAt, lastRatedAt, year, tagline, thumb …
+    #   season  … index, parentIndex, viewCount, skipCount, lastViewedAt,
+    #             parentYear, thumb, art …
+    #   episode … index, parentIndex, audienceRating, viewCount, lastViewedAt,
+    #             year, thumb, art …
+    #
+    # `xmlout._ATTR_ORDER` had no entry for those names on the three buckets, so they
+    # fell out in dict insertion order and were APPENDED after `updatedAt` -- and
+    # cycle 19 established that a real PMS's JSON key order is its XML order, so both
+    # formats moved. `parentSummary` is the other half: on a `/library/recentlyAdded`
+    # season row it comes directly after `parentTitle`, before `summary`, where plexsim
+    # put it last.
+    for rating_key_c21j in (c21_state_show, c21_state_season, c21_state_episode):
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % rating_key_c21j)
+        request(base, "PUT", "/:/rate?key=%s&rating=8&identifier=com.plexapp.plugins.library"
+                % rating_key_c21j)
+    # An earlier check unmatches an episode, which DROPS its `year` -- and the rule is
+    # about where the state block sits RELATIVE to the year, so the row has to have one.
+    for rating_key_c21j in (c21_state_show, c21_state_season, c21_state_episode):
+        request(base, "PUT", "/library/metadata/%s?year.value=2012" % rating_key_c21j)
+    order_c21j = {}
+    for label_c21j, rating_key_c21j in (("show", c21_state_show),
+                                        ("season", c21_state_season),
+                                        ("episode", c21_state_episode)):
+        _, body_c21j, _ = request(base, "GET", "/library/metadata/%s" % rating_key_c21j,
+                                  want_json=False)
+        row_c21j = list(ET.fromstring(body_c21j))[0]
+        names_c21j = list(row_c21j.attrib)
+        state_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
+                      if n_c21j in ("viewCount", "lastViewedAt", "userRating",
+                                    "lastRatedAt", "skipCount", "viewOffset")]
+        year_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
+                     if n_c21j in ("year", "parentYear")]
+        order_c21j[label_c21j] = (names_c21j, state_c21j, year_c21j)
+    check("the per-user-state block sits before the year on every row type",
+          all(state_c21j and year_c21j and max(state_c21j) < min(year_c21j)
+              for _names_c21j, state_c21j, year_c21j in order_c21j.values()),
+          "%s" % {k_c21j: v_c21j[0][:24] for k_c21j, v_c21j in order_c21j.items()})
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
@@ -16572,8 +16879,15 @@ def main():
             if value_c20j.startswith("/library/metadata/%s/" % r_c20j.get("ratingKey")):
                 owned_c20j.append((r_c20j.get("ratingKey"), field_c20j,
                                    value_c20j.rsplit("/", 1)[-1], str(r_c20j.get("updatedAt"))))
+    # The served GET needs a row whose poster candidate is a real image: an earlier check
+    # leaves an `upload://` candidate behind, and plexsim has no bytes for one, so which
+    # row came first decided whether this passed. Prepare the state instead.
+    restore_poster_c21(movie)
+    _, served_row_c20j, _ = get(base, "/library/metadata/%s" % movie)
+    served_version_c20j = str((served_row_c20j.get("Metadata") or [{}])[0].get("thumb")
+                              or "").rsplit("/", 1)[-1]
     served_c20j = request(base, "GET", "/library/metadata/%s/thumb/%s"
-                          % (owned_c20j[0][0], owned_c20j[0][2]))[0] if owned_c20j else None
+                          % (movie, served_version_c20j))[0] if owned_c20j else None
     check("an artwork version is the row's updatedAt",
           bool(owned_c20j)
           and all(version_c20j == stamp_c20j
@@ -16752,270 +17066,6 @@ def main():
           bool(codes_c20q) and all(got_c20q == want_c20q
                                    for got_c20q, want_c20q in codes_c20q.values()),
           "%s" % codes_c20q)
-
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2), which agree agent for agent:
-    # the two forms of `/system/agents` carry DIFFERENT child elements. The bare form
-    # carries a `MediaType` row per media type the agent serves and NO `Language` at
-    # all -- zen's `com.plexapp.agents.none` has five MediaTypes, `imdb` one, and every
-    # one of its fifteen agents has zero Languages -- while `?mediaType=N` is the other
-    # way round: a Language list per agent (26, 33 or 45 rows) and no MediaType. plexsim
-    # sent its 45 Languages in both forms and a MediaType in neither, so the Agents page
-    # could not say which agent serves which library type.
-    _, bare_c21a, _ = get(base, "/system/agents")
-    _, typed_c21a, _ = get(base, "/system/agents?mediaType=1")
-
-    def shape_c21a(doc_c21a):
-        rows_c21a = doc_c21a.get("Agent") or []
-        return [(r_c21a.get("identifier"),
-                 len(r_c21a.get("Language") or []), len(r_c21a.get("MediaType") or []))
-                for r_c21a in rows_c21a]
-
-    check("the two forms of /system/agents carry different child elements",
-          bool(shape_c21a(bare_c21a)) and bool(shape_c21a(typed_c21a))
-          and all(langs_c21a == 0 and types_c21a > 0
-                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(bare_c21a))
-          and all(langs_c21a > 0 and types_c21a == 0
-                  for _id_c21a, langs_c21a, types_c21a in shape_c21a(typed_c21a)),
-          "bare %s | mediaType=1 %s" % (shape_c21a(bare_c21a), shape_c21a(typed_c21a)))
-
-    # Cycle 21: `/system/agents` is the ONE endpoint whose JSON repeats a child
-    # element's KEY instead of emitting an array. Measured on both references: the raw
-    # body reads `"Language":{"code":"ar"},"Language":{"code":"ca"},...` -- 150
-    # occurrences on zen and 195 on kids -- and `MediaType` is written the same way,
-    # while every other repeated child on every other path is a proper array (`Setting`
-    # on `/:/prefs`, `Agent` here, `Genre`, `Media`, `Role`, `Image` on a row,
-    # `Action`, `Directory`, `Feature`, `Pivot` on `/media/providers`). A JSON parser
-    # keeps the LAST of the repeated keys, so a client sees exactly one language per
-    # agent where plexsim showed it forty-five.
-    status_c21b, body_c21b, _ = request(base, "GET", "/system/agents?mediaType=1")
-    text_c21b = body_c21b.decode("utf-8", "replace").replace(" ", "")
-    _, providers_c21b, _ = request(base, "GET", "/media/providers")
-    control_c21b = providers_c21b.decode("utf-8", "replace").replace(" ", "")
-    parsed_c21b = json.loads(body_c21b)["MediaContainer"].get("Agent") or []
-    check("only /system/agents repeats a child element's JSON key",
-          status_c21b == 200 and text_c21b.count('"Language":{') > 1
-          and '"Language":[' not in text_c21b
-          and '"Feature":[' in control_c21b
-          and all(isinstance(a_c21b.get("Language"), dict) for a_c21b in parsed_c21b),
-          "repeats %d | array %s | control Feature array %s"
-          % (text_c21b.count('"Language":{'), '"Language":[' in text_c21b,
-             '"Feature":[' in control_c21b))
-
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2): a `Feature` element is never
-    # self-closed. Every one of the fifteen on `/media/providers` is written as a PAIRED
-    # empty element (`<Feature key="/hubs/search" type="search"></Feature>`) on both
-    # servers, while `Directory`, `Action` and `Pivot` in the same document self-close
-    # when they have no children. plexsim self-closed all fifteen. It is the writer's
-    # own quirk rather than anything a parser can see, and it is the last byte-level
-    # difference on that document.
-    # XML is the default format, and `request` asks for JSON unless told otherwise.
-    _, providers_c21c, _ = request(base, "GET", "/media/providers", want_json=False)
-    xml_c21c = providers_c21c.decode("utf-8", "replace")
-    check("a Feature element is never self-closed",
-          "<Feature " in xml_c21c
-          and not re.findall(r"<Feature [^>]*/>", xml_c21c)
-          and bool(re.findall(r"<Feature [^>]*></Feature>", xml_c21c))
-          and bool(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c)),
-          "self-closed %d | paired %d | other self-closed %d"
-          % (len(re.findall(r"<Feature [^>]*/>", xml_c21c)),
-             len(re.findall(r"<Feature [^>]*></Feature>", xml_c21c)),
-             len(re.findall(r"<(?:Directory|Action|Pivot) [^>]*/>", xml_c21c))))
-
-    c21_season = [r_c21.get("ratingKey") for r_c21 in
-                  (get(base, "/library/sections/%s/all?type=3" % show_section)[1]
-                   .get("Metadata") or [])][0]
-
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2) over four seasons: the
-    # inherit option of a SEASON's `audioLanguage` and `subtitleLanguage` is
-    # `:Series default`, not `:Account default` -- a season inherits from its SHOW.
-    # `subtitleMode` already says `-1:Series default` in the captured fixture and
-    # plexsim had that one right; the two enum-valued language settings are rebuilt at
-    # read time (cycle 19's "led by the item's own streams") and the rebuild hardcoded
-    # the account label. A SHOW says `:Account default` on both references, which is
-    # what makes it the row type's rule rather than a constant.
-    _, season_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1"
-                                  % c21_season)
-    season_rows_c21d = (((season_prefs_c21d.get("Metadata") or [{}])[0]
-                         .get("Preferences") or {}).get("Setting") or [])
-    _, show_prefs_c21d, _ = get(base, "/library/metadata/%s?includePreferences=1" % show)
-    show_rows_c21d = (((show_prefs_c21d.get("Metadata") or [{}])[0]
-                       .get("Preferences") or {}).get("Setting") or [])
-    leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
-                  for s_c21d in season_rows_c21d}
-    show_leads_c21d = {s_c21d.get("id"): str(s_c21d.get("enumValues") or "").split("|")[0]
-                       for s_c21d in show_rows_c21d}
-    check("a season's language settings inherit from the series, not the account",
-          leads_c21d.get("audioLanguage") == ":Series default"
-          and leads_c21d.get("subtitleLanguage") == ":Series default"
-          and leads_c21d.get("subtitleMode") == "-1:Series default"
-          and show_leads_c21d.get("audioLanguage") == ":Account default",
-          "season %s | show %s" % (leads_c21d, show_leads_c21d))
-
-    c21_leaf_row = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                    .get("Metadata") or [{}])[0]
-    c21_episode = c21_leaf_row.get("ratingKey")
-    c21_season2 = c21_leaf_row.get("parentRatingKey")
-
-    # Cycle 21, measured on kids (episodes 8, 10, 13) and zen (5191, 19741, 13160): an
-    # EPISODE's `/tree` is the ancestor CHAIN and nothing else -- exactly three
-    # `MetadataItem` nodes, the show, THAT episode's season and the episode. No sibling
-    # season and no sibling episode. The controls agree on both references: a SEASON's
-    # tree is the season plus its own episodes and a SHOW's is the whole tree. plexsim
-    # rooted an episode's tree at the show and then answered the WHOLE show, so the
-    # response grew with the show and the node the caller asked about was no longer
-    # identifiable as the leaf.
-    def tree_ids_c21e(rating_key_c21e):
-        status_c21e, body_c21e, _ = request(base, "GET", "/library/metadata/%s/tree"
-                                            % rating_key_c21e, want_json=False)
-        if status_c21e != 200:
-            return status_c21e, []
-        return status_c21e, [node_c21e.attrib.get("id") for node_c21e
-                             in ET.fromstring(body_c21e).iter("MetadataItem")]
-
-    status_ep_c21e, episode_tree_c21e = tree_ids_c21e(c21_episode)
-    _, season_tree_c21e = tree_ids_c21e(c21_season2)
-    _, show_tree_c21e = tree_ids_c21e(show)
-    check("an episode's tree is the ancestor chain",
-          status_ep_c21e == 200 and len(episode_tree_c21e) == 3
-          and str(c21_episode) in [str(i_c21e) for i_c21e in episode_tree_c21e]
-          and len(season_tree_c21e) >= 2
-          and len(show_tree_c21e) > len(episode_tree_c21e),
-          "episode %s | season %d | show %d"
-          % (episode_tree_c21e, len(season_tree_c21e), len(show_tree_c21e)))
-
-    # Cycle 21, swept over nine `type=` values on all three servers:
-    # `/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` ONLY. Both
-    # references answer `size 0` to `type=3`, `type=4`, `type=5`, `type=8`, an
-    # unparseable one and an empty one -- and both HOLD episodes, so it is not a
-    # content difference -- with and without `sectionID`, `pinnedContentDirectoryID`
-    # and `includeMeta`. plexsim answered eight episode rows at `type=4`, a shelf a
-    # real PMS does not have.
-    hub_types_c21f = {}
-    for value_c21f in ("1", "2", "3", "4", "5", "abc", ""):
-        status_c21f, doc_c21f, _ = get(base, "/hubs/home/recentlyAdded?type=%s" % value_c21f)
-        hub_types_c21f[value_c21f] = (status_c21f, doc_c21f.get("size"))
-    scoped_c21f = get(base, "/hubs/home/recentlyAdded?type=4&sectionID=%s"
-                      % show_section)[1].get("size")
-    check("/hubs/home/recentlyAdded is populated at type 1 and 2 only",
-          hub_types_c21f["1"][1] > 0 and hub_types_c21f["2"][1] > 0
-          and all(hub_types_c21f[value_c21f][1] == 0
-                  for value_c21f in ("3", "4", "5", "abc", ""))
-          and scoped_c21f == 0,
-          "%s | type=4&sectionID %s" % (hub_types_c21f, scoped_c21f))
-
-    c21_ondeck = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                  .get("Metadata") or [{}])[0].get("ratingKey")
-
-    # Cycle 21: a `/library/onDeck` row LEADS with `allowSync` and the librarySection
-    # triple, exactly as a `/library/recentlyAdded` row does. zen's on-deck episode
-    # answers `allowSync="1" librarySectionID="4" librarySectionTitle="Bench TV"
-    # librarySectionUUID="c37aa2af-..."` before `ratingKey`; plexsim carried the id,
-    # the title and the UUID but no `allowSync` -- and `allowSync` on the ROW is the
-    # signal `xmlout` keys the whole lead on, so without it the four came out in the
-    # middle of the row. It is cycle 19's own recorded rule, implemented on one of the
-    # two paths it names (kids has nothing in progress, so zen is the live witness).
-    request(base, "PUT", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&state=playing"
-                         "&time=300000&duration=1320000&identifier=com.plexapp.plugins.library"
-            % (c21_ondeck, c21_ondeck))
-    _, deck_c21g, _ = get(base, "/library/onDeck")
-    rows_c21g = deck_c21g.get("Metadata") or []
-    lead_c21g = list(rows_c21g[0])[:4] if rows_c21g else []
-    _, added_c21g, _ = get(base, "/library/recentlyAdded")
-    added_lead_c21g = list((added_c21g.get("Metadata") or [{}])[0])[:4]
-    check("a /library/onDeck row leads with allowSync and the librarySection triple",
-          bool(rows_c21g) and lead_c21g == ["allowSync", "librarySectionID",
-                                            "librarySectionTitle", "librarySectionUUID"]
-          and added_lead_c21g == lead_c21g,
-          "onDeck %s | recentlyAdded %s" % (lead_c21g, added_lead_c21g))
-
-    # Cycle 21, measured byte for byte on kids and zen: a section's
-    # `/hubs/sections/{id}/continueWatching/items` container is
-    # `{size, allowSync: true, identifier}` and nothing else. plexsim said
-    # `allowSync: false` and added `mediaTagPrefix` and `mediaTagVersion`, on an empty
-    # container as well as a populated one. Cycle 15's rule is that every hub path says
-    # `allowSync: true` except `/hubs/metadata/{id}/postplay`; plexsim satisfied it on
-    # every hub path but this one.
-    keys_c21h, sync_c21h = {}, {}
-    for section_c21h in (movie_section, show_section):
-        _, doc_c21h, _ = get(base, "/hubs/sections/%s/continueWatching/items" % section_c21h)
-        keys_c21h[section_c21h] = sorted(k_c21h for k_c21h in doc_c21h
-                                         if k_c21h not in ("Metadata", "size"))
-        sync_c21h[section_c21h] = doc_c21h.get("allowSync")
-    check("a section's continueWatching container is allowSync true and nothing else",
-          all(keys_c21h[s_c21h] == ["allowSync", "identifier"] for s_c21h in keys_c21h)
-          and all(sync_c21h[s_c21h] is True for s_c21h in sync_c21h),
-          "%s | allowSync %s" % (keys_c21h, sync_c21h))
-
-    # Cycle 21, measured on kids and zen over four row types: an artwork path with an
-    # EXTRA SEGMENT after the version is a 404 -- `/library/metadata/{id}/thumb/{v}/x`
-    # and `/thumb/{v}/1/2` both, on `thumb`, `poster` and `art`. A single trailing slash
-    # is a 200 on all three (the recorded "one trailing slash is harmless") and so is a
-    # bad version. plexsim served the image for anything that merely STARTED like an
-    # artwork path, which is the inverse of the `/photo/:/transcode` rule: a 404 lets
-    # the client draw its own placeholder where a 200 gets cached.
-    _, art_row_c21i, _ = get(base, "/library/metadata/%s" % movie)
-    row_c21i = (art_row_c21i.get("Metadata") or [{}])[0]
-    version_c21i = str(row_c21i.get("thumb") or "").rsplit("/", 1)[-1] or "1"
-    codes_c21i = {}
-    for suffix_c21i in ("", "/", "/extra", "/1/2"):
-        codes_c21i[suffix_c21i or "<bare>"] = request(
-            base, "GET", "/library/metadata/%s/thumb/%s%s" % (movie, version_c21i, suffix_c21i),
-            want_json=False)[0]
-    art_codes_c21i = request(base, "GET", "/library/metadata/%s/art/%s/extra"
-                             % (movie, version_c21i), want_json=False)[0]
-    check("an artwork path with an extra segment is a 404",
-          codes_c21i["<bare>"] == 200 and codes_c21i["/"] == 200
-          and codes_c21i["/extra"] == 404 and codes_c21i["/1/2"] == 404
-          and art_codes_c21i == 404,
-          "%s | art/extra %s" % (codes_c21i, art_codes_c21i))
-
-    c21_state_episode = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
-                         .get("Metadata") or [{}])[0]
-    c21_state_season = c21_state_episode.get("parentRatingKey")
-    c21_state_show = c21_state_episode.get("grandparentRatingKey")
-    c21_state_episode = c21_state_episode.get("ratingKey")
-
-    # Cycle 21, measured on zen's own watched rows (show 19756, season 19757, episode
-    # 19764) and corroborated on kids' watched MOVIE: the per-user-state block sits in
-    # the MIDDLE of a row -- after the ratings and before `year`/`parentYear` -- on a
-    # show, a season and an episode, exactly as it already did on a movie:
-    #
-    #   show    … index, audienceRating, userRating, viewCount, skipCount,
-    #             lastViewedAt, lastRatedAt, year, tagline, thumb …
-    #   season  … index, parentIndex, viewCount, skipCount, lastViewedAt,
-    #             parentYear, thumb, art …
-    #   episode … index, parentIndex, audienceRating, viewCount, lastViewedAt,
-    #             year, thumb, art …
-    #
-    # `xmlout._ATTR_ORDER` had no entry for those names on the three buckets, so they
-    # fell out in dict insertion order and were APPENDED after `updatedAt` -- and
-    # cycle 19 established that a real PMS's JSON key order is its XML order, so both
-    # formats moved. `parentSummary` is the other half: on a `/library/recentlyAdded`
-    # season row it comes directly after `parentTitle`, before `summary`, where plexsim
-    # put it last.
-    for rating_key_c21j in (c21_state_show, c21_state_season, c21_state_episode):
-        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
-                % rating_key_c21j)
-        request(base, "PUT", "/:/rate?key=%s&rating=8&identifier=com.plexapp.plugins.library"
-                % rating_key_c21j)
-    order_c21j = {}
-    for label_c21j, rating_key_c21j in (("show", c21_state_show),
-                                        ("season", c21_state_season),
-                                        ("episode", c21_state_episode)):
-        _, body_c21j, _ = request(base, "GET", "/library/metadata/%s" % rating_key_c21j,
-                                  want_json=False)
-        row_c21j = list(ET.fromstring(body_c21j))[0]
-        names_c21j = list(row_c21j.attrib)
-        state_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
-                      if n_c21j in ("viewCount", "lastViewedAt", "userRating",
-                                    "lastRatedAt", "skipCount", "viewOffset")]
-        year_c21j = [i_c21j for i_c21j, n_c21j in enumerate(names_c21j)
-                     if n_c21j in ("year", "parentYear")]
-        order_c21j[label_c21j] = (names_c21j, state_c21j, year_c21j)
-    check("the per-user-state block sits before the year on every row type",
-          all(state_c21j and year_c21j and max(state_c21j) < min(year_c21j)
-              for _names_c21j, state_c21j, year_c21j in order_c21j.values()),
-          "%s" % {k_c21j: v_c21j[0][:24] for k_c21j, v_c21j in order_c21j.items()})
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
