@@ -12837,14 +12837,21 @@ class PlexSim:
         library filters apply to it, so `?year=` narrows it where plexsim answered every
         row the person is on.
         """
-        if not str(person_id).isdigit():
-            return ("error", 404, "plexsim: not found")
-        wanted = str(int(person_id))
+        # Cycle 27: a real PMS resolves this path by the numeric tag id AND by the
+        # 24-hex `tagKey` -- both are 200s on kids, and the `tagKey` form is the one the
+        # web client's Cast & Crew links are built from.
+        wanted = str(person_id)
+        if not wanted.isdigit():
+            if len(wanted) != 24 or any(c not in "0123456789abcdef" for c in wanted):
+                return ("error", 404, "plexsim: not found")
+        else:
+            wanted = str(int(wanted))
         found, rows, seen = None, [], set()
         for row in self.catalog.items.values():
             for element, field, tag_type in self.PERSON_TAGS:
                 for tag in row.get(element) or []:
-                    if not isinstance(tag, dict) or str(tag.get("id")) != wanted:
+                    if not isinstance(tag, dict) or wanted not in (
+                            str(tag.get("id")), str(tag.get("tagKey"))):
                         continue
                     if found is None:
                         found = {"id": tag.get("id"), "filter": "%s=%s" % (field, tag.get("id")),

@@ -270,6 +270,31 @@ def stored_sort_title(row):
     return row.get("titleSort") or title
 
 
+# Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
+# client: every PERSON tag carries a `tagKey` -- a 24-hex plex.tv person id -- on a
+# detail row's `Director`, `Writer`, `Role` and `Producer`, and on the rows of
+# `/library/tags?type=4|5|6|7`. `Genre`, `Country` and `Studio` carry none, and a
+# `Collection` carries a `guid` instead.
+#
+# It is not decoration. The web client's Cast & Crew link builder reads
+# `/library/people/${tag.tagKey}` for any server that is not plex.tv's cloud, so a tag
+# without one links every person tile to `/library/people/undefined`.
+#
+# plexsim has no source for plex.tv's own person ids, so this MINTS one: the first 24
+# hex digits of the sha1 of the person's name, which is deterministic, stable across
+# restarts and the same length and alphabet as the real thing. That is a substitute for
+# a value, not a measurement of it -- the SHAPE is measured, the value is invented, and
+# `/library/people/{key}` resolves the minted form exactly as it resolves the numeric id
+# (both are 200s on a real PMS). It is the same shape as the `plex://` guids plexsim
+# already mints from TMDB ids.
+PERSON_TAG_ELEMENTS = ("Director", "Writer", "Role", "Producer")
+
+
+def person_tag_key(name):
+    """The 24-hex `tagKey` plexsim mints for a person. See above."""
+    return hashlib.sha1(("plexsim-person:%s" % name).encode("utf-8")).hexdigest()[:24]
+
+
 def normalize_rows(rows):
     """The row rules a real PMS follows, applied to rows however they were built.
 
@@ -317,6 +342,11 @@ def normalize_rows(rows):
         art, parent_art = str(row.get("art") or ""), str((show or {}).get("art") or "")
         if parent_art and art.rsplit("/", 1)[-1] == parent_art.rsplit("/", 1)[-1]:
             row["art"] = parent_art
+    for row in rows:
+        for element in PERSON_TAG_ELEMENTS:
+            for tag in row.get(element) or []:
+                if isinstance(tag, dict) and tag.get("tag") and not tag.get("tagKey"):
+                    tag["tagKey"] = person_tag_key(tag["tag"])
     for row in rows:
         if row.get("type") != "episode":
             continue

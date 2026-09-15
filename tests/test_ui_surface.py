@@ -18930,6 +18930,49 @@ def main():
           % (len(rows_c27r), [r_c27r.get("identifier") for r_c27r in rows_c27r][:3],
              len(groups_c27r)))
 
+
+    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
+    # client: every PERSON tag carries a 24-hex `tagKey` -- on a detail row's `Director`,
+    # `Writer`, `Role` and `Producer`, and on the rows of `/library/tags?type=4|5|6|7` --
+    # where `Genre` and `Country` carry none. plexsim carried none at all, and the web
+    # client's Cast & Crew link builder reads `/library/people/${tag.tagKey}` for any
+    # server that is not plex.tv's cloud, so every person tile on every preplay page
+    # linked to `/library/people/undefined`.
+    #
+    # The value is MINTED (see hierarchy.py): plexsim has no source for plex.tv's own
+    # person ids, so the shape is measured and the value is a deterministic substitute.
+    detail_c27s = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    people_c27s = {name_c27s: (detail_c27s.get(name_c27s) or [{}])[0]
+                   for name_c27s in ("Director", "Writer", "Role", "Producer")
+                   if detail_c27s.get(name_c27s)}
+    keys_c27s = {name_c27s: row_c27s.get("tagKey")
+                 for name_c27s, row_c27s in people_c27s.items()}
+    check("every person tag carries a 24-hex tagKey",
+          bool(keys_c27s)
+          and all(isinstance(k_c27s, str) and len(k_c27s) == 24
+                  and all(c_c27s in "0123456789abcdef" for c_c27s in k_c27s)
+                  for k_c27s in keys_c27s.values())
+          and not any((detail_c27s.get(plain_c27s) or [{}])[0].get("tagKey")
+                      for plain_c27s in ("Genre", "Country")),
+          str(keys_c27s))
+    tagrows_c27s = {t_c27s: [r_c27s.get("tagKey") for r_c27s in
+                             (get(base, "/library/tags?type=%s" % t_c27s)[1]
+                              .get("Directory") or [])[:1]]
+                    for t_c27s in (1, 4, 5, 6, 7)}
+    check("and /library/tags carries it for types 4, 5, 6 and 7 and not for 1",
+          all(tagrows_c27s[t_c27s] and tagrows_c27s[t_c27s][0]
+              for t_c27s in (4, 5, 6, 7) if tagrows_c27s[t_c27s])
+          and not (tagrows_c27s[1] and tagrows_c27s[1][0]),
+          str(tagrows_c27s))
+    one_c27s = next(iter(keys_c27s.values()), None)
+    check("and /library/people resolves the tagKey as well as the numeric id",
+          bool(one_c27s)
+          and get(base, "/library/people/%s" % one_c27s)[0] == 200
+          and get(base, "/library/people/%s/media" % one_c27s)[0] == 200
+          and request(base, "GET", "/library/people/zzzz")[0] == 404,
+          "%s -> %s/%s" % (one_c27s, get(base, "/library/people/%s" % one_c27s)[0],
+                           get(base, "/library/people/%s/media" % one_c27s)[0]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
