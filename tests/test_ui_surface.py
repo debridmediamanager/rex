@@ -20564,6 +20564,34 @@ def main():
                    "album", "poster")),
           "%s | Field %s" % (locks_c30b, sorted(set(fields_c30b))))
 
+
+    # Cycle 30, measured on **plexscratch42** (a writable 1.42.2.10156 copy -- the build
+    # plexsim reports) against plexscratch (1.43.4): the settings a PUT refuses with a 403
+    # are TWO on 1.42.2, not four. `TranscoderH264Options` and
+    # `TranscoderH264OptionsOverride` answer 200 there and really store the value, where
+    # 1.43.4 answers 403 for both; `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403
+    # on both versions. Cycle 19 measured the list on the only writable reference it had,
+    # which was 1.43.4, so plexsim refused two writes its own version accepts.
+    prefs_c30c = {}
+    for spec_c30c in ("TranscoderH264Options=c30probe",
+                      "TranscoderH264OptionsOverride=c30probe",
+                      "PlexOnlineUrl=https%3A%2F%2Fplex.tv",
+                      "allowMediaDeletionLanOnly=1", "FriendlyName=c30probe"):
+        prefs_c30c[spec_c30c] = request(base, "PUT", "/:/prefs?" + spec_c30c)[0]
+    stored_c30c = {row_c30c.get("id"): row_c30c.get("value") for row_c30c in
+                   (get(base, "/:/prefs")[1].get("Setting") or [])
+                   if row_c30c.get("id") in ("TranscoderH264Options",
+                                             "TranscoderH264OptionsOverride")}
+    check("the write-protected settings are two on 1.42.2, not four",
+          prefs_c30c["TranscoderH264Options=c30probe"] == 200
+          and prefs_c30c["TranscoderH264OptionsOverride=c30probe"] == 200
+          and prefs_c30c["PlexOnlineUrl=https%3A%2F%2Fplex.tv"] == 403
+          and prefs_c30c["allowMediaDeletionLanOnly=1"] == 403
+          and prefs_c30c["FriendlyName=c30probe"] == 200
+          and stored_c30c.get("TranscoderH264Options") == "c30probe"
+          and stored_c30c.get("TranscoderH264OptionsOverride") == "c30probe",
+          "%s | stored %s" % (prefs_c30c, stored_c30c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
