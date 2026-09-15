@@ -10247,25 +10247,32 @@ def main():
                         .get("Metadata") or [] if r.get("type") == "season"]
         leaves_c14x = [r.get("ratingKey") for r in
                        get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
-        # Pick children that STILL carry the borrowed field: by this point the suite's
-        # unmatch checks have nulled `parentThumb`/`grandparentThumb` on some rows, and
-        # the cascade deliberately only moves a field a child already has (whether a
-        # real PMS would CREATE one where there was none is unmeasured).
-        seasons_c14x = [k_c14x for k_c14x in seasons_c14x
-                        if detail_c14x(k_c14x).get("parentThumb")] or seasons_c14x
-        leaves_c14x = [k_c14x for k_c14x in leaves_c14x
-                       if detail_c14x(k_c14x).get("grandparentThumb")] or leaves_c14x
+        # Cycle 27 re-measured the two beliefs this check was built on, on the copy,
+        # and both were narrower than they read:
+        #
+        #   * the cascade CREATES the borrowed field on a child that has none -- a
+        #     poster picked for a season gives every one of its episodes a
+        #     `parentThumb`, where this check's comment said that case was unmeasured.
+        #     So the rows are no longer filtered down to the ones that already carry it.
+        #   * "never the season's own thumb" holds for a season that OWNS its poster.
+        #     A season that BORROWS the show's -- an unmatched one, which is what the
+        #     suite's own unmatch checks leave behind by this point -- follows the
+        #     show's new stamp on both `thumb` and `parentThumb`, measured on the copy's
+        #     unmatched season 11. The assertion below reads the stored path to tell the
+        #     two apart, which is the same test `cascade_artwork` makes.
+        owns_thumb_c14x = (seasons_c14x and str(
+            detail_c14x(seasons_c14x[0]).get("thumb") or "").startswith(
+                "/library/metadata/%s/" % seasons_c14x[0]))
         before_season_c14x = detail_c14x(seasons_c14x[0]) if seasons_c14x else {}
         candidates_c14x = get(base, "/library/metadata/%s/posters" % show)[1].get("Metadata") or []
         pickable_c14x = next((c_c14x.get("key") for c_c14x in candidates_c14x
                               if not str(c_c14x.get("key") or "").endswith("/thumb/1")), None)
-        # The cascade half is asserted only for children that still CARRY the borrowed
-        # field -- by this point the suite's unmatch checks have stripped some -- but
-        # the re-version and the lock are asserted either way, so the check never
-        # becomes a no-op the way its first version did.
-        want_season_c14x = bool(before_season_c14x.get("parentThumb"))
-        want_leaf_c14x = bool(detail_c14x(leaves_c14x[0]).get("grandparentThumb")) \
-            if leaves_c14x else False
+        # Cycle 27: the cascade half is now asserted for EVERY child, because a real
+        # PMS creates the field where there was none. The re-version and the lock are
+        # asserted either way, so the check never becomes a no-op the way its first
+        # version did.
+        want_season_c14x = bool(seasons_c14x)
+        want_leaf_c14x = bool(leaves_c14x)
         if not pickable_c14x or not seasons_c14x or not leaves_c14x:
             skip("an artwork pick re-versions all three and cascades to the children",
                  "no remote candidate to pick")
@@ -10289,7 +10296,9 @@ def main():
                        or season_c14x.get("parentThumb") == after_c14x.get("thumb"))
                   and (not want_leaf_c14x
                        or leaf_c14x.get("grandparentThumb") == after_c14x.get("thumb"))
-                  and season_c14x.get("thumb") == before_season_c14x.get("thumb"),
+                  and (season_c14x.get("thumb") == before_season_c14x.get("thumb")
+                       if owns_thumb_c14x
+                       else str(season_c14x.get("thumb") or "").endswith(stamp_c14x)),
                   "stamp %s | unmoved-of-three %s | locked %s | season.parentThumb %s "
                   "(checked %s) | leaf.grandparentThumb %s | season.thumb kept %s"
                   % (stamp_c14x, moved_c14x, sorted(locked_c14x),
@@ -18663,6 +18672,24 @@ def main():
           and "500" in lengths_c27g["-1"]
           and "200" in lengths_c27g["0"],
           str(lengths_c27g))
+
+
+    # Cycle 27, the other half of the borrowed-artwork rule and the regression the
+    # cycle-14 cascade check caught in this cycle's own patch: when the OWNER no longer
+    # has that artwork at all, the borrower's copy goes with it. Without it an episode
+    # kept an `art` naming a version of the show's backdrop the server no longer serves,
+    # beside a `grandparentArt` that had been dropped -- two names for one image,
+    # disagreeing.
+    request(base, "DELETE", "/library/metadata/%s/art" % show)
+    request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+            % (show, quote("https://example.invalid/c27p.jpg")))
+    stale_c27p = [(r_c27p.get("ratingKey"), r_c27p.get("art"))
+                  for r_c27p in (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                                 .get("Metadata") or [])
+                  if str(r_c27p.get("art") or "").startswith(
+                      "/library/metadata/%s/" % show)]
+    check("a borrowed artwork field goes when its owner's does",
+          not stale_c27p, str(stale_c27p[:3]))
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
