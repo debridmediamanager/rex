@@ -18691,6 +18691,19 @@ def main():
     check("a borrowed artwork field goes when its owner's does",
           not stale_c27p, str(stale_c27p[:3]))
 
+
+    # Cycle 27, re-measured on kids (1.43.4) and zen (1.42.2) in JSON: `durationTotal`
+    # and `storageTotal` are STRINGS on both, where plexsim sent integers. XML cannot
+    # tell the two apart, which is why cycle 19 recorded that the pair exists here and
+    # not what type it is. A typed client whose model declares them `String` rejects the
+    # section grid row whenever `includeStorage=1` is on.
+    stored_c27h = (get(base, "/library/sections/%s/all?type=1&includeStorage=1"
+                       % movie_section)[1].get("Metadata") or [{}])[0]
+    check("durationTotal and storageTotal are JSON strings",
+          isinstance(stored_c27h.get("durationTotal"), str)
+          and isinstance(stored_c27h.get("storageTotal"), str),
+          "%r %r" % (stored_c27h.get("durationTotal"), stored_c27h.get("storageTotal")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
