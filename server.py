@@ -13422,8 +13422,16 @@ class PlexSim:
 
     # Cycle 19, measured on plexscratch: the settings a PUT refuses, and the two that
     # take a value they cannot parse without refusing. Both sets are the measurement.
-    WRITE_PROTECTED_PREFS = ("PlexOnlineUrl", "TranscoderH264Options",
-                             "TranscoderH264OptionsOverride", "allowMediaDeletionLanOnly")
+    #
+    # Cycle 30 re-measured the refusal list on **plexscratch42**, a writable copy of
+    # 1.42.2.10156 -- the build plexsim reports -- and it is TWO settings there, not four:
+    # `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a write with a 200
+    # and really STORE it (`x` -> `c30probe` -> `""` on read-back), where 1.43.4 answers
+    # 403 for both. `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403 on both
+    # versions. Cycle 19 measured the list on the 1.43.4 copy, which was the only writable
+    # reference there was, so plexsim refused two writes a server of its own version
+    # accepts -- and the Transcoder pane's two advanced fields could not be set at all.
+    WRITE_PROTECTED_PREFS = ("PlexOnlineUrl", "allowMediaDeletionLanOnly")
     LENIENT_INT_PREFS = ("ButlerStartHour", "ButlerEndHour")
 
     def set_prefs(self, query):
