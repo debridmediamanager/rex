@@ -11905,6 +11905,27 @@ class PlexSim:
             # which is the same gate the PICK path has had since cycle 27.
             if other != field and row.get(other) and self._owns(row, other):
                 row[other] = "/library/metadata/%s/%s/%s" % (row["ratingKey"], other, stamp)
+        if field == "art" and row.get("type") in ("season", "episode"):
+            # Cycle 29, measured on plexscratch: `art` falls back the way `thumb` does. A
+            # season that OWNED an `art` and has it cleared reads back carrying the SHOW's
+            # path -- and its episodes' own `art` follows it there -- while the bare
+            # `GET /library/metadata/{season}/art` is a 404, because the row no longer
+            # owns an image. plexsim left the field off the row entirely, so the season
+            # page and every episode page under it drew no backdrop at all where a real
+            # PMS draws the show's.
+            #
+            # The source is the nearest ancestor that OWNS one, which is the rule the
+            # cascade follows: for a season that is the show, for an episode its season
+            # when the season owns an `art`. An EPISODE's own `/art` is a 404 on both
+            # references (cycle 26), so only the season half can be driven.
+            if row.get("type") == "episode":
+                source = self._handed_down_from(
+                    field, self.parent_row(row),
+                    self.parent_row(row, "grandparentRatingKey"))
+            else:
+                source = self._handed_down_from(field, None, self.parent_row(row))
+            if source is not None and source.get(field):
+                row[field] = source[field]
         if field == "thumb" and row.get("parentThumb"):
             # Cycle 27, measured on the copy on a SEASON and on an EPISODE: clearing a
             # row's own poster does not leave it with none -- the row falls back to its
