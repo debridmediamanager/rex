@@ -92,11 +92,10 @@ Coverage, measured from the repository rather than asserted:
 | 21 | 1,285 | 14,210 | **24** (of 24 reported across two hunts; 5 edit-field names held out on version, 3 recorded rules overturned) |
 | 22 | 1,299 | 14,365 | **16** (of 25 reported plus 3 the driver found; 1 driver finding refuted by its own re-measurement, 9 held out -- see §8) |
 | 23 | 1,307 | 14,497 | **9** (of 24 reported plus 2 the driver took off cycle 22's held-out list; 1 cycle-22 entry REFUTED, 2 hunter claims corrected on re-measurement, 15 held out -- see §8) |
-| 24 | 1,307 | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
+| 24 | 1,307 (+2 in `test_mediainfo`, 27 -> 29) | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
-work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
-7 in cycle 11). **The ceiling has been the instrument, not the effort**: every time the
+work. **The ceiling has been the instrument, not the effort**: every time the
 instrument improved, a batch of findings appeared that no amount of re-hunting the old one
 would have produced — real media files gave cycle 10 sixteen media rules, thirty-minute media
 gave it the completion-crossing rule, and a 1.42.2 server gave cycle 11 its version oracle.
@@ -113,6 +112,30 @@ write to a PARENT row do to its children?* — and found that plexsim answered n
 the cycle's findings came out of the revalidation step itself, before either hunter reported.
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
+
+**Where the curve stands after cycle 24, and what it means for the stopping rule.** The
+loop stops when a cycle reports no findings, so the trend in the last column is the thing to
+watch — and it is now real: **24, 16, 9, 6** across cycles 21 to 24, against a plateau of
+roughly 30 for cycles 15 to 20. Three things are behind it, and only one of them is the
+surface running out.
+
+* **The mechanical dimensions are finished.** Path (14), method/parameter (15), header (16),
+  row (17), container (18), child element (19), engine holdout (20-22), attribute order
+  (22), child-element order (23). Cycle 23's sweep of the last one witnessed 203 ordered
+  pairs across 2,994 paths with **zero contradictions** — that dimension is settled and
+  should not be re-swept. Each closed dimension removes a class of finding permanently.
+* **The backlog absorbed the difference.** Cycles 21-23 reported 24, 25 and 24 findings and
+  ACTED on 24, 16 and 9 — the gap went to §3.3, not away. Cycle 24 spent itself drawing that
+  backlog down and reported 6 because it hunted nothing. **A low number in this column is
+  not evidence the surface is clean** unless §3.3 is also short, and it is not: 50 open
+  entries stand there now.
+* **What is left is harder, not smaller.** The largest outstanding item is the butler, which
+  needs a queue notion plexsim does not have; the next is a pair of frame cascades that need
+  an uncontended socket on the one writable reference. Neither is a measurement problem.
+
+So the honest reading is that the loop has not converged. It has moved from finding
+differences to owing implementations, and cycle 25 must run hunts to keep the first number
+meaningful.
 
 Suite results at the head of cycle 24, run 2026-09-15 against the merged tree:
 
