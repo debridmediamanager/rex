@@ -17697,6 +17697,68 @@ def main():
           "abc=%s empty=%s" % (get(base, "/statistics/bandwidth?timespan=abc")[0],
                                get(base, "/statistics/bandwidth?timespan=")[0]))
 
+
+    # Cycle 26, measured on kids and zen on all three statistics endpoints. `limit=` is a
+    # real CAP and is PARSED: `1`, `01`, `0`, `-1` are 200s (a non-positive one answers no
+    # rows) and `1.5`, `abc`, an empty value and `+1` are 400s, even where the value
+    # changes nothing. `sort=` is a real ORDERING validated against a per-endpoint key
+    # list -- `metadataType` is NOT a media key, which is the one that looks like it
+    # should be. And the `at` family is four operators: `at>` means `>=`, `at<` means
+    # `<=`, `at=` is exact, and `at>=`, `at<=` and `at!=` are unknown keys that answer
+    # every row. plexsim answered 200 to every `limit` and `sort` and sorted by none.
+    limits_c26d = {value_c26d: get(base, "/statistics/bandwidth?timespan=6&limit=%s"
+                                   % value_c26d)[0]
+                   for value_c26d in ("1", "01", "0", "-1", "1.5", "abc", "", "+1")}
+    sorts_c26d = {}
+    for which_c26d, keys_c26d in (("bandwidth", ("at", "bytes", "lan", "metadataType",
+                                                 "zzz", "")),
+                                  ("media", ("at", "count", "duration", "metadataType",
+                                             "zzz")),
+                                  ("resources", ("at", "hostCpuUtilization", "zzz"))):
+        for key_c26d in keys_c26d:
+            sorts_c26d[(which_c26d, key_c26d)] = get(
+                base, "/statistics/%s?timespan=6&sort=%s" % (which_c26d, key_c26d))[0]
+    check("limit is parsed on a statistics endpoint",
+          [limits_c26d[v_c26d] for v_c26d in ("1", "01", "0", "-1")] == [200] * 4
+          and [limits_c26d[v_c26d] for v_c26d in ("1.5", "abc", "", "+1")] == [400] * 4,
+          str(limits_c26d))
+    check("and it really caps the series",
+          (get(base, "/statistics/bandwidth?timespan=6&limit=1")[1]
+           .get("StatisticsBandwidth") or []).__len__() <= 1
+          and not (get(base, "/statistics/bandwidth?timespan=6&limit=0")[1]
+                   .get("StatisticsBandwidth") or []),
+          str(len(get(base, "/statistics/bandwidth?timespan=6&limit=1")[1]
+                  .get("StatisticsBandwidth") or [])))
+    check("sort is validated against a per-endpoint key list",
+          all(status_c26d == 200 for (w_c26d, k_c26d), status_c26d in sorts_c26d.items()
+              if k_c26d in ("at", "bytes", "lan", "count", "duration",
+                            "hostCpuUtilization"))
+          and all(status_c26d == 400
+                  for (w_c26d, k_c26d), status_c26d in sorts_c26d.items()
+                  if k_c26d in ("metadataType", "zzz", "")),
+          str({k_c26d: v_c26d for k_c26d, v_c26d in sorts_c26d.items()
+               if v_c26d != 200}))
+    # The pivot is one second BELOW the lowest `at` the series holds, so every
+    # expectation is determined by the operator alone and not by how many buckets the
+    # series happens to have -- a pivot inside the series makes several operators answer
+    # the same count, which is a check that can pass for the wrong reason.
+    series_c26d = get(base, "/statistics/bandwidth?timespan=6")[1].get(
+        "StatisticsBandwidth") or []
+    ats_c26d = [row_c26d.get("at") for row_c26d in series_c26d]
+    at_c26d, want_c26d = {}, {}
+    if ats_c26d:
+        pivot_c26d = min(ats_c26d) - 1
+        all_c26d = len(ats_c26d)
+        want_c26d = {"at>": all_c26d, "at<": 0, "at=": 0,
+                     "at>=": all_c26d, "at<=": all_c26d, "at!=": all_c26d}
+        for op_c26d in want_c26d:
+            at_c26d[op_c26d] = len(get(
+                base, "/statistics/bandwidth?timespan=6&%s=%s"
+                % (quote(op_c26d), pivot_c26d))[1].get("StatisticsBandwidth") or [])
+    check("at> means >=, at< means <=, at= is exact, and the other three are ignored",
+          bool(want_c26d) and at_c26d == want_c26d,
+          "series=%d got=%s want=%s" % (len(series_c26d), at_c26d, want_c26d))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
