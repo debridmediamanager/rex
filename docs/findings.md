@@ -7117,6 +7117,173 @@ that error on kids and not on plexsim.
   `UltraBlurColors` a list of one — the same family cycle 26 found on `/status/sessions`, on a
   path only a writable reference can be made to answer.
 
+#### The twenty-eighth pass — the Home page's own parameters, and the search surface's row identity
+
+Two hunts and a driver round. The read hunt took **Home** — every hub path, with the parameters
+the official client actually sends on each one — and the write hunt took **search**, both
+endpoints, row by row and attribute by attribute, with plexscratch holding the collections and
+playlists neither read-only reference has. The driver's half was the search tag row's identity,
+which turned out to be wrong in five separate ways at once.
+
+**The hub parameters were never run.** CLAUDE.md recorded, from cycle 15, that
+`contentDirectoryID` "SCOPES and VALIDATES `/hubs/search` alone — ignored on every other hub
+path". Measured again over nine values each on kids (1.43.4) and zen (1.42.2), which agree edge
+case for edge case, that is right for `/hubs/sections/{id}` and **wrong for four other paths**:
+
+- `contentDirectoryID` **scopes `/hubs` and all three `/hubs/home/*` leaves**, and on `/hubs` it
+  also REMOVES the `home.playlists` shelf. A non-empty value narrows every shelf to that library,
+  an EMPTY one scopes nothing, the match is an exact STRING (`01` selects section 1 on neither
+  reference), and a **comma list** selects several. That last form is not academic: Plex Web's own
+  Home saga builds every hubs request as
+  `{contentDirectoryID: pinned.join(","), pinnedContentDirectoryID, includeMeta, excludeFields}`,
+  so on plexsim an unpinned library's Continue Watching and On Deck rows leaked onto Home and the
+  library filter did nothing at all.
+- `/hubs/continueWatching` and its `/items` leaf **validate** the parameter, where
+  `/hubs/promoted` takes anything: at least one comma-separated member must be a POSITIVE INTEGER.
+  `01`, `999`, `999,998`, `abc,1`, `1,abc` and `1,` are 200s; `abc`, `0`, `-1`, `1.5` and a space
+  are **404s**. A section the server does not hold is fine — it is the SHAPE that is checked.
+- `excludeContinueWatching` is true **exactly when the value parses as the integer 1**: `1` and
+  `01` drop the shelves and `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
+  not. It drops **both** `home.continue` and `home.ondeck`, on `/hubs/promoted` and on the bare
+  `/hubs` alike. plexsim compared the raw string with `"1"`, dropped only `home.continue`, and
+  ignored the parameter on `/hubs` entirely. No other `exclude<Name>=1` spelling does anything.
+
+**A shelf's rows are the head of its own `key`.** Measured at `count=40` across both references:
+29 of 32 non-empty shelves answer exactly the first rows of the listing their own `key` names, in
+that listing's order, byte for byte — and the three that do not are the ones advertising
+`random="1"`. So the shelf is its key, and the flag is the exception:
+
+- `movie.topunwatched.1`'s 30 rows sit at positions 26 to 579 of its 583-row key listing and are
+  not monotonic; `tv.startwatching.2` and `tv.toprated.2` are the same. A **random shelf is a
+  random SAMPLE of its whole key set, in random order**, not the head of it. plexsim advertised
+  the flag and answered the deterministic sorted head on every request, so "Top Unwatched" would
+  have shown the same six titles for ever. Its own fixture is too small to see it — a sample of a
+  two-row set is the set — which is why the rule is zen's.
+- plexsim's **Recently Watched** shelf broke the head-of-key rule outright. The key it publishes
+  is `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and its builder honoured neither clause,
+  so a row left in progress sat on the Recommended tab's shelf and then vanished when the user
+  clicked that shelf's own See All chevron.
+- the negative edge of `count=` is measured too: `count=-1` answers ONE row with `more: false` on
+  a ten-row shelf and `-2`, `-5` and `-100` answer NONE with `more: false`, where `count=0`
+  answers none with `more: TRUE`. So a negative count is `len(rows) + count` clamped at zero and
+  always reports the shelf exhausted. No client sends one; the edge was measured, so it is
+  recorded.
+
+**Recently Added TV is a mixed, rolled-up list.** `/hubs/home/recentlyAdded?type=2` on zen is 50
+rows: **12 shows, 31 seasons and 7 episodes**. It is not a list of shows at all — it is a list of
+what was recently added, rolled up, a group of two or more recently-added siblings collapsing into
+its parent, recursively. One new episode in an otherwise old season stays an EPISODE (zen's 17070,
+whose season's other 21 episodes are three weeks older); two new episodes of one season become the
+SEASON; six, or 161, new episodes of a show's only season become that SEASON and not the show,
+because one season is not two; and two or more new seasons become the SHOW (Friends, One Piece,
+Stargate SG-1, Fringe). A parent row here is **dated by its NEWEST leaf** — kids' Firefly carries
+04:24:45, its last episode's stamp, against its own 04:27:37, and 14 of 14 zen season rows carry
+`max(child.addedAt)` exactly — which is the OPPOSITE aggregation from `/library/recentlyAdded`,
+where cycle 25's "dated by the earliest episode" holds and is re-confirmed here. plexsim filtered
+`type == "show"`, so a new episode or a new season of an existing show was invisible on Home and
+the shelf only ever changed when a whole show arrived.
+
+**On Deck answers the DETAIL row, and the two versions differ.** Cycle 21 recorded the light grid
+projection from fun, which had nothing in progress, so the shape was inferred rather than seen.
+zen has a row on deck, and there all three paths — `/library/onDeck`,
+`/library/sections/{id}/onDeck` and `/hubs/home/onDeck` — answer the FULL detail row: `Guid`,
+`Rating`, `Producer`, and the person tags carrying `id`, `filter`, `tagKey`, `role` and `thumb`,
+plus `Media` → `Part` → `Stream`. The control that rules out "it is that row" and "it is that
+section": the same row fetched through the section grid is the light one, so it is the ENDPOINT.
+`/library/onDeck` adds `allowSync`, `librarySectionUUID` and `lastViewedAt` to it and keeps
+`librarySectionKey`; `/hubs/home/onDeck` keeps the key and carries no UUID.
+
+That is **1.42.2's** answer, which is the build plexsim reports. plexscratch (1.43.4) answers the
+same row **minus `librarySectionKey`, `Guid`, `Rating` and `Producer`, plus `studio`** — a sixth
+per-version difference on the surface, and the reason the older "light" note could never be
+reconciled: the two references disagree, and only zen speaks for plexsim's own version.
+
+**Two leaves were not what plexsim thought they were.**
+
+- `/clients/profiles` is **not** the hosted-client list. It is the server's own CLIENT PROFILE
+  catalogue — one `Profile` row per file in its `Resources/Profiles` directory, the same 78 names
+  cycle 27 measured for `Player.profile` — and the Optimize dialog's target list reads it as
+  `?type=42`. The bare form, `type=0` and `type=00` answer all 78; `type=42` (`LOCAL` in the
+  client's own enum `{NORMAL:0, LOCAL:42, CLOUD:43}`) and `042` answer **seven** (Android, iOS,
+  Universal Mobile, Universal TV, Windows Phone, Windows, Xbox One); every other value, an empty
+  one included, is a **400**; an extra segment is a 404 and a trailing slash a 200. plexsim
+  answered an empty container to all of them, on the reading that it hosts no client — which is
+  true of `/clients` and not of this.
+- the `/collections` leaf is the **`/all` listing with a default `type=18`**, and it runs the same
+  query. A `type=` the library holds answers those rows instead (`type=1` on a movie library is
+  its movies), and the grammar is the grid's: an unknown `sort` key, an unparseable `type` and an
+  unparseable `limit` are each a **500**, while `subtype`, `smart` and an empty `sort` are
+  accepted and ignored. plexsim answered 200 and `size 0` to every one of those.
+
+**The search tag row's identity was wrong in five ways.** All of them are one row shape, measured
+on kids and zen and — for the collection half — on plexscratch, which now holds collections and
+playlists that neither read-only reference has:
+
+- **a tag hit is per LIBRARY, not per NAME.** kids' `drama` answers TWO `Drama` rows, one for each
+  library holding the genre, each naming its own `librarySectionID`, `key` and `count` against the
+  same tag id; zen's `comedy` answers 590 and 179 the same way. plexsim keyed the hits by name
+  alone, so a genre both libraries hold was ONE row naming whichever library the catalog reached
+  first, and the other library's filter link never appeared on the search page.
+- **the `count` is the size of the listing the row's own `key` names** — the library's own
+  top-level type, 3 of 3 rows on zen and kids. plexsim counted every row carrying the tag, so a
+  catalog whose episodes carry a genre advertised a count its own link could not answer.
+- **a person row carries its 24-hex `tagKey`**, directly after `tagType` and before the `thumb`,
+  with `count` LAST of the three; a `Genre` row carries none, as it carries none on a detail row.
+  This is cycle 27's finding one surface further out: plexsim minted the key, resolved it at
+  `/library/people/{key}`, and left it off the search hit, so clicking an actor found by the
+  search box went to `/library/people/undefined`.
+- **the FLAT form drops the reason triple and the row's own score.** A `/library/search` tag row
+  is the `/hubs/search` row without `reason`, `reasonID`, `reasonTitle` and `score` — there the
+  score sits on the `SearchResult` wrapper alone, as a NUMBER, where the hubs row carries it
+  inside as a five-decimal string. plexsim answered the hubs row verbatim on the flat endpoint.
+- **that wrapper score prints five decimals in XML** (`score="0.52000"`, `score="0.93095"`) and
+  the same value as a plain number in JSON. plexsim wrote Python's own `"0.32"` — and XML is the
+  default format, so that is the wire every TV and mobile client reads.
+
+**A collection IS found by `/library/search`.** Cycle 15 recorded the opposite, measured on a copy
+that held no collection at all, so the absence was the fixture's and not a rule. With three
+`C26ACT*` collections on plexscratch, `query=c26act` answers them as `tagType: 2` `Directory`
+rows there as well as in the `/hubs/search` collection hub. And `contentDirectoryID` **scopes
+every row family**, each by its own library: kids' `drama` keeps one `Drama` row at `=1` and the
+other library's at `=2`, and plexscratch's `c26act` keeps three collections and a movie playlist
+at `=1` and empties both at `=2`, a playlist going with its MEMBERS' library. plexsim compared the
+tag ENTRIES — `{tag, rows, row}` triples that carry no `librarySectionID` at all — so a scoped
+search answered NO tag rows for either library, while its collections were not scoped at all and
+survived a scope to the other library.
+
+**`/library/search` has a grammar of its own, and it is `searchTypes` and `limit`.**
+
+- `searchTypes=` is that endpoint's filter — `/hubs/search` IGNORES it at every value — and the
+  vocabulary is six tokens: `movies tv otherVideos music photos people`. They are EXACT and
+  case-sensitive and are not trimmed: `Movies`, ` movies`, `movies ` and `zzz` each select
+  NOTHING. A comma list is a UNION and an unrecognised token inside one is simply dropped, so
+  `zzz,movies` answers exactly what `movies` answers; an empty value or no parameter selects
+  everything. `collections`, `playlists` and `tags` are **not** tokens — they behave like `zzz`,
+  while the rows they name are selected by the library they live in. What each token owns, row by
+  row: `movies` the movie rows, the movie library's tag rows and a playlist of movies; `tv` the
+  show, season and episode rows, the show library's tag rows and a playlist of episodes; `people`
+  the person tag rows (a `tagType` of 4, 5, 6 or 7); and `otherVideos` the movie library's TAG
+  rows **without** its movies — an Other Videos library is a type-1 library too, so the tag half
+  follows `librarySectionType` where the metadata half follows the library's own kind.
+- `limit=` caps the **whole result list**, not each hub: `limit=3` answers three rows of the ten a
+  bare zen query answers, and kids' `firefly` answers the show and two of its three episodes.
+  plexsim capped each hub separately, so `limit=3` on a query matching two kinds answered six. And
+  it refuses in TWO ways, as `/hubs/search?limit=` does: a value it cannot parse — `abc`, an empty
+  one, `1.5` — is a **400**, and one that parses but is not a positive count — `0`, `-1` — is a
+  **500**; `01` is fine. plexsim answered 500, 200, 500, 200 and 200 to those five.
+
+**Measured and deliberately not emulated.** The flat list's ORDER is the reference's own relevance
+engine: for `comedy` zen answers movie, show, episode and then the two genre rows, which is
+neither the hub base order (`show` first) nor a global score sort (the genre rows score 0.92 and
+come last), while for `c26act` plexscratch answers the collection rows before the playlist rows at
+an identical 0.52. Related: a fuzzy person row scoring 0.32 is DROPPED from the bare list and kept
+when `searchTypes=people` asks for it alone (kids and plexscratch, `sintel` → Katherine Kendall).
+Both need Plex's scorer, which plexsim cannot reproduce and does not pretend to; its own hub order
+stands, and the scores stay the three-band model cycle 15 recorded. Hunt A's Related-shelf
+composition is held out for a different reason: **kids and zen disagree** about which shelves a
+preplay page carries, so there is no rule to implement — the same test the three-server method
+applies everywhere.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
