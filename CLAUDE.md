@@ -1813,6 +1813,77 @@ precisely how the Seasons bug survived a fix attempt.
   changes type. Cycle 22's 2,994-path order sweep could not see it: reading this path needs a
   live session, which a read-only reference cannot be given.
 
+
+- **The URL is bounded at exactly 32768 bytes** and 32769 is a 400 -- the URL, not the request
+  LINE, since the boundary does not move with the method. **The header caps are 1024 and 4096
+  bytes and 100 LINES**, all three bisected: the third is a COUNT, not a size, so 200 KB of
+  headers in fifty lines is a 200 and the old "~41 KB total" was that cap measured with
+  410-byte headers. Every one of those refusals is a plain **400**; a real PMS sends `414` and
+  `431` nowhere.
+- **The request LINE is `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF, and nothing
+  else.** Two spaces, a trailing space, tab separators, asterisk-form and LF-only endings are
+  each a 400; the two version digits are unconstrained, so `HTTP/2.0` and `HTTP/9.9` are 200s
+  where `HTTP/1` is a 400; an HTTP/0.9 line is answered with a FULL HTTP/1.1 response; and a
+  LOWER-CASE method gets no response at all.
+- **An unparseable `Content-Length` is IGNORED and a negative one is a 500.** `abc` is a 200
+  with no body read. Reading it with a bare `int()` kills the handler thread and the client
+  sees a server that hung up.
+- **`/photo/:/transcode` validates five more parameters.** `minSize` and `upscale` are BOOLEANS
+  (`0`, `1`, `01`, `+1` only); `opacity` and `quality` take any integer; `blur` takes any
+  integer and 500s a negative one; anything that does not parse as a whole number is a 400. The
+  `width`/`height` 500s for a scale that degenerates are the image pipeline's, not a rule.
+- **Every tag element inside a `/status/sessions` row is plainly ALPHABETICAL**, `Role`
+  (`filter, id, role, tag, tagKey, thumb`) included -- there is no `actor` attribute on one.
+  **`Player` is the one element there with an order of its own**: its string-valued attributes
+  alphabetically, then `local, relayed, secure, userID`.
+- **`Player.profile` is the profile the server RESOLVED, not the constant `Web`.** 23 of the 78
+  profile names report another profile's NAME (`Roku` -> `Roku-7.x`, every browser but Firefox
+  and Edge -> `Web`, `Plex Home Theater-RaspberryPi` -> `Raspberry PI`, a name in no file
+  list). The resolution is `X-Plex-Client-Profile-Name`, `X-Plex-Platform`, `X-Plex-Device`,
+  first match wins, an unmatched value falls THROUGH, header before query per name, and the
+  attribute is omitted when nothing matches.
+- **A borrowed artwork field is DERIVED from its owner, so every write to the owner re-derives
+  it.** Clearing a row's own poster leaves it carrying the PARENT's path (a season falls back
+  to the show, an episode to the season); a pick on a season CREATES `parentThumb` on episodes
+  that had none; a pick on a show moves a BORROWING season's own `thumb` and every episode's
+  own `art`; and when the owner's field goes, the borrower's goes with it.
+- **A pick re-versions only the artwork the row OWNS.** A borrowed field keeps the owner's path,
+  stamp and all -- zen's episode 11115 carries `art` naming its SEASON beside a `grandparentArt`
+  naming the show at a different stamp. Only the field being picked becomes the row's own.
+- **`durationTotal` and `storageTotal` are JSON STRINGS**, where every other number on that row
+  is a number. XML cannot tell the two apart, which is why it took a JSON read on both
+  references to see it.
+- **The bare `/system/agents` carries a MODERN agent's 45 `Language` rows and no `MediaType`.**
+  The `MediaType`-in-the-bare-form rule is the LEGACY plug-in agents' alone. A modern `Agent`
+  row leads `identifier, name, hasPrefs, id`.
+- **`?includeDetails=1` pages its `Directory`, `Type` and `FieldType` rows as ONE sequence** --
+  20 + 1 + 8 = 29, so a 20-row window is `size=20 totalSize=29` and `Start=20` answers the meta
+  rows. **A `Sort` row leads with `active, activeDirection`** and a **`Hub` puts `random`
+  before `style`**.
+- **The SINGLE history read is a third projection with an order of its own** (`historyKey,
+  librarySectionID, title, ...`), not the listing row's and not an item row's.
+- **Three more empty elements are written PAIRED**: a `Meta/Type` with no children, an empty
+  `Related`, and the `/media/providers` `Home` `Directory` -- the one childless `Directory` on
+  the surface that is paired, which `hubKey` identifies.
+- **A real PMS ignores every conditional request header.** A part read carries an `ETag` and a
+  `Last-Modified` and answers 206 to `If-None-Match`, `If-Modified-Since`, `If-Range` and
+  `If-Match` alike -- never 304, never 412.
+- **`/library/all/top` answers any type NUMBER** -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1
+  included -- and 400s only a value that does not parse. The Dashboard asks for movie, show and
+  ARTIST in one `all([...])` under one try/catch, so refusing the music type fails the whole
+  Top Played panel.
+- **`/library/all/top` breaks a tie on the MOST RECENT view, descending**, then on the
+  ratingKey. The time is the history's own; the row does not carry it.
+- **`/media/providers/metadata` and `/media/providers/metadata/group` are real endpoints** -- the
+  MODERN agent-provider tables the Settings Agents pane reads, a different surface from
+  `/system/agents`. A provider carries one `MetadataType` child per media type it serves and
+  `tv.plex.agents.none` an EMPTY `uri`.
+- **Every PERSON tag carries a 24-hex `tagKey`** -- `Director`, `Writer`, `Role` and `Producer`
+  on a detail row, and `/library/tags?type=4|5|6|7` -- where `Genre` and `Country` carry none.
+  The client builds every Cast & Crew link as `/library/people/${tag.tagKey}`, so a tag without
+  one links to `/library/people/undefined`. plexsim MINTS the value (sha1 of the name) and
+  resolves the minted key on `/library/people/{key}` as a real PMS resolves both forms.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
