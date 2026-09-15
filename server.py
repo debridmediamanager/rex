@@ -5412,14 +5412,24 @@ class PlexSim:
                                            (10, "Optimizing Database")):
                     activity.update(progress=progress, subtitle=subtitle)
                     self.notify_activity(activity, "updated")
-                negative = "-%s" % section_id if str(section_id).isdigit() else "-1"
-                if doomed:
-                    self.notify("timeline", "TimelineEntry", [
-                        {"identifier": "com.plexapp.plugins.library",
-                         "sectionID": negative, "itemID": key, "type": 12, "title": "",
-                         "state": 9, "metadataState": "deleted",
-                         "updatedAt": int(time.time())}
-                        for key in doomed])
+                # Cycle 30, measured on the copy on two libraries built and removed for
+                # the question -- 3 rows and 200 rows: a library DELETE pushes the eight
+                # `library.delete` activity frames and **no timeline frames at all**,
+                # either time.
+                #
+                # Cycle 18's fourteen `state 9` frames were something else. Their
+                # `sectionID` named section 2 while the delete was of section 5; none of
+                # their fourteen itemIDs was a row of the 200; and cycle 18 recorded the
+                # same fourteen for a NINE-row library. They are a one-off cleanup of
+                # orphaned `type: 12` rows, not a per-row announcement -- which is why two
+                # controls produced none.
+                #
+                # plexsim sent one entry per TOP-LEVEL row (a show, never its episodes),
+                # so on a zen-sized library it would hand every client a ~1 MB frame of
+                # 3,887 `type 12` deletes keyed on movie ratingKeys. A single item's
+                # delete frame is real and unchanged: `notify_deleted` carries the row's
+                # OWN type, the POSITIVE sectionID and its title, which is what the
+                # reference pushed for a row the trash removed during a scan.
                 for progress, subtitle in ((40, "Optimizing Database"),
                                            (60, "Optimizing Database")):
                     activity.update(progress=progress, subtitle=subtitle)
