@@ -16594,6 +16594,33 @@ def main():
           not details_rows_c23e
           and len(meta_rows_c23e) == 1 and 'advanced="1"' in meta_rows_c23e[0],
           "includeDetails %s | includeMeta %s" % (details_rows_c23e, meta_rows_c23e))
+
+    # Cycle 23, measured on kids and zen: a `/library/tags` (and `/library/people/{id}`) row
+    # is `id, filter, tag, tagType, tagKey, thumb` -- `thumb` LAST -- where plexsim led with
+    # it, because `_ATTR_INDEX["Directory[none]"]` knows `thumb` and knows none of the other
+    # five, so they all fell behind it. And the `/hubs/sections/{id}/manage` Hub leads with
+    # `identifier`, not `title`, and SELF-CLOSES: cycle 22 put `Hub` in `_ALWAYS_PAIRED`
+    # after a census that never reached `/manage`, and on the ordinary hub paths a `size=0`
+    # Hub really is paired on all three servers. The rule is the one cycle 22 left open for
+    # `Directory`: paired when the element has a child collection, self-closed when it has
+    # none at all.
+    _, tags_c23f, _ = request(base, "GET", "/library/tags?type=6", want_json=False)
+    tag_row_c23f = re.search(r"<Directory ([^>]*)>", tags_c23f.decode("utf-8", "replace"))
+    tag_attrs_c23f = re.findall(r'(\w+)="', tag_row_c23f.group(1)) if tag_row_c23f else []
+    _, manage_c23f, _ = request(base, "GET", "/hubs/sections/%s/manage" % movie_section,
+                                want_json=False)
+    manage_text_c23f = manage_c23f.decode("utf-8", "replace")
+    manage_row_c23f = re.search(r"<Hub ([^>]*?)(/?)>", manage_text_c23f)
+    check("a tag row ends with thumb, and a /manage Hub self-closes",
+          tag_attrs_c23f[:4] == ["id", "filter", "tag", "tagType"]
+          and tag_attrs_c23f[-1] == "thumb"
+          and manage_row_c23f is not None
+          and re.findall(r'(\w+)="', manage_row_c23f.group(1))[:2] == ["identifier", "title"]
+          and manage_row_c23f.group(2) == "/",
+          "tag %s | manage %s self-closed=%s"
+          % (tag_attrs_c23f,
+             re.findall(r'(\w+)="', manage_row_c23f.group(1))[:3] if manage_row_c23f else None,
+             manage_row_c23f.group(2) == "/" if manage_row_c23f else None))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
