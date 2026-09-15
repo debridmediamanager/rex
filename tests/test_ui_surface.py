@@ -16163,6 +16163,26 @@ def main():
           % (len(body_c22h),
              sum(1 for line_c22h in body_c22h if not re.fullmatch(r"<[^\n]*>", line_c22h)),
              text_c22h.endswith("\n")))
+
+    # Cycle 22, censused over ~45 paths per server: six element names are written PAIRED
+    # when they are empty, where every other empty element self-closes. `MediaContainer`,
+    # `Stream`, `Hub`, `Extras`, `Media` and `Activity` join the `Feature` cycle 21 found.
+    # `Part` self-closing while `Stream` never does rules out "anything that can hold
+    # children": it is an element-NAME table, as cycle 21 concluded.
+    _, empty_c22i, _ = request(base, "GET", "/library/metadata/%s/nearest" % movie,
+                               want_json=False)
+    container_c22i = empty_c22i.decode("utf-8", "replace")
+    _, streams_c22i, _ = request(base, "GET", "/library/metadata/%s?checkFiles=1" % movie,
+                                 want_json=False)
+    stream_text_c22i = streams_c22i.decode("utf-8", "replace")
+    self_closed_c22i = len(re.findall(r"<Stream [^>]*/>", stream_text_c22i))
+    paired_c22i = len(re.findall(r"<Stream [^>]*[^/]>\s*</Stream>", stream_text_c22i))
+    check("six more element names are written paired when empty",
+          "</MediaContainer>" in container_c22i
+          and not re.search(r"<MediaContainer[^>]*/>", container_c22i)
+          and self_closed_c22i == 0 and paired_c22i > 0,
+          "MediaContainer paired %s | Stream self-closed %d paired %d"
+          % ("</MediaContainer>" in container_c22i, self_closed_c22i, paired_c22i))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
