@@ -16142,6 +16142,27 @@ def main():
              len(hubs_c22g[0].get("Metadata") or []) if hubs_c22g else -1,
              hubs_c22g[0].get("more") if hubs_c22g else None,
              hubs1_c22g[0].get("size") if hubs1_c22g else None))
+
+    # Cycle 22, measured on zen (236 newlines in one movie's XML) and kids (34): a real
+    # PMS writes ONE element per line, with no indentation, and ends the document with a
+    # newline. plexsim emitted a newline after the declaration and nowhere else, and no
+    # trailing one. It changes `Content-Length` on every XML response and what a `Range`
+    # read of a container returns, which cycle 16 established applies to every body.
+    _, xml_c22h, _ = request(base, "GET", "/library/metadata/%s" % movie, want_json=False)
+    text_c22h = xml_c22h.decode("utf-8", "replace")
+    tags_c22h = len(re.findall(r"<[A-Za-z]", text_c22h))
+    lines_c22h = text_c22h.split("\n")
+    # Every line after the declaration is exactly one tag, with no indentation, and the
+    # document ends with a newline -- so the split's last piece is empty.
+    body_c22h = lines_c22h[1:-1]
+    check("the XML writer puts one element per line and ends with a newline",
+          text_c22h.endswith("\n") and lines_c22h[-1] == ""
+          and len(body_c22h) > 1
+          and all(re.fullmatch(r"<[^\n]*>", line_c22h) for line_c22h in body_c22h),
+          "%d line(s); %d not a bare tag; trailing newline %s"
+          % (len(body_c22h),
+             sum(1 for line_c22h in body_c22h if not re.fullmatch(r"<[^\n]*>", line_c22h)),
+             text_c22h.endswith("\n")))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -469,17 +469,18 @@ def _render(name, row, out, overrides=None, container=False):
 
     if not children:
         # Cycle 21: a `Feature` is written paired even when it is empty.
-        out.append("></%s>" % name if name in _ALWAYS_PAIRED else " />")
+        # Cycle 22: every tag ends its own LINE -- see `to_xml`.
+        out.append(">\n</%s>\n" % name if name in _ALWAYS_PAIRED else " />\n")
         return
 
-    out.append(">")
+    out.append(">\n")
     for key in children:
         value = row[key]
         for child in ([value] if isinstance(value, dict) else list(value)):
             # Overrides apply to the container's own children only; a nested
             # `Metadata` inside one of them still names itself.
             _render(_element_name(key, child, overrides), child, out)
-    out.append("</%s>" % name)
+    out.append("</%s>\n" % name)
 
 
 def to_xml(container, elements=None):
@@ -491,4 +492,10 @@ def to_xml(container, elements=None):
     root, body = next(iter(container.items()))
     out = ['<?xml version="1.0" encoding="UTF-8"?>\n']
     _render(root, body, out, elements, container=True)
+    # Cycle 22, measured on zen (236 newlines in one movie's document) and kids (34):
+    # a real PMS writes ONE element per line, with no indentation, and the document
+    # ends with a newline. plexsim joined the pieces with nothing, so every XML
+    # response was a single line -- which changes `Content-Length` on all of them and
+    # what a `Range` read of a container returns (cycle 16: `Range` applies to every
+    # body). `_render` now ends each tag with its own newline.
     return "".join(out).encode("utf-8")
