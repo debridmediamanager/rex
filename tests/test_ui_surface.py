@@ -20494,6 +20494,52 @@ def main():
           and all(status_c29o == 200 for status_c29o in grid_c29o.values()),
           "extras %s | grid %s" % (extras_c29o, grid_c29o))
 
+
+    # Cycle 30, measured on **plexscratch42** -- a fresh, writable, isolated copy of the
+    # exact build plexsim reports (1.42.2.10156), built this cycle because four HANDOVER
+    # 3.3 entries all said "a writable 1.42.2 copy" would settle them:
+    #
+    #   * an On Deck row carries NO `librarySectionKey`, on a movie and on an episode
+    #     alike, where the DETAIL row carries one. Cycle 28 read the opposite off zen's
+    #     single on-deck row and put the key back; plexscratch (1.43.4) and cycle 21's fun
+    #     both say it is absent, so three instruments stand against zen's one
+    #   * and the row is the detail row MINUS `Field`: the copy's movie carries `Field` on
+    #     `/library/metadata/{id}` and on none of `/library/onDeck`,
+    #     `/library/sections/{id}/onDeck`, `/hubs/home/onDeck` or
+    #     `/hubs/home/continueWatching`. zen's on-deck episode has no locked field, so
+    #     cycle 28 could not see this half at all
+    #
+    # `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key, which plexsim
+    # already had right; the section leaf carries no librarySection field on the row.
+    leaf_c30a = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                 .get("Metadata") or [{}])[0].get("ratingKey")
+    if not leaf_c30a:
+        skip("an On Deck row drops Field and librarySectionKey", "no episode left")
+    else:
+        request(base, "PUT", "/library/metadata/%s?title.locked=1" % leaf_c30a)
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=300000&X-Plex-Client-Identifier=c30a"
+                             "&X-Plex-Session-Identifier=c30a" % leaf_c30a)
+
+        def deck_c30a(path_c30a):
+            rows_c30a = get(base, path_c30a)[1].get("Metadata") or []
+            row_c30a = next((r_c30a for r_c30a in rows_c30a
+                             if str(r_c30a.get("ratingKey")) == str(leaf_c30a)), None)
+            return None if row_c30a is None else ("Field" in row_c30a,
+                                                  "librarySectionKey" in row_c30a)
+
+        detail_c30a = deck_c30a("/library/metadata/%s" % leaf_c30a)
+        paths_c30a = {path_c30a: deck_c30a(path_c30a) for path_c30a in
+                      ("/library/onDeck", "/library/sections/%s/onDeck" % show_section,
+                       "/hubs/home/onDeck", "/hubs/home/continueWatching")}
+        check("an On Deck row drops Field and librarySectionKey",
+              detail_c30a == (True, True)
+              and paths_c30a["/library/onDeck"] == (False, False)
+              and paths_c30a["/library/sections/%s/onDeck" % show_section] == (False, False)
+              and paths_c30a["/hubs/home/onDeck"] == (False, True)
+              and paths_c30a["/hubs/home/continueWatching"] == (False, True),
+              "detail %s | %s" % (detail_c30a, paths_c30a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
