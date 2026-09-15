@@ -15607,8 +15607,15 @@ class Handler(BaseHTTPRequestHandler):
             refusal, body = self._unauthorised(method)
             logger.warning("%d %s %s -- no valid token", refusal, method,
                            self.path.split("?")[0])
-            self._send(refusal, "text/plain" if refusal == 404 else "text/html", body,
-                       extra_headers=[("Connection", "close")])
+            # Cycle 30, measured on kids and zen 3/3 on each of five unauthenticated
+            # refusals -- a 401 with no token, a 401 with a wrong one, the 403 a single
+            # unknown segment answers, a 404 for a path that does not exist, and the 401
+            # on `/photo/:/transcode`: every one carries `Connection: Keep-Alive` and the
+            # socket really is reusable. plexsim forced a close on all of them, so a
+            # gated server tore down one TCP connection per refused request -- and
+            # `docs/findings.md`'s recorded 401 sample, which shows `Connection: close`,
+            # was plexsim's own answer read back as the reference's.
+            self._send(refusal, "text/plain" if refusal == 404 else "text/html", body)
             return
 
         try:
