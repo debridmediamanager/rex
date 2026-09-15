@@ -15828,6 +15828,13 @@ class Handler(BaseHTTPRequestHandler):
     _image_cache = {}
     _image_lock = threading.Lock()
 
+    def _local_asset_header(self):
+        """`X-Plex-Local-Asset: 1` when this path is an ITEM's own artwork. Cycle 29."""
+        if re.match(r"^/library/metadata/\d+/(thumb|art|poster)(/|$)",
+                    self.path.split("?")[0]):
+            return [("X-Plex-Local-Asset", "1")]
+        return []
+
     def _serve_image(self, url):
         """Serve an uploaded image, or fetch a remote one, cached in memory.
 
@@ -15837,8 +15844,13 @@ class Handler(BaseHTTPRequestHandler):
         uploaded = self.server.sim.uploads.get(url)
         if uploaded is not None:
             payload, content_type = uploaded
+            # Cycle 29: an UPLOADED poster is the item's own local asset as much as a
+            # remote one is, so it carries `X-Plex-Local-Asset: 1` on the same paths --
+            # this branch never sent the header at all, which the cycle's own
+            # local-asset check found the moment it uploaded a poster to read one back.
             self._send(200, content_type, payload,
-                       [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")])
+                       [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes")]
+                       + self._local_asset_header())
             return
         with self._image_lock:
             hit = self._image_cache.get(url)
@@ -15873,9 +15885,8 @@ class Handler(BaseHTTPRequestHandler):
         # `/library/metadata/{id}/file?url=`, from `/:/resources/*`, from `/web/*` and
         # from a part read. plexsim put it on every image it sent, so a section tile
         # claimed to be an item's local asset.
-        if not transcoded and re.match(r"^/library/metadata/\d+/(thumb|art|poster)(/|$)",
-                                       self.path.split("?")[0]):
-            headers.append(("X-Plex-Local-Asset", "1"))
+        if not transcoded:
+            headers += self._local_asset_header()
         self._send(200, content_type, payload, headers)
 
     def _serve_static(self, relative):
