@@ -15725,14 +15725,20 @@ def main():
                 % (rating_key_c21, urllib.parse.quote(original_poster, safe="")))
         return original_poster
 
-    # Cycle 21, measured on kids (1.43.4) and zen (1.42.2), which agree agent for agent:
-    # the two forms of `/system/agents` carry DIFFERENT child elements. The bare form
-    # carries a `MediaType` row per media type the agent serves and NO `Language` at
-    # all -- zen's `com.plexapp.agents.none` has five MediaTypes, `imdb` one, and every
-    # one of its fifteen agents has zero Languages -- while `?mediaType=N` is the other
-    # way round: a Language list per agent (26, 33 or 45 rows) and no MediaType. plexsim
-    # sent its 45 Languages in both forms and a MediaType in neither, so the Agents page
-    # could not say which agent serves which library type.
+    # Cycle 21 read this off the LEGACY plug-in agents and generalised it: the bare form
+    # was said to carry a `MediaType` row per media type and NO `Language`, and
+    # `?mediaType=N` the other way round. Cycle 27 re-measured it agent for agent on
+    # kids (1.43.4) and zen (1.42.2), which agree, and the rule splits by agent FAMILY:
+    #
+    #   com.plexapp.agents.imdb   bare: 33 Language + 1 MediaType | typed: 33 + 0
+    #   com.plexapp.agents.none   bare: 48 Language + 5 MediaType | typed:  1 + 0
+    #   tv.plex.agents.movie      bare: 45 Language + 0 MediaType | typed: 45 + 0
+    #
+    # All six modern `tv.plex.agents.*` rows carry their Language list in BOTH forms and
+    # a `MediaType` in neither. plexsim holds the modern agents only (the legacy
+    # plug-ins are section 8), so the bare form is the typed form's children -- and it
+    # was stripping exactly the rows the Agents page reads to build each agent's
+    # language selector, handing it a lone `MediaType` instead.
     _, bare_c21a, _ = get(base, "/system/agents")
     _, typed_c21a, _ = get(base, "/system/agents?mediaType=1")
 
@@ -15742,9 +15748,9 @@ def main():
                  len(r_c21a.get("Language") or []), len(r_c21a.get("MediaType") or []))
                 for r_c21a in rows_c21a]
 
-    check("the two forms of /system/agents carry different child elements",
+    check("a MODERN agent carries its Language list in both forms and no MediaType",
           bool(shape_c21a(bare_c21a)) and bool(shape_c21a(typed_c21a))
-          and all(langs_c21a == 0 and types_c21a > 0
+          and all(langs_c21a > 0 and types_c21a == 0
                   for _id_c21a, langs_c21a, types_c21a in shape_c21a(bare_c21a))
           and all(langs_c21a > 0 and types_c21a == 0
                   for _id_c21a, langs_c21a, types_c21a in shape_c21a(typed_c21a)),
