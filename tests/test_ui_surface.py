@@ -18492,6 +18492,14 @@ def main():
                        if str(s_c27c.get("thumb") or "").startswith(
                            "/library/metadata/%s/" % s_c27c.get("ratingKey"))
                        and kids_of_c27c(s_c27c["ratingKey"])), None)
+    # By this point in the suite the show has been UNMATCHED, which drops its `art`
+    # entirely -- and a row with no art has no borrowed art to move, so the assertion
+    # below would be comparing two absences. Give it one first: a pick on the singular
+    # `/art` path sets the row's own versioned path, exactly as the poster pick does.
+    # (The check proved out on a fresh fixture without this; it is the end of the suite
+    # it did not survive, which is section 6's rule.)
+    request(base, "PUT", "/library/metadata/%s/art?url=%s"
+            % (show, quote("https://example.invalid/c27c-art.jpg")))
     request(base, "PUT", "/library/metadata/%s/poster?url=%s"
             % (show, quote("https://example.invalid/c27c.jpg")))
     show_art_c27c = detail_c27c(show).get("art")
@@ -18838,8 +18846,18 @@ def main():
     # malformed tile URL got an image where a real PMS refuses the request.
     # `minSize` and `upscale` are BOOLEANS (`0`, `1`, `01`, `+1` only); `opacity` and
     # `quality` take any integer; `blur` takes any integer but 500s a negative one.
+    # The fixture's `movie` has been merged away by this point (the cycle-15 match check
+    # absorbs it), so the row is read LIVE from the section rather than from the variable
+    # the suite opened with -- section 6's rule, which this check did not survive on its
+    # first run.
+    live_c27o = [r_c27o.get("ratingKey") for r_c27o in
+                 get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata")
+                 or []]
+
     def photo_c27o(extra_c27o):
-        art_c27o = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+        if not live_c27o:
+            return None
+        art_c27o = (get(base, "/library/metadata/%s" % live_c27o[0])[1].get("Metadata")
                     or [{}])[0].get("thumb") or ""
         return request(base, "GET", "/photo/:/transcode?width=100&height=100&url=%s%s"
                        % (quote(art_c27o), extra_c27o))[0]
