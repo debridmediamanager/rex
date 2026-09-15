@@ -20146,6 +20146,37 @@ def main():
           and photo_c29i["+2"] == 400 and photo_c29i["2"] == 400,
           "checkFiles %s | minSize %s" % (bools_c29i, photo_c29i))
 
+
+    # Cycle 29, measured on kids and zen over seventeen values of `download=` on a part
+    # read: it is one of the 0/1 options and carries their whole grammar -- `1`, `01` and
+    # `+1` are the download, `0`, `00` and `+0` the plain read, and `2`, `-1`, `1.5`,
+    # `true`, `false`, `TRUE`, `yes`, `abc`, an empty value, ` 1`, `1 ` and `10` are each a
+    # 400. plexsim compared the raw string with `"1"`/`"true"`, so `download=true` was a
+    # download where a real PMS refuses the read, and `download=2` streamed the media.
+    part_c29j = None
+    for media_c29j in ((get(base, "/library/metadata/%s" % movie)[1]
+                        .get("Metadata") or [{}])[0].get("Media") or []):
+        for entry_c29j in media_c29j.get("Part") or []:
+            part_c29j = part_c29j or entry_c29j.get("key")
+    if not part_c29j:
+        skip("download= carries the 0/1 option grammar", "the fixture movie has no Part")
+    else:
+        downloads_c29j = {}
+        for value_c29j in ("0", "1", "00", "01", "+1", "+0", "2", "-1", "1.5", "true",
+                           "false", "TRUE", "yes", "abc", "", " 1", "1 ", "10"):
+            path_c29j = "%s%sdownload=%s" % (part_c29j, "&" if "?" in part_c29j else "?",
+                                             quote(value_c29j))
+            downloads_c29j[value_c29j] = request(base, "HEAD", path_c29j)[0]
+        # The fixture's Real-Debrid links are dead, so an ACCEPTED value answers the
+        # resolver's 502 and a refused one never reaches it: 400 is the whole signal.
+        check("download= carries the 0/1 option grammar",
+              all(downloads_c29j[value_c29j] != 400 for value_c29j in
+                  ("0", "1", "00", "01", "+1", "+0"))
+              and all(downloads_c29j[value_c29j] == 400 for value_c29j in
+                      ("2", "-1", "1.5", "true", "false", "TRUE", "yes", "abc", "",
+                       " 1", "1 ", "10")),
+              "%s" % downloads_c29j)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
