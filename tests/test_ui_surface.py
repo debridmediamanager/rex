@@ -16280,6 +16280,42 @@ def main():
           zeros_c22l == want_c22l,
           "%s" % sorted(k_c22l for k_c22l in zeros_c22l
                         if zeros_c22l[k_c22l] != want_c22l.get(k_c22l)))
+
+    _, c22m_made, _ = request(base, "POST", "/library/collections?type=1&title=C22%%20frames"
+                                            "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                            "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                              % (movie_section, machine, movie))
+    c22m_collection = json.loads(c22m_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    _, c22m_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C22%%20frames&smart=0"
+                                               "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                               "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                 % (machine, movie))
+    c22m_playlist = json.loads(c22m_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+    # Cycle 22, measured on plexscratch: an artwork write on a COLLECTION frames it as
+    # `type 18` and on a PLAYLIST as `type 15` with `sectionID "-1"`, exactly as their
+    # other frames do. plexsim sent `type 1` for both and an EMPTY sectionID for the
+    # playlist -- and CLAUDE.md already records that the client builds the URL it updates
+    # from that number, so a Change Poster on a collection told every client on the socket
+    # that a MOVIE with that ratingKey had changed. A row that does not exist.
+    frames_c22m = {}
+    for label_c22m, key_c22m in (("collection", c22m_collection), ("playlist", c22m_playlist),
+                                 ("movie", movie)):
+        _status_c22m, got_c22m = notifications(
+            base, lambda key=key_c22m: request(
+                base, "PUT", "/library/metadata/%s/poster?url=http%%3A%%2F%%2Fexample.com"
+                             "%%2Fc22.jpg" % key), seconds=5)
+        entries_c22m = [e_c22m for f_c22m in got_c22m
+                        for e_c22m in ((f_c22m.get("NotificationContainer") or {})
+                                       .get("TimelineEntry") or [])]
+        frames_c22m[label_c22m] = [(e_c22m.get("type"), e_c22m.get("state"),
+                                    e_c22m.get("sectionID")) for e_c22m in entries_c22m]
+    check("an artwork frame carries the list row's own type",
+          frames_c22m["collection"] and frames_c22m["collection"][0][:2] == (18, 5)
+          and frames_c22m["playlist"] and frames_c22m["playlist"][0][:2] == (15, 5)
+          and frames_c22m["playlist"][0][2] == "-1"
+          and frames_c22m["movie"] and frames_c22m["movie"][0][:2] == (1, 5),
+          "%s" % frames_c22m)
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

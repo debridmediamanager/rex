@@ -2214,12 +2214,25 @@ class PlexSim:
         `metadata_state=None` omits the field, which is what state 5 does.
         """
         title = self.frame_title(row)
+        # Cycle 22, measured on plexscratch over an artwork write on all six row types:
+        # a COLLECTION frames as `type 18` and a PLAYLIST as `type 15` with
+        # `sectionID "-1"`, on every frame and not only the ones the list writers push.
+        # A stored list row carries no `type` of its own -- the projection mints it --
+        # so `TIMELINE_TYPES` looked up None and answered the movie's 1, and CLAUDE.md
+        # records that the client builds the URL it updates from that number.
+        kind = row.get("type")
+        section_id = row.get("librarySectionID", "")
+        if kind is None and str(row.get("ratingKey", "")).isdigit():
+            if self.library.collection(row["ratingKey"]) is row:
+                kind, section_id = "collection", row.get("librarySectionID", "")
+            elif self.library.playlist(row["ratingKey"]) is row:
+                kind, section_id = "playlist", -1
         entry = {
             "identifier": "com.plexapp.plugins.library",
-            "sectionID": str(row.get("librarySectionID", "")),
+            "sectionID": str(section_id),
             "itemID": str(row.get("ratingKey", "")),
             "type": (type_number if type_number is not None
-                     else self.TIMELINE_TYPES.get(row.get("type"), 1)),
+                     else self.TIMELINE_TYPES.get(kind, 1)),
             "title": title,
             "state": state,
             "updatedAt": int(time.time()),
