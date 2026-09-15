@@ -16133,11 +16133,30 @@ class Handler(BaseHTTPRequestHandler):
         deadline = time.time() + 3600
         try:
             while time.time() < deadline:
-                # A client CLOSE has to be answered, or the browser sits in CLOSING
-                # until its own timeout and the sink is never reaped. Poll for it
-                # between pings rather than blocking on the socket.
-                if self._client_went_away():
-                    break
+                # Cycle 30, measured on the copy with a client that PONGS, which every
+                # real client does automatically (RFC 6455 5.5.2): the reference's ping
+                # timer is FREE-RUNNING -- 3 pings in 35 s, at 10.001, 20.001 and 30.019,
+                # the same cadence a client that never pongs sees. A pong does not touch
+                # it.
+                #
+                # plexsim waited for "one ping interval" with a `select()` that returns
+                # for ANY frame, so a pong ended the wait and the loop pinged again at
+                # once: **903,480 pings in 35 seconds**, ~26,000/s, measured twice with
+                # two client stacks. Every compliant client -- every browser, every Plex
+                # app, python-plexapi's AlertListener -- triggers it ten seconds after it
+                # opens the channel, and it pins a core on both ends for the life of the
+                # socket. Twelve cycles missed it because a raw probe that never pongs
+                # sees the correct 10 s cadence.
+                #
+                # So the wait is a DEADLINE, not a single select: keep polling for a
+                # CLOSE until the next ping is due, and only then ping.
+                next_ping = time.time() + 10
+                while True:
+                    remaining = next_ping - time.time()
+                    if remaining <= 0:
+                        break
+                    if self._client_went_away(min(remaining, 1.0)):
+                        return
                 with lock:
                     self.wfile.write(struct.pack("!BB", 0x89, 0x01) + b"?")
                     self.wfile.flush()
@@ -16148,7 +16167,11 @@ class Handler(BaseHTTPRequestHandler):
             sim.drop_log_sink(sink)
 
     def _client_went_away(self, seconds=10):
-        """Wait out one ping interval, answering a CLOSE frame if one arrives.
+        """Wait up to `seconds` for a frame, answering a CLOSE if one arrives.
+
+        Cycle 30: this returns as soon as ANY frame lands -- a PONG included -- so the
+        caller must treat it as "did something arrive", not as "the interval has passed".
+        Reading it the second way is what made plexsim answer a pong with a ping.
 
         plexsim never read the socket at all, so a browser's `ws.close()` hung in
         CLOSING until its own timeout, plexsim never learnt the peer had gone, and
