@@ -19534,6 +19534,32 @@ def main():
               and (genre_c28m is None or "tagKey" not in genre_c28m),
               "%s -> %s | %s" % (person_c28m.get("tagKey"), resolved_c28m, keys_c28m))
 
+
+    # Cycle 28, measured on kids and zen (and on plexscratch for a collection): a
+    # `/library/search` tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
+    # `reasonTitle` and its own `score` -- the score sits on the `SearchResult` wrapper
+    # alone there, as a number, where the hubs row carries it inside as a string.
+    # plexsim answered the hubs row verbatim on the flat endpoint, four attributes and
+    # all, telling every client that each tag had matched "because" its section.
+    flat_c28n = [r_c28n["Directory"] for r_c28n in
+                 (get(base, "/library/search?query=animation&limit=20")[1]
+                  .get("SearchResult") or []) if r_c28n.get("Directory")]
+    wrapped_c28n = [r_c28n.get("score") for r_c28n in
+                    (get(base, "/library/search?query=animation&limit=20")[1]
+                     .get("SearchResult") or []) if r_c28n.get("Directory")]
+    hub_c28n = next((h_c28n for h_c28n in
+                     (get(base, "/hubs/search?query=animation")[1].get("Hub") or [])
+                     if h_c28n.get("type") == "genre"), {})
+    hubrow_c28n = (hub_c28n.get("Directory") or [{}])[0]
+    check("a flat search tag row drops the reason triple and its own score",
+          bool(flat_c28n) and bool(wrapped_c28n)
+          and all(not ({"reason", "reasonID", "reasonTitle", "score"} & set(r_c28n))
+                  for r_c28n in flat_c28n)
+          and all(isinstance(s_c28n, float) for s_c28n in wrapped_c28n)
+          and {"reason", "reasonID", "reasonTitle", "score"} <= set(hubrow_c28n),
+          "flat %s | hub %s" % (sorted(flat_c28n[0]) if flat_c28n else None,
+                                sorted(hubrow_c28n)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

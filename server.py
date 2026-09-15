@@ -10060,6 +10060,24 @@ class PlexSim:
         return result
 
     @staticmethod
+    def _flat_search_tag(row):
+        """A tag row as `/library/search` carries it: `(score, row)`.
+
+        Cycle 28, measured on kids and zen (and on plexscratch for a collection): the
+        flat form's tag row is the `/hubs/search` row WITHOUT `reason`, `reasonID`,
+        `reasonTitle` and its own `score` -- there the score lives on the `SearchResult`
+        wrapper alone, as a NUMBER, where the hubs row carries it inside as a string.
+        plexsim sent the hubs row verbatim, so every flat tag hit carried four
+        attributes a real PMS does not and told the client the tag had matched
+        "because" its section.
+        """
+        shown = dict(row)
+        score = float(shown.pop("score", 0.32) or 0.32)
+        for name in ("reason", "reasonID", "reasonTitle"):
+            shown.pop(name, None)
+        return score, shown
+
+    @staticmethod
     def _search_result_row(row):
         """A `/library/search` hit.
 
@@ -10100,8 +10118,10 @@ class PlexSim:
                 results.append({"score": float(self._score(score)),
                                 "Metadata": self._search_result_row(row)})
             for entry in tags.get(kind, []):
-                results.append({"score": 0.32,
-                                "Directory": self._tag_result(entry, kind)})
+                # Cycle 28: the flat form drops the reason triple and the row's own
+                # score. See `_flat_search_tag`.
+                score, shown = self._flat_search_tag(self._tag_result(entry, kind))
+                results.append({"score": score, "Directory": shown})
         return self.bare_container(size=len(results), SearchResult=results)
 
     # The search providers /search lists beside its results, measured verbatim.
