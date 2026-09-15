@@ -9866,6 +9866,21 @@ class PlexSim:
                 tags[hub] = [seen[key] for key in sorted(seen)][:limit]
         return typed, tags
 
+    def search_row_sections(self, kind, row):
+        """The library ids a search hit belongs to, for `contentDirectoryID`.
+
+        Cycle 28, measured on plexscratch: a PLAYLIST goes with its MEMBERS' library --
+        `contentDirectoryID=1` keeps a playlist of movies and `=2` drops it, while a
+        playlist of Firefly episodes is the show library's. The playlist row itself
+        carries no `librarySectionID`, so reading one off it dropped every playlist from
+        every scoped search.
+        """
+        if kind == "playlist":
+            stored = self.library.playlist(row.get("ratingKey"))
+            members = self.library.playlist_items(stored) if stored else []
+            return {str(member.get("librarySectionID")) for member, _iid in members}
+        return {str(row.get("librarySectionID"))}
+
     def collection_matches(self, needle, section_id=None):
         """The collections a query matches, as `tagType: 2` tag rows.
 
@@ -9932,11 +9947,22 @@ class PlexSim:
         limit = int(query.get("limit", 3) or 3)
         typed, tags = self.search_matches(text, limit, tagged_items=True)
         if wanted_section is not None:
+            # Cycle 28, measured on kids, zen and plexscratch: `contentDirectoryID`
+            # scopes EVERY row family, each by its own library. kids' `drama` keeps one
+            # `Drama` tag row at `=1` and the OTHER library's at `=2`; plexscratch's
+            # `c26act` keeps three collections and a movie playlist at `=1` and empties
+            # both at `=2`; and a playlist goes with its MEMBERS' library, a playlist of
+            # Firefly episodes being the show library's.
+            #
+            # plexsim compared the tag ENTRIES -- `{tag, rows, row}` triples that carry
+            # no `librarySectionID` at all -- so a scoped search answered NO tag rows on
+            # either library, while its collections were not scoped at all and every one
+            # survived a scope to the other library.
             typed = {kind: [r for r in rows
-                            if str(r.get("librarySectionID")) == str(wanted_section)]
+                            if str(wanted_section) in self.search_row_sections(kind, r)]
                      for kind, rows in typed.items()}
             tags = {hub: [t for t in rows
-                          if str(t.get("librarySectionID")) == str(wanted_section)]
+                          if str(t["row"].get("librarySectionID")) == str(wanted_section)]
                     for hub, rows in tags.items()}
         needle = text.strip().lower()
 
@@ -9989,7 +10015,7 @@ class PlexSim:
                 # `tag` row with `tagType: 2` and the collection's own guid. plexsim's
                 # collection hub was empty for every query, so the search box never
                 # found a collection at all.
-                found = self.collection_matches(needle)
+                found = self.collection_matches(needle, wanted_section)
                 if found:
                     hub["Directory"] = found
                     hub["size"] = len(found)

@@ -19602,6 +19602,37 @@ def main():
           and get(base, flat_c28p[0].get("key") or "/zzz")[0] == 200,
           "flat %s | hub %s" % (flat_c28p, hubrow_c28p.get("tag")))
 
+
+    # Cycle 28, measured on kids, zen and plexscratch: `contentDirectoryID` scopes EVERY
+    # row family of `/hubs/search`, each by its own library -- kids' `drama` keeps one
+    # `Drama` tag row at `=1` and the other library's at `=2`, and plexscratch's
+    # `c26act` keeps three collections and a movie playlist at `=1` and empties both at
+    # `=2`, a playlist going with its MEMBERS' library. plexsim compared the tag ENTRIES
+    # on a key they do not carry, so a scoped search answered NO tag rows for either
+    # library, and its collections were not scoped at all.
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                         "&collection%%5B0%%5D.tag.tag=C28SCOPECOLL"
+                         % (movie_section, movie))
+
+    def scoped_c28q(section_c28q, query_c28q, kind_c28q):
+        hubs_c28q = get(base, "/hubs/search?query=%s&contentDirectoryID=%s"
+                              % (query_c28q, section_c28q))[1].get("Hub") or []
+        hub_c28q = next((h_c28q for h_c28q in hubs_c28q
+                         if h_c28q.get("type") == kind_c28q), {})
+        return [(r_c28q.get("tag"), str(r_c28q.get("librarySectionID")))
+                for r_c28q in (hub_c28q.get("Directory") or [])]
+
+    genre_movie_c28q = scoped_c28q(movie_section, "animation", "genre")
+    genre_show_c28q = scoped_c28q(show_section, "animation", "genre")
+    coll_here_c28q = scoped_c28q(movie_section, "c28scopecoll", "collection")
+    coll_there_c28q = scoped_c28q(show_section, "c28scopecoll", "collection")
+    check("contentDirectoryID scopes the tag rows and the collections, per library",
+          genre_movie_c28q == [("Animation", str(movie_section))]
+          and genre_show_c28q == [("Animation", str(show_section))]
+          and len(coll_here_c28q) == 1 and coll_there_c28q == [],
+          "genre %s / %s | collection %s / %s"
+          % (genre_movie_c28q, genre_show_c28q, coll_here_c28q, coll_there_c28q))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
