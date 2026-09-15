@@ -18727,6 +18727,23 @@ def main():
              bare_c27i.count("<Agent"), typed_c27i.count("<Language"),
              typed_c27i.count("<Agent")))
 
+
+    # Cycle 27, measured on kids and zen: a modern `Agent` row leads `identifier, name,
+    # hasPrefs, id`. plexsim emitted `hasPrefs, id, identifier, name` -- its builder's
+    # dict order -- because `_ATTR_ORDER` had no `Agent` bucket at all. Cycle 19 parked
+    # this on the LEGACY rows' own pairs, which the modern rows do not carry.
+    agent_xml_c27j = request(base, "GET", "/system/agents",
+                             want_json=False)[1].decode("utf-8", "replace")
+    agent_names_c27j = re.findall(r"(\w+)=", re.search(r"<Agent\b[^>]*>",
+                                                       agent_xml_c27j).group(0))
+    agent_json_c27j = list((get(base, "/system/agents")[1].get("Agent")
+                            or [{}])[0].keys())
+    check("a modern Agent row leads identifier, name, hasPrefs, id",
+          agent_names_c27j[:4] == ["identifier", "name", "hasPrefs", "id"]
+          and [k_c27j for k_c27j in agent_json_c27j
+               if k_c27j != "Language"][:4] == ["identifier", "name", "hasPrefs", "id"],
+          "%s | %s" % (agent_names_c27j, agent_json_c27j[:5]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
