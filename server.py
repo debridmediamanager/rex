@@ -9527,8 +9527,17 @@ class PlexSim:
         # library drops it. See the `continueWatching/items` leaf for the measurement.
         in_progress = [r for r in self.continue_watching(include_hidden=is_show)
                        if str(r.get("librarySectionID")) == str(section_id)]
+        # Cycle 28, measured on zen and kids: a non-`random` shelf's rows are exactly
+        # the head of its OWN `key` listing, in that listing's order -- 29 of 32
+        # non-empty shelves matched byte for byte at `count=40`, the three that did not
+        # being the random ones. This shelf's key is
+        # `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0`, and plexsim honoured
+        # neither clause: a row in progress sat on the Recommended tab's Recently
+        # Watched shelf and then vanished when the user clicked its own See All chevron.
         watched = sorted([r for r in (episodes if is_show else items)
-                          if r.get("lastViewedAt")],
+                          if r.get("lastViewedAt")
+                          and (r.get("viewCount") or 0) > 0
+                          and not (r.get("viewOffset") or 0)],
                          key=lambda r: -(r.get("lastViewedAt") or 0))
         # Measured: the movie shelf's own key filters `originallyAvailableAt>=-1y`
         # and the shelf honours it -- the reference's is EMPTY for films from 2006
