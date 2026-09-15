@@ -20364,6 +20364,33 @@ def main():
           and desc_c29q == list(reversed(asc_c29q)),
           "asc %s | desc %s" % (asc_c29q, desc_c29q))
 
+
+    # Cycle 29, measured on kids (14 rows collapsing to 4 by type, 7 by year, 10 by title)
+    # and zen (14,434 to 4, 90, 8,358), which agree: `group=` is honoured on
+    # `/library/all` too, and an unknown or empty field is a 500 there as on a section
+    # listing. plexsim's `grouped()` was already right -- this handler never called it, so
+    # the cross-library Group control did nothing and an ungroupable field answered every
+    # row instead of erroring.
+    def all_c29p(spec_c29p):
+        status_c29p, body_c29p, _h_c29p = get(base, "/library/all" + spec_c29p)
+        if status_c29p != 200:
+            return status_c29p, None
+        return status_c29p, len(body_c29p.get("Metadata") or [])
+
+    bare_c29p = all_c29p("")
+    grouped_c29p = {field_c29p: all_c29p("?group=" + field_c29p)
+                    for field_c29p in ("type", "year", "title", "guid", "id")}
+    refused_c29p = {field_c29p: all_c29p("?group=" + field_c29p)[0]
+                    for field_c29p in ("zzz", "")}
+    check("group= is honoured on /library/all, and refuses what a listing refuses",
+          bare_c29p[1] and grouped_c29p["type"][1] and grouped_c29p["type"][1] < bare_c29p[1]
+          and grouped_c29p["year"][1] <= bare_c29p[1]
+          and grouped_c29p["id"][1] == bare_c29p[1]
+          and refused_c29p == {"zzz": 500, "": 500},
+          "bare %s | %s | refused %s"
+          % (bare_c29p, {k_c29p: v_c29p[1] for k_c29p, v_c29p in grouped_c29p.items()},
+             refused_c29p))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
