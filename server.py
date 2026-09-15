@@ -3936,6 +3936,13 @@ class PlexSim:
                 content="", identifier="com.plexapp.plugins.library",
                 mediaTagPrefix="/system/bundle/media/flags/",
                 mediaTagVersion=1655122614, title1="Plex Library", title2="",
+                # Cycle 25, measured on kids and zen in de and fr: these three are
+                # LOCALISED, like the rest of the server's own vocabulary. They were
+                # literals in no translation table, so `/library` -- the first path
+                # python-plexapi asks for -- read English to every client. The strings
+                # are in `translations.json` now and `_send_container` translates them
+                # on the way out; the container's own `title1` ("Plex Library") is NOT
+                # translated on either reference and is deliberately not in the table.
                 Directory=[{"key": "sections", "title": "Library Sections"},
                            {"key": "recentlyAdded", "title": "Recently Added Content"},
                            {"key": "onDeck", "title": "On Deck Content"}])
@@ -13327,7 +13334,16 @@ class Handler(BaseHTTPRequestHandler):
     def _send_container(self, container):
         language = self._language(None)
         if language and language != "en" and TRANSLATIONS:
-            container = self._localise(container, language)
+            body = next(iter(container.values()))
+            # Cycle 25: the PLUG-IN FRAMEWORK's own container is not localised. `/system`
+            # carries a `Directory` titled `Library Sections` -- the same English string
+            # `/library` carries -- and a real PMS translates it on `/library` and leaves
+            # it alone here, on both references and in every language. `noHistory` is that
+            # container's signature (CLAUDE.md records the attribute order it leads), and
+            # `/system` is the only one of the six that carries a translatable string at
+            # all: the others title their rows with their own lowercase key names.
+            if not (isinstance(body, dict) and "noHistory" in body):
+                container = self._localise(container, language)
         # `_xml` names the element a container's rows render as where the rows
         # cannot name it themselves (an artwork list is <Photo>, a folder list
         # <Directory>). It is internal: it must never reach the JSON body.
