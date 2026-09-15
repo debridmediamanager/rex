@@ -19204,6 +19204,27 @@ def main():
               for v_c28b, want_v_c28b in want_c28b),
           str({k_c28b: v_c28b for k_c28b, v_c28b in drops_c28b.items()}))
 
+
+    # Cycle 28, measured on kids and zen over eleven values: `/hubs/continueWatching`
+    # and its `/items` leaf VALIDATE `contentDirectoryID`, where `/hubs/promoted` takes
+    # anything. At least one comma-separated member must be a POSITIVE INTEGER -- `01`,
+    # `999`, `999,998`, `abc,1`, `1,abc` and `1,` are 200s; `abc`, `0`, `-1`, `1.5` and
+    # a space are 404s. A section the server does not hold is fine: it is the SHAPE that
+    # is checked. This is the second path that validates the parameter, against
+    # CLAUDE.md's "scopes and VALIDATES `/hubs/search` alone".
+    cw_c28c = {}
+    for path_c28c in ("/hubs/continueWatching", "/hubs/continueWatching/items"):
+        for value_c28c in ("abc", "0", "-1", "1.5", "%20", "01", "999", "999,998",
+                           "abc,1", "1,abc", "1,"):
+            cw_c28c[(path_c28c, value_c28c)] = request(
+                base, "GET", "%s?contentDirectoryID=%s" % (path_c28c, value_c28c))[0]
+    refused_c28c = ("abc", "0", "-1", "1.5", "%20")
+    check("/hubs/continueWatching validates contentDirectoryID",
+          all(status_c28c == (404 if value_c28c in refused_c28c else 200)
+              for (_p_c28c, value_c28c), status_c28c in cw_c28c.items()),
+          str({k_c28c: v_c28c for k_c28c, v_c28c in cw_c28c.items()
+               if v_c28c != (404 if k_c28c[1] in refused_c28c else 200)}) or "all agree")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
