@@ -15776,7 +15776,14 @@ class Handler(BaseHTTPRequestHandler):
         transcoded = self.path.startswith("/photo/:/transcode")
         headers = [("Cache-Control", "max-age=259200" if transcoded else "no-cache"),
                    ("Accept-Ranges", "bytes")]
-        if not transcoded:
+        # Cycle 29, measured on kids and zen: `X-Plex-Local-Asset: 1` marks an ITEM's own
+        # artwork and nothing else. It is on `/library/metadata/{id}/{thumb,art,poster}`
+        # and absent from a section's `/composite/{v}`, from the local candidate
+        # `/library/metadata/{id}/file?url=`, from `/:/resources/*`, from `/web/*` and
+        # from a part read. plexsim put it on every image it sent, so a section tile
+        # claimed to be an item's local asset.
+        if not transcoded and re.match(r"^/library/metadata/\d+/(thumb|art|poster)(/|$)",
+                                       self.path.split("?")[0]):
             headers.append(("X-Plex-Local-Asset", "1"))
         self._send(200, content_type, payload, headers)
 

@@ -20213,6 +20213,28 @@ def main():
           % (status_c29k, headers_c29k.get("Content-Type"), len(body_c29k),
              headers_c29k.get("Accept-Ranges"), headers_c29k.get("Content-Range")))
 
+
+    # Cycle 29, measured on kids and zen: `X-Plex-Local-Asset: 1` marks an ITEM's own
+    # artwork and nothing else -- present on `/library/metadata/{id}/{thumb,art,poster}`
+    # and absent from a section's `/composite/{v}`, from `/:/resources/*`, from `/web/*`
+    # and from a part read. plexsim put it on every image it sent, so a section tile
+    # claimed to be an item's local asset.
+    def local_c29m(path_c29m):
+        status_c29m, _body_c29m, headers_c29m = request(base, "GET", path_c29m,
+                                                       want_json=False)
+        return status_c29m, headers_c29m.get("X-Plex-Local-Asset")
+
+    row_c29m = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    item_c29m = local_c29m(row_c29m.get("thumb") or "/library/metadata/%s/thumb/1" % movie)
+    composite_c29m = local_c29m("/library/sections/%s/composite/1" % movie_section)
+    resource_c29m = local_c29m("/:/resources/movie.png")
+    check("X-Plex-Local-Asset marks an item's own artwork and nothing else",
+          item_c29m == (200, "1")
+          and composite_c29m[0] == 200 and composite_c29m[1] is None
+          and resource_c29m[0] == 200 and resource_c29m[1] is None,
+          "item %s | composite %s | resource %s"
+          % (item_c29m, composite_c29m, resource_c29m))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
