@@ -16099,6 +16099,27 @@ def main():
           % (len(nested_rows_c22e),
              sum(1 for r_c22e in nested_rows_c22e if "Media" in r_c22e),
              sum(1 for r_c22e in nested_rows_c22e if r_c22e.get("mediaCount") is not None)))
+
+    # Cycle 22, measured on zen and kids over 10 values x 6 options: five more options
+    # carry `checkFiles`'s value grammar exactly -- `0`, `1`, `00` and `01` are 200s and
+    # an empty value, `abc`, `2`, `true`, `-1` and `1.5` are 400s. plexsim validated
+    # `checkFiles` alone (cycle 19) and took anything at all for the other five, so it
+    # advertised a tolerance a real PMS does not have.
+    grammar_c22f = {}
+    for option_c22f in ("checkFiles", "skipRefresh", "asyncCheckFiles",
+                        "asyncAugmentMetadata", "asyncRefreshLocalMediaAgent",
+                        "asyncRefreshAnalysis"):
+        for value_c22f in ("0", "1", "01", "", "abc", "2", "true", "-1", "1.5"):
+            grammar_c22f[(option_c22f, value_c22f or "''")] = request(
+                base, "GET", "/library/metadata/%s?%s=%s" % (movie, option_c22f, value_c22f))[0]
+    good_c22f = {k_c22f: v_c22f for k_c22f, v_c22f in grammar_c22f.items()
+                 if k_c22f[1] in ("0", "1", "01")}
+    bad_c22f = {k_c22f: v_c22f for k_c22f, v_c22f in grammar_c22f.items()
+                if k_c22f[1] not in ("0", "1", "01")}
+    check("five more query options carry checkFiles's value grammar",
+          set(good_c22f.values()) == {200} and set(bad_c22f.values()) == {400},
+          "accepted %s | refused %s"
+          % (sorted(set(good_c22f.values())), sorted(set(bad_c22f.values()))))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
