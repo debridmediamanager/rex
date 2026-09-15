@@ -16183,6 +16183,36 @@ def main():
           and self_closed_c22i == 0 and paired_c22i > 0,
           "MediaContainer paired %s | Stream self-closed %d paired %d"
           % ("</MediaContainer>" in container_c22i, self_closed_c22i, paired_c22i))
+
+    # Cycle 22, harvested from 633 zen paths and 133 kids paths: three attribute orders a
+    # five-clip library never emits. A `Part` leads with `accessible, exists, id, key`
+    # where plexsim appended the two flags last; a section's pivot `Directory` leads with
+    # `secondary` (and with `prompt, search` on the search pivot); and a `Feature` leads
+    # with `flavor`. `_ATTR_ORDER` is a topological sort of observed PAIRS, so a pair no
+    # reference was ever seen to emit falls to the end -- which is exactly what happened
+    # to these. Cycle 19 made the JSON key order follow the XML, so all three move both.
+    _, part_c22j, _ = request(base, "GET", "/library/metadata/%s?checkFiles=1" % movie,
+                              want_json=False)
+    part_text_c22j = part_c22j.decode("utf-8", "replace")
+    part_attrs_c22j = re.findall(r'(\w+)="', (re.search(r"<Part ([^>]*)>", part_text_c22j)
+                                              or re.match("", "")).group(1)
+                                 if re.search(r"<Part ([^>]*)>", part_text_c22j) else "")
+    _, section_c22j, _ = request(base, "GET", "/library/sections/%s" % movie_section,
+                                 want_json=False)
+    pivot_c22j = re.search(r"<Directory ([^>]*secondary[^>]*)>",
+                           section_c22j.decode("utf-8", "replace"))
+    pivot_attrs_c22j = re.findall(r'(\w+)="', pivot_c22j.group(1)) if pivot_c22j else []
+    _, providers_c22j, _ = request(base, "GET", "/media/providers", want_json=False)
+    feature_c22j = [re.findall(r'(\w+)="', m_c22j) for m_c22j in
+                    re.findall(r"<Feature ([^>]*)>", providers_c22j.decode("utf-8", "replace"))]
+    with_flavor_c22j = [f_c22j for f_c22j in feature_c22j if "flavor" in f_c22j]
+    check("three more attribute orders follow the references",
+          part_attrs_c22j[:4] == ["accessible", "exists", "id", "key"]
+          and pivot_attrs_c22j[:1] == ["secondary"]
+          and bool(with_flavor_c22j)
+          and all(f_c22j[0] == "flavor" for f_c22j in with_flavor_c22j),
+          "Part %s | pivot %s | Feature %s"
+          % (part_attrs_c22j[:5], pivot_attrs_c22j, with_flavor_c22j[:2]))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

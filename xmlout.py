@@ -125,6 +125,9 @@ _ATTR_ORDER = {
     "Feature": (
         # `/media/providers`. Only the scrobble feature carries the first two, and
         # both references put them FIRST; plexsim appended them.
+        # Cycle 22: `flavor` leads a `Feature` on both references; plexsim
+        # appended it, the same topological-sort gap as `Part` above.
+        "flavor",
         "scrobbleKey", "unscrobbleKey", "key", "type"
     ),
     "Type": (
@@ -161,6 +164,10 @@ _ATTR_ORDER = {
         "fastKey", "key", "title", "type"
     ),
     "Directory[none]": (
+        # Cycle 22: a section's PIVOT rows lead with these on both references --
+        # `<Directory secondary="1" key="genre" title="By Genre" />` and
+        # `<Directory prompt="Search ..." search="1" key="search?type=1" ... />`.
+        "secondary", "prompt", "search",
         "default", "defaultDirection", "descKey", "firstCharacterKey", "size",
         "fastKey", "leafCount", "thumb", "viewedLeafCount", "count", "hubKey",
         "key", "title"
@@ -215,6 +222,11 @@ _ATTR_ORDER = {
         "has64bitOffsets", "videoProfile", "deletedAt", "hasVoiceActivity"
     ),
     "Part": (
+        # Cycle 22, harvested from 633 zen paths and 133 kids paths: the two
+        # `checkFiles=1` flags LEAD the element on both references. `_ATTR_ORDER` is a
+        # topological sort of observed PAIRS, and no reference had ever been seen to
+        # emit them beside their neighbours, so they fell to the END.
+        "accessible", "exists",
         "id", "key", "duration", "file", "size", "audioProfile", "container",
         "failureBIFResultCode", "failureBIFRetryCount", "has64bitOffsets",
         "hasThumbnail", "indexes", "optimizedForStreaming", "packetLength",
