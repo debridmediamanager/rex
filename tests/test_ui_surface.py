@@ -18908,6 +18908,28 @@ def main():
           and all(top_c27q[bad_c27q] == 400 for bad_c27q in ("abc", "", "1.5")),
           str(top_c27q))
 
+
+    # Cycle 27, recorded through a real client: the Settings -> Metadata Agents pane
+    # reads `/media/providers/metadata` and `/media/providers/metadata/group`
+    # immediately before `/system/agents?mediaType=`, and both are populated 200s on
+    # kids (7 and 6 rows) and zen (4 and 4). plexsim had never routed either, so the
+    # pane's provider list was empty on a server that holds four modern agents.
+    prov_c27r = get(base, "/media/providers/metadata")[1]
+    group_c27r = get(base, "/media/providers/metadata/group")[1]
+    rows_c27r = prov_c27r.get("MetadataAgentProvider") or []
+    groups_c27r = group_c27r.get("MetadataAgentProviderGroup") or []
+    check("the metadata agent-provider tables are real and populated",
+          bool(rows_c27r) and len(groups_c27r) == len(rows_c27r)
+          and all({"id", "identifier", "title", "uri", "agentType", "online"}
+                  <= set(r_c27r) and r_c27r.get("MetadataType")
+                  for r_c27r in rows_c27r)
+          and all(g_c27r.get("primaryIdentifier")
+                  and g_c27r.get("MetadataAgentProviderGroupItem")
+                  for g_c27r in groups_c27r),
+          "%d provider(s) %s | %d group(s)"
+          % (len(rows_c27r), [r_c27r.get("identifier") for r_c27r in rows_c27r][:3],
+             len(groups_c27r)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
