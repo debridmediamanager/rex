@@ -19858,6 +19858,12 @@ def main():
     # a field a row already had, so a leaf that lost its `art` never got one back, a
     # season that gained its own had it overwritten by the next show pick, and no leaf ever
     # followed its season's.
+    # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
+    # `art`, and every rule here is about a field handed down from it -- so the check
+    # gives the show one first. An upload is the cheapest write that makes a row the owner
+    # of a field, and it re-versions only what it wrote (further down this cycle).
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c29b-show")
     def art_c29b(key_c29b):
         row_c29b = (get(base, "/library/metadata/%s" % key_c29b)[1]
                     .get("Metadata") or [{}])[0]
@@ -19931,6 +19937,12 @@ def main():
     # back to the show's. plexsim re-versioned the borrowed field as the season's own -- a
     # row claiming an image the server has none of -- which the artwork derivation then
     # handed down to every episode.
+    # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
+    # `art`, and every rule here is about a field handed down from it -- so the check
+    # gives the show one first. An upload is the cheapest write that makes a row the owner
+    # of a field, and it re-versions only what it wrote (further down this cycle).
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c29f-show")
     seasons_c29f = [r_c29f.get("ratingKey") for r_c29f in
                     (get(base, "/library/metadata/%s/children" % show)[1]
                      .get("Metadata") or [])]
@@ -19965,6 +19977,12 @@ def main():
     # own. On the copy those episodes keep the show's `art` throughout; only their
     # `parentThumb` goes, because a season that borrows its poster hands none down
     # (cycle 27).
+    # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
+    # `art`, and every rule here is about a field handed down from it -- so the check
+    # gives the show one first. An upload is the cheapest write that makes a row the owner
+    # of a field, and it re-versions only what it wrote (further down this cycle).
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c29d-show")
     seasons_c29d = [r_c29d.get("ratingKey") for r_c29d in
                     (get(base, "/library/metadata/%s/children" % show)[1]
                      .get("Metadata") or [])]
@@ -19999,6 +20017,12 @@ def main():
     # and the bare `GET /library/metadata/{season}/art` is a 404 because the row no longer
     # owns an image. plexsim left the field off the row, so the season page and every
     # episode page under it drew no backdrop where a real PMS draws the show's.
+    # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
+    # `art`, and every rule here is about a field handed down from it -- so the check
+    # gives the show one first. An upload is the cheapest write that makes a row the owner
+    # of a field, and it re-versions only what it wrote (further down this cycle).
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c29c-show")
     season_c29c = (get(base, "/library/metadata/%s/children" % show)[1]
                    .get("Metadata") or [{}])[0].get("ratingKey")
     show_art_c29c = (get(base, "/library/metadata/%s" % show)[1]
@@ -20037,6 +20061,12 @@ def main():
     # new poster. plexsim re-versioned both fields as the row's own, so a poster upload
     # invented a season-owned backdrop the server has no image for -- and the derivation
     # then handed that path down to every episode.
+    # By the time this runs, cycle 23's artwork DELETE check has cleared the SHOW's own
+    # `art`, and every rule here is about a field handed down from it -- so the check
+    # gives the show one first. An upload is the cheapest write that makes a row the owner
+    # of a field, and it re-versions only what it wrote (further down this cycle).
+    request(base, "POST", "/library/metadata/%s/arts" % show,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + b"c29e-show")
     seasons_c29e = [r_c29e.get("ratingKey") for r_c29e in
                     (get(base, "/library/metadata/%s/children" % show)[1]
                      .get("Metadata") or [])]
