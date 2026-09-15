@@ -5754,7 +5754,7 @@ class PlexSim:
         if leaf == "arts":
             return self.section_arts(section_id, section)
         if leaf == "extras":
-            return self.section_extras(section, segments[4:])
+            return self.section_extras(section, segments[4:], query)
         if leaf == "collections":
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
@@ -6632,7 +6632,7 @@ class PlexSim:
         return self.bare_container(size=len(rows), Metadata=[self._artwork_row(r) for r in rows],
                                    _xml={"Metadata": "Photo"}, **fields)
 
-    def section_extras(self, section, rest):
+    def section_extras(self, section, rest, query=None):
         """`/library/sections/{id}/extras` and its one view, `/extras/all`.
 
         Measured on both servers: `/extras` is the library's container naming a single `all`
@@ -6643,6 +6643,45 @@ class PlexSim:
         """
         if rest not in ([], ["all"]):
             return ("error", 404, "plexsim: not found")
+        if rest == ["all"] and query:
+            # Cycle 29, measured on kids (1 extra) and zen (3,580), which agree on every
+            # value: this leaf runs the LISTING query, and it refuses what a listing
+            # refuses -- an unparseable `limit` (`abc`, empty, `1.5`), an unparseable or
+            # empty `type`, an unknown `sort` key, any `group=` at all, an unparseable
+            # `parent` -- each a 500. And it refuses FOUR keys the section grid accepts:
+            # `duration`, `resolution`, `mediaSize` and `file` are 500s here and 200s on
+            # `/all`, so the media columns are this leaf's own refusal rather than the
+            # column's. `extraType=`, `title=`, `audioLanguage=` and a good `limit` are
+            # 200s.
+            #
+            # plexsim built this leaf in cycle 15 as a fixed empty container -- true of
+            # its own libraries, which hold no clips -- so it took no `query` argument at
+            # all and answered `200 size 0` to every malformed request. A client whose
+            # Extras view sends a bad parameter reads that as "this library has no
+            # extras", which is fix 4's trap from the other side.
+            refusal = self._listing_refusals(query)
+            if refusal:
+                return refusal
+            raw_limit = query.get("limit")
+            if raw_limit is not None and not str(raw_limit).lstrip("-").isdigit():
+                return ("error", 500, "plexsim: server error")
+            if query.get("sort"):
+                _unused, unsupported = self._sorted([], query["sort"])
+                if unsupported:
+                    return ("error", 500,
+                            "plexsim: unsupported sort key %s" % unsupported)
+            typed = self._parsed_type(query)
+            if isinstance(typed, tuple):
+                return typed
+            if query.get("group") is not None:
+                return ("error", 500, "plexsim: server error")
+            raw_parent = query.get("parent")
+            if raw_parent is not None and not str(raw_parent).lstrip("-").isdigit():
+                return ("error", 500, "plexsim: server error")
+            for name, _value in query.get("_pairs") or []:
+                if name.rstrip("<>=!").strip() in ("duration", "resolution", "mediaSize",
+                                                   "file"):
+                    return ("error", 500, "plexsim: server error")
         is_show = section.get("type") == "show"
         fields = {
             "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
