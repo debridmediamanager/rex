@@ -19911,6 +19911,38 @@ def main():
               % (cleared_c29b, sorted(set(map(str, restored_c29b.values()))),
                  season_art_c29b, own_leaf_c29b, other_leaf_c29b, after_c29b))
 
+
+    # Cycle 29, measured on plexscratch by clearing the THUMB of a season that owned its
+    # poster and borrowed its backdrop from the show: the borrowed `art` is left exactly as
+    # it was, naming the SHOW's path at the show's own stamp, and the season's `thumb` falls
+    # back to the show's. plexsim re-versioned the borrowed field as the season's own -- a
+    # row claiming an image the server has none of -- which the artwork derivation then
+    # handed down to every episode.
+    seasons_c29f = [r_c29f.get("ratingKey") for r_c29f in
+                    (get(base, "/library/metadata/%s/children" % show)[1]
+                     .get("Metadata") or [])]
+    target_c29f = seasons_c29f[1] if len(seasons_c29f) > 1 else None
+    before_c29f = ((get(base, "/library/metadata/%s" % target_c29f)[1]
+                    .get("Metadata") or [{}])[0] if target_c29f else {})
+    borrowed_c29f = before_c29f.get("art")
+    if not target_c29f or not borrowed_c29f:
+        skip("a clear re-versions only the artwork the row owns", "season %s" % target_c29f)
+    elif str(borrowed_c29f).startswith("/library/metadata/%s/" % target_c29f):
+        skip("a clear re-versions only the artwork the row owns",
+             "the season owns its art: %s" % borrowed_c29f)
+    else:
+        request(base, "DELETE", "/library/metadata/%s/thumb" % target_c29f)
+        after_c29f = (get(base, "/library/metadata/%s" % target_c29f)[1]
+                      .get("Metadata") or [{}])[0]
+        check("a clear re-versions only the artwork the row owns",
+              after_c29f.get("art") == borrowed_c29f
+              and after_c29f.get("thumb") == after_c29f.get("parentThumb")
+              and request(base, "GET",
+                          "/library/metadata/%s/thumb" % target_c29f)[0] == 404,
+              "art %s (was %s) | thumb %s | parentThumb %s"
+              % (after_c29f.get("art"), borrowed_c29f, after_c29f.get("thumb"),
+                 after_c29f.get("parentThumb")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
