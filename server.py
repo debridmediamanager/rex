@@ -2190,8 +2190,38 @@ class PlexSim:
                     continue
             elif kind not in filters:
                 continue
+            # Cycle 30, measured on the copy: ONE consumer that stops reading must not
+            # reach the request path. A socket opened and never read from, plus repeated
+            # `PUT .../analyze` on plexsim: writes 1-103 took 0.001 s each, write 104 took
+            # 5.2 s and write 105 **20.0 s**, and a SECOND client's unrelated title edit
+            # timed out after 30 s while `/identity` still answered in a millisecond.
+            # Closing the dead socket drained 9,462 backlogged frames at once and writes
+            # went back to 0.001 s. The reference took the same shape at ten times the
+            # volume -- 4.5 MB of frames at a dead socket -- with every request between
+            # 0.019 and 0.031 s, and it stopped queueing at ~415 KB.
+            #
+            # So the reference BOUNDS the per-socket backlog and plexsim blocked in the
+            # request thread: `notify()` fanned out synchronously and each sink did a
+            # blocking `wfile.write()` under its own lock, with no queue, no drop and no
+            # timeout. A phone that sleeps, a throttled tab or a Wi-Fi drop with no RST
+            # stopped every write for everyone -- the Edit dialog, Refresh, Analyze, a
+            # scan, a playlist save -- and stopped the frames other clients were waiting
+            # on with them.
+            #
+            # plexsim DROPS where the reference buffers, which is the honest half of the
+            # rule it can implement: the sink is given a two-second budget and a consumer
+            # that cannot take a frame in that time loses the channel rather than the
+            # server losing its writers. A client that has stopped reading is not going to
+            # see the frames anyway, and it reconnects.
+            deadline = time.time() + 2.0
             try:
-                sink(kind, element, rows)
+                sink(kind, element, rows, deadline=deadline)
+            except TypeError:
+                # A sink that predates the budget (a test double, the log sink).
+                try:
+                    sink(kind, element, rows)
+                except Exception:
+                    self.drop_socket(sink)
             except Exception:
                 self.drop_socket(sink)
 
@@ -16126,7 +16156,14 @@ class Handler(BaseHTTPRequestHandler):
         sim = self.server.sim
         lock = threading.Lock()
 
-        def sink(kind, element, rows):
+        def sink(kind, element, rows, deadline=None):
+            # Cycle 30: a send TIMEOUT is what turns a stalled consumer into a dropped
+            # sink instead of a stalled writer. See `Sim.notify`.
+            if deadline is not None:
+                try:
+                    self.connection.settimeout(max(deadline - time.time(), 0.05))
+                except OSError:
+                    pass
             payload = json.dumps({"NotificationContainer": {
                 "type": kind, "size": len(rows), element: rows}}).encode()
             # One writer at a time: two notifications interleaving mid-frame
@@ -16255,7 +16292,13 @@ class Handler(BaseHTTPRequestHandler):
         everything = not filters and "filters" in urllib.parse.parse_qs(
             urllib.parse.urlparse(self.path).query, keep_blank_values=True)
 
-        def sink(kind, element, rows):
+        def sink(kind, element, rows, deadline=None):
+            # Cycle 30: the same send budget as the websocket sink.
+            if deadline is not None:
+                try:
+                    self.connection.settimeout(max(deadline - time.time(), 0.05))
+                except OSError:
+                    pass
             frames = "".join(
                 "event: %s\ndata: %s\n\n" % (kind, json.dumps({element: row}))
                 for row in rows)

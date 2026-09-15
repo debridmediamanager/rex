@@ -20846,6 +20846,42 @@ def main():
           and any(line_c30j.lower().startswith("date:") for line_c30j in headers_c30j),
           "%s" % headers_c30j)
 
+
+    # Cycle 30, measured on the copy: ONE notification consumer that stops reading must not
+    # reach the request path. On plexsim a socket opened and never read from turned write
+    # 104 into 5.2 s and write 105 into 20.0 s, and a second client's unrelated edit timed
+    # out after 30 s; the reference took ten times the volume with every request under
+    # 0.031 s. plexsim now gives a sink a two-second budget and drops the channel rather
+    # than the writers -- it drops where the reference buffers, which is the half it can
+    # implement, and a consumer that has stopped reading was not going to see the frames.
+    import socket as socket_c30l_mod
+    import base64 as base64_c30l_mod
+    import os as os_c30l_mod
+    host_c30l, _, port_c30l = base.split("//")[1].partition(":")
+    crlf_c30l = chr(13) + chr(10)
+    dead_c30l = socket_c30l_mod.create_connection((host_c30l, int(port_c30l or 80)),
+                                                  timeout=10)
+    dead_c30l.sendall((
+        "GET /:/websockets/notifications HTTP/1.1" + crlf_c30l + "Host: " + host_c30l
+        + crlf_c30l + "Upgrade: websocket" + crlf_c30l + "Connection: Upgrade" + crlf_c30l
+        + "Sec-WebSocket-Key: "
+        + base64_c30l_mod.b64encode(os_c30l_mod.urandom(16)).decode() + crlf_c30l
+        + "Sec-WebSocket-Version: 13" + crlf_c30l + crlf_c30l).encode())
+    time.sleep(1.0)
+    slowest_c30l = 0.0
+    try:
+        # The dead socket never reads. Every one of these writes frames the whole library.
+        for attempt_c30l in range(260):
+            started_c30l = time.time()
+            request(base, "PUT", "/library/sections/%s/analyze" % movie_section)
+            slowest_c30l = max(slowest_c30l, time.time() - started_c30l)
+    finally:
+        dead_c30l.close()
+    check("a stalled notification consumer cannot hang a write",
+          slowest_c30l < 3.0,
+          "slowest of 260 analyze writes with a dead consumer attached: %.2f s"
+          % slowest_c30l)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
