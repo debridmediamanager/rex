@@ -4164,8 +4164,19 @@ class PlexSim:
                 page, paged, start, total = self.page_window(rows, query)
                 fields = {"offset": start, "totalSize": total} if paged else {}
                 return self.container(Metadata=[_listing_row(r) for r in page], **fields)
-            source = sorted(catalog.items.values(), key=lambda r: int(r["ratingKey"]))
+            source = list(catalog.items.values())
             kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
+            if not kinds:
+                # Cycle 25, measured on plexscratch: the UNTYPED query lists collections
+                # as well, byte for byte the row `?type=18` answers, sorted into the rest
+                # by ratingKey -- a create takes the list from 14 rows to 15 and a delete
+                # takes it back. The section form lists them on neither server, so the
+                # gap is this query alone. plexsim's collections are not rows in
+                # `catalog.items` and this handler only ever looked there, so any client
+                # or script enumerating the server through `/library/all` never saw one.
+                for section in catalog.sections:
+                    source += self.library.collections(section["key"])
+            source = sorted(source, key=lambda r: int(r["ratingKey"]))
             if kinds:
                 wanted = ({"1": "movie", "2": "show", "3": "season", "4": "episode"}
                           .get(next(iter(kinds))) if len(kinds) == 1 else None)
@@ -4178,6 +4189,11 @@ class PlexSim:
                     return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             rows = []
             for row in self._limited(source, query):
+                if row.get("type") == "collection" or "collectionSort" in row:
+                    # Measured: the collection row here is the one `?type=18` answers,
+                    # unchanged -- not the light grid projection the other rows take.
+                    rows.append(_listing_row(row))
+                    continue
                 entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
                 if not kinds:
                     entry.pop("Media", None)

@@ -17325,6 +17325,48 @@ def main():
     check("the ITEM row keeps the number",
           detail_c25q.get("userRating") == 8.0, repr(detail_c25q.get("userRating")))
 
+
+    # Cycle 25, measured on plexscratch: the UNTYPED `/library/all` lists collections as
+    # well -- 14 rows to 15 on a create and back on a delete -- and the row is byte for
+    # byte the one `?type=18` answers, sorted in by ratingKey. The section form lists
+    # them on neither server, so the gap is this query alone. plexsim's collections are
+    # not rows in its catalog and this handler only looked there, so any client or script
+    # enumerating the server through `/library/all` never saw one.
+    def all_types_c25r():
+        rows_c25r = get(base, "/library/all")[1].get("Metadata") or []
+        return [(r_c25r.get("ratingKey"), r_c25r.get("type")) for r_c25r in rows_c25r]
+
+    before_c25r = all_types_c25r()
+    created_c25r = request(
+        base, "POST", "/library/collections?type=1&title=c25r&smart=0&sectionId=%s&uri=%s"
+        % (movie_section,
+           quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                 % (machine, movie))))
+    key_c25r = ((json.loads(created_c25r[1] or b"{}").get("MediaContainer", {})
+                 .get("Metadata") or [{}])[0]).get("ratingKey")
+    after_c25r = all_types_c25r()
+    typed_c25r = (get(base, "/library/all?type=18")[1].get("Metadata") or [])
+    untyped_row_c25r = next((r_c25r for r_c25r in
+                             get(base, "/library/all")[1].get("Metadata") or []
+                             if r_c25r.get("type") == "collection"), None)
+    request(base, "DELETE", "/library/collections/%s" % key_c25r)
+    removed_c25r = all_types_c25r()
+    check("the untyped /library/all gains the collection",
+          len(after_c25r) == len(before_c25r) + 1
+          and (str(key_c25r), "collection") in after_c25r
+          and not any(t_c25r == "collection" for _k_c25r, t_c25r in before_c25r),
+          "%d -> %d" % (len(before_c25r), len(after_c25r)))
+    check("the row is the one ?type=18 answers",
+          untyped_row_c25r is not None and typed_c25r
+          and untyped_row_c25r == next(r_c25r for r_c25r in typed_c25r
+                                       if r_c25r.get("ratingKey") == str(key_c25r)),
+          str(sorted(untyped_row_c25r or {})[:6]))
+    check("and it is sorted in by ratingKey",
+          after_c25r == sorted(after_c25r, key=lambda pair_c25r: int(pair_c25r[0])),
+          str(after_c25r[-3:]))
+    check("a delete takes it away again",
+          removed_c25r == before_c25r, "%d -> %d" % (len(after_c25r), len(removed_c25r)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
