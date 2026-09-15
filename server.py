@@ -10059,11 +10059,27 @@ class PlexSim:
 
         Measured, every one a 400 with nothing in the body: no parameters; a path
         that is not `/library/metadata/{id}` of a playable row (an unknown id, a
-        show, a season, `/children`, a section); a missing, non-numeric or
-        out-of-range `mediaIndex`; an out-of-range `partIndex` (a MISSING one is
-        fine); and a request whose profile, platform and device all name no client
-        profile. plexsim answered "Direct play OK." to every one of them, for things
-        it cannot play and for nothing at all.
+        show, a season, `/children`, a section); an OUT-OF-RANGE `mediaIndex`; and a
+        request whose profile, platform and device all name no client profile.
+        plexsim answered "Direct play OK." to every one of them, for things it
+        cannot play and for nothing at all.
+
+        Cycle 26, re-measured on kids and zen and CORRECTING the sentence this
+        docstring used to carry ("a missing, non-numeric or out-of-range
+        `mediaIndex`; an out-of-range `partIndex`"). Only the out-of-range
+        `mediaIndex` half survives:
+
+          * a MISSING, non-numeric, negative or empty `mediaIndex` is a 200 on both
+            references -- it falls back to media 0 -- where plexsim refused it. That
+            is not academic: python-plexapi's `getStreamURL` and several TV apps omit
+            the parameter, and against plexsim their decision was a hard 400 before
+            any profile question was asked.
+          * `partIndex` is never refused on either reference, at any value. Stated
+            plainly: neither reference holds a MULTI-PART Media, so the old reading
+            may have come from one; what is measured is that on a single-part Media
+            no `partIndex` refuses.
+          * a `path` carrying a QUERY STRING (`/library/metadata/1?x=1`) is a 200 on
+            both and was a 400 here.
         """
         def param(name):
             return query.get(name) or (headers or {}).get(name)
@@ -10071,17 +10087,13 @@ class PlexSim:
         if not any(param(name) in CLIENT_PROFILES for name in
                    ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device")):
             return None, ("error", 400, "plexsim: bad request")
-        match = re.search(r"/library/metadata/(\d+)/?$", query.get("path") or "")
+        match = re.search(r"/library/metadata/(\d+)/?(?:\?|$)", query.get("path") or "")
         row = self.catalog.items.get(int(match.group(1))) if match else None
         media = (row or {}).get("Media") or []
         if not media:
             return None, ("error", 400, "plexsim: bad request")
         index = query.get("mediaIndex") or ""
-        if not index.isdigit() or int(index) >= len(media):
-            return None, ("error", 400, "plexsim: bad request")
-        part = query.get("partIndex")
-        if part is not None and (not part.isdigit()
-                                 or int(part) >= len(media[int(index)].get("Part") or [])):
+        if index.isdigit() and int(index) >= len(media):
             return None, ("error", 400, "plexsim: bad request")
         return row, None
 
@@ -10099,7 +10111,11 @@ class PlexSim:
         item.pop("Image", None)
         if row.get("type") == "movie":
             item.pop("summary", None)
-        chosen = int(query.get("mediaIndex") or 0)
+        # Cycle 26: an unparseable, negative or empty `mediaIndex` falls back to
+        # media 0 on both references (and used to be a 400 here, so this path never
+        # saw one). `int()` on `abc` is a 500, and `int("-1")` selects the LAST media.
+        raw_index = str(query.get("mediaIndex") or "")
+        chosen = int(raw_index) if raw_index.isdigit() else 0
         media = []
         for position, source in enumerate(item.get("Media") or []):
             copy = {k: v for k, v in source.items() if k != "Part"}
