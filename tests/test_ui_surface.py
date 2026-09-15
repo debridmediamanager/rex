@@ -20592,6 +20592,32 @@ def main():
           and stored_c30c.get("TranscoderH264OptionsOverride") == "c30probe",
           "%s | stored %s" % (prefs_c30c, stored_c30c))
 
+
+    # Cycle 30, measured on plexscratch42 (the writable 1.42.2 copy) across five resume
+    # paths: none of them carries `Field`. The copy's movie carries a locked field on
+    # `/library/metadata/{id}` and none on `/library/onDeck`,
+    # `/library/sections/{id}/onDeck`, `/hubs/home/onDeck`, `/hubs/home/continueWatching`
+    # or `/hubs/sections/{id}/continueWatching/items` -- the lock list is the one block the
+    # full row loses on a resume list. plexsim's `/hubs/continueWatching/items` answered
+    # the whole row, `Field` and all.
+    request(base, "PUT", "/library/metadata/%s?title.locked=1" % movie)
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                         "&time=300000&X-Plex-Client-Identifier=c30d"
+                         "&X-Plex-Session-Identifier=c30d" % movie)
+    detail_c30d = "Field" in ((get(base, "/library/metadata/%s" % movie)[1]
+                               .get("Metadata") or [{}])[0])
+    resume_c30d = {}
+    for path_c30d in ("/hubs/continueWatching/items", "/hubs/home/continueWatching",
+                      "/library/onDeck"):
+        rows_c30d = get(base, path_c30d)[1].get("Metadata") or []
+        row_c30d = next((r_c30d for r_c30d in rows_c30d
+                         if str(r_c30d.get("ratingKey")) == str(movie)), None)
+        resume_c30d[path_c30d] = None if row_c30d is None else "Field" in row_c30d
+    check("no resume list carries Field",
+          detail_c30d is True
+          and all(value_c30d is False for value_c30d in resume_c30d.values()),
+          "detail %s | %s" % (detail_c30d, resume_c30d))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

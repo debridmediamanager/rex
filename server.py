@@ -4639,7 +4639,15 @@ class PlexSim:
                 "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
                 rows, query, kind="mixed", style="hero")])
         if route == "/hubs/continueWatching/items":
-            rows = [_listing_row(r) for r in self.resuming()]
+            # Cycle 30, measured on plexscratch42 (a writable 1.42.2 copy): no On Deck or
+            # Continue Watching list carries `Field`. The copy's movie has a locked field
+            # on `/library/metadata/{id}` and none on any of the five resume paths, this
+            # one included -- so the lock list is the one block the full row loses here.
+            rows = []
+            for row in self.resuming():
+                entry = _listing_row(row)
+                entry.pop("Field", None)
+                rows.append(entry)
             return self.hub_container(size=len(rows), Metadata=rows)
         if route == "/hubs/promoted":
             return self.promoted_hubs(query)
