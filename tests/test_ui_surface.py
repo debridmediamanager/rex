@@ -18570,6 +18570,56 @@ def main():
     check("and a 70 KB URL is a 400 too, not Python's 414",
           "400" in url_status_c27e(70000), url_status_c27e(70000))
 
+
+    # Cycle 27, nine malformed request lines sent at kids (1.43.4) and zen (1.42.2),
+    # which agree on every one: the request line's grammar is exactly
+    # `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF endings -- one space between
+    # the tokens and none after, an origin- or absolute-form target, and the two version
+    # digits unconstrained, so `HTTP/2.0` and `HTTP/9.9` are 200s where `HTTP/1` is a
+    # 400. An HTTP/0.9 line with no version at all is answered with a FULL HTTP/1.1
+    # response. plexsim took Python's parser: it answered 200 to four lines a real PMS
+    # refuses, Python's 505 page to `HTTP/2.0`, and a bare status-line-less body to the
+    # 0.9 form.
+    def line_status_c27f(line_c27f, ending_c27f=b"\r\n"):
+        sock_c27f = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c27f.settimeout(8)
+        sock_c27f.sendall(line_c27f + ending_c27f + b"Host: h" + ending_c27f
+                          + b"Connection: close" + ending_c27f + ending_c27f)
+        got_c27f = b""
+        try:
+            while len(got_c27f) < 60:
+                chunk_c27f = sock_c27f.recv(4096)
+                if not chunk_c27f:
+                    break
+                got_c27f += chunk_c27f
+        except Exception:
+            pass
+        sock_c27f.close()
+        return got_c27f.split(b"\r\n", 1)[0].decode("latin-1") if got_c27f else "NO-RESPONSE"
+
+    refusals_c27f = {
+        "two spaces": line_status_c27f(b"GET  /identity HTTP/1.1"),
+        "trailing space": line_status_c27f(b"GET /identity HTTP/1.1 "),
+        "tab separators": line_status_c27f(b"GET\t/identity\tHTTP/1.1"),
+        "asterisk form": line_status_c27f(b"OPTIONS * HTTP/1.1"),
+        "LF only": line_status_c27f(b"GET /identity HTTP/1.1", b"\n"),
+        "HTTP/1": line_status_c27f(b"GET /identity HTTP/1"),
+    }
+    check("a real PMS 400s every malformed request line",
+          all("400" in v_c27f for v_c27f in refusals_c27f.values()), str(refusals_c27f))
+    accepted_c27f = {
+        "HTTP/2.0": line_status_c27f(b"GET /identity HTTP/2.0"),
+        "HTTP/9.9": line_status_c27f(b"GET /identity HTTP/9.9"),
+        "HTTP/0.9": line_status_c27f(b"GET /identity"),
+    }
+    check("and answers HTTP/2.0, HTTP/9.9 and an HTTP/0.9 line with a full 200",
+          all(v_c27f.startswith("HTTP/1.1 200") for v_c27f in accepted_c27f.values()),
+          str(accepted_c27f))
+    check("while a lower-case method gets no response at all",
+          line_status_c27f(b"get /identity HTTP/1.1") == "NO-RESPONSE",
+          line_status_c27f(b"get /identity HTTP/1.1"))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
