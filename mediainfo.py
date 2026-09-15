@@ -198,11 +198,18 @@ def _audio_codec_label(row):
     return codec.upper()
 
 
+# Cycle 24: the dispositions a VIDEO stream carries, measured on zen.
+_VIDEO_FLAGS = ("default", "forced", "original", "dub")
+
+
 def _channel_label(row):
     """The layout's own name (`5.1(side)` prints `5.1`, `2.1` stays `2.1`), else the count."""
     layout = row.get("audioChannelLayout")
     if layout:
-        base = layout.split("(")[0]
+        # Cycle 24, measured on zen: a layout ffprobe cannot name reads
+        # `8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)`, and splitting on the bracket left the
+        # SPACE behind -- `8 channels ` composed `(EAC3 8 channels )` with a double space.
+        base = layout.split("(")[0].strip()
         return {"mono": "Mono", "stereo": "Stereo"}.get(base, base)
     channels = row.get("channels")
     if not channels:
@@ -459,7 +466,9 @@ def _video_stream(stream, stream_id):
             "DOVIRPUPresent": bool(dovi.get("rpu_present_flag")),
             "DOVIVersion": "%s.%s" % (dovi.get("dv_version_major", 1), dovi.get("dv_version_minor", 0)),
         })
-    row.update(_disposition(stream, ("default", "forced", "original")))
+    # Cycle 24, measured on zen's 13,681 video Streams: 88 carry `dub` and none carries
+    # `comment` or `hearingImpaired`, so the video set is these four.
+    row.update(_disposition(stream, _VIDEO_FLAGS))
     # A video stream carries its own language and title from its tags, measured on 17 and
     # 10 streams on fun; plexsim set neither.
     tags = stream.get("tags") or {}
