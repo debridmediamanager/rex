@@ -9580,6 +9580,21 @@ class PlexSim:
             # (the container has them), and `hubKey` names the shelf's own rows as
             # `/library/metadata/<keys>` -- absent on an empty shelf. plexsim sent
             # the section pair on every shelf and made `hubKey` a copy of `key`.
+            #
+            # Cycle 28, measured on zen: a shelf that advertises `random="1"` really is
+            # a random SAMPLE of its whole key set, in random order -- not the head of
+            # it. `movie.topunwatched.1`'s 30 rows sit at positions 26 to 579 of the
+            # 583-row key listing and are not monotonic, and `tv.startwatching.2` and
+            # `tv.toprated.2` are the same. A NON-random shelf is exactly the head of
+            # its key, in that listing's order: 29 of 32 non-empty shelves matched byte
+            # for byte at `count=40`, and the three that did not are these.
+            #
+            # plexsim advertised the flag and answered the deterministic sorted head,
+            # identically on every request, so "Top Unwatched" would show the same six
+            # titles for ever. Its own catalog is too small for that to be visible --
+            # a sample of a two-row set is the set -- which is why the rule is zen's.
+            if extra.get("random") and len(rows) > 1:
+                rows = random.sample(list(rows), len(rows))
             built = self.hub(identifier, shelf_title, [_listing_row(r) for r in rows],
                              count=count, type=kind, key=key, context=context,
                              style="shelf", **extra)
