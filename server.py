@@ -13813,6 +13813,73 @@ class Handler(BaseHTTPRequestHandler):
             code, message, explain = 400, None, None
         return BaseHTTPRequestHandler.send_error(self, code, message, explain)
 
+    # The version token a real PMS takes. Measured on kids (1.43.4) and zen (1.42.2):
+    # `HTTP/2.0` and even `HTTP/9.9` are answered 200, so the minor and major are not
+    # checked at all -- only the SHAPE is. `HTTP/1` with no minor is a 400.
+    _VERSION = re.compile(rb"^HTTP/\d\.\d$")
+
+    def _request_line_ok(self):
+        """The request LINE's own grammar, measured on kids and zen.
+
+        Cycle 27 sent nine malformed request lines at both references. They agree on
+        every one, and plexsim answered five of them differently:
+
+          | request line                    | a real PMS        | plexsim was     |
+          | `GET  /identity HTTP/1.1` (2 SP)| 400               | 200             |
+          | `GET /identity HTTP/1.1 ` (SP)  | 400               | 200             |
+          | `GET\t/identity\tHTTP/1.1`      | 400               | 200             |
+          | `OPTIONS * HTTP/1.1`            | 400               | 200             |
+          | LF line endings, no CR          | 400               | 200             |
+          | `GET /identity HTTP/2.0`        | 200               | Python's 505    |
+          | `GET /identity HTTP/1`          | 400               | Python's 400+HTML|
+          | `GET /identity` (HTTP/0.9)      | full 1.1 response | a bare body     |
+          | `get /identity HTTP/1.1`        | NO RESPONSE       | 500             |
+
+        So the grammar is exactly `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF,
+        one space between the three tokens and none after, an ORIGIN- or absolute-form
+        target (asterisk-form is refused), and the two version digits unconstrained.
+        A lower-case method is the one case that is not a status at all: both references
+        send nothing and hold the connection to their own 20-second idle close. plexsim
+        closes it at once instead -- the same silence, sooner -- because holding a
+        thread for twenty seconds per malformed line is a self-inflicted denial of
+        service, and that difference is recorded rather than emulated.
+        """
+        # `send_error` before the base parser has run would write no status line at
+        # all: `default_request_version` is HTTP/0.9, under which Python omits it.
+        self.request_version = "HTTP/1.1"
+        self.command = getattr(self, "command", None) or ""
+        self.requestline = (getattr(self, "requestline", None)
+                            or self.raw_requestline.decode("latin-1").strip())
+        line = self.raw_requestline
+        if line.endswith(b"\r\n"):
+            text = line[:-2]
+        elif line.endswith(b"\n"):
+            self.send_error(400)          # LF with no CR
+            return False
+        else:
+            text = line
+        parts = text.split(b" ")
+        if len(parts) == 2 and all(parts):
+            return True                    # HTTP/0.9; the version is fixed up above
+        if len(parts) != 3 or not all(parts) or b"\t" in text:
+            self.send_error(400)
+            return False
+        method, target, version = parts
+        if not self._VERSION.match(version) or target == b"*":
+            self.send_error(400)
+            return False
+        if method != method.upper():
+            # Measured: no response at all, on both references. Nothing is written and
+            # the connection goes.
+            self.close_connection = True
+            return False
+        if version not in (b"HTTP/1.0", b"HTTP/1.1"):
+            # Any other `HTTP/x.y` is answered as 1.1 rather than refused, so the line
+            # is rewritten before Python sees it -- `BaseHTTPRequestHandler` answers
+            # 505 above 1.1 and a real PMS answers the request.
+            self.raw_requestline = b"%s %s HTTP/1.1\r\n" % (method, target)
+        return True
+
     def parse_request(self):
         """Refuse a malformed request header the way a real PMS does -- measured.
 
@@ -13827,8 +13894,16 @@ class Handler(BaseHTTPRequestHandler):
         that family -- HANDOVER 3.3's "~41 KB" total -- is a COUNT and not a size: 100
         header lines pass and the 101st is a 400, whatever the bytes add up to.
         """
+        if not self._request_line_ok():
+            return False
         if not BaseHTTPRequestHandler.parse_request(self):
             return False
+        if self.request_version == "HTTP/0.9":
+            # A real PMS answers an HTTP/0.9 request line (`GET /identity` with no
+            # version at all) with a FULL `HTTP/1.1 200 OK` response -- measured on both
+            # references. Python's 0.9 handling writes the body with no status line,
+            # which is a response no client since 1996 can read.
+            self.request_version = "HTTP/1.0"
         if len(self.headers.items()) > 100:
             self.send_error(400)
             return False
