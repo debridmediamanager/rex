@@ -19395,6 +19395,58 @@ def main():
                   and movies_c28h[0] not in shelf_c28h,
                   "shelf %s | key %s -> %s" % (shelf_c28h, hub_c28h.get("key"), key_c28h))
 
+
+    # Cycle 28, measured on zen: a shelf that advertises `random="1"` is a random SAMPLE
+    # of its whole key set, in random order, not the head of it -- `movie.topunwatched`'s
+    # 30 rows sit at positions 26 to 579 of its 583-row key listing, non-monotonically,
+    # and the same for `tv.startwatching` and `tv.toprated`. A NON-random shelf is exactly
+    # the head of its key: 29 of 32 non-empty shelves matched byte for byte at
+    # `count=40`, and the three that did not are these. plexsim advertised the flag and
+    # answered the deterministic sorted head on every request, so "Top Unwatched" would
+    # show the same six titles for ever.
+    #
+    # The fixture has no random shelf with rows in it, so the check MAKES one: the
+    # `movie.topunwatched` key is `?unwatched=1&audienceRating>=7.0`, so rating the three
+    # movies and leaving them unwatched fills it. Three rows is enough to see an order
+    # change and not enough to see a sample, which is why the assertion is about the
+    # ORDER varying between requests -- the sampling half is zen's and is recorded there.
+    for key_c28i in [r_c28i.get("ratingKey") for r_c28i in
+                     (get(base, "/library/sections/%s/all" % movie_section)[1]
+                      .get("Metadata") or [])]:
+        request(base, "PUT", "/library/metadata/%s?audienceRating.value=8.5" % key_c28i)
+        request(base, "GET", "/:/unscrobble?key=%s"
+                             "&identifier=com.plexapp.plugins.library" % key_c28i)
+
+    def shelf_orders_c28i(identifier_c28i, tries_c28i=10):
+        seen_c28i, flag_c28i, rows_c28i = set(), None, 0
+        for attempt_c28i in range(tries_c28i):
+            hub_c28i = next(
+                (h_c28i for h_c28i in
+                 (get(base, "/hubs/sections/%s?count=40&q=%d"
+                      % (movie_section, attempt_c28i))[1].get("Hub") or [])
+                 if identifier_c28i in (h_c28i.get("hubIdentifier") or "")), None)
+            if hub_c28i is None:
+                return None, None, 0
+            flag_c28i = hub_c28i.get("random")
+            order_c28i = tuple(r_c28i.get("ratingKey")
+                               for r_c28i in (hub_c28i.get("Metadata") or []))
+            rows_c28i = len(order_c28i)
+            seen_c28i.add(order_c28i)
+        return seen_c28i, flag_c28i, rows_c28i
+
+    orders_c28i, flagged_c28i, count_c28i = shelf_orders_c28i("topunwatched")
+    steady_c28i, _f_c28i, _n_c28i = shelf_orders_c28i("recentlyadded")
+    if not orders_c28i or count_c28i < 3:
+        skip("a random shelf really is random",
+             "the topunwatched shelf has %d row(s)" % count_c28i)
+    else:
+        check("a random shelf really is random, and a plain one is steady",
+              bool(flagged_c28i) and len(orders_c28i) > 1
+              and steady_c28i is not None and len(steady_c28i) == 1,
+              "random gave %d distinct orders of %d rows; the plain shelf gave %d"
+              % (len(orders_c28i), count_c28i,
+                 len(steady_c28i) if steady_c28i else -1))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
