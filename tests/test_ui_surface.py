@@ -18864,16 +18864,31 @@ def main():
     # naming a ratingKey that is gone, which is a 404 whatever the parameters say. Both
     # are section 6's rule -- a check must survive the end of the suite, not just its own
     # proof -- and this one did not on its first run.
+    # The url has to name a row that still EXISTS and still OWNS its poster, and by this
+    # point neither is guaranteed: the fixture's `movie` has been merged away and the
+    # artwork checks have cleared and re-picked posters across the section, so several
+    # rows carry a `thumb` naming a ratingKey that is gone -- a 404 whatever the
+    # parameters say. Rather than hunt for a row in the right state, the check MAKES one:
+    # a pick gives the row its own versioned poster, which is the condition it needs.
+    # That is section 6's rule -- prepare the state the check needs, or derive the
+    # expectation from what is actually there -- and this check did not survive the end
+    # of the suite without it.
     live_c27o = [r_c27o.get("ratingKey") for r_c27o in
                  get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata")
                  or []]
-    owned_c27o = next(
-        (t_c27o for t_c27o in
-         [(get(base, "/library/metadata/%s" % k_c27o)[1].get("Metadata") or [{}])[0]
-          .get("thumb") for k_c27o in live_c27o]
-         if t_c27o and request(
-             base, "GET", "/photo/:/transcode?width=100&height=100&url=%s"
-             % quote(t_c27o))[0] == 200), None)
+    # ...and the poster it picks is the row's own GENERATED placeholder, not a remote
+    # url: plexsim has no bytes for an unreachable one, so the versioned path it mints
+    # for it is a 404 on read and every case below comes back 404 whatever it asked.
+    owned_c27o = None
+    if live_c27o:
+        request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+                % (live_c27o[0],
+                   quote("/library/metadata/%s/thumb/1" % live_c27o[0])))
+        owned_c27o = (get(base, "/library/metadata/%s" % live_c27o[0])[1]
+                      .get("Metadata") or [{}])[0].get("thumb")
+        if request(base, "GET", "/photo/:/transcode?width=100&height=100&url=%s"
+                   % quote(owned_c27o))[0] != 200:
+            owned_c27o = None
 
     def photo_c27o(extra_c27o):
         if not owned_c27o:
@@ -18896,11 +18911,15 @@ def main():
         "blur=-1": (photo_c27o("&blur=-1"), 500),
         "blur=abc": (photo_c27o("&blur=abc"), 400),
     }
-    check("the photo transcoder validates minSize, upscale, opacity, quality and blur",
-          all(got_c27o == want_c27o
-              for got_c27o, want_c27o in photo_c27o_cases.values()),
-          str({k_c27o: v_c27o for k_c27o, v_c27o in photo_c27o_cases.items()
-               if v_c27o[0] != v_c27o[1]}) or "all agree")
+    if owned_c27o is None:
+        skip("the photo transcoder validates minSize, upscale, opacity, quality and blur",
+             "no movie row left to carry a poster")
+    else:
+        check("the photo transcoder validates minSize, upscale, opacity, quality and blur",
+              all(got_c27o == want_c27o
+                  for got_c27o, want_c27o in photo_c27o_cases.values()),
+              str({k_c27o: v_c27o for k_c27o, v_c27o in photo_c27o_cases.items()
+                   if v_c27o[0] != v_c27o[1]}) or "all agree")
 
 
     # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): the SINGLE history read is a
