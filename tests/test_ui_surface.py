@@ -16335,6 +16335,32 @@ def main():
           all(v_c22n == (200, 0) for v_c22n in bodies_c22n.values())
           and set(playlists_c22n.values()) == {404},
           "%s | playlists path %s" % (bodies_c22n, playlists_c22n))
+
+    # Cycle 22, measured on kids, zen AND plexscratch: `/resources/{anything}` is a real
+    # 200 answering an empty container -- `1`, `99999` and `abc` alike, and on plexscratch
+    # every verb answers the same -- while `/search/voice` with NO parameters is a 400 that
+    # becomes a 404 once a `query=` is given. plexsim 404'd both unconditionally, and it
+    # answered the plug-in dispatcher's listing to `POST`/`PUT /search`, where all three
+    # references refuse with a 400: `/search` is a real routed endpoint, not an unknown
+    # single segment.
+    codes_c22o = {}
+    for label_c22o, verb_c22o, path_c22o in (
+            ("resources 1", "GET", "/resources/1"),
+            ("resources 99999", "GET", "/resources/99999"),
+            ("resources abc", "GET", "/resources/abc"),
+            ("voice bare", "GET", "/search/voice"),
+            ("voice query", "GET", "/search/voice?query=matrix"),
+            ("search POST", "POST", "/search"),
+            ("search PUT", "PUT", "/search")):
+        status_c22o, body_c22o, _ = request(base, verb_c22o, path_c22o)
+        codes_c22o[label_c22o] = status_c22o
+    _, resources_c22o, _ = get(base, "/resources/1")
+    check("/resources/{id} is an empty 200 and /search validates its writers",
+          codes_c22o == {"resources 1": 200, "resources 99999": 200, "resources abc": 200,
+                         "voice bare": 400, "voice query": 404,
+                         "search POST": 400, "search PUT": 400}
+          and resources_c22o.get("size") == 0,
+          "%s | /resources/1 size %r" % (codes_c22o, resources_c22o.get("size")))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

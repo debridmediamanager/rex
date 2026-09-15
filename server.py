@@ -3172,6 +3172,14 @@ class PlexSim:
         # answering; cycle 17 landed the fallthrough for `/butler` and `/devices`
         # alone. `/log` is excluded because it validates its parameters first, so every
         # verb there is the same 400.
+        if segments[:1] == ["search"] and len(segments) == 1 \
+                and method not in ("GET", "HEAD"):
+            # Cycle 22, measured on kids, zen and plexscratch: `/search` is a real
+            # ROUTED endpoint and refuses its writers with a 400, where plexsim fell
+            # through to the plug-in dispatcher below and answered a listing -- which
+            # reads to a client as an accepted write. It has to come BEFORE that
+            # fallthrough, which is what makes every other single segment answer.
+            return ("error", 400, "plexsim: bad request")
         if (len(segments) == 1 and method not in ("GET", "HEAD")
                 and (method, route) not in SINGLE_SEGMENT_WRITERS):
             return self.bare_container(**plugin_container(route))
@@ -3624,6 +3632,19 @@ class PlexSim:
             # The networked-logging endpoint a companion client posts to. Measured
             # 200 with an empty body on both verbs; plexsim 404'd it.
             return ("empty", 200)
+        if segments[:1] == ["resources"] and len(segments) == 2:
+            # Cycle 22, measured on kids, zen and plexscratch: `/resources/{anything}`
+            # is a real 200 answering an empty container -- `1`, `99999` and `abc`
+            # alike -- and on plexscratch every verb answers the same. plexsim 404'd
+            # it, so a client probing a resource id read "no such server" where a real
+            # PMS says "nothing here".
+            return self.bare_container(size=0)
+        if segments[:1] == ["search"] and len(segments) == 2 \
+                and segments[1] == "voice" and not query.get("query"):
+            # Measured on all three: `/search/voice` with no parameters is a 400, and a
+            # 404 once a `query=` is given -- so the path exists and validates. plexsim
+            # 404'd it unconditionally.
+            return ("error", 400, "plexsim: bad request")
         if route == "/resources":
             # Measured: an empty container, not a 404. It is the device-resource
             # list a companion client reads, and plexsim has no devices of its own.
