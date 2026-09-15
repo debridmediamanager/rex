@@ -210,19 +210,61 @@ def _channel_label(row):
     return {1: "Mono", 2: "Stereo", 6: "5.1", 8: "7.1"}.get(channels, "%dch" % channels)
 
 
-def _extended_title(title, parts):
-    """`title (parts it does not carry)`. A part is carried when its FIRST word, or one of
-    its stand-ins, is one of the title's words: a language's two-letter tag (`BTM ES` carries
-    Español), `2.0` for Stereo and `AVC` for H.264."""
+def _alnum(text):
+    """A token folded to ASCII lower-case letters and digits, for the raw-name fallback."""
+    return re.sub(r"[^0-9a-z]", "", str(text or "").translate(_ASCII_LOWER))
+
+
+def _carried(title, part, stand_ins=(), raw=()):
+    """Whether the title already carries this part.
+
+    Cycle 24, fitted on zen's 105,558 real Streams and held out on the 46 recorded probes:
+    a part is carried when its FIRST word, or one of its stand-ins, is one of the title's
+    words -- `2.0` for Stereo and `1.0` for Mono, `AVC` for H.264, `Signs`/`Songs` for
+    Forced, `CC`/`HI` for SDH, `HDR`/`Dolby` for the dynamic range -- OR when the part or a
+    `raw` alias matches a title word with every non-alphanumeric character folded away,
+    which is what makes `H264` carry `H.264` and `aac` carry `HE-AAC`.
+    """
     words = {word.translate(_ASCII_LOWER) for word in _TITLE_SEPARATORS.split(title) if word}
-    left = []
-    for part, stand_ins in parts:
-        if not part:
-            continue
-        first = next((word for word in _TITLE_SEPARATORS.split(part) if word), "")
-        if any(word and word.translate(_ASCII_LOWER) in words for word in (first,) + stand_ins):
-            continue
-        left.append(part)
+    folded = {_alnum(word) for word in _TITLE_SEPARATORS.split(title) if word}
+    first = next((word for word in _TITLE_SEPARATORS.split(part or "") if word), "")
+    if any(word and word.translate(_ASCII_LOWER) in words
+           for word in (first,) + tuple(stand_ins)):
+        return True
+    return any(candidate and candidate in folded
+               for candidate in [_alnum(part)] + [_alnum(one) for one in raw])
+
+
+def _language_carried(title, language, tag):
+    """Whether the title already carries the LANGUAGE part, which has its own rule.
+
+    Cycle 24, and it is the rule two earlier attempts could not find. Cycle 22 fitted "the
+    whole name, not the first word" to zen and it broke the recorded corpus; the first-word
+    rule alone fits the corpus and misses 179 of zen's rows. Both are explained by: the name
+    is carried only when it is a SINGLE token that is one of the title's words, with any
+    TRAILING PARENTHESISED GROUP stripped from the name first -- or when its tag is.
+    So `Русский` in `Русский (Full) - Кубик в Кубе` and `English (Weeb)` in
+    `English (Some-Stuffs)` are carried (single token after the strip), while `norsk bokmål`
+    and `Tiếng Việt` in their own titles are NOT (two tokens, and no single word can match).
+    """
+    words = {word.translate(_ASCII_LOWER) for word in _TITLE_SEPARATORS.split(title) if word}
+    base = re.sub(r"\s*\([^)]*\)\s*$", "", str(language or "")).strip()
+    if base and len([w for w in _TITLE_SEPARATORS.split(base) if w]) == 1 \
+            and base.translate(_ASCII_LOWER) in words:
+        return True
+    return bool(tag) and str(tag).translate(_ASCII_LOWER) in words
+
+
+def _extended_title(title, parts, keep=()):
+    """`title (parts it does not carry)`, each part tested by `_carried`.
+
+    `keep` names parts already decided -- the LANGUAGE, whose rule is `_language_carried`
+    and NOT the generic first-word one. Routing it through `_carried` again drops every
+    multi-token name whose first word is a title word, which is the case `_language_carried`
+    exists to get right.
+    """
+    left = [part for part, stand_ins, raw in parts
+            if part and (part in keep or not _carried(title, part, stand_ins, raw))]
     return "%s (%s)" % (title, " ".join(left)) if left else title
 
 
@@ -237,9 +279,17 @@ def _subtitle_codec_label(row):
     none. One witness only (the copy is a real PMS 1.43.4; no sidecar subtitle was
     found on the 1.42.2 server to confirm it against).
     """
+    # Cycle 24, measured on zen (107 streams): `eia_608` prints as `Closed Captions`, and
+    # it is the plain CODEC label, so it reaches the plain display title too.
     codec = str(row.get("codec") or "").upper()
+    if codec == "EIA_608":
+        codec = "Closed Captions"
     if codec and str(row.get("key") or "").startswith("/library/streams/"):
-        return "%s External" % codec
+        # Cycle 24: the suffix is the stream's own `providerTitle`, and `External` is the
+        # fallback -- zen's 11 sidecars carry none and read `(SRT External)`, while the
+        # recorded corpus has one carrying `OpenSubtitles` and reading `(English SRT
+        # OpenSubtitles)`. Cycle 17 measured the fallback alone, on one server.
+        return "%s %s" % (codec, row.get("providerTitle") or "External")
     return codec
 
 
@@ -264,10 +314,13 @@ def stream_titles(row, stand_in=None):
         codec = _video_codec_label(row)
         plain = " ".join(part for part in (resolution, dynamic) if part)
         row["displayTitle"] = plain
-        if title:
+        if title is not None:
             avc = ("AVC",) if str(row.get("codec") or "").lower() == "h264" else ()
+            # Cycle 24: `HDR`/`Dolby` stand in for the dynamic range, and the codec is also
+            # matched against the RAW ffprobe name with punctuation folded (`H264`/`H.264`).
             row["extendedDisplayTitle"] = _extended_title(
-                title, [(resolution, ()), (dynamic, ()), (codec, avc)])
+                title, [(resolution, (), ()), (dynamic, ("HDR", "Dolby"), ()),
+                        (codec, avc, (row.get("codec") or "",))])
         else:
             row["extendedDisplayTitle"] = "%s (%s)" % (plain, codec) if codec else plain
     elif kind == 2:
@@ -276,11 +329,18 @@ def stream_titles(row, stand_in=None):
         channels = _channel_label(row)
         row["displayTitle"] = "%s (%s)" % (language or "Unknown",
                                            " ".join(part for part in (codec, channels) if part))
-        if title:
-            row["extendedDisplayTitle"] = _extended_title(title, [
-                (language, (row.get("languageTag") or "", stand_in or "")),
-                (codec, ()),
-                (channels, ("2.0",) if channels == "Stereo" else ())])
+        if title is not None:
+            # Cycle 24: `1.0` stands in for Mono as `2.0` does for Stereo, and the audio
+            # codec is matched against the raw ffprobe name too (`aac` carries `HE-AAC`).
+            stereo = ("2.0",) if channels == "Stereo" else \
+                ("1.0",) if channels == "Mono" else ()
+            parts = [(codec, (), (row.get("codec") or "",)), (channels, stereo, ())]
+            language_part = ()
+            if language and not _language_carried(title, language,
+                                                  row.get("languageTag") or ""):
+                language_part = (stand_in or language,)
+                parts.insert(0, (language_part[0], (), ()))
+            row["extendedDisplayTitle"] = _extended_title(title, parts, keep=language_part)
         else:
             row["extendedDisplayTitle"] = row["displayTitle"]
     elif kind == 3:
@@ -290,10 +350,16 @@ def stream_titles(row, stand_in=None):
         codec = _subtitle_codec_label(row)
         plain = " ".join(part for part in (language or "Unknown", forced, sdh) if part)
         row["displayTitle"] = plain
-        if title:
-            row["extendedDisplayTitle"] = _extended_title(title, [
-                (language, (row.get("languageTag") or "", stand_in or "")),
-                (forced, ()), (sdh, ()), (codec, ())])
+        if title is not None:
+            # Cycle 24: `Signs`/`Songs` stand in for Forced and `CC`/`HI` for SDH.
+            parts = [(forced, ("Signs", "Songs"), ()), (sdh, ("CC", "HI"), ()),
+                     (codec, (), (row.get("codec") or "",))]
+            language_part = ()
+            if language and not _language_carried(title, language,
+                                                  row.get("languageTag") or ""):
+                language_part = (stand_in or language,)
+                parts.insert(0, (language_part[0], (), ()))
+            row["extendedDisplayTitle"] = _extended_title(title, parts, keep=language_part)
         else:
             row["extendedDisplayTitle"] = "%s (%s)" % (plain, codec) if codec else plain
     return row

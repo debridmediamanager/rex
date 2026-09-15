@@ -481,5 +481,72 @@ def main():
     return 0 if passed == total and total else 1
 
 
+@check("cycle 24: the extended title's measured stand-ins and language rule", once=True)
+def extended_title_model(mediainfo):
+    """Cycle 24, fitted on zen's 105,558 real Streams and held out on the 46 recorded probes.
+
+    The LANGUAGE part has its own rule and it is the one two earlier attempts could not
+    find: the name is carried only when it is a SINGLE token that is one of the title's
+    words, with any TRAILING PARENTHESISED GROUP stripped from the name first -- so
+    `Русский` in `Русский (Full) - ...` and `English (Weeb)` in `English (Some-Stuffs)` are
+    carried, while `norsk bokmål` and `Tiếng Việt` in their own titles are not. Cycle 22
+    fitted "the whole name" to zen and it broke the recorded corpus; the first-word rule
+    alone fits the corpus and missed 179 of zen's rows. Beside it, five more stand-ins:
+    `Signs`/`Songs` for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the
+    dynamic range, and the raw ffprobe codec name (so `aac` carries `HE-AAC` and `H264`
+    carries `H.264`). `eia_608` prints `Closed Captions` in BOTH titles, and a sidecar's
+    codec suffix is its `providerTitle`, with `External` the fallback.
+
+    Scored end to end this moves zen's misses from 613 of 105,558 to 174, and the recorded
+    corpus from 3 of 642 to 0.
+    """
+    rows = []
+
+    def built(row):
+        out = dict(row)
+        mediainfo.stream_titles(out)
+        return out
+
+    # the language rule, in both directions
+    for title, language, code, want in (
+            ("norsk bokmål", "norsk bokmål", "nor", "norsk bokmål (norsk bokmål SRT)"),
+            ("Tiếng Việt", "Tiếng Việt", "vie", "Tiếng Việt (Tiếng Việt SRT)"),
+            ("dansk", "Dansk", "dan", "dansk (SRT)"),
+            ("English (Some-Stuffs)", "English (Weeb)", "eng", "English (Some-Stuffs) (SRT)"),
+            ("Русский (Full) - Кубик в Кубе", "Русский", "rus",
+             "Русский (Full) - Кубик в Кубе (SRT)")):
+        out = built({"streamType": 3, "codec": "srt", "language": language,
+                     "languageCode": code, "title": title})
+        rows.append((title, want, out.get("extendedDisplayTitle")))
+
+    # the five stand-ins, and eia_608 in both titles
+    out = built({"streamType": 3, "codec": "srt", "language": "English", "title": "Signs & Songs",
+                 "forced": True})
+    # The FORCED part is carried by `Signs`; the language is not, so it stays. 120 rows on
+    # zen are titled `Signs & Songs...` with `forced` set and no "forced" in the title.
+    rows.append(("Forced <- Signs", "Signs & Songs (English SRT)",
+                 out.get("extendedDisplayTitle")))
+    out = built({"streamType": 3, "codec": "srt", "language": "English",
+                 "title": "English [CC]", "hearingImpaired": True})
+    rows.append(("SDH <- CC", "English [CC] (SRT)", out.get("extendedDisplayTitle")))
+    out = built({"streamType": 2, "codec": "flac", "language": "English",
+                 "audioChannelLayout": "mono", "title": "Commentary 1.0"})
+    rows.append(("Mono <- 1.0", "Commentary 1.0 (English FLAC)",
+                 out.get("extendedDisplayTitle")))
+    out = built({"streamType": 3, "codec": "eia_608", "language": "English"})
+    # `Closed Captions` is the CODEC LABEL, so it lands wherever the codec does. (zen's
+    # stored `displayTitle` carries the codec because those rows were read as Plex Web --
+    # the recorded client-title rule -- so the catalog form to compare is the extended one.)
+    rows.append(("eia_608", "English (Closed Captions)", out.get("extendedDisplayTitle")))
+    out = built({"streamType": 3, "codec": "srt", "language": "English",
+                 "key": "/library/streams/9", "providerTitle": "OpenSubtitles"})
+    rows.append(("sidecar providerTitle", "English (SRT OpenSubtitles)",
+                 out.get("extendedDisplayTitle")))
+    out = built({"streamType": 3, "codec": "srt", "language": "English",
+                 "key": "/library/streams/9"})
+    rows.append(("sidecar fallback", "English (SRT External)", out.get("extendedDisplayTitle")))
+    return rows
+
+
 if __name__ == "__main__":
     sys.exit(main())
