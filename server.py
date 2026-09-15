@@ -4508,6 +4508,19 @@ class PlexSim:
             return self.item_hubs(segments[2], segments[3], query)
         if route == "/hubs/items":
             return self.hub_items(query)
+        if route in ("/hubs/continueWatching", "/hubs/continueWatching/items"):
+            # Cycle 28, measured on kids and zen over eleven values: these two VALIDATE
+            # `contentDirectoryID` where `/hubs/promoted` takes anything. At least one
+            # comma-separated member must be a POSITIVE INTEGER, so `01`, `999`,
+            # `999,998`, `abc,1`, `1,abc` and `1,` are 200s and `abc`, `0`, `-1`, `1.5`
+            # and a space are 404s -- the plain `text/html` 404, not a container.
+            # A section the server does not hold is fine; it is the SHAPE that is
+            # checked. CLAUDE.md said `contentDirectoryID` "scopes and VALIDATES
+            # `/hubs/search` alone"; this is the second path that validates it.
+            raw = query.get("contentDirectoryID")
+            if raw is not None and not any(
+                    part.isdigit() and int(part) > 0 for part in str(raw).split(",")):
+                return ("error", 404, "plexsim: not found")
         if route == "/hubs/continueWatching":
             # Measured: this hub's own identifier is `continueWatching` (not the
             # home screen's `home.continue`), its key is its OWN items endpoint,
