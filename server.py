@@ -9746,6 +9746,45 @@ class PlexSim:
     # The tag hubs, and which of a row's tag lists each one searches.
     SEARCH_TAG_HUBS = {"actor": "Role", "director": "Director", "genre": "Genre"}
 
+    # Cycle 28, measured on kids (1.43.4), zen (1.42.2) and plexscratch, identically:
+    # `searchTypes=` is `/library/search`'s own filter, and these six tokens are the
+    # whole vocabulary. They are EXACT and case-sensitive and are not trimmed --
+    # `Movies`, ` movies`, `movies ` and `zzz` each select NOTHING -- a comma list is a
+    # UNION, an unrecognised token inside one is simply dropped (`zzz,movies` answers
+    # exactly what `movies` answers), and an empty value or no parameter at all selects
+    # everything. `collections`, `playlists` and `tags` are NOT tokens: they behave like
+    # `zzz`, while the rows they name are selected by the library they live in.
+    #
+    # What each token owns, row by row: `movies` the movie rows, the movie library's tag
+    # rows and a playlist of movies; `tv` the show, season and episode rows, the show
+    # library's tag rows and a playlist of episodes; `people` the person tag rows (a
+    # `tagType` of 4, 5, 6 or 7); and `otherVideos` the movie library's TAG rows without
+    # its movies -- an Other Videos library is a type-1 library too, so the tag half
+    # follows `librarySectionType` where the metadata half follows the library's own
+    # kind. `music` and `photos` name libraries plexsim cannot hold.
+    #
+    # It belongs to this endpoint alone: `/hubs/search` answers the same seventeen hubs
+    # to every value, `movies` and `zzz` included.
+    SEARCH_TYPE_TOKENS = ("movies", "tv", "otherVideos", "music", "photos", "people")
+
+    def search_type_selects(self, tokens, kind, row):
+        """Whether one `searchTypes=` value selects this hit. See SEARCH_TYPE_TOKENS."""
+        if tokens is None:
+            return True
+        if kind in self.SEARCH_TAG_HUBS and kind != "genre":
+            return "people" in tokens
+        if kind == "movie":
+            return "movies" in tokens
+        if kind in ("show", "season", "episode"):
+            return "tv" in tokens
+        sections = self.search_row_sections(kind, row)
+        families = set()
+        for section_id in sections:
+            section = self.catalog.section(section_id) or {}
+            families |= ({"tv"} if section.get("type") == "show"
+                         else {"movies", "otherVideos"})
+        return bool(tokens & families)
+
     def _score(self, rank):
         """A relevance score in the shape the reference prints it.
 
@@ -10145,12 +10184,34 @@ class PlexSim:
         text = query.get("query")
         if not text:
             return ("error", 400, "plexsim: bad request")
-        limit = int(query.get("limit", 10) or 10)
+        # Cycle 28, measured on kids and zen, identically: `limit=` here caps the WHOLE
+        # result list and not each hub -- `limit=3` answers three rows of the ten a bare
+        # zen query answers, and kids' `firefly` answers the show and two of its three
+        # episodes. plexsim capped each hub's own list, so `limit=3` on a query matching
+        # two kinds answered six.
+        #
+        # And it refuses in TWO ways, as `/hubs/search?limit=` does: a value it cannot
+        # parse -- `abc`, an empty one, `1.5` -- is a **400**, and one that parses but is
+        # not a positive count -- `0`, `-1` -- is a **500**; `01` is fine. plexsim
+        # answered 500, 200, 500, 200 and 200 to those five.
+        raw_limit = query.get("limit")
+        if raw_limit is not None:
+            if not str(raw_limit).lstrip("-").isdigit():
+                return ("error", 400, "plexsim: bad request")
+            if int(raw_limit) <= 0:
+                return ("error", 500, "plexsim: internal error")
+        limit = int(raw_limit) if raw_limit is not None else 10
+        # The filter runs BEFORE the cap: zen's `searchTypes=tv&limit=100` answers 100
+        # rows of the type it names where the bare form's 100 are mostly movies.
+        wanted = query.get("searchTypes")
+        tokens = set(str(wanted).split(",")) if wanted else None
         typed, tags = self.search_matches(text, limit)
         needle = text.strip().lower()
         results = []
         for kind, _title in self.SEARCH_HUBS:
             for row in typed.get(kind, []):
+                if not self.search_type_selects(tokens, kind, row):
+                    continue
                 score = 0.95 if str(row.get("title") or "").lower() == needle \
                     else 0.73 if str(row.get("title") or "").lower().startswith(needle) \
                     else 0.33
@@ -10161,13 +10222,18 @@ class PlexSim:
                 # See `collection_matches` -- cycle 15's note was the copy's empty
                 # collection list, not a rule.
                 for row in self.collection_matches(needle):
+                    if not self.search_type_selects(tokens, kind, row):
+                        continue
                     score, shown = self._flat_search_tag(row)
                     results.append({"score": score, "Directory": shown})
             for entry in tags.get(kind, []):
+                if not self.search_type_selects(tokens, kind, entry["row"]):
+                    continue
                 # Cycle 28: the flat form drops the reason triple and the row's own
                 # score. See `_flat_search_tag`.
                 score, shown = self._flat_search_tag(self._tag_result(entry, kind))
                 results.append({"score": score, "Directory": shown})
+        results = results[:limit]
         return self.bare_container(size=len(results), SearchResult=results)
 
     # The search providers /search lists beside its results, measured verbatim.
