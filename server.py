@@ -11673,7 +11673,22 @@ class PlexSim:
         # season and episode tile after a change -- locked nothing and pushed nothing.
         stamp = int(time.time())
         for name in ("thumb", "art", "theme"):
-            if row.get(name):
+            # Cycle 27: only the artwork this row OWNS re-versions. A field the row
+            # BORROWS carries the owner's path verbatim, and a pick does not make it the
+            # row's own -- measured on the copy, where season 7's `art` was still
+            # `/library/metadata/6/art/<show stamp>` after its own poster was picked, and
+            # corroborated on zen, where an episode's `art` names its SEASON while its
+            # `grandparentArt` names the show at a different stamp.
+            #
+            # plexsim re-versioned all three onto the picking row, so a season that
+            # borrowed the show's backdrop came away claiming
+            # `/library/metadata/<season>/art/<stamp>` -- a path only the owner serves,
+            # which is cycle 16's "an artwork path is a 200 only on the row that OWNS the
+            # image" from the other side. The picked field is exempt: picking it IS what
+            # makes the row the owner.
+            owned = str(row.get(name) or "").startswith(
+                "/library/metadata/%s/" % row["ratingKey"])
+            if row.get(name) and (name == field or owned):
                 row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
         row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
         row["updatedAt"] = stamp

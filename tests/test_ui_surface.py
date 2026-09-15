@@ -19024,6 +19024,38 @@ def main():
           "%s -> %s/%s" % (one_c27s, get(base, "/library/people/%s" % one_c27s)[0],
                            get(base, "/library/people/%s/media" % one_c27s)[0]))
 
+
+    # Cycle 27, measured on the copy and corroborated on zen: a pick re-versions only the
+    # artwork the row OWNS. Season 7's `art` was still the SHOW's path after its own
+    # poster was picked, and zen's episode 11115 carries `art` naming its SEASON beside a
+    # `grandparentArt` naming the show at a different stamp -- a borrowed field keeps the
+    # owner's path, stamp and all. plexsim re-versioned `thumb`, `art` and `theme` onto
+    # the picking row whatever it owned, so a season that borrowed the show's backdrop
+    # came away claiming a path only the show serves.
+    seasons_c27t = [s_c27t for s_c27t in
+                    (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                     .get("Metadata") or []) if s_c27t.get("type") == "season"]
+    borrower_c27t = next(
+        (s_c27t for s_c27t in seasons_c27t
+         if s_c27t.get("art") and not str(s_c27t["art"]).startswith(
+             "/library/metadata/%s/" % s_c27t.get("ratingKey"))), None)
+    if borrower_c27t is None:
+        skip("a pick re-versions only the artwork the row owns", "no borrowing season")
+    else:
+        before_c27t = borrower_c27t.get("art")
+        request(base, "PUT", "/library/metadata/%s/poster?url=%s"
+                % (borrower_c27t["ratingKey"], quote("https://example.invalid/c27t.jpg")))
+        after_c27t = (get(base, "/library/metadata/%s" % borrower_c27t["ratingKey"])[1]
+                      .get("Metadata") or [{}])[0]
+        check("a pick re-versions only the artwork the row owns",
+              after_c27t.get("art") == before_c27t
+              and str(after_c27t.get("thumb") or "").startswith(
+                  "/library/metadata/%s/" % borrower_c27t["ratingKey"])
+              and after_c27t.get("thumb") != borrower_c27t.get("thumb"),
+              "art %s -> %s | thumb %s -> %s"
+              % (before_c27t, after_c27t.get("art"),
+                 borrower_c27t.get("thumb"), after_c27t.get("thumb")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
