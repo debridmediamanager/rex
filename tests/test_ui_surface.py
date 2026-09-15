@@ -19358,6 +19358,43 @@ def main():
                       for shape_c28g_v in paths_c28g.values()),
               "detail %s | %s" % (detail_c28g, paths_c28g))
 
+
+    # Cycle 28, measured on zen and kids at `count=40`: a non-`random` shelf's rows are
+    # exactly the head of its OWN `key` listing, in that listing's order -- 29 of 32
+    # non-empty shelves matched byte for byte, and the three that did not are the
+    # `random="1"` ones. plexsim's Recently Watched shelf broke it: the key it publishes
+    # is `?sort=lastViewedAt:desc&unwatched=0&viewOffset=0` and its builder honoured
+    # neither clause, so a row in progress sat on the shelf and then vanished when the
+    # user clicked the shelf's own See All chevron.
+    ident_c28h = ("X-Plex-Client-Identifier=c28h&X-Plex-Session-Identifier=c28h"
+                  "&X-Plex-Product=Plex+Web&X-Plex-Platform=Chrome")
+    movies_c28h = [r_c28h.get("ratingKey") for r_c28h in
+                   (get(base, "/library/sections/%s/all" % movie_section)[1]
+                    .get("Metadata") or [])]
+    if len(movies_c28h) < 2:
+        skip("a shelf's rows are the head of its own key listing", "need two movies")
+    else:
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=300000&%s" % (movies_c28h[0], ident_c28h))
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                             "&%s" % (movies_c28h[1], ident_c28h))
+        hub_c28h = next(
+            (h_c28h for h_c28h in
+             (get(base, "/hubs/sections/%s" % movie_section)[1].get("Hub") or [])
+             if "recentlyviewed" in (h_c28h.get("hubIdentifier") or "")), None)
+        if hub_c28h is None:
+            skip("a shelf's rows are the head of its own key listing", "no shelf")
+        else:
+            shelf_c28h = [r_c28h.get("ratingKey")
+                          for r_c28h in (hub_c28h.get("Metadata") or [])]
+            key_c28h = [r_c28h.get("ratingKey") for r_c28h in
+                        (get(base, hub_c28h.get("key"))[1].get("Metadata") or [])]
+            check("a shelf's rows are the head of its own key listing",
+                  shelf_c28h == key_c28h[:len(shelf_c28h)]
+                  and movies_c28h[1] in shelf_c28h
+                  and movies_c28h[0] not in shelf_c28h,
+                  "shelf %s | key %s -> %s" % (shelf_c28h, hub_c28h.get("key"), key_c28h))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
