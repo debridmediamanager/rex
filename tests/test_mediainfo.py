@@ -548,5 +548,34 @@ def extended_title_model(mediainfo):
     return rows
 
 
+@check("cycle 24: the language table, the video dub flag and an unnamed channel layout",
+       once=True)
+def measured_smalls(mediainfo):
+    """Cycle 24, measured on zen's 105,558 real Streams.
+
+    `languages.json` lacked THIRTEEN codes zen's streams actually use, each named in its own
+    language with its 639-1 tag. A VIDEO stream carries `dub` (88 of 13,681) and never
+    `comment` or `hearingImpaired`, so its disposition set is default/forced/original/dub.
+    And a layout ffprobe cannot name -- `8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)` -- left a
+    trailing SPACE behind when the bracket was split off, composing `(EAC3 8 channels )`.
+    """
+    rows = []
+    for code, name, tag in (("zul", "isiZulu", "zu"), ("kat", "\u10e5\u10d0\u10e0\u10d7\u10e3\u10da\u10d8", "ka"),
+                            ("nno", "norsk nynorsk", "nn"), ("mdr", "Mandar", "mdr"),
+                            ("cha", "Chamorro", "ch")):
+        got = mediainfo.LANGUAGES.get(code)
+        rows.append(("languages.json %s" % code, [name, tag], list(got) if got else None))
+    built = {"streamType": 2, "codec": "eac3", "language": "English",
+             "audioChannelLayout": "8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)"}
+    mediainfo.stream_titles(built)
+    rows.append(("unnamed layout", "English (EAC3 8 channels)",
+                 built.get("extendedDisplayTitle")))
+    # `getattr` with a default, not an attribute read: a check that raises proves nothing
+    # about its other clauses, which is cycle 19's lesson.
+    rows.append(("video dub is a disposition", True,
+                 "dub" in (getattr(mediainfo, "_VIDEO_FLAGS", ()) or ())))
+    return rows
+
+
 if __name__ == "__main__":
     sys.exit(main())
