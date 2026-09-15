@@ -3009,7 +3009,7 @@ class PlexSim:
     META_TYPE_NAMES = {1: "movie", 2: "show", 3: "season", 4: "episode"}
 
     @staticmethod
-    def _meta_active(meta, active):
+    def _meta_active(meta, active, spec=None):
         """Which `Meta/Type` row carries `active="1"`.
 
         Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: the flag
@@ -3022,6 +3022,30 @@ class PlexSim:
         """
         for entry in meta.get("Type") or []:
             entry["active"] = entry.get("type") == active
+            # Cycle 23, measured on kids and zen over seven library/type pairs and four
+            # `sort=` spellings: the active SORT is marked only inside the Type that
+            # matches the asked type -- a movie library asked `type=2` marks NOTHING --
+            # and which one is marked follows the `sort=` parameter. plexsim served the
+            # flags the captured fixture stores, so a Seasons or Episodes grid lit
+            # "Title" while its rows were in broadcast order. This is a different
+            # attribute from the `Type` row's own `active` above, which cycle 19 fixed.
+            for sort_row in entry.get("Sort") or []:
+                sort_row.pop("active", None)
+                sort_row.pop("activeDirection", None)
+            if not entry["active"]:
+                continue
+            wanted, _, direction = str(spec or "").partition(":")
+            for sort_row in entry.get("Sort") or []:
+                if not spec:
+                    if not sort_row.get("default"):
+                        continue
+                elif sort_row.get("key") != wanted:
+                    continue
+                sort_row["active"] = True
+                sort_row["activeDirection"] = (direction.split(":")[0] if direction
+                                               else sort_row.get("defaultDirection")
+                                               or sort_row.get("default") or "asc")
+                break
         return meta
 
     def section_meta(self, section_id, section_type, advanced=False):
@@ -5838,7 +5862,8 @@ class PlexSim:
                 asked = str(query.get("type") or "")
                 extra["Meta"] = self._meta_active(
                     meta, self.META_TYPE_NAMES.get(int(asked)) if asked.isdigit()
-                    else (section.get("type") or "movie"))
+                    else (section.get("type") or "movie"),
+                    spec=query.get("sort"))
         return self.listing_container(section_id, section, rows, query=query, **extra)
 
     # The subsets a library's pivot bar opens, and the title2 each one carries.
