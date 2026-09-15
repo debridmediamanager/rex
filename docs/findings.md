@@ -6872,6 +6872,251 @@ the `ended` frame's 100 and the guid reaching a read, both of which this cycle f
   frame and nothing else". It is a full run of its own, with its own wrapper and its own
   per-task stepping.
 
+#### The twenty-seventh pass — the HTTP envelope below the API, and the serialiser dimension
+
+Two hunts and a driver round. The read hunt re-ran the founding instrument — a fresh
+official-client capture through the harness, replayed against plexsim — and the write hunt swept
+a dimension cycle 26 opened by accident: **which projections have a serialiser of their own, and
+what TYPE every JSON value is**. The driver spent its half below the API entirely, on the HTTP
+envelope that every one of those requests arrives in, which twenty-six cycles had taken from
+Python.
+
+**Six of this cycle's findings are in the request itself, and a real PMS refuses where plexsim
+answered.** Bisected on kids (1.43.4) and zen (1.42.2), which agree to the byte on every one:
+
+- the **URL** is bounded at exactly **32768** bytes and 32769 is a 400 — the URL and not the
+  request LINE, because the boundary does not move when the method does (GET, HEAD and DELETE
+  all break at the same length). plexsim inherited Python's 64 KiB request-line limit, so every
+  URL between 32 KiB and 64 KiB was a 200 where a real PMS refuses, and a longer one came back
+  `414 Request-URI Too Long` — a status neither reference sends anywhere. A comma-joined
+  `/library/metadata/<keys>` from a large play queue is the request that reaches this length in
+  practice.
+- the **header caps are 1024 and 4096 bytes and 100 LINES**. The first two were BRACKETED in
+  cycle 16 (1024 passes, 1100 fails) and are now bisected: 1024 and 4096 pass, 1025 and 4097 are
+  400s, so plexsim's constants were right to the byte. The third is not a size at all —
+  **HANDOVER 3.3's "~41 KB total" is REFUTED**: 100 header lines pass and the 101st is a 400
+  whatever they weigh, and 200 KB of headers in fifty lines is a 200. The old figure is the same
+  cap measured with ~410-byte headers. plexsim refused at a HUNDRED, one short, because Python's
+  reader counts the blank terminator line, and answered `431`.
+- **the request LINE has a grammar**, measured over nine malformed lines that both references
+  answer identically: exactly `METHOD SP target SP HTTP/<digit>.<digit>` with CRLF endings. Two
+  spaces, a trailing space, tab separators, asterisk-form (`OPTIONS *`) and LF-only endings are
+  each a **400**, and plexsim answered **200** to all five. The two version digits are
+  unconstrained — `HTTP/2.0` and even `HTTP/9.9` are answered 200, where plexsim sent Python's
+  505 page — while `HTTP/1` with no minor is a 400. An HTTP/0.9 line with no version at all is
+  answered with a **full HTTP/1.1 response**; plexsim wrote a bare body with no status line.
+  And a lower-case method (`get /identity HTTP/1.1`) gets **no response at all** on both
+  references, where plexsim answered 500.
+- **an unparseable `Content-Length` is ignored and a negative one is a 500.** `abc` is a 200 on
+  a GET on both references and on a POST on the copy, with no body read; `-1` is a 500. plexsim
+  called `int()` on the raw header, so `abc` raised inside the handler thread and the socket
+  closed with nothing written, and `-1` reached `rfile.read(-1)`, which blocks until the peer
+  hangs up. Both read to a client as a server that hung up mid-request.
+
+**And `/photo/:/transcode` validates five more parameters**, swept over eleven values of each of
+seven parameters — 77 requests, both references agreeing on every one. `minSize` and `upscale`
+are BOOLEANS (`0`, `1`, `01` and `+1` pass; `2`, `-1`, `100`, `1.5`, an empty value and `abc` are
+400s); `opacity` and `quality` take any integer, `-1` and `100` included, and refuse only a value
+that does not parse; `blur` is the same except that a negative one is a **500**. plexsim took
+anything for all five, so a client sending a malformed tile URL got an image where a real PMS
+refuses the request. Not emulated and recorded instead: the 500s a real PMS answers for a width
+or height that scales the image to nothing (`width=1&height=100` on a 1000×1500 poster is a 500
+where `width=2` is a 200, and `height=-1` is a 200 where `width=-1` is a 500) — those depend on
+the image's own aspect ratio and on a resizer plexsim does not have.
+
+**The session row's `Player` is the one element there that is not alphabetical, and its
+`profile` is not a constant.** Cycle 26 recorded a session `Role` as `filter, actor, id, role,
+tag, tagKey, thumb` and left it in §3.3 as the one element its alphabetical rule did not
+explain. Re-measured on the copy with a row carrying seven tag types, every one of them IS
+plainly alphabetical — `Role` is `filter, id, role, tag, tagKey, thumb`, and there is no `actor`
+attribute on a `Role` at all. **That entry is closed and plexsim was already right.** What is
+not alphabetical is `Player`: its string-valued attributes come first, alphabetically, and its
+non-string ones follow, alphabetically —
+
+    address device machineIdentifier model platform platformVersion product profile state
+    title version | local relayed secure userID
+
+— on two witnesses, a Plex Web client sending six strings and a Roku one sending eleven.
+
+`Player.profile` was recorded in cycle 10 as the constant `Web`, from a copy only Plex Web had
+ever driven. Swept over all 78 names in `CLIENT_PROFILES`, it is the profile the server
+RESOLVED, and 23 of the 78 report another profile's NAME: every browser but Firefox and Edge
+answers `Web`, `Roku` answers `Roku-7.x`, `Opera TV App` answers `HTML TV App`, the three
+`Mystery` entries and `PlayStation 3 App` answer `PlayStation 4 App` or `Xbox 360 App`, nine of
+the eleven versioned iOS device profiles collapse onto two, and
+`Plex Home Theater-RaspberryPi` answers **`Raspberry PI`** — a name in no file-name list at all,
+which is the tell that what is reported is the profile's own `name` and not the file it was
+loaded from. The resolution runs `X-Plex-Client-Profile-Name`, then `X-Plex-Platform`, then
+`X-Plex-Device`; the first whose value names a profile wins and a value that names none falls
+THROUGH (`X-Plex-Platform: nonsense` beside `X-Plex-Device: Roku` resolves `Roku-7.x`); each
+name is read from the header when the header is present, even when it is empty, and from the
+query otherwise; and the attribute is OMITTED when nothing matches.
+
+**A borrowed artwork field is DERIVED from its owner.** Cycle 25 measured the half where the
+field is already there and plexsim built exactly that, which left three things stale, all
+measured on the copy over a show poster pick, an episode and a season poster DELETE and a season
+poster pick, reading the show, both seasons and two episodes back after each:
+
+- clearing a row's own poster does not leave it with none — it falls back to its PARENT's, which
+  is the same path its own `parentThumb` already names (season 7's `thumb` became the show's,
+  episode 8's became the season's). plexsim dropped the field, so the tile drew nothing where a
+  real PMS draws the parent's poster. Cycle 23's "the field gone" was measured on a MOVIE, which
+  has no parent to borrow from.
+- a pick on a season **CREATES** `parentThumb` on episodes that had none. That was HANDOVER
+  3.3's open question — "whether a cascade CREATES a borrowed artwork field" — and it does.
+- a pick on a show moves a BORROWING season's own `thumb` (kids' unmatched season 11 is such a
+  row) and every episode's own `art` to the new stamp. plexsim moved `grandparentArt` and left
+  `art` at the old stamp, so the same image had two names at two versions on one row.
+
+And the other half, caught as a regression by the cycle-14 cascade check inside this cycle's own
+patch: when the OWNER no longer has that artwork at all, the borrower's copy goes with it.
+
+**The same rule from the other side: a pick re-versions only the artwork the row OWNS.** Season 7
+on the copy still carried `/library/metadata/6/art/<show stamp>` after its own poster was picked,
+and zen corroborates it at scale -- episode 11115 carries `art` naming its SEASON (11114) beside
+a `grandparentArt` naming the SHOW (11113) at a different stamp, so a borrowed field keeps the
+owner's path, stamp and all. plexsim re-versioned `thumb`, `art` and `theme` onto the picking row
+whatever it owned, so a season that borrowed the show's backdrop came away claiming
+`/library/metadata/<season>/art/<stamp>` -- a path only the owner serves, which is cycle 16's
+"an artwork path is a 200 only on the row that OWNS the image" from the other side. The picked
+field is the exemption: picking it is what makes the row the owner.
+
+(A check of the same sweep: **zen's 3,391 episodes with no `art` at all are exactly the ones
+whose SHOW has none either**, so cycle 20's "handed down borrowed or not" is not contradicted by
+them -- there is nothing to hand down.)
+
+**Which projections have a serialiser of their own.** Cycle 23 established that a real PMS's
+JSON key order IS its XML order and cycle 22 swept 2,994 paths for attribute order; cycle 26
+then found `/status/sessions`, the one path neither sweep could reach. The write hunt swept
+45,436 (path, element, attribute) triples across 253 paths in both formats, three servers at a
+time, and reported only where kids and zen agree and plexsim differs. Seven landed:
+
+- **`durationTotal` and `storageTotal` are JSON STRINGS** on `/library/sections/{id}/all?
+  includeStorage=1` — `"10031"` on kids, `"1440171"` and `"573936917"` on zen — where plexsim
+  sent integers. The XML is identical either way, which is why cycle 19 recorded that the pair
+  exists here and not what type it is. A client whose model declares them `String` rejects the
+  whole grid row whenever the option is on.
+- **the bare `/system/agents` carries the modern agents' 45 `Language` rows and no
+  `MediaType`.** Cycle 21 recorded the opposite — a `MediaType` per media type and no `Language`
+  — and that is true of the LEGACY plug-in agents alone: `com.plexapp.agents.imdb` is 33
+  Language + 1 MediaType bare and 33 + 0 typed, while all six `tv.plex.agents.*` rows are 45 + 0
+  in BOTH forms, identically on 1.43.4 and 1.42.2. plexsim holds the modern agents only, so it
+  stripped exactly the rows the Agents page reads to build each agent's language selector and
+  handed it a lone `MediaType`.
+- **a modern `Agent` row leads `identifier, name, hasPrefs, id`**, where plexsim emitted its
+  builder's dict order. Cycle 19 parked "the Agent element's attribute order" on the LEGACY
+  rows' own pairs (`hasPrefs < identifier < primary`), which the rows plexsim actually emits do
+  not carry.
+- **`?includeDetails=1` pages its rows as ONE sequence.** 20 `Directory` + 1 `Type` + 8
+  `FieldType` = 29, so a 20-row window is `size=20 totalSize=29 offset=0` and `Start=20` hands
+  back the Type and the eight FieldTypes as rows 20–28. plexsim's generic pager takes
+  `totalSize` from the longest list, so it reported `totalSize=20` beside a `size` of 29 and
+  answered nothing at all past the twentieth row.
+- **a `Sort` row leads with `active, activeDirection`** and a **`Hub` puts `random` before
+  `style`**. Neither element had a bucket in `_ATTR_ORDER`, so plexsim emitted the flags it adds
+  last, last.
+- **the SINGLE history read is a third projection with an order of its own** — `historyKey,
+  librarySectionID, title, [grandparentTitle,] type, [index, parentIndex,]
+  originallyAvailableAt, viewedAt, accountID, deviceID, viewType`. Cycle 18 measured the FIELD
+  SET and plexsim built it correctly, then `_split` re-sorted it as an ordinary `Video[movie]`.
+- **three more empty elements are written PAIRED**: an empty `Meta/Type` row, an empty `Related`
+  block, and the `/media/providers` `Home` `Directory`, which carries no children at all and is
+  `<Directory hubKey="/hubs" title="Home"></Directory>` on both references while every other
+  childless `Directory` on the surface self-closes. The last resolves part of the question cycle
+  22 left explicitly OPEN for `Directory`, and `hubKey` is the signal cycle 19 already uses to
+  tell a provider row from a `/library/sections` one.
+
+**And the founding instrument, re-run after nineteen cycles, found three things no
+hand-built probe had.** The read hunt drove the official web client through plexlab across four
+passes -- the filter bar and sort menu opened *and used* on both library types, the `...` menu on
+all four row types, the Edit dialog and its four tabs, search typed one keystroke at a time, the
+Dashboard, fifteen settings panes, the playlist and collection pages -- 603 GET flows, 385 unique
+server requests, 122 after `replay.py`'s dedup. Replayed at the reference itself first: **121 of
+122 clean**, the one difference live bandwidth drift, so the tool is sound. Against plexsim: 17
+clean, 105 differing, 101 of them catalog content or a 1.43.4-vs-1.42.2 version difference and
+one already recorded. The three that were real:
+
+- **`/library/all/top` refuses every type but 1, 2 and 4.** Both references answer an empty 200
+  to ANY type number that parses -- 0, 3, 8, 9, 10, 12, 13, 15, 18, 20 and -1 included -- and a
+  400 only to a value that does not (`abc`, an empty one, `1.5`). Swept over 17 values on both.
+  It is not academic: the web client's Dashboard issues movie, show and ARTIST inside one
+  `all([...])` under a single try/catch, so the `type=8` refusal rejects the whole batch and
+  **the entire Top Played panel fails, movies and TV with it**, on a server with no music
+  library to answer for in the first place.
+- **`/media/providers/metadata` and `/media/providers/metadata/group` were never routed.** The
+  Settings -> Metadata Agents pane reads both immediately before `/system/agents?mediaType=`,
+  and both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where plexsim answered
+  404. They are the MODERN agent-provider tables -- a different surface from `/system/agents`,
+  whose legacy half is deliberately not implemented -- so plexsim now answers them from the four
+  modern agents it already holds, in zen's shape: a `MetadataType` child per media type the
+  provider serves, `tv.plex.agents.none` carrying an EMPTY `uri`, and a group row per provider.
+- **No person tag carried a `tagKey`.** Every `Director`, `Writer`, `Role` and `Producer` on a
+  detail row carries a 24-hex plex.tv person id on both references, as do the rows of
+  `/library/tags?type=4|5|6|7`; `Genre` and `Country` carry none and a `Collection` carries a
+  `guid` instead. The web client's Cast & Crew link builder reads
+  `/library/people/${tag.tagKey}` for any server that is not plex.tv's cloud, so **every person
+  tile on every preplay page linked to `/library/people/undefined`**. plexsim has no source for
+  plex.tv's own person ids, so the value is MINTED -- the first 24 hex of a sha1 of the name,
+  deterministic and stable -- and `/library/people/{key}` resolves the minted form exactly as a
+  real PMS resolves both the numeric id and the `tagKey`. The shape is measured; the value is a
+  substitute and says so.
+
+A fourth came out of checking the first: **the Dashboard's Top Played shelf breaks a tie on the
+MOST RECENT view, descending, not on the ratingKey.** zen's four seven-play episodes come back
+19766, 19767, 19763, 19762 -- the first pair last viewed at 1788088024 and the second at
+1788088000 -- which is neither ratingKey nor `addedAt` order, and the row does not carry the
+number (`lastViewedAt` is absent on every one of them). It is the HISTORY's own time, which is
+the same place `globalViewCount` comes from: 12, 11, 9, 9, 7, 7, 7, 7 against 12, 11, 9, 9, 7, 7,
+7, 7 history rows. kids agrees on its three movies. plexsim sorted on `(-plays, ratingKey)`, so
+a tied group came back least-recently-watched first.
+
+The same hunt answered a question §7 has carried since cycle 7: **all nine `conformance.py`
+failures are one cause** -- the Range reads on `Part.key` answering `502 plexsim: debrid resolve
+failed`, because the fixture's Real-Debrid links are account-scoped and the harness runs with
+`RD_TOKEN=dummy`. None is a python-plexapi limitation and none is a server difference; sections
+1-7 and 9 pass 29 of 29. And a three-way python-plexapi sweep (463 probes) found **zero** probes
+that error on kids and not on plexsim.
+
+### Measured and not acted on
+
+- **A lower-case method holds the connection** on both references until their own 20-second idle
+  close. plexsim closes it at once — the same silence, sooner — because holding a thread for
+  twenty seconds per malformed request line is a self-inflicted denial of service.
+- **The `width`/`height` 500s of `/photo/:/transcode`** (above): a resizer plexsim does not have.
+- **`PROFILE_NAMES` is single-witness by construction.** Neither read-only reference can be given
+  a playback session, so the copy (1.43.4) is the only instrument, and plexsim reports 1.42.2.
+- **The `Player` string/non-string split has a second model that fits** the same fifteen
+  attributes: a fixed bucket list. The type split is the one that also answers for an attribute
+  neither witness carried.
+- **Conditional request headers are ignored by a real PMS.** A part read carries an `ETag` and a
+  `Last-Modified`, and `If-None-Match`, `If-Modified-Since`, `If-Range` and `If-Match` all answer
+  the same 206 — never a 304 or a 412. Measured on kids; plexsim does not implement them either,
+  so there is nothing to change. Recorded so the dimension is not re-swept.
+- **`Part.accessible`/`exists` are gated on `checkFiles=1`** on both references and plexsim sends
+  them always. Re-confirmed and left alone: it is the cycles-1–6 deliberate deviation.
+- **REFUTED:** HANDOVER 3.3's "~41 KB" total header limit (above) and cycle 26's session `Role`
+  attribute order (above).
+- **The `mediaCount` column on a parent is per LEAF, and a MAX reading is refuted.** HANDOVER
+  3.3 carried it as unwitnessed because the only question ever asked was the `=1`/`>>1` split,
+  which is also the Duplicates split. Asking for a VALUE separates them: on zen's shows
+  `mediaCount=2` is 30, `=3` is 10 and `>>2` is 17 against 44 for `>>1` -- under a max-over-leaves
+  reading those three are disjoint and sum to 47, more shows than have a duplicated leaf at all.
+  The per-leaf "any leaf matches" reading plexsim already implements is the one that fits. No
+  code change; the entry is closed.
+- **Three surfaces swept three-way this cycle with NO difference**, recorded so they are not
+  swept again: `/library/tags`'s `type=` grammar (18 values -- any integer including `0`, `-1`,
+  `99` and `01` is a 200, `abc`, an empty value, `1.5` and `+1` are 400s, and no `type` at all is
+  a 400, identical on all three); the `/library/sections/{id}/prefs` and
+  `/library/sections/prefs` family (10 forms, including an unknown `agent`, a missing `type` and
+  an unknown section id); and the connection envelope beyond the request line (a GET with a
+  body, a duplicated or conflicting `Content-Length`, `Transfer-Encoding: chunked`, HTTP/1.0
+  keep-alive, two pipelined requests and `Upgrade: h2c` -- all agree).
+- **Single-witness on the copy and NOT reported as findings** by the write hunt: `playQueueItemID`
+  leading a play-queue row and `playlistItemID` sitting mid-row on 1.43.4, and the transcode
+  decision row emitting tag `id`, `librarySectionID` and `Rating@value` as strings with
+  `UltraBlurColors` a list of one — the same family cycle 26 found on `/status/sessions`, on a
+  path only a writable reference can be made to answer.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
