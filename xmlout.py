@@ -345,6 +345,19 @@ _LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
 _SEARCH_LEAD = {"librarySectionTitle": -2, "score": -1}
 
 
+# Cycle 26, measured on the copy against the same row's own detail read, in BOTH
+# formats: every element of a `/status/sessions` row -- the `Video` itself, its `Media`,
+# its `Part` -- writes its attributes in plain ALPHABETICAL order, where every other
+# container on the surface follows cycle 22's measured `_ATTR_ORDER`. The flags a
+# decision arms (`selected`, `decision`) come AFTER that block, which is why they are a
+# tail rather than part of the sort.
+#
+# Cycle 22 swept 2,994 paths for attribute order and this one is not among them: reading
+# it needs a live playback session, which a read-only reference cannot be given. It is
+# the one path known to contradict that table, so it gets a marker rather than an entry.
+_SESSION_TAIL = {"selected": 1, "decision": 2}
+
+
 def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
     if name == "Video" and row.get("_history"):
@@ -474,6 +487,10 @@ def _split(name, row, container=False):
     if not container:
         # Cycle 17: a row's attributes come out in a measured order too, not in
         # whatever order the dict that built the row happened to hold them.
+        if row.get("_session"):
+            # The alphabetical block, then the decision flags. See `_SESSION_TAIL`.
+            attrs.sort(key=lambda key: (_SESSION_TAIL.get(key, 0), key))
+            return attrs, children
         index = _ATTR_INDEX.get(_attr_bucket(name, row))
         if index:
             lead = _LIBRARY_SECTION_LEAD if row.get("allowSync") is not None else {}
