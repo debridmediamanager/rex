@@ -17172,6 +17172,54 @@ def main():
           and "home.ondeck" in cleared_c25m[1] and "home.ondeck" in nextup_c25m[1],
           "cleared=%s nextup=%s" % (cleared_c25m[0], nextup_c25m[0]))
 
+
+    # Cycle 25, re-measured on plexscratch one scrobble at a time, OVERTURNING cycle 9's
+    # "a scrobble writes NO history row": it writes one per LEAF it marks. A movie
+    # scrobbled twice adds two rows, a SEASON adds one per episode, a SHOW one per leaf,
+    # and an unscrobble removes none. plexsim recorded none, so its History page stayed
+    # empty however much anyone marked played.
+    def history_size_c25o():
+        return get(base, "/status/sessions/history/all?type=1")[1].get("size") or 0
+
+    def scrob_c25o(key_c25o, watched_c25o=True):
+        request(base, "GET", "/:/%s?key=%s&identifier=com.plexapp.plugins.library"
+                % ("scrobble" if watched_c25o else "unscrobble", key_c25o))
+
+    leaves_c25o = [r_c25o.get("ratingKey") for r_c25o in
+                   get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                   .get("Metadata") or []]
+    seasons_c25o = [r_c25o.get("ratingKey") for r_c25o in
+                    get(base, "/library/metadata/%s/children" % show)[1]
+                    .get("Metadata") or [] if r_c25o.get("type") == "season"]
+    season_leaves_c25o = len([r_c25o for r_c25o in
+                              get(base, "/library/metadata/%s/children" % seasons_c25o[0])[1]
+                              .get("Metadata") or []
+                              if r_c25o.get("type") == "episode"])
+    start_c25o = history_size_c25o()
+    scrob_c25o(movie)
+    one_c25o = history_size_c25o()
+    scrob_c25o(movie)
+    twice_c25o = history_size_c25o()
+    scrob_c25o(seasons_c25o[0])
+    season_c25o = history_size_c25o()
+    scrob_c25o(seasons_c25o[0], watched_c25o=False)
+    after_unscrobble_c25o = history_size_c25o()
+    scrob_c25o(show)
+    show_c25o = history_size_c25o()
+    check("a scrobble writes a history row, and a second one writes another",
+          one_c25o == start_c25o + 1 and twice_c25o == start_c25o + 2,
+          "%s -> %s -> %s" % (start_c25o, one_c25o, twice_c25o))
+    check("a SEASON scrobble writes one row per episode",
+          season_c25o == twice_c25o + season_leaves_c25o,
+          "%s -> %s for %d leaves" % (twice_c25o, season_c25o, season_leaves_c25o))
+    check("an unscrobble removes none of them",
+          after_unscrobble_c25o == season_c25o,
+          "%s -> %s" % (season_c25o, after_unscrobble_c25o))
+    check("a SHOW scrobble writes one row per leaf",
+          show_c25o == after_unscrobble_c25o + len(leaves_c25o),
+          "%s -> %s for %d leaves" % (after_unscrobble_c25o, show_c25o,
+                                      len(leaves_c25o)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
