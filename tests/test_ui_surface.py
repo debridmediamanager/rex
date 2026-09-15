@@ -18389,6 +18389,70 @@ def main():
                            "&duration=600000&%s"
               % (movie, quote("/library/metadata/%s" % movie), ident_c27a))
 
+
+    # Cycle 27, swept over all 78 profile names on the writable copy: `Player.profile` is
+    # the profile the server RESOLVED for the client, not the constant `Web` cycle 10
+    # recorded from a copy only Plex Web had ever driven. 23 of the 78 report another
+    # profile's NAME -- `Roku` reports `Roku-7.x`, `Safari` and `Opera` report `Web`,
+    # `Opera TV App` reports `HTML TV App` -- the resolution runs
+    # `X-Plex-Client-Profile-Name` then `X-Plex-Platform` then `X-Plex-Device` with a
+    # value that names nothing falling THROUGH, and the attribute is OMITTED when none of
+    # the three names a profile. plexsim stamped `Web` on every session, so the Dashboard
+    # named the wrong client profile for every product that is not a browser.
+    #
+    # The block sends its own headers rather than going through `request()`: that helper
+    # pins `X-Plex-Platform: Chrome`, and the HEADER shadows the query for this name on a
+    # real PMS as it does here, so a platform in the query string could never be seen.
+    def profile_of_c27b(tag_c27b, extra_c27b):
+        head_c27b = {"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Client-Identifier": tag_c27b,
+                     "X-Plex-Session-Identifier": tag_c27b,
+                     "X-Plex-Product": "Plex for Something"}
+        head_c27b.update(extra_c27b)
+        def beat_c27b(state_c27b):
+            # Built per call rather than once and `%`-formatted twice: `quote()` puts
+            # `%2F` in the key, which a second `%` reads as a format spec.
+            return ("/:/timeline?ratingKey=%s&key=%s&state=%s&time=5000&duration=600000"
+                    % (movie, quote("/library/metadata/%s" % movie), state_c27b))
+
+        def send_c27b(path_c27b):
+            req_c27b = urllib.request.Request(base.rstrip("/") + path_c27b,
+                                              headers=head_c27b)
+            try:
+                with urllib.request.urlopen(req_c27b, timeout=30) as resp_c27b:
+                    return resp_c27b.read()
+            except Exception:
+                return b"{}"
+
+        send_c27b(beat_c27b("playing"))
+        rows_c27b = [r_c27b for r_c27b in
+                     (json.loads(send_c27b("/status/sessions")).get("MediaContainer")
+                      or {}).get("Metadata") or []
+                     if (r_c27b.get("Player") or {}).get("machineIdentifier") == tag_c27b]
+        answer_c27b = ((rows_c27b[0].get("Player") or {}).get("profile")
+                       if rows_c27b else "NO-ROW")
+        send_c27b(beat_c27b("stopped"))
+        return answer_c27b
+
+    measured_c27b = [
+        ("c27b1", {"X-Plex-Platform": "Roku"}, "Roku-7.x"),
+        ("c27b2", {"X-Plex-Platform": "Chrome"}, "Web"),
+        ("c27b3", {"X-Plex-Platform": "Safari"}, "Web"),
+        ("c27b4", {"X-Plex-Platform": "Plexamp"}, "Plexamp"),
+        ("c27b5", {"X-Plex-Platform": "Xbox One"}, "Xbox One"),
+        ("c27b6", {"X-Plex-Platform": "Opera TV App"}, "HTML TV App"),
+        ("c27b7", {"X-Plex-Platform": "webOS"}, None),
+        ("c27b8", {"X-Plex-Platform": "chrome"}, None),
+        ("c27b9", {"X-Plex-Platform": "nonsense", "X-Plex-Device": "Roku"}, "Roku-7.x"),
+        ("c27b10", {"X-Plex-Client-Profile-Name": "Xbox One",
+                    "X-Plex-Platform": "Chrome"}, "Xbox One"),
+    ]
+    got_c27b = [(tag_c27b, want_c27b, profile_of_c27b(tag_c27b, extra_c27b))
+                for tag_c27b, extra_c27b, want_c27b in measured_c27b]
+    check("Player.profile is the RESOLVED client profile, not the constant Web",
+          all(want_c27b == have_c27b for _t_c27b, want_c27b, have_c27b in got_c27b),
+          str(got_c27b))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

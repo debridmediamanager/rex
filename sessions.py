@@ -150,7 +150,8 @@ class Sessions:
 
     # -- sessions --------------------------------------------------------
 
-    def touch(self, row, query, headers, address, state, offset, duration=None):
+    def touch(self, row, query, headers, address, state, offset, duration=None,
+              profile=None):
         """Create or update the session a timeline describes. Returns it."""
         def value(name):
             return query.get(name) or (headers.get(name) if headers else None)
@@ -165,13 +166,18 @@ class Sessions:
 
         player = {"address": address or "", "state": state or "playing",
                   "local": _private(address), "relayed": False,
-                  "secure": False, "userID": 1,
-                  # The client profile the server picked for this session. Measured on a
-                  # writable copy of the reference, which only ever saw Plex Web: every
-                  # session row's Player carries `profile: "Web"`, and plexsim sent none.
-                  # What another product's profile reads as is not measured, so `Web` is
-                  # what every session says here.
-                  "profile": "Web"}
+                  "secure": False, "userID": 1}
+        # The client profile the server RESOLVED for this session. Cycle 10 recorded it
+        # as the constant "Web" from a copy that had only ever been driven by Plex Web;
+        # cycle 27 swept all 78 profile names through it and it is nothing of the kind.
+        # It is the resolved profile's own NAME -- `Roku` reports `Roku-7.x`, `Safari`
+        # and `Opera` report `Web`, `Plexamp` reports itself -- and the attribute is
+        # OMITTED entirely when nothing the client sent names a profile (`webOS`,
+        # `Linux`, `Darwin`, `chrome`). The resolver lives beside the profile list in
+        # server.py, because the decision's own 400 asks the same question of the same
+        # three headers.
+        if profile:
+            player["profile"] = profile
         for name, field in PLAYER_FROM.items():
             found = value(name)
             if found:
