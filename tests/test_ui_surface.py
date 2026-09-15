@@ -20093,6 +20093,32 @@ def main():
           and borrowed_c29g == direct_c29g == 404,
           "%s | borrowed %s vs direct %s" % (shapes_c29g, borrowed_c29g, direct_c29g))
 
+
+    # Cycle 29, measured on kids and zen, whose bytes for these are byte-identical (so
+    # they are PMS's own bundled default-artwork assets): `/:/resources/` has SEVEN names
+    # and `library-art.png`, `playlist.png` and `album.png` are 404s on both references --
+    # even though a real PMS's own `/library` container advertises `library-art.png` as its
+    # `art`, which plexsim copies. And `?width=`/`?height=` are IGNORED: a 100x100 request
+    # answers the same bytes as the bare path. plexsim generated a tile for all nine names
+    # it knew and resized it.
+    res_c29h = {}
+    for name_c29h in ("movie.png", "show.png", "artist.png", "photo.png",
+                      "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg",
+                      "library-art.png", "playlist.png", "album.png"):
+        res_c29h[name_c29h] = request(base, "GET", "/:/resources/" + name_c29h,
+                                      want_json=False)[0]
+    plain_c29h = request(base, "GET", "/:/resources/movie.png", want_json=False)[1]
+    sized_c29h = request(base, "GET", "/:/resources/movie.png?width=100&height=100",
+                         want_json=False)[1]
+    check("/:/resources is seven names and ignores width and height",
+          all(res_c29h[name_c29h] == 200 for name_c29h in
+              ("movie.png", "show.png", "artist.png", "photo.png", "movie-fanart.jpg",
+               "show-fanart.jpg", "artist-fanart.jpg"))
+          and all(res_c29h[name_c29h] == 404 for name_c29h in
+                  ("library-art.png", "playlist.png", "album.png"))
+          and len(plain_c29h) > 0 and plain_c29h == sized_c29h,
+          "%s | plain %d bytes, sized %d" % (res_c29h, len(plain_c29h), len(sized_c29h)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
