@@ -20859,14 +20859,21 @@ def main():
     deleted = [entry for frame in frames
                for entry in ((frame.get("NotificationContainer") or {}).get("TimelineEntry") or [])
                if entry.get("state") == 9 and entry.get("metadataState") == "deleted"]
-    check("a library delete frames its rows as deleted",
-          bool(doomed) and len(deleted) >= len(doomed),
-          "%s frames for %s rows" % (len(deleted), len(doomed)))
-    check("each frame is type 12 with an empty title and the negative section id",
-          bool(deleted) and all(entry.get("type") == 12 and entry.get("title") == ""
-                                and str(entry.get("sectionID")) == "-%s" % show_section
-                                for entry in deleted),
-          "%s" % deleted[:1])
+    # Cycle 30, measured on the copy on a 3-row and a 200-row library, both built for the
+    # question: a library DELETE pushes NO timeline frames at all -- only the eight
+    # `library.delete` activity frames, which plexsim already sends. Cycle 18's fourteen
+    # `state 9` frames named a different section from the one deleted, none of their ids
+    # was a row of the library, and the same fourteen appeared for a nine-row library: they
+    # are a one-off cleanup of orphaned `type: 12` rows. plexsim sent one entry per
+    # top-level row, so a zen-sized library would have handed every client a 1 MB frame.
+    activities_c30k = [entry_c30k for frame_c30k in frames
+                       for entry_c30k in ((frame_c30k.get("NotificationContainer") or {})
+                                          .get("ActivityNotification") or [])
+                       if (entry_c30k.get("Activity") or {}).get("type") == "library.delete"]
+    check("a library delete frames no rows, only its activity",
+          bool(doomed) and not deleted and len(activities_c30k) >= 6,
+          "%s timeline frame(s) for %s rows, %s activity frame(s)"
+          % (len(deleted), len(doomed), len(activities_c30k)))
 
     # Cycle 19: a boolean filter field's whole operator grammar, measured on kids and zen
     # over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
