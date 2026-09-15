@@ -1458,6 +1458,12 @@ def _photo_int(value):
 # server, so they are deliberately OUT: an item-dependent answer needs the matrix.
 DIRECT_PLAY_PROFILES = frozenset(["Roku", "Xbox One"])
 
+# Cycle 28: the seven profiles `/clients/profiles?type=42` answers, in this order, on
+# kids and zen alike. 42 is `LOCAL` in the client's own enum (`{NORMAL:0, LOCAL:42,
+# CLOUD:43}`), and the list is the subset a local Optimize target can be.
+LOCAL_CLIENT_PROFILES = ("Android", "iOS", "Universal Mobile", "Universal TV",
+                         "Windows Phone", "Windows", "Xbox One")
+
 # Cycle 27: the NAME a resolved profile reports, where it differs from the file name.
 # `/status/sessions` publishes the profile the server picked for that client as
 # `Player.profile`, and for 23 of the 78 names below that is another profile's name --
@@ -3736,7 +3742,32 @@ class PlexSim:
                 return self.bare_container(size=1, identifier="com.plexapp.system.devices",
                                            Device=[device])
             return self.devices()
-        if route == "/clients" or route.startswith("/clients/profiles"):
+        if route.startswith("/clients/profiles"):
+            # Cycle 28, measured on kids (1.43.4) and zen (1.42.2), identically: this is
+            # NOT the hosted-client list -- it is the server's CLIENT PROFILE catalogue,
+            # one `Profile` row per file in its `Resources/Profiles` directory, which is
+            # the same 78 names plexsim already holds for `Player.profile`. The Optimize
+            # dialog's target list reads it as `/clients/profiles?type=42`.
+            #
+            #   bare, `type=0`, `type=00`  -> all 78
+            #   `type=42` (`LOCAL` in the client's own enum), `type=042` -> SEVEN:
+            #       Android, iOS, Universal Mobile, Universal TV, Windows Phone,
+            #       Windows, Xbox One -- and the selected one carries `selected="1"`
+            #   everything else, an empty value included -> 400
+            #
+            # An extra segment is a 404 and a trailing slash is a 200. plexsim answered
+            # an empty container to all of them, on the reading that it hosts no client;
+            # that is true of `/clients` and not of this.
+            if len(segments) > 2:
+                return ("error", 404, "plexsim: not found")
+            wanted = query.get("type")
+            if wanted is not None and not (wanted.isdigit() and int(wanted) in (0, 42)):
+                return ("error", 400, "plexsim: bad request")
+            names = (LOCAL_CLIENT_PROFILES if wanted and int(wanted) == 42
+                     else sorted(CLIENT_PROFILES))
+            rows = [{"title": name} for name in names]
+            return self.bare_container(size=len(rows), Profile=rows)
+        if route == "/clients":
             # No Plex client is ever *hosted* by plexsim, so this is empty for
             # the same reason a headless PMS's is.
             return self.bare_container(size=0)
