@@ -18542,6 +18542,34 @@ def main():
           "200" in headers_c27d(50, 4000),
           headers_c27d(50, 4000))
 
+
+    # Cycle 27, bisected to the byte on kids and zen, identical on both and over three
+    # verbs: a real PMS bounds the URL at exactly 32768 bytes and answers a plain 400 to
+    # 32769. It is the URL and not the request LINE -- the boundary does not move when
+    # the method does. plexsim took Python's 64 KiB request-line limit instead, so every
+    # URL between 32 KiB and 64 KiB was a 200 where a real PMS refuses, and a longer one
+    # came back `414 Request-URI Too Long`, a status neither reference sends anywhere.
+    def url_status_c27e(length_c27e):
+        sock_c27e = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        url_c27e = "/identity?p=" + "x" * (length_c27e - len("/identity?p="))
+        sock_c27e.sendall(("GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n"
+                           % (url_c27e, base.split("//")[1])).encode())
+        got_c27e = b""
+        while len(got_c27e) < 200:
+            chunk_c27e = sock_c27e.recv(4096)
+            if not chunk_c27e:
+                break
+            got_c27e += chunk_c27e
+        sock_c27e.close()
+        return got_c27e.split(b"\r\n", 1)[0].decode("latin-1")
+
+    check("a URL of 32768 bytes is answered and 32769 is a 400",
+          "200" in url_status_c27e(32768) and "400" in url_status_c27e(32769),
+          "32768=%r 32769=%r" % (url_status_c27e(32768), url_status_c27e(32769)))
+    check("and a 70 KB URL is a 400 too, not Python's 414",
+          "400" in url_status_c27e(70000), url_status_c27e(70000))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -13806,7 +13806,10 @@ class Handler(BaseHTTPRequestHandler):
         were already 400s, so this is the two refusals Python made before plexsim's
         own code could see the request.
         """
-        if code == 431:
+        if code in (414, 431):
+            # Cycle 27: `414 Request-URI Too Long` is the other status Python answers
+            # before plexsim's own code runs -- at its 64 KiB request-line limit, which
+            # is twice the reference's own bound below.
             code, message, explain = 400, None, None
         return BaseHTTPRequestHandler.send_error(self, code, message, explain)
 
@@ -13827,6 +13830,20 @@ class Handler(BaseHTTPRequestHandler):
         if not BaseHTTPRequestHandler.parse_request(self):
             return False
         if len(self.headers.items()) > 100:
+            self.send_error(400)
+            return False
+        if len(self.path) > 32768:
+            # Cycle 27, bisected to the byte on kids (1.43.4) and zen (1.42.2) and
+            # identical on both, over GET, HEAD and DELETE: the URL -- not the request
+            # LINE -- is bounded at exactly 32768 bytes, and 32769 is a plain 400. The
+            # boundary does not move with the method, so it is the URL that is measured
+            # and 32 KiB is the number.
+            #
+            # plexsim inherited Python's 64 KiB request-line limit and answered
+            # `414 Request-URI Too Long` there, so a URL between 32 KiB and 64 KiB was a
+            # 200 where a real PMS refuses, and one beyond that carried a status neither
+            # reference sends. A comma-joined `/library/metadata/<keys>` from a large
+            # play queue is the request that reaches this length in practice.
             self.send_error(400)
             return False
         for name, value in self.headers.items():
