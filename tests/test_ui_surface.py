@@ -19420,10 +19420,12 @@ def main():
     # show the same six titles for ever.
     #
     # The fixture has no random shelf with rows in it, so the check MAKES one: the
-    # `movie.topunwatched` key is `?unwatched=1&audienceRating>=7.0`, so rating the three
-    # movies and leaving them unwatched fills it. Three rows is enough to see an order
-    # change and not enough to see a sample, which is why the assertion is about the
-    # ORDER varying between requests -- the sampling half is zen's and is recorded there.
+    # `movie.topunwatched` key is `?unwatched=1&audienceRating>=7.0`, so rating the movies
+    # and leaving them unwatched fills it. Whatever rows are left is enough to see an
+    # ORDER change and never enough to see a sample, which is why the assertion is about
+    # the order varying between requests -- the sampling half is zen's and is recorded
+    # there. TWO rows and twenty tries make a false failure a 1-in-500,000 event; three
+    # movies was the fixture at load and the suite is down to two by the time this runs.
     for key_c28i in [r_c28i.get("ratingKey") for r_c28i in
                      (get(base, "/library/sections/%s/all" % movie_section)[1]
                       .get("Metadata") or [])]:
@@ -19431,7 +19433,7 @@ def main():
         request(base, "GET", "/:/unscrobble?key=%s"
                              "&identifier=com.plexapp.plugins.library" % key_c28i)
 
-    def shelf_orders_c28i(identifier_c28i, tries_c28i=10):
+    def shelf_orders_c28i(identifier_c28i, tries_c28i=20):
         seen_c28i, flag_c28i, rows_c28i = set(), None, 0
         for attempt_c28i in range(tries_c28i):
             hub_c28i = next(
@@ -19450,7 +19452,7 @@ def main():
 
     orders_c28i, flagged_c28i, count_c28i = shelf_orders_c28i("topunwatched")
     steady_c28i, _f_c28i, _n_c28i = shelf_orders_c28i("recentlyadded")
-    if not orders_c28i or count_c28i < 3:
+    if not orders_c28i or count_c28i < 2:
         skip("a random shelf really is random",
              "the topunwatched shelf has %d row(s)" % count_c28i)
     else:
@@ -19533,13 +19535,20 @@ def main():
     # every person link from it, so plexsim's search hit, which minted the key for the
     # detail row and left it off this one, sent a click on an actor found by the search
     # box to `/library/people/undefined`.
+    # The check MAKES both tags: the fixture's own Role lists have been edited away by
+    # the time this runs, and an indexed tag write REPLACES the list on the item path, so
+    # the state has to be written here. The SECTION save path MERGES, and it mints the
+    # `tagKey` for a person element exactly as a load does.
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                         "&actor%%5B0%%5D.tag.tag=C28PERSON&genre%%5B0%%5D.tag.tag=C28GENRE"
+                         % (movie_section, movie))
     person_c28m = next((r_c28m["Directory"] for r_c28m in
-                        (get(base, "/library/search?query=derek&limit=20")[1]
+                        (get(base, "/library/search?query=c28person&limit=20")[1]
                          .get("SearchResult") or [])
                         if (r_c28m.get("Directory") or {}).get("tagType") in (4, 5, 6, 7)),
                        None)
     genre_c28m = next((r_c28m["Directory"] for r_c28m in
-                       (get(base, "/library/search?query=animation&limit=20")[1]
+                       (get(base, "/library/search?query=c28genre&limit=20")[1]
                         .get("SearchResult") or [])
                        if (r_c28m.get("Directory") or {}).get("tagType") == 1), None)
     if person_c28m is None:
@@ -19695,9 +19704,24 @@ def main():
     # non-positive one with a 500, the same two-way refusal `/hubs/search` makes.
     # plexsim answered its rows whatever `searchTypes` said, capped each hub separately,
     # and had the two refusals the wrong way round.
+    # The check MAKES the rows it needs. The fixture's titles are gone by the time this
+    # runs -- the suite renames rows all the way through -- so it writes its own word into
+    # two EPISODE titles (the show library is deleted by the next check, so nothing later
+    # reads them) and puts a GENRE tag of the same name on a MOVIE. One query then matches
+    # two metadata rows in the show library and one tag row in the movie library, which is
+    # exactly the split the tokens make: `tv` answers the episodes, `movies` the tag row.
+    # Two hubs in one query is also what tells a TOTAL cap from a per-hub one.
+    for index_c28r, row_c28r in enumerate(
+            (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+             .get("Metadata") or [])[:2]):
+        request(base, "PUT", "/library/metadata/%s?title.value=C28HIT+Episode+%d"
+                             "&title.locked=1" % (row_c28r.get("ratingKey"), index_c28r))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                         "&genre%%5B0%%5D.tag.tag=C28HIT" % (movie_section, movie))
+
     def flat_c28r(spec_c28r):
         status_c28r, container_c28r, _h_c28r = get(
-            base, "/library/search?query=fixture&" + spec_c28r)
+            base, "/library/search?query=c28hit&" + spec_c28r)
         if status_c28r != 200:
             return status_c28r, None
         return status_c28r, [(r_c28r.get("Metadata") or r_c28r.get("Directory") or {})
@@ -19714,18 +19738,18 @@ def main():
                                        "collections", "playlists")]
     empty_c28r = flat_c28r("limit=50&searchTypes=")[1]
     hubs_c28r = [sum(h_c28r.get("size") or 0 for h_c28r in
-                     (get(base, "/hubs/search?query=fixture" + spec_c28r)[1]
+                     (get(base, "/hubs/search?query=c28hit" + spec_c28r)[1]
                       .get("Hub") or []))
                  for spec_c28r in ("", "&searchTypes=zzz", "&searchTypes=movies")]
     limits_c28r = {value_c28r: flat_c28r("limit=%s" % quote(value_c28r))[0]
                    for value_c28r in ("abc", "", "1.5", "0", "-1", "01")}
-    capped_c28r = flat_c28r("limit=3")[1]
+    capped_c28r = flat_c28r("limit=2")[1]
     if not movies_c28r or not tv_c28r:
         skip("searchTypes filters /library/search, and limit caps the whole list",
-             "the fixture query matched %s" % (bare_c28r,))
+             "the query it wrote matched %s" % (bare_c28r,))
     else:
         check("searchTypes filters /library/search, and limit caps the whole list",
-              set(movies_c28r) == {"movie"} and set(tv_c28r) <= {"show", "episode"}
+              set(movies_c28r) == {"tag"} and set(tv_c28r) == {"episode"}
               and sorted(union_c28r) == sorted(bare_c28r)
               and dropped_c28r == movies_c28r
               and all(rows_c28r == [] for rows_c28r in nothing_c28r)
@@ -19733,8 +19757,8 @@ def main():
               and len(set(hubs_c28r)) == 1
               and limits_c28r == {"abc": 400, "": 400, "1.5": 400,
                                   "0": 500, "-1": 500, "01": 200}
-              and len(capped_c28r) == 3 and len(bare_c28r) > 3,
-              "bare %s | movies %s | tv %s | limit=3 %s | %s | hubs %s"
+              and len(capped_c28r) == 2 and len(bare_c28r) > 2,
+              "bare %s | movies %s | tv %s | limit=2 %s | %s | hubs %s"
               % (bare_c28r, movies_c28r, tv_c28r, capped_c28r, limits_c28r, hubs_c28r))
 
 
