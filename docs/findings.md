@@ -6270,6 +6270,88 @@ cycle 19 measured. **And `/system/proxy` is the one path in that subtree that do
 cycle 18's envelope**: every verb, GET included, answers its own 400 rather than an
 empty-bodied 404.
 
+#### The twenty-third pass — the frame sequences cycle 22 measured, the search row, and the Meta's active sort
+
+Two hunts and a driver round. Territory A took the **child-element order at scale** and the
+containers no cycle had swept; territory B took the **butler end to end** and finished
+`mediainfo` against zen's real library. The driver's round implemented the two largest items
+cycle 22 had measured and deliberately held out.
+
+**Territory A's Part 1 found nothing, and that is the result.** Harvested from 2,994 paths
+across the three servers, the child sequences landed in 31 element buckets per reference:
+**137 ordered pairs witnessed by both references and 66 by one, and not one of the 203
+contradicts `xmlout._CHILD_ORDER`**; no reference sequence, in any bucket, is impossible
+under it. zen's rows really did exercise `Chapter`, `Marker`, `Review`, `CommonSenseMedia`,
+`Producer`, `Extras`, `Related`, `Preferences`, `OnDeck`, `Children`, `Location`, 155-role
+and 5-Media rows. The table built on a five-clip lab holds against a real library. The same
+sweep confirmed cycle 19's JSON-order rule over **1,241 reference path/format pairs with
+zero disagreements**.
+
+---
+
+**A `/search` row is the GRID row with a six-attribute lead.** Measured with the same row
+fetched twice per server — once from the section grid, once from `/search` — the two are
+byte-identical apart from `allowSync, librarySectionID, librarySectionTitle,
+librarySectionUUID, personal, sourceTitle` in front. plexsim answered the DETAIL row there,
+led by `ratingKey`: `Guid`, `Rating` and tag elements carrying `id`/`filter`, with no
+`allowSync` and no `librarySectionUUID`, and a `librarySectionKey` neither reference sends.
+On a real library that is several times the bytes per hit — zen's detail rows carry up to
+155 `Role` elements — and a client keying a hit to a library by `librarySectionUUID` gets
+nothing.
+
+**A `Meta/Type`'s active SORT follows the asked type AND the `sort=` parameter.** Measured
+over seven library/type pairs and four sort spellings, identically on both references: the
+active Sort is marked only inside the Type row matching the asked `type=` — a movie library
+asked `type=2` or `type=4` marks **nothing at all** — and which one is marked follows the
+request: none given lights the default (`titleSort`, asc), `sort=addedAt:desc` lights
+`addedAt` with `activeDirection="desc"`, and a spec naming no advertised key lights nothing.
+plexsim lit its own top-level type's first sort in every cell, so on a Seasons or Episodes
+grid the sort menu said "Title" while the rows were in broadcast order. Cycle 19's rule
+about the `Type` row's own `active` is a different attribute and stays correct.
+
+**`?includeDetails=1&includeAdvanced=1` carries NO Duplicates Filter row at all.** The
+option pair that adds the row to the `includeMeta` form adds nothing here. Cycle 16 measured
+this path *without* `includeAdvanced=1`, where the row does not exist to carry a flag, and
+recorded "`includeDetails=1` carries no `advanced` on a Filter" — so plexsim implemented the
+absence of the FLAG and left the row.
+
+**Three more orders, and the last place plexsim's two writers disagreed.** A `/library/tags`
+row is `id, filter, tag, tagType, tagKey, thumb` with `thumb` LAST, where plexsim led with
+it. The `/hubs/sections/{id}/manage` Hub leads with `identifier` and **self-closes** — cycle
+22 put `Hub` in `_ALWAYS_PAIRED` after a census that never reached `/manage`, and the rule
+is the one it left open for `Directory`: paired when the element carries a child collection,
+self-closed when it carries none. A `Common` row leads with the GRANDPARENT pair and puts
+the PARENT pair before `ratingKey`. And `/library/sections/{id}/common` was the **last**
+path where plexsim's own XML and JSON writers contradicted each other: `ordered()` never
+received the `_xml=` override, because `_send_container` pops it before either writer runs,
+so the row bucketed as `Video[common]` — which no index knows — and its JSON keys stayed in
+build order while the XML sorted them.
+
+---
+
+**A MOVIE's unmatch pushes twelve frames; plexsim pushed none.** The sequence opens on two
+`matching` frames — `state 2` then `state 3`, a pair plexsim emitted nowhere — and the
+activity inside it steps through a second TITLE, `Analyzing Media`, before returning to
+`Updating Metadata`: `2/matching, 3/matching, 3/queued, started(-1), updated(-1, Analyzing
+Media), updated(25, Analyzing Media), updated(25, Updating Metadata), updated(50),
+3/processing, 4/loading, ended(100), 5`. An unmatch rewrites the whole row, so a client told
+nothing keeps the old title, guid and people lists until a reload.
+
+**A collection and a playlist push their own refresh and unmatch sequences**, and both were
+404s — so the Refresh Metadata and Fix Match entries `/media/providers` advertises on a
+collection page did nothing at all. A collection's refresh is **gated on its guid**: three
+frames (`2/matching`, `5`, `3/queued`) while it carries an agent guid, and the full eight
+once an unmatch has given it a `local://` one. Its unmatch is seven and moves the guid; a
+playlist's refresh is four and its unmatch two, neither with an activity. A collection's
+`/analyze` is the activity PAIR alone with **no** timeline frames — its members are never
+framed, the opposite of the per-leaf rule an item's analyze follows.
+
+**Three more read-only routes refuse every other verb.** `/hubs/home/recentlyAdded`,
+`/hubs/sections/{id}` and `/library/metadata/{id}/children` answer 404 to POST, PUT, PATCH,
+DELETE and a bare OPTIONS, where plexsim answered each one's own GET. Cycle 19 recorded the
+rule and these three never had it applied — fix 4's failure mode from the other side, a
+client reading a 200 from `DELETE /hubs/sections/1` as an accepted write.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
