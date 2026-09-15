@@ -17940,6 +17940,99 @@ def main():
           undecided_c26h == 400 and decided_c26h == 404,
           "undecided=%s decided=%s" % (undecided_c26h, decided_c26h))
 
+
+    # Cycle 26, measured on the copy: an `/unmatch` on a collection or a playlist really
+    # WRITES, and plexsim's write never reached a read. The line setting `guid` has
+    # always been there; `_collection_row` and `_playlist_row` rebuild the public row on
+    # every read and re-mint the agent guid, so the write landed in a projection that is
+    # thrown away -- the frames were right and the row a client reads was unchanged, so
+    # Fix Match on either appeared to do nothing at all.
+    #
+    #   collection  guid -> local://{rk}, ratingCount REMOVED, subtype -> "unknown"
+    #   playlist    guid -> local://{rk}, duration REMOVED
+    #
+    # The same value GATES a collection's later refresh -- three frames on an agent guid,
+    # eight once it is `local://` -- so the gate could never open either.
+    #
+    # And the activity a collection pushes ENDS at 100, not at 49: 49 is the progress of
+    # its own `updated` frame, left in the dict, so the Dashboard's bar stopped there and
+    # then vanished. A PLAYLIST pushes no activity at all, which plexsim already had.
+    created_c26i = request(
+        base, "POST", "/library/collections?type=1&title=c26i&smart=0&sectionId=%s&uri=%s"
+        % (movie_section, quote("server://%s/com.plexapp.plugins.library"
+                                "/library/metadata/%s" % (machine, movie))))
+    coll_c26i = ((json.loads(created_c26i[1] or b"{}").get("MediaContainer", {})
+                  .get("Metadata") or [{}])[0]).get("ratingKey")
+    made_c26i = request(
+        base, "POST", "/playlists?type=video&title=c26ipl&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))
+    play_c26i = ((json.loads(made_c26i[1] or b"{}").get("MediaContainer", {})
+                  .get("Metadata") or [{}])[0]).get("ratingKey")
+
+    def list_row_c26i(key_c26i):
+        return (get(base, "/library/metadata/%s" % key_c26i)[1].get("Metadata")
+                or [{}])[0]
+
+    def refresh_frames_c26i(key_c26i):
+        """(timeline rows for this row, activity rows) pushed by one refresh."""
+        _s_c26i, frames_c26i = notifications(
+            base, lambda: request(base, "PUT",
+                                  "/library/metadata/%s/refresh" % key_c26i))
+        timeline_c26i = [r_c26i for frame_c26i in frames_c26i
+                         for r_c26i in ((frame_c26i.get("NotificationContainer") or {})
+                                        .get("TimelineEntry") or [])
+                         if str(r_c26i.get("itemID")) == str(key_c26i)]
+        activity_c26i = [r_c26i for frame_c26i in frames_c26i
+                         for r_c26i in ((frame_c26i.get("NotificationContainer") or {})
+                                        .get("ActivityNotification") or [])]
+        return timeline_c26i, activity_c26i
+
+    before_coll_c26i = list_row_c26i(coll_c26i)
+    before_play_c26i = list_row_c26i(play_c26i)
+    agent_c26i = refresh_frames_c26i(coll_c26i)
+    request(base, "PUT", "/library/metadata/%s/unmatch" % coll_c26i)
+    request(base, "PUT", "/library/metadata/%s/unmatch" % play_c26i)
+    after_coll_c26i = list_row_c26i(coll_c26i)
+    after_play_c26i = list_row_c26i(play_c26i)
+    check("a collection's unmatch moves its guid, drops ratingCount, unknowns subtype",
+          before_coll_c26i.get("guid", "").startswith("collection://")
+          and after_coll_c26i.get("guid") == "local://%s" % coll_c26i
+          and "ratingCount" in before_coll_c26i
+          and "ratingCount" not in after_coll_c26i
+          and before_coll_c26i.get("subtype") == "movie"
+          and after_coll_c26i.get("subtype") == "unknown",
+          "%r -> %r, ratingCount %s, subtype %r -> %r"
+          % (before_coll_c26i.get("guid"), after_coll_c26i.get("guid"),
+             after_coll_c26i.get("ratingCount"), before_coll_c26i.get("subtype"),
+             after_coll_c26i.get("subtype")))
+    check("a playlist's unmatch moves its guid and drops duration",
+          before_play_c26i.get("guid", "").startswith("com.plexapp.agents.none://")
+          and after_play_c26i.get("guid") == "local://%s" % play_c26i
+          and before_play_c26i.get("duration")
+          and "duration" not in after_play_c26i,
+          "%r -> %r, duration %s -> %s"
+          % (before_play_c26i.get("guid"), after_play_c26i.get("guid"),
+             before_play_c26i.get("duration"), after_play_c26i.get("duration")))
+    local_c26i = refresh_frames_c26i(coll_c26i)
+    # Cycle 23 counted three frames on an agent guid and eight once unmatched; the
+    # eight split five timeline and three activity. This is the CONTROL, and it passes
+    # on the unfixed server too: the frame-count gate reads the STORED dict, which the
+    # old write did reach, so the socket always said the unmatch had happened while the
+    # row said it had not. Kept to prove the fix does not move the frames.
+    check("the refresh frame counts still turn on the guid the unmatch wrote",
+          (len(agent_c26i[0]), len(agent_c26i[1])) == (3, 0)
+          and (len(local_c26i[0]), len(local_c26i[1])) == (5, 3),
+          "agent %d timeline / %d activity, local %d / %d"
+          % (len(agent_c26i[0]), len(agent_c26i[1]),
+             len(local_c26i[0]), len(local_c26i[1])))
+    ends_c26i = [(a_c26i.get("Activity") or {}).get("progress")
+                 for a_c26i in local_c26i[1] if a_c26i.get("event") == "ended"]
+    check("a collection's refresh activity ENDS at 100, not at 49",
+          ends_c26i and set(ends_c26i) == {100}, str(ends_c26i))
+    request(base, "DELETE", "/library/collections/%s" % coll_c26i)
+    request(base, "DELETE", "/playlists/%s" % play_c26i)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -1875,7 +1875,11 @@ class Library:
         row = {
             "ratingKey": str(playlist["ratingKey"]),
             "key": "/playlists/%s/items" % playlist["ratingKey"],
-            "guid": "com.plexapp.agents.none://plexsim-playlist-%s" % playlist["ratingKey"],
+            # Cycle 26: an unmatched playlist carries `local://{rk}` and loses its
+            # `duration`. See the collection row below.
+            "guid": ("local://%s" % playlist["ratingKey"] if playlist.get("_unmatched")
+                     else "com.plexapp.agents.none://plexsim-playlist-%s"
+                     % playlist["ratingKey"]),
             "type": "playlist",
             "title": playlist["title"],
             "summary": playlist["summary"],
@@ -1905,7 +1909,9 @@ class Library:
             # neither a composite nor a duration. plexsim kept both, with the
             # duration at 0 and a composite of nothing.
             row["composite"] = "/playlists/%s/composite/%d" % (playlist["ratingKey"], stamp)
-            row["duration"] = duration
+            if not playlist.get("_unmatched"):
+                # Cycle 26: an unmatch removes it, where the composite survives.
+                row["duration"] = duration
         if playlist.get("smart"):
             # Measured, and the only thing that marks a smart playlist in the
             # list: the client draws its own icon from this value.
@@ -2122,10 +2128,18 @@ class Library:
         row = {
             "ratingKey": str(collection["ratingKey"]),
             "key": "/library/collections/%s/children" % collection["ratingKey"],
-            "guid": "collection://plexsim-%s" % collection["ratingKey"],
+            # Cycle 26, measured on the copy: an UNMATCHED collection carries
+            # `local://{rk}`, its `subtype` becomes the literal `unknown` and its
+            # `ratingCount` is removed entirely. The flag lives on the STORED row
+            # because this projection is rebuilt on every read -- which is why the
+            # unmatch handler's own write to the row it was handed never survived.
+            "guid": ("local://%s" % collection["ratingKey"]
+                     if collection.get("_unmatched")
+                     else "collection://plexsim-%s" % collection["ratingKey"]),
             "type": "collection",
             "title": collection["title"],
-            "subtype": collection["subtype"],
+            "subtype": ("unknown" if collection.get("_unmatched")
+                        else collection["subtype"]),
             "summary": collection["summary"],
             # Cycle 14, measured on the copy: a collection row's `index` is its own
             # TAG id -- the same number its members carry in their `Collection` tag and
@@ -2158,6 +2172,11 @@ class Library:
             if str(collection["librarySectionID"]).isdigit()
             else collection["librarySectionID"],
         }
+        if collection.get("_unmatched"):
+            # Cycle 26: an unmatch REMOVES it. Built above and popped here rather than
+            # made conditional in the literal, so the surviving keys keep the order a
+            # real PMS writes them in -- its JSON key order is its XML order.
+            row.pop("ratingCount", None)
         section = self.catalog.section(collection["librarySectionID"]) \
             if hasattr(self.catalog, "section") else None
         if section:
@@ -2187,7 +2206,11 @@ class Library:
             # computed them from whatever the query matched at that moment.
             row["minYear"] = years[0]
             row["maxYear"] = years[-1]
-        return self._with_list_state(row, collection, "ratingCount")
+        # Cycle 26: with `ratingCount` gone the state block keeps the same slot --
+        # measured with a rating and an offset on an unmatched collection, where it
+        # still sits after `index` and before `thumb`.
+        return self._with_list_state(
+            row, collection, "ratingCount" if "ratingCount" in row else "index")
 
     # -- helpers ---------------------------------------------------------
 
