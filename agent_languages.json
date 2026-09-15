@@ -1,5 +1,5 @@
 {
- "_provenance": "Every `Language` row a modern (tv.plex.*) agent carries at /system/agents, per X-Plex-Language, captured from the plexlab reference (Plex 1.43.4) on 2026-09-15 and confirmed identical on zen (1.42.2) for none/en/de/ja. Read from the XML, which is the only form that carries every row: the JSON writes them as repeated KEYS and a parser keeps one (cycle 21). All six modern agents share one list. The empty key is the NO-HEADER default and is NOT English -- each language is named in itself there, and an UNRECOGNISED language falls back to it rather than to English, unlike every other localised string. The ORDER is the reference's own, which collates by the localised title; it is stored rather than modelled, because ICU collation is deliberately not implemented here.",
+ "_provenance": "Every `Language` row a modern (tv.plex.*) agent carries at /system/agents, per X-Plex-Language, captured from the plexlab reference (Plex 1.43.4) on 2026-09-15 and confirmed identical on zen (1.42.2) for none/en/de/fr/ja. Read from the XML, which is the only form that carries every row: the JSON writes them as repeated KEYS and a parser keeps one (cycle 21). All six modern agents share one list. A row is [code, title] or [code, title, default] -- exactly one row per language carries `default=\"1\"`, and it is the CLIENT's language (de preselects de-DE, ja ja-JP), falling back to en-US with no header. The empty key is the NO-HEADER default and is NOT English: each language is named in itself there, and an UNRECOGNISED language falls back to it rather than to English, unlike every other localised string. The ORDER is the reference's own, which collates by the localised title; it is stored rather than modelled, because ICU collation is deliberately not implemented here.",
  "languages": {
   "": [
    [
@@ -24,7 +24,8 @@
    ],
    [
     "en-US",
-    "English"
+    "English",
+    "1"
    ],
    [
     "en-AU",
@@ -202,7 +203,8 @@
    ],
    [
     "en-US",
-    "الإنجليزية"
+    "الإنجليزية",
+    "1"
    ],
    [
     "en-AU",
@@ -396,7 +398,8 @@
    ],
    [
     "ca-ES",
-    "català"
+    "català",
+    "1"
    ],
    [
     "ko-KR",
@@ -574,7 +577,8 @@
    ],
    [
     "cs-CZ",
-    "Čeština"
+    "Čeština",
+    "1"
    ],
    [
     "zh-CN",
@@ -748,7 +752,8 @@
    ],
    [
     "da-DK",
-    "Dansk"
+    "Dansk",
+    "1"
    ],
    [
     "en-US",
@@ -938,7 +943,8 @@
    ],
    [
     "de-DE",
-    "Deutsch"
+    "Deutsch",
+    "1"
    ],
    [
     "en-US",
@@ -1136,7 +1142,8 @@
    ],
    [
     "en-US",
-    "English"
+    "English",
+    "1"
    ],
    [
     "en-AU",
@@ -1326,7 +1333,8 @@
    ],
    [
     "es-ES",
-    "Español"
+    "Español",
+    "1"
    ],
    [
     "es-MX",
@@ -1468,7 +1476,8 @@
    ],
    [
     "et-EE",
-    "eesti"
+    "eesti",
+    "1"
    ],
    [
     "he-IL",
@@ -1782,7 +1791,8 @@
    ],
    [
     "fi-FI",
-    "Suomi"
+    "Suomi",
+    "1"
    ],
    [
     "da-DK",
@@ -1896,7 +1906,8 @@
    ],
    [
     "fr-FR",
-    "Français"
+    "Français",
+    "1"
    ],
    [
     "fr-CA",
@@ -2118,7 +2129,8 @@
    ],
    [
     "he-IL",
-    "עברית"
+    "עברית",
+    "1"
    ],
    [
     "ar-SA",
@@ -2248,7 +2260,8 @@
    ],
    [
     "hr-HR",
-    "Hrvatski"
+    "Hrvatski",
+    "1"
    ],
    [
     "id-ID",
@@ -2482,7 +2495,8 @@
    ],
    [
     "hu-HU",
-    "magyar"
+    "magyar",
+    "1"
    ],
    [
     "de-DE",
@@ -2648,7 +2662,8 @@
    ],
    [
     "it-IT",
-    "Italiano"
+    "Italiano",
+    "1"
    ],
    [
     "lv-LV",
@@ -2910,7 +2925,8 @@
    ],
    [
     "ja-JP",
-    "日本語"
+    "日本語",
+    "1"
    ]
   ],
   "ko": [
@@ -3080,7 +3096,8 @@
    ],
    [
     "ko-KR",
-    "한국어"
+    "한국어",
+    "1"
    ],
    [
     "hu-HU",
@@ -3202,7 +3219,8 @@
    ],
    [
     "lt-LT",
-    "lietuvių"
+    "lietuvių",
+    "1"
    ],
    [
     "nb-NO",
@@ -3388,7 +3406,8 @@
    ],
    [
     "nb-NO",
-    "norsk bokmål"
+    "norsk bokmål",
+    "1"
    ],
    [
     "fa-IR",
@@ -3574,7 +3593,8 @@
    ],
    [
     "nl-NL",
-    "Nederlands"
+    "Nederlands",
+    "1"
    ],
    [
     "nb-NO",
@@ -3772,7 +3792,8 @@
    ],
    [
     "pl-PL",
-    "polski"
+    "polski",
+    "1"
    ],
    [
     "pt-BR",
@@ -3966,7 +3987,8 @@
    ],
    [
     "pt-BR",
-    "Português"
+    "Português",
+    "1"
    ],
    [
     "pt-PT",
@@ -4148,7 +4170,8 @@
    ],
    [
     "ro-RO",
-    "română"
+    "română",
+    "1"
    ],
    [
     "ru-RU",
@@ -4314,7 +4337,8 @@
    ],
    [
     "ru-RU",
-    "Русский"
+    "Русский",
+    "1"
    ],
    [
     "sk-SK",
@@ -4516,7 +4540,8 @@
    ],
    [
     "sk-SK",
-    "Slovenčina"
+    "Slovenčina",
+    "1"
    ],
    [
     "es-ES",
@@ -4702,7 +4727,8 @@
    ],
    [
     "sv-SE",
-    "Svenska"
+    "Svenska",
+    "1"
    ],
    [
     "th-TH",
@@ -4784,7 +4810,8 @@
    ],
    [
     "th-TH",
-    "ไทย"
+    "ไทย",
+    "1"
    ],
    [
     "nb-NO",
@@ -5082,7 +5109,8 @@
    ],
    [
     "tr-TR",
-    "Türkçe"
+    "Türkçe",
+    "1"
    ],
    [
     "uk-UA",
@@ -5248,7 +5276,8 @@
    ],
    [
     "uk-UA",
-    "Українська"
+    "Українська",
+    "1"
    ],
    [
     "fi-FI",
@@ -5450,7 +5479,8 @@
    ],
    [
     "zh-CN",
-    "中文"
+    "中文",
+    "1"
    ],
    [
     "zh-TW",

@@ -12371,9 +12371,16 @@ class PlexSim:
         if rows is None:
             rows = AGENT_LANGUAGES.get("")
         if rows:
-            agents = [dict(agent, Language=[{"code": code, "title": title}
-                                            for code, title in rows])
-                      for agent in agents]
+            # ...and the PRESELECTED row follows the client's language as well:
+            # `de` marks `de-DE`, `fr` marks `fr-FR`, `ja` marks `ja-JP`, and no header
+            # or an unrecognised one marks `en-US`. Exactly one row per language carries
+            # it, on kids and zen alike. The first version of this change kept only the
+            # code and the title and dropped the flag, which turned a cycle-17 check red
+            # -- the Add Library dialog preselects the row that carries it, so a German
+            # user would have had the dropdown open on English.
+            agents = [dict(agent, Language=[
+                dict(zip(("code", "title", "default"), row)) for row in rows])
+                for agent in agents]
         return self.bare_container(size=len(agents), Agent=agents,
                                    _repeatKeys=True)
 

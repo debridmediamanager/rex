@@ -17062,6 +17062,30 @@ def main():
           langs_c25j == [["ar-SA", "bg-BG", "zh-CN"], ["de-DE", "en-US", "en-AU"]],
           str(langs_c25j))
 
+
+    # Cycle 25, measured on kids and zen: exactly one `Language` row per language carries
+    # `default="1"`, and it is the CLIENT's language -- `de` preselects `de-DE`, `fr`
+    # `fr-FR`, `ja` `ja-JP` -- falling back to `en-US` with no header or an unrecognised
+    # one. The Add Library dialog opens its dropdown on that row.
+    def default_lang_c25k(lang_c25k=None):
+        path_c25k = "/system/agents?mediaType=1"
+        if lang_c25k:
+            path_c25k += "&X-Plex-Language=" + lang_c25k
+        _s_c25k, body_c25k, _h_c25k = request(base, "GET", path_c25k, want_json=False)
+        text_c25k = (body_c25k.decode("utf-8", "replace")
+                     if isinstance(body_c25k, bytes) else body_c25k)
+        block_c25k = text_c25k.split('identifier="tv.plex.agents.movie"')
+        if len(block_c25k) < 2:
+            return []
+        return re.findall(r'<Language code="([^"]+)"[^>]*default="1"',
+                          block_c25k[1].split("</Agent>")[0])
+
+    check("exactly one Language row is preselected, and it follows the client's language",
+          [default_lang_c25k(lang_c25k) for lang_c25k in (None, "en", "de", "fr", "ja",
+                                                          "zz")]
+          == [["en-US"], ["en-US"], ["de-DE"], ["fr-FR"], ["ja-JP"], ["en-US"]],
+          str([default_lang_c25k(lang_c25k) for lang_c25k in (None, "de", "ja")]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
