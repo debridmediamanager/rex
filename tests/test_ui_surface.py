@@ -580,10 +580,13 @@ def main():
     # 4. Play History
     # ------------------------------------------------------------------
     print("\n=== View Play History ===")
-    # Re-measured: a SCROBBLE writes no history row -- the reference's history stayed
-    # at one row through three of them, because rows come only from a timeline that
-    # reaches the end. plexsim recorded one per mark-as-played, so History and the Top
-    # shelf counted things nobody had watched. So the row has to be earned here.
+    # Cycle 9 recorded that a SCROBBLE writes no history row, from a run in which the
+    # reference's history "stayed at one row through three of them". Cycle 25 drove the
+    # same copy again, one scrobble at a time with the count read between each, and it
+    # moves EVERY time -- one row per LEAF marked, so a season adds one per episode and
+    # a show one per leaf, and an unscrobble removes none. The check below is kept and
+    # INVERTED rather than deleted, which is this suite's rule for a re-measured belief.
+    # What a timeline writes is unchanged and is still earned below.
     # Re-measured in cycle 10 on half-hour media: a play is completed by a beat that
     # CROSSES 90% inside its session, so the row is earned by a beat below the threshold
     # first and one past it after -- a single beat at the end completes nothing, on a real
@@ -601,9 +604,11 @@ def main():
     request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
                          % movie)
     _, after_scrobble, _ = get(base, "/status/sessions/history/all?type=1")
-    check("a scrobble writes none",
+    # Cycle 25, re-measured on plexscratch: a scrobble writes ONE row, overturning
+    # cycle 9. The old check asserted equality; it asserts the increment now.
+    check("a scrobble writes one row (cycle 9 said none; re-measured in cycle 25)",
           len(after_scrobble.get("Metadata") or [])
-          == len(before_scrobble.get("Metadata") or []),
+          == len(before_scrobble.get("Metadata") or []) + 1,
           "%d -> %d" % (len(before_scrobble.get("Metadata") or []),
                         len(after_scrobble.get("Metadata") or [])))
     if rows:
