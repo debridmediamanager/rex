@@ -6619,6 +6619,259 @@ equivalently. **No derived view on a real PMS settles late** — every reference
 already present in a snapshot taken immediately after the write and unchanged at +10 s and
 +30 s — so plexsim's synchronous writes cost it nothing here.
 
+#### The twenty-sixth pass — the playback surface, and the session lifecycle driven
+
+Two hunts and a driver round, on the one large functional surface nobody had ever swept. Cycle
+6 measured the decision container's refusals and the `/player/*` 400s; cycles 10, 14 and 15
+measured the timeline's storage grammar. Nothing had walked the playback path as a client walks
+it, and nothing had swept the `/video/:/transcode/universal/*` family or the Dashboard's
+statistics endpoints as a QUERY surface.
+
+**plexsim never ran a decision at all.** Every request without `hasMDE=1` was refused, whatever
+the client's profile said — `server.py`'s test was `directPlay == "0" or hasMDE != "1"`,
+unconditional. Measured on kids and zen across four items in both containers, a decision with
+no `hasMDE` runs the client's own profile against the item and answers one of three shapes:
+`Roku` and `Xbox One` get `directPlayDecisionCode 1000` / `generalDecisionCode 1000`, both
+"Direct play OK.", with the Metadata row and `resourceSession` and **no transcode codes**;
+`Chrome`, `Safari`, `Chromecast`, `Plex Desktop`, `Konvergo`, `HTML TV App` and `Opera` get
+`1001` "Conversion OK", which plexsim cannot answer because it has no encoder; and `Firefox`,
+`Microsoft Edge`, `Generic` and `Plexamp` get the `3000/2000/4005` "neither" — which is the one
+plexsim was sending to all of them.
+
+Plex Web always sends `hasMDE=1`, so it never saw this. Every client that does not — Roku,
+plex-for-kodi's `ServerDecision`, python-plexapi, the older TV apps — asked plexsim whether it
+could play an item and was told the catalog was unplayable, by a server whose entire purpose is
+direct play. The Metadata row is **byte-identical** between the two forms; only the container's
+codes differ, so CLAUDE.md's "a direct play is ONLY `mdeDecisionCode: 1000`" is the MDE form's
+rule and stays right — this is the other form, which plexsim emitted nowhere.
+
+**And the decision's validation was far stricter than a real PMS's.** Re-measured over nine
+parameter shapes on both references, only an OUT-OF-RANGE `mediaIndex` refuses. A missing,
+non-numeric, negative or empty one is a 200 that falls back to media 0; `partIndex` is never
+refused at any value; and a `path` carrying a query string is a 200. That **corrects a
+CLAUDE.md sentence** which claimed all three, and it is not academic: python-plexapi's
+`getStreamURL` and several TV apps omit `mediaIndex`, and against plexsim their decision was a
+hard 400 before any profile question was asked. Stated plainly, because it bounds the
+correction: neither reference holds a MULTI-PART Media, so the old reading may have come from
+one; what is measured is that on a single-part Media no `partIndex` refuses.
+
+**A decision answers exactly ONE Media**, the `mediaIndex` asked for — measured on zen's rk=401,
+which carries fifteen on its library row — where plexsim echoed every version with `selected` on
+the chosen one. Single witness by construction: kids holds no multi-Media row, so it agrees with
+this rather than corroborating it. **And `excludeElements=` is a NO-OP on a decision**, the one
+exception to cycle 23's "every container that carries rows honours it"; plexsim applied it and
+substituted `mediaCount`, leaving the client a decision with nothing to play.
+
+---
+
+**The Dashboard's statistics endpoints are a query surface, and plexsim implemented none of
+it.** Four findings, each measured on kids and zen on all three of `bandwidth`, `media` and
+`resources`:
+
+**A `timespan` the server does not KEEP is an empty 200**, not the nearest bucket. Each endpoint
+stores its own set — bandwidth `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6` — and 5, 7, 8, 9,
+10, 99, -1 and 007 each answer `size 0` on both references. plexsim ran
+`TIMESPANS.get(int(timespan), 1)`, which falls back to the ONE-SECOND bucket, so every unstored
+value answered the live per-second series **relabelled** with the asked-for window: invented rows
+for a window the server has no data for. The client's own enum names 5 ("Minutes"), so it is
+reachable. The same fix removed the last place where the same value in the same request meant two
+different things — `/statistics/resources` compared the raw STRING, so `timespan=06` answered
+nothing there and the series everywhere else.
+
+**`limit=` is a real cap and it is PARSED**: `1`, `01`, `0` and `-1` are 200s (a non-positive one
+answers no rows at all) and `1.5`, `abc`, an empty value and `+1` are 400s — **even where the
+value does nothing**, which is the same shape cycle 23 found on `/children`. **`sort=` is a real
+ordering** validated against a per-endpoint key list, and `metadataType` is NOT a media key,
+which is the one that looks like it should be. plexsim answered 200 to every value of both and
+sorted by none.
+
+**And the `at` family is four operators and only four**: `at>` returns the `>=` set, `at<` the
+`<=` set — the strict forms are not implemented at all — `at=` is exact, and `at>=`, `at<=` and
+`at!=` are unknown keys that answer every row. The hunt reported `at!=` as the complement;
+driven against the true counts on both references (175 rows on kids, 153 on zen) it answers all
+of them, so it is ignored like the other two. plexsim read `at>` or `at>=` and applied `>=` and
+ignored the rest.
+
+**Neither `/status/sessions` nor `/statistics/{which}` is a PREFIX.** Nine paths plexsim
+answered 200 — `/status/sessionsfoo`, `/status/sessions/zzz`, `/status/sessions/1`,
+`/status/sessions/background/zzz`, `/status/sessions/history/all/zzz`,
+`/status/sessions/history/all/1/2`, and an extra segment after each statistics leaf — are 404s
+on both references. `route.startswith("/status/sessions")` matched every one of them and
+`statistics` read `segments[1]` and ignored the rest, so `/statistics/bandwidth/zzz` answered
+the whole series. A 200 tells a client the endpoint exists and is empty, which is fix 4's trap
+from the other side and the same shape cycle 25 found behind
+`/library/sections/{id}/recentlyReleased`.
+
+---
+
+**A decision arms one SESSION, not the item.** `self.decided` was a set of ratingKeys, and
+three separate behaviours read it: the timeline's `Bandwidths` block, the session row's
+`selected`/`decision`/`location` flags, and — as of this cycle — the transcode start's gate.
+Measured on the copy with two sessions beating on one row, one of which decided: only that
+one's timeline carries `Bandwidths`, only its session row carries the flags, and only its own
+`stopped` beat disarms it. Keyed on the ratingKey alone, one client's decision armed every
+other client's timeline for that item and its stop disarmed theirs — and the Dashboard said
+"Direct Play" for a client that had never asked whether it could play the file.
+
+The arming identity had to be measured rather than assumed, because the obvious candidate is
+wrong: it is `X-Plex-Session-Identifier` (query or header), falling back to the client
+identifier, and **not** the decision's own `session=` parameter. A decision sent with
+`session=QX` and the header `HY` arms `HY`; one sent with `session=QZ` and no session header
+arms the client identifier. `session=` names the transcode session. The chain is the same one
+`sessions.touch` keys a session row by, which is why the pair `(session, ratingKey)` is the
+whole of it: the same session beating a DIFFERENT row is not armed.
+
+**And a transcode start from a session that has made no decision is a 400.** The reference's
+own log says "Denying access due to session lacking decision for transcode of key
+/library/metadata/18". The gate runs before the encoder question: it is a 400 on every
+protocol and every leaf of the start family, and a transcode decision for that session turns
+the same `start.m3u8` into a 200. plexsim answered its "no transcoder" 404 to everything,
+which reads to a client as a missing endpoint rather than a refused request. What plexsim
+answers once a decision exists is still that 404 — it has no encoder — and that is recorded
+rather than modelled, because the reference's own answer there depends on what it can convert:
+a DASH `start.mpd` is a 404 on the copy where the same session's `start.m3u8` is a 200.
+
+---
+
+**A list's unmatch never reached a read.** `PUT /library/metadata/{collection}/unmatch` has
+set `guid` to `local://{rk}` since cycle 23, and `_collection_row` re-mints
+`collection://plexsim-{rk}` on every read, so the write landed in the stored dict and the row a
+client sees never changed. Textbook class C: the rule was recorded, the line implementing it
+existed, and it wrote into a copy. What made it hard to see is that the stored dict is also
+what the frame-count gate reads, so everything on the notification socket said the unmatch had
+happened while the row said it had not. A playlist's was worse — that branch RETURNED before
+the guid line, so its unmatch wrote nothing at all.
+
+Measured on the copy, an unmatch writes more than the guid:
+
+    collection   guid -> local://{rk}, ratingCount REMOVED, subtype -> "unknown"
+    playlist     guid -> local://{rk}, duration REMOVED
+
+with the per-user state block staying in the slot `ratingCount` vacated (after `index`, before
+`thumb`), measured with a rating and an offset on the row. **And the activity a collection's
+refresh and unmatch push ENDS at 100**, not at 49 — 49 is the progress of its own `updated`
+frame, left in the dict, so the Dashboard's bar stopped there and then vanished. A playlist
+pushes no activity at all, which plexsim already had.
+
+---
+
+**`removeFromContinueWatching` is honoured per LIBRARY TYPE, and cycle 25 had the two halves
+crossed.** Driven on the copy over both types and both directions:
+
+    show library    hidden row KEPT     in `tv.inprogress.{id}` AND in its see-all list
+    movie library   hidden row REMOVED  from `movie.inprogress.{id}` AND from its list
+
+The shelf and the See All behind it always agree with each other. Cycle 25 measured only the
+episode half, applied it to both types on the ITEMS list and left BOTH shelves dropping the
+row — so a show library's page lost an episode from its Continue Watching shelf while the See
+All behind that very shelf still listed it, and a movie library's See All kept a movie the user
+had explicitly removed. Home's On Deck drops the row whatever the type, which is unchanged.
+
+---
+
+**A decision row keeps its `summary`.** plexsim popped it for movies, a rule fitted to movie 1
+— the one row on the copy whose summary is the EMPTY STRING. The attribute was absent there for
+a different reason entirely. Re-measured over four movies with real summaries and two episodes:
+the row carries it, whatever the type. Class B, refuted by rows that can disagree and do.
+
+---
+
+**The butler's wrapper steps once per task.** Measured twice over on a freshly reset copy with
+an uncontended socket, across a 22-task run and a 12-task one, identical frame for frame: the
+`butler` activity pushes `updated` at 100 for the task just finished and then `updated` at
+`round(100 * n / (n + 1))` for the queue — 50, 67, 75, 80, 83, 86, 88, 89, 90, 91, 92, 92, 93,
+93, 94, 94, 94, 95, 95, 95, 95 for 22 tasks — with no step after the last one. A run of N
+pushes N `updated 100` frames and N-1 steps before its `ended`. plexsim pushed a single
+`updated 100` for the whole run, so the Dashboard's butler bar sat at -1 and then jumped to
+done however many tasks were running. A fraction that approaches 100 without reaching it is the
+shape of a queue whose length is not known in advance, which is also why the last task has no
+step.
+
+Two of the three task shapes were in the wrong order. **`CleanOldBundles` interleaves its two
+messages with its own activity's phases** — "cleaned N media bundles" between the media group
+and `Analyzing metadata bundles`, "cleaned N metadata bundles" between the last step and the
+`ended` — where plexsim pushed both after the activity had ended, reporting the media bundles
+after it had moved on to the metadata ones. **And `RefreshLibraries` reports BEFORE it scans**:
+the message goes out, the wrapper steps to 100 and ends, and only then does the first
+`library.update.section` frame appear. The scan is work the task queues, not work it waits for;
+plexsim ran it inline and held the wrapper open for the whole scan.
+
+**`POST /butler` runs only what is DUE, and that is recorded rather than emulated.** The copy
+ran 22 of its 23 tasks on a fresh reset — `RefreshLibraries`, run by hand a moment earlier, was
+skipped — and an immediate second POST ran 12. No row of `GET /butler` carries a last-run or a
+next-run time, so which tasks are due is not observable from the surface, and two runs cannot
+separate "its interval has not elapsed" from "it found nothing to do". plexsim runs every
+enabled task. What is refuted, 2 of 2, is cycle 23's reading that a second POST is one
+`backgroundProcessingQueue` frame and nothing else: it is a full run of its own.
+
+---
+
+**A session with no beat lives three minutes, not seventy seconds.** Re-measured on the copy
+on `long` media over ten runs, polling once a second and identifying the row by its own client
+identifier: it went at +184.0 at the earliest and +210.4 at the latest, and was still there at
++209.4 in one of them. That is not one constant with a fine sweep — a session alive at +209.4
+in one run and gone at +184.0 in another — so it is a cutoff plus a reaper TICK, and the
+bracket the ten samples give is a cutoff at or below 184 s with a tick of at least 26 s. 180
+and 30 are the round pair inside it and the boundary is not bisected, so the cutoff is what is
+emulated and the tick is recorded. Two durations (10 s and 30 min) and two rows behaved the
+same, so it is a function of neither.
+
+`SESSION_TTL = 70` came from cycle 9, on the lab's ten-second clips before `long` mode existed
+— exactly the shape §3.3 warns about for everything measured there. A client that stops
+beating, as several TV apps do while paused, fell off Now Playing after a minute and a bit.
+
+---
+
+**`/status/sessions` is written by a different serialiser from every other container.**
+Measured on the copy in BOTH formats against the same row's own detail read:
+
+* Its attributes come out **alphabetically** — the `Video`, its `Media` and its `Part` alike —
+  where cycle 22's measured `_ATTR_ORDER` governs everywhere else. The flags a decision arms
+  (`selected`, `decision`) follow that block.
+* In JSON, every child element's `id`, a `Media`'s `aspectRatio`, a `Rating`'s `value` and the
+  row's `librarySectionID` are **strings** where the detail row sends numbers. Nothing else
+  changes type: `bitrate`, `width`, `duration`, `index` and `level` are numbers on both, so it
+  is not a blanket stringification.
+* `UltraBlurColors` comes back as a **list** of one where it is an object everywhere else —
+  invisible in XML, which has one child element either way.
+
+Cycle 22 swept 2,994 paths for attribute order and this is the one path it could not reach:
+reading it needs a live playback session, which neither read-only reference can be given. It is
+the only known contradiction of that table, which is why it gets a marker rather than an entry.
+
+---
+
+**And a revalidation closed an entry rather than opening one.** §3.3 carried the collection and
+playlist `/refresh` and `/unmatch` FRAME sequences as measured-but-unimplemented. Driven side
+by side against the copy this cycle, plexsim reproduces all four exactly, frame for frame,
+including the `state 2` / `metadataState: matching` opener and the guid gate that turns a
+collection's refresh from three frames into eight. Cycle 23 built them; what was missing was
+the `ended` frame's 100 and the guid reaching a read, both of which this cycle fixed.
+
+**Measured and not acted on.**
+
+- **Which butler tasks are DUE.** The counts are measured and reproduce: the copy ran 22 of its
+  23 tasks on a fresh reset (`RefreshLibraries`, run by hand a moment earlier, was skipped) and
+  12 on an immediate second POST. The mechanism is invisible from the surface — no row of
+  `GET /butler` carries a last-run or a next-run time — and two runs cannot separate "its
+  interval has not elapsed" from "it found nothing to do". plexsim runs every enabled task.
+- **The reaper TICK behind the session cutoff.** Ten runs bracket it at 26 s or more against a
+  cutoff at or below 184 s. plexsim prunes lazily on read, so its row goes at the cutoff
+  exactly; there is nothing on the surface that reports the tick, and modelling one would be a
+  constant nobody measured.
+- **What plexsim answers to a transcode START once a decision exists.** The 400 with no
+  decision is measured on every protocol and every leaf of the family. Past that gate plexsim
+  answers its own 404 — it has no encoder — and that is not the reference's answer and is not
+  meant to be: the reference's own depends on what it can convert, its DASH `start.mpd` being a
+  404 where the same session's `start.m3u8` is a 200.
+- **The session row's `Role` attribute order.** Its `Video`, `Media` and `Part` are plainly
+  alphabetical; a `Role` there is `filter, actor, id, role, tag, tagKey, thumb` — alphabetical
+  after `filter`, which the plain rule does not explain and one element cannot settle. plexsim
+  sorts every element of the row alphabetically, so a session `Role` disagrees by one position.
+- **REFUTED, 2 of 2:** cycle 23's "a second `POST /butler` is one `backgroundProcessingQueue`
+  frame and nothing else". It is a full run of its own, with its own wrapper and its own
+  per-task stepping.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

@@ -1744,6 +1744,75 @@ precisely how the Seasons bug survived a fix attempt.
 - **A `Common`'s `userRating` is a STRING** (`"8"`, not `8.0`) and sits directly after
   `mixedFields`, ahead of `guid`, while the ITEM row keeps the number.
 
+
+- **A decision WITHOUT `hasMDE=1` runs the client's profile and can be a DIRECT PLAY**:
+  `directPlayDecisionCode 1000` / `generalDecisionCode 1000`, both "Direct play OK.", with the
+  Metadata row and `resourceSession` and NO transcode codes. The row is byte-identical to the
+  MDE form's; only the container's codes differ, so "a direct play is only
+  `mdeDecisionCode: 1000`" is the MDE form's rule. Measured: `Roku` and `Xbox One` direct play,
+  `Chrome`/`Safari`/`Chromecast`/`Plex Desktop`/`Konvergo`/`HTML TV App`/`Opera` get `1001`
+  (which plexsim cannot answer), and `Firefox`/`Microsoft Edge`/`Generic`/`Plexamp` get the
+  `3000/2000/4005` "neither".
+- **Only an OUT-OF-RANGE `mediaIndex` refuses a decision.** A missing, non-numeric, negative or
+  empty one falls back to media 0; `partIndex` is never refused at any value; a `path` carrying
+  a query string is a 200. This CORRECTS the older bullet that claimed all three -- and note
+  neither reference holds a multi-part Media, so the `partIndex` half is measured on
+  single-part rows only.
+- **A decision answers exactly ONE Media** (zen's rk=401 has fifteen), and **`excludeElements=`
+  is a NO-OP on a decision** -- the one exception to "every container that carries rows honours
+  it".
+- **A statistics `timespan` the server does not KEEP is an EMPTY 200**, not the nearest bucket:
+  bandwidth keeps `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6`, and 5, 7, 99, -1 and 007
+  answer `size 0`. `06` parses as 6 on all three.
+- **`limit=` caps a statistics series and is PARSED** (`1`, `01`, `0`, `-1` are 200s and a
+  non-positive one answers no rows; `1.5`, `abc`, empty and `+1` are 400s) **even where the
+  value does nothing**, and **`sort=` is a real ordering validated per endpoint** --
+  `metadataType` is NOT a media key.
+- **The statistics `at` family is four operators**: `at>` means `>=`, `at<` means `<=`, `at=`
+  is exact, and `at>=`, `at<=` and `at!=` are unknown keys that answer every row.
+- **Neither `/status/sessions` nor `/statistics/{which}` is a PREFIX.** An extra segment after
+  either is a 404 -- `/status/sessionsfoo`, `/status/sessions/1`,
+  `/status/sessions/history/all/zzz` and `/statistics/bandwidth/zzz` included.
+- **A decision arms one SESSION, not the item.** The timeline's `Bandwidths`, the session row's
+  `Media@selected`/`Part@selected`/`Part@decision`/`Stream@location` and the transcode start's
+  gate all key on `(session, ratingKey)`: a second session beating the same row is unarmed,
+  the same session beating another row is unarmed, and only its own `stopped` beat disarms it.
+  The identity is `X-Plex-Session-Identifier` (query or header) then the client identifier --
+  **NOT** the decision's `session=` parameter, which names the transcode session.
+- **A transcode START from a session with no decision is a 400**, on every protocol and every
+  leaf of the family; a transcode decision for that session turns the same `start.m3u8` into a
+  200. plexsim has no encoder, so its answer once a decision exists is its own 404 -- recorded,
+  not modelled, because the reference's own `start.mpd` is a 404 there while its `start.m3u8`
+  is a 200.
+- **A decision row keeps its `summary`**, whatever the row type. The rule that dropped it for
+  movies was fitted to the one copy row whose summary is the EMPTY STRING.
+- **A list's `/unmatch` really writes**: a collection's `guid` becomes `local://{rk}`, its
+  `ratingCount` is REMOVED and its `subtype` becomes `unknown`; a playlist's `guid` becomes
+  `local://{rk}` and its `duration` is removed. The per-user state block keeps the slot
+  `ratingCount` vacated. **A collection's refresh/unmatch activity ENDS at 100**, after an
+  `updated` at 49. Beware: `_collection_row`/`_playlist_row` re-mint the guid on every read, so
+  a write into the row the handler was handed reaches the FRAME GATE and never reaches a client.
+- **`removeFromContinueWatching` is per LIBRARY TYPE**: a show library KEEPS the row in
+  `tv.inprogress.{id}` and in its see-all list, a movie library REMOVES it from both. The shelf
+  and the See All behind it always agree. Home's On Deck drops it either way.
+- **The butler's wrapper steps once per task** -- `updated 100` for the task just finished then
+  `updated round(100*n/(n+1))` for the queue, no step after the last, so N tasks push N
+  hundreds and N-1 steps before `ended 100`. **`CleanOldBundles` INTERLEAVES its two messages
+  with its own phases** and **`RefreshLibraries` reports and closes the wrapper BEFORE it
+  scans**. `POST /butler` runs only what is DUE, which no row of `GET /butler` exposes, so
+  plexsim runs every enabled task; a second POST is a full run, not one `queueRegenerated`.
+- **A session with no beat lives THREE MINUTES**, not seventy seconds: measured ten times on
+  the copy, gone between +184.0 and +210.4, which is a cutoff at or below 184 s plus a reaper
+  tick of at least 26 s. `SESSION_TTL` is the cutoff; the tick is recorded, not emulated.
+  Cycle 9's 70 came from ten-second clips before `long` mode existed.
+- **`/status/sessions` is written by a DIFFERENT serialiser.** Its attributes come out
+  ALPHABETICALLY -- the row, its `Media` and its `Part` -- with the decision flags after, where
+  `xmlout._ATTR_ORDER` governs every other container; in JSON every child element's `id`, a
+  `Media`'s `aspectRatio`, a `Rating`'s `value` and the row's `librarySectionID` are STRINGS
+  where the detail row sends numbers, and `UltraBlurColors` is a LIST of one. Nothing else
+  changes type. Cycle 22's 2,994-path order sweep could not see it: reading this path needs a
+  live session, which a read-only reference cannot be given.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

@@ -1885,3 +1885,129 @@ Read `library.py` before you start, so you know which derived views plexsim reco
 Most important first. For each finding: the exact write (method, path, query params in order) and the exact READ that differs; **the reference's verbatim before/after for that read** (trimmed but real); plexsim's verbatim before/after; **what it costs a real client** (which screen goes stale, and for whom) -- a finding that changes nothing any client can see should say so; and which of HANDOVER.md 3.1's six failure classes your own measurement could belong to, and why it does not.
 
 Then how many (write, endpoint) pairs you swept and how many you triaged as (a) catalog content, a version difference or the copy's own limit, (b) already recorded above, (c) a real behavioural difference -- report only (c) as findings. **If you find nothing in (c), say exactly "no findings"** and list what you compared. End with the two `refcheck7.py` comparison results.
+
+==== Cycle 26 | Territory A | the PLAYBACK surface, read-only -- the decision, the transcode family and the Dashboard's statistics | plexsim port 32589 | READ-ONLY on kids AND zen ====
+
+## Your territory: the PLAYBACK surface end to end -- the decision, the transcode session, the byte reads and the Dashboard rows behind them
+
+Every dimension this programme has swept mechanically is now closed: path (cycle 14), method
+and parameter (15), request and response headers (16), the row (17), the container (18), the
+child element (19), the filter and sort engines against a real library (18-20), attribute order
+(22), child-element order (23), **client identity (25)** and **the cross-endpoint write cascade
+(25)**. Do not re-sweep any of them.
+
+**This is the one large functional surface nobody has swept.** Cycle 6 measured the decision
+container's refusals and the `/player/*` 400s; cycles 10, 14 and 15 measured the timeline's
+storage grammar. Nothing has ever walked the whole playback path as a client walks it, and
+nothing has swept the `/video/:/transcode/universal/*` family at all.
+
+**Know what bounds it before you start: plexsim has no encoder.** "A valid transcode start" is
+in HANDOVER.md section 8 as deliberately not implemented, and so are `transcoderVideo*` fields
+and the Session block on the unclaimed copy. A finding whose only content is "the reference
+transcodes and plexsim does not" is not a finding. What IS in scope is everything around that:
+the shapes, the statuses, the parameter validation, the session bookkeeping, the rows the
+Dashboard reads, and every path where plexsim answers something a real PMS does not answer at
+all.
+
+Read `sessions.py` and the `/video/:/transcode` and `/library/parts` handlers in `server.py`
+before you start, so you know what plexsim already claims.
+
+The territory, in the order a client actually walks it:
+
+1. **The decision.** `GET /video/:/transcode/universal/decision` with the FULL parameter set a
+   real client sends -- `path`, `mediaIndex`, `partIndex`, `protocol`, `directPlay`,
+   `directStream`, `subtitles`, `audioBoost`, `location`, `mediaBufferSize`, `session`,
+   `hasMDE`, `videoQuality`, `videoResolution`, `maxVideoBitrate`, `X-Plex-Session-Identifier`
+   and a real `X-Plex-Platform` and `X-Plex-Client-Profile-Extra`. Sweep the PARAMETERS: which
+   are required, which are parsed, which change the answer. `directPlay=0` forces a transcode
+   decision on a real PMS -- what does the container carry then, and what does plexsim answer?
+   What does `protocol=hls` versus `dash` versus absent change? Does the copy's answer move with
+   `videoQuality` or `maxVideoBitrate`?
+2. **The session.** `GET /video/:/transcode/universal/start`, `/start.mpd`, `/start.m3u8`,
+   `/ping`, `/stop`, `/subtitles`, and `/video/:/transcode/universal/session/{id}/...`. Their
+   statuses, their bodies, their parameter refusals, and **what each one leaves behind**: does
+   a `start` create a row in `/status/sessions`, `/transcode/sessions`, `/statistics/bandwidth`?
+   Does `/stop` remove it? Does a `ping` keep it alive, and what happens when one stops?
+3. **The byte path.** `/library/parts/{id}/{ts}/file.ext` under Range, under no Range, with a
+   bad ts, with a part id that is not there, with `download=1`, with `X-Plex-Session-Identifier`.
+   plexsim's own part handler has two modes; the shapes and the headers are what matter here,
+   not the bytes.
+4. **What the Dashboard reads while something plays.** `/status/sessions`, `/status/sessions/
+   background`, `/transcode/sessions`, `/statistics/bandwidth`, `/statistics/media`,
+   `/statistics/resources`, `/activities` -- swept for shape, for what appears and disappears,
+   and for the paths plexsim answers that a real PMS 404s (cycle 25 found
+   `/library/sections/{id}/recentlyReleased` that way, and it had been invented).
+
+You are READ-ONLY on kids and zen, so most of section 2 cannot be driven there -- `/start`,
+`/ping` and `/stop` are all in the `WRITE_GET` list. **Measure the SHAPES you can reach
+read-only** (the decision is a GET that writes nothing when it refuses; `/status/sessions` and
+the statistics family are plain reads) and say clearly which parts of the territory you could
+not reach and why. A bounded, honest map of this surface is worth more than a guess at the
+half you cannot drive.
+
+**Sweep it by comparing THREE servers**: fetch each path from kids, from zen and from plexsim,
+and report only where the two references AGREE and plexsim differs. That filters out every
+version difference automatically.
+
+==== Cycle 26 | Territory B | the playback SESSION lifecycle as a write, and the three butler behaviours cycle 25 left unmeasured | plexsim port 32588 | WRITES to plexscratch ====
+
+## Your territory: the playback SESSION lifecycle as a write, and the three butler behaviours cycle 25 left unmeasured
+
+Every dimension this programme has swept mechanically is now closed: path (cycle 14), method
+and parameter (15), request and response headers (16), the row (17), the container (18), the
+child element (19), the filter and sort engines against a real library (18-20), attribute order
+(22), child-element order (23), **client identity (25)** and **the cross-endpoint write cascade
+(25)**. Do not re-sweep any of them.
+
+You have the writable copy, so you get the half of the playback surface the read-only hunt
+cannot reach — plus three butler behaviours that are measured but unconfirmed.
+
+### 1. The session lifecycle, driven
+
+A playback session is created by `/:/timeline`, not by a play queue or a decision (recorded).
+What has never been swept is what a session LOOKS like while it lives and what ends it.
+
+- Open one on `long` media and read `/status/sessions`, `/status/sessions/background`,
+  `/transcode/sessions` and `/activities` at each step: before the first beat, on `playing`,
+  on `paused`, on `buffering`, after a gap with no beat at all, and on `stopped`. What appears,
+  what changes, what is removed, and **how long a session survives with no beat**.
+- Drive `/video/:/transcode/universal/start`, `/ping` and `/stop` on the copy (it CAN
+  transcode; plexsim cannot, and that bound is recorded — what matters is the bookkeeping, the
+  statuses, the parameter refusals and what each leaves in the lists above).
+- `Bandwidths` is armed by a DECISION and then present even on `stopped` (recorded). Sweep what
+  else arms or disarms a block on the timeline's response.
+- The copy is UNCLAIMED, so `/status/sessions/terminate` 401s and `/statistics/*` 404s and no
+  `Session` block is ever carried. Those three are recorded INSTRUMENT LIMITS, not rules — do
+  not report them, and do not let them stand as negatives.
+
+### 2. The three butler behaviours cycle 25 left unmeasured
+
+Cycle 23 recorded six; cycle 25 re-measured three of them on an uncontended socket and **two
+did not reproduce** (`POST /butler/{Task}` fires its first frame at +0.0, and `/activities` is
+empty the moment the run returns), while the doubled `general.db.backup` did and is now built.
+These three are still only cycle 23's:
+
+- **`CleanOldBundles` interleaves its two messages between the phases**, with independent
+  counts. plexsim steps its subtitle through seven phases and reports both messages at the end.
+- **`RefreshLibraries` reports BEFORE it scans, and its wrapper ends first.** plexsim scans and
+  then reports.
+- **`POST /butler` runs only what is DUE and steps its wrapper `done/(done+1)`**, and a second
+  POST pushes one `queueRegenerated` frame and nothing else.
+
+Measure each on a **freshly reset copy with nothing else writing to it** — that is exactly what
+made two of the other three evaporate — with a control write on the same socket first, and say
+how many runs agree. A refutation here is as valuable as a confirmation.
+
+### 3. The frame sequences still held out (HANDOVER.md §3.3)
+
+A collection's and a playlist's `/refresh` and `/unmatch` push sequences carrying `state 2` /
+`metadataState: matching`. plexsim now emits that state on a season and a show unmatch, so the
+state machine is no longer new — what is missing is the four sequences themselves. Re-measure
+them (do not implement: report), and check whether `state 2 matching` appears anywhere else.
+
+### 4. `/hubs/sections/{id}`'s own in-progress shelf
+
+Cycle 25 measured that `removeFromContinueWatching` leaves
+`/hubs/sections/{id}/continueWatching/items` alone on a real PMS and implemented that half. The
+section's `tv.inprogress.{id}` SHELF inside `/hubs/sections/{id}` was seen to keep the row too
+and was not implemented. Confirm it, and sweep what else that shelf follows.

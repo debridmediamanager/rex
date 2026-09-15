@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 25 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **25**. Cycle 25 ran two hunts on two dimensions nobody had swept, and drew the last of cycle 23's deferred backlog down. |
+| `main` | cycle 26 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **26**. Cycle 26 swept the PLAYBACK surface, which nobody had walked as a client walks it, and found that plexsim never ran a decision at all. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -94,6 +94,7 @@ Coverage, measured from the repository rather than asserted:
 | 23 | 1,307 | 14,497 | **9** (of 24 reported plus 2 the driver took off cycle 22's held-out list; 1 cycle-22 entry REFUTED, 2 hunter claims corrected on re-measurement, 15 held out -- see §8) |
 | 24 | 1,307 (+2 in `test_mediainfo`, 27 -> 29) | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
 | 25 | 1375 (+2 in `test_mediainfo`, 29 -> 31) | 14,852 | **21** (of 13 reported across two hunts plus 6 the driver found and 1 regression it caught in its own patch; 1 hunter negative refuted on re-measurement and re-confirmed, 3 recorded rules overturned, 2 cycle-23 butler claims refuted) |
+| 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work. **The ceiling has been the instrument, not the effort**: every time the
@@ -114,9 +115,12 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-**Where the curve stands after cycle 25, and what it means for the stopping rule.** The
+**Where the curve stands after cycle 26, and what it means for the stopping rule.** The
 loop stops when a cycle reports no findings, so the trend in the last column is the thing to
-watch — and cycle 25 breaks the fall: **24, 16, 9, 6, 21**. That is not the surface refilling.
+watch — and it now reads **24, 16, 9, 6, 21, 21**. Cycle 26 is the second cycle in a row to
+sweep a dimension nobody had swept, and the second in a row to come back with a double-figure
+number from it. Cycle 25 broke the fall; cycle 26 confirms why. That is not the surface
+refilling.
 It is what cycle 24's own note predicted, in the third bullet below and in §10's "sweep a NEW
 DIMENSION rather than the same one again": the two dimensions cycle 25 swept — what a real PMS
 answers differently to a different CLIENT, and which OTHER endpoints a write changes — had
@@ -138,6 +142,9 @@ Three things were behind the fall to 6, and only one of them was the surface run
 * **What is left is harder, not smaller.** The largest outstanding item is the butler, which
   needs a queue notion plexsim does not have; the next is a pair of frame cascades that need
   an uncontended socket on the one writable reference. Neither is a measurement problem.
+  (Cycle 26 closed the frame-cascade half of that: driven side by side against the copy, all
+  four list sequences reproduce frame for frame. What is left of the butler is which tasks are
+  DUE, which no row of `GET /butler` exposes at all.)
 
 So the honest reading is that the loop has not converged. Cycle 24 read the fall as "moved
 from finding differences to owing implementations", and cycle 25 tested that reading directly:
@@ -147,14 +154,25 @@ thirteen. **The backlog was real and so was the surface.** What is left in §3.3
 cycle is 45 entries, most of them single-witness or instrument-limited rather than
 unimplemented.
 
-Suite results at the head of cycle 25, run 2026-09-15 against the merged tree:
+**And cycle 26 found the largest functional gap since the build-out, in the surface everybody
+assumed worked.** plexsim refused every decision that did not carry `hasMDE=1` — so every
+client that is not Plex Web asked whether it could play the catalog and was told it could not,
+by a server whose entire purpose is direct play. Nothing in the suites caught it because every
+check was written by someone sending Plex Web's own parameters. The lesson is §10's, in a new
+form: a surface that only one client's parameters have ever exercised has not been tested, and
+the playback path had never been walked as a client walks it. Three more of the cycle's
+findings are the same shape — a decision's validation refusing what a real PMS accepts, the
+statistics endpoints answering a series for a window they hold no data for, and
+`/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 26, run 2026-09-15 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_mediainfo.py` | **31/31** | two new checks (`pixel-aspect`, `pixel-aspect-threshold`), each proven to fail on its own parent commit |
-| `tests/fixtures/media-resolutions.json` | **194 shapes, from 177** | zen's own 17 that fun's libraries did not hold. The corpus itself failed against the unfixed code on exactly one row, which is the point of adding to it |
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1375 PASS / 0 FAIL / 9 skipped** | |
-| `tests/test_navigation.py` | **28/28** on the UI fixture, **47/47** on the full catalog | run each against its OWN server: pointed at the one the UI suite is writing to, it reports twelve failures that are not there |
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle: no `mediainfo` finding |
+| `tests/fixtures/media-resolutions.json` | **194 shapes** | unchanged this cycle |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1421 PASS / 0 FAIL / 9 skipped** | the cycle's own checks add ~95 s of WAITING: the session cutoff can only be measured by letting a session age |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | run each against its OWN server: pointed at the one the UI suite is writing to, it reports twelve failures that are not there |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline |
 | `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
 
@@ -357,6 +375,19 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | "a SCROBBLE writes NO history row" | 9 | It writes one per LEAF marked, every time, driven one scrobble at a time with the count read between each | F |
 | "`POST /butler/{Task}` QUEUES rather than runs, and `/activities` retains the finished wrapper" | 23 | Neither reproduces on a freshly reset copy: the first frame is at +0.0 and `/activities` is empty the moment the run returns | F |
 
+**Cycle 26 overturned six more.**
+
+| Belief | Held since | Overturned by | Class |
+|---|---|---|---|
+| "a decision without `hasMDE=1` is a refusal" -- unconditional, and never measured at all | 6 | A decision with no `hasMDE` runs the CLIENT'S OWN PROFILE. `Roku` and `Xbox One` get the directPlay/general 1000 PAIR with the full Metadata row; plexsim answered the `3000/2000/4005` "neither" to every client that is not Plex Web. **The largest functional gap since the build-out** | **A** |
+| "a decision refuses a missing `mediaIndex`, a bad one and a bad `partIndex`" | 6 | Only an OUT-OF-RANGE `mediaIndex` refuses, over nine parameter shapes on both references. python-plexapi's `getStreamURL` omits `mediaIndex` and was refused before any profile question | A |
+| "a statistics `timespan` the server does not keep falls back to the nearest bucket" | 20 | It is an EMPTY 200 on all three endpoints and both references; the fallback invented a series for a window the server holds no data for | D |
+| "`removeFromContinueWatching` does not reach a section's own Continue Watching list" | 25 | True for a SHOW library and false for a MOVIE one, and the shelf and its see-all list always agree. Cycle 25 measured one half on an episode and applied it to both types on one of the two surfaces, so the halves ended up crossed | B |
+| "a MOVIE's decision row drops `summary`" | 6 | Fitted to the one copy row whose summary is the EMPTY STRING. Four movies with real summaries and two episodes refute it | B |
+| "`SESSION_TTL = 70`" -- a row survives 60-80 s past its last timeline | 9 | Ten runs on `long` media: gone between +184.0 and +210.4. Cycle 9 measured it on ten-second clips, before `long` mode existed | D |
+| "`xmlout._ATTR_ORDER` governs every container" -- 203 pairs, 2,994 paths, zero contradictions | 22 | `/status/sessions` writes its attributes ALPHABETICALLY. The sweep could not reach it: reading it needs a live playback session, which a read-only reference cannot be given | E |
+| "a list's `/unmatch` moves its guid" -- the line has been there since cycle 23 | 23 | It writes into a projection `_collection_row` rebuilds on every read, so no client ever saw it; a playlist's branch returned before the line ran at all | C |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -410,13 +441,14 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **`slug` minted by the agent** | Measured on 2,406 of zen's rows (every `local://` movie and show carries none) and deliberately NOT implemented: plexsim mints a `plex://` guid for every row, so the two rules coincide for its catalog. The children's `parentSlug`/`grandparentSlug` are derived from the parent TITLE rather than from the parent's slug -- a proxy that agrees today | A catalog row that fails identification |
 | **The five codec edit-field names held out** | `atmos`, `audioCodec`, `audioLayout`, `subtitleCodec` and `videoCodec` take an item lock on plexscratch, which is **1.43.4**. Cycle 20 established that family is 1.43.4-only on the filter and parse surface, and zen cannot be written, so 1.42.2 -- the build plexsim reports -- is unmeasurable. Held out; `hdr10plus` is a 200 that stores nothing on a single witness | A writable 1.42.2 copy. Nothing else settles it |
 | **A refresh not moving `updatedAt`** | plexscratch is isolated from plex.tv, so its agent returns nothing new. What is measured is that running the refresh SEQUENCE does not by itself stamp the row; an agent returning changed metadata might | A claimed writable copy, which needs plex.tv |
-| **The collection and playlist action leaves' FRAMES** | The statuses and container shapes are measured and implemented; `/refresh` and `/unmatch` on those two rows push real sequences (3 and 7 frames on a collection, 4 and 2 on a playlist) carrying `state 2` / `metadataState: matching`, a state plexsim has never emitted. Implemented as the statuses alone | Implement the sequences, having re-measured them per row type |
+| ~~**The collection and playlist action leaves' FRAMES**~~ | **CLOSED in cycle 26.** Driven side by side against the copy, plexsim reproduces all four sequences frame for frame -- 3 and 7 on a collection, 8 once its guid is `local://`, 4 and 2 on a playlist -- including the `state 2` / `metadataState: matching` opener. Cycle 23 built them; what was missing was the `ended` frame's 100 and the guid reaching a read, both fixed this cycle | -- |
 | **A collection's `/allLeaves` and `/grandchildren` ROWS** | Both containers are measured empty on plexscratch (its collection held one movie and the leaf view returned none), so the container is measured and the row projection is inferred from the light-grid rule | A collection whose members make those lists non-empty |
 | **The `/system/scanners/{N}` 500 BODY** | All three references answer a 641-byte `application/xml` plug-in-framework traceback; plexsim answers 23 bytes of `text/plain`. The status and type are measured, the body is PMS's own Python traceback | Nothing worth settling: the body names PMS's own file paths |
 | **Which butler DELETE actually cancels** | Cycle 23 recorded a 200 inside a queue window; cycle 25 could not reproduce a queue window at all -- a task's frames arrive at +0.0 -- so there is nothing to cancel and `DELETE`, `GET`, `PUT` and `PATCH` are all 404s when idle, which is what plexsim answers. The Dashboard's Cancel button may simply have nothing to do on a copy this small | A server with a task slow enough to have a window |
 | **`AC-3` carrying `AC3` in a title** | 132 zen streams. `VC-1` does NOT carry `VC1` and `E-AC3`/`E-AC-3` do not carry `EAC3`, so no punctuation-folding rule fits, and a general one breaks 58 other streams. Cycle 24 scored it and left it | A rule that separates the three, or a decision to special-case `AC-3` |
 | **Streams whose stored title is the EMPTY string** | ~37 on zen; they compose `" (1080p HEVC Main 10)"` with a leading space and carry no `title` attribute in XML at all, so a published row cannot be told apart from one with no title | Nothing from a published row; it needs the server's own stored value |
-| **The rest of cycle 23's butler findings, WHAT IS LEFT OF THEM** | Cycle 25 re-measured the family on an uncontended socket and **two of the six did not reproduce**: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly reset copy, not after a 7-9 s queue delay, and `/activities` is EMPTY the moment the run returns. `general.db.backup`'s doubling reproduced and is BUILT, together with its `started` at -1 with the subtitle already set. Still unmeasured this cycle: `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only what is DUE | Measure the three, on a freshly reset copy with nothing else writing to it |
+| **What is left of cycle 23's butler findings after cycle 26** | Two of the three cycle 25 could not reach are now BUILT: `CleanOldBundles`' messages interleave with its own phases, and `RefreshLibraries` reports and closes the wrapper before it scans. The wrapper's own `round(100n/(n+1))` stepping is built with them. What is left is which tasks are DUE: the copy ran 22 of 23 on a fresh reset and 12 on an immediate second POST, and no row of `GET /butler` carries a last-run or next-run time | Nothing the API exposes. plexsim runs every enabled task |
+| **The rest of cycle 23's butler findings, WHAT IS LEFT OF THEM (superseded by the row above)** | Cycle 25 re-measured the family on an uncontended socket and **two of the six did not reproduce**: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly reset copy, not after a 7-9 s queue delay, and `/activities` is EMPTY the moment the run returns. `general.db.backup`'s doubling reproduced and is BUILT, together with its `started` at -1 with the subtitle already set. Still unmeasured this cycle: `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only what is DUE | Measure the three, on a freshly reset copy with nothing else writing to it |
 | ~~**The cycle-23 `mediainfo` model**~~ **SETTLED in cycle 24** | Hunt B fitted a model on 105,558 zen streams and held it out on the 46 recorded probes: misses fall from 613/105,558 and 3/642 to 174/105,558 and 0/642. It adds the language parenthesis-strip rule (which settles cycle 22's five-witness contradiction), `eia_608` -> `Closed Captions` in BOTH titles, `Signs`/`Songs` standing in for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the dynamic range, the raw ffprobe codec name for audio and the punctuation-stripped label for video, and `providerTitle or "External"` for a sidecar's suffix. The model file is in the cycle's artefacts | Implement it; it is the largest measured block now outstanding |
 | ~~**`pixelAspectRatio` and `anamorphic`**~~ | **BUILT in cycle 25** on 1,688 of zen's video Streams (358 carrying the pair, 1,330 neither, none only one). Only the CONSTANT is still inferred: see the new entry below | -- |
 | ~~**The `videoResolution` cutoff below 720**~~ | **BUILT in cycle 25** as the table's own smallest-in-bucket construction -- `(856, "480")`, the way the other five entries were built -- with 720 named as the largest below it. The boundary is still un-bisected and the comment says so | A file 721-855 wide |
@@ -434,6 +466,16 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The collection and playlist `/refresh` and `/unmatch` FRAMES** | Measured in full this cycle -- a collection's refresh is 3 frames on an agent guid and 8 on a `local://` one, its unmatch 7, a playlist's 4 and 2 -- and they carry `state 2` with `metadataState: "matching"`, plus a `state 3 matching` on a MOVIE and SHOW unmatch, which plexsim emits nowhere. plexsim also pushes ZERO frames for a movie or show unmatch and no cascade for a season's. The STATUSES are implemented (cycle 21); the sequences are not | Implement the four sequences and the two missing `metadataState` values; the measurements are in cycle 22's findings |
 | **`DELETE /butler/{Task}` while the task is QUEUED** | A 200 that cancels it; a 404 when idle, and GET/PUT/PATCH stay 404. Measured 3/3. plexsim answers 404 always, so the Dashboard's Cancel button reports failure | Implement it; it needs a queued-task notion plexsim does not have |
 | ~~**`POST /butler/BackupDatabase` running its activity TWICE**~~ | **BUILT in cycle 25**, four runs agreeing across cycles 22, 23 and 25. The `started` at -1 with the subtitle already set is built with it; `general.db.optimize` keeps its own 0-with-an-empty-subtitle opener, which is the pair plexsim had collapsed into one shape | -- |
+
+**Cycle 26 added these.**
+
+| Item | Why it is thin | How to settle it |
+|---|---|---|
+| **The session cutoff CONSTANT** | Measured as a BRACKET over ten runs -- gone between +184.0 and +210.4, still alive at +209.4 in one of them -- which is a cutoff at or below 184 s plus a reaper TICK of at least 26 s. 180 and 30 are the round pair inside it and neither is bisected. plexsim prunes lazily on read, so its row goes at the cutoff rather than at the next tick; the tick is recorded | Bisect it, at ~200 s a sample |
+| **`POST /butler` running only what is DUE** | The counts are measured (22 of 23 on a fresh reset, 12 on an immediate second POST) and the MECHANISM is invisible: no row of `GET /butler` carries a last-run or a next-run time, and two runs cannot separate "its interval has not elapsed" from "it found nothing to do" | Nothing the API exposes |
+| **The session row's `Role` attribute order** | Its `Video`, `Media` and `Part` are plainly alphabetical; a `Role` there is `filter, actor, id, role, tag, tagKey, thumb` -- alphabetical AFTER `filter`, which the plain rule does not explain. plexsim sorts every element of the row alphabetically, so a session `Role` disagrees with the reference by one position | A second element with a `filter` in that projection |
+| **What plexsim answers to a transcode START once a decision exists** | The 400 with no decision is measured on every protocol and every leaf. What comes next is plexsim's own 404 -- it has no encoder -- and NOT the reference's, whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200 | Nothing: plexsim cannot transcode |
+| **The `directPlay`/`general` 1000 profile LIST** | `Roku` and `Xbox One` direct play, seven products get `1001` "Conversion OK" (which plexsim cannot answer) and four get the "neither" triple. Measured across four items in both containers on kids and zen, but the list is the references' own `Resources/Profiles` directory rather than a rule | Read the profile files, if a reference is ever shell-accessible |
 
 **Cycle 25 added these.**
 
@@ -579,6 +621,24 @@ and so a pre-existing listener there would have been killed without a record. It
 proved either way; every later run went back to `32592`/`32593`. **Neither hunter left a server
 running**, as in cycles 18 and 19. `32599` is `test_ui_surface.py`'s own gated server and
 `32598` the `--web-root` instance its asset check starts; leave both free.
+
+**Ports (cycle 26).** Re-checked after both hunters had stopped and every server this cycle
+started was killed: `32502` and `8787` are held -- the same two every cycle since 17 has ended
+with, `32596` having been released since cycle 25. Everything cycle 26 used is FREE again:
+`32541`, `32543`, `32546`/`32547`, `32587`/`32588`/`32589` (the hunters'), `32592`/`32593` (the
+proof driver's) and the `32594`-`32598` comparison servers the driver started and killed.
+**Neither hunter left a server running**, as in cycles 18, 19 and 25, and no launchd job was
+registered -- cycle 25's `com.plexsim.c25b` was the incident that put an explicit prohibition
+in both prompts.
+
+**`32598` is not a free port, and this cycle proved it the expensive way.** The note below has
+said so since cycle 18 and cycle 26 started a comparison server there anyway: the UI suite ran
+for fifteen minutes and then died with an unhandled `HTTPError 404` inside cycle 16's `/web`
+asset check, which starts its OWN `--web-root` instance on that port and got the wrong server's
+404 instead. It reads as a crash in an unrelated check, twenty minutes from the top of the
+suite. **The two reserved ports are `32598` and `32599`; pick comparison ports well away from
+them** -- `32592`/`32593` are the proof driver's and `32541`/`32543`/`32546` are the suite's
+usual bases.
 
 **Ports (cycle 19).** Re-checked after both hunters had stopped and every server this
 cycle started was killed: `32502`, `32596` and `8787` are held -- the same three cycles
@@ -1656,6 +1716,76 @@ raised an `AttributeError` -- which is cycle 19's lesson exactly: a check that f
 wrong reason proves nothing about its other six clauses. Restated with `getattr` and a
 default, all seven fail on the parent for the right reasons and pass on the fix.
 
+### Cycle 26 -- the playback surface, and the session lifecycle driven
+
+Two hunts and a driver round, on the one large functional surface nobody had ever swept. Cycle
+6 measured the decision container's refusals and the `/player/*` 400s; cycles 10, 14 and 15
+measured the timeline's storage grammar. Nothing had walked the playback path as a client walks
+it, and nothing had swept the `/video/:/transcode/universal/*` family or the Dashboard's
+statistics endpoints as a QUERY surface.
+
+**plexsim never ran a decision at all.** Every request without `hasMDE=1` was refused, whatever
+the client's profile said. Plex Web always sends it, so nothing in twenty-five cycles of suites
+ever saw this: every check was written by someone sending Plex Web's own parameters. Every
+client that does not -- Roku, plex-for-kodi's `ServerDecision`, python-plexapi, the older TV
+apps -- asked plexsim whether it could play an item and was told the catalog was unplayable, by
+a server whose entire purpose is direct play. Measured on kids and zen across four items in
+both containers, a decision with no `hasMDE` runs the client's own profile and answers one of
+three shapes; the Metadata row is byte-identical between the two forms, so CLAUDE.md's "a
+direct play is ONLY `mdeDecisionCode: 1000`" is the MDE form's rule and stays right.
+
+Three more findings are the same shape: the decision's validation refused a missing or
+unparseable `mediaIndex` and any `partIndex` where a real PMS accepts all of them; the
+statistics endpoints answered the live per-second series relabelled for any `timespan` the
+server holds no data for; and `/status/sessions` and `/statistics/{which}` were matched as
+PREFIXES, so nine paths that are 404s on both references answered 200.
+
+**The write hunt drove the session lifecycle, and found that a decision arms a SESSION.**
+`self.decided` was a set of ratingKeys and three behaviours read it -- the timeline's
+`Bandwidths`, the session row's `selected`/`decision`/`location` flags, and the transcode
+start's gate, which was not consulting it at all. Measured with two sessions on one row: only
+the one that decided is armed, the same session beating another row is not, and only its own
+`stopped` beat disarms it. The arming identity is `X-Plex-Session-Identifier` then the client
+identifier and **not** the decision's own `session=` parameter, which names the transcode
+session -- a distinction that had to be measured rather than assumed.
+
+**Two class-C writes that never reached a read.** A list's `/unmatch` has set `guid` to
+`local://{rk}` since cycle 23 and `_collection_row` re-mints the agent guid on every read, so
+the write landed in the stored dict -- which is also what the frame-count gate reads, so
+everything on the notification socket said the unmatch had happened while the row said it had
+not. A playlist's branch returned before the line ran at all. The reference writes more than
+the guid: a collection loses `ratingCount` and its `subtype` becomes `unknown`, a playlist
+loses `duration`.
+
+**And `/status/sessions` is written by a different serialiser.** Its attributes come out
+ALPHABETICALLY -- the row, its `Media` and its `Part` -- where cycle 22's measured
+`_ATTR_ORDER` governs everywhere else, and in JSON four values are strings that are numbers on
+the detail row while `UltraBlurColors` is a list of one. Cycle 22 swept 2,994 paths for
+attribute order and this is the one it could not reach: reading it needs a live playback
+session, which neither read-only reference can be given. It is the documented failure mode of
+a sweep, found by sweeping somewhere the sweep could not go.
+
+**The butler drew down two of cycle 23's last three**, on a freshly reset copy with an
+uncontended socket, twice over and identical frame for frame: `CleanOldBundles` interleaves its
+two messages with its own activity's phases, `RefreshLibraries` reports and closes the wrapper
+BEFORE its scan, and the wrapper steps `round(100n/(n+1))` once per task. The third --
+`POST /butler` running only what is DUE -- is measured (22 of 23 on a fresh reset, 12 on an
+immediate second POST) and **recorded rather than emulated**, because no row of `GET /butler`
+exposes a last-run or next-run time. Cycle 23's "a second POST is one `queueRegenerated` frame
+and nothing else" is REFUTED 2 of 2: it is a full run of its own.
+
+**Two suite checks were found to assert a shape no real PMS answers.** Cycle 6's decision check
+asserted refusals a real PMS does not make, and cycle 9's session-row check asserted
+`decision: directplay` on a session that had never made one -- which is what kept plexsim
+stamping it on every session row. Both are SPLIT rather than deleted, each half saying what was
+measured. A third, this cycle's own start-gate check, sent its decision and its start as two
+different sessions and had to be corrected once the arming was measured.
+
+**And a revalidation CLOSED a §3.3 entry.** The collection and playlist `/refresh` and
+`/unmatch` frame sequences, carried as measured-but-unimplemented since cycle 22, reproduce
+exactly: cycle 23 built them and what was missing was the `ended` frame's 100 and the guid
+reaching a read.
+
 ### Cycle 25 -- two dimensions nobody had swept, and the last of cycle 23's backlog
 
 Two hunts and a driver round, and it is the cycle that tests cycle 24's reading of the curve.
@@ -1756,27 +1886,38 @@ wants: the driver's own spot-check of "only three headers move anything" flagged
 `X-Plex-Features` on `/hubs`, and interleaving the requests showed the difference was kids'
 drifting clip durations and bitrates, not the header. The negative stands.
 
-### Next: cycle 26
+### Next: cycle 27
 
-1. **Run the hunts, on a dimension nobody has swept.** That is what made cycle 25 a
-   21-finding cycle after three falling ones, and §10 said so before cycle 24 tested it.
-   Closed and not to be re-swept: path, method/parameter, header, row, container, child
-   element, attribute order, child-element order, the filter engine, and now client
-   identity and the cross-endpoint cascade. Candidates nobody has taken: the PLAYBACK
-   surface end to end (`/video/:/transcode/universal/*`, the session lifecycle, the
-   Dashboard's byte counters) -- knowing that "plexsim has no encoder" bounds it; and a
-   fresh CLIENT-SESSION capture through the harness, replayed against plexsim, which is
-   the founding instrument and has not been re-run since cycle 7.
-2. **The three butler behaviours that are still unmeasured**: `CleanOldBundles`' interleaved
-   messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only
-   what is DUE. Measure them on a freshly reset copy with nothing else writing to it -- the
-   other three from that list did not survive being re-measured that way.
-3. **The collection and playlist `/refresh` and `/unmatch` FRAME sequences** (§3.3), which
-   carry `state 2` / `metadataState: matching` -- a state plexsim now emits on a season and
-   a show unmatch, so the state machine behind it is no longer new.
-4. **`/hubs/sections/{id}`'s own in-progress shelf**, which cycle 25 left half-measured: the
-   hide leaves `tv.inprogress.{id}` alone on a real PMS as well as the section's
-   `continueWatching/items`, and only the second half was implemented.
+1. **Run the hunts, on a dimension nobody has swept.** Two cycles in a row have now come back
+   with a double-figure count from exactly that, and cycle 26 found the largest functional gap
+   since the build-out in a surface everybody assumed worked. Closed and not to be re-swept:
+   path, method/parameter, header, row, container, child element, attribute order,
+   child-element order, the filter engine, client identity, the cross-endpoint cascade, and
+   now the playback path. Candidates nobody has taken: **a fresh CLIENT-SESSION capture
+   through the harness, replayed against plexsim** -- the founding instrument, not re-run
+   since cycle 7 and the one thing that would have caught the `hasMDE` gap on its own; and the
+   **non-Plex-Web client parameter sets** the decision finding exposes, driven end to end
+   (Roku's, plex-for-kodi's, python-plexapi's), since every check in the suites was written by
+   someone sending Plex Web's.
+2. **`/status/sessions`'s serialiser, swept rather than sampled.** Cycle 26 found the
+   alphabetical order and four string-typed values by comparing ONE session row with ONE
+   detail row. Which other projections have a serialiser of their own has not been asked, and
+   `/status/sessions/history/all` already answers a string `librarySectionID` beside a
+   non-alphabetical order, so there are at least two shapes there.
+3. **The `Role` order inside a session row** (§3.3), which is alphabetical after `filter` and
+   is the one element the new rule does not fit.
+4. **The session cutoff's bisection** (§3.3), if it is ever worth ~200 s a sample: the cutoff
+   is bracketed at or below 184 s and the reaper tick at 26 s or more.
+
+### Next: cycle 26 (superseded)
+
+1. Run the hunts on a dimension nobody has swept -- the PLAYBACK surface was named here and
+   is what cycle 26 took.
+2. The three butler behaviours still unmeasured -- two are now built, the third recorded.
+3. The collection and playlist `/refresh` and `/unmatch` FRAME sequences -- CLOSED by
+   revalidation: plexsim already reproduced all four.
+4. `/hubs/sections/{id}`'s own in-progress shelf -- built, and cycle 25's reading of it
+   corrected: the rule is per LIBRARY TYPE.
 
 ### Next: cycle 24 (superseded)
 
@@ -2164,6 +2305,16 @@ too), which the one-name-one-tag `languages.json` shape cannot express; and
 `pixelAspectRatio`/`anamorphic`, whose derivation is pinned but whose `anamorphic` threshold
 is only BRACKETED to (1.028, 1.067).
 
+**Cycle 26:** which butler tasks are DUE (the counts are measured, the mechanism is invisible
+from the surface -- no `GET /butler` row carries a last-run or next-run time -- so plexsim runs
+every enabled task); the butler's per-task COUNTS (unchanged from cycle 17: content, not rule);
+a valid transcode START once a decision exists (plexsim has no encoder, and the reference's own
+answer there depends on what it can convert -- its `start.mpd` is a 404 where the same
+session's `start.m3u8` is a 200); the reaper TICK behind the session cutoff (plexsim prunes
+lazily on read, so its row goes at the cutoff); and the session row's `Role` attribute order
+(alphabetical AFTER `filter`, which the plain rule does not explain and one element cannot
+settle).
+
 **Cycle 25:** the `anamorphic` CONSTANT itself (both sides measured, 0.05 the only round
 number between them, nothing in the gap); the show-unmatch activity's PROGRESS numbers (the
 pairs are measured, the formula is fitted to a two-season show); the MEDIA pass inside an
@@ -2451,6 +2602,11 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycles 25 and 26: `…/b59cf966-bebc-4d11-b0a6-beb9e8e6f6a5.jsonl` plus its
+  `subagents/agent-*.jsonl`. Cycle 26's scratch directory (`c26/`) holds both hunt prompts,
+  `remeasure_a.py`/`remeasure_b.py`, `sse.py`, the TTL harnesses (`ttl4.py`-`ttl7.py`, ten
+  runs), `rm_lists.py` (the four list frame sequences driven side by side), `rm9.py` (the
+  session-row shape diff) and fifteen patch modules.
 - cycle 25: `…/b59cf966-bebc-4d11-b0a6-beb9e8e6f6a5.jsonl` plus its `subagents/agent-*.jsonl`.
   Its scratch directory (`c25/`) holds both hunt prompts, `cascade.py` and `sse.py` (the
   dependency-free eventsource listener the frame work runs on), `par.py` (zen's
