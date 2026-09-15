@@ -695,7 +695,10 @@ started was killed: `32502` and `8787` are held -- the same two every cycle sinc
 with. Everything cycle 28 used is FREE again: `32587`/`32588` (the hunters'), `32592`/`32593`
 (the proof driver's), `32500`/`32501`/`32503`/`32505`/`32506` (the suite runs and the probes)
 and `32594`-`32597` (the by-hand `runblock` proofs of the refitted checks, which need a server
-per parent tree). **Neither hunter left a server running** and no launchd job was registered.
+per parent tree). **One hunter DID leave a server running**, on `32589` -- a port this file's
+scan does not list, serving the frozen `head28` tree, found only because the cleanup listed the
+`server.py --port` processes rather than the ports it expected. Step 12 exists for exactly that;
+it is now worth listing the processes as well as the ports. No launchd job was registered.
 `32599` is `test_ui_surface.py`'s own gated server and `32598` the `--web-root` instance its
 asset check starts; leave both free. One suite run was killed mid-flight by a harness timeout
 this cycle -- its server stayed up and had to be killed by hand before the next run, because a
@@ -815,7 +818,10 @@ One cycle, as run for cycles 8–15:
     Remove the worktree, `git branch -d cycleN`, `git worktree prune`, confirm
     `HEAD == origin/main`.
 11. **Snapshot the reference again** and diff it against step 1.
-12. **Re-check the ports AFTER the hunters have stopped, not only at cleanup.** A finished
+12. **Re-check the ports AFTER the hunters have stopped, not only at cleanup -- and list the
+    PROCESSES, not just the ports you expect.** Cycle 28's cleanup found a hunter's server still
+    up on `32589`, a port no list in this file names; `pgrep -af "server.py --port"` found it and
+    a port scan never would have. A finished
     agent can still act: cycle 15's write hunt fired two more task notifications after the
     cycle was merged and pushed, and restarted its plexsim on 32582 both times — the second
     time detached, reparented to init, so it would have outlived the session. Its housekeeping
