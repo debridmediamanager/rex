@@ -1604,6 +1604,40 @@ precisely how the Seasons bug survived a fix attempt.
   path in that subtree that answers its own 400 to every verb**, GET included, rather than
   cycle 18's empty-bodied 404.
 
+- **A `/search` row is the GRID row with a six-attribute lead** -- `allowSync,
+  librarySectionID, librarySectionTitle, librarySectionUUID, personal, sourceTitle` in
+  front and nothing else different. plexsim answered the DETAIL row there, which on a real
+  library is several times the bytes per hit.
+- **A `Meta/Type`'s active SORT follows the asked `type=` AND the `sort=` parameter**: it is
+  marked only inside the Type row matching the asked type (a movie library asked `type=2`
+  marks NOTHING), and which one is marked is the requested sort -- none given lights the
+  default, `sort=addedAt:desc` lights `addedAt` with `activeDirection="desc"`, and a spec
+  naming no advertised key lights nothing. Different attribute from cycle 19's `Type@active`.
+- **`?includeDetails=1&includeAdvanced=1` carries NO Duplicates Filter row at all.** Cycle
+  16 measured that path without `includeAdvanced=1`, where the row does not exist to carry
+  a flag, so "carries no `advanced`" was the absence of the FLAG, not of the ROW.
+- **A `/library/tags` row ends with `thumb`**; **the `/hubs/sections/{id}/manage` Hub leads
+  with `identifier` and SELF-CLOSES** -- so `_ALWAYS_PAIRED` is not a flat name list for
+  `Hub`: it is paired when it carries a child collection and self-closed when it carries
+  none, the rule cycle 22 left open for `Directory`. **A `Common` row leads with the
+  GRANDPARENT pair** and puts the parent pair before `ratingKey`.
+- **The `_xml=` override has to reach the JSON writer too.** `_send_container` POPS it
+  before either writer runs, so `/library/sections/{id}/common` bucketed as `Video[common]`
+  and its JSON keys stayed in build order -- the last path where plexsim's two writers
+  contradicted each other, which a real PMS never does (re-confirmed over 1,241 pairs).
+- **A MOVIE's unmatch pushes TWELVE frames**, opening on `2/matching` then `3/matching` --
+  a pair plexsim emitted nowhere -- with an activity that steps through a second TITLE,
+  `Analyzing Media`, before returning to `Updating Metadata`.
+- **A collection and a playlist answer `/refresh` and `/unmatch`** with their own sequences,
+  and a collection's refresh is GATED ON ITS GUID: three frames on an agent guid, eight once
+  an unmatch has given it a `local://` one. A collection's `/analyze` is the activity PAIR
+  alone -- its members are never framed.
+- **Three more read-only routes refuse every other verb**: `/hubs/home/recentlyAdded`,
+  `/hubs/sections/{id}` and `/library/metadata/{id}/children`.
+- **`xmlout._CHILD_ORDER` holds against a real library** -- 203 ordered pairs witnessed
+  across 2,994 paths, zero contradictions, on rows carrying `Chapter`, `Marker`, `Review`,
+  `CommonSenseMedia`, 155 roles and 5 Media. Do not re-sweep it without a new row shape.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
