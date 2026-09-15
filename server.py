@@ -1470,6 +1470,12 @@ def _with_client_titles(node, product):
     return node if copy is None else copy
 
 
+# Per-request state a PlexSim handler needs and `query` must not carry -- see
+# `PlexSim.handle`. One `ThreadingHTTPServer` thread per request, so a thread-local is
+# exactly the scope of a request.
+_REQUEST = threading.local()
+
+
 def request_language(query, headers):
     """The language a request asks for, by the measured precedence.
 
@@ -3217,8 +3223,16 @@ class PlexSim:
         # The resolved language, for the handlers that need it. `_localise` reads the
         # headers itself, but it runs in the HTTP handler; a PlexSim handler shaping a
         # response BY language -- `/system/agents`' per-language `Language` list -- has
-        # only `query`. Private, like `_pairs`, and `_drop_private` keeps it off the wire.
-        query["_language"] = request_language(query, headers)
+        # only `query` and this.
+        #
+        # It is a THREAD-LOCAL and not a `query` key, and that is not a style choice.
+        # Six write paths read `query` as a form -- an item prefs write, a playlist
+        # edit, a section save, a library create -- excluding `X-Plex-*` and the one
+        # private key they know by name, so a SECOND private key is an unknown field
+        # and the whole form is refused. Putting it in `query` turned five passing
+        # suite checks into 400s, which is what the suite is for. The server is a
+        # `ThreadingHTTPServer`, so an instance attribute would race between requests.
+        _REQUEST.language = request_language(query, headers)
         # Container paging arrives as query parameters from the Backbone paths and
         # as HTTP HEADERS from the React ones (`fetchRange` sets
         # `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`). A real
@@ -12353,7 +12367,7 @@ class PlexSim:
         # Cycle 25: the list is per LANGUAGE -- titles and order both. All six modern
         # agents share one list, measured agent by agent in every language, so one
         # lookup answers them all. An unrecognised language takes the no-header list.
-        rows = AGENT_LANGUAGES.get(query.get("_language") or "")
+        rows = AGENT_LANGUAGES.get(getattr(_REQUEST, "language", None) or "")
         if rows is None:
             rows = AGENT_LANGUAGES.get("")
         if rows:
