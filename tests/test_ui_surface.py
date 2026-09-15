@@ -16213,6 +16213,28 @@ def main():
           and all(f_c22j[0] == "flavor" for f_c22j in with_flavor_c22j),
           "Part %s | pivot %s | Feature %s"
           % (part_attrs_c22j[:5], pivot_attrs_c22j, with_flavor_c22j[:2]))
+
+    # Cycle 22, measured on zen and kids: a LIGHT row's JSON child-element order is the
+    # light order, not the detail order -- `Guid` comes straight after `UltraBlurColors`,
+    # before the tags. plexsim's XML writer had it right and its JSON writer did not:
+    # `xmlout._split` picks the light order off the row's own `_light` marker, and
+    # `json_body` calls `_drop_private` FIRST, which strips the marker before the orderer
+    # ever sees it. Cycle 19's "one answer both writers ask" held everywhere but here.
+    _, light_c22k, _ = get(base, "/library/sections/%s/all?type=1&id=%s&includeGuids=1"
+                           % (movie_section, movie))
+    row_c22k = (light_c22k.get("Metadata") or [{}])[0]
+    json_order_c22k = [k_c22k for k_c22k, v_c22k in row_c22k.items()
+                       if isinstance(v_c22k, (list, dict))]
+    _, light_xml_c22k, _ = request(
+        base, "GET", "/library/sections/%s/all?type=1&id=%s&includeGuids=1"
+        % (movie_section, movie), want_json=False)
+    node_c22k = list(ET.fromstring(light_xml_c22k))[0]
+    xml_order_c22k = list(dict.fromkeys(child_c22k.tag for child_c22k in node_c22k))
+    check("a light row's JSON child order is the light order, as its XML already was",
+          bool(xml_order_c22k) and json_order_c22k == xml_order_c22k
+          and "Guid" in xml_order_c22k
+          and xml_order_c22k.index("Guid") < xml_order_c22k.index("Genre"),
+          "XML %s | JSON %s" % (xml_order_c22k, json_order_c22k))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
