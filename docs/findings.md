@@ -7284,6 +7284,179 @@ composition is held out for a different reason: **kids and zen disagree** about 
 preplay page carries, so there is no rule to implement — the same test the three-server method
 applies everywhere.
 
+#### The twenty-ninth pass — the bytes below the container, a row type plexsim has never held, and the artwork derivation finished
+
+Two hunts and a driver round: **nineteen findings**, and for the first time in the programme the
+driver's own revalidation step produced more of them than either hunt.
+
+**The revalidation step found six, in one mechanism.** HANDOVER 3.3 held two cycle-27 entries
+about the artwork cascade whose method was written down and never run -- "clear a show's `/art`
+on the copy and read its episodes back", and "unmatch a show, give it an `art` back, and read the
+leaves". Running both, and then the writes they imply, produced six findings and one rule that
+subsumes every artwork cascade the project has measured since cycle 14:
+
+**A row's own artwork field is its NEAREST ancestor's that OWNS one, and `parentX`/`grandparentX`
+always name that specific ancestor.** Measured on plexscratch over eight writes on a two-season
+show, reading the show, both seasons and one episode of each back after every one:
+
+- clearing the SHOW's `art` removes it from both seasons AND from every episode, taking the
+  episodes' `grandparentArt` with it; picking one back puts all of them in the same read. So a
+  borrowed field is DERIVED and is RE-CREATED, which is the half cycle 27 could only infer --
+  plexsim's `_follow_artwork` returns early unless the child already names the owner, so a leaf
+  that lost its `art` never got one back.
+- uploading an `art` to ONE season makes that season the owner: all three of its episodes'
+  `art` switched to `/library/metadata/7/art/<stamp>` while their `grandparentArt` went on
+  naming the SHOW, and the other season's episode kept the show's. That is zen's episode 11115
+  -- the row cycle 27 recorded and could not produce -- made on demand.
+- picking a new `art` for the SHOW then left the owning season's own path and stamp alone, only
+  its `parentThumb` following, while the borrowing season followed on both.
+- clearing a season's own `art` drops it back to the SHOW's path, its episodes with it, and the
+  bare `GET /library/metadata/{season}/art` becomes a 404: `art` falls back exactly as cycle 27
+  measured `thumb` does.
+- an artwork UPLOAD cascades like a pick -- plexsim's upload path set the row's two fields, moved
+  `updatedAt`, pushed its frame and never called the cascade at all, so every child kept the old
+  stamp and a client that caches on it (which is what the stamp is for) never refetched.
+- and both write paths re-version the OTHER field only when the row OWNS it. A poster upload on a
+  season that borrowed both fields left its `art` naming the show untouched; so did clearing that
+  season's thumb. plexsim rewrote the borrowed path as the row's own in both places -- a row
+  claiming an image the server has none of, which the derivation then handed to every episode.
+
+One of the six is plexsim's own: `catalog.items` is keyed by INTEGER ratingKey and every row
+carries its key as a STRING, so the cascade's `items.get(row["parentRatingKey"])` was always
+None. A SEASON cascade could therefore not see its show, read the season as owning nothing, and
+STRIPPED `art` from every episode under it. It shipped inside this cycle's own second patch and
+the next check in the same dimension caught it -- which is the argument for driving one finding
+at a time against its own parent.
+
+**Two stale claims closed by re-measurement.** HANDOVER 3.3 and section 8 both held that the
+collection's and playlist's `/refresh` and `/unmatch` FRAME sequences were measured and not
+implemented. Driven again on plexscratch with a listener open, plexsim reproduces all four frame
+for frame: a collection's refresh is 3 frames on an agent guid and 8 once a `local://` guid makes
+it real (`2 matching`, `5`, `3 queued`, activity `started -1`, `updated 49`, `3 processing`,
+`ended 100`, `5`), its unmatch 7 of them, a playlist's refresh 4 and its unmatch 2, every row
+carrying `type` 18 with `sectionID "1"` or `type` 15 with `sectionID "-1"`. Cycle 26 built them
+and the two lists were never updated.
+
+**An instrument trap worth writing down.** On plexscratch an artwork PICK stamps the row's
+`updatedAt` -- and therefore every artwork path -- at **local time**, 7200 s ahead of the epoch,
+and because the next write takes `max(stored, now)` the offset COMPOUNDS: two picks a minute
+apart produced 1789514762 and 1789521963 against a true clock of 1789507604, while the response
+body of each named the true-epoch path. An UPLOAD on the same server stamps the true epoch. All
+three servers' `Date` headers agree with the host clock to the second, and no stored `addedAt`
+/`updatedAt` pair on kids or zen shows the offset, so this is the copy's own write path and not a
+rule -- but any measurement that compares a copy stamp with `now`, or two copy stamps with each
+other across write kinds, is measuring it.
+
+**Territory A swept the RESPONSE BODY** — the bytes a real PMS actually sends for an image, an
+asset and a media part, and the envelope around them. Twenty-eight cycles had measured containers;
+only cycle 16 had ever looked below one. Eleven findings, every one on both references:
+
+- **`/photo/:/transcode` refuses five `url=` shapes plexsim answered with a grey tile.** The
+  dimensions are validated first (`url=&width=abc` is a 400), and then the url: a missing `url=` is
+  a 400, an EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does not
+  hold a 404, a server path that is not artwork (`/identity`, a grid) a **500**, and a url with a
+  SCHEME or no leading slash (`file://`, `upload://`, `library/metadata/…`) a 404. plexsim's
+  resolver matched one regex and fell through to a generated grey PNG carrying
+  `Cache-Control: max-age=259200`, so a browser kept the grey square for three days — CLAUDE.md's
+  own trap ("a 404 lets the client draw its own placeholder where a grey 200 tile gets cached")
+  read from the other side, five doors after cycle 14 closed the first.
+- **The transcoder answers exactly what the direct path answers.** Over a row that BORROWS its
+  `art`, both are 404s on both references; plexsim resolved through `artwork_for`, which falls back
+  to the parent's image, so the transcoder served a picture the direct path refuses.
+- **`/:/resources/` is SEVEN names, and it ignores `width`/`height`.** kids and zen serve
+  byte-identical bytes for `movie.png`, `show.png`, `artist.png`, `photo.png` (300×300 PNG) and
+  `movie-fanart.jpg`, `show-fanart.jpg`, `artist-fanart.jpg` (1280×720 JPEG) — so these are PMS's
+  own bundled assets — and `library-art.png`, `playlist.png` and `album.png` are **404s**, even
+  though a real PMS's own `/library` container advertises the first of them as its `art`. A
+  `?width=100&height=100` answers the same 76,373 bytes.
+- **A 0/1 option's value is `+?0*[01]`.** Measured over nine values of each of six options —
+  `checkFiles`, `skipRefresh`, `asyncCheckFiles`, `download`, `minSize`, `upscale` — identical on
+  all 54: `0`, `1`, `00`, `01`, `000`, `0000001`, `+1`, `+0`, `+01` pass and `2`, `+2`, `-1`, `+`,
+  `++1`, `1+`, `1.5`, `true`, an empty value and either surrounding space are 400s. Cycle 23's
+  four-value list came from a ten-value sweep with no sign in it. **`download=` is one of them**,
+  and plexsim compared the raw string with `"1"`/`"true"`, so `download=true` was a download where
+  a real PMS refuses the read and `download=2` streamed the media un-dispositioned.
+- **A 416 is an error response, not the resource with no bytes.** The reference answers a 129-byte
+  HTML page with `Content-Type: text/html` and neither `Accept-Ranges` nor `Content-Range`, on
+  eight body paths and three container paths; plexsim answered `Content-Length: 0` with the
+  ORIGINAL media type and the full success header set, handing a client an `image/jpeg` of zero
+  bytes. plexsim keeps its own text/plain sentence (cycle 1's deliberate deviation) and now sends a
+  body, a plain type and no `Accept-Ranges`.
+- **Under `/web/*`, a DIRECTORY is an empty `application/octet-stream` 200**, a trailing slash
+  after a file is a 404, a path that escapes the root is a **400** (plexsim answered 403, a status
+  that is nowhere else on the surface), and `.woff`/`.woff2` are `application/octet-stream` like
+  the `.ico` cycle 16 already found. plexsim substituted `index.html` for a directory, so every
+  directory under the bundle served the whole client.
+- **`X-Plex-Local-Asset: 1` marks an ITEM's own artwork and nothing else** — absent from a
+  section's `/composite/{v}`, from `/:/resources/*`, from `/web/*` and from a part read, where
+  plexsim put it on every image it sent.
+- **The `Content-Disposition` `filename*` escaper is "unreserved minus the dot"**: `.` comes out
+  `%2E` and `+` `%2B`, while `-` is left alone. It is the escaper CLAUDE.md already records for a
+  local artwork candidate's `/file?url=`, so the rule generalises; `urllib.parse.quote` keeps the
+  dot, so plexsim sent `1080p.mkv` where a real PMS sends `1080p%2Emkv`.
+
+**Territory B swept EXTRAS and the `clip` row** — and corrected the brief it was given: kids holds
+one extra after all (`/library/sections/1/extras/all` is `size 1`, an IVA trailer for Big Buck
+Bunny), so the territory had two witnesses rather than one. Four findings plus a build spec:
+
+- **`/library/sections/{id}/extras/all` is a real listing QUERY.** It refuses what a listing
+  refuses — an unparseable `limit`, an unparseable or empty `type`, an unknown `sort` key, any
+  `group=`, an unparseable `parent` — each a 500, and it refuses four more keys the section grid
+  ACCEPTS: `duration`, `resolution`, `mediaSize` and `file` are 500s here and 200s on `/all`, so
+  the media columns are the leaf's own refusal rather than the column's. `extraType=`, `title=`,
+  `audioLanguage=` and a good `limit` are 200s, and on zen they really constrain (1,264 rows at
+  `extraType=1` of 3,580). plexsim built the leaf in cycle 15 as a fixed empty container — true of
+  its own libraries, which hold no clips — so it took no query at all and answered `200 size 0` to
+  every malformed request, which a client reads as "this library has no extras".
+- **`group=` is honoured on `/library/all`** by both references (kids' 14 rows collapse to 4 by
+  type, 7 by year, 10 by title; zen's 14,434 to 4, 90 and 8,358) and an unknown or empty field is a
+  500 there as on a section listing. plexsim's `grouped()` was already right and this handler never
+  called it.
+- **`sort=type` orders by the type NUMBER**, not the name: kids' rows come back `movie ×5, show,
+  season ×2, episode ×6` and exactly reversed descending. plexsim kept `type` among its text sorts,
+  which lower-cases the value, so its order was alphabetical and `episode` came first.
+- **An `include*` option's value takes a leading `+`.** A properly encoded `%2B1` turns the block
+  on, on both references and on both row types, where cycle 22 recorded `+1` as off — because a RAW
+  `+` in a query string decodes to a SPACE, and that measurement was of `" 1"`. The same trap made
+  cycle 23's boolean list miss the sign.
+- **The `clip` row's build spec**, measured over all 3,904 of zen's extras and kids' one, and
+  recorded for a cycle that can hold clips: attributes in one order (`ratingKey, key, guid, type,
+  title, [titleSort], summary, index, [year], [thumb], [primaryGuid], art, subtype, [duration],
+  originallyAvailableAt, addedAt, [updatedAt], extraType`) with `extraType` LAST; no `Guid`, no
+  `Rating`, no tags, no `Field`, no librarySection triple on the row and none on the container,
+  which says `allowSync="0"`; `art` is the parent's path verbatim and `/library/metadata/{clip}/art`
+  is a 404 while `/thumb` and `/poster` are 200s; `primaryGuid` is the parent's `plex://` guid and
+  is present on exactly the 1,501 `extraType: 1` rows of zen's 3,904 and on none of the other
+  2,403; six `extraType` values exist (1 trailer, 3 interview, 5 behindTheScenes, 6 sceneOrSample,
+  13 opening, 14 ending); the parent's `primaryExtraKey` is the lowest-`index` trailer's `key`,
+  30 of 30 sampled; three projections (the standalone leaf is the full row, the inline `Extras`
+  block the same minus `art`, the section leaf the light row with no `Stream`); the order is
+  `index` ascending and both item forms are UNCAPPED at 44 where `Related` caps at five; and clips
+  are in NO listing, axis, hub or count anywhere — `id=<clip>` is `size 0` on `/library/all`, on
+  `?type=1` and on the section grid, on both references.
+
+**Measured and deliberately not emulated.** The photo transcoder's geometry is now pinned — the
+default scales to FIT inside the box, `minSize=1` scales to COVER it uncropped, and without
+`upscale=1` the result is capped at the source's own size, with `quality=` the real JPEG quality
+and `opacity=` accepted and discarded — but plexsim has no resizer, so it still picks a TMDB bucket
+and passes those bytes through (the `width`/`height` 500s were already held out in cycle 27). A
+section `/composite/{v}` is a 512×512 JPEG mosaic on both references and plexsim has no
+compositor. `/photo/:/transcode` omits `Accept-Ranges` on the FIRST (uncached) transcode and sends
+it on every later one — a cache tell no client can see, and plexsim has no transcode cache. The
+416's own HTML body and the fact that the static writer's refusals name no connection state and
+CLOSE the socket stay recorded: plexsim's text/plain error bodies are cycle 1's deliberate
+deviation, and keeping a connection the reference drops is the forgiving direction. zen's plain
+`filename=` substitutes `_` for `+` where `filename*` escapes it, on one witness. And the whole
+clip surface waits on a catalog that holds clips: plexsim's own has none, so the spec above is the
+finding and the build is not.
+
+**A note about the instrument, not about plexsim.** zen (1.42.2) answered
+`GET /library/metadata/{id}/file?url=file%3A%2F%2F%2Fetc%2Fhostname` with `200 image/jpeg` and the
+file's four bytes; kids (1.43.4) refuses the same request with a 400. The hunt stopped at that one
+request and read nothing else. plexsim 404s it either way — the references disagree, so there is no
+rule here — but zen is a production server on a build that still does it, and HANDOVER 9 records it
+so that nobody points a sweep at that path again.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

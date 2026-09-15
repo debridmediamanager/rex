@@ -1941,6 +1941,60 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/library/search?limit=` caps the WHOLE list**, not each hub, and refuses twice over like
   `/hubs/search`: a value it cannot parse is a 400, a non-positive one a 500, `01` fine.
 
+- **A row's own artwork field is its NEAREST ancestor's that OWNS one**, and
+  `parentX`/`grandparentX` always name that specific ancestor. Clearing a show's `art` removes it
+  from every season AND episode (with the episodes' `grandparentArt`) and picking one back puts all
+  of them back -- a borrowed field is DERIVED and is RE-CREATED, not moved. Giving ONE season its
+  own `art` switches that season's episodes to it while their `grandparentArt` goes on naming the
+  show; a later show pick leaves the owning season's own path and stamp alone. Clearing a row's own
+  `art` drops it back to the ancestor's, as `thumb` already did, and the bare `/art` becomes a 404.
+- **Every artwork write cascades, and both write paths re-version the OTHER field only when the row
+  OWNS it.** An artwork UPLOAD cascades exactly as a pick does (plexsim's never called the cascade,
+  so children kept the old stamp and a client that caches on it never refetched); a poster upload on
+  a row that borrows its `art` leaves that `art` naming the owner, and so does clearing that row's
+  thumb.
+- **`/photo/:/transcode` validates its DIMENSIONS first and then its `url`**: a missing `url=` is a
+  400, an EMPTY one a 404, an item artwork path of a row it holds the image, of a row it does not
+  hold a 404, one the row does not OWN a 404 (the transcoder answers what the direct path answers),
+  a server path that is not artwork a **500**, and a url with a SCHEME or no leading slash a 404. A
+  generated tile there carries `max-age=259200`, so a grey square caches for three days.
+- **`/:/resources/` is SEVEN names** -- `movie show artist photo .png` at 300x300 and
+  `movie-fanart show-fanart artist-fanart .jpg` at 1280x720, byte-identical on both references, so
+  they are PMS's own bundled assets -- and `library-art.png`, `playlist.png` and `album.png` are
+  **404s** even though a real PMS's `/library` container advertises the first as its `art`.
+  `?width=`/`?height=` are IGNORED there.
+- **A 0/1 option's value is `+?0*[01]`**: `0`, `1`, `00`, `01`, `000`, `0000001`, `+1`, `+0` and
+  `+01` pass, and `2`, `+2`, `-1`, `+`, `++1`, `1+`, `1.5`, `true`, empty and either surrounding
+  space are 400s -- on `checkFiles` and its five siblings, on `minSize`/`upscale`, and on
+  **`download=`**, which is one of the family. The four integer `include*` options take the leading
+  `+` too. Cycle 22's and 23's "`+1` does not count" was a RAW `+` in a query string, which decodes
+  to a SPACE.
+- **A 416 is an error response, not the resource with no bytes**: `Content-Type: text/html`, a
+  129-byte body, and neither `Accept-Ranges` nor `Content-Range`. plexsim sends its own text/plain
+  sentence (cycle 1's deviation) with the header dropped.
+- **Under `/web/*` a DIRECTORY is an empty `application/octet-stream` 200**, a trailing slash after
+  a file is a 404, a path escaping the root is a **400**, and `.woff`/`.woff2` are
+  `application/octet-stream` like `.ico`.
+- **`X-Plex-Local-Asset: 1` marks an ITEM's own artwork and nothing else** -- not a section
+  composite, not `/:/resources/*`, not `/web/*`, not a part read.
+- **The `Content-Disposition` `filename*` escaper is "unreserved minus the dot"** (`.` -> `%2E`,
+  `+` -> `%2B`, `-` kept): the same escaper as a local artwork candidate's `/file?url=`.
+- **`/library/sections/{id}/extras/all` is a real listing QUERY** -- an unparseable `limit`, an
+  unparseable or empty `type`, an unknown `sort`, ANY `group=` and an unparseable `parent` are each
+  a 500, and so are `duration`, `resolution`, `mediaSize` and `file`, which the section GRID
+  accepts. `extraType=`, `title=`, `audioLanguage=` and a good `limit` are 200s and really
+  constrain.
+- **`group=` is honoured on `/library/all`** (kids' 14 rows collapse to 4 by type) and an unknown or
+  empty field is a 500 there too. **`sort=type` orders by the type NUMBER**, not the name.
+- **`/library/metadata/{id}/extras/all` and the section's answer 404 to every verb but GET and
+  HEAD** -- the bare `/extras` keeps its POST 400. A five-segment read-only route needs the gate as
+  much as a four-segment one.
+- **A clip is a row type plexsim does not hold, and its shape is recorded** (attribute order with
+  `extraType` LAST, no `Guid`/`Rating`/tags/`Field`, a container with `allowSync="0"` and no
+  librarySection triple, `art` the parent's verbatim while `/art` is a 404, `primaryGuid` on trailer
+  rows only, six `extraType` values, three projections, uncapped, and in NO listing or axis
+  anywhere). See `docs/findings.md`; the build waits on a catalog with extras in it.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
