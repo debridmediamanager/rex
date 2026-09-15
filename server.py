@@ -9323,11 +9323,91 @@ class PlexSim:
         wanted = {"1": "movie", "2": "show"}.get(type_id)
         if wanted is None:
             return None
+        if wanted == "show":
+            return self.recently_added_tv(section_id)
         rows = [r for r in self.catalog.items.values() if r.get("type") == wanted]
         if section_id:
             rows = [r for r in rows if str(r.get("librarySectionID")) == str(section_id)]
         rows.sort(key=lambda r: -(r.get("addedAt") or 0))
         return rows
+
+    # Cycle 28: the cap `type=2` answers and `type=1` does not. Measured on zen:
+    # `?type=2` is `size 50, totalSize 50` at a 100-row window and pages correctly to
+    # `offset 50` (`size 0`), while `?type=1` answers `totalSize 3887`. Neither `limit=`
+    # nor `count=` moves it. A bare constant with one witness -- zen is the only library
+    # big enough to reach it -- and nothing on the surface explains the number.
+    TV_RECENT_CAP = 50
+
+    def recently_added_tv(self, section_id=None):
+        """`/hubs/home/recentlyAdded?type=2` -- a MIXED, rolled-up list.
+
+        Cycle 28, measured on zen (50 rows: 12 shows, 31 seasons, 7 episodes) and
+        corroborated on kids: this shelf is not a list of shows. It is a list of what
+        was recently added, ROLLED UP -- a group of two or more recently-added siblings
+        collapses into its parent, recursively:
+
+          * one new episode in an otherwise old season stays an EPISODE (zen's 17070,
+            whose season's other 21 episodes are three weeks older)
+          * two new episodes of one season become the SEASON (19563)
+          * six, or 161, new episodes of a show's only season become that SEASON and not
+            the show, because one season is not two (17318, 19577)
+          * two or more new seasons become the SHOW (Friends 17224, One Piece, Stargate
+            SG-1, Fringe)
+
+        And a parent row here is dated by its NEWEST LEAF, not by its own `addedAt`:
+        kids' Firefly carries 04:24:45 (its last episode) against its own 04:27:37, and
+        14 of 14 zen season rows carry `max(child.addedAt)` exactly. That is the
+        OPPOSITE aggregation from `/library/recentlyAdded`, where cycle 25's "dated by
+        the earliest episode" holds and is re-confirmed here.
+        //
+        plexsim filtered `type == "show"`, so it could only ever emit shows: a new
+        episode or a new season of an existing show was invisible on Home, and the shelf
+        only changed when a whole show was added.
+
+        The ROLL-UP THRESHOLD is a fitted model and is recorded as one: the mechanism
+        reproduces on all 50 zen rows with no counterexample, but what is in scope as
+        "recently added" at all is not pinned, so two-or-more is measured-and-modelled
+        rather than a constant. See HANDOVER 3.3.
+        """
+        def newest(row):
+            leaves = self.catalog.leaves(row.get("ratingKey"))
+            return max([int(r.get("addedAt") or 0) for r in leaves]
+                       or [int(row.get("addedAt") or 0)])
+
+        leaves = [r for r in self.catalog.items.values() if r.get("type") == "episode"]
+        if section_id:
+            leaves = [r for r in leaves
+                      if str(r.get("librarySectionID")) == str(section_id)]
+        by_season, by_show = {}, {}
+        for leaf in leaves:
+            by_season.setdefault(str(leaf.get("parentRatingKey")), []).append(leaf)
+            by_show.setdefault(str(leaf.get("grandparentRatingKey")), []).append(leaf)
+        rows, claimed = [], set()
+        for show_key, show_leaves in by_show.items():
+            show = self.catalog.items.get(int(show_key)) if show_key.isdigit() else None
+            seasons = {str(leaf.get("parentRatingKey")) for leaf in show_leaves}
+            if show is not None and len(seasons) > 1:
+                rows.append(show)
+                claimed.update(seasons)
+                continue
+            for season_key in seasons:
+                season = (self.catalog.items.get(int(season_key))
+                          if season_key.isdigit() else None)
+                members = by_season.get(season_key) or []
+                if season is not None and len(members) > 1:
+                    rows.append(season)
+                    claimed.add(season_key)
+                else:
+                    rows.extend(members)
+        rows = [r for r in rows
+                if not (r.get("type") == "episode"
+                        and str(r.get("parentRatingKey")) in claimed)]
+        dated = [(newest(r), r) for r in rows]
+        dated.sort(key=lambda pair: -pair[0])
+        out = []
+        for stamp, row in dated[:self.TV_RECENT_CAP]:
+            out.append(dict(row, addedAt=stamp) if stamp != row.get("addedAt") else row)
+        return out
 
     # The global hub list, measured identically on both real servers: eight shelves
     # in this order, all promoted. (identifier, title, key, kind, style)
