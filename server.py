@@ -16088,6 +16088,10 @@ class Handler(BaseHTTPRequestHandler):
         # Measured: the reference's 101 carries the protocol version, the CORS pair
         # and `Cache-Control` alongside the handshake. plexsim sent the three
         # handshake headers alone.
+        # Cycle 30: the reference's 101 carries `Date` as its last header, like every
+        # other response on the surface -- plexsim writes this handshake by hand rather
+        # than through `_send`, so it was the one response with none. No client reads it;
+        # CLAUDE.md's envelope rule says it is there.
         upgrade = ["HTTP/1.1 101 Switching Protocols",
                    "X-Plex-Protocol: 1.0",
                    "Upgrade: websocket",
@@ -16096,6 +16100,7 @@ class Handler(BaseHTTPRequestHandler):
                    "Cache-Control: no-cache"]
         for name, value in self._cors_headers():
             upgrade.append("%s: %s" % (name, value))
+        upgrade.append("Date: " + self.date_time_string())
         self.wfile.write(("\r\n".join(upgrade) + "\r\n\r\n").encode())
         self.wfile.flush()
         filters = [f for f in (urllib.parse.parse_qs(
