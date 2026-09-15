@@ -16920,6 +16920,45 @@ def main():
     check("the Add Library form's list is unchanged under the same header",
           "includeInGlobal" not in new_form_c25g, str(new_form_c25g[-2:]))
 
+
+    # Cycle 25, measured on kids and zen: `/media/providers?includePreferences=1` carries
+    # each library's whole `Preferences` block, byte-identical to the one
+    # `/library/sections?includePreferences=1` answers -- the per-SHOW `episodeSort`
+    # variant included -- as the FIRST child of the library `Directory`. The `Home` row,
+    # which names no library, gets none. plexsim handled the option at three other sites
+    # and ignored it here.
+    providers_c25h = get(base, "/media/providers?includePreferences=1")[1]
+    dirs_c25h = [row_c25h
+                 for provider_c25h in (providers_c25h.get("MediaProvider") or [])
+                 for feature_c25h in (provider_c25h.get("Feature") or [])
+                 for row_c25h in (feature_c25h.get("Directory") or [])]
+    with_prefs_c25h = [row_c25h for row_c25h in dirs_c25h if row_c25h.get("Preferences")]
+    home_c25h = [row_c25h for row_c25h in dirs_c25h if not row_c25h.get("key")]
+    sections_c25h = get(base, "/library/sections?includePreferences=1")[1]
+    by_key_c25h = {row_c25h.get("key"): row_c25h
+                   for row_c25h in (sections_c25h.get("Directory") or [])}
+    plain_c25h = get(base, "/media/providers")[1]
+    plain_dirs_c25h = [row_c25h
+                       for provider_c25h in (plain_c25h.get("MediaProvider") or [])
+                       for feature_c25h in (provider_c25h.get("Feature") or [])
+                       for row_c25h in (feature_c25h.get("Directory") or [])]
+    check("/media/providers?includePreferences=1 carries every library's Preferences",
+          len(with_prefs_c25h) == len([r_c25h for r_c25h in dirs_c25h
+                                       if r_c25h.get("key")]) > 0,
+          "%d of %d Directory rows" % (len(with_prefs_c25h), len(dirs_c25h)))
+    check("the Home row, which names no library, carries none",
+          home_c25h and not any(row_c25h.get("Preferences") for row_c25h in home_c25h),
+          str([sorted(row_c25h) for row_c25h in home_c25h]))
+    check("the block is the same one /library/sections answers",
+          all(row_c25h["Preferences"]
+              == (by_key_c25h.get(str(row_c25h.get("id")), {}).get("Preferences")
+                  or by_key_c25h.get(row_c25h.get("id"), {}).get("Preferences"))
+              for row_c25h in with_prefs_c25h),
+          str([row_c25h.get("id") for row_c25h in with_prefs_c25h]))
+    check("without the option no Directory carries a Preferences block",
+          not any(row_c25h.get("Preferences") for row_c25h in plain_dirs_c25h),
+          str(len(plain_dirs_c25h)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

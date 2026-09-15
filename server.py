@@ -3912,14 +3912,8 @@ class PlexSim:
                 # every row to find hidden libraries, and plexsim ignored the flag, so
                 # that read threw and the flow treated no library as hidden.
                 for section, row in zip(catalog.sections, rows):
-                    settings = self.section_settings(section["key"], section)
-                    if section.get("type") == "show":
-                        own = {s.get("id"): s for s in ITEM_PREFS.get("show") or []}
-                        settings = [dict(s, summary=own[s["id"]].get("summary"),
-                                         enumValues=own[s["id"]].get("enumValues"))
-                                    if s.get("id") == "episodeSort" and "episodeSort" in own
-                                    else s for s in settings]
-                    row["Preferences"] = {"Setting": settings}
+                    row["Preferences"] = {
+                        "Setting": self.section_preference_rows(section)}
             # Measured on fun and on the 1.43.4 reference: this container carries
             # `title1` and allowSync only -- no identifier and no media-tag pair,
             # which the generic library container was adding.
@@ -4583,6 +4577,25 @@ class PlexSim:
             }
         }
 
+    def section_preference_rows(self, section):
+        """The `Preferences` block a library row carries under `includePreferences=1`.
+
+        Measured on kids and zen: `/library/sections?includePreferences=1` and
+        `/media/providers?includePreferences=1` answer the same block for the same
+        library, byte for byte -- including the show library's `episodeSort`, which is
+        the per-SHOW variant here (`Library default` in its enum and "for this show" in
+        its summary) rather than the library leaf's own. It was written out at the first
+        site and simply missing at the second.
+        """
+        settings = self.section_settings(section["key"], section)
+        if section.get("type") == "show":
+            own = {s.get("id"): s for s in ITEM_PREFS.get("show") or []}
+            settings = [dict(s, summary=own[s["id"]].get("summary"),
+                             enumValues=own[s["id"]].get("enumValues"))
+                        if s.get("id") == "episodeSort" and "episodeSort" in own
+                        else s for s in settings]
+        return settings
+
     def media_providers(self, query=None):
         """`/media/providers` -- the first call a modern client makes.
 
@@ -4601,6 +4614,25 @@ class PlexSim:
         container = self.bare_container(size=1,
                                         MediaProvider=self.media_provider_rows(),
                                         **self.server_info())
+        if (query or {}).get("includePreferences") == "1":
+            # Cycle 25, measured on kids and zen: this option reaches HERE too, and the
+            # block it adds is BYTE-IDENTICAL to the one `/library/sections?include
+            # Preferences=1` answers -- the per-SHOW `episodeSort` variant with `Library
+            # default` in its enum included. It is the FIRST child of the library
+            # `Directory`, before `Pivot`, and the `Home` row (which names no library)
+            # gets none. plexsim handled the option at three other sites and ignored it
+            # here, so a client that bootstraps library preferences from the provider
+            # document in one round trip saw libraries with no preferences at all.
+            by_key = {"/library/sections/%s" % section["key"]: section
+                      for section in self.catalog.sections}
+            for provider in container["MediaContainer"].get("MediaProvider") or []:
+                for feature in provider.get("Feature") or []:
+                    for row in feature.get("Directory") or []:
+                        section = by_key.get(row.get("key"))
+                        if section is None:
+                            continue
+                        row["Preferences"] = {
+                            "Setting": self.section_preference_rows(section)}
         if (query or {}).get("X-Plex-Platform") == "Roku":
             for provider in container["MediaContainer"].get("MediaProvider") or []:
                 for feature in provider.get("Feature") or []:
