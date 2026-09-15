@@ -16029,7 +16029,18 @@ class Handler(BaseHTTPRequestHandler):
         # `download=1`; the only difference a real PMS makes is the disposition
         # header, which is what turns a play into a save.
         filename = part_name or (segments[-1] if len(segments) > 3 else "part-%s" % part_id)
-        download = query.get("download") in ("1", "true")
+        # Cycle 29, measured on kids and zen over seventeen values: `download=` is one of
+        # the 0/1 options and carries their whole grammar -- `1`, `01` and `+1` are the
+        # download, `0`, `00` and `+0` the plain read, and `2`, `-1`, `1.5`, `true`,
+        # `false`, `TRUE`, `yes`, `abc`, an empty value, ` 1`, `1 ` and `10` are each a
+        # **400**. plexsim compared the raw string with `"1"`/`"true"`, so `download=true`
+        # was a download where a real PMS refuses the whole read, and `download=2` or
+        # `download=abc` streamed the media with no disposition.
+        raw_download = query.get("download")
+        if raw_download is not None and not _bool_option(raw_download):
+            self._send(400, "text/plain", b"plexsim: bad request")
+            return
+        download = bool(raw_download is not None and int(str(raw_download).lstrip("+")))
 
         try:
             upstream_url, _size = sim.resolver.resolve(link)
