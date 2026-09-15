@@ -20177,6 +20177,42 @@ def main():
                        " 1", "1 ", "10")),
               "%s" % downloads_c29j)
 
+
+    # Cycle 29, measured on kids and zen over eight body paths and three container paths: a
+    # 416 is an ERROR RESPONSE and not the original resource with no bytes. The reference
+    # answers its 129-byte HTML page with `Content-Type: text/html` and neither
+    # `Accept-Ranges` nor `Content-Range`; plexsim answered `Content-Length: 0` with the
+    # original media type and the full success header set, so a client got an `image/jpeg`
+    # carrying zero bytes. plexsim keeps its own text/plain error body (cycle 1's
+    # deliberate deviation) and now sends a body, a plain type and no `Accept-Ranges`.
+    art_c29k = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    path_c29k = art_c29k.get("thumb") or "/library/metadata/%s/thumb/1" % movie
+    ok_c29k, body_ok_c29k, head_ok_c29k = request(base, "GET", path_c29k, want_json=False)
+
+    def ranged_c29k(path_arg_c29k):
+        request_c29k = urllib.request.Request(
+            base.rstrip("/") + path_arg_c29k,
+            headers={"User-Agent": UA, "Range": "bytes=999999999-",
+                     "X-Plex-Client-Identifier": "plexsim-ui-test"})
+        try:
+            with urllib.request.urlopen(request_c29k, timeout=30) as response_c29k:
+                return (response_c29k.status, response_c29k.read(),
+                        dict(response_c29k.headers))
+        except urllib.error.HTTPError as error_c29k:
+            return error_c29k.code, error_c29k.read(), dict(error_c29k.headers)
+
+    status_c29k, body_c29k, headers_c29k = ranged_c29k(path_c29k)
+    check("a 416 is an error response, not the resource with no bytes",
+          ok_c29k == 200 and head_ok_c29k.get("Accept-Ranges") == "bytes"
+          and status_c29k == 416
+          and (headers_c29k.get("Content-Type") or "").startswith("text/")
+          and len(body_c29k) > 0
+          and "Accept-Ranges" not in headers_c29k
+          and "Content-Range" not in headers_c29k,
+          "%s ct=%s len=%s ar=%s cr=%s"
+          % (status_c29k, headers_c29k.get("Content-Type"), len(body_c29k),
+             headers_c29k.get("Accept-Ranges"), headers_c29k.get("Content-Range")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
