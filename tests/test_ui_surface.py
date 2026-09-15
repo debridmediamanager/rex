@@ -19560,6 +19560,24 @@ def main():
           "flat %s | hub %s" % (sorted(flat_c28n[0]) if flat_c28n else None,
                                 sorted(hubrow_c28n)))
 
+
+    # Cycle 28, measured on kids and zen: a `/library/search` `SearchResult` prints its
+    # score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and sends
+    # the same value as a plain number in JSON -- XML being the default format, which is
+    # the wire every TV and mobile client reads. plexsim wrote Python's own `"0.32"`.
+    status_c28o, body_c28o, _h_c28o = request(
+        base, "GET", "/library/search?query=animation&limit=20", want_json=False)
+    xml_c28o = body_c28o.decode("utf-8", "replace")
+    scores_c28o = re.findall(r'<SearchResult score="([^"]*)"', xml_c28o)
+    json_c28o = [r_c28o.get("score") for r_c28o in
+                 (get(base, "/library/search?query=animation&limit=20")[1]
+                  .get("SearchResult") or [])]
+    check("a flat search score prints five decimals in XML and a number in JSON",
+          status_c28o == 200 and bool(scores_c28o)
+          and all(len(s_c28o.split(".")[-1]) == 5 for s_c28o in scores_c28o)
+          and bool(json_c28o) and all(isinstance(s_c28o, float) for s_c28o in json_c28o),
+          "xml %s | json %s" % (scores_c28o, json_c28o))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

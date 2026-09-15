@@ -434,6 +434,14 @@ def _format(key, value, row):
     if isinstance(value, float) and not isinstance(value, bool):
         if key == "frameRate":
             return "%.3f" % value
+        # Cycle 28, measured on kids and zen: a `/library/search` `SearchResult` prints
+        # its score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and
+        # sends the same value as a plain number in JSON. It is the one place on the
+        # surface where the score is a float rather than the string `/hubs/search`
+        # carries, so it is the only one this rule can reach -- and plexsim wrote
+        # Python's own `"0.32"` there, a string no real PMS sends.
+        if key == "score":
+            return "%.5f" % value
         if (key in ("value", "default") and row.get("type") == "double"
                 and value == int(value)):
             return str(int(value))
