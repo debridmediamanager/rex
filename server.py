@@ -8677,10 +8677,12 @@ class PlexSim:
                 "home.continue", "Continue Watching", "/hubs/home/continueWatching",
                 [_listing_row(r) for r in self.resuming()], query,
                 style="hero", promoted=True))
-        hubs.append(self.home_hub(
-            "home.ondeck", "On Deck", "/hubs/home/onDeck",
-            [_listing_row(r) for r in self.continue_watching()
-             if r.get("type") == "episode"], query, kind="episode", promoted=True))
+        if not self.ondeck_shelf_hidden():
+            # Measured: this shelf is dropped here on the same terms as on `/hubs`.
+            hubs.append(self.home_hub(
+                "home.ondeck", "On Deck", "/hubs/home/onDeck",
+                [_listing_row(r) for r in self.continue_watching()
+                 if r.get("type") == "episode"], query, kind="episode", promoted=True))
         wanted = query.get("contentDirectoryID")
         for section in self.catalog.sections:
             if wanted and str(section["key"]) != str(wanted):
@@ -8919,10 +8921,12 @@ class PlexSim:
             "home.television.recent": [_listing_row(r)
                                        for r in self.recently_added_rows("2")],
         }
+        hidden = self.ondeck_shelf_hidden()
         hubs = [self.home_hub(identifier, title, key, rows.get(identifier, []), query,
                               kind=kind, style=style, promoted=True)
                 for identifier, title, key, kind, style in self.GLOBAL_HUBS
-                if not wanted or identifier in wanted]
+                if (not wanted or identifier in wanted)
+                and not (identifier == "home.ondeck" and hidden)]
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
@@ -10389,6 +10393,27 @@ class PlexSim:
             # an empty 200 for anything at all.
             return ("error", 404, "plexsim: no such item")
         return self.bare_container(size=0)
+
+    def ondeck_shelf_hidden(self):
+        """Whether Home drops its On Deck shelf entirely.
+
+        Cycle 25, measured on plexscratch through four driven states: `/hubs` and
+        `/hubs/promoted` omit the `home.ondeck` Hub -- the whole element, not an empty
+        one -- exactly when its rows are the SAME rows Continue Watching is showing and
+        that set is not empty.
+
+            cleared             onDeck []  contW []          both shelves present
+            scrobble ep 8       onDeck [9] contW []          both present
+            progress ep 9       onDeck [9] contW [9]         home.ondeck ABSENT
+            + progress movie 17 onDeck [9] contW [9, 17]     both present
+
+        plexsim always sent both, so Home drew the same in-progress episode twice --
+        once under Continue Watching and again under On Deck.
+        """
+        deck = {str(row.get("ratingKey")) for row in self.continue_watching()
+                if row.get("type") == "episode"}
+        return bool(deck) and deck == {str(row.get("ratingKey"))
+                                       for row in self.resuming()}
 
     def resuming(self):
         """Rows for CONTINUE WATCHING, which is not On Deck.

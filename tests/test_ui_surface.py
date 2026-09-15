@@ -17135,6 +17135,43 @@ def main():
     check("and both are empty when nothing is started or part-watched",
           cleared_c25l == ([], []), str(cleared_c25l))
 
+
+    # Cycle 25, measured on plexscratch through the same four driven states: `/hubs` and
+    # `/hubs/promoted` OMIT the `home.ondeck` Hub -- the element, not an empty one --
+    # exactly when its rows are the ones Continue Watching is already showing, and that
+    # set is not empty. plexsim always sent both, so Home drew the same in-progress
+    # episode twice.
+    def home_ids_c25m(path_c25m="/hubs"):
+        return [h_c25m.get("hubIdentifier")
+                for h_c25m in get(base, path_c25m)[1].get("Hub") or []]
+
+    leaves_c25m = [r_c25m.get("ratingKey") for r_c25m in
+                   get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                   .get("Metadata") or []]
+    for key_c25m in leaves_c25m + [movie]:
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % key_c25m)
+    cleared_c25m = (home_ids_c25m(), home_ids_c25m("/hubs/promoted"))
+    request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+            % leaves_c25m[0])
+    nextup_c25m = (home_ids_c25m(), home_ids_c25m("/hubs/promoted"))
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=400000" % leaves_c25m[1])
+    same_c25m = (home_ids_c25m(), home_ids_c25m("/hubs/promoted"))
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=400000" % movie)
+    wider_c25m = (home_ids_c25m(), home_ids_c25m("/hubs/promoted"))
+    check("the On Deck shelf is DROPPED when its rows are Continue Watching's",
+          "home.ondeck" not in same_c25m[0] and "home.ondeck" not in same_c25m[1],
+          str(same_c25m[0]))
+    check("and present when Continue Watching holds something more",
+          "home.ondeck" in wider_c25m[0] and "home.ondeck" in wider_c25m[1],
+          str(wider_c25m[0]))
+    check("and present when Continue Watching is empty",
+          "home.ondeck" in cleared_c25m[0] and "home.ondeck" in nextup_c25m[0]
+          and "home.ondeck" in cleared_c25m[1] and "home.ondeck" in nextup_c25m[1],
+          "cleared=%s nextup=%s" % (cleared_c25m[0], nextup_c25m[0]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
