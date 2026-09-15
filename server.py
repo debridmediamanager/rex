@@ -12192,7 +12192,15 @@ class PlexSim:
         row["_poster_url" if kind == "posters" else "_art_url"] = key
         stamp = int(time.time())
         for name in ("thumb", "art"):
-            if row.get(name):
+            # Cycle 29, measured on plexscratch by uploading a POSTER to a season that
+            # borrowed both fields from its show: only the field the upload WROTE becomes
+            # the row's own. Its `thumb` became `/library/metadata/11/thumb/<stamp>` and
+            # its `art` went on naming `/library/metadata/6/art/<the show's stamp>`
+            # untouched. plexsim re-versioned both as the row's own, so a poster upload
+            # invented a season-owned backdrop path -- a row claiming an image it does not
+            # have, which the derivation then handed to every episode under it. The PICK
+            # path has read it this way since cycle 27; the upload path never did.
+            if row.get(name) and (name == field or self._owns(row, name)):
                 row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
         row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
         # Cycle 17, measured on plexscratch: the upload moves `updatedAt` onto the SAME
