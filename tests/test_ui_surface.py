@@ -16845,6 +16845,37 @@ def main():
           and sys_c25e["de"].get("library") == "Library Sections",
           str(sys_c25e["de"]))
 
+
+    # Cycle 25, measured on kids and zen: the `Setting` rows a show's `/tree` ends with
+    # are NOT localised -- `Episode sorting` stays English in de, fr and ja, where the
+    # same setting under `?includePreferences=1` moves. A tree node is a row keyed by
+    # `id` rather than `ratingKey`, so plexsim's row guard did not see it and translated
+    # what a real PMS leaves alone.
+    def settings_c25f(path_c25f, lang_c25f):
+        joiner_c25f = "&" if "?" in path_c25f else "?"
+        body_c25f = get(base, path_c25f + joiner_c25f
+                        + "X-Plex-Language=" + lang_c25f)[1]
+        out_c25f = []
+        for key_c25f in ("MetadataItem", "Metadata"):
+            for row_c25f in body_c25f.get(key_c25f) or []:
+                block_c25f = row_c25f.get("Preferences") or row_c25f
+                for setting_c25f in (block_c25f.get("Setting") or []):
+                    out_c25f.append((setting_c25f.get("id"),
+                                     setting_c25f.get("label")))
+        return out_c25f
+
+    tree_c25f = {lang_c25f: settings_c25f("/library/metadata/%s/tree" % show, lang_c25f)
+                 for lang_c25f in ("en", "de")}
+    prefs_c25f = {lang_c25f: settings_c25f(
+        "/library/metadata/%s?includePreferences=1" % show, lang_c25f)
+        for lang_c25f in ("en", "de")}
+    check("a tree's Setting rows are NOT localised",
+          tree_c25f["en"] and tree_c25f["en"] == tree_c25f["de"],
+          "en=%s de=%s" % (tree_c25f["en"][:2], tree_c25f["de"][:2]))
+    check("the same settings under includePreferences ARE localised",
+          prefs_c25f["en"] and prefs_c25f["en"] != prefs_c25f["de"],
+          "en=%s de=%s" % (prefs_c25f["en"][:2], prefs_c25f["de"][:2]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
