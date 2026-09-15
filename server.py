@@ -15389,6 +15389,15 @@ class Handler(BaseHTTPRequestHandler):
         if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
                 and parts[3] in self.READ_ONLY_ITEM_LEAVES:
             return True
+        # Cycle 29, measured on plexscratch: `/library/metadata/{id}/extras/all` and
+        # `/library/sections/{id}/extras/all` answer 404 to PUT, DELETE, PATCH, POST and a
+        # bare OPTIONS, like every other read-only route. plexsim's gate matched a FOUR
+        # segment path, and cycle 18's `/extras/all` is five, so every one of those verbs
+        # fell through to the extras container and answered it a 200 -- the one hole left
+        # in cycle 18's "a read-only route answers 404 to every verb but GET and HEAD".
+        if len(parts) == 5 and parts[3] == "extras" and parts[4] == "all" \
+                and parts[:2] in (["library", "metadata"], ["library", "sections"]):
+            return True
         if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
                 and parts[3] in ("extras", "themes", "clearLogos", "posters", "arts") \
                 and method != "POST":
