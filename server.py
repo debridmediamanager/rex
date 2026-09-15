@@ -9239,10 +9239,25 @@ class PlexSim:
         rows = []
         for kind, _title in self.SEARCH_HUBS:
             for row in typed.get(kind, []):
-                entry = _listing_row(row)
-                entry["personal"] = True
-                entry["sourceTitle"] = self.catalog.friendly
-                rows.append(entry)
+                # Cycle 23, measured on kids and zen with the same row read twice per
+                # server: a `/search` row is byte-identical to that row's GRID row,
+                # prefixed with six attributes and nothing else. plexsim answered the
+                # DETAIL row -- `Guid`, `Rating` and tag ids -- led by `ratingKey`,
+                # which on a real library is several times the bytes per hit, and it
+                # sent neither `allowSync` nor the `librarySectionUUID` a client keys
+                # a hit to its library by.
+                section = self.catalog.section(row.get("librarySectionID")) or {}
+                lead = {"allowSync": True,
+                        "librarySectionID": row.get("librarySectionID"),
+                        "librarySectionTitle": section.get("title"),
+                        "librarySectionUUID": section.get("uuid"),
+                        "personal": True,
+                        "sourceTitle": self.catalog.friendly}
+                body = {k: v for k, v in _grid_row(_full(row),
+                                                   keep_section=False).items()
+                        if k not in lead}
+                lead.update(body)
+                rows.append(lead)
         # The container is the tag one (identifier plus the media-tag pair, no
         # allowSync) and its `size` counts the Provider rows as well as the
         # results -- measured: 1 result + 4 providers answered size 5.

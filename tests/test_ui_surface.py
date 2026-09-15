@@ -16490,6 +16490,38 @@ def main():
           and analyze_acts_c23b == ["started", "ended"],
           "%s | analyze timeline %d activity %s"
           % (seqs_c23b, len(analyze_timeline_c23b), analyze_acts_c23b))
+
+    # Cycle 23, measured on kids and zen with the same row fetched twice per server -- once
+    # from the section grid and once from `/search`: the `/search` row is byte-identical to
+    # that row's GRID row, prefixed with six attributes. `allowSync, librarySectionID,
+    # librarySectionTitle, librarySectionUUID, personal, sourceTitle` lead it, and nothing
+    # else differs. plexsim answered the DETAIL row -- `Guid`, `Rating`, tag elements
+    # carrying `id`/`filter` -- led by `ratingKey`, with no `allowSync` and no
+    # `librarySectionUUID`, and a `librarySectionKey` neither reference sends there. On a
+    # real library that is several times the bytes per hit (zen's detail rows carry up to
+    # 155 `Role` elements), and a client keying a hit to a library by `librarySectionUUID`
+    # gets nothing.
+    _, search_xml_c23c, _ = request(base, "GET", "/search?query=Tears", want_json=False)
+    row_c23c = re.search(r"<Video ([^>]*)>", search_xml_c23c.decode("utf-8", "replace"))
+    lead_c23c = re.findall(r'(\w+)="', row_c23c.group(1)) if row_c23c else []
+    _, search_c23c, _ = get(base, "/search?query=Tears")
+    hit_c23c = next((r_c23c for r_c23c in (search_c23c.get("Metadata") or [])
+                     if r_c23c.get("type") == "movie"), {})
+    _, grid_c23c, _ = get(base, "/library/sections/%s/all?type=1&id=%s"
+                          % (movie_section, hit_c23c.get("ratingKey")))
+    grid_row_c23c = (grid_c23c.get("Metadata") or [{}])[0]
+    extra_c23c = sorted(set(hit_c23c) - set(grid_row_c23c))
+    missing_c23c = sorted(set(grid_row_c23c) - set(hit_c23c))
+    check("a /search row is the grid row with a six-attribute lead",
+          lead_c23c[:6] == ["allowSync", "librarySectionID", "librarySectionTitle",
+                            "librarySectionUUID", "personal", "sourceTitle"]
+          # The grid row leaves the librarySection fields to its CONTAINER, so all six
+          # lead attributes are search-only.
+          and extra_c23c == ["allowSync", "librarySectionID", "librarySectionTitle",
+                             "librarySectionUUID", "personal", "sourceTitle"]
+          and not missing_c23c,
+          "lead %s | search-only %s | grid-only %s"
+          % (lead_c23c[:6], extra_c23c, missing_c23c))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

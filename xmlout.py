@@ -297,8 +297,11 @@ _ATTR_INDEX = {bucket: {name: index for index, name in enumerate(names)}
 # none of the four on the row, and `/library/all` and `/hubs/home/recentlyAdded` carry
 # the triple in the middle where every other row does. `allowSync` on the ROW is the
 # tell: it appears there and nowhere else, so it is the signal rather than the path.
-_LIBRARY_SECTION_LEAD = {"allowSync": -4, "librarySectionID": -3,
-                         "librarySectionTitle": -2, "librarySectionUUID": -1}
+# Cycle 23: a `/search` row carries `personal` and `sourceTitle` inside the same lead,
+# directly after `librarySectionUUID` and before `ratingKey`, on kids and zen alike.
+_LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
+                         "librarySectionTitle": -4, "librarySectionUUID": -3,
+                         "personal": -2, "sourceTitle": -1}
 
 
 def _attr_bucket(name, row):
