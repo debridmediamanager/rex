@@ -19503,8 +19503,16 @@ def main():
     # genre both libraries hold was one row naming whichever library the catalog reached
     # first, with a count its own filter link could not answer, and the other library's
     # link was missing from the search page.
+    # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
+    # library at load, but the suite's edit checks have replaced those lists by the time
+    # this runs -- an indexed tag write REPLACES the list on the item path -- so the state
+    # is written here. The SECTION save path MERGES, so each row gains the tag and keeps
+    # its own.
+    for spec_c28k in ((movie_section, 1, movie), (show_section, 2, show)):
+        request(base, "PUT", "/library/sections/%s/all?type=%s&id=%s"
+                             "&genre%%5B0%%5D.tag.tag=C28GENRE" % spec_c28k)
     tags_c28k = [r_c28k["Directory"] for r_c28k in
-                 (get(base, "/library/search?query=animation&limit=50")[1]
+                 (get(base, "/library/search?query=c28genre&limit=50")[1]
                   .get("SearchResult") or []) if r_c28k.get("Directory")]
     counts_c28k = {}
     for row_c28k in tags_c28k:
@@ -19555,14 +19563,22 @@ def main():
     # alone there, as a number, where the hubs row carries it inside as a string.
     # plexsim answered the hubs row verbatim on the flat endpoint, four attributes and
     # all, telling every client that each tag had matched "because" its section.
+    # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
+    # library at load, but the suite's edit checks have replaced those lists by the time
+    # this runs -- an indexed tag write REPLACES the list on the item path -- so the state
+    # is written here. The SECTION save path MERGES, so each row gains the tag and keeps
+    # its own.
+    for spec_c28n in ((movie_section, 1, movie), (show_section, 2, show)):
+        request(base, "PUT", "/library/sections/%s/all?type=%s&id=%s"
+                             "&genre%%5B0%%5D.tag.tag=C28GENRE" % spec_c28n)
     flat_c28n = [r_c28n["Directory"] for r_c28n in
-                 (get(base, "/library/search?query=animation&limit=20")[1]
+                 (get(base, "/library/search?query=c28genre&limit=20")[1]
                   .get("SearchResult") or []) if r_c28n.get("Directory")]
     wrapped_c28n = [r_c28n.get("score") for r_c28n in
-                    (get(base, "/library/search?query=animation&limit=20")[1]
+                    (get(base, "/library/search?query=c28genre&limit=20")[1]
                      .get("SearchResult") or []) if r_c28n.get("Directory")]
     hub_c28n = next((h_c28n for h_c28n in
-                     (get(base, "/hubs/search?query=animation")[1].get("Hub") or [])
+                     (get(base, "/hubs/search?query=c28genre")[1].get("Hub") or [])
                      if h_c28n.get("type") == "genre"), {})
     hubrow_c28n = (hub_c28n.get("Directory") or [{}])[0]
     check("a flat search tag row drops the reason triple and its own score",
@@ -19579,12 +19595,20 @@ def main():
     # score with FIVE decimals in XML (`score="0.52000"`, `score="0.93095"`) and sends
     # the same value as a plain number in JSON -- XML being the default format, which is
     # the wire every TV and mobile client reads. plexsim wrote Python's own `"0.32"`.
+    # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
+    # library at load, but the suite's edit checks have replaced those lists by the time
+    # this runs -- an indexed tag write REPLACES the list on the item path -- so the state
+    # is written here. The SECTION save path MERGES, so each row gains the tag and keeps
+    # its own.
+    for spec_c28o in ((movie_section, 1, movie), (show_section, 2, show)):
+        request(base, "PUT", "/library/sections/%s/all?type=%s&id=%s"
+                             "&genre%%5B0%%5D.tag.tag=C28GENRE" % spec_c28o)
     status_c28o, body_c28o, _h_c28o = request(
-        base, "GET", "/library/search?query=animation&limit=20", want_json=False)
+        base, "GET", "/library/search?query=c28genre&limit=20", want_json=False)
     xml_c28o = body_c28o.decode("utf-8", "replace")
     scores_c28o = re.findall(r'<SearchResult score="([^"]*)"', xml_c28o)
     json_c28o = [r_c28o.get("score") for r_c28o in
-                 (get(base, "/library/search?query=animation&limit=20")[1]
+                 (get(base, "/library/search?query=c28genre&limit=20")[1]
                   .get("SearchResult") or [])]
     check("a flat search score prints five decimals in XML and a number in JSON",
           status_c28o == 200 and bool(scores_c28o)
@@ -19628,6 +19652,15 @@ def main():
                          "&collection%%5B0%%5D.tag.tag=C28SCOPECOLL"
                          % (movie_section, movie))
 
+    # The check MAKES the tag it needs. The fixture carries `Animation` on a row of each
+    # library at load, but the suite's edit checks have replaced those lists by the time
+    # this runs -- an indexed tag write REPLACES the list on the item path -- so the state
+    # is written here. The SECTION save path MERGES, so each row gains the tag and keeps
+    # its own.
+    for spec_c28q in ((movie_section, 1, movie), (show_section, 2, show)):
+        request(base, "PUT", "/library/sections/%s/all?type=%s&id=%s"
+                             "&genre%%5B0%%5D.tag.tag=C28GENRE" % spec_c28q)
+
     def scoped_c28q(section_c28q, query_c28q, kind_c28q):
         hubs_c28q = get(base, "/hubs/search?query=%s&contentDirectoryID=%s"
                               % (query_c28q, section_c28q))[1].get("Hub") or []
@@ -19636,13 +19669,13 @@ def main():
         return [(r_c28q.get("tag"), str(r_c28q.get("librarySectionID")))
                 for r_c28q in (hub_c28q.get("Directory") or [])]
 
-    genre_movie_c28q = scoped_c28q(movie_section, "animation", "genre")
-    genre_show_c28q = scoped_c28q(show_section, "animation", "genre")
+    genre_movie_c28q = scoped_c28q(movie_section, "c28genre", "genre")
+    genre_show_c28q = scoped_c28q(show_section, "c28genre", "genre")
     coll_here_c28q = scoped_c28q(movie_section, "c28scopecoll", "collection")
     coll_there_c28q = scoped_c28q(show_section, "c28scopecoll", "collection")
     check("contentDirectoryID scopes the tag rows and the collections, per library",
-          genre_movie_c28q == [("Animation", str(movie_section))]
-          and genre_show_c28q == [("Animation", str(show_section))]
+          genre_movie_c28q == [("C28GENRE", str(movie_section))]
+          and genre_show_c28q == [("C28GENRE", str(show_section))]
           and len(coll_here_c28q) == 1 and coll_there_c28q == [],
           "genre %s / %s | collection %s / %s"
           % (genre_movie_c28q, genre_show_c28q, coll_here_c28q, coll_there_c28q))
