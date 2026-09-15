@@ -2601,8 +2601,11 @@ class PlexSim:
             # plexsim honoured `count=` on the standalone path and ignored this
             # spelling, so a real catalog's preplay page carried every related row.
             hubs = self.related_hubs(row, query)
+            # Cycle 22, measured on zen and kids: `=0` EMPTIES the hub -- size 0, no
+            # rows, `more` still true -- where reading it as "absent" fell through to
+            # the default of five and sent every row the option was asked to cut.
             cap = query.get("includeRelatedCount")
-            cap = int(cap) if str(cap or "").isdigit() and int(cap) > 0 else 5
+            cap = int(cap) if str(cap or "").isdigit() else 5
             trimmed = []
             for hub in hubs:
                 rows = (hub.get("Metadata") or [])[:cap]
