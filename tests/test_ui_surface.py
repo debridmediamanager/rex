@@ -17258,6 +17258,37 @@ def main():
           and not any(k_c25n.startswith("_") for k_c25n in episode_json_c25n),
           str(list(episode_json_c25n)[:5]))
 
+
+    # Cycle 25, measured on plexscratch: `removeFromContinueWatching` does NOT reach the
+    # SECTION's own Continue Watching shelf. The hide empties `/hubs/home/onDeck`,
+    # `/hubs/home/continueWatching` and `/library/sections/{id}/onDeck` on both servers,
+    # and the row is still in `/hubs/sections/{id}/continueWatching/items` afterwards on
+    # a real PMS -- stable to +20 s, so it is not a settle. plexsim removed it there too.
+    leaf_c25p = [r_c25p.get("ratingKey") for r_c25p in
+                 get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                 .get("Metadata") or []][0]
+    request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+            "&time=400000" % leaf_c25p)
+
+    def sect_cw_c25p():
+        return [r_c25p.get("ratingKey") for r_c25p in
+                get(base, "/hubs/sections/%s/continueWatching/items" % show_section)[1]
+                .get("Metadata") or []]
+
+    def home_deck_c25p():
+        return [r_c25p.get("ratingKey") for r_c25p in
+                get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]
+
+    before_c25p = (sect_cw_c25p(), home_deck_c25p())
+    request(base, "PUT", "/actions/removeFromContinueWatching?ratingKey=%s" % leaf_c25p)
+    after_c25p = (sect_cw_c25p(), home_deck_c25p())
+    check("the hide leaves the SECTION's Continue Watching shelf alone",
+          str(leaf_c25p) in before_c25p[0] and after_c25p[0] == before_c25p[0],
+          "before=%s after=%s" % (before_c25p[0], after_c25p[0]))
+    check("and still empties Home's On Deck",
+          str(leaf_c25p) in before_c25p[1] and str(leaf_c25p) not in after_c25p[1],
+          "before=%s after=%s" % (before_c25p[1], after_c25p[1]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
