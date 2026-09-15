@@ -2610,6 +2610,23 @@ class PlexSim:
                                     more=len(hub.get("Metadata") or []) > len(rows)
                                     or bool(hub.get("more"))))
             detail["Related"] = {"Hub": trimmed} if trimmed else {}
+        # Cycle 22, measured on zen and kids: the option reaches the rows INSIDE the
+        # inline `Related` and `Extras` blocks too -- with `excludeElements=Media` a
+        # nested related row loses its Media and gains `mediaCount`. plexsim trimmed
+        # the top-level row alone, so the one request whose whole point is to make the
+        # preplay page smaller still carried five related rows in full.
+        nested_excluded = _excluded(query)
+        if nested_excluded:
+            for block in ("Related", "Extras"):
+                holder = detail.get(block)
+                if not isinstance(holder, dict):
+                    continue
+                for key in ("Hub", "Metadata"):
+                    rows_here = holder.get(key)
+                    if not isinstance(rows_here, list):
+                        continue
+                    holder[key] = [self._trim_nested(one, nested_excluded, key)
+                                   for one in rows_here]
         for field in (query.get("excludeFields") or "").split(","):
             if field and field in detail:
                 detail.pop(field)
@@ -6175,6 +6192,17 @@ class PlexSim:
     # along with `childCount`, `slug`, `key` and any unknown key, while plexsim sorted
     # by it happily. A sort a real PMS refuses has to be refused, so it is gone from
     # the list above.
+
+    def _trim_nested(self, node, excluded, key):
+        """Apply `excludeElements=` to a row nested in a Related hub or Extras block."""
+        if key == "Hub":
+            return dict(node, Metadata=[self._trim_nested(one, excluded, "Metadata")
+                                        for one in node.get("Metadata") or []])
+        trimmed = {k: v for k, v in node.items() if k not in excluded}
+        if "Media" in excluded:
+            trimmed["mediaCount"] = len(node.get("Media") or [])
+            trimmed["mediaCountOptimized"] = 0
+        return trimmed
 
     def _sort_key(self, key):
         """One row -> comparable value for a sort key, or None if unsupported."""
