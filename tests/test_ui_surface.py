@@ -16361,6 +16361,25 @@ def main():
                          "search POST": 400, "search PUT": 400}
           and resources_c22o.get("size") == 0,
           "%s | /resources/1 size %r" % (codes_c22o, resources_c22o.get("size")))
+
+    # Cycle 22, measured on plexscratch: `PATCH` had never been swept on the paths cycle 6
+    # measured POST/PUT/DELETE on, and it is a 404 on every one of them --
+    # `/library/sections`, `/status/sessions`, `/media/providers` and `/playQueues/{id}` --
+    # where plexsim answered each one's own GET. `/accounts/{id}` refuses POST as well as
+    # the DELETE cycle 19 measured. And `/system/proxy` is the one path in the `/system`
+    # subtree that does NOT take cycle 18's envelope: it answers its own 400 to every verb,
+    # GET included, rather than an empty-bodied 404.
+    verbs_c22p = {}
+    for verb_c22p, path_c22p in (("PATCH", "/library/sections"), ("PATCH", "/status/sessions"),
+                                 ("PATCH", "/media/providers"), ("POST", "/accounts/1"),
+                                 ("PATCH", "/accounts/1")):
+        verbs_c22p[(verb_c22p, path_c22p)] = request(base, verb_c22p, path_c22p)[0]
+    proxy_c22p = {verb_c22p: request(base, verb_c22p, "/system/proxy")[0]
+                  for verb_c22p in ("GET", "POST", "PUT", "DELETE")}
+    check("PATCH is a 404 on four more paths, and /system/proxy answers its own 400",
+          set(verbs_c22p.values()) == {404}
+          and set(proxy_c22p.values()) == {400},
+          "%s | /system/proxy %s" % (verbs_c22p, proxy_c22p))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
