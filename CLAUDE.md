@@ -1482,6 +1482,80 @@ precisely how the Seasons bug survived a fix attempt.
   episode's own makes it read the show's at once, and a later show write moves it again.
   **A collection and a playlist take the ITEM path's whole edit validation.**
 
+
+- **The two forms of `/system/agents` carry different children.** The bare form has a
+  `MediaType` row per media type an agent serves and NO `Language`; `?mediaType=N` has
+  the Language list and no MediaType. And **that endpoint writes its `Language` and
+  `MediaType` as REPEATED JSON KEYS** rather than arrays -- 150 occurrences on zen, 195
+  on kids -- so a JSON parser keeps exactly ONE per agent while the XML carries all of
+  them. Every other repeated child on every other path is a proper array.
+- **A `Feature` element is never self-closed**: all fifteen on `/media/providers` are
+  paired empty elements on both references, where `Directory`, `Action` and `Pivot` in
+  the same document self-close.
+- **A SEASON's `audioLanguage`/`subtitleLanguage` inherit option is `:Series default`**
+  -- a season inherits from its SHOW, where a show says `:Account default` and a movie
+  has no such setting. plexsim rebuilds that enum at read time and hardcoded the account
+  label.
+- **An EPISODE's `/tree` is the ancestor CHAIN** -- three `MetadataItem` nodes, the show,
+  THAT episode's season and the episode, with no siblings. A season's is the season plus
+  its own episodes and a show's is the whole tree.
+- **`/hubs/home/recentlyAdded` is populated at `type=1` and `type=2` ONLY.** Every other
+  type answers `size 0` on both references, with and without `sectionID`,
+  `pinnedContentDirectoryID` and `includeMeta` -- and both hold episodes, so it is not a
+  content difference.
+- **A `/library/onDeck` row LEADS with `allowSync` and the librarySection triple**, like
+  a `/library/recentlyAdded` row; **a section's `/hubs/sections/{id}/continueWatching/
+  items` container is `{size, allowSync: true, identifier}` and nothing else**; and **an
+  artwork path with an EXTRA SEGMENT after the version is a 404** (a single trailing
+  slash and a bad version stay 200s).
+- **The per-user-state block sits MID-ROW, before the year, on every row type** --
+  `viewCount`, `skipCount`, `viewOffset`, `lastViewedAt`, `userRating`, `lastRatedAt`
+  after the ratings and before `year`/`parentYear` on a show, a season and an episode,
+  as it already did on a movie -- and **`parentSummary` comes directly after
+  `parentTitle`**. Both formats move with it: a real PMS's JSON key order is its XML
+  order.
+- **A collection and a playlist take EVERY `/:/` state write**, and `rate`, `progress` and
+  `unscrobble` store on them as on an item -- the rating survives the unscrobble. They part
+  on the SCROBBLE: a playlist's `viewCount` counts up from the 1 it is born with and its
+  unscrobble clears it, while a collection's scrobble changes NOTHING (it never carries
+  `viewCount` and does not even clear a `viewOffset`), so only the watched half is the
+  no-op. Neither reaches a member. The block comes back MID-ROW -- `userRating, viewOffset,
+  viewCount, lastViewedAt, lastRatedAt`, after a collection's `ratingCount` and after a
+  playlist's `composite` -- on every read but `/playlists/{id}` and the create response.
+- **A SHOW library's `/analyze` frames every episode LEAF three times** (analyzing,
+  thumbnailing, none), with no activity: the section analyze reads the LEAVES, which is why
+  a movie library's fifteen for five movies is the same rule.
+- **A collection and a playlist answer the ITEM action leaves**, splitting by ROW TYPE:
+  `/analyze` 200 on a collection and 400 on a playlist, `/allLeaves` and `/grandchildren`
+  real containers on a collection and 404s on a playlist, `/related` empty on both but with
+  the librarySection triple and `allowSync` only on a collection, `/extras` and `/match`
+  their 400s, and the artwork writes landing like an item's.
+- **`PUT /library/collections/{id}` is the ITEM edit path** -- a form that writes nothing,
+  an unknown `.value` and a PREF name are each a 400, and `titleSort.value` with its lock
+  stores -- and **`POST`, `PATCH` and a bare `OPTIONS` are 404s** there, on its `/children`
+  and on `/library/metadata/{id}` for both list types.
+- **Twenty-nine more columns take an item edit and a real LOCK** (and no value), while
+  eleven names -- `album artist chapterSource childCount hasChapterVideoStream leafCount
+  logo poster role sourceType track` -- are a 400 on both and `hdr10plus` is a 200 that
+  stores nothing. Five of the twenty-nine are the 1.43.4-only codec family and are HELD
+  OUT: plexscratch is 1.43.4 and zen cannot be written, so 1.42.2 is unmeasurable there.
+- **A state write's `key=` is a BARE ratingKey**, not a path: `/library/metadata/17` is a
+  404 on scrobble/unscrobble and a 500 on rate/progress. The four then diverge -- rate and
+  progress int-parse the key (500), scrobble and unscrobble look it up (404); `/:/progress`
+  accepts ANY integer key with a 200 that stores nothing; rate validates its `rating`
+  before the identifier and progress validates the identifier before its `time`.
+- **`/:/progress?time=` takes a negative value and a leading `+`** -- a negative one stores
+  nothing -- while `abc`, empty, `1.5`, `0x10`, `1e6` and a leading space stay 500s.
+- **`DELETE /library/sections/{id}/indexes` moves the SECTION's `updatedAt`** and nothing
+  else's, and **a `/refresh` moves NO `updatedAt` at all** -- so it re-versions no artwork,
+  because cycle 20 established the artwork version IS that stamp.
+- **A TEXT library preference is percent-decoded a SECOND time**, then escaped for storage
+  with `%`, `:` and `|` in lowercase hex; a second decode that fails stores EMPTY, which is
+  all cycle 17's "a value carrying `%` is stored EMPTY" ever was.
+- **`PUT /library/metadata/{playlist}/prefs` is a 400**, the item writer's own refusal.
+- **An EMPTY response under `/system` carries NO `Content-Type`** -- every 404 on every
+  verb and the bare OPTIONS 200 -- where a 404 anywhere else carries `text/html` and a body.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
