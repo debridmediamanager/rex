@@ -62,8 +62,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 28 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **28**. Cycle 28 took HOME -- every hub path with the parameters the official client actually sends on each one -- and SEARCH, both endpoints row by row, with plexscratch holding the collections and playlists neither read-only reference has. |
+| `main` | cycle 29 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **29**. Cycle 29 swept the RESPONSE BODY below the container -- artwork bytes, the photo transcoder, `/:/resources/*`, `/web/*` and a media part -- and the EXTRAS and `clip` surface, a row type plexsim has never held; and its revalidation step finished the artwork derivation cycle 27 left open. |
+| Cycle 28 | **28**. Cycle 28 took HOME -- every hub path with the parameters the official client actually sends on each one -- and SEARCH, both endpoints row by row, with plexscratch holding the collections and playlists neither read-only reference has. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -97,6 +98,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 29 | 1490 (`test_mediainfo` unchanged at 31) | 16,501 | **20** (11 from the read hunt on response bodies, 4 from the write hunt on extras plus its clip-row build spec, and **7 the driver found in the revalidation step and in its own patches** -- the first cycle where that step out-produced a hunt; **10 recorded beliefs overturned**, 2 stale §3.3/§8 entries CLOSED as already built, 1 regression the cycle caught inside its own patch, 3 suite-check repairs (twelve checks refitted to make the state the suite takes away), 8 findings recorded rather than emulated) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work. **The ceiling has been the instrument, not the effort**: every time the
@@ -166,6 +168,16 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 29, run 2026-09-16 against the merged tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle: no `mediainfo` finding |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1490 PASS / 0 FAIL / 10 skipped** | ~15 minutes. The 10 skips are the fixture's own limits; **twelve** of this cycle's own checks had to be refitted to make the state the suite takes away from them, in three rounds -- see section 10 |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | run each against its OWN server, and **never two suites at once** -- see section 10 |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline, unchanged |
+| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
 
 Suite results at the head of cycle 28, run 2026-09-15 against the merged tree:
 
@@ -434,6 +446,21 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | A search tag hit is one row per tag NAME, counting every row that carries it | It is one row per LIBRARY, and the count is the size of the listing the row's own `key` names | B | cycle 28 |
 | A `/library/search` tag row is the `/hubs/search` row | It drops `reason`, `reasonID`, `reasonTitle` and its own `score` -- the score is the `SearchResult` wrapper's alone, a number in JSON and five decimals in XML | B | cycle 28 |
 
+**Cycle 29 added these ten.**
+
+| Belief as recorded | What it actually is | Class | Corrected in |
+|---|---|---|---|
+| An artwork cascade MOVES a borrowed field where it exists (cycle 27) | It DERIVES it from the NEAREST ancestor that OWNS one, and it CREATES the field where there was none. Cycle 27 measured the move half and inferred the rest; `_follow_artwork` returns early unless the child already names the owner, so a leaf that lost its `art` never got one back | B | cycle 29 |
+| "The artwork that is LEFT moves to a new version stamp" (cycle 15) | Only the artwork the row OWNS. Clearing a season's thumb left its BORROWED `art` naming the show untouched on the copy, where plexsim rewrote it as the season's own -- a row claiming an image the server has none of | B | cycle 29 |
+| An artwork UPLOAD sets the row's two fields and frames it (cycles 15, 17) | It CASCADES like a pick: the row's own fields land on one stamp and every child's borrowed copy follows. plexsim never called the cascade there, so children kept the old stamp and a client that caches on it never refetched | C | cycle 29 |
+| `/photo/:/transcode` "404s a `url` naming a row it does not have" (cycle 14) | That is one of seven shapes. An EMPTY `url=` is a 404, a server path that is not artwork a **500**, a scheme or a missing leading slash a 404, and a row that does not OWN the field a 404. plexsim answered a generated grey tile -- with `max-age=259200` on it -- to five of them | B | cycle 29 |
+| `/:/resources/` has nine names (cycle 1) | SEVEN. `library-art.png`, `playlist.png` and `album.png` are 404s on both references -- even though a real PMS's own `/library` container advertises the first as its `art` -- and `width`/`height` are IGNORED there | B | cycle 29 |
+| A 0/1 option takes `0`, `1`, `00`, `01` and nothing else (cycle 23) | `+?0*[01]`: a leading `+` and any number of zeros. Cycle 23's ten-value sweep had no sign in it. The same family includes **`download=`**, which plexsim never validated at all | B | cycle 29 |
+| `+1` does not turn an `include*` block on (cycle 22) | It does. A RAW `+` in a query string decodes to a SPACE, so cycle 22 measured `" 1"` -- which really is off. **The same trap produced the line above**, one cycle apart | **A** | cycle 29 |
+| `sort=type` is "a real ordering" among the text sorts (cycle 14) | It orders by the type NUMBER (movie 1, show 2, season 3, episode 4), not the type's name. Cycle 14 added the key without checking the order it produces | C | cycle 29 |
+| `group=` belongs to a section listing and the section `allLeaves` (cycles 13, 20) | `/library/all` honours it too, and 500s an unknown or empty field there. plexsim's `grouped()` was right and that handler never called it | C | cycle 29 |
+| A 416 is the resource with no bytes (plexsim's own) | It is an ERROR response: `text/html`, a 129-byte body, and neither `Accept-Ranges` nor `Content-Range`. plexsim sent the original media type with `Content-Length: 0` and the whole success header set | D | cycle 29 |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -556,6 +583,17 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **1.42.2's CONTINUE WATCHING row projection** | Unmeasurable as things stand: the shelf holds only rows with a stored `viewOffset`, zen has none and is read-only, and the copy is 1.43.4. plexsim answers the light row there, which is 1.43.4's shape rather than a measurement | A writable 1.42.2 copy |
 | **`searchTypes=otherVideos`'s metadata half, and `music`/`photos`** | No instrument holds an Other Videos, music or photo library, so only the TAG half of `otherVideos` is witnessed (it selects the movie library's tag rows and not its movies, which is what "a type-1 library too" predicts). The two other tokens are recorded from their empty answers alone | A library of each type on the copy |
 | **`/clients/profiles?type=42`'s seven names** | Byte-identical on kids and zen, and there is no principle behind the membership: it is the references' own `Resources/Profiles` subset for a LOCAL optimise target, like the 78-name list beside it | Read the profile files, if a reference is ever shell-accessible |
+
+**Cycle 29 added these.**
+
+| Item | Why it is thin | How to settle it |
+|---|---|---|
+| **A `url=` naming a PART on `/photo/:/transcode`** | The two references DISAGREE -- kids 500, zen 404 -- so there is no rule. plexsim takes kids' 500, which is also the general "a server path that is not artwork" answer; the other five shapes in that table agree on both | A third witness at either version |
+| **`TYPE_SORT_NUMBERS` beyond the four types** | Only movie 1, show 2, season 3 and episode 4 are witnessed (they are the only types either reference holds). The rest of the table is Plex's own published type numbering, which is a model rather than a measurement -- and a collection sorts among them untested | A library of another type |
+| **The plain `filename=`'s `_` for `+`** | One witness: zen's file name carries a `+` and shows `News_` in the plain form while `filename*` escapes it. kids' name has no `+`. The `filename*` half is implemented; this half is recorded | A file with a `+` in its name on a second server |
+| **`/photo/:/transcode`'s `Accept-Ranges` cache tell** | Measured four fresh sizes on both references: the FIRST (generated) response omits the header and every later one sends it, which is the transcode cache answering. plexsim has no transcode cache, so there is no state to key it on | Nothing worth settling |
+| **The whole `clip` surface** | The build spec is measured in full on 3,905 rows across both references (see `docs/findings.md`), and plexsim's catalog holds no clips at all: `build_catalog.py` has no trailers to put in one. So the spec is the finding and the build is not | A catalog with extras in it |
+| **plexscratch stamps an artwork PICK at LOCAL time** | Not a rule and not a clock: all three servers' `Date` headers agree with the host to the second, and no stored `addedAt`/`updatedAt` pair on kids or zen shows the offset -- but on the copy a PICK writes `max(stored, now) + 7200` (the container's UTC offset, which therefore COMPOUNDS across writes) while an UPLOAD writes the true epoch, and the pick's own response body names the true-epoch path. Any measurement that compares a copy stamp with `now`, or two copy stamps across write kinds, is measuring this | Nothing to settle; know it before reading a stamp off the copy |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -689,6 +727,14 @@ and so a pre-existing listener there would have been killed without a record. It
 proved either way; every later run went back to `32592`/`32593`. **Neither hunter left a server
 running**, as in cycles 18 and 19. `32599` is `test_ui_surface.py`'s own gated server and
 `32598` the `--web-root` instance its asset check starts; leave both free.
+
+**Ports (cycle 29).** Re-checked after both hunters had stopped, with the processes listed as
+well as the ports: `32502` and `8787` are held, the same two every cycle since 17 has ended with.
+Everything cycle 29 used is FREE again: `32587`/`32588` (the hunters'), `32592`/`32593` (the proof
+driver's), `32500`/`32505`/`32506` (the suite runs), `32503`/`32504`/`32507`-`32511` (the driver's
+probes) and `32594`-`32597` (the by-hand `runblock` proofs, which need a server per parent tree).
+Hunt A started one `--web-root` instance on `32591` and killed it; hunt B started none and killed
+the plexsim it was given. No launchd job was registered.
 
 **Ports (cycle 28).** Re-checked after both hunters had stopped and every server this cycle
 started was killed: `32502` and `8787` are held -- the same two every cycle since 17 has ended
@@ -2143,7 +2189,98 @@ empty; and the `/collections` leaf is the `/all` listing with a default `type=18
 same query and making the same three 500s, where plexsim answered 200 and `size 0` to every one
 of them.
 
-### Next: cycle 29
+### Cycle 29 -- the bytes below the container, a row type plexsim has never held, and the artwork derivation finished
+
+Two hunts and a driver round: **20 findings in 20 commits**, ten recorded beliefs overturned, and
+for the first time in the programme **the driver's own revalidation step produced more findings
+than either hunt**.
+
+**Six of them came out of two §3.3 entries whose method was written down and never run.** Cycle 27
+left "clear a show's `/art` on the copy and read its episodes back" and "unmatch a show, give it an
+`art` back, and read the leaves" as open questions. Running both, and then the writes they imply,
+settled the whole artwork derivation: **a row's own artwork field is its NEAREST ancestor's that
+OWNS one, and `parentX`/`grandparentX` always name that specific ancestor.** Clearing a show's
+`art` removes it from both seasons and every episode and picking one back puts all of them back --
+so a borrowed field is derived and is RE-CREATED, which plexsim could not do. Uploading an `art` to
+one season of a two-season show switches that season's episodes to it while their `grandparentArt`
+goes on naming the show, which is zen's episode 11115 -- the row cycle 27 recorded and could not
+produce -- made on demand. A later show pick leaves the owning season alone. Clearing a row's own
+`art` drops it back to the ancestor's and makes the bare `/art` a 404. An artwork UPLOAD cascades
+like a pick, which plexsim's never did. And both write paths re-version the row's OTHER field only
+when the row OWNS it, where plexsim rewrote a borrowed path as the row's own -- a row claiming an
+image the server has none of, which the derivation then handed to every episode under it.
+
+One of the six was plexsim's own, and it shipped inside this cycle's second patch: `catalog.items`
+is keyed by INTEGER ratingKey and every row carries its key as a STRING, so the cascade's
+`items.get(row["parentRatingKey"])` was always None, a season cascade could not see its show, and
+it STRIPPED `art` from every episode under it. The next check in the same dimension caught it two
+patches later. That is the argument for driving one finding at a time against its own parent, and
+for the §10 rule this cycle adds about proofs that cannot come from `base`.
+
+**Two stale claims fell out of the same step.** HANDOVER 3.3 and section 8 both said the
+collection's and playlist's `/refresh` and `/unmatch` FRAME sequences were measured and not
+implemented. Driven again on the copy with a listener open, plexsim reproduces all four frame for
+frame -- 3 frames on an agent guid and 8 on a `local://` one, 7 for a collection unmatch, 4 and 2
+for a playlist -- because cycle 26 built them and nobody updated the lists.
+
+**Territory A swept the RESPONSE BODY**, the bytes themselves, which only cycle 16 had ever looked
+at: eleven findings, every one on both references. The largest is `/photo/:/transcode`'s `url=`
+grammar -- the dimensions are validated first and then the url, an empty one is a 404, a server
+path that is not artwork a 500, a scheme or a missing leading slash a 404, and a row that does not
+OWN the field a 404 -- against which plexsim answered a GENERATED GREY TILE carrying
+`max-age=259200`, so a browser kept the grey square for three days. That is CLAUDE.md's own trap
+read from the other side, five doors after cycle 14 closed the first. Beside it: `/:/resources/` is
+seven names and not nine (and ignores `width`/`height`); a **0/1 option's value is `+?0*[01]`** on
+six options including `download=`, which plexsim never validated at all; a 416 is an error response
+and not the resource with no bytes; a `/web/*` directory is an empty octet-stream 200 where plexsim
+served the whole client; `X-Plex-Local-Asset` marks an item's own artwork and nothing else; and the
+`Content-Disposition` escaper is "unreserved minus the dot", the same escaper CLAUDE.md already
+records for `/file?url=`.
+
+**Territory B swept EXTRAS and the `clip` row -- and corrected the brief it was given.** kids holds
+one extra after all, so the territory had two witnesses instead of one. Its four findings are all
+listing grammar that plexsim never ran: the section `/extras/all` leaf is a real QUERY with its own
+500s (including four media keys the section grid accepts), `group=` is honoured on `/library/all`,
+`sort=type` orders by the type NUMBER rather than its name, and an `include*` option takes a
+leading `+`. The fifth deliverable is the one that will matter later: a **build spec for the `clip`
+row**, measured over all 3,904 of zen's extras and kids' one -- attribute order with `extraType`
+last, no `Guid`/`Rating`/tags/`Field`, a container with `allowSync="0"` and no librarySection
+triple, `art` the parent's verbatim while `/art` is a 404, `primaryGuid` on trailer rows only, six
+`extraType` values, three projections, uncapped lists, and clips in NO listing or axis anywhere.
+plexsim's catalog holds no clips, so that spec is the finding and the build waits on a catalog that
+does.
+
+**And two cycles' grammars were wrong for the same reason.** Cycle 22 recorded "`+1` does not turn
+an `include*` block on" and cycle 23 "a 0/1 option takes four values", both from sweeps that sent a
+bare `+` -- which every real PMS decodes as a SPACE. Encoded as `%2B1` it passes both gates on both
+references. Two independent findings, one instrument error, found in the same hour because the
+boolean sweep and the extras sweep happened to run together. §10 now says to encode every value you
+sweep with.
+
+### Next: cycle 30
+
+1. **Run the hunts on a dimension nobody has swept.** Closed and not to be re-swept: path,
+   method/parameter, header, row, container, child element, attribute order, child-element order,
+   the filter engine, client identity, the cross-endpoint cascade, the playback path, the JSON
+   value-TYPE dimension, the HTTP envelope, Home's hub parameters, the search surface, and now the
+   response BODY and the extras/clip surface. Candidates nobody has taken: the **notification
+   channel at scale** (which frames a library-wide operation really pushes on a 3,887-row library,
+   and in what order); the **fresh client-session capture** through the harness (cycle 27's hunt A
+   had it -- read that report first); and the **time dimension** -- what a real PMS answers to the
+   same request twice, which is how cycle 29 found the transcoder's cache tell by accident.
+2. **The instrument, not the effort.** Three §3.3 entries across cycles 21, 25, 27 and 28 all say
+   "a writable 1.42.2 copy". plexscratch is 1.43.4 because it is a copy of the lab; a SECOND
+   disposable server pinned to 1.42.2 -- fresh libraries, no plex.tv, the same socat hop -- would
+   close the five media-codec edit fields, `PROFILE_NAMES`' 23 aliases, 1.42.2's Continue Watching
+   projection and the scrobble/timeline pair in one cycle. It is the highest-leverage instrument
+   work left.
+3. **A catalog with extras in it**, which would make cycle 29's clip spec buildable: `clip` rows,
+   `primaryExtraKey`, the three projections and the section extras query all wait on it.
+4. **`tests/conformance.py`'s nine failures**, re-confirmed in cycle 27 as the fixture's dead
+   Real-Debrid links. Prove that or find the real cause.
+5. **The session cutoff's bisection** (§3.3), if it is ever worth ~200 s a sample.
+
+### Next: cycle 29 (superseded)
 
 1. **Run the hunts on a dimension nobody has swept.** Closed and not to be re-swept: path,
    method/parameter, header, row, container, child element, attribute order, child-element
@@ -2603,6 +2740,26 @@ too), which the one-name-one-tag `languages.json` shape cannot express; and
 `pixelAspectRatio`/`anamorphic`, whose derivation is pinned but whose `anamorphic` threshold
 is only BRACKETED to (1.028, 1.067).
 
+**Cycle 29:** the photo transcoder's GEOMETRY, now pinned and still unbuildable -- the default
+scales to FIT inside the box, `minSize=1` scales to COVER it uncropped, without `upscale=1` the
+result is capped at the source's own size, `quality=` is the real JPEG quality and `opacity=` is
+accepted and discarded -- because plexsim has no resizer (the `width`/`height` 500s were already
+held out in cycle 27); a section `/composite/{v}` being a **512x512 JPEG mosaic** on both
+references, where plexsim has no compositor and serves one member's own poster; the transcoder
+omitting `Accept-Ranges` on the FIRST (uncached) transcode and sending it on every later one, a
+cache tell plexsim has no cache to key on; the 416's own **129-byte HTML body** and the fact that
+the static writer's refusals name no connection state and CLOSE the socket (plexsim's text/plain
+error bodies are cycle 1's deliberate deviation, and keeping a connection the reference drops is
+the forgiving direction); zen's plain `filename=` substituting `_` for `+` where `filename*`
+escapes it, on one witness; the malformed-`Range` table (38 specs both references agree on, of
+which the three status rules ARE built and the rest fits no parser model -- `bytes=-0` answers a
+206 whose `Content-Range` says `0-0/N` and whose body is the WHOLE file, which is the reference's
+own lying header); the BIF index family (`/library/sections/{id}/indexes/thumbnails` and friends
+are 404s on both references because neither has generated an index, so the populated shape cannot
+be seen); and **the whole `clip` surface** -- the row, `primaryExtraKey`, the three projections and
+the section extras query's own rows -- whose build spec is measured in full in `docs/findings.md`
+and whose build waits on a catalog with extras in it.
+
 **Cycle 28:** the `/library/search` flat list's ORDER, which is the reference's own relevance
 engine -- for `comedy` zen answers movie, show, episode and THEN the two genre rows, which is
 neither the hub base order (`show` first) nor a global score sort (the genre rows score 0.92 and
@@ -2701,6 +2858,16 @@ copy; the `<CODEC> External` label's single witness.
 ---
 
 ## 9. Safety rules and incidents
+
+**zen follows a `file://` artwork candidate (cycle 29, not acted on).** Cycle 29's body hunt sent
+`GET /library/metadata/{id}/file?url=file%3A%2F%2F%2Fetc%2Fhostname` to both references as part of
+a fifteen-shape `url=` table. kids (1.43.4) answers 400. **zen (1.42.2) answered 200 `image/jpeg`
+with the file's four bytes** -- its artwork-candidate reader follows the scheme and serves an
+arbitrary local file to any request carrying a token. The hunt stopped at that single request,
+probed nothing further and read nothing else off the filesystem, which is the right instinct and is
+recorded here so the next sweep does not repeat it: **do not probe that path on zen again.** It is
+not a plexsim finding -- the two references disagree, and plexsim 404s a `file://` url -- but zen is
+production on a build that still does it, and the operator should know.
 
 The rules:
 
@@ -2887,6 +3054,20 @@ Every one of these cost real time at least once.
   fixture mid-run cost a whole suite pass and read as a collapse — 889/926 with eleven extra
   skips, every one of them "need three movies". Use a second port for probes, and if a run
   looks catastrophic, check the fixture's row count before believing the failures.
+- **A raw `+` in a query string is a SPACE. Send `%2B` when you mean a sign.** Cycle 22 recorded
+  "`includeExtras=+1` does not turn the block on" and cycle 23 "a 0/1 option takes four values" --
+  both from sweeps that sent a bare `+`, which `parse_qsl` and every real PMS decode as a space. A
+  properly encoded `%2B1` turns the block on and passes the boolean gate on both references, so two
+  cycles' grammars were wrong in the same way for the same reason, and cycle 29 found them in the
+  same hour. Encode every value you sweep with, and when a finding says "this value is refused",
+  check what the server actually received.
+- **A check that starts its OWN server cannot be proved by `sdrive`.** `sdrive` serves the parent
+  tree and the fixed tree and runs the block against each, but a block that spawns a server of its
+  own (a `--web-root` instance, a token-gated one) starts it from the SUITE's tree -- the fixed one
+  both times -- so the check passes on both and the proof is empty. Prove that patch by hand:
+  export the parent, start both servers with the flag the check needs, run the requests, and put
+  the two tables in the commit message's place (this cycle's `/web/*` patch did). The same applies
+  to any check whose result does not come from `base`.
 - **A single-witness SHAPE must be checked against plexscratch before it is implemented.** Cycle
   28 implemented "all three On Deck paths answer the full detail row" from zen alone, because
   kids' On Deck is empty -- the §3.3 note said so -- and the cycle-21 suite check then went red.
@@ -2954,6 +3135,13 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 29: the same session as cycles 27 and 28 (`…/eba8c320-…jsonl`) plus its
+  `subagents/agent-*.jsonl`. Its scratch directory (`c29/`) holds both hunt prompts, `cl.py`,
+  `wsl.py` (the driver's own notification listener -- `guarded.py`'s wants a `scratch.token` file),
+  `patch1.py` to `patch6.py`, the doc and handover edit scripts, `zen_leaves.json` (all 9,287 zen
+  episode stamps, fetched for the Recently Added roll-up question), and the suite logs. Hunt A's
+  workspace (`c29/A/`) holds its guarded client and ~30 measurement tables; hunt B's (`c29/B/`) its
+  extras census of 3,904 zen clips
 - cycle 28: the same session as cycle 27 (`…/eba8c320-…jsonl`). Its scratch directory
   (`c28/`) holds both hunt prompts, `cl.py` (the driver's guarded client), `patch1.py` to
   `patch9.py`, `fix_c21_check.py`, the doc and handover edit scripts, and the suite logs --
