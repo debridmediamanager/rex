@@ -19447,6 +19447,36 @@ def main():
               % (len(orders_c28i), count_c28i,
                  len(steady_c28i) if steady_c28i else -1))
 
+
+    # Cycle 28, measured on zen and kids over the negative edge of a ten-row shelf:
+    # `count=-1` answers ONE row with `more: false` and `-2`, `-5` and `-100` answer NONE
+    # with `more: false`, where `count=0` answers none with `more: TRUE`. So a negative
+    # count is `len(rows) + count` clamped at zero and always reports the shelf as
+    # exhausted. plexsim clamped every negative value to zero and kept `more: true`.
+    # No client sends a negative count, so this changes nothing visible; the edge was
+    # measured, so it is recorded.
+    def shelf_edge_c28j(value_c28j):
+        hub_c28j = next(
+            (h_c28j for h_c28j in
+             (get(base, "/hubs/sections/%s?count=%s" % (show_section, value_c28j))[1]
+              .get("Hub") or [])
+             if "recentlyaired" in (h_c28j.get("hubIdentifier") or "")), None)
+        return None if hub_c28j is None else (hub_c28j.get("size"), hub_c28j.get("more"))
+
+    edges_c28j = {v_c28j: shelf_edge_c28j(v_c28j)
+                  for v_c28j in ("-1", "-2", "-100", "0")}
+    rows_c28j = shelf_edge_c28j("40")
+    if rows_c28j is None or (rows_c28j[0] or 0) < 3:
+        skip("a negative count is len(rows) + count, and the shelf is exhausted",
+             "the shelf has %s row(s)" % (rows_c28j and rows_c28j[0]))
+    else:
+        check("a negative count is len(rows) + count, and the shelf is exhausted",
+              edges_c28j["-1"] == (rows_c28j[0] - 1, False)
+              and edges_c28j["-2"] == (rows_c28j[0] - 2, False)
+              and edges_c28j["-100"] == (0, False)
+              and edges_c28j["0"] == (0, True),
+              "%s of %s rows" % (edges_c28j, rows_c28j[0]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
