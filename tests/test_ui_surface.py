@@ -19276,6 +19276,50 @@ def main():
           % (coll_c28e, typed_c28e.get("size"),
              sorted({r_c28e.get("type") for r_c28e in (typed_c28e.get("Metadata") or [])})))
 
+
+    # Cycle 28, measured on zen (50 rows: 12 shows, 31 seasons, 7 episodes) and
+    # corroborated on kids: `/hubs/home/recentlyAdded?type=2` -- Home's Recently Added TV
+    # shelf -- is a MIXED, ROLLED-UP list, not a list of shows. A group of two or more
+    # recently-added siblings collapses into its parent, recursively: one new episode in
+    # an otherwise old season stays an episode, two become the season, and two or more
+    # new seasons become the show. And a parent row here is dated by its NEWEST LEAF
+    # (kids' Firefly carries its last episode's stamp, 04:24:45, against its own
+    # 04:27:37, and 14 of 14 zen season rows carry `max(child.addedAt)`) -- the opposite
+    # aggregation from `/library/recentlyAdded`, where cycle 25's "dated by the earliest
+    # episode" holds and is re-confirmed below.
+    #
+    # plexsim filtered `type == "show"`, so a new episode or a new season of an existing
+    # show was invisible on Home; the shelf only ever changed when a whole show arrived.
+    #
+    # What this FIXTURE can show: its eight episodes span four seasons and are all
+    # equally recent, so the roll-up's own answer is the SHOW -- which is what plexsim
+    # used to answer for the wrong reason. The half that separates them is the DATE: the
+    # row now carries its newest leaf's stamp rather than the show's own. The MIXED case
+    # needs a library where only some rows are recent, which is zen's, and the suite
+    # cannot make one (an `addedAt` write is a 200 that stores nothing, cycle 20).
+    tv_c28f = get(base, "/hubs/home/recentlyAdded?type=2")[1].get("Metadata") or []
+    show_row_c28f = (get(base, "/library/metadata/%s" % show)[1].get("Metadata") or [{}])[0]
+    leaves_c28f = [int(r_c28f.get("addedAt") or 0) for r_c28f in
+                   (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                    .get("Metadata") or [])]
+    top_c28f = tv_c28f[0] if tv_c28f else {}
+    check("Recently Added TV rolls up and is dated by its newest leaf",
+          bool(tv_c28f) and bool(leaves_c28f)
+          and int(top_c28f.get("addedAt") or 0) == max(leaves_c28f)
+          and int(show_row_c28f.get("addedAt") or 0) != max(leaves_c28f)
+          and all(int(a_c28f.get("addedAt") or 0) >= int(b_c28f.get("addedAt") or 0)
+                  for a_c28f, b_c28f in zip(tv_c28f, tv_c28f[1:])),
+          "top %s/%s addedAt=%s | show own=%s | newest leaf=%s | %d row(s)"
+          % (top_c28f.get("type"), top_c28f.get("ratingKey"), top_c28f.get("addedAt"),
+             show_row_c28f.get("addedAt"), max(leaves_c28f or [0]), len(tv_c28f)))
+    early_c28f = [r_c28f for r_c28f in
+                  (get(base, "/library/recentlyAdded")[1].get("Metadata") or [])
+                  if r_c28f.get("type") == "season"]
+    check("and /library/recentlyAdded still dates a season by its EARLIEST leaf",
+          all(int(r_c28f.get("addedAt") or 0) <= max(leaves_c28f or [0])
+              for r_c28f in early_c28f),
+          "%d season row(s)" % len(early_c28f))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
