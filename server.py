@@ -7983,6 +7983,20 @@ class PlexSim:
         # Measured: `mixedFields` is a comma-joined list in a FIXED field order, and
         # is the EMPTY string when nothing differs, not absent.
         common["mixedFields"] = ",".join(mixed)
+        if "userRating" in common:
+            # Cycle 25, measured on plexscratch after rating every movie in the section:
+            # a Common's `userRating` is a STRING (`"8"`, not `8.0`) and it sits directly
+            # after `mixedFields`, ahead of `guid`. The ITEM row keeps the float on both
+            # servers, so it belongs to this projection alone.
+            #
+            # SINGLE WITNESS, deliberately: the field only appears here once every row in
+            # the section shares a value, which neither read-only reference can be made
+            # to do -- zen's section 1 holds 3,887 movies. So the copy (1.43.4) is the
+            # only instrument, and this is recorded as such.
+            rating = common["userRating"]
+            common["userRating"] = (str(int(rating))
+                                    if float(rating) == int(float(rating))
+                                    else str(rating))
         if len(rows) == 1:
             for key in ("Guid", "Rating", "Field"):
                 if rows[0].get(key):

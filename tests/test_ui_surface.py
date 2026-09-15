@@ -17289,6 +17289,42 @@ def main():
           str(leaf_c25p) in before_c25p[1] and str(leaf_c25p) not in after_c25p[1],
           "before=%s after=%s" % (before_c25p[1], after_c25p[1]))
 
+
+    # Cycle 25, measured on plexscratch after rating every movie in the section: a
+    # Common's `userRating` is a STRING and it sits directly after `mixedFields`, ahead
+    # of `guid`. plexsim sent the float the item row carries, in the middle of the row.
+    # Single witness by construction -- the field only appears once every row in the
+    # section shares a value, which neither read-only reference can be made to do.
+    movie_keys_c25q = [r_c25q.get("ratingKey") for r_c25q in
+                       get(base, "/library/sections/%s/all" % movie_section)[1]
+                       .get("Metadata") or []]
+    for key_c25q in movie_keys_c25q:
+        request(base, "GET", "/:/rate?key=%s&identifier=com.plexapp.plugins.library"
+                "&rating=8" % key_c25q)
+    _s_c25q, body_c25q, _h_c25q = request(
+        base, "GET", "/library/sections/%s/common?type=1" % movie_section,
+        want_json=False)
+    text_c25q = (body_c25q.decode("utf-8", "replace")
+                 if isinstance(body_c25q, bytes) else body_c25q)
+    row_c25q = re.search(r"<Common ([^>]*)>", text_c25q)
+    names_c25q = re.findall(r"([A-Za-z]+)=", row_c25q.group(1)) if row_c25q else []
+    value_c25q = re.search(r'userRating="([^"]*)"', text_c25q)
+    json_c25q = (get(base, "/library/sections/%s/common?type=1" % movie_section)[1]
+                 .get("Metadata") or [{}])[0]
+    check("a Common's userRating is a string, not the item row's float",
+          value_c25q and value_c25q.group(1) == "8"
+          and json_c25q.get("userRating") == "8",
+          "xml=%s json=%r" % (value_c25q and value_c25q.group(1),
+                              json_c25q.get("userRating")))
+    check("and it sits directly after mixedFields",
+          names_c25q[:2] == ["mixedFields", "userRating"]
+          and list(json_c25q)[:2] == ["mixedFields", "userRating"],
+          "xml=%s json=%s" % (names_c25q[:3], list(json_c25q)[:3]))
+    detail_c25q = (get(base, "/library/metadata/%s" % movie_keys_c25q[0])[1]
+                   .get("Metadata") or [{}])[0]
+    check("the ITEM row keeps the number",
+          detail_c25q.get("userRating") == 8.0, repr(detail_c25q.get("userRating")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
