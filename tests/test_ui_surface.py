@@ -2028,10 +2028,20 @@ def main():
           str((row.get("Session") or {}).get("id")))
     # The client renders "Direct Play" precisely when Session is present and
     # TranscodeSession is not, which is the truth for a server with no encoder.
-    check("a direct-play session has no TranscodeSession",
-          "TranscodeSession" not in row and any(
-              part.get("decision") == "directplay"
-              for media in row.get("Media") or [] for part in media.get("Part") or []),
+    #
+    # Cycle 26 SPLIT this check, which asserted both halves of a shape only one half of
+    # which a real PMS answers here. `row` is a session opened by a bare timeline and
+    # nothing else, and on the copy such a session's Part carries NO `decision` at all --
+    # the flag is armed by that session's own decision, and the check below drives it.
+    # Asserting `directplay` on an undecided session is what kept plexsim stamping it on
+    # every session row, so the Dashboard said "Direct Play" for a client that had never
+    # asked whether it could play the file. The `TranscodeSession` half is true of both.
+    check("a session carries no TranscodeSession",
+          "TranscodeSession" not in row, ",".join(sorted(row)))
+    check("and an UNDECIDED session's Part carries no decision",
+          not any(part.get("decision")
+                  for media in row.get("Media") or []
+                  for part in media.get("Part") or []),
           "decision=%s" % [p.get("decision") for m in row.get("Media") or []
                            for p in m.get("Part") or []])
     # The timeline RESPONSE is not an echo of the state sent: measured as
