@@ -16044,6 +16044,39 @@ def main():
     else:
         skip("a text sort compares raw codepoints, so lowercase sorts above uppercase",
              "needs two movies")
+
+    # Cycle 22, measured on zen (a 74-role movie) and kids over every element name their
+    # rows carry: `excludeElements=` honours an ALLOW-LIST -- `Media`, `Part`, `Genre`,
+    # `Country`, `Guid`, `Rating`, `Director`, `Writer`, `Role`, `Producer` -- and every
+    # other name is a NO-OP, exactly like an unknown one. `Extras`, `Related`,
+    # `Preferences`, `Field`, `Chapter` and `Review` all survive being named. plexsim had
+    # the rule inverted: cycle 19 measured `Image` and `UltraBlurColors` as the exceptions
+    # and generalised to "everything else really goes", so a client naming `Related` or
+    # `Preferences` in a bandwidth-trimming list lost a block a real PMS still sends.
+    # And `Part` is a real name on the list: it removes the Parts AND their Streams and
+    # adds `partCount` to the Media, the same substitution `Media` makes one level up.
+    opts_c22d = ("?includeRelated=1&includeExtras=1&includePreferences=1&includeGuids=1")
+    _, base_c22d, _ = get(base, "/library/metadata/%s%s" % (movie, opts_c22d))
+    own_c22d = [k_c22d for k_c22d, v_c22d in ((base_c22d.get("Metadata") or [{}])[0]).items()
+                if isinstance(v_c22d, (list, dict))]
+    kept_c22d, gone_c22d = [], []
+    for name_c22d in own_c22d:
+        _, after_c22d, _ = get(base, "/library/metadata/%s%s&excludeElements=%s"
+                               % (movie, opts_c22d, name_c22d))
+        (gone_c22d if name_c22d not in ((after_c22d.get("Metadata") or [{}])[0])
+         else kept_c22d).append(name_c22d)
+    _, part_c22d, _ = get(base, "/library/metadata/%s?excludeElements=Part" % movie)
+    row_c22d = (part_c22d.get("Metadata") or [{}])[0]
+    media_c22d = (row_c22d.get("Media") or [{}])[0]
+    check("excludeElements honours an allow-list, and Part is on it",
+          set(gone_c22d) <= {"Media", "Part", "Genre", "Country", "Guid", "Rating",
+                             "Director", "Writer", "Role", "Producer"}
+          and "Related" in kept_c22d and "Extras" in kept_c22d
+          and "Preferences" in kept_c22d
+          and not media_c22d.get("Part") and media_c22d.get("partCount") == 1,
+          "removed %s | kept %s | Part-> partCount %r parts %d"
+          % (sorted(gone_c22d), sorted(kept_c22d), media_c22d.get("partCount"),
+             len(media_c22d.get("Part") or [])))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
