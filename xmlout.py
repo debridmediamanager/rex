@@ -122,7 +122,9 @@ _ATTR_ORDER = {
         # and the PARENT pair comes before `ratingKey`. plexsim appended all four
         # after the scalars, because this bucket knew none of them.
         "grandparentRatingKey", "grandparentTitle",
-        "mixedFields", "parentRatingKey", "parentTitle",
+        # Cycle 25: `userRating` follows `mixedFields` directly, ahead of `guid` --
+        # measured on plexscratch, the only instrument that can show the field at all.
+        "mixedFields", "userRating", "parentRatingKey", "parentTitle",
         "ratingKey", "key", "guid", "studio", "type", "title",
         "titleSort", "contentRating", "summary", "index", "year", "tagline",
         "originallyAvailableAt"
