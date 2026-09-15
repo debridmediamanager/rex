@@ -449,6 +449,7 @@ def _video_stream(stream, stream_id):
         "frameRate": _float_or_none(_frame_rate(stream)),
         "scanType": _scan_type(stream.get("field_order")),
     }
+    row.update(_pixel_aspect(stream))
     # Measured on the six Dolby Vision files probed on fun (profiles 5, 7, 8 and 10): the
     # eight DOVI attributes are ffprobe's DOVI configuration record, field for field. They
     # are what tells a client a Dolby Vision stream it can play from one it cannot, and
@@ -479,6 +480,41 @@ def _video_stream(stream, stream_id):
     if bitrate:
         row["bitrate"] = round(int(bitrate) / 1000)
     return stream_titles(row)
+
+
+def _pixel_aspect(stream):
+    """`pixelAspectRatio` and `anamorphic`, which a real PMS sends as a PAIR.
+
+    Cycle 25, measured on 1,688 of zen's video Streams: 358 carry both and 1,330 carry
+    neither -- not one carries only one of the two -- and the value is ffprobe's
+    `sample_aspect_ratio` verbatim, present exactly when the sample aspect is not square.
+
+    `anamorphic` is the one Stream boolean a real PMS sends when it is FALSE, so it goes
+    out either way. Its rule is the pixel aspect rounded to ONE decimal place: true when
+    that is not 1.0. Sixteen distinct ratios witness it and every one agrees --
+    `99:100`, `172:173`, `799:800`, `816:817`, `872:873`, `959:960`, `10439:10440`,
+    `481:480`, `255:254` and `643:640` (303 streams) are all false, and `1:2`, `10:11`,
+    `16:15`, `495:464`, `721:640` and `2:1` are all true -- together with the two in the
+    recorded corpus, `333:320` false and `32:27` true. That puts the boundary inside
+    (0.0406, 0.0667] and 0.05 is the only round number in it, so the CONSTANT is still
+    inferred where the two sides of it are measured; a file with a ratio in that gap
+    would settle it. A pixel-difference model was tried first and is refuted: the 3840
+    -wide `333:320` stream displaces 156 pixels and is false where a 716-wide `16:15`
+    displaces 48 and is true.
+    """
+    raw = stream.get("sample_aspect_ratio")
+    if not raw or ":" not in raw:
+        return {}
+    numerator, _, denominator = raw.partition(":")
+    try:
+        ratio = int(numerator) / int(denominator)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return {}
+    if not ratio or ratio == 1:
+        # ffprobe writes `0:1` for a sample aspect it could not read, and `1:1` for a
+        # square one; a real PMS sends neither field for either.
+        return {}
+    return {"pixelAspectRatio": raw, "anamorphic": abs(ratio - 1) >= 0.05}
 
 
 def _int_or(value, default):

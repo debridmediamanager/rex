@@ -294,6 +294,44 @@ def _video_resolution_survey(mediainfo):
             for width, height, label, count in survey["rows"]]
 
 
+@check("pixel-aspect")
+def _pixel_aspect_pair(fixture):
+    """Cycle 25: `pixelAspectRatio` and `anamorphic` come as a PAIR, or not at all.
+
+    The corpus holds two streams that carry them -- `333:320` with `anamorphic` false and
+    `32:27` with it true -- and fifty-four that carry neither. plexsim sent neither field
+    on any stream, so Get Info printed no pixel aspect and a client deciding whether it
+    had to correct the aspect on playback was told nothing.
+    """
+    return per_stream(1, ("pixelAspectRatio", "anamorphic"), built_only=True)(fixture)
+
+
+@check("pixel-aspect-threshold", once=True)
+def _pixel_aspect_threshold(mediainfo):
+    """The sixteen ratios zen witnesses, and the two in the corpus.
+
+    Measured on 1,688 of zen's video Streams (358 carrying the pair, 1,330 carrying
+    neither, none carrying one). The boundary is bracketed by `333:320` false and
+    `16:15` true; 0.05 is the only round number inside it.
+    """
+    rows = []
+    for ratio, expected in (("1:1", None), ("0:1", None),
+                            ("99:100", False), ("172:173", False), ("799:800", False),
+                            ("816:817", False), ("872:873", False), ("959:960", False),
+                            ("10439:10440", False), ("481:480", False), ("255:254", False),
+                            ("643:640", False), ("333:320", False),
+                            ("1:2", True), ("10:11", True), ("16:15", True),
+                            ("495:464", True), ("721:640", True), ("32:27", True),
+                            ("2:1", True)):
+        built = mediainfo._video_stream(
+            {"codec_name": "h264", "index": 0, "width": 1920, "height": 1080,
+             "sample_aspect_ratio": ratio}, 1)
+        rows.append(("sample_aspect_ratio %s" % ratio,
+                     (ratio, expected) if expected is not None else (None, None),
+                     (built.get("pixelAspectRatio"), built.get("anamorphic"))))
+    return rows
+
+
 @check("aspect-ratio")
 def _aspect_ratio_value(fixture):
     return per_media(("aspectRatio",))(fixture)

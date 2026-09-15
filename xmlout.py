@@ -257,10 +257,15 @@ _ATTR_ORDER = {
     "Stream": (
         "id", "streamType", "canAutoSync", "selected", "default", "codec",
         "index", "channels", "bitrate", "language", "languageTag", "languageCode",
+        # Cycle 25, measured on zen's own XML for two rows carrying them: `anamorphic`
+        # sits between `bitrate` and `bitDepth` and `pixelAspectRatio` between `level`
+        # and `profile`. Without an entry a name falls to the END of the bucket, which
+        # is this table's documented failure mode.
+        "anamorphic",
         "bitDepth", "chromaLocation", "chromaSubsampling", "codedHeight",
         "codedWidth", "audioChannelLayout", "colorPrimaries", "colorRange",
         "colorSpace", "colorTrc", "frameRate", "hasScalingMatrix", "height",
-        "level", "profile", "refFrames", "scanType", "samplingRate",
+        "level", "pixelAspectRatio", "profile", "refFrames", "scanType", "samplingRate",
         "streamIdentifier", "hearingImpaired", "title", "width", "displayTitle",
         "extendedDisplayTitle"
     ),
