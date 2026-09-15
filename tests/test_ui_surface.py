@@ -16120,6 +16120,28 @@ def main():
           set(good_c22f.values()) == {200} and set(bad_c22f.values()) == {400},
           "accepted %s | refused %s"
           % (sorted(set(good_c22f.values())), sorted(set(bad_c22f.values()))))
+
+    # Cycle 22, measured on zen and kids: `includeRelatedCount=0` EMPTIES the inline hub --
+    # `{hubIdentifier, size: 0, more: true}` with no rows -- where plexsim read `0` as
+    # "absent" and fell through to its default of five. `more` is true for any parsed cap
+    # below the pool size, `0` included.
+    _, zero_c22g, _ = get(base, "/library/metadata/%s?includeRelated=1&includeRelatedCount=0"
+                          % movie)
+    hubs_c22g = (((zero_c22g.get("Metadata") or [{}])[0].get("Related") or {}).get("Hub") or [])
+    _, one_c22g, _ = get(base, "/library/metadata/%s?includeRelated=1&includeRelatedCount=1"
+                         % movie)
+    hubs1_c22g = (((one_c22g.get("Metadata") or [{}])[0].get("Related") or {}).get("Hub") or [])
+    check("includeRelatedCount=0 empties the inline related hub",
+          bool(hubs_c22g)
+          and hubs_c22g[0].get("size") == 0
+          and not (hubs_c22g[0].get("Metadata") or [])
+          and hubs_c22g[0].get("more") is True
+          and bool(hubs1_c22g) and hubs1_c22g[0].get("size") == 1,
+          "count=0 -> size %r rows %d more %r | count=1 -> size %r"
+          % (hubs_c22g[0].get("size") if hubs_c22g else None,
+             len(hubs_c22g[0].get("Metadata") or []) if hubs_c22g else -1,
+             hubs_c22g[0].get("more") if hubs_c22g else None,
+             hubs1_c22g[0].get("size") if hubs1_c22g else None))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
