@@ -8760,7 +8760,7 @@ class PlexSim:
             hubs.append(self.home_hub(
                 "home.playlists", "Recent Playlists",
                 "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio",
-                [], query, kind="playlist", promoted=True))
+                self.recent_playlists(), query, kind="playlist", promoted=True))
         return self.hub_container(Hub=hubs)
 
     def similar_rows(self, row):
@@ -8958,6 +8958,8 @@ class PlexSim:
             "home.movies.recent": [_listing_row(r) for r in self.recently_added_rows("1")],
             "home.television.recent": [_listing_row(r)
                                        for r in self.recently_added_rows("2")],
+            # Cycle 25: the shelf is populated -- see `recent_playlists`.
+            "home.playlists": self.recent_playlists(),
         }
         hidden = self.ondeck_shelf_hidden()
         hubs = [self.home_hub(identifier, title, key, rows.get(identifier, []), query,
@@ -9178,6 +9180,21 @@ class PlexSim:
         """
         return "%.5f" % max(0.0, min(1.0, rank))
 
+    def recent_playlists(self):
+        """The rows the `home.playlists` shelf carries, newest VIEWED first.
+
+        Cycle 25, measured on plexscratch: the shelf really is populated, and its rows
+        are the `/playlists` listing rows sorted `lastViewedAt:desc` -- which is what
+        its own `key` says. Its `hubKey` is `/library/metadata/<comma-joined ratingKeys>`,
+        the same rule every other shelf follows. plexsim hardcoded the rows to `[]` with
+        a comment saying the reference had "no playlist history", which was true of the
+        reference when it was measured and is not a rule: Home's Playlists shelf was
+        permanently empty however many playlists anyone made.
+        """
+        rows = list(self.library.playlists())
+        rows.sort(key=lambda r: -(r.get("lastViewedAt") or r.get("addedAt") or 0))
+        return rows
+
     def search_matches(self, text, limit, tagged_items=False):
         """(typed row lists, tag hits) for one query, both ranked.
 
@@ -9206,6 +9223,17 @@ class PlexSim:
         typed = {}
         for row in rows:
             typed.setdefault(row.get("type"), []).append(row)
+        # Cycle 25, measured on plexscratch: a PLAYLIST is found by both search
+        # endpoints, by the same word-prefix match on its title, and the hit is the
+        # `/playlists` listing row. plexsim searched `catalog.items` alone, where its
+        # playlists are not rows, so a playlist could never be found by search at all.
+        # (A COLLECTION is already found as a `tagType: 2` tag row and is a different
+        # shape -- cycle 22 measured that, and it is unchanged here.)
+        if len(needle) >= 2:
+            for row in self.library.playlists():
+                words = re.split(r"[^0-9a-z]+", str(row.get("title") or "").lower())
+                if any(word.startswith(needle.split()[0]) for word in words if word):
+                    typed.setdefault("playlist", []).append(row)
         if tagged_items:
             seen_keys = {str(r.get("ratingKey")) for r in rows}
             for row in self.catalog.items.values():

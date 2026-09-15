@@ -17367,6 +17367,47 @@ def main():
     check("a delete takes it away again",
           removed_c25r == before_c25r, "%d -> %d" % (len(after_c25r), len(removed_c25r)))
 
+
+    # Cycle 25, measured on plexscratch: a playlist appears in Home's Recent Playlists
+    # shelf, in `/hubs/search` and in `/library/search`. plexsim hardcoded the shelf's
+    # rows to `[]` -- with a comment saying the reference had "no playlist history",
+    # which was true of the reference when it was measured and is not a rule -- and
+    # searched its catalog alone, where a playlist is not a row. So Home's Playlists
+    # shelf was permanently empty and a playlist could never be found by search.
+    created_c25s = request(
+        base, "POST", "/playlists?type=video&title=c25shelf&smart=0&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                % (machine, movie)))
+    key_c25s = ((json.loads(created_c25s[1] or b"{}").get("MediaContainer", {})
+                 .get("Metadata") or [{}])[0]).get("ratingKey")
+    shelf_c25s = next((h_c25s for h_c25s in get(base, "/hubs")[1].get("Hub") or []
+                       if h_c25s.get("hubIdentifier") == "home.playlists"), {})
+    promoted_c25s = next((h_c25s for h_c25s in
+                          get(base, "/hubs/promoted")[1].get("Hub") or []
+                          if h_c25s.get("hubIdentifier") == "home.playlists"), {})
+    hits_c25s = [(h_c25s.get("type"), [r_c25s.get("ratingKey")
+                                       for r_c25s in h_c25s.get("Metadata") or []])
+                 for h_c25s in get(base, "/hubs/search?query=c25shelf")[1].get("Hub") or []
+                 if h_c25s.get("size")]
+    library_c25s = get(base, "/library/search?query=c25shelf")[1].get("SearchResult") or []
+    check("Home's Recent Playlists shelf carries the playlist",
+          [r_c25s.get("ratingKey") for r_c25s in shelf_c25s.get("Metadata") or []]
+          == [str(key_c25s)]
+          and [r_c25s.get("ratingKey") for r_c25s in promoted_c25s.get("Metadata") or []]
+          == [str(key_c25s)],
+          "hubs=%s promoted=%s" % (shelf_c25s.get("size"), promoted_c25s.get("size")))
+    check("and its hubKey names its own rows",
+          shelf_c25s.get("hubKey") == "/library/metadata/%s" % key_c25s,
+          str(shelf_c25s.get("hubKey")))
+    check("/hubs/search finds the playlist",
+          ("playlist", [str(key_c25s)]) in hits_c25s, str(hits_c25s))
+    check("/library/search finds it too",
+          any((r_c25s.get("Metadata") or {}).get("ratingKey") == str(key_c25s)
+              for r_c25s in library_c25s),
+          str([(r_c25s.get("Metadata") or r_c25s.get("Directory") or {}).get("type")
+               for r_c25s in library_c25s]))
+    request(base, "DELETE", "/playlists/%s" % key_c25s)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
