@@ -16251,9 +16251,17 @@ class Handler(BaseHTTPRequestHandler):
         sim.add_socket(sink, filters)
         if "log" in filters or everything:
             sim.log_sink(sink)
-        deadline = time.time() + 300
+        # Cycle 30, measured on the copy over a 430-second idle capture: the reference's
+        # eventsource channel is STILL OPEN at 430.0 s, pinging every 10 s (43 of them),
+        # and neither server sends `id:` or `retry:` -- so there is no `Last-Event-ID`
+        # replay to fall back on. plexsim closed the channel at 300.2 s, and every frame
+        # pushed in the ~3 s before the client's reconnect was lost: a row changed
+        # elsewhere in that window never got its `state 5`, so the client's
+        # `!!metadataState` gates -- the spinner, Refresh, Match -- stayed latched.
+        # The websocket's own hour is left as it is: a 65-minute reference capture was
+        # not obtained, so that constant is unmeasured either way.
         try:
-            while time.time() < deadline:
+            while True:
                 # Measured: the FIRST ping arrives ten seconds in, not on connect.
                 time.sleep(10)
                 with lock:
