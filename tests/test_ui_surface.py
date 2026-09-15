@@ -17664,6 +17664,39 @@ def main():
     check("and an unknown id is still a 400",
           unknown_c26b == 400, str(unknown_c26b))
 
+
+    # Cycle 26, measured on kids and zen over sixteen values on all three endpoints: a
+    # `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
+    # bandwidth keeps `0 1 2 3 4 6`, media `0 1 2 3 4`, resources `6`; 5, 7, 99, -1 and
+    # 007 answer `size 0` on both references, and `06` parses as 6 and answers rows.
+    # plexsim fell back to the ONE-SECOND bucket for every unstored value, so it answered
+    # the live per-second series relabelled with the asked-for window -- invented rows.
+    # The client's own enum names 5 ("Minutes"), so it is reachable.
+    def span_size_c26c(which_c26c, span_c26c):
+        return get(base, "/statistics/%s?timespan=%s" % (which_c26c, span_c26c))[1].get("size")
+
+    stored_c26c = {"bandwidth": (0, 1, 2, 3, 4, 6), "media": (0, 1, 2, 3, 4),
+                   "resources": (6,)}
+    unstored_c26c = {}
+    for which_c26c in ("bandwidth", "media", "resources"):
+        for span_c26c in (5, 7, 8, 9, 10, 99, -1, "007"):
+            unstored_c26c[(which_c26c, span_c26c)] = span_size_c26c(which_c26c, span_c26c)
+    check("an unstored statistics timespan is an EMPTY 200",
+          set(unstored_c26c.values()) == {0},
+          str({k_c26c: v_c26c for k_c26c, v_c26c in unstored_c26c.items() if v_c26c}))
+    check("and 06 parses as 6 on every endpoint, resources included",
+          span_size_c26c("resources", "06") == span_size_c26c("resources", "6")
+          and span_size_c26c("bandwidth", "06") == span_size_c26c("bandwidth", "6"),
+          "resources 06=%s 6=%s" % (span_size_c26c("resources", "06"),
+                                    span_size_c26c("resources", "6")))
+    check("a stored timespan still answers, and an unparseable one is still a 400",
+          all(span_size_c26c(w_c26c, s_c26c) is not None
+              for w_c26c, spans_c26c in stored_c26c.items() for s_c26c in spans_c26c)
+          and get(base, "/statistics/bandwidth?timespan=abc")[0] == 400
+          and get(base, "/statistics/bandwidth?timespan=")[0] == 400,
+          "abc=%s empty=%s" % (get(base, "/statistics/bandwidth?timespan=abc")[0],
+                               get(base, "/statistics/bandwidth?timespan=")[0]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
