@@ -16675,6 +16675,97 @@ def main():
           set(codes_c23h.values()) == {404}
           and set(reads_c23h.values()) == {200},
           "%s | GETs %s" % (sorted(set(codes_c23h.values())), reads_c23h))
+
+    # Cycle 25, measured on plexscratch on an uncontended socket (cycle 23 deferred it
+    # because its own hunt was running the butler on the same copy). A SEASON's unmatch
+    # pushes ONE `matching` frame and then the SEASON cascade -- 28 frames, 9 of them the
+    # state-dependent media pass -- where plexsim sent the seven-frame EPISODE form, so
+    # the episodes under an unmatched season were never re-announced. A SHOW's pushes 46
+    # and plexsim pushed NONE, so Fix Match on a show page changed nothing on screen.
+    # The opener differs by row type and that is measured, not inferred: a movie and a
+    # show open with the `matching` PAIR (`state 2` then `state 3`) and a season with one.
+    def cascade_frames_c25a(path_c25a, cap_c25a=80):
+        import threading
+        request_c25a = urllib.request.Request(
+            base.rstrip("/") + "/:/eventsource/notifications",
+            headers={"Accept": "text/event-stream", "User-Agent": UA})
+        try:
+            response_c25a = urllib.request.urlopen(request_c25a, timeout=20)
+        except Exception:
+            return []
+        threading.Timer(0.5, lambda: request(base, "PUT", path_c25a)).start()
+        out_c25a, name_c25a = [], None
+        deadline_c25a = time.time() + 10
+        try:
+            while time.time() < deadline_c25a and len(out_c25a) < cap_c25a:
+                line_c25a = response_c25a.readline()
+                if not line_c25a:
+                    break
+                text_c25a = line_c25a.decode("utf-8", "replace").strip()
+                if text_c25a.startswith("event:"):
+                    name_c25a = text_c25a.split(":", 1)[1].strip()
+                elif text_c25a.startswith("data:") and name_c25a:
+                    if name_c25a != "ping":
+                        out_c25a.append((name_c25a,
+                                         json.loads(text_c25a.split(":", 1)[1].strip())))
+                    name_c25a = None
+        finally:
+            response_c25a.close()
+        return out_c25a
+
+    season_c25a = (get(base, "/library/metadata/%s/children" % show)[1].get("Metadata")
+                   or [])
+    season_c25a = [row for row in season_c25a if row.get("type") == "season"][0]["ratingKey"]
+    frames_c25a = cascade_frames_c25a("/library/metadata/%s/unmatch" % season_c25a)
+    timeline_c25a = [(row.get("TimelineEntry") or {}) for name, row in frames_c25a
+                     if name == "timeline"]
+    acts_c25a = [(row.get("ActivityNotification") or {}).get("event")
+                 for name, row in frames_c25a if name == "activity"]
+    leaves_c25a = [entry for entry in timeline_c25a
+                   if str(entry.get("itemID")) != str(season_c25a)]
+    check("a season unmatch opens with ONE matching frame, not the movie's pair",
+          [(e.get("state"), e.get("metadataState")) for e in timeline_c25a[:2]]
+          == [(2, "matching"), (3, "queued")],
+          str([(e.get("state"), e.get("metadataState")) for e in timeline_c25a[:3]]))
+    check("a season unmatch re-announces every EPISODE under it",
+          len({e.get("itemID") for e in leaves_c25a}) >= 1
+          and [e.get("state") for e in leaves_c25a[:4]] == [5, 4, 4, 5],
+          "%d leaf frames over %d rows"
+          % (len(leaves_c25a), len({e.get("itemID") for e in leaves_c25a})))
+    check("a season unmatch's activity starts and ENDS, with no update between",
+          acts_c25a == ["started", "ended"], str(acts_c25a))
+    check("a season unmatch's last frame is the season's own state 5",
+          timeline_c25a and timeline_c25a[-1].get("state") == 5
+          and str(timeline_c25a[-1].get("itemID")) == str(season_c25a)
+          and "metadataState" not in timeline_c25a[-1],
+          json.dumps(timeline_c25a[-1:])[:160])
+
+    frames_c25b = cascade_frames_c25a("/library/metadata/%s/unmatch" % show)
+    timeline_c25b = [(row.get("TimelineEntry") or {}) for name, row in frames_c25b
+                     if name == "timeline"]
+    activity_c25b = [(row.get("ActivityNotification") or {}) for name, row in frames_c25b
+                     if name == "activity"]
+    titles_c25b = [a.get("Activity", {}).get("title") for a in activity_c25b]
+    check("a show unmatch opens with the movie's matching PAIR and then queued",
+          [(e.get("state"), e.get("metadataState")) for e in timeline_c25b[:3]]
+          == [(2, "matching"), (3, "matching"), (3, "queued")],
+          str([(e.get("state"), e.get("metadataState")) for e in timeline_c25b[:3]]))
+    check("a show unmatch's activity steps through Analyzing Media and back",
+          "Analyzing Media" in titles_c25b
+          and titles_c25b.index("Analyzing Media") < len(titles_c25b) - 1
+          and titles_c25b[-1] == "Updating Metadata", str(titles_c25b))
+    check("a show unmatch re-announces every SEASON and every EPISODE",
+          len({e.get("itemID") for e in timeline_c25b}) >= 4,
+          "%d rows framed" % len({e.get("itemID") for e in timeline_c25b}))
+    check("a show unmatch ends on the show's own state 5",
+          timeline_c25b and timeline_c25b[-1].get("state") == 5
+          and str(timeline_c25b[-1].get("itemID")) == str(show)
+          and "metadataState" not in timeline_c25b[-1],
+          json.dumps(timeline_c25b[-1:])[:160])
+    check("a show unmatch's activity ENDS",
+          [a.get("event") for a in activity_c25b][-1:] == ["ended"],
+          str([a.get("event") for a in activity_c25b]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
