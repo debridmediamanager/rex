@@ -452,7 +452,14 @@ def ordered(container):
 # fifteen on `/media/providers` are written as PAIRED empty elements on both servers,
 # where `Directory`, `Action` and `Pivot` in the same document self-close when they have
 # no children. It is the reference writer's own quirk and it is element-specific.
-_ALWAYS_PAIRED = ("Feature",)
+# Cycle 22, censused over ~45 paths on kids and zen: six more names are written PAIRED
+# when empty. `Part` self-closes while `Stream` never does (37,464 of 37,464 on zen,
+# 222 of 222 on kids), so it is an element-NAME table and not "anything that can hold
+# children" -- the same shape cycle 21 concluded for `Feature`. `Directory` is left
+# out on purpose: both references write it BOTH ways and which is which is an
+# attribute-level rule this cycle did not isolate.
+_ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Hub", "Extras", "Media",
+                  "Activity")
 
 
 def _render(name, row, out, overrides=None, container=False):
