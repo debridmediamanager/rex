@@ -13104,12 +13104,19 @@ class PlexSim:
     # `ended` frame carries THAT subtitle rather than the analysing one. plexsim stopped
     # at the fourth, so the Dashboard's last word on the task was a phase that is not
     # its last.
-    BUNDLE_CLEAN_PHASES = (("Analyzing media bundles", -1),
-                           ("Deleting %d media bundles", 75),
-                           ("Deleting %d media bundles", 100),
-                           ("Analyzing metadata bundles", 100),
-                           ("Deleting %d metadata bundles", 25),
-                           ("Deleting %d metadata bundles", 50))
+    # Cycle 26, re-measured twice on a fresh copy: the task's two `progress` messages
+    # are INTERLEAVED with these phases, not pushed after the activity has ended --
+    # "cleaned N media bundles" lands between the media group and `Analyzing metadata
+    # bundles`, and "cleaned N metadata bundles" between the last step and the `ended`.
+    # plexsim pushed both at the end, so the Dashboard reported the media bundles after
+    # it had already moved on to the metadata ones. The third element is the index of
+    # the message to push once that phase's frame has gone out.
+    BUNDLE_CLEAN_PHASES = (("Analyzing media bundles", -1, None),
+                           ("Deleting %d media bundles", 75, None),
+                           ("Deleting %d media bundles", 100, 0),
+                           ("Analyzing metadata bundles", 100, None),
+                           ("Deleting %d metadata bundles", 25, None),
+                           ("Deleting %d metadata bundles", 50, 1))
 
     def butler(self, method, segments):
         """`/butler` and `/butler/{task}` -- the Scheduled Tasks page's Run button."""
@@ -13149,6 +13156,8 @@ class PlexSim:
         wrapper = {"uuid": str(uuid.uuid4()), "type": "butler", "cancellable": False,
                    "userID": 1, "title": "Butler tasks", "subtitle": "", "progress": -1}
         self.notify_activity(wrapper, "started")
+        # Section scans RefreshLibraries queues, run after the wrapper has closed.
+        deferred = []
         # The counts a template fills in: what this server actually has.
         leaves = sum(1 for row in self.catalog.items.values()
                      if row.get("type") in ("movie", "episode"))
@@ -13157,7 +13166,7 @@ class PlexSim:
                   "shows": sum(1 for row in self.catalog.items.values()
                                if row.get("type") == "show"),
                   "leaves": leaves}
-        for name in names:
+        for index, name in enumerate(names, 1):
             messages, inner = self.BUTLER_MESSAGES.get(name, ([], None))
             # Cycle 25, re-measured on plexscratch on an uncontended socket, twice over:
             # `POST /butler/BackupDatabase` runs its `general.db.backup` activity TWICE,
@@ -13193,10 +13202,16 @@ class PlexSim:
                     if subtitle is None:
                         # Cycle 17: `CleanOldBundles` steps its SUBTITLE through four named
                         # phases rather than stepping a progress bar under one subtitle.
-                        for phase, step in self.BUNDLE_CLEAN_PHASES:
+                        for phase, step, says in self.BUNDLE_CLEAN_PHASES:
                             activity["subtitle"] = (phase % leaves) if "%d" in phase else phase
                             activity["progress"] = step
                             self.notify_activity(activity, "updated")
+                            if says is not None and says < len(messages):
+                                self.notify_progress(messages[says] % leaves
+                                                     if "%d" in messages[says]
+                                                     else messages[says])
+                        # Pushed above, phase by phase.
+                        messages = []
                     else:
                         # Cycle 19, measured on plexscratch over three runs: the progression
                         # is `started` at 0 with an EMPTY subtitle, then `updated` at 0 with
@@ -13219,8 +13234,15 @@ class PlexSim:
                     # `library.update.item.metadata` triple per item and no progress rows at
                     # all, so the Dashboard named the wrong operation for the one task that
                     # runs daily.
-                    for section in self.catalog.sections:
-                        self.notify_section_scan(section["key"], section)
+                    #
+                    # Cycle 26: and the task REPORTS BEFORE IT SCANS. Measured on the copy:
+                    # `The butler refreshed all libraries.` goes out first, the `butler`
+                    # wrapper steps to 100 and ENDS, and only then does the first
+                    # `library.update.section` frame appear. The scan is work the task
+                    # queues, not work it waits for, so plexsim defers it past the wrapper
+                    # rather than running it inline -- where it held the wrapper open for
+                    # the whole scan and reported the libraries refreshed after they were.
+                    deferred.extend(self.catalog.sections)
                 for message in messages:
                     if "%d" in message:
                         if "movies" in message:
@@ -13230,10 +13252,29 @@ class PlexSim:
                         else:
                             message = message % counts["leaves"]
                     self.notify_progress(message)
+            # Cycle 26, measured twice over on a fresh copy across a 22-task run and a
+            # 12-task one: the wrapper steps once PER TASK, and the two runs' sequences
+            # were identical frame for frame. It is `updated` at 100 for the task just
+            # finished, then `updated` at `round(100 * n / (n + 1))` for the queue --
+            # 50, 67, 75, 80, 83, 86, 88, 89, 90, 91, 92, 92, 93, 93, 94, 94, 94, 95, 95,
+            # 95, 95 for 22 tasks -- and no step after the last one, so a run of N pushes
+            # N `updated 100` frames and N-1 steps before its `ended`. plexsim pushed one
+            # `updated 100` for the whole run, so the Dashboard's butler bar sat at -1
+            # and then jumped to done however many tasks were running.
+            #
+            # A fraction that approaches 100 without reaching it is the shape of a queue
+            # whose length is not known in advance, which is also why the LAST task has
+            # no step: there is nothing left to be a fraction of.
+            wrapper["progress"] = 100
+            self.notify_activity(wrapper, "updated")
+            if index < len(names):
+                wrapper["progress"] = int(round(100.0 * index / (index + 1)))
+                self.notify_activity(wrapper, "updated")
             logger.info("BUTLER ran %s", name)
         wrapper["progress"] = 100
-        self.notify_activity(wrapper, "updated")
         self.notify_activity(wrapper, "ended")
+        for section in deferred:
+            self.notify_section_scan(section["key"], section)
 
     def updater_status(self):
         """`/updater/status` -- plexsim never has an update to install."""
