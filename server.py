@@ -7434,6 +7434,7 @@ class PlexSim:
             return body
         if len(segments) == 4 and segments[3] in ("analyze", "match", "extras", "related",
                                                   "allLeaves", "grandchildren",
+                                                  "refresh", "unmatch",
                                                   "poster", "art", "thumb"):
             # Cycle 21, measured on plexscratch over a fresh collection and a fresh
             # playlist: both answer the ITEM action leaves, and the four that differ
@@ -7462,6 +7463,49 @@ class PlexSim:
             if leaf == "analyze":
                 if playlist is not None:
                     return ("error", 400, "plexsim: bad request")
+                # Cycle 23, measured on plexscratch: a collection's analyze is the
+                # activity PAIR and nothing else -- its members are never framed, which
+                # is the opposite of the per-leaf rule an item's analyze follows.
+                activity = self.library.add_activity(
+                    target_row.get("title") or "",
+                    title="Generating video chapter thumbnails",
+                    kind="media.generate.chapter.thumbs", progress=-1)
+                activity["progress"] = 100
+                self.library.end_activity_quietly(activity)
+                return ("empty", 200)
+            if leaf in ("refresh", "unmatch"):
+                # Cycle 23, measured on plexscratch twice over: both are a 200 with a
+                # real frame sequence, where plexsim 404'd them -- so the Refresh
+                # Metadata and Fix Match entries `/media/providers` advertises on a
+                # collection page did nothing at all. A collection's refresh is GATED
+                # on its guid: three frames while it carries an agent guid, and the
+                # full eight once an unmatch has given it a `local://` one. A
+                # playlist's refresh is four and its unmatch two, with no activity.
+                local = str(target_row.get("guid") or "").startswith("local://")
+                self.notify_timeline(target_row, 2, "matching")
+                if leaf == "refresh":
+                    self.notify_timeline(target_row, self.TIMELINE_DONE, None)
+                if playlist is not None:
+                    # A playlist never runs the activity block: its refresh is four
+                    # frames and its unmatch two.
+                    if leaf == "refresh":
+                        self.notify_timeline(target_row, self.TIMELINE_QUEUED, "queued")
+                    self.notify_timeline(target_row, self.TIMELINE_DONE, None)
+                    return ("empty", 200)
+                self.notify_timeline(target_row, self.TIMELINE_QUEUED, "queued")
+                if local or leaf == "unmatch":
+                    activity = self.library.add_activity(
+                        target_row.get("title") or "", progress=-1)
+                    activity["progress"] = 49
+                    self.library.notify_activity(activity, "updated")
+                    self.notify_timeline(target_row, self.TIMELINE_QUEUED, "processing")
+                    self.library.end_activity_quietly(activity)
+                    self.notify_timeline(target_row, self.TIMELINE_DONE, None)
+                # A refresh on a collection that still carries its AGENT guid stops at
+                # `3/queued` -- three frames, measured twice on plexscratch.
+                if leaf == "unmatch":
+                    # Measured: the unmatch is what moves a list row off its agent guid.
+                    target_row["guid"] = "local://%s" % target_row["ratingKey"]
                 return ("empty", 200)
             if leaf == "related":
                 if collection is None:

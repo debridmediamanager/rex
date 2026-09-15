@@ -16414,6 +16414,69 @@ def main():
               "Updating Metadata", "Updating Metadata", "Updating Metadata"]
           and [a_c23a[2] for a_c23a in activities_c23a] == [-1, -1, 25, 25, 50, 100],
           "timeline %s | activity %s" % (entries_c23a, activities_c23a))
+
+    _, c23b_made, _ = request(base, "POST", "/library/collections?type=1&title=C23%%20frames"
+                                            "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
+                                            "plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+                              % (movie_section, machine, movie))
+    c23b_collection = json.loads(c23b_made)["MediaContainer"]["Metadata"][0]["ratingKey"]
+    _, c23b_made_pl, _ = request(base, "POST", "/playlists?type=video&title=C23%%20frames&smart=0"
+                                               "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins."
+                                               "library%%2Flibrary%%2Fmetadata%%2F%s"
+                                 % (machine, movie))
+    c23b_playlist = json.loads(c23b_made_pl)["MediaContainer"]["Metadata"][0]["ratingKey"]
+
+    # Cycle 23, measured on plexscratch twice over: a collection and a playlist answer
+    # `/refresh` and `/unmatch` with a 200 and a real frame sequence, where plexsim 404'd
+    # both -- so the Refresh Metadata and Fix Match entries `/media/providers` advertises
+    # on a collection page did nothing. The sequences, and the guid GATE behind the first:
+    #   collection refresh, guid `collection://...`  3 frames: 2/matching, 5, 3/queued
+    #   collection refresh, guid `local://...`       8 frames: the 3 plus the activity block
+    #   collection unmatch                           7 frames: 2/matching, 3/queued,
+    #                                                started(-1), updated(49), 3/processing,
+    #                                                ended(100), 5   -- and the guid becomes local://
+    #   playlist refresh                             4 frames: 2/matching, 5, 3/queued, 5
+    #   playlist unmatch                             2 frames: 2/matching, 5
+    # A collection's `/analyze` is the activity PAIR alone, with no timeline frames at all:
+    # its members are never framed, which is the opposite of the per-leaf item rule.
+    seqs_c23b = {}
+    for label_c23b, key_c23b, leaf_c23b in (
+            ("collection refresh", c23b_collection, "refresh"),
+            ("collection unmatch", c23b_collection, "unmatch"),
+            ("collection refresh local", c23b_collection, "refresh"),
+            ("playlist refresh", c23b_playlist, "refresh"),
+            ("playlist unmatch", c23b_playlist, "unmatch")):
+        status_c23b, frames_c23b = notifications(
+            base, lambda k=key_c23b, l=leaf_c23b: request(
+                base, "PUT", "/library/metadata/%s/%s" % (k, l)), seconds=6)
+        seqs_c23b[label_c23b] = [
+            (e_c23b.get("type"), e_c23b.get("state"), e_c23b.get("metadataState"))
+            for f_c23b in frames_c23b
+            for e_c23b in ((f_c23b.get("NotificationContainer") or {}).get("TimelineEntry") or [])]
+    _, analyze_frames_c23b = notifications(
+        base, lambda: request(base, "PUT", "/library/metadata/%s/analyze" % c23b_collection),
+        seconds=6)
+    analyze_timeline_c23b = [e_c23b for f_c23b in analyze_frames_c23b
+                             for e_c23b in ((f_c23b.get("NotificationContainer") or {})
+                                            .get("TimelineEntry") or [])]
+    analyze_acts_c23b = [a_c23b.get("event") for f_c23b in analyze_frames_c23b
+                         for a_c23b in ((f_c23b.get("NotificationContainer") or {})
+                                        .get("ActivityNotification") or [])]
+    check("a collection and a playlist push their own refresh and unmatch sequences",
+          seqs_c23b["collection refresh"] == [(18, 2, "matching"), (18, 5, None),
+                                              (18, 3, "queued")]
+          and seqs_c23b["collection unmatch"] == [(18, 2, "matching"), (18, 3, "queued"),
+                                                  (18, 3, "processing"), (18, 5, None)]
+          and seqs_c23b["collection refresh local"] == [(18, 2, "matching"), (18, 5, None),
+                                                        (18, 3, "queued"),
+                                                        (18, 3, "processing"), (18, 5, None)]
+          and seqs_c23b["playlist refresh"] == [(15, 2, "matching"), (15, 5, None),
+                                                (15, 3, "queued"), (15, 5, None)]
+          and seqs_c23b["playlist unmatch"] == [(15, 2, "matching"), (15, 5, None)]
+          and not analyze_timeline_c23b
+          and analyze_acts_c23b == ["started", "ended"],
+          "%s | analyze timeline %d activity %s"
+          % (seqs_c23b, len(analyze_timeline_c23b), analyze_acts_c23b))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
