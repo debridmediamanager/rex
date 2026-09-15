@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 23 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **23**. Cycle 23 had findings, so **cycle 24 is due**. |
+| `main` | cycle 24 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **24**. Cycle 24 was a BACKLOG cycle with no hunts, so **cycle 25 is due and must run them**. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -92,6 +92,7 @@ Coverage, measured from the repository rather than asserted:
 | 21 | 1,285 | 14,210 | **24** (of 24 reported across two hunts; 5 edit-field names held out on version, 3 recorded rules overturned) |
 | 22 | 1,299 | 14,365 | **16** (of 25 reported plus 3 the driver found; 1 driver finding refuted by its own re-measurement, 9 held out -- see §8) |
 | 23 | 1,307 | 14,497 | **9** (of 24 reported plus 2 the driver took off cycle 22's held-out list; 1 cycle-22 entry REFUTED, 2 hunter claims corrected on re-measurement, 15 held out -- see §8) |
+| 24 | 1,307 | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work at a steady ~33 checks a cycle, with findings per hunt now trending down (≈11 in cycle 10,
@@ -113,15 +114,16 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-Suite results at the head of cycle 23, run 2026-09-15 against the merged tree:
+Suite results at the head of cycle 24, run 2026-09-15 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1,307 PASS / 0 FAIL / 9 skipped** | four intermediate runs failed first, every one on a CHECK rather than the server -- and one of them was this cycle's own new check performing an `unmatch` on the shared `movie` row, which starved a cycle-20 filter check twelve hundred lines later. Each of the 9 findings was separately proven fail-then-pass against its own parent commit |
-| `tests/test_mediainfo.py` | **27/27** | offline |
+| `tests/test_mediainfo.py` | **29/29** | two new checks, each proven to fail on its own parent commit for the RIGHT reasons -- the first version of one raised an `AttributeError` instead and was restated |
+| `mediainfo` against zen's 105,558 real Streams | **174 misses, from 613** | not a suite: the driver's own scoring against the corpus cycle 23's hunt captured. The 174 are recorded in §3.3, not fitted |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1,307 PASS / 0 FAIL / 9 skipped** | unchanged by this cycle, which touched `mediainfo.py` and `languages.json` only |
 | `tests/test_navigation.py` | **28/28** on the UI fixture, **47/47** on the full catalog | |
-| `tests/conformance.py` (python-plexapi) | **29/38** | the 9 failures are byte reads of placeholder RD links (502); the recorded baseline |
-| `tests/test_all.py --skip-decode` | **0/11 served** | the UI fixture's rows all need a transcode plexsim cannot do; identical to `main`, verified in cycle 21 |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline |
+| `tests/test_all.py --skip-decode` | **0/11 served** | the recorded baseline |
 
 ---
 
@@ -305,6 +307,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The `Meta`'s active Sort is the library's own default** (plexsim's own) | **D** | It follows the asked `type=` AND the `sort=` parameter, and a cell whose type was not asked marks nothing at all | cycle 23 |
 | **A `Common` row's relational attributes come last** (plexsim's own) | **D** | The grandparent pair LEADS the element and the parent pair precedes `ratingKey` | cycle 23 |
 | **plexsim's two writers agree everywhere** (cycle 19, after cycle 22's light-row fix) | **C** | `_send_container` POPS the `_xml=` override before either writer runs, so `/library/sections/{id}/common` was still ordering its JSON by build order | cycle 23 |
+| **The extended title's language part follows the first-word rule** (cycles 17-23) | **B** | It has its OWN rule: a SINGLE token, with any trailing parenthesised group stripped from the name first. The first-word rule missed 179 of zen's rows and cycle 22's whole-name rule broke the recorded corpus | cycle 24 |
+| **A sidecar subtitle's codec suffix is the constant `External`** (cycle 17) | **B** | It is the stream's `providerTitle`, and `External` is the FALLBACK. Measured on one server, where no sidecar carried a provider | cycle 24 |
+| **`DELETE /butler/{Task}` is a 200 that cancels** (cycle 22) -- see also the row above | **F** | Already corrected in cycle 23; repeated here because cycle 24 left the butler unimplemented and the corrected grammar is what cycle 25 must build to | cycle 23 |
 
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
@@ -363,13 +368,15 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **A collection's `/allLeaves` and `/grandchildren` ROWS** | Both containers are measured empty on plexscratch (its collection held one movie and the leaf view returned none), so the container is measured and the row projection is inferred from the light-grid rule | A collection whose members make those lists non-empty |
 | **The `/system/scanners/{N}` 500 BODY** | All three references answer a 641-byte `application/xml` plug-in-framework traceback; plexsim answers 23 bytes of `text/plain`. The status and type are measured, the body is PMS's own Python traceback | Nothing worth settling: the body names PMS's own file paths |
 | **Which butler DELETE actually cancels** | Cycle 23 re-measured the STATUS grammar itself (a 200 inside the queue window, a 404 after it and a 404 with nothing queued) and reproduced it; the half that says the 404 is the one that CANCELS rests on hunt B's run-or-not control, which the driver did not repeat. plexsim runs every task synchronously inside the POST, so implementing either half needs a queue notion it does not have | Re-measure the run-or-not control, then give the butler a queue |
+| **`AC-3` carrying `AC3` in a title** | 132 zen streams. `VC-1` does NOT carry `VC1` and `E-AC3`/`E-AC-3` do not carry `EAC3`, so no punctuation-folding rule fits, and a general one breaks 58 other streams. Cycle 24 scored it and left it | A rule that separates the three, or a decision to special-case `AC-3` |
+| **Streams whose stored title is the EMPTY string** | ~37 on zen; they compose `" (1080p HEVC Main 10)"` with a leading space and carry no `title` attribute in XML at all, so a published row cannot be told apart from one with no title | Nothing from a published row; it needs the server's own stored value |
 | **The rest of cycle 23's butler findings** | `POST /butler/{Task}` QUEUES rather than runs (a 7-9 s gap before any frame); `general.db.backup` runs TWICE and that doubling is peculiar to `BackupDatabase`; `CleanOldBundles` interleaves its two messages between the phases with independent counts; `RefreshLibraries` reports BEFORE it scans and its wrapper ends first; `POST /butler` runs only what is DUE and steps its wrapper `done/(done+1)`, and a second POST pushes one `queueRegenerated` frame and nothing else; `/activities` RETAINS the finished butler wrapper. All measured 3/3 | Implement them together with the queue above |
-| **The cycle-23 `mediainfo` model** | Hunt B fitted a model on 105,558 zen streams and held it out on the 46 recorded probes: misses fall from 613/105,558 and 3/642 to 174/105,558 and 0/642. It adds the language parenthesis-strip rule (which settles cycle 22's five-witness contradiction), `eia_608` -> `Closed Captions` in BOTH titles, `Signs`/`Songs` standing in for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the dynamic range, the raw ffprobe codec name for audio and the punctuation-stripped label for video, and `providerTitle or "External"` for a sidecar's suffix. The model file is in the cycle's artefacts | Implement it; it is the largest measured block now outstanding |
+| ~~**The cycle-23 `mediainfo` model**~~ **SETTLED in cycle 24** | Hunt B fitted a model on 105,558 zen streams and held it out on the 46 recorded probes: misses fall from 613/105,558 and 3/642 to 174/105,558 and 0/642. It adds the language parenthesis-strip rule (which settles cycle 22's five-witness contradiction), `eia_608` -> `Closed Captions` in BOTH titles, `Signs`/`Songs` standing in for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the dynamic range, the raw ffprobe codec name for audio and the punctuation-stripped label for video, and `providerTitle or "External"` for a sidecar's suffix. The model file is in the cycle's artefacts | Implement it; it is the largest measured block now outstanding |
 | **`pixelAspectRatio` and `anamorphic`** | zen's 863 video Streams carry both or neither; `pixelAspectRatio` is ffprobe's SAR verbatim, present exactly when SAR != 1:1, and `anamorphic` is the one Stream boolean sent when false. Its threshold is BRACKETED, not pinned -- the largest false is 37:36 and the smallest true 16:15 | A file between those two ratios |
 | **The `videoResolution` cutoff below 720** | Cycle 23 bracketed it to (720, 856] on zen's own rows and refuted the pixel-count model. zen holds no width in between, so it cannot be bisected from a real library | A file 721-855 wide |
-| **`dub` on a video Stream, and `visualImpaired`** | zen carries `dub` on 88 video Streams (never `comment` or `hearingImpaired`), so the video disposition set is default/forced/original/dub; `visualImpaired` is real and in neither table | Implement both from ffprobe's `dub` / `visual_impaired` |
-| **`languages.json`: 13 codes, not 3** | `cha guj hye kat mar mdr mon mya nno pan sin yor zul`, each 1-24 streams on zen. Separately 21 streams carry a REGIONAL `languageTag` (`en-US`, `es-ES`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant`) the one-name-one-tag table cannot express, and `zh-Hant` changes the NAME too | Add the 13; the regional family needs an ffprobe of such a file |
-| **`_channel_label`'s trailing space** | `8 channels (FL+FR+...)` -> plexsim writes `8 channels )` with a double space. A defect under plexsim's own model; the reference's full form has one witness | Fix the strip; the reference form needs a second witness |
+| ~~**`dub` on a video Stream**~~ **IN as of cycle 24**; `visualImpaired` (1 witness, in neither table) is not | zen carries `dub` on 88 video Streams (never `comment` or `hearingImpaired`), so the video disposition set is default/forced/original/dub; `visualImpaired` is real and in neither table | Implement both from ffprobe's `dub` / `visual_impaired` |
+| ~~**`languages.json`: 13 codes, not 3**~~ **the 13 are IN as of cycle 24**; the regional-tag family (`en-US`, `zh-Hant`, ...) is not | `cha guj hye kat mar mdr mon mya nno pan sin yor zul`, each 1-24 streams on zen. Separately 21 streams carry a REGIONAL `languageTag` (`en-US`, `es-ES`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant`) the one-name-one-tag table cannot express, and `zh-Hant` changes the NAME too | Add the 13; the regional family needs an ffprobe of such a file |
+| ~~**`_channel_label`'s trailing space**~~ **fixed in cycle 24**; the reference's full parenthetical form still has one witness | `8 channels (FL+FR+...)` -> plexsim writes `8 channels )` with a double space. A defect under plexsim's own model; the reference's full form has one witness | Fix the strip; the reference form needs a second witness |
 | **Nine more verb-table rows** | Cycle 23 implemented three (`/hubs/home/recentlyAdded`, `/hubs/sections/{id}`, `/library/metadata/{id}/children`); `/accounts/{id}` POST/PATCH/OPTIONS, `/media/providers` PATCH/OPTIONS, `/status/sessions` PATCH/OPTIONS, `/library/sections` PATCH/OPTIONS were taken in cycle 22, and `/library/metadata/{id}/match` HEAD/PATCH/OPTIONS (400 on the reference, 404 on plexsim) is outstanding | One patch, once re-measured |
 | **The SEASON and SHOW unmatch cascades** | 28 and 46 frames on the reference against plexsim's 8 and 12. The driver measured the COUNTS and deferred the sequences: this cycle's hunt B had the writable copy's socket, and a butler run it started put 30 stray activity frames through the listener | Re-measure on an uncontended socket |
 | **`/hubs/search`'s row lead** | Hunt A measured `librarySectionTitle, score, ratingKey, ...` on both references; the driver reproduced it on zen only -- kids' and plexsim's hubs answered no `Video` for the queries tried | A query that hits on kids |
@@ -1538,7 +1545,64 @@ taken in that window, and discarded two candidate findings that were artefacts o
 damage. kids and zen were never touched. **The guard belongs in the harness, not in the
 brief**: two cycles running have now proved that a sentence in a prompt does not stop it.
 
-### Next: cycle 24
+### Cycle 24 -- the backlog cycle: `mediainfo` finished against a real library
+
+**No hunts, deliberately, and that is the first thing to know about this cycle.** Cycles 21,
+22 and 23 each closed carrying measured-but-unimplemented findings, and by the end of cycle
+23 that backlog was the largest this programme had held -- fifteen §3.3 entries, several of
+them fully measured and simply waiting for room. Launching two more hunters would have added
+to it rather than drawn it down. So cycle 24 ran the driver alone, against the corpora the
+hunts had already captured, and **re-derived every rule from those corpora rather than from
+the report that proposed it**. Cycle 25 is due and must run hunts.
+
+The one that mattered is the extended title's **LANGUAGE part, settled at the third
+attempt**. Cycle 22 fitted "the whole name, not the first word" to zen and it broke the
+recorded corpus, so it was held out; cycle 23's hunt proposed a parenthesis strip; cycle 24
+scored both models on both corpora and the rule is: **a single token that is one of the
+title's words, with any trailing parenthesised group stripped from the name first**. That
+explains `Русский (Full) - Кубик в Кубе` dropping its language and `Tiếng Việt` keeping its
+own name at once, which neither earlier rule could. Beside it, five stand-ins (`Signs`/
+`Songs`, `CC`/`HI`, `1.0`, `HDR`/`Dolby`, and the raw ffprobe codec name with punctuation
+folded), `eia_608` labelled `Closed Captions`, and a sidecar's suffix being its
+`providerTitle` rather than the constant cycle 17 measured on one server.
+
+Scored end to end the miss rate falls from **613 of zen's 105,558 real Streams to 174**, and
+from 3 of the 46 recorded probes to **0**. The 174 are recorded rather than fitted: 132 are
+`AC-3` titles, where no punctuation rule fits (`VC-1` does not carry `VC1`), and the rest are
+streams whose stored title is the empty string, which a published row cannot be told apart
+from one with no title.
+
+Three smaller items came off the same corpus: thirteen missing `languages.json` codes, the
+`dub` disposition on a video stream, and a trailing space in the label for a channel layout
+ffprobe cannot name.
+
+**One reported difference was re-measured and refuted.** zen's stored `displayTitle` carries
+the codec on 78,902 streams where plexsim's catalog form does not -- which is the recorded
+CLIENT-TITLE rule, not a defect, because those rows were read as `Plex Web`. Scoring
+`mediainfo` against `displayTitle` measures that rule and not the model.
+
+**And one check had to be restated before it was trusted.** The first version of the
+language-table check read `mediainfo._VIDEO_FLAGS` directly, so on the unfixed tree it
+raised an `AttributeError` -- which is cycle 19's lesson exactly: a check that fails for the
+wrong reason proves nothing about its other six clauses. Restated with `getattr` and a
+default, all seven fail on the parent for the right reasons and pass on the fix.
+
+### Next: cycle 25 -- and it must run hunts
+
+1. **The butler as one block.** Still the largest measured item: the queue notion,
+   `POST /butler/{Task}` queueing rather than running, the doubled `general.db.backup`,
+   `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans,
+   `POST /butler` running only what is due, `/activities` retaining the wrapper, and the
+   cancel grammar cycle 23 corrected. All measured 3/3 and all in §3.3.
+2. **The season and show unmatch cascades** (28 and 46 frames against plexsim's 8 and 12),
+   deferred in cycle 23 because the writable copy's socket was contended.
+3. **`pixelAspectRatio`/`anamorphic`** -- the derivation is pinned (ffprobe's SAR verbatim,
+   present when SAR != 1:1) and only the `anamorphic` THRESHOLD is bracketed, so the pair
+   could land with the boolean held out.
+4. **Run the hunts.** Two cycles of backlog have now been drawn down; the next dimension
+   needs new measurement, and the child-element order is settled and should not be re-swept.
+
+### Next: cycle 24 (superseded)
 
 1. **The butler as one block** -- the queue notion, the six measured behaviours and the
    cancel grammar, all in §3.3 with their counts.
@@ -1913,6 +1977,16 @@ activity on the copy completes in under 150 ms -- so that element was censused f
 frames instead.
 
 **Cycle 20:** the `slug` being minted by the AGENT (measured on 2,406 of zen's rows -- every `local://` movie and show carries none, and a season's `parentSlug`/`grandparentSlug` are the SHOW's slug exactly -- and not implemented because plexsim mints a `plex://` guid for every row it holds, so the two rules coincide for its catalog; the slug's VALUE is not the slugified title either, 935 of zen's 1,536 matching and the rest carrying a disambiguating year or counter); a season with no `index` being titled `[Unknown Season]` with its episodes carrying neither `parentTitle` nor `parentIndex` and its `index` column reading -1 (plexsim synthesises an index for every season it builds, so the row cannot arise -- the generated-title half IS built); `addedAt!==<date>` (REFUTED -- 500 on zen, on kids and on plexsim alike); the `Specials`/`[Unknown Season]` labels being single-reference, kids holding neither; and the exact spelling a real PMS gives a slug, which nothing in the API exposes.
+
+**Cycle 24:** `AC-3` in a title carrying the `AC3` codec part (132 zen streams) -- no
+punctuation rule separates it from `VC-1`/`VC1` and `E-AC3`/`EAC3`, and a general one breaks
+58 other streams; streams whose STORED title is the empty string, which a published row
+cannot be told apart from one carrying no title; `visualImpaired`, which is real on zen but
+has one witness and is in neither disposition table; the REGIONAL `languageTag` family
+(`en-US`, `es-ES`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant` -- and `zh-Hant` changes the NAME
+too), which the one-name-one-tag `languages.json` shape cannot express; and
+`pixelAspectRatio`/`anamorphic`, whose derivation is pinned but whose `anamorphic` threshold
+is only BRACKETED to (1.028, 1.067).
 
 **Cycle 23:** the whole butler family -- `POST /butler/{Task}` queueing rather than running,
 `general.db.backup`'s doubled activity, `CleanOldBundles`' interleaved messages,
