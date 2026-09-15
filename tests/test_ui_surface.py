@@ -16959,6 +16959,63 @@ def main():
           not any(row_c25h.get("Preferences") for row_c25h in plain_dirs_c25h),
           str(len(plain_dirs_c25h)))
 
+
+    # Cycle 25, measured on kids and confirmed identical on zen: a modern agent's
+    # `Language` rows are TITLED and ORDERED in the client's language -- 45 of them, all
+    # six modern agents sharing one list. `system_agents.json` was captured with no
+    # `X-Plex-Language` at all, which is class A exactly, so plexsim answered the
+    # self-named list to every client including one asking in English. The Add Library
+    # and Edit Library dialogs build their language dropdown from this list and validate
+    # the submitted `language` against it, so a German user got 45 entries each in a
+    # different alphabet, ordered by native name.
+    #
+    # The NO-HEADER default is NOT English, and an unrecognised language falls back to it
+    # rather than to English -- the opposite of every other localised string here.
+    # The XML is the only form that carries every row: this endpoint writes its
+    # `Language` children as repeated JSON KEYS, so a parser keeps exactly one
+    # (cycle 21). Titles are compared in their ASCII spellings, because a real PMS
+    # escapes every codepoint above U+007F into a numeric reference.
+    def agent_langs_c25i(lang_c25i=None):
+        path_c25i = "/system/agents?mediaType=1"
+        if lang_c25i:
+            path_c25i += "&X-Plex-Language=" + lang_c25i
+        _s_c25i, body_c25i, _h_c25i = request(base, "GET", path_c25i, want_json=False)
+        text_c25i = (body_c25i.decode("utf-8", "replace")
+                     if isinstance(body_c25i, bytes) else body_c25i)
+        block_c25i = text_c25i.split('identifier="tv.plex.agents.movie"')
+        if len(block_c25i) < 2:
+            return []
+        return re.findall(r'<Language code="([^"]+)" title="([^"]*)"',
+                          block_c25i[1].split("</Agent>")[0])
+
+    bare_c25i = agent_langs_c25i()
+    en_c25i = agent_langs_c25i("en")
+    de_c25i = agent_langs_c25i("de")
+    fr_c25i = agent_langs_c25i("fr")
+    unknown_c25i = agent_langs_c25i("zz")
+    check("a modern agent's Language rows are titled in the client's language",
+          dict(de_c25i).get("ar-SA") == "Arabisch (Saudi-Arabien)"
+          and dict(fr_c25i).get("de-DE") == "Allemand"
+          and dict(en_c25i).get("ar-SA") == "Arabic (Saudi Arabia)",
+          str(de_c25i[:2]))
+    check("and ORDERED by the localised title, so the sequence moves too",
+          [code_c25i for code_c25i, _t_c25i in de_c25i][:3] == ["ar-SA", "bg-BG", "zh-CN"]
+          and [code_c25i for code_c25i, _t_c25i in fr_c25i][:3]
+          == ["de-DE", "en-US", "en-AU"],
+          "de=%s fr=%s" % ([c_c25i for c_c25i, _ in de_c25i][:3],
+                           [c_c25i for c_c25i, _ in fr_c25i][:3]))
+    check("the no-header default names each language in ITSELF, not in English",
+          [code_c25i for code_c25i, _t_c25i in bare_c25i][:3]
+          == ["ca-ES", "cs-CZ", "da-DK"] and bare_c25i != en_c25i,
+          str([c_c25i for c_c25i, _ in bare_c25i][:3]))
+    check("an unrecognised language falls back to that, not to English",
+          unknown_c25i == bare_c25i and unknown_c25i != en_c25i,
+          str([c_c25i for c_c25i, _ in unknown_c25i][:3]))
+    check("every language answers the same 45 rows",
+          len({len(rows_c25i) for rows_c25i in (bare_c25i, en_c25i, de_c25i, fr_c25i,
+                                                unknown_c25i)}) == 1 and len(en_c25i) == 45,
+          str([len(rows_c25i) for rows_c25i in (bare_c25i, en_c25i, de_c25i, fr_c25i)]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
