@@ -16393,8 +16393,17 @@ def main():
     # An unmatch rewrites the whole row -- title, guid, the people lists -- so a client
     # told nothing keeps the old one until a reload, and the Dashboard shows no activity
     # for the largest single write on the item menu.
+    # An unmatch REWRITES the row -- it empties the summary and drops the people lists --
+    # so it must not land on `movie`, which later checks read. Take the last row of the
+    # section listing instead, and skip when the fixture has only one.
+    c23a_rows = [r_c23a.get("ratingKey") for r_c23a in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                  .get("Metadata") or [])]
+    c23a_victim = next((k_c23a for k_c23a in reversed(c23a_rows)
+                        if str(k_c23a) != str(movie)), None)
     _, frames_c23a = notifications(
-        base, lambda: request(base, "PUT", "/library/metadata/%s/unmatch" % movie), seconds=8)
+        base, lambda: request(base, "PUT", "/library/metadata/%s/unmatch" % c23a_victim),
+        seconds=8) if c23a_victim else (None, [])
     entries_c23a = [(e_c23a.get("state"), e_c23a.get("metadataState")) for f_c23a in frames_c23a
                     for e_c23a in ((f_c23a.get("NotificationContainer") or {})
                                    .get("TimelineEntry") or [])]
@@ -16404,7 +16413,11 @@ def main():
                        for f_c23a in frames_c23a
                        for a_c23a in ((f_c23a.get("NotificationContainer") or {})
                                       .get("ActivityNotification") or [])]
-    check("a movie's unmatch pushes the full twelve-frame sequence",
+    if not c23a_victim:
+        skip("a movie's unmatch pushes the full twelve-frame sequence",
+             "needs a movie the later checks do not read")
+    else:
+        check("a movie's unmatch pushes the full twelve-frame sequence",
           entries_c23a == [(2, "matching"), (3, "matching"), (3, "queued"),
                            (3, "processing"), (4, "loading"), (5, None)]
           and [a_c23a[0] for a_c23a in activities_c23a]
