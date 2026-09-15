@@ -321,6 +321,19 @@ _LIBRARY_SECTION_LEAD = {"allowSync": -6, "librarySectionID": -5,
                          "librarySectionTitle": -4, "librarySectionUUID": -3,
                          "personal": -2, "sourceTitle": -1}
 
+# Cycle 25, measured on kids and zen: a `/hubs/search` and a `/library/search` hit LEAD
+# with `librarySectionTitle` before `ratingKey`, and a `/hubs/search` hit puts its own
+# `score` second. HANDOVER 3.3 carried this as single-witness because the driver could
+# only reproduce it on zen -- kids' hubs answered no `Video` for the queries that cycle
+# tried. `query=Sintel` hits on kids, and both references then agree exactly. plexsim
+# carried both fields and put `librarySectionTitle` after `title` and `score` LAST.
+#
+# It needs a marker rather than a signal read off the row: `/library/all` and
+# `/hubs/home/recentlyAdded` rows carry `librarySectionTitle` too and keep it in the
+# middle, so there is nothing in a search hit itself that tells the two apart. That is
+# the same proxy `_light` already is, and `_drop_private` takes it off both writers.
+_SEARCH_LEAD = {"librarySectionTitle": -2, "score": -1}
+
 
 def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
@@ -446,6 +459,8 @@ def _split(name, row, container=False):
         index = _ATTR_INDEX.get(_attr_bucket(name, row))
         if index:
             lead = _LIBRARY_SECTION_LEAD if row.get("allowSync") is not None else {}
+            if row.get("_searchhit"):
+                lead = _SEARCH_LEAD
             attrs.sort(key=lambda key: (lead.get(key, 1), index.get(key, len(index))))
     return attrs, children
 

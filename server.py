@@ -9161,6 +9161,9 @@ class PlexSim:
                 # Measured: a search row is the light projection, and a show keeps
                 # its Location in it.
                 entry = _grid_row(_listing_row(row), keep_location=row.get("type") == "show")
+                # Cycle 25: a `/hubs/search` hit leads with `librarySectionTitle` and then
+                # its own `score`, measured on kids and zen alike. See `_SEARCH_LEAD`.
+                entry["_searchhit"] = True
                 title_words = re.split(r"[^0-9a-z]+",
                                        str(row.get("title") or "").lower())
                 matched_title = any(w.startswith(needle) for w in title_words if w)
@@ -9292,6 +9295,8 @@ class PlexSim:
         if row.get("type") != "show":
             shown.pop("librarySectionID", None)
             shown.pop("librarySectionKey", None)
+        # Cycle 25: the hit LEADS with `librarySectionTitle`. See `_SEARCH_LEAD`.
+        shown["_searchhit"] = True
         return shown
 
     def library_search(self, query):

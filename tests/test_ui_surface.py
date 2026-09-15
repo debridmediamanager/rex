@@ -16780,6 +16780,40 @@ def main():
           set(match_verbs_c25c.values()) == {400},
           str(sorted(match_verbs_c25c.items())))
 
+
+    # Cycle 25, measured on kids (`query=Sintel`, the query that finally hits there) and
+    # on zen: a `/hubs/search` hit LEADS with `librarySectionTitle, score` before
+    # `ratingKey`, and a `/library/search` hit leads with `librarySectionTitle` alone.
+    # HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only
+    # reproduce it on zen. plexsim carried both attributes and put `librarySectionTitle`
+    # after `title` and `score` LAST, so its rows disagreed with both references and --
+    # since a real PMS's JSON key order IS its XML order -- so did its JSON.
+    def lead_c25d(path_c25d):
+        status_c25d, body_c25d = request(base, "GET", path_c25d, want_json=False)[:2]
+        rows_c25d = re.findall(r"<(?:Video|Directory)\s([^>]*?)/?>",
+                               body_c25d.decode("utf-8", "replace")
+                               if isinstance(body_c25d, bytes) else body_c25d)
+        return [re.findall(r"([A-Za-z0-9]+)=", row)[:3] for row in rows_c25d[:1]]
+
+    hub_lead_c25d = lead_c25d("/hubs/search?query=Tears&limit=5")
+    lib_lead_c25d = lead_c25d("/library/search?query=Tears&limit=5")
+    check("a /hubs/search hit leads with librarySectionTitle then score",
+          hub_lead_c25d == [["librarySectionTitle", "score", "ratingKey"]],
+          str(hub_lead_c25d))
+    check("a /library/search hit leads with librarySectionTitle",
+          lib_lead_c25d and lib_lead_c25d[0][:2] == ["librarySectionTitle", "ratingKey"],
+          str(lib_lead_c25d))
+    hub_json_c25d = get(base, "/hubs/search?query=Tears&limit=5")[1]
+    hub_rows_c25d = [row for hub_c25d in (hub_json_c25d.get("Hub") or [])
+                     for row in (hub_c25d.get("Metadata") or [])]
+    check("the JSON key order of a search hit follows the XML",
+          hub_rows_c25d and list(hub_rows_c25d[0])[:3]
+          == ["librarySectionTitle", "score", "ratingKey"],
+          str(list(hub_rows_c25d[0])[:4] if hub_rows_c25d else None))
+    check("the search marker reaches no client",
+          not any("_searchhit" in row for row in hub_rows_c25d),
+          str([k for row in hub_rows_c25d for k in row if k.startswith("_")]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
