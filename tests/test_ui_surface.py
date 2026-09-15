@@ -17789,6 +17789,44 @@ def main():
                      request(base, "GET",
                              "/status/sessions/terminate?sessionId=zzz")[0]))
 
+
+    # Cycle 26, measured on kids and zen. A decision answers exactly ONE Media -- the
+    # `mediaIndex` asked for -- where plexsim echoed every version with `selected` on the
+    # chosen one, so a client counting them saw the whole edition list. And
+    # `excludeElements=` is a NO-OP on this endpoint, the one exception to cycle 23's
+    # "every container that carries rows honours it"; plexsim applied it and substituted
+    # `mediaCount`, leaving the client a decision with nothing to play.
+    def decide_row_c26f(extra_c26f=""):
+        url_c26f = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                    "&partIndex=0&protocol=http&directPlay=1&session=c26f%s"
+                    % (quote("/library/metadata/%s" % movie), extra_c26f))
+        request_c26f = urllib.request.Request(
+            base.rstrip("/") + url_c26f,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Platform": "Roku"}, method="GET")
+        with urllib.request.urlopen(request_c26f, timeout=30) as response_c26f:
+            body_c26f = json.loads(response_c26f.read() or b"{}")
+        return (body_c26f.get("MediaContainer", {}).get("Metadata") or [{}])[0]
+
+    plain_c26f = decide_row_c26f()
+    excluded_c26f = decide_row_c26f("&excludeElements=Media")
+    detail_c26f = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                   or [{}])[0]
+    check("a decision answers exactly one Media",
+          len(plain_c26f.get("Media") or []) == 1,
+          "%d of %d on the detail row" % (len(plain_c26f.get("Media") or []),
+                                          len(detail_c26f.get("Media") or [])))
+    check("excludeElements is a no-op on a decision",
+          excluded_c26f.get("Media") == plain_c26f.get("Media")
+          and "mediaCount" not in excluded_c26f,
+          "Media=%d mediaCount=%s" % (len(excluded_c26f.get("Media") or []),
+                                      excluded_c26f.get("mediaCount")))
+    check("and excludeElements still reaches an ordinary listing",
+          not (get(base, "/library/sections/%s/all?type=1&excludeElements=Media"
+                   % movie_section)[1].get("Metadata") or [{}])[0].get("Media"),
+          str(sorted((get(base, "/library/sections/%s/all?type=1&excludeElements=Media"
+                          % movie_section)[1].get("Metadata") or [{}])[0])[:6]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
