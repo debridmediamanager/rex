@@ -17933,7 +17933,8 @@ def main():
             # and the gate refused a request a real PMS would have let through.
             headers={"User-Agent": UA, "Accept": "application/json",
                      "X-Plex-Platform": "Chrome",
-                     "X-Plex-Client-Identifier": "plexsim-ui-test"}, method="GET")
+                     "X-Plex-Client-Identifier": "plexsim-ui-test",
+                     "X-Plex-Session-Identifier": session_c26h}, method="GET")
         with urllib.request.urlopen(request_c26h, timeout=30) as response_c26h:
             body_c26h = json.loads(response_c26h.read() or b"{}")
         return (body_c26h.get("MediaContainer", {}).get("Metadata") or [{}])[0]
@@ -17947,12 +17948,17 @@ def main():
           "detail=%d decision=%s" % (len(detail_c26h.get("summary") or ""),
                                      len(row_c26h.get("summary") or "")
                                      if "summary" in row_c26h else "ABSENT"))
+    # Its own session identifier, and the same one on both requests. The arming is per
+    # (session, ratingKey): cycle 6's `decide()` helper runs dozens of decisions on this
+    # very row from `request()`'s default identity earlier in the suite, so a check that
+    # leans on that identity measures those decisions rather than its own.
     start_c26h = ("/video/:/transcode/universal/start.mpd?path=%s&mediaIndex=0"
                   "&partIndex=0&protocol=dash&directPlay=0&directStream=1"
-                  "&session=c26h-undecided&X-Plex-Platform=Chrome"
+                  "&session=c26h-start&X-Plex-Platform=Chrome"
+                  "&X-Plex-Session-Identifier=c26h-start"
                   % quote("/library/metadata/%s" % movie))
     undecided_c26h = request(base, "GET", start_c26h)[0]
-    decide_full_c26h(movie, "c26h-decided")
+    decide_full_c26h(movie, "c26h-start")
     decided_c26h = request(base, "GET", start_c26h)[0]
     # The 404 is plexsim's OWN answer -- it has no encoder -- and not the reference's,
     # whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200.
