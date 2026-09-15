@@ -20811,6 +20811,41 @@ def main():
           "%d ping(s) in 25 s with a pong to each (upgraded %s)"
           % (pings_c30h, upgraded_c30h))
 
+
+    # Cycle 30: the reference's 101 upgrade carries `Date` as its last header, like every
+    # other response on the surface. plexsim writes that handshake by hand rather than
+    # through `_send`, so it was the one response with none.
+    import socket as socket_c30j_mod
+    import base64 as base64_c30j_mod
+    import os as os_c30j_mod
+    host_c30j, _, port_c30j = base.split("//")[1].partition(":")
+    crlf_c30j = chr(13) + chr(10)
+    request_c30j = (
+        "GET /:/websockets/notifications HTTP/1.1" + crlf_c30j + "Host: " + host_c30j
+        + crlf_c30j + "Upgrade: websocket" + crlf_c30j + "Connection: Upgrade" + crlf_c30j
+        + "Sec-WebSocket-Key: "
+        + base64_c30j_mod.b64encode(os_c30j_mod.urandom(16)).decode() + crlf_c30j
+        + "Sec-WebSocket-Version: 13" + crlf_c30j + crlf_c30j)
+    sock_c30j = socket_c30j_mod.create_connection((host_c30j, int(port_c30j or 80)),
+                                                 timeout=10)
+    try:
+        sock_c30j.sendall(request_c30j.encode())
+        buffer_c30j = b""
+        while (crlf_c30j * 2).encode() not in buffer_c30j:
+            chunk_c30j = sock_c30j.recv(4096)
+            if not chunk_c30j:
+                break
+            buffer_c30j += chunk_c30j
+    finally:
+        sock_c30j.close()
+    headers_c30j = [line_c30j.decode("utf-8", "replace") for line_c30j in
+                    buffer_c30j.split((crlf_c30j * 2).encode())[0].split(
+                        crlf_c30j.encode())]
+    check("the websocket upgrade carries a Date header",
+          headers_c30j[0].split()[1:2] == ["101"]
+          and any(line_c30j.lower().startswith("date:") for line_c30j in headers_c30j),
+          "%s" % headers_c30j)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
