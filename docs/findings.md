@@ -6352,6 +6352,56 @@ DELETE and a bare OPTIONS, where plexsim answered each one's own GET. Cycle 19 r
 rule and these three never had it applied — fix 4's failure mode from the other side, a
 client reading a 200 from `DELETE /hubs/sections/1` as an accepted write.
 
+#### The twenty-fourth pass — the backlog cycle: `mediainfo` finished against a real library
+
+No hunts. Cycles 21, 22 and 23 each closed carrying measured-but-unimplemented findings, and
+by the end of cycle 23 that backlog was the largest this programme had held. This pass spent
+itself on the part of it that was fully measured and held out against both corpora, and
+re-derived every rule from the corpora rather than from the report that proposed it.
+
+**The extended title's LANGUAGE part, settled at the third attempt.** Cycle 22 fitted "the
+whole name, not the first word" to zen's rows and it broke the recorded corpus; the
+first-word rule alone fits the corpus and misses 179 of zen's. Both are explained by one
+rule: **the language is carried only when it is a SINGLE token that is one of the title's
+words, with any TRAILING PARENTHESISED GROUP stripped from the name first.** So `Русский` in
+`Русский (Full) - Кубик в Кубе` and `English (Weeb)` in `English (Some-Stuffs)` are carried
+— one token after the strip — while `norsk bokmål` and `Tiếng Việt` in their own titles are
+not, because no single word can match a two-token name.
+
+**Five more stand-ins in the "part the title already carries" test**, each a witnessed token
+rather than a threshold: `Signs` and `Songs` for Forced (120 rows on zen titled
+`Signs & Songs…` with `forced` set and no "forced" in the title), `CC` and `HI` for SDH,
+`1.0` for Mono exactly as `2.0` already stood in for Stereo, `HDR` and `Dolby` for the
+dynamic range, and the **raw ffprobe codec name** with punctuation folded away — which is
+what makes `aac` carry `HE-AAC` and `H264` carry `H.264`.
+
+**`eia_608` is labelled `Closed Captions`**, and it is the plain CODEC label, so it lands
+wherever the codec does. **A sidecar subtitle's codec suffix is its `providerTitle`**, with
+`External` the fallback: zen's eleven sidecars carry none and read `(SRT External)`, and the
+recorded corpus has one carrying `OpenSubtitles` that reads `(English SRT OpenSubtitles)` —
+so cycle 17's `<CODEC> External`, measured on one server, was the fallback alone.
+
+Scored end to end against **zen's 105,558 real Streams**, the miss rate falls from **613 to
+174**, and against the 46 recorded probes from 3 to **0**. The 174 that remain are recorded
+rather than modelled: 132 are titles containing `AC-3`, which carries `AC3` although `VC-1`
+does not carry `VC1` and `E-AC3` does not carry `EAC3` — no punctuation rule fits, and a
+general one breaks 58 other streams — and the rest are streams whose stored title is the
+empty string, which a published row cannot be told apart from one with no title at all.
+
+**Three more, each measured on the same corpus.** `languages.json` lacked **thirteen** codes
+zen's streams actually use — `cha guj hye kat mar mdr mon mya nno pan sin yor zul`, each
+named in its own language with its 639-1 tag. A VIDEO stream carries the `dub` disposition
+(88 of zen's 13,681) and never `comment` or `hearingImpaired`, so its set is
+default/forced/original/dub. And a layout ffprobe cannot name —
+`8 channels (FL+FR+FC+LFE+SL+SR+TFL+TFR)` — left a trailing SPACE behind when the bracket
+was split off, composing `(EAC3 8 channels )` with a double space.
+
+**One reported difference was re-measured and is not a finding.** zen's stored `displayTitle`
+carries the codec on 78,902 of its streams where plexsim's catalog form does not — which is
+the recorded client-title rule, not a defect: those rows were read as `Plex Web`, one of the
+thirteen products that get the codec added on the way out. The check that tests `eia_608`
+therefore reads the extended title, which is the catalog form.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

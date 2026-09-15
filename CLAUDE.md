@@ -1638,6 +1638,29 @@ precisely how the Seasons bug survived a fix attempt.
   across 2,994 paths, zero contradictions, on rows carrying `Chapter`, `Marker`, `Review`,
   `CommonSenseMedia`, 155 roles and 5 Media. Do not re-sweep it without a new row shape.
 
+- **The extended title's LANGUAGE part has its own rule**, settled at the third attempt: the
+  name is carried only when it is a SINGLE token that is one of the title's words, with any
+  TRAILING PARENTHESISED GROUP stripped from the name first. `Русский` in `Русский (Full) -
+  ...` and `English (Weeb)` in `English (Some-Stuffs)` are carried; `norsk bokmål` and
+  `Tiếng Việt` in their own titles are not. Cycle 22's whole-name rule broke the recorded
+  corpus and the first-word rule alone missed 179 of zen's rows -- **a model fitted on one
+  corpus must be scored on the other before it is written.**
+- **Five more stand-ins**: `Signs`/`Songs` for Forced, `CC`/`HI` for SDH, `1.0` for Mono,
+  `HDR`/`Dolby` for the dynamic range, and the RAW ffprobe codec name with punctuation
+  folded (`aac` carries `HE-AAC`, `H264` carries `H.264`). **`eia_608` is labelled
+  `Closed Captions`**, and **a sidecar's codec suffix is its `providerTitle`** with
+  `External` the fallback -- cycle 17 measured the fallback alone, on one server.
+- **`AC-3` in a title carries `AC3` and is NOT modelled** (132 rows): `VC-1` does not carry
+  `VC1` and `E-AC3` does not carry `EAC3`, so no punctuation rule fits and a general one
+  breaks 58 other streams. Recorded, not fitted.
+- **`languages.json` was missing thirteen codes** zen's streams use (`cha guj hye kat mar
+  mdr mon mya nno pan sin yor zul`). **A VIDEO stream carries `dub`** and never `comment`
+  or `hearingImpaired`. **A layout ffprobe cannot name** (`8 channels (FL+FR+...)`) must be
+  stripped of its trailing space.
+- **zen's stored `displayTitle` carries the codec and plexsim's catalog form does not** --
+  that is the recorded CLIENT-TITLE rule (those rows are read as Plex Web), not a defect.
+  Score `mediainfo` on the extended title, which is the catalog form.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
