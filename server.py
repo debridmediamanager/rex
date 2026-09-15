@@ -3518,6 +3518,50 @@ class PlexSim:
                 }
             }
 
+        if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
+            # Cycle 27, recorded through a real client: the Settings -> Metadata Agents
+            # pane reads these two immediately before `/system/agents?mediaType=`, and
+            # both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where
+            # plexsim had never routed either. They are the MODERN agent-provider
+            # tables -- a different surface from `/system/agents`, whose legacy
+            # `com.plexapp.agents.*` half is deliberately not implemented -- so the
+            # rows are the four modern agents plexsim already holds, in zen's shape:
+            # one `MetadataType` child per media type the provider serves, and a group
+            # row per provider naming it by `primaryIdentifier`.
+            providers = []
+            for index, agent in enumerate(SYSTEM_AGENTS, start=1):
+                serves = sorted(int(number) for number, names in AGENT_MEDIA_TYPES.items()
+                                if agent["identifier"] in names)
+                providers.append({
+                    "id": index,
+                    "identifier": agent["identifier"],
+                    "title": agent.get("name") or agent["identifier"],
+                    # Measured: every modern provider but Personal Media names the
+                    # metadata provider; `tv.plex.agents.none` carries an EMPTY uri.
+                    "uri": "" if agent["identifier"].endswith(".none")
+                           else "provider://tv.plex.provider.metadata",
+                    "agentType": "primary",
+                    "online": True,
+                    "MetadataType": [{"type": number} for number in serves],
+                })
+            if route.endswith("/group"):
+                groups = [{
+                    "id": row["id"],
+                    "title": row["title"],
+                    "primaryIdentifier": row["identifier"],
+                    "builtIn": True,
+                    "MetadataAgentProviderGroupItem": [{
+                        "id": row["id"],
+                        "metadataAgentProviderGroupId": row["id"],
+                        "metadataAgentProviderId": row["id"],
+                        "order": 1000,
+                    }],
+                } for row in providers]
+                return self.bare_container(size=len(groups),
+                                           MetadataAgentProviderGroup=groups)
+            return self.bare_container(size=len(providers),
+                                       MetadataAgentProvider=providers)
+
         if route == "/media/providers":
             # Measured: a real PMS routes per (method, path) and NOT uniformly --
             # /identity and /hubs answer any verb, while these three refuse, each
