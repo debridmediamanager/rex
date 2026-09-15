@@ -20747,6 +20747,78 @@ def main():
           "axis %s | collections %s (was %d) | hit %s"
           % (axis_c30g, after_c30g, before_c30g, hit_c30g))
 
+
+    # Cycle 30, measured on the copy with a client that PONGS -- which every real client
+    # does automatically (RFC 6455 5.5.2) -- against one that never pongs: the reference's
+    # ping timer is FREE-RUNNING, 3 pings in 35 s either way. plexsim waited for "one ping
+    # interval" with a `select()` that returns for ANY frame, so a pong ended the wait and
+    # the loop pinged again at once: **903,480 pings in 35 seconds**, measured twice with
+    # two client stacks. Every browser and every Plex app triggers it ten seconds after
+    # opening the channel; twelve cycles missed it because a probe that never pongs sees
+    # the correct cadence.
+    import socket as socket_c30h_mod
+    import struct as struct_c30h_mod
+    import base64 as base64_c30h_mod
+    import os as os_c30h_mod
+
+    host_c30h, _, port_c30h = base.split("//")[1].partition(":")
+    crlf_c30h = chr(13) + chr(10)
+    key_c30h = base64_c30h_mod.b64encode(os_c30h_mod.urandom(16)).decode()
+    handshake_c30h = (
+        "GET /:/websockets/notifications HTTP/1.1" + crlf_c30h
+        + "Host: " + host_c30h + crlf_c30h + "Upgrade: websocket" + crlf_c30h
+        + "Connection: Upgrade" + crlf_c30h + "Sec-WebSocket-Key: " + key_c30h + crlf_c30h
+        + "Sec-WebSocket-Version: 13" + crlf_c30h + crlf_c30h)
+    sock_c30h = socket_c30h_mod.create_connection((host_c30h, int(port_c30h or 80)),
+                                                  timeout=30)
+    pings_c30h, upgraded_c30h = 0, False
+    try:
+        sock_c30h.sendall(handshake_c30h.encode())
+        buffer_c30h = b""
+        while (crlf_c30h * 2).encode() not in buffer_c30h:
+            chunk_c30h = sock_c30h.recv(4096)
+            if not chunk_c30h:
+                break
+            buffer_c30h += chunk_c30h
+        upgraded_c30h = b"101" in buffer_c30h.split(crlf_c30h.encode())[0]
+        # Twenty-five seconds is two ping intervals plus slack: a free-running timer
+        # answers 2, and the bug answers tens of thousands.
+        deadline_c30h = time.time() + 25
+        sock_c30h.settimeout(2.0)
+        rest_c30h = buffer_c30h.partition((crlf_c30h * 2).encode())[2]
+        while time.time() < deadline_c30h:
+            try:
+                rest_c30h += sock_c30h.recv(65536)
+            except socket_c30h_mod.timeout:
+                continue
+            except OSError:
+                break
+            while len(rest_c30h) >= 2:
+                opcode_c30h = rest_c30h[0] & 0x0F
+                length_c30h = rest_c30h[1] & 0x7F
+                if len(rest_c30h) < 2 + length_c30h:
+                    break
+                if opcode_c30h == 0x9:
+                    pings_c30h += 1
+                    # The PONG a real client sends back, masked as the protocol requires.
+                    mask_c30h = os_c30h_mod.urandom(4)
+                    payload_c30h = bytes(
+                        byte_c30h ^ mask_c30h[index_c30h % 4] for index_c30h, byte_c30h
+                        in enumerate(rest_c30h[2:2 + length_c30h]))
+                    try:
+                        sock_c30h.sendall(
+                            struct_c30h_mod.pack("!BB", 0x8A, 0x80 | length_c30h)
+                            + mask_c30h + payload_c30h)
+                    except OSError:
+                        break
+                rest_c30h = rest_c30h[2 + length_c30h:]
+    finally:
+        sock_c30h.close()
+    check("a pong does not trigger another ping",
+          upgraded_c30h and 1 <= pings_c30h <= 6,
+          "%d ping(s) in 25 s with a pong to each (upgraded %s)"
+          % (pings_c30h, upgraded_c30h))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
