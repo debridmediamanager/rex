@@ -20016,6 +20016,43 @@ def main():
               % (owned_c29c, after_c29c.get("art"), show_art_c29c,
                  sorted({str(leaf_c29c.get("art")) for leaf_c29c in kids_c29c}), bare_c29c))
 
+
+    # Cycle 29, measured on plexscratch by uploading a POSTER to a season that borrowed
+    # both fields from its show: only the field the upload WROTE becomes the row's own.
+    # The season's `thumb` became its own and its `art` went on naming the SHOW's path at
+    # the show's own stamp, while its episodes GAINED a `parentThumb` naming the season's
+    # new poster. plexsim re-versioned both fields as the row's own, so a poster upload
+    # invented a season-owned backdrop the server has no image for -- and the derivation
+    # then handed that path down to every episode.
+    seasons_c29e = [r_c29e.get("ratingKey") for r_c29e in
+                    (get(base, "/library/metadata/%s/children" % show)[1]
+                     .get("Metadata") or [])]
+    target_c29e = seasons_c29e[1] if len(seasons_c29e) > 1 else None
+    before_c29e = ((get(base, "/library/metadata/%s" % target_c29e)[1]
+                    .get("Metadata") or [{}])[0] if target_c29e else {})
+    if not target_c29e or not before_c29e.get("art"):
+        skip("an upload re-versions only the field it wrote", "season %s" % target_c29e)
+    elif str(before_c29e.get("art")).startswith("/library/metadata/%s/" % target_c29e):
+        skip("an upload re-versions only the field it wrote",
+             "the season already owns its art: %s" % before_c29e.get("art"))
+    else:
+        request(base, "POST", "/library/metadata/%s/posters" % target_c29e,
+                body=b"\x89PNG\r\n\x1a\n" + b"c29e-poster" * 3)
+        after_c29e = (get(base, "/library/metadata/%s" % target_c29e)[1]
+                      .get("Metadata") or [{}])[0]
+        kids_c29e = (get(base, "/library/metadata/%s/children" % target_c29e)[1]
+                     .get("Metadata") or [])
+        check("an upload re-versions only the field it wrote",
+              str(after_c29e.get("thumb") or "").startswith(
+                  "/library/metadata/%s/thumb/" % target_c29e)
+              and after_c29e.get("art") == before_c29e.get("art")
+              and bool(kids_c29e)
+              and all(leaf_c29e.get("parentThumb") == after_c29e.get("thumb")
+                      for leaf_c29e in kids_c29e),
+              "thumb %s | art %s (was %s) | leaves %s"
+              % (after_c29e.get("thumb"), after_c29e.get("art"), before_c29e.get("art"),
+                 sorted({str(leaf_c29e.get("parentThumb")) for leaf_c29e in kids_c29e})))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
