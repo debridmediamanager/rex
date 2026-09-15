@@ -1661,6 +1661,89 @@ precisely how the Seasons bug survived a fix attempt.
   that is the recorded CLIENT-TITLE rule (those rows are read as Plex Web), not a defect.
   Score `mediainfo` on the extended title, which is the catalog form.
 
+- **A SEASON's unmatch pushes ONE `matching` frame and a SHOW's the movie's PAIR.** The
+  season then runs the SEASON cascade (28 frames, 9 of them the state-dependent media
+  pass) where plexsim sent the seven-frame EPISODE form; the show runs 46 frames of its
+  own where plexsim sent NONE. The show's activity is the MOVIE unmatch's -- `Analyzing
+  Media` at -1 and 25, then `Updating Metadata` at 25 and 50 -- and only then does the
+  subtitle follow each season. **A season cascade's activity has no `updated` frame**;
+  the docstring said so since cycle 15 and the code called `finish_activity`, which adds
+  one.
+- **A show UNMATCH's activity opens with the show's BARE TITLE**, where its REFRESH opens
+  with the frame title (`Firefly (2002)`) -- the one place on the surface where an
+  activity's subtitle is not the frame title. From the season onwards both use it again.
+- **`pixelAspectRatio` and `anamorphic` are a PAIR** -- 358 of zen's video Streams carry
+  both, 1,330 neither, none only one. The value is ffprobe's SAR verbatim, present exactly
+  when the sample aspect is not square, and `anamorphic` is TRUE when the ratio rounded to
+  ONE decimal place is not 1.0. Sixteen distinct ratios witness it; the boundary is
+  bracketed to (0.0406, 0.0667] and 0.05 is the only round number in it. A pixel-
+  difference model is refuted: a 3840-wide `333:320` displaces 156 pixels and is false
+  where a 716-wide `16:15` displaces 48 and is true.
+- **The resolution label had no 480 WIDTH bucket**, so a wide short SD release fell to
+  `sd`: zen's three 856x358 Media are `480`. The entry is the smallest width zen has in
+  the bucket, as the other five are; 720 is the largest below it and the boundary is not
+  bisected.
+- **A search hit LEADS with `librarySectionTitle`**, before `ratingKey`, on `/hubs/search`
+  (where its own `score` follows it) and on `/library/search`. It needs a marker, not a
+  signal read off the row: `/library/all` and `/hubs/home/recentlyAdded` carry the same
+  attribute in the middle.
+- **`/match` answers its no-parameters 400 to EVERY verb**, HEAD, PATCH and a bare OPTIONS
+  included -- cycle 17 recorded the sentence and implemented two of the seven.
+
+- **Only THREE identity headers move anything at all**: `X-Plex-Platform`,
+  `X-Plex-Product` and `X-Plex-Language`. `X-Plex-Features`, `X-Plex-Client-Profile-Extra`,
+  `X-Plex-Drm`, `X-Plex-Model`, `X-Plex-Provides`, `X-Plex-Session-Identifier`,
+  `X-Plex-Client-Identifier`, `X-Plex-Device`, `X-Plex-Device-Name`, `X-Plex-Text-Format`,
+  `X-Plex-Version`, `X-Plex-Platform-Version`, `X-Plex-Sync-Version` and `X-Plex-Protocol`
+  each sent alone move NOTHING on ~80 paths -- not a Media, Part or Stream row, not the
+  XML/JSON default, the gzip decision, the paging defaults, a response header or a hub.
+- **`X-Plex-Platform: Samsung` appends a hidden `includeInGlobal` to a library's `/prefs`**
+  -- that exact spelling, header or query (the HEADER wins when both are sent), both
+  library types, and the EXISTING-library leaf alone. The second platform-keyed reshape
+  after `Roku` on `/media/providers`.
+- **A modern agent's `Language` rows are TITLED and ORDERED per language** (45 rows, all
+  six modern agents sharing one list). The ORDER moves with the titles, so the list is
+  stored per language (`agent_languages.json`, read from the XML -- the JSON writes the
+  rows as repeated KEYS) rather than translated string by string. The NO-HEADER default is
+  NOT English: each language is named in ITSELF, and an UNRECOGNISED language falls back
+  there rather than to English, alone on the surface.
+- **`/media/providers?includePreferences=1` carries each library's whole `Preferences`
+  block**, byte-identical to `/library/sections?includePreferences=1`'s -- the per-SHOW
+  `episodeSort` variant included -- as the FIRST child of the library `Directory`. The
+  `Home` row, which names no library, gets none.
+- **`/library`'s three `Directory` titles are localised and `/system`'s identical string is
+  not.** The plug-in framework's container (`noHistory` is its signature) is not localised
+  at all, which is why the translation table's attribute key is not enough on its own.
+- **A `/tree` node is a ROW and its `Setting` rows stay English**, where the same settings
+  under `?includePreferences=1` move. It is keyed by `id` rather than `ratingKey`, so the
+  row guard did not see it and plexsim translated what a real PMS leaves alone.
+
+- **Continue Watching is NOT On Deck.** `/hubs/home/continueWatching` holds only the rows with
+  a stored `viewOffset` -- movies and episodes alike -- where On Deck holds one row per show,
+  its in-progress episode or the one after the last watched, which has no offset at all.
+- **Home DROPS the `home.ondeck` shelf when its rows are Continue Watching's** -- the element,
+  not an empty one, on `/hubs` and `/hubs/promoted` alike -- and only when that set is
+  NON-EMPTY. Cleared: both present. Next-up only: both. One episode in progress: On Deck gone.
+  A movie in progress beside it: both again.
+- **A SCROBBLE writes one history row per LEAF**, overturning cycle 9: a movie scrobbled twice
+  adds two, a season adds one per episode, a show one per leaf, and an UNSCROBBLE removes
+  none. The timeline half writes no row on the copy, which is its recorded session-bound limit
+  and not a rule.
+- **An episode history row carries `title` and `originallyAvailableAt`**, in an order of its
+  own: `historyKey, key, ratingKey, librarySectionID, parentKey, grandparentKey, title,
+  grandparentTitle, type, thumb, ..., index, parentIndex, originallyAvailableAt, viewedAt,
+  accountID, deviceID, viewType`. A movie's row is a subsequence of it.
+- **A PLAYLIST is on Home's Recent Playlists shelf and in both search endpoints** -- the
+  `/playlists` listing row, `lastViewedAt:desc`, `hubKey` naming its own rows. A COLLECTION is
+  found as a `tagType: 2` tag row instead, which is a different shape.
+- **The UNTYPED `/library/all` lists collections**, byte for byte the row `?type=18` answers,
+  sorted in by ratingKey. The section form lists them on neither server.
+- **`removeFromContinueWatching` does NOT reach a SECTION's own Continue Watching shelf.** It
+  empties Home's On Deck, Home's Continue Watching and the section's `/onDeck`, and the row is
+  still in `/hubs/sections/{id}/continueWatching/items` afterwards -- stable to +20 s.
+- **A `Common`'s `userRating` is a STRING** (`"8"`, not `8.0`) and sits directly after
+  `mixedFields`, ahead of `guid`, while the ITEM row keeps the number.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

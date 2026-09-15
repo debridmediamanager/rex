@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 24 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **24**. Cycle 24 was a BACKLOG cycle with no hunts, so **cycle 25 is due and must run them**. |
+| `main` | cycle 25 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **25**. Cycle 25 ran two hunts on two dimensions nobody had swept, and drew the last of cycle 23's deferred backlog down. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -93,6 +93,7 @@ Coverage, measured from the repository rather than asserted:
 | 22 | 1,299 | 14,365 | **16** (of 25 reported plus 3 the driver found; 1 driver finding refuted by its own re-measurement, 9 held out -- see §8) |
 | 23 | 1,307 | 14,497 | **9** (of 24 reported plus 2 the driver took off cycle 22's held-out list; 1 cycle-22 entry REFUTED, 2 hunter claims corrected on re-measurement, 15 held out -- see §8) |
 | 24 | 1,307 (+2 in `test_mediainfo`, 27 -> 29) | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
+| 25 | 1375 (+2 in `test_mediainfo`, 29 -> 31) | 14,852 | **21** (of 13 reported across two hunts plus 6 the driver found and 1 regression it caught in its own patch; 1 hunter negative refuted on re-measurement and re-confirmed, 3 recorded rules overturned, 2 cycle-23 butler claims refuted) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work. **The ceiling has been the instrument, not the effort**: every time the
@@ -113,11 +114,16 @@ the cycle's findings came out of the revalidation step itself, before either hun
 The instrument is still the ceiling: three of the fourteen read findings needed a show with more
 than two seasons, and the UI fixture had to be extended three times to express them.
 
-**Where the curve stands after cycle 24, and what it means for the stopping rule.** The
+**Where the curve stands after cycle 25, and what it means for the stopping rule.** The
 loop stops when a cycle reports no findings, so the trend in the last column is the thing to
-watch — and it is now real: **24, 16, 9, 6** across cycles 21 to 24, against a plateau of
-roughly 30 for cycles 15 to 20. Three things are behind it, and only one of them is the
-surface running out.
+watch — and cycle 25 breaks the fall: **24, 16, 9, 6, 21**. That is not the surface refilling.
+It is what cycle 24's own note predicted, in the third bullet below and in §10's "sweep a NEW
+DIMENSION rather than the same one again": the two dimensions cycle 25 swept — what a real PMS
+answers differently to a different CLIENT, and which OTHER endpoints a write changes — had
+never been swept at all, and between them they produced thirteen findings in one cycle. A low
+number in this column measures the dimensions being swept, not the surface being clean.
+
+Three things were behind the fall to 6, and only one of them was the surface running out.
 
 * **The mechanical dimensions are finished.** Path (14), method/parameter (15), header (16),
   row (17), container (18), child element (19), engine holdout (20-22), attribute order
@@ -133,20 +139,24 @@ surface running out.
   needs a queue notion plexsim does not have; the next is a pair of frame cascades that need
   an uncontended socket on the one writable reference. Neither is a measurement problem.
 
-So the honest reading is that the loop has not converged. It has moved from finding
-differences to owing implementations, and cycle 25 must run hunts to keep the first number
-meaningful.
+So the honest reading is that the loop has not converged. Cycle 24 read the fall as "moved
+from finding differences to owing implementations", and cycle 25 tested that reading directly:
+it drew the last fully measured item off the backlog (the unmatch cascades, `pixelAspectRatio`,
+the search-row lead, the `/match` verb table) AND ran two hunts, and the hunts alone found
+thirteen. **The backlog was real and so was the surface.** What is left in §3.3 after this
+cycle is 45 entries, most of them single-witness or instrument-limited rather than
+unimplemented.
 
-Suite results at the head of cycle 24, run 2026-09-15 against the merged tree:
+Suite results at the head of cycle 25, run 2026-09-15 against the merged tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_mediainfo.py` | **29/29** | two new checks, each proven to fail on its own parent commit for the RIGHT reasons -- the first version of one raised an `AttributeError` instead and was restated |
-| `mediainfo` against zen's 105,558 real Streams | **174 misses, from 613** | not a suite: the driver's own scoring against the corpus cycle 23's hunt captured. The 174 are recorded in §3.3, not fitted |
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1,307 PASS / 0 FAIL / 9 skipped** | unchanged by this cycle, which touched `mediainfo.py` and `languages.json` only |
-| `tests/test_navigation.py` | **28/28** on the UI fixture, **47/47** on the full catalog | |
+| `tests/test_mediainfo.py` | **31/31** | two new checks (`pixel-aspect`, `pixel-aspect-threshold`), each proven to fail on its own parent commit |
+| `tests/fixtures/media-resolutions.json` | **194 shapes, from 177** | zen's own 17 that fun's libraries did not hold. The corpus itself failed against the unfixed code on exactly one row, which is the point of adding to it |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1375 PASS / 0 FAIL / 9 skipped** | |
+| `tests/test_navigation.py` | **28/28** on the UI fixture, **47/47** on the full catalog | run each against its OWN server: pointed at the one the UI suite is writing to, it reports twelve failures that are not there |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline |
-| `tests/test_all.py --skip-decode` | **0/11 served** | the recorded baseline |
+| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
 
 ---
 
@@ -334,6 +344,19 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **A sidecar subtitle's codec suffix is the constant `External`** (cycle 17) | **B** | It is the stream's `providerTitle`, and `External` is the FALLBACK. Measured on one server, where no sidecar carried a provider | cycle 24 |
 | **`DELETE /butler/{Task}` is a 200 that cancels** (cycle 22) -- see also the row above | **F** | Already corrected in cycle 23; repeated here because cycle 24 left the butler unimplemented and the corrected grammar is what cycle 25 must build to | cycle 23 |
 
+**Cycle 25 overturned eight more.**
+
+| Belief | Held since | Overturned by | Class |
+|---|---|---|---|
+| "a SEASON's unmatch runs the seven-frame refresh sequence" | 9 | It runs the SEASON cascade; a SHOW's pushes 46 frames where plexsim pushed none; and the opener differs by row type (a movie and a show take the `matching` PAIR, a season one frame) | C |
+| "a season cascade's activity has no `updated` frame" -- the docstring -- against `finish_activity`, which inserts one | 15 | 18 frames on the reference, 19 here. The rule was recorded right and implemented as the nearest helper to hand | C |
+| "the `anamorphic` threshold is bracketed to (1.028, 1.067]" | 23 | 358 of zen's streams over 16 distinct ratios: the ratio ROUNDED TO ONE DECIMAL is not 1.0. A pixel-difference model is refuted outright | D |
+| "`/match` answers EVERY verb with its 400" -- recorded -- against a code list of two | 17 | Re-measured over all seven verbs on kids | C |
+| "`system_agents.json` is the modern agents captured from a real PMS" | 5 | Captured with NO `X-Plex-Language`, so its `Language` list is the one a real PMS answers only to a client that asks for no language. **Class A, the failure this project's one rule exists for** | **A** |
+| "the localiser reaches inside a row for exactly two blocks" | 20 | A `/tree` node is a row too -- keyed by `id`, not `ratingKey` -- and its `Setting` rows are NOT localised, so plexsim translated what a real PMS leaves alone | C |
+| "a SCROBBLE writes NO history row" | 9 | It writes one per LEAF marked, every time, driven one scrobble at a time with the count read between each | F |
+| "`POST /butler/{Task}` QUEUES rather than runs, and `/activities` retains the finished wrapper" | 23 | Neither reproduces on a freshly reset copy: the first frame is at +0.0 and `/activities` is empty the moment the run returns | F |
+
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
@@ -390,19 +413,19 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The collection and playlist action leaves' FRAMES** | The statuses and container shapes are measured and implemented; `/refresh` and `/unmatch` on those two rows push real sequences (3 and 7 frames on a collection, 4 and 2 on a playlist) carrying `state 2` / `metadataState: matching`, a state plexsim has never emitted. Implemented as the statuses alone | Implement the sequences, having re-measured them per row type |
 | **A collection's `/allLeaves` and `/grandchildren` ROWS** | Both containers are measured empty on plexscratch (its collection held one movie and the leaf view returned none), so the container is measured and the row projection is inferred from the light-grid rule | A collection whose members make those lists non-empty |
 | **The `/system/scanners/{N}` 500 BODY** | All three references answer a 641-byte `application/xml` plug-in-framework traceback; plexsim answers 23 bytes of `text/plain`. The status and type are measured, the body is PMS's own Python traceback | Nothing worth settling: the body names PMS's own file paths |
-| **Which butler DELETE actually cancels** | Cycle 23 re-measured the STATUS grammar itself (a 200 inside the queue window, a 404 after it and a 404 with nothing queued) and reproduced it; the half that says the 404 is the one that CANCELS rests on hunt B's run-or-not control, which the driver did not repeat. plexsim runs every task synchronously inside the POST, so implementing either half needs a queue notion it does not have | Re-measure the run-or-not control, then give the butler a queue |
+| **Which butler DELETE actually cancels** | Cycle 23 recorded a 200 inside a queue window; cycle 25 could not reproduce a queue window at all -- a task's frames arrive at +0.0 -- so there is nothing to cancel and `DELETE`, `GET`, `PUT` and `PATCH` are all 404s when idle, which is what plexsim answers. The Dashboard's Cancel button may simply have nothing to do on a copy this small | A server with a task slow enough to have a window |
 | **`AC-3` carrying `AC3` in a title** | 132 zen streams. `VC-1` does NOT carry `VC1` and `E-AC3`/`E-AC-3` do not carry `EAC3`, so no punctuation-folding rule fits, and a general one breaks 58 other streams. Cycle 24 scored it and left it | A rule that separates the three, or a decision to special-case `AC-3` |
 | **Streams whose stored title is the EMPTY string** | ~37 on zen; they compose `" (1080p HEVC Main 10)"` with a leading space and carry no `title` attribute in XML at all, so a published row cannot be told apart from one with no title | Nothing from a published row; it needs the server's own stored value |
-| **The rest of cycle 23's butler findings** | `POST /butler/{Task}` QUEUES rather than runs (a 7-9 s gap before any frame); `general.db.backup` runs TWICE and that doubling is peculiar to `BackupDatabase`; `CleanOldBundles` interleaves its two messages between the phases with independent counts; `RefreshLibraries` reports BEFORE it scans and its wrapper ends first; `POST /butler` runs only what is DUE and steps its wrapper `done/(done+1)`, and a second POST pushes one `queueRegenerated` frame and nothing else; `/activities` RETAINS the finished butler wrapper. All measured 3/3 | Implement them together with the queue above |
+| **The rest of cycle 23's butler findings, WHAT IS LEFT OF THEM** | Cycle 25 re-measured the family on an uncontended socket and **two of the six did not reproduce**: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly reset copy, not after a 7-9 s queue delay, and `/activities` is EMPTY the moment the run returns. `general.db.backup`'s doubling reproduced and is BUILT, together with its `started` at -1 with the subtitle already set. Still unmeasured this cycle: `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only what is DUE | Measure the three, on a freshly reset copy with nothing else writing to it |
 | ~~**The cycle-23 `mediainfo` model**~~ **SETTLED in cycle 24** | Hunt B fitted a model on 105,558 zen streams and held it out on the 46 recorded probes: misses fall from 613/105,558 and 3/642 to 174/105,558 and 0/642. It adds the language parenthesis-strip rule (which settles cycle 22's five-witness contradiction), `eia_608` -> `Closed Captions` in BOTH titles, `Signs`/`Songs` standing in for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the dynamic range, the raw ffprobe codec name for audio and the punctuation-stripped label for video, and `providerTitle or "External"` for a sidecar's suffix. The model file is in the cycle's artefacts | Implement it; it is the largest measured block now outstanding |
-| **`pixelAspectRatio` and `anamorphic`** | zen's 863 video Streams carry both or neither; `pixelAspectRatio` is ffprobe's SAR verbatim, present exactly when SAR != 1:1, and `anamorphic` is the one Stream boolean sent when false. Its threshold is BRACKETED, not pinned -- the largest false is 37:36 and the smallest true 16:15 | A file between those two ratios |
-| **The `videoResolution` cutoff below 720** | Cycle 23 bracketed it to (720, 856] on zen's own rows and refuted the pixel-count model. zen holds no width in between, so it cannot be bisected from a real library | A file 721-855 wide |
+| ~~**`pixelAspectRatio` and `anamorphic`**~~ | **BUILT in cycle 25** on 1,688 of zen's video Streams (358 carrying the pair, 1,330 neither, none only one). Only the CONSTANT is still inferred: see the new entry below | -- |
+| ~~**The `videoResolution` cutoff below 720**~~ | **BUILT in cycle 25** as the table's own smallest-in-bucket construction -- `(856, "480")`, the way the other five entries were built -- with 720 named as the largest below it. The boundary is still un-bisected and the comment says so | A file 721-855 wide |
 | ~~**`dub` on a video Stream**~~ **IN as of cycle 24**; `visualImpaired` (1 witness, in neither table) is not | zen carries `dub` on 88 video Streams (never `comment` or `hearingImpaired`), so the video disposition set is default/forced/original/dub; `visualImpaired` is real and in neither table | Implement both from ffprobe's `dub` / `visual_impaired` |
 | ~~**`languages.json`: 13 codes, not 3**~~ **the 13 are IN as of cycle 24**; the regional-tag family (`en-US`, `zh-Hant`, ...) is not | `cha guj hye kat mar mdr mon mya nno pan sin yor zul`, each 1-24 streams on zen. Separately 21 streams carry a REGIONAL `languageTag` (`en-US`, `es-ES`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant`) the one-name-one-tag table cannot express, and `zh-Hant` changes the NAME too | Add the 13; the regional family needs an ffprobe of such a file |
 | ~~**`_channel_label`'s trailing space**~~ **fixed in cycle 24**; the reference's full parenthetical form still has one witness | `8 channels (FL+FR+...)` -> plexsim writes `8 channels )` with a double space. A defect under plexsim's own model; the reference's full form has one witness | Fix the strip; the reference form needs a second witness |
-| **Nine more verb-table rows** | Cycle 23 implemented three (`/hubs/home/recentlyAdded`, `/hubs/sections/{id}`, `/library/metadata/{id}/children`); `/accounts/{id}` POST/PATCH/OPTIONS, `/media/providers` PATCH/OPTIONS, `/status/sessions` PATCH/OPTIONS, `/library/sections` PATCH/OPTIONS were taken in cycle 22, and `/library/metadata/{id}/match` HEAD/PATCH/OPTIONS (400 on the reference, 404 on plexsim) is outstanding | One patch, once re-measured |
-| **The SEASON and SHOW unmatch cascades** | 28 and 46 frames on the reference against plexsim's 8 and 12. The driver measured the COUNTS and deferred the sequences: this cycle's hunt B had the writable copy's socket, and a butler run it started put 30 stray activity frames through the listener | Re-measure on an uncontended socket |
-| **`/hubs/search`'s row lead** | Hunt A measured `librarySectionTitle, score, ratingKey, ...` on both references; the driver reproduced it on zen only -- kids' and plexsim's hubs answered no `Video` for the queries tried | A query that hits on kids |
+| ~~**Nine more verb-table rows**~~ | **CLOSED in cycle 25**: the last of them, `/library/metadata/{id}/match`'s HEAD/PATCH/OPTIONS, is implemented. Re-measured over all seven verbs on kids, which answers 400 to each | -- |
+| ~~**The SEASON and SHOW unmatch cascades**~~ | **SETTLED in cycle 25**, on an uncontended socket, twice over -- once with the show unmatched first on a freshly reset copy and once second, so the ordering is not an artefact of the state the first left behind. The media pass is state-dependent and deliberately not emulated | -- |
+| ~~**`/hubs/search`'s row lead**~~ | **SETTLED in cycle 25**: `query=Sintel` hits on kids and both references agree exactly. `/library/search` leads with `librarySectionTitle` alone | -- |
 | **The mediainfo LANGUAGE-part rule** | Hunt B fitted "the whole name, not the first word" to 13 of zen's subtitle rows. Implemented, it BREAKS the recorded corpus: `Русский (Full) - Кубик в Кубе` with language `Русский` drops it on a real PMS, which only the first-word rule gets right. Five witnesses across both corpora: `Русский`, `English (Weeb)`, `dansk` dropped; `norsk bokmål`, `Tiếng Việt` kept. The narrowest model that fits all five -- "a MULTI-token name whose title is exactly that name is kept, everything else takes the first word" -- is fitted to two positive witnesses and is class D | A library with more multi-token language names. NOT implemented |
 | **`eia_608` labelled `Closed Captions`** | Real on zen (3 streams), and it appears in the PLAIN display title as well as the extended one -- a different composition path from the codec label, which is why it was not implemented alongside the language rule | Implement it on the display-title path, having measured which of the two carries it |
 | **The `videoResolution` 480 bucket** | zen's 856×358 Media is `480` where plexsim's model says `sd`; every existing cutoff is its height bucket × 16/9 and the 480 entry (853.3) is missing. zen's 720×400 and 688×384 are `sd`, so the cutoff is in (720, 856] -- **not bisected**, so asserting a constant would be class D | Bisect it on zen's own rows; 3 of 13,643 Media witness it |
@@ -410,7 +433,19 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **`languages.json` missing `zul`, `cha`, `kat`** | Real on zen (4 of 6,581 language-carrying streams); plexsim's catalog holds no such track, so it changes nothing today | Add the three, having checked the 639-2/T and 639-1 pair for each |
 | **The collection and playlist `/refresh` and `/unmatch` FRAMES** | Measured in full this cycle -- a collection's refresh is 3 frames on an agent guid and 8 on a `local://` one, its unmatch 7, a playlist's 4 and 2 -- and they carry `state 2` with `metadataState: "matching"`, plus a `state 3 matching` on a MOVIE and SHOW unmatch, which plexsim emits nowhere. plexsim also pushes ZERO frames for a movie or show unmatch and no cascade for a season's. The STATUSES are implemented (cycle 21); the sequences are not | Implement the four sequences and the two missing `metadataState` values; the measurements are in cycle 22's findings |
 | **`DELETE /butler/{Task}` while the task is QUEUED** | A 200 that cancels it; a 404 when idle, and GET/PUT/PATCH stay 404. Measured 3/3. plexsim answers 404 always, so the Dashboard's Cancel button reports failure | Implement it; it needs a queued-task notion plexsim does not have |
-| **`POST /butler/BackupDatabase` running its activity TWICE** | Measured 2/2: two `general.db.backup` activities and two progress messages per POST, with `started` at progress **-1** and the subtitle already set where plexsim starts at 0 with an empty one | Implement it, or record why a doubled activity should not be emulated |
+| ~~**`POST /butler/BackupDatabase` running its activity TWICE**~~ | **BUILT in cycle 25**, four runs agreeing across cycles 22, 23 and 25. The `started` at -1 with the subtitle already set is built with it; `general.db.optimize` keeps its own 0-with-an-empty-subtitle opener, which is the pair plexsim had collapsed into one shape | -- |
+
+**Cycle 25 added these.**
+
+| Item | Why it is thin | How to settle it |
+|---|---|---|
+| **The `anamorphic` CONSTANT** | Both SIDES are measured on 358 real streams over 16 distinct ratios -- the largest false is 0.0406 (`333:320`, from the recorded corpus) and the smallest true 0.0667 (`16:15`) -- and 0.05 is the only round number between them. "The ratio rounded to one decimal is not 1.0" fits every witness and nothing measured sits in the gap | A file whose SAR falls between 1.0406 and 1.0667 |
+| **The show-unmatch activity's PROGRESS numbers** | The PAIRS are measured -- (S01, 50), (S01, 95), (S02, 95), (S02, 100), the subtitle moving first at the old progress and the progress stepping after -- and `100 - 5 * seasons left` is fitted to the copy's two-season show, the only one it holds | A copy with a three-season show |
+| **The `Samsung` prefs row's PURPOSE** | The row is measured verbatim on both references and both library types, and it is `hidden="1"` with an empty label and summary: no settings pane draws it, so what a Samsung client does with it cannot be shown from the server side | A Samsung client, or its bundle |
+| **The plug-in framework's non-localisation** | `/system` is the only one of the six plug-in containers that carries a translatable string at all -- the other five title their rows with their own lowercase key names -- so "the framework does not localise" has ONE witness and `noHistory` is a proxy for it | A plug-in container with a sentence in it |
+| **The agent `Language` ORDER** | Stored per language rather than modelled, because a real PMS collates by the localised title with ICU and this project does not implement collation. Correct by construction for the 30 captured languages and undefined for any other | Nothing short of ICU |
+| **A `Common`'s string `userRating`** | Single witness by CONSTRUCTION: the field appears only once every row in the section shares a value, which neither read-only reference can be made to do -- zen's section 1 holds 3,887 movies. So plexscratch (1.43.4) is the only instrument | A second writable copy |
+| **A SCROBBLE writing a history row** | Re-measured 6/6 on the copy this cycle and it overturns cycle 9, so the copy has answered both ways across sixteen cycles. What did NOT change is the timeline half, which writes no row there -- the recorded session-bound limit -- so the pair cannot be checked against each other on one instrument | A claimed writable copy, where a timeline opens a real session |
 
 ### 3.4 The revalidation protocol for each new cycle
 
@@ -533,6 +568,17 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 25).** Re-checked after both hunters had stopped and every server this cycle
+started was killed. `32502`, `32596` and `8787` are held -- the same three cycles 17-19 ended
+with. Everything cycle 25 used is FREE again: `32541`, `32543`, `32546`, `32587`/`32588` (the
+hunters'), `32592`/`32593` (the proof driver's). **`32594`/`32595` were used ONCE** by a single
+`sdrive` run, and that is worth recording rather than hiding: `sdrive` SIGTERMs whatever listens
+on its ports before it starts, `32595` was NOT in the port scan taken at the head of this cycle,
+and so a pre-existing listener there would have been killed without a record. It cannot now be
+proved either way; every later run went back to `32592`/`32593`. **Neither hunter left a server
+running**, as in cycles 18 and 19. `32599` is `test_ui_surface.py`'s own gated server and
+`32598` the `--web-root` instance its asset check starts; leave both free.
 
 **Ports (cycle 19).** Re-checked after both hunters had stopped and every server this
 cycle started was killed: `32502`, `32596` and `8787` are held -- the same three cycles
@@ -1610,20 +1656,127 @@ raised an `AttributeError` -- which is cycle 19's lesson exactly: a check that f
 wrong reason proves nothing about its other six clauses. Restated with `getattr` and a
 default, all seven fail on the parent for the right reasons and pass on the fix.
 
-### Next: cycle 25 -- and it must run hunts
+### Cycle 25 -- two dimensions nobody had swept, and the last of cycle 23's backlog
 
-1. **The butler as one block.** Still the largest measured item: the queue notion,
-   `POST /butler/{Task}` queueing rather than running, the doubled `general.db.backup`,
-   `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans,
-   `POST /butler` running only what is due, `/activities` retaining the wrapper, and the
-   cancel grammar cycle 23 corrected. All measured 3/3 and all in §3.3.
-2. **The season and show unmatch cascades** (28 and 46 frames against plexsim's 8 and 12),
-   deferred in cycle 23 because the writable copy's socket was contended.
-3. **`pixelAspectRatio`/`anamorphic`** -- the derivation is pinned (ffprobe's SAR verbatim,
-   present when SAR != 1:1) and only the `anamorphic` THRESHOLD is bracketed, so the pair
-   could land with the boolean held out.
-4. **Run the hunts.** Two cycles of backlog have now been drawn down; the next dimension
-   needs new measurement, and the child-element order is settled and should not be re-swept.
+Two hunts and a driver round, and it is the cycle that tests cycle 24's reading of the curve.
+Cycle 24 fell to 6 findings without hunting and concluded the programme had "moved from
+finding differences to owing implementations". Cycle 25 did both halves: it drew the last
+fully measured items off the backlog AND ran two hunts, on **dimensions nobody had swept at
+all**. The backlog gave it 6 findings and the hunts gave it 13.
+
+**The driver opened with the two items cycle 24 named first.** The SEASON and SHOW unmatch
+cascades, deferred by cycle 23 because its own hunt was running the butler on the same
+writable copy, were measured on an uncontended socket twice over -- once with the show
+unmatched first on a freshly reset copy and once second, so the ordering is not an artefact
+of the state the first run left behind. A season's unmatch pushes ONE `matching` frame and
+then the season cascade; a show's pushes the MOVIE's `matching` PAIR and 46 frames of its own,
+with the movie unmatch's activity progression (`Analyzing Media` at -1 and 25, then `Updating
+Metadata` at 25 and 50) before the subtitle starts following each season. plexsim answered the
+season with the seven-frame EPISODE form and the show with nothing at all. The same capture
+caught a class-C gap beside it: a season cascade's activity has had "no `updated` frame" in
+its docstring since cycle 15 and the code called `finish_activity`, which inserts one.
+
+A seventh came out of checking that work rather than out of a hunt: **a show UNMATCH's
+activity opens with the show's BARE TITLE** where its refresh opens with the frame title. The
+cascade had been written to use the frame title everywhere, and running the refresh against the
+same copy on the same socket showed the two paths differ at exactly one frame.
+
+**`pixelAspectRatio` and `anamorphic` are a PAIR, and the boundary is the ratio rounded to one
+decimal place.** 1,688 of zen's video Streams: 358 carry both, 1,330 carry neither, and not one
+carries only one of the two. Sixteen distinct ratios agree on the boundary and the pixel-
+difference model is refuted outright -- a 3840-wide `333:320` displaces 156 pixels and is false
+where a 716-wide `16:15` displaces 48 and is true. The same harvest found the resolution label
+had no 480 WIDTH bucket at all (zen's three 856x358 Media are `480`) and put every shape zen's
+libraries hold and fun's did not into `media-resolutions.json` -- 17 of them, and **the corpus
+itself failed against the unfixed code on exactly one row**, which is what adding to a corpus
+is for. Two §3.3 entries closed with them: a search hit's row lead (`query=Sintel` is the query
+that finally hits on kids) and the last of the nine verb-table rows.
+
+**Territory A swept the CLIENT-IDENTITY dimension**, and its most valuable result is a
+negative that BOUNDS the dimension: of sixteen identity headers sent alone against ~80 paths on
+both references, **only three move anything at all** -- `X-Plex-Platform`, `X-Plex-Product` and
+`X-Plex-Language`. No identity changes a `Media`, `Part` or `Stream` row, the XML-vs-JSON
+default, the gzip decision, the paging defaults, a response header or a hub. The driver
+re-swept that itself and reproduced it, after one false positive of its own: `X-Plex-Features`
+appeared to move `/hubs` until the requests were INTERLEAVED, at which point it moves nothing
+and the difference is kids' own drifting clip durations.
+
+What it did find: **`X-Plex-Platform: Samsung` appends a hidden `includeInGlobal` row to a
+library's `/prefs`** -- that exact spelling, the existing-library leaf alone, the second
+platform-keyed reshape after `Roku` and the one that makes them a family. **A modern agent's
+`Language` rows are TITLED and ORDERED in the client's language**, and `system_agents.json` was
+captured with no `X-Plex-Language` at all -- **class A, the failure this project's one rule
+exists for**. Two things about that list are unlike every other localised string: the ORDER
+moves with the titles, and the no-header default is not English but each language named in
+ITSELF, which is also where an unrecognised language lands. The preselected `default="1"` row
+follows the client's language too, which the driver found only because its first version of the
+change dropped the flag and turned a cycle-17 check red. Beside them:
+`/media/providers?includePreferences=1` carries each library's whole `Preferences` block;
+`/library`'s three `Directory` titles localise while `/system`'s identical string does not; and
+a `/tree` node's `Setting` rows are NOT localised, where plexsim translated them -- the inverse
+of the usual defect and still a rule broken.
+
+**Territory B swept the CROSS-ENDPOINT dimension**: not what a write ANSWERS and not what
+FRAMES it pushes, both well covered, but **which other endpoints change**. That is the question
+a real client depends on, because the UI reads Home's hubs and the section's shelves rather than
+the row it just wrote. 72 derived endpoints snapshotted before and after each of 21 writes on
+both servers, 1,512 pairs per server, and the DIFF SETS compared rather than the responses.
+
+Its two largest findings are one mechanism. **Continue Watching is not On Deck** -- it holds
+only the rows with a stored `viewOffset`, where On Deck holds one row per show including a
+next-up episode with no offset at all -- and **Home DROPS the `home.ondeck` shelf when its rows
+are Continue Watching's**, which plexsim could never have reproduced because its two lists were
+always equal. Beside them: **a SCROBBLE writes one history row per LEAF**, overturning cycle 9;
+an episode history row carries `title` and `originallyAvailableAt` in an order of its own,
+witnessed on zen and the copy alike; a playlist reaches Home's Recent Playlists shelf and both
+search endpoints, where plexsim hardcoded the shelf to `[]` from a measurement taken when the
+reference had no playlists; the untyped `/library/all` lists collections; the Continue Watching
+hide does NOT reach a section's own shelf; and a `Common`'s `userRating` is a string leading the
+row.
+
+**The butler came back smaller than it went in.** Cycle 23 recorded six behaviours needing "a
+queue notion plexsim does not have". Re-measured this cycle on an uncontended socket, **two of
+them did not reproduce**: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly
+reset copy, not after a 7-9 second delay, and `/activities` is empty the moment the run
+returns. So there is no queue window, nothing to cancel, and the DELETE grammar plexsim already
+answers is right. What did reproduce is the doubled `general.db.backup` -- four runs now -- and
+it is built, with the opener that goes with it: `general.db.backup` starts at -1 with its
+subtitle already set where `general.db.optimize` starts at 0 with an empty one, a pair plexsim
+had collapsed into one shape.
+
+**The driver broke its own build once, and the suite caught it.** The per-language agent list
+needs the resolved language inside a PlexSim handler, and the first version put it in `query`.
+Six write paths read `query` as a FORM and exclude `X-Plex-*` plus the one private key they
+know by name, so a second private key reads as an unknown field: five passing checks turned
+into 400s. It rides in a thread-local now, which is the scope of a request on a
+`ThreadingHTTPServer`, and the commit that moved it carries the checks that caught it.
+
+**And one hunter negative was challenged and re-confirmed**, which is the shape this project
+wants: the driver's own spot-check of "only three headers move anything" flagged
+`X-Plex-Features` on `/hubs`, and interleaving the requests showed the difference was kids'
+drifting clip durations and bitrates, not the header. The negative stands.
+
+### Next: cycle 26
+
+1. **Run the hunts, on a dimension nobody has swept.** That is what made cycle 25 a
+   21-finding cycle after three falling ones, and §10 said so before cycle 24 tested it.
+   Closed and not to be re-swept: path, method/parameter, header, row, container, child
+   element, attribute order, child-element order, the filter engine, and now client
+   identity and the cross-endpoint cascade. Candidates nobody has taken: the PLAYBACK
+   surface end to end (`/video/:/transcode/universal/*`, the session lifecycle, the
+   Dashboard's byte counters) -- knowing that "plexsim has no encoder" bounds it; and a
+   fresh CLIENT-SESSION capture through the harness, replayed against plexsim, which is
+   the founding instrument and has not been re-run since cycle 7.
+2. **The three butler behaviours that are still unmeasured**: `CleanOldBundles`' interleaved
+   messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only
+   what is DUE. Measure them on a freshly reset copy with nothing else writing to it -- the
+   other three from that list did not survive being re-measured that way.
+3. **The collection and playlist `/refresh` and `/unmatch` FRAME sequences** (§3.3), which
+   carry `state 2` / `metadataState: matching` -- a state plexsim now emits on a season and
+   a show unmatch, so the state machine behind it is no longer new.
+4. **`/hubs/sections/{id}`'s own in-progress shelf**, which cycle 25 left half-measured: the
+   hide leaves `tv.inprogress.{id}` alone on a real PMS as well as the section's
+   `continueWatching/items`, and only the second half was implemented.
 
 ### Next: cycle 24 (superseded)
 
@@ -2011,6 +2164,19 @@ too), which the one-name-one-tag `languages.json` shape cannot express; and
 `pixelAspectRatio`/`anamorphic`, whose derivation is pinned but whose `anamorphic` threshold
 is only BRACKETED to (1.028, 1.067).
 
+**Cycle 25:** the `anamorphic` CONSTANT itself (both sides measured, 0.05 the only round
+number between them, nothing in the gap); the show-unmatch activity's PROGRESS numbers (the
+pairs are measured, the formula is fitted to a two-season show); the MEDIA pass inside an
+unmatch cascade (state-dependent work on real files -- present on a freshly reset copy and
+absent on one that has run it, which is cycle 15's rule); the `Samsung` prefs row's PURPOSE
+(`hidden="1"` with an empty label, so no settings pane draws it and the server side cannot
+show what a Samsung client does with it); the agent `Language` ORDER as a MODEL (stored per
+language instead, because a real PMS collates it with ICU); the `videoResolution` 480 boundary
+as a bisected constant (856 is the smallest width zen has in the bucket, built the way the
+other five entries were); and the three butler behaviours cycle 25 did not re-measure
+(`CleanOldBundles`' interleaving, `RefreshLibraries`' ordering, `POST /butler` running only
+what is due) -- the other three from that list were re-measured and two did not reproduce.
+
 **Cycle 23:** the whole butler family -- `POST /butler/{Task}` queueing rather than running,
 `general.db.backup`'s doubled activity, `CleanOldBundles`' interleaved messages,
 `RefreshLibraries` reporting before it scans, `POST /butler` running only what is due and
@@ -2262,6 +2428,8 @@ base from `PLEXSIM_BASE`.
 |---|---|
 | `hunt_prompts.md` | The shared preamble and every cycle's territories, verbatim, newest last. **This is the template**: copy the preamble, refresh the lists named in §5 step 4, write the whole prompt to a file for the agent to read |
 | `refcheck7.py` + `ref_cycle5_before.json` | Read-only comparison of kids' library state against the baseline |
+| `capture_agent_languages.py` | Cycle 25: `/system/agents`' per-language `Language` list, read from the XML (the JSON writes the rows as repeated KEYS and a parser keeps one) in each of the 28 languages plus English plus the no-header default. Writes `agent_languages.json`, which `server.py` loads beside itself. Re-run it if the reference's language list ever changes |
+| `secretscan.py` | Cycle 25: the gating scan §5 step 10 asks for, over every file the branch changes rather than over a `git diff` (which this shell's filter can truncate). Anchored on the VALUE, with the suite's own literal `suite-gate-token` excluded by name -- a naive pattern matches that and the handover's own prose about the pattern |
 | `sdrive.py` | **The proof driver.** Per patch: export and serve the worktree's HEAD, apply, serve the fix, run the patch's suite block against both, commit only on fail-then-pass |
 | `mdrive.py` | The same for an OFFLINE check (`tests/test_mediainfo.py`); copies every tracked sidecar into the parent tree |
 | `runblock.py` | Runs one patch's check block against one or more servers, in the suite's own namespace. Both drivers call it |
@@ -2283,6 +2451,12 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 25: `…/b59cf966-bebc-4d11-b0a6-beb9e8e6f6a5.jsonl` plus its `subagents/agent-*.jsonl`.
+  Its scratch directory (`c25/`) holds both hunt prompts, `cascade.py` and `sse.py` (the
+  dependency-free eventsource listener the frame work runs on), `par.py` (zen's
+  pixelAspectRatio/anamorphic harvest), `identity_check.py` (the driver's own re-sweep of hunt
+  A's negative), `remeasure_a.py`/`remeasure_b.py`, `butler.py`/`backup2.py`, the twenty patch
+  modules and the suite logs.
 - cycle 16: `…/12a3f40a-efad-46c2-85e4-3da3421fe8ea.jsonl` plus its `subagents/agent-*.jsonl`.
   **Its scratch directory was cleared mid-cycle to recover disk space**, so the patch
   modules, the assembled prompt files and the re-measurement clients are gone; the

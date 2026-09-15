@@ -6402,6 +6402,223 @@ the recorded client-title rule, not a defect: those rows were read as `Plex Web`
 thirteen products that get the codec added on the way out. The check that tests `eia_608`
 therefore reads the extended title, which is the catalog form.
 
+#### The twenty-fifth pass — the cascades cycle 23 deferred, and two dimensions nobody had swept
+
+Two hunts and a driver round. The driver opened the cycle by taking the two items cycle 24
+named first: the **season and show unmatch cascades**, which cycle 23 deferred because its own
+hunt was running the butler on the same writable copy and put thirty stray activity frames
+through the listener, and **`pixelAspectRatio`/`anamorphic`**, whose threshold HANDOVER 3.3
+carried as bracketed rather than measured.
+
+**A SEASON's unmatch pushes ONE `matching` frame and then the season cascade; a SHOW's pushes
+the movie's `matching` PAIR and 46 frames of its own.** Measured on plexscratch with nothing
+else writing to it, twice over — once with the show unmatched first on a freshly reset copy
+and once second — so the ordering is not an artefact of the state the first left behind. The
+openers differ by row type and both were captured in the same run: a movie and a show open
+`state 2 matching` then `state 3 matching`, a season with one frame. plexsim answered a
+season's unmatch with `notify_refreshed` — the seven-frame EPISODE form — so every episode
+under the season it had just unmatched kept its old title and guid, and it pushed NOTHING at
+all for a show, so Fix Match on a show page changed nothing on screen and left every
+`!!metadataState` gate latched.
+
+The show's activity is not its refresh's. It is the MOVIE unmatch's — `Analyzing Media` at -1
+and 25, then `Updating Metadata` at 25 and 50 — and only after that opener does the subtitle
+start following the seasons, changing at the progress the activity already carries and then
+stepping. The media pass is deliberately not emulated: on a freshly reset copy the same
+request also analyses the leaves whose media has never been read and on a copy that has run
+one it does not, which is cycle 15's state-dependent-work rule and not a frame sequence.
+
+**And a show UNMATCH's activity opens with the show's BARE TITLE**, where its REFRESH opens
+with the frame title (`Firefly (2002)`). That one was found by checking the driver's own
+implementation rather than by a hunt: the cascade had been written to use the frame title
+everywhere, and running the refresh against the same copy on the same socket showed the two
+paths differ at exactly one frame. The show carries a year there, so it is not a row with
+nothing to append — it is the one place on this surface where an activity's subtitle is not
+the frame title, and from the season onwards both paths use the frame title again.
+
+**And a season cascade's activity has no `updated` frame.** Its docstring has said so since
+cycle 15 and the code called `finish_activity`, which inserts one — nineteen frames where the
+reference pushes eighteen. Class C exactly: the rule was recorded right and implemented as the
+nearest helper to hand.
+
+**`pixelAspectRatio` and `anamorphic` come as a PAIR, and the boundary is the ratio rounded to
+one decimal place.** Measured on 1,688 of zen's video Streams: 358 carry both, 1,330 carry
+neither, and not one carries only one of the two. The value is ffprobe's `sample_aspect_ratio`
+verbatim, present exactly when the sample aspect is not square. `anamorphic` is the one Stream
+boolean a real PMS sends when it is FALSE, so it goes out either way, and sixteen distinct
+ratios agree on when it is true: `99:100`, `172:173`, `799:800`, `816:817`, `872:873`,
+`959:960`, `10439:10440`, `481:480`, `255:254` and `643:640` (303 streams) are false, and
+`1:2`, `10:11`, `16:15`, `495:464`, `721:640` and `2:1` are true — with the recorded corpus's
+`333:320` false and `32:27` true. That puts the boundary inside (0.0406, 0.0667], where 0.05
+is the only round number, so the two SIDES are measured and the constant is still inferred. A
+pixel-difference model was tried first and is refuted: the 3840-wide `333:320` stream displaces
+156 pixels and is false where a 716-wide `16:15` displaces 48 and is true.
+
+**The resolution label had no 480 WIDTH bucket at all.** zen's three 856×358 Media are `480` on
+a real PMS and were `sd` here, because `_WIDTH_BUCKETS` stopped at 576. The new entry is built
+the way the other five were — the smallest width zen has in the bucket, with the largest below
+it named in the comment — and the boundary is NOT bisected: zen holds no width between 720 and
+856. The same harvest put every shape zen's libraries hold and fun's did not into
+`tests/fixtures/media-resolutions.json`, seventeen of them, and the corpus itself failed
+against the unfixed code on exactly one row.
+
+**A search hit LEADS with `librarySectionTitle`, and on `/hubs/search` its `score` follows.**
+HANDOVER 3.3 carried this as single-witness because cycle 22's driver could only reproduce it
+on zen — kids' hubs answered no `Video` for the queries that cycle tried. `query=Sintel` hits
+on kids, and both references then agree exactly: `librarySectionTitle, score, ratingKey, key,
+guid, …` on `/hubs/search` and `librarySectionTitle, ratingKey, …` on `/library/search`.
+plexsim carried both attributes and put `librarySectionTitle` after `title` and `score` LAST,
+so — since a real PMS's JSON key order is its XML order — both of its formats disagreed with
+both references. It needs a private marker rather than a signal read off the row: `/library/all`
+and `/hubs/home/recentlyAdded` rows carry `librarySectionTitle` too and keep it in the middle.
+
+**`/match` really does answer its no-parameters 400 to EVERY verb.** Cycle 17 recorded that
+sentence and implemented it for GET and DELETE, so HEAD, PATCH and a bare OPTIONS were still
+404s — the client's own "is this matchable?" probe read as an endpoint that does not exist.
+Re-measured over all seven verbs on kids, which answers 400 to each.
+
+---
+
+**Territory A took the CLIENT-IDENTITY dimension**, which nobody had swept at all. plexsim
+knew of exactly two client-identity rules, both found by accident: `X-Plex-Platform: Roku`
+stripping `id` and `Pivot` from `/media/providers`, and the thirteen products that get a
+codec appended to a stream's `displayTitle`. A 9,300-pair sweep over ~30 identity values and
+~80 paths on both references found that **only three headers move anything at all** --
+`X-Plex-Platform`, `X-Plex-Product` and `X-Plex-Language`. `X-Plex-Features`,
+`X-Plex-Client-Profile-Extra`, `X-Plex-Drm`, `X-Plex-Model`, `X-Plex-Provides`,
+`X-Plex-Session-Identifier`, `X-Plex-Client-Identifier`, `X-Plex-Device`,
+`X-Plex-Device-Name`, `X-Plex-Text-Format`, `X-Plex-Version`, `X-Plex-Platform-Version`,
+`X-Plex-Sync-Version` and `X-Plex-Protocol` each sent alone moved nothing, on any path: no
+identity changes a `Media`, `Part` or `Stream` row, the XML-vs-JSON default, the gzip
+decision, the paging defaults, any response header, or the hub composition. That is a real
+result and it bounds the dimension.
+
+**`X-Plex-Platform: Samsung` appends a hidden `includeInGlobal` to a library's `/prefs`.**
+Measured on kids and zen over both library types, 19 rows to 20 and 21 to 22, `label` and
+`summary` empty and `hidden="1"`. That exact spelling only -- `samsung`, `SAMSUNG`,
+`Samsung `, `Tizen`, `Samsung TV` and 27 other platform strings answer the plain list --
+and it reaches the EXISTING-library leaf alone: the Add Library form's list, an item's
+`?includePreferences=1` block and the `Preferences` block inside `/media/providers` are all
+unchanged under the same header. It is the second platform-keyed reshape on the surface,
+which is what makes the Roku rule a family rather than a quirk. Re-measured by the driver on
+both references, and the HEADER beats the query when both are sent.
+
+**A modern agent's `Language` rows are TITLED and ORDERED in the client's language.** 45
+rows, all six modern agents sharing one list, identical on kids and zen. `system_agents.json`
+was captured with no `X-Plex-Language` at all -- **class A, the failure this project's one
+rule exists for** -- so plexsim answered the self-named list to every client, English
+included. Two things about it are unlike every other localised string here: the ORDER follows
+the localised title, so the row sequence moves with the language; and the NO-HEADER default
+is not English but each language named in ITSELF, which is also where an UNRECOGNISED
+language lands rather than falling back to English. The list is therefore stored per language
+(`agent_languages.json`, captured from the XML, which is the only form that carries every row)
+rather than translated string by string, because a real PMS collates it with ICU and this
+project does not model collation. The Add Library and Edit Library dialogs build their
+language dropdown from this list and validate the submitted `language` against it.
+
+**`/media/providers?includePreferences=1` carries each library's whole `Preferences` block**,
+byte-identical to the one `/library/sections?includePreferences=1` answers -- the per-SHOW
+`episodeSort` variant included -- as the first child of the library `Directory`, with the
+`Home` row getting none. plexsim handled the option at three other sites and ignored it here,
+so a client that bootstraps library preferences from the provider document in one round trip
+saw libraries with no preferences at all.
+
+**`/library`'s three `Directory` titles are localised, and `/system`'s identical string is
+not.** `Bibliothek-Bereiche`, `Zuletzt hinzugefügter Inhalt`, `Aktuelle Inhalte` on both
+references; the three were literals here and in no translation table, so the first path
+python-plexapi asks for read English to every client. The collision is the interesting half:
+the plug-in framework's `/system` carries a `Directory` titled `Library Sections` -- the same
+English string, the same attribute -- and a real PMS leaves it alone, so the table's
+attribute key is not enough and `_send_container` now skips a plug-in-framework container
+(`noHistory` is its signature). `/system` is the only one of the six that carries a
+translatable string at all; the others title their rows with their own lowercase key names.
+
+**And the tree's `Setting` rows are NOT localised, where plexsim localised them.** All eight
+of a show node's settings stay English in de, fr and ja on both references, while the same
+settings under `?includePreferences=1` move. A tree node is a ROW -- it is simply keyed by
+`id` rather than `ratingKey`, so the row guard did not recognise it. The inverse of the usual
+defect, and still a rule broken.
+
+---
+
+**Territory B took the CROSS-ENDPOINT dimension**: not *what does this write answer* and not
+*what frames does it push*, both of which are well covered, but **which other endpoints
+change**. That is the question a real client depends on — the UI does not re-read the row it
+just wrote, it reads Home's hubs, the section's shelves, the history page, the filter axes —
+and a write that lands correctly on its own row and leaves every derived view stale is
+invisible to every check this programme has ever run. 72 derived endpoints snapshotted before
+and after each of 21 writes on both servers, 1,512 (write, endpoint) pairs per server, and the
+DIFF SETS compared rather than the responses.
+
+**Continue Watching is not On Deck.** Measured through four driven states: Continue Watching
+holds only the rows with a stored `viewOffset`, movies and episodes alike, where On Deck holds
+one row per show — its in-progress episode, or the one after the last watched, which has no
+offset at all. Scrobbling episode 8 puts episode 9 on deck with a null offset and leaves
+Continue Watching empty; a `/:/progress` on a movie does the opposite. plexsim answered the
+same list to both, so its hero shelf offered episodes nobody had started.
+
+**And Home DROPS its On Deck shelf when it would duplicate Continue Watching.** The
+`home.ondeck` Hub is omitted from `/hubs` and `/hubs/promoted` — the element, not an empty one
+— exactly when its rows are the ones Continue Watching is already showing and that set is not
+empty. Cleared: both present. Next-up only: both present. One episode in progress: On Deck
+absent. A movie in progress beside it: both present again. plexsim always sent both, so Home
+drew the same in-progress episode twice. The two findings are one mechanism: because plexsim's
+two lists were always equal, the de-duplication would have fired in every state.
+
+**A SCROBBLE writes a history row, which overturns cycle 9.** One row per LEAF marked: a movie
+scrobbled twice adds two, a season adds one per episode, a show one per leaf, and an unscrobble
+removes none. Cycle 9 recorded the copy's history "staying at one row through three scrobbles";
+driven again, one scrobble at a time with the count read between each, it moves every time.
+The half that is NOT asserted is the timeline's, which writes no row on this copy — that is
+the already-recorded session-bound limit, and a negative from an instrument with a known
+limit is not a measurement.
+
+**An episode history row carries `title` and `originallyAvailableAt`**, in an order that is
+its own and not an ordinary `Video`'s: `historyKey, key, ratingKey, librarySectionID,
+parentKey, grandparentKey, title, grandparentTitle, type, thumb, …, index, parentIndex,
+originallyAvailableAt, viewedAt, accountID, deviceID, viewType`. Witnessed on zen (1.42.2, 73
+of 73 rows) and on plexscratch, so it is not a version difference; the code's own comment
+says the field set was measured on fun and both current references disagree with it. The
+History page listed the episode with no episode name, in both formats.
+
+**A playlist appeared nowhere but `/playlists`.** Home's Recent Playlists shelf is really
+populated on a real PMS — its rows are the `/playlists` listing rows, `lastViewedAt:desc`,
+with `hubKey` naming its own rows like every other shelf — and a playlist is found by
+`/hubs/search` and by `/library/search`. plexsim hardcoded the shelf's rows to `[]`, with a
+comment saying the reference had "no playlist history", which was true of the reference when
+it was measured and is not a rule; and it searched its catalog alone, where a playlist is not
+a row.
+
+**The untyped `/library/all` omits collections**, where a real PMS lists them — byte for byte
+the row `?type=18` answers, sorted in by ratingKey, appearing on a create and gone on a
+delete. The section form lists them on neither server, so the gap is this query alone, and any
+client or script enumerating the server through `/library/all` never saw one.
+
+**`removeFromContinueWatching` does not reach a SECTION's own Continue Watching shelf.** The
+hide empties `/hubs/home/onDeck`, `/hubs/home/continueWatching` and
+`/library/sections/{id}/onDeck` on both servers, and on a real PMS the row is still in
+`/hubs/sections/{id}/continueWatching/items` afterwards — stable to +20 s, so it is not a
+settle. plexsim removed it there too, so a row hidden from Home was gone from the one place a
+real PMS still offers it.
+
+**And a `Common`'s `userRating` is a STRING**, `"8"` rather than `8.0`, sitting directly after
+`mixedFields` and ahead of `guid`, while the item row keeps the number on both servers. Single
+witness by construction: the field only appears once every row in the section shares a value,
+which neither read-only reference can be made to do — zen's section 1 holds 3,887 movies.
+
+**What the sweep found AGREEING is the other half of the result**, and it is a large one: an
+edit moves nothing in any Recently Added list; a genre add reaches the genre axis and
+`/library/tags` immediately with the right count and the removal drops the axis entry while
+the tag survives in the tag table; a title edit reaches both search endpoints, the section
+search box, `/autocomplete` and the `firstCharacter` axis and its counts immediately; a
+collection create reaches the collection axis, the member's `Collection` tag and
+`/hubs/search`, and a member add moves `childCount`, `minYear`/`maxYear`, the composite
+version and `updatedAt` identically; and scrobble, unscrobble, progress and completion move
+`viewedLeafCount`, `lastViewedAt`, `viewCount`, `/unwatched` and the parents' counters
+equivalently. **No derived view on a real PMS settles late** — every reference change was
+already present in a snapshot taken immediately after the write and unchanged at +10 s and
++30 s — so plexsim's synchronous writes cost it nothing here.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
