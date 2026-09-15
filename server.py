@@ -14829,6 +14829,23 @@ class Handler(BaseHTTPRequestHandler):
         # alone and answered the whole body with a 200 everywhere else. It runs
         # before the status line goes out, which is the whole point.
         payload, status, content_range = self._ranged(status, payload)
+        if status == 416:
+            # Cycle 29, measured on kids and zen over eight body paths (row artwork, the
+            # `/file?url=` candidate, `/:/resources/*`, the transcoder, a section
+            # composite, `/web/index.html`, a 3.5 MB chunk and a media part) and three
+            # container paths: a 416 is an ERROR RESPONSE, not the original resource with
+            # no bytes. The reference sends its 129-byte HTML page with
+            # `Content-Type: text/html` and carries neither `Accept-Ranges` nor
+            # `Content-Range`; plexsim answered `Content-Length: 0` with the ORIGINAL
+            # media type and the whole success header set, so a client was handed an
+            # `image/jpeg` of zero bytes. The BODY stays plexsim's own sentence -- a
+            # text/plain error body is the deliberate deviation inherited from cycle 1
+            # (HANDOVER 8) -- and the type, the length and the dropped header are the
+            # measured half.
+            content_type = "text/plain"
+            payload = b"plexsim: requested range not satisfiable"
+            extra_headers = [(name, value) for name, value in extra_headers
+                             if name.lower() != "accept-ranges"]
         self.send_response(status)
         names = {name.lower() for name, _ in extra_headers}
         # Measured across eight endpoints on both reference servers: a real PMS
