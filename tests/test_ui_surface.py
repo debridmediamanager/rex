@@ -16522,6 +16522,54 @@ def main():
           and not missing_c23c,
           "lead %s | search-only %s | grid-only %s"
           % (lead_c23c[:6], extra_c23c, missing_c23c))
+
+    # Cycle 23, measured on kids and zen identically, over seven library/type pairs and four
+    # `sort=` spellings: a `Meta/Type`'s active SORT is marked only inside the Type row that
+    # matches the ASKED type -- a movie library asked `type=2` or `type=4` marks nothing at
+    # all -- and WHICH sort is marked follows the `sort=` parameter: none given lights the
+    # default (`titleSort`, asc), `sort=addedAt:desc` lights `addedAt` with
+    # `activeDirection="desc"`, and a spec naming no advertised key (`sort=year`) lights
+    # nothing. plexsim lit its own top-level type's first sort in every cell. The client
+    # reads this straight into the grid's sort menu, so on a Seasons or Episodes grid it
+    # highlighted "Title" while the rows were in broadcast order. Cycle 19's rule about the
+    # `Type` row's own `active` is a different attribute and stays correct.
+    def active_sorts_c23d(path_c23d):
+        _status_c23d, body_c23d, _ = request(base, "GET", path_c23d, want_json=False)
+        text_c23d = body_c23d.decode("utf-8", "replace")
+        out_c23d = []
+        for attrs_c23d, inner_c23d in re.findall(r"<Type ([^>]*)>(.*?)</Type>", text_c23d, re.S):
+            kind_c23d = re.search(r'type="(\w+)"', attrs_c23d)
+            for sort_c23d in re.findall(r'<Sort ([^>]*active="1"[^>]*)>', inner_c23d):
+                key_c23d = re.search(r'key="([^"]+)"', sort_c23d)
+                dir_c23d = re.search(r'activeDirection="([^"]+)"', sort_c23d)
+                out_c23d.append((kind_c23d.group(1) if kind_c23d else None,
+                                 key_c23d.group(1) if key_c23d else None,
+                                 dir_c23d.group(1) if dir_c23d else None))
+        return out_c23d
+
+    cells_c23d = {}
+    for label_c23d, path_c23d in (
+            ("movie type=1", "/library/sections/%s/all?type=1&includeMeta=1" % movie_section),
+            ("movie type=2", "/library/sections/%s/all?type=2&includeMeta=1" % movie_section),
+            ("movie type=4", "/library/sections/%s/all?type=4&includeMeta=1" % movie_section),
+            ("movie sort=addedAt:desc",
+             "/library/sections/%s/all?type=1&includeMeta=1&sort=addedAt:desc" % movie_section),
+            ("movie sort=zzzz",
+             "/library/sections/%s/all?type=1&includeMeta=1&sort=zzzz" % movie_section)):
+        cells_c23d[label_c23d] = active_sorts_c23d(path_c23d)
+    if show_section:
+        for label_c23d, typ_c23d in (("show type=3", "3"), ("show type=4", "4")):
+            cells_c23d[label_c23d] = active_sorts_c23d(
+                "/library/sections/%s/all?type=%s&includeMeta=1" % (show_section, typ_c23d))
+    check("the Meta's active Sort follows the asked type and the sort parameter",
+          cells_c23d["movie type=1"] == [("movie", "titleSort", "asc")]
+          and cells_c23d["movie type=2"] == [] and cells_c23d["movie type=4"] == []
+          and cells_c23d["movie sort=addedAt:desc"] == [("movie", "addedAt", "desc")]
+          and cells_c23d["movie sort=zzzz"] == []
+          and (not show_section
+               or (cells_c23d["show type=3"][:1] == [("season", "show.titleSort,index", "asc")]
+                   and [c_c23d[0] for c_c23d in cells_c23d["show type=4"]] == ["episode"])),
+          "%s" % cells_c23d)
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
