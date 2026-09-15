@@ -5133,6 +5133,24 @@ class PlexSim:
             # A real PMS answers with a bare container and the full setting
             # list for the library's type.
             settings = self.section_settings(section_id, section, settings)
+            if query.get("X-Plex-Platform") == "Samsung":
+                # Cycle 25, measured on kids and zen over both library types: this
+                # platform string -- that exact spelling; the header is normalised into
+                # `query` before a handler sees it, as `/media/providers`' Roku rule
+                # already relies on -- appends a
+                # twentieth HIDDEN setting to an EXISTING library's prefs and changes
+                # nothing else. `samsung`, `SAMSUNG`, `Tizen`, `Samsung TV` and 27 other
+                # platform values answer the plain list, and the Add Library form's own
+                # list is unchanged under the same header, so the rule belongs to this
+                # leaf alone. It is the second platform-keyed reshape on the surface
+                # after `Roku` on `/media/providers`, which is what makes the two a
+                # family rather than one quirk. `hidden="1"`, so no settings pane draws
+                # it -- what a Samsung client does with a row it cannot find is not
+                # something the server side can show.
+                settings = settings + [{
+                    "id": "includeInGlobal", "label": "", "summary": "", "type": "bool",
+                    "default": "true", "value": "true", "hidden": "1", "advanced": "0",
+                    "group": ""}]
             return self.bare_container(size=len(settings), Setting=settings)
 
         # -- listings ------------------------------------------------------
