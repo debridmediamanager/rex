@@ -1210,6 +1210,18 @@ def _drop_empty(value):
     return value
 
 
+def _include_int(value):
+    """An `include*` option's value, for the four that parse it as an integer.
+
+    Cycle 22, measured on zen and kids: `includeExtras`, `includeRelated`,
+    `includeChildren` and `includeOnDeck` strip leading zeros -- `01` and `001`
+    turn them on -- while `2`, `true`, `+1` and `1.0` do not, and
+    `includePreferences` compares the string and takes `1` alone. plexsim tested
+    `== "1"` for all five, so the zero-padded form silently dropped the block.
+    """
+    return str(value or "").isdigit() and int(value) == 1
+
+
 def _drop_private(node):
     """Every key beginning with `_` is internal and must never reach a client.
 
@@ -2500,10 +2512,10 @@ class PlexSim:
         """
         leaves = self.catalog.leaves(row["ratingKey"])
 
-        if query.get("includeExtras") == "1":
+        if _include_int(query.get("includeExtras")):
             detail["Extras"] = {"size": 0}
 
-        if query.get("includeOnDeck") == "1":
+        if _include_int(query.get("includeOnDeck")):
             # First episode with no view offset, else the first episode.
             unwatched = [l for l in leaves if not l.get("viewOffset") and not l.get("viewCount")]
             pick = (unwatched or leaves or [None])[0]
@@ -2573,7 +2585,7 @@ class PlexSim:
         a valid detail document that simply lacks the block the client asked for,
         so the page renders with a section missing rather than with an error.
         """
-        if query.get("includeChildren") == "1" and row.get("type") == "show":
+        if _include_int(query.get("includeChildren")) and row.get("type") == "show":
             # A show gains its seasons INLINE, as a `Children` block with its own
             # size -- not a second request to /children.
             #
@@ -2593,7 +2605,7 @@ class PlexSim:
                             if not key.startswith("librarySection")}
                            for child in children]
                 detail["Children"] = {"size": len(inlined), "Metadata": inlined}
-        if query.get("includeRelated") == "1":
+        if _include_int(query.get("includeRelated")):
             # Measured on the reference: the item's related hubs as
             # `{"Hub": [...]}`, and an empty OBJECT -- not an absent block -- for an
             # item with none. plexsim always sent the empty object, even where the
@@ -7778,7 +7790,7 @@ class PlexSim:
                 detail = (self.show_detail(row, detail, query)
                           if row["type"] == "show"
                           else self.parent_detail(row, detail, query))
-            elif query.get("includeExtras") == "1":
+            elif _include_int(query.get("includeExtras")):
                 # Measured: an episode and a movie carry the Extras block too.
                 detail["Extras"] = {"size": 0}
             if row.get("type") == "movie":
