@@ -700,7 +700,15 @@ class Library:
         items = list(pairs) if pairs is not None else list(params.items())
         items = [(k, v) for k, v in items
                  if not k.startswith(("X-Plex-", "include", "exclude"))
-                 and k not in ("_pairs", "id", "type")]
+                 and k not in ("_pairs", "id")
+                 # Cycle 22, measured on plexscratch: `type` is the SECTION path's
+                 # scoping parameter and nothing else there, but on the ITEM path a
+                 # bare `type=1` -- or `type=4`, or `type=abc` -- is a 200 that reads
+                 # no value and changes no row, exactly like every other name cycle 20
+                 # added to the lockable set. plexsim dropped it on BOTH paths, so a
+                 # form naming only `type` looked EMPTY on the item path and got the
+                 # 400 an empty form answers.
+                 and not (section and k == "type")]
         if section:
             # On the SECTION path a bare `field=value` is a FILTER that scopes the
             # edit, not a field to write -- measured: `?type=1&title=Sintel` edits

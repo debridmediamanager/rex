@@ -15951,6 +15951,31 @@ def main():
               for _names_c21j, state_c21j, year_c21j in order_c21j.values()),
           "%s" % {k_c21j: v_c21j[0][:24] for k_c21j, v_c21j in order_c21j.items()})
 
+
+    # Cycle 22, measured on plexscratch: a BARE `type=<v>` on the ITEM edit path is a 200.
+    # `type=1`, `type=4` and `type=abc` are all accepted, the value is not read and the
+    # row's own `type` never changes -- `type` is simply one of the lockable names cycle 20
+    # added, and a form naming only a lockable name is the accepted no-op every other one
+    # already was. plexsim stripped `type` from the edit form before the grammar ran,
+    # because on the SECTION path it is the scoping parameter, so on the item path a form
+    # that named only `type` looked empty and answered the 400 an empty form answers.
+    codes_c22a = {}
+    for label_c22a, query_c22a in (("type=1", "type=1"), ("type=4", "type=4"),
+                                   ("type=abc", "type=abc"),
+                                   ("type.locked=1", "type.locked=1"),
+                                   ("hdr=1 (the control)", "hdr=1")):
+        codes_c22a[label_c22a] = request(
+            base, "PUT", "/library/metadata/%s?%s" % (movie, query_c22a))[0]
+    _, after_c22a, _ = get(base, "/library/metadata/%s" % movie)
+    row_c22a = (after_c22a.get("Metadata") or [{}])[0]
+    # The SECTION path still reads it as the scope, so a bare `type=` there writes nothing.
+    section_c22a = request(base, "PUT", "/library/sections/%s/all?type=1" % movie_section)[0]
+    check("a bare type= on the item edit path is an accepted no-op",
+          set(codes_c22a.values()) == {200}
+          and row_c22a.get("type") == "movie"
+          and section_c22a == 200,
+          "%s | type still %r | section path %s"
+          % (codes_c22a, row_c22a.get("type"), section_c22a))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
