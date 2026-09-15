@@ -2368,6 +2368,55 @@ class PlexSim:
         self.library.finish_activity(activity)
         self.notify_timeline(show, self.TIMELINE_DONE, None)
 
+    def notify_show_unmatch_cascade(self, show):
+        """The 46 frames a SHOW's unmatch pushes. Cycle 25, measured on plexscratch.
+
+        It is NOT the show's refresh cascade: the activity progression is the MOVIE
+        unmatch's -- `Analyzing Media` at -1 and 25, then `Updating Metadata` at 25 and
+        50 -- where a refresh steps one `Updating Metadata` activity per season from the
+        start. Only after that opener does the subtitle start following the seasons.
+
+        The media pass is deliberately absent. On a freshly reset copy the same request
+        also analyses the leaves whose media has never been read, and on a copy that has
+        already run one it does not: cycle 15 recorded that pass as state-dependent work
+        on real files rather than as a rule, and both of this cycle's captures agree.
+        """
+        self.notify_timeline(show, 2, "matching")
+        self.notify_timeline(show, self.TIMELINE_QUEUED, "matching")
+        self.notify_timeline(show, self.TIMELINE_QUEUED, "queued")
+        activity = self.library.add_activity(self.frame_title(show), progress=-1)
+        for title, progress in (("Analyzing Media", -1), ("Analyzing Media", 25),
+                                ("Updating Metadata", 25), ("Updating Metadata", 50)):
+            activity["title"] = title
+            activity["progress"] = progress
+            self.library.notify_activity(activity, "updated")
+        self.notify_timeline(show, self.TIMELINE_QUEUED, "processing")
+        self.notify_timeline(show, self.TIMELINE_LOADING, "loading")
+        seasons = self.catalog.children(show["ratingKey"])
+        for number, season in enumerate(seasons, 1):
+            # The subtitle moves to the season at the progress the activity already
+            # carries, and the progress steps afterwards -- measured as the pairs
+            # (S01, 50), (S01, 95), (S02, 95), (S02, 100). The 95 is fitted to the
+            # copy's two-season show, the only one it holds, as `100 - 5 * seasons left`;
+            # the SHAPE of the pair is what was measured.
+            activity["subtitle"] = self.frame_title(season)
+            self.library.notify_activity(activity, "updated")
+            activity["progress"] = 100 - 5 * (len(seasons) - number)
+            self.library.notify_activity(activity, "updated")
+            self.notify_timeline(season, self.TIMELINE_DONE, "processing")
+            self.notify_timeline(season, self.TIMELINE_LOADING, "loading")
+            for episode in self.catalog.children(season["ratingKey"]):
+                self.notify_timeline(episode, self.TIMELINE_DONE, "processing")
+                self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+                self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
+                self.notify_timeline(episode, self.TIMELINE_DONE, None)
+            self.notify_timeline(season, self.TIMELINE_DONE, None)
+        # The `ended` frame keeps the LAST season's subtitle -- measured; it does not go
+        # back to the show's own title.
+        activity["progress"] = 100
+        self.library.end_activity_quietly(activity)
+        self.notify_timeline(show, self.TIMELINE_DONE, None)
+
     def notify_queue_regenerated(self):
         """The `backgroundProcessingQueue` frame that follows a queue-touching write.
 
@@ -2400,7 +2449,14 @@ class PlexSim:
             self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
             self.notify_timeline(episode, self.TIMELINE_LOADING, "loading")
             self.notify_timeline(episode, self.TIMELINE_DONE, None)
-        self.library.finish_activity(activity)
+        # Cycle 25: the docstring above has said since cycle 15 that there is no
+        # `activity updated` here, and the code called `finish_activity`, which inserts
+        # one -- nineteen frames where the reference pushes eighteen. Re-measured on
+        # plexscratch this cycle over a season unmatch: the activity is `started` at -1
+        # and `ended` at 100 and nothing between. Class C exactly: the rule was recorded
+        # right and implemented as the nearest helper to hand.
+        activity["progress"] = 100
+        self.library.end_activity_quietly(activity)
         self.notify_timeline(season, self.TIMELINE_DONE, None)
 
     def notify_edited(self, row, metadata_state="loading"):
@@ -10514,15 +10570,42 @@ class PlexSim:
                         row["ratingKey"], len(leaves))
         elif action == "unmatch":
             self.library.unmatch(row)
-            if row.get("type") in ("episode", "season"):
+            if row.get("type") == "episode":
                 # Measured: an unmatch pushes `matching` (state 2) and then the refresh it
-                # causes -- an episode straight to state 5, a season through the full
-                # refresh sequence.
+                # causes -- an episode straight to state 5.
                 self.notify_timeline(row, 2, "matching")
-                if row["type"] == "season":
-                    self.notify_refreshed(row)
-                else:
-                    self.notify_timeline(row, self.TIMELINE_DONE, None)
+                self.notify_timeline(row, self.TIMELINE_DONE, None)
+            elif row.get("type") == "season":
+                # Cycle 25, measured on plexscratch on an UNCONTENDED socket (cycle 23
+                # deferred this because its own hunt was running the butler on the same
+                # copy and put 30 stray activity frames through the listener). A SEASON's
+                # unmatch pushes ONE `matching` frame and then the SEASON cascade: 28
+                # frames in all, of which 9 are the state-dependent media pass this
+                # project records rather than emulates. plexsim sent the matching frame
+                # and then `notify_refreshed` -- the seven-frame EPISODE form -- so every
+                # episode under the season it had just unmatched was left holding its old
+                # title and guid, and the season's own activity named the wrong work.
+                #
+                # Note the opener: a season takes ONE `matching` frame where a movie and a
+                # show take the PAIR (`state 2` then `state 3`). That asymmetry is
+                # measured, not inferred; both were captured in the same run.
+                self.notify_timeline(row, 2, "matching")
+                self.notify_season_cascade(row)
+            elif row.get("type") == "show":
+                # Cycle 25, measured on the same uncontended socket, twice over (once with
+                # the show unmatched first on a freshly reset copy, once second): 46 frames
+                # where plexsim pushed NONE at all, so Fix Match on a show page changed
+                # nothing on screen and left every `!!metadataState` gate latched.
+                #
+                # The opener is the MOVIE's -- `state 2 matching`, `state 3 matching`,
+                # `state 3 queued` -- and so is the activity's, which steps through a
+                # second TITLE, `Analyzing Media`, before returning to `Updating Metadata`.
+                # After that the activity's SUBTITLE follows each season in turn (`Firefly
+                # S01`, `Firefly S02`), changing at the previous progress and then
+                # stepping. The whole tree is re-announced: each season `state 5
+                # processing` then `state 4 loading`, its episodes four frames each, the
+                # season's own `state 5`, and finally the show's.
+                self.notify_show_unmatch_cascade(row)
             elif row.get("type") == "movie":
                 # Cycle 23, measured on plexscratch twice over: a MOVIE's unmatch pushes
                 # TWELVE frames where plexsim pushed none. It opens on two `matching`
