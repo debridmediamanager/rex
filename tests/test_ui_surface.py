@@ -19979,6 +19979,43 @@ def main():
                  sorted({str(leaf_c29d.get("art")) for leaf_c29d in after_c29d}),
                  season_c29d.get("thumb"), season_c29d.get("parentThumb")))
 
+
+    # Cycle 29, measured on plexscratch: clearing a row's own `art` falls back to its
+    # ancestor's, exactly as clearing its `thumb` does (cycle 27). A season that owned an
+    # `art` reads back carrying the SHOW's path, its episodes' own `art` follows it there,
+    # and the bare `GET /library/metadata/{season}/art` is a 404 because the row no longer
+    # owns an image. plexsim left the field off the row, so the season page and every
+    # episode page under it drew no backdrop where a real PMS draws the show's.
+    season_c29c = (get(base, "/library/metadata/%s/children" % show)[1]
+                   .get("Metadata") or [{}])[0].get("ratingKey")
+    show_art_c29c = (get(base, "/library/metadata/%s" % show)[1]
+                     .get("Metadata") or [{}])[0].get("art")
+    leaves_c29c = ((get(base, "/library/metadata/%s/children" % season_c29c)[1]
+                    .get("Metadata") or []) if season_c29c else [])
+    if not leaves_c29c or not show_art_c29c:
+        skip("clearing a row's own art falls back to its ancestor's",
+             "season %s, show art %s" % (season_c29c, show_art_c29c))
+    else:
+        request(base, "POST", "/library/metadata/%s/arts" % season_c29c,
+                body=b"\x89PNG\r\n\x1a\n" + b"c29c-own" * 3)
+        owned_c29c = (get(base, "/library/metadata/%s" % season_c29c)[1]
+                      .get("Metadata") or [{}])[0].get("art")
+        request(base, "DELETE", "/library/metadata/%s/art" % season_c29c)
+        after_c29c = (get(base, "/library/metadata/%s" % season_c29c)[1]
+                      .get("Metadata") or [{}])[0]
+        kids_c29c = (get(base, "/library/metadata/%s/children" % season_c29c)[1]
+                     .get("Metadata") or [])
+        bare_c29c = request(base, "GET", "/library/metadata/%s/art" % season_c29c)[0]
+        check("clearing a row's own art falls back to its ancestor's",
+              str(owned_c29c or "").startswith("/library/metadata/%s/art/" % season_c29c)
+              and after_c29c.get("art") == show_art_c29c
+              and bool(kids_c29c)
+              and all(leaf_c29c.get("art") == show_art_c29c for leaf_c29c in kids_c29c)
+              and bare_c29c == 404,
+              "owned %s -> %s (show %s) | leaves %s | bare %s"
+              % (owned_c29c, after_c29c.get("art"), show_art_c29c,
+                 sorted({str(leaf_c29c.get("art")) for leaf_c29c in kids_c29c}), bare_c29c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
