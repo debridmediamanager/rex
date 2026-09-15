@@ -164,7 +164,15 @@ def split_key(key):
     else:
         name, operator = key, "="
     if any(character in name for character in "<>!="):
-        raise FilterError(400, "malformed filter key %r" % key)
+        # Cycle 22, measured on zen and kids: a key whose NAME still carries one of
+        # these after the suffix comes off -- `collection==`, `year>=`, `title!!` --
+        # is an UNKNOWN FIELD, not a refusal. A listing ignores it and answers every
+        # row, and `/query/parse` reports it verbatim as an `Error` of type `field`.
+        # The 400 this used to raise belongs to a DIFFERENT shape, which the pair
+        # parser still refuses: a pair with no `=` at all (`?year%3E2010`).
+        # Returning the whole key as the field name is what makes `field_type` answer
+        # None and both callers report it as unknown.
+        return key, "="
     return name, operator
 
 

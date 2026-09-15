@@ -15976,6 +15976,37 @@ def main():
           and section_c22a == 200,
           "%s | type still %r | section path %s"
           % (codes_c22a, row_c22a.get("type"), section_c22a))
+
+    # Cycle 22, measured on zen (3,887 movies) and kids (5): a filter key whose NAME still
+    # carries a comparison character after the operator suffix comes off -- `collection==`,
+    # `year>=`, `title!!` -- is an UNKNOWN FIELD, not a refusal. A listing ignores it and
+    # answers every row, exactly as a bogus name does, and `/query/parse` answers 200 with
+    # `Error: [{type: "field", value: "<the key verbatim>"}]`. plexsim raised a 400 from
+    # `split_key` on both surfaces. The pair with NO `=` at all (`?year%%3E2010`) is a
+    # different shape and stays the 400 cycle 11 measured, on all three servers.
+    _, all_c22b, _ = get(base, "/library/sections/%s/all?type=1" % movie_section)
+    total_c22b = len(all_c22b.get("Metadata") or [])
+    listing_c22b, parse_c22b = {}, {}
+    for label_c22b, key_c22b in (("collection==", "collection%%3D%%3D"),
+                                 ("year>=", "year%%3E%%3D"), ("title!!", "title%%21%%21"),
+                                 ("bogusfield", "bogusfield")):
+        status_c22b, doc_c22b, _ = get(
+            base, "/library/sections/%s/all?type=1&%s=zzzz" % (movie_section, key_c22b))
+        listing_c22b[label_c22b] = (status_c22b, len(doc_c22b.get("Metadata") or []))
+        raw_c22b = request(base, "GET", "/library/sections/%s/query/parse?type=1&%s=zzzz"
+                           % (movie_section, key_c22b))
+        parse_c22b[label_c22b] = (raw_c22b[0], b"Error" in raw_c22b[1])
+    # The pair with no `=` at all is still a 400.
+    nosep_c22b = request(base, "GET", "/library/sections/%s/all?type=1&year%%3E2010"
+                         % movie_section)[0]
+    check("a filter key that keeps a comparison character is an unknown field",
+          total_c22b > 0
+          and all(v_c22b == (200, total_c22b) for v_c22b in listing_c22b.values())
+          and all(v_c22b == (200, True) for k_c22b, v_c22b in parse_c22b.items()
+                  if k_c22b != "bogusfield")
+          and nosep_c22b == 400,
+          "listing %s | parse %s | no-separator %s"
+          % (listing_c22b, parse_c22b, nosep_c22b))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

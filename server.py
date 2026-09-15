@@ -4930,10 +4930,10 @@ class PlexSim:
                     # Measured: a TYPE-SCOPED filter (`show.title=`, `movie.year>>=`,
                     # even the asked type's own) is a 400 on this path, where an
                     # unscoped one scopes the edit. plexsim applied it and edited.
-                    try:
-                        field, _ = filters_module.split_key(name)
-                    except filters_module.FilterError as refused:
-                        return ("error", refused.status, "plexsim: %s" % refused.detail)
+                    # Cycle 22: `split_key` no longer raises -- a name that keeps a
+                    # comparison character is an unknown FIELD, and an unknown field
+                    # on this path is not a scoped one, so it falls through.
+                    field, _ = filters_module.split_key(name)
                     if filters_module.split_scope(field)[0]:
                         return ("error", 400, "plexsim: bad request")
                 if str(query.get("type")) == "18":
