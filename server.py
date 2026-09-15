@@ -2657,9 +2657,20 @@ class PlexSim:
         # and `1 ` are all 400. So the value must parse as a bare decimal whole number
         # -- no sign, no space, no point -- and be 0 or 1. A client sending a malformed
         # value got a row where a real PMS refuses the request.
-        raw_check = query.get("checkFiles")
-        if raw_check is not None and not (raw_check.isdigit() and int(raw_check) in (0, 1)):
-            raise filters_module.FilterError(400, "checkFiles %r" % raw_check)
+        #
+        # Cycle 22, measured over ten values on each of six options: FIVE more carry
+        # exactly this grammar -- `skipRefresh`, `asyncCheckFiles`,
+        # `asyncAugmentMetadata`, `asyncRefreshLocalMediaAgent` and
+        # `asyncRefreshAnalysis`. plexsim validated `checkFiles` alone and took
+        # anything for the other five. A 60-name sweep of the detail read found these
+        # six and no others: every `include*` name is a 200 for any value.
+        for option in ("checkFiles", "skipRefresh", "asyncCheckFiles",
+                       "asyncAugmentMetadata", "asyncRefreshLocalMediaAgent",
+                       "asyncRefreshAnalysis"):
+            raw_check = query.get(option)
+            if raw_check is not None and not (raw_check.isdigit()
+                                              and int(raw_check) in (0, 1)):
+                raise filters_module.FilterError(400, "%s %r" % (option, raw_check))
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
             # season three, all captured -- and the list is per TYPE, so serving
