@@ -9012,12 +9012,13 @@ class PlexSim:
         contentDirectoryID) adds `home.playlists`.
         """
         hubs = []
-        if query.get("excludeContinueWatching") != "1":
+        excluded = self.exclude_continue_watching(query)
+        if not excluded:
             hubs.append(self.home_hub(
                 "home.continue", "Continue Watching", "/hubs/home/continueWatching",
                 [_listing_row(r) for r in self.resuming()], query,
                 style="hero", promoted=True))
-        if not self.ondeck_shelf_hidden():
+        if not excluded and not self.ondeck_shelf_hidden():
             # Measured: this shelf is dropped here on the same terms as on `/hubs`.
             hubs.append(self.home_hub(
                 "home.ondeck", "On Deck", "/hubs/home/onDeck",
@@ -9207,6 +9208,21 @@ class PlexSim:
             full=True)]
 
     @staticmethod
+    def exclude_continue_watching(query):
+        """Whether `excludeContinueWatching=` drops the two resume shelves.
+
+        Cycle 28, measured on kids and zen over thirteen values: it is true exactly
+        when the value parses as the integer 1, so `1` and `01` drop the shelves and
+        `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do not. It
+        drops BOTH `home.continue` and `home.ondeck`, on `/hubs/promoted` and on the
+        bare `/hubs` alike, and no other `exclude<Name>=1` spelling does anything.
+        plexsim compared the raw string with `"1"` (so `01` missed), dropped only
+        `home.continue`, and ignored the parameter entirely on `/hubs`.
+        """
+        raw = str(query.get("excludeContinueWatching") or "")
+        return raw.isdigit() and int(raw) == 1
+
+    @staticmethod
     def content_directories(query):
         """The library ids `contentDirectoryID=` scopes a hub request to, or None.
 
@@ -9314,6 +9330,8 @@ class PlexSim:
                 for identifier, title, key, kind, style in self.GLOBAL_HUBS
                 if (not wanted or identifier in wanted)
                 and not (identifier == "home.ondeck" and hidden)
+                and not (identifier in ("home.continue", "home.ondeck")
+                         and self.exclude_continue_watching(query))
                 and not (identifier == "home.playlists" and directories is not None)]
         return self.hub_container(Hub=hubs)
 

@@ -19175,6 +19175,35 @@ def main():
                   for i_c28a in promoted_c28a),
           str(promoted_c28a))
 
+
+    # Cycle 28, measured on kids and zen over thirteen values: `excludeContinueWatching`
+    # is true exactly when the value parses as the integer 1 -- `1` and `01` drop the
+    # shelves, `0`, `00`, `2`, `10`, `1.5`, `true`, ` 1`, `abc` and an empty value do
+    # not -- and it drops BOTH `home.continue` and `home.ondeck`, on `/hubs/promoted`
+    # and on the bare `/hubs` alike. No other `exclude<Name>=1` spelling does anything.
+    # plexsim compared the raw string with `"1"`, so `01` missed; it dropped only
+    # `home.continue`; and it ignored the parameter on `/hubs` entirely.
+    def resume_shelves_c28b(path_c28b, value_c28b):
+        sep_c28b = "&" if "?" in path_c28b else "?"
+        full_c28b = path_c28b if value_c28b is None else (
+            "%s%sexcludeContinueWatching=%s" % (path_c28b, sep_c28b, quote(value_c28b)))
+        return {h_c28b.get("hubIdentifier") for h_c28b in
+                (get(base, full_c28b)[1].get("Hub") or [])
+                if h_c28b.get("hubIdentifier") in ("home.continue", "home.ondeck")}
+
+    drops_c28b = {}
+    for path_c28b in ("/hubs", "/hubs/promoted?contentDirectoryID=%s" % movie_section):
+        for value_c28b in ("1", "01", "0", "00", "2", "1.5", "true", "abc", ""):
+            drops_c28b[(path_c28b.split("?")[0], value_c28b)] = not resume_shelves_c28b(
+                path_c28b, value_c28b)
+    want_c28b = {("1", True), ("01", True), ("0", False), ("00", False), ("2", False),
+                 ("1.5", False), ("true", False), ("abc", False), ("", False)}
+    check("excludeContinueWatching drops both resume shelves for the integer 1 only",
+          all(drops_c28b[(p_c28b, v_c28b)] == want_v_c28b
+              for p_c28b in ("/hubs", "/hubs/promoted")
+              for v_c28b, want_v_c28b in want_c28b),
+          str({k_c28b: v_c28b for k_c28b, v_c28b in drops_c28b.items()}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
