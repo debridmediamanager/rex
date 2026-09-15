@@ -669,10 +669,19 @@ def main():
     tags = [t.get("tag") for t in row.get("Collection") or []]
     check("Add to Collection tags the row", is_empty_200(status, body)
           and "plexsim probe tag" in tags, ",".join(tags))
+    # Cycle 30, measured on BOTH writable references (plexscratch 1.43.4 and the new
+    # plexscratch42 1.42.2): the tag write makes a TAG and NOT a collection. It appears in
+    # the section's `/collection` AXIS -- and in both search endpoints -- while
+    # `/library/sections/{id}/collections` and `/library/all?type=18` gain nothing; only
+    # `POST /library/collections` makes an item. This check asserted the opposite since
+    # cycle 4, because plexsim materialised one.
     _, collections, _ = get(base, "/library/sections/%s/collections" % movie_section)
     names = [c.get("title") for c in collections.get("Metadata") or []]
-    check("the tagged collection appears in the section",
-          "plexsim probe tag" in names, ",".join(names))
+    _, axis, _ = get(base, "/library/sections/%s/collection" % movie_section)
+    axis_names = [d.get("title") for d in axis.get("Directory") or []]
+    check("the tagged collection is a TAG, not a collection",
+          "plexsim probe tag" in axis_names and "plexsim probe tag" not in names,
+          "axis %s | collections %s" % (",".join(axis_names), ",".join(names)))
     request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
                          % (movie, quote("plexsim probe tag")))
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
