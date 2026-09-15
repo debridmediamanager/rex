@@ -3825,12 +3825,21 @@ class PlexSim:
             # and ran the scan, so a malformed flag triggered a refresh.
             return ("error", 400, "plexsim: bad request")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
-                and segments[3] == "match" and method in ("GET", "DELETE"):
+                and segments[3] == "match":
             # Cycle 17, measured on plexscratch: `/match` answers EVERY verb with its
             # own no-parameters refusal -- a GET and a DELETE there are 400, not 404.
             # plexsim 404'd both, so the client's own "is this matchable?" read looked
             # like an endpoint that does not exist.
-            return ("error", 400, "plexsim: bad request")
+            #
+            # Cycle 25: "every verb" was recorded and implemented as two of them. Kids
+            # answers 400 to GET, HEAD, PUT, POST, DELETE, PATCH and a bare OPTIONS
+            # alike -- re-measured over all seven -- where plexsim still 404'd HEAD,
+            # PATCH and OPTIONS. Class C exactly: the rule in the comment above was
+            # right and the list beside it was a subset. The PUT and POST forms fall
+            # through to `item_action`, which carries the same refusal with its own
+            # parameter checks in front of it.
+            if method not in ("PUT", "POST"):
+                return ("error", 400, "plexsim: bad request")
         if segments[:1] == ["player"]:
             # Player commands go to a PLAYER, not to a server: a real PMS answers
             # 400 for every one of them. plexsim answered 200 with a container,
