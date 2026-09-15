@@ -4306,14 +4306,24 @@ class PlexSim:
                 #
                 # Single-witness by instrument: kids' On Deck is empty on every path, so
                 # only zen can show it. See HANDOVER 3.3.
-                # Cycle 28, re-measured against plexscratch (1.43.4) beside zen
-                # (1.42.2), and the two VERSIONS differ -- so this is the sixth
-                # per-version shape on the surface. zen keeps `librarySectionKey` on
-                # the On Deck row, as the detail row carries it; 1.43.4 drops the key
-                # AND `Guid`, `Rating` and `Producer`, and stamps `studio` instead.
-                # plexsim reports 1.42.2, so it follows zen -- and the absence cycle 21
-                # recorded was 1.43.4's answer read as though it were the rule.
+                # Cycle 28 read `librarySectionKey` off zen's one on-deck row and kept
+                # it here. Cycle 30 built the instrument that question needed -- a FRESH
+                # 1.42.2 copy, the build plexsim reports, writable and isolated
+                # (`plexscratch42`, HANDOVER 4) -- and it says otherwise: on a MOVIE and
+                # on an EPISODE alike this row carries `allowSync`, `librarySectionID`,
+                # `librarySectionTitle` and `librarySectionUUID` and **no
+                # `librarySectionKey`**, which is what plexscratch (1.43.4) and cycle
+                # 21's fun both said. Three instruments against zen's one, so zen is the
+                # outlier and cycle 21's absence was right; zen's own row is in HANDOVER
+                # 3.3 with the question still open.
+                #
+                # And the row is the detail row MINUS `Field`: the copy's movie carries
+                # `Field` on `/library/metadata/{id}` and none on any of the three On Deck
+                # paths, nor on `/hubs/home/continueWatching`. Cycle 28 could not see that
+                # half either, because zen's on-deck episode has no locked field at all.
                 entry = _listing_row(row)
+                entry.pop("Field", None)
+                entry.pop("librarySectionKey", None)
                 # Cycle 21, measured on zen's own on-deck row: this list's rows LEAD
                 # with `allowSync` and the librarySection triple, exactly as
                 # `/library/recentlyAdded`'s do -- and `allowSync` on the ROW is the
@@ -4647,10 +4657,17 @@ class PlexSim:
                         self.in_directories(self.resuming(), directories)]
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/onDeck":
+                # Cycle 30: this shelf drops `Field` too -- it KEEPS
+                # `librarySectionKey`, which is what separates it from
+                # `/library/onDeck`. See the copy's table in that handler.
                 directories = self.content_directories(query)
-                rows = [_listing_row(r) for r in
-                        self.in_directories(self.continue_watching(), directories)
-                        if r.get("type") == "episode"]
+                rows = []
+                for row in self.in_directories(self.continue_watching(), directories):
+                    if row.get("type") != "episode":
+                        continue
+                    entry = _listing_row(row)
+                    entry.pop("Field", None)
+                    rows.append(entry)
                 return self.hub_container(size=len(rows), Metadata=rows)
             if route == "/hubs/home/recentlyAdded":
                 # Measured: this endpoint keys on `type`, NOT on `sectionID` --
@@ -6566,8 +6583,16 @@ class PlexSim:
                 rows = [r for r in self.continue_watching()
                         if str(r.get("librarySectionID")) == str(section_id)
                         and r.get("type") == kind]
+                # Cycle 30: the same two removals as `/library/onDeck` -- the copy's
+                # section leaf carries neither `Field` nor `librarySectionKey` on the row.
+                full_rows = []
+                for row in rows:
+                    entry = _listing_row(row)
+                    entry.pop("Field", None)
+                    entry.pop("librarySectionKey", None)
+                    full_rows.append(entry)
                 return self.listing_container(
-                    section_id, section, [_listing_row(r) for r in rows],
+                    section_id, section, full_rows,
                     view_group=view_group, query=query, full_rows=True, **extra)
             elif leaf == "recentlyViewed":
                 rows = sorted([r for r in rows if r.get("lastViewedAt")],
