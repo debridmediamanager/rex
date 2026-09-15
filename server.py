@@ -2002,6 +2002,10 @@ KNOWN_LANGUAGES = _known_languages()
 
 
 class PlexSim:
+    # Cycle 30: one seed per (random shelf, `count=`), minted on first use and held for
+    # the life of the process -- see `shelf()`.
+    shelf_seeds = {}
+
     def __init__(self, catalog, resolver, *, part_mode="proxy", public_url=None,
                  owner_username="plexsim", claim=None, web_root=None,
                  assert_claimed=False, owner_email=None, tmdb=None, token=None):
@@ -9792,7 +9796,27 @@ class PlexSim:
             # titles for ever. Its own catalog is too small for that to be visible --
             # a sample of a two-row set is the set -- which is why the rule is zen's.
             if extra.get("random") and len(rows) > 1:
-                rows = random.sample(list(rows), len(rows))
+                # Cycle 30, measured on zen over 21 reads 20 s apart across 7 minutes:
+                # the sample is STABLE. `movie.topunwatched.1` answered the identical 40
+                # ratingKeys every time, and so did `tv.startwatching.2` and
+                # `tv.toprated.2`; a request carrying a different client identifier gets
+                # the same sample, so it is server-wide and not per client. And it is
+                # held per (shelf, `count=`): the same shelf at `count=12` answers its own
+                # stable set, which is NOT the head of the `count=40` one.
+                #
+                # Cycle 28 measured the sampling and implemented it as a fresh
+                # `random.sample` per request, so "Top Unwatched" re-ordered on every
+                # navigation back to the tab -- the same complaint from the other side.
+                # What makes a real PMS REDRAW a sample is not measured (a TTL, a
+                # restart, a write to the set); the seed here is minted once per
+                # (shelf, count) and held for the life of the process, which reproduces
+                # everything that was measured and invents no expiry.
+                seed_key = (identifier, str(count))
+                seed = self.shelf_seeds.get(seed_key)
+                if seed is None:
+                    seed = self.shelf_seeds[seed_key] = random.random()
+                shuffler = random.Random(seed)
+                rows = shuffler.sample(list(rows), len(rows))
             built = self.hub(identifier, shelf_title, [_listing_row(r) for r in rows],
                              count=count, type=kind, key=key, context=context,
                              style="shelf", **extra)

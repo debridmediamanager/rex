@@ -20618,6 +20618,48 @@ def main():
           and all(value_c30d is False for value_c30d in resume_c30d.values()),
           "detail %s | %s" % (detail_c30d, resume_c30d))
 
+
+    # Cycle 30, measured on zen over 21 reads 20 s apart across 7 minutes: a `random="1"`
+    # shelf's sample is STABLE. `movie.topunwatched.1` answered the identical 40
+    # ratingKeys every time (and `tv.startwatching.2` and `tv.toprated.2` with it), a
+    # different client identifier gets the same sample, and the same shelf at `count=12`
+    # answers its own stable set which is not the head of the `count=40` one -- so the
+    # sample is held per (shelf, count) and is server-wide. Cycle 28 measured the sampling
+    # and implemented it as a fresh `random.sample` per request, which re-ordered "Top
+    # Unwatched" on every navigation back to the library tab.
+    for key_c30e in [r_c30e.get("ratingKey") for r_c30e in
+                     (get(base, "/library/sections/%s/all" % movie_section)[1]
+                      .get("Metadata") or [])]:
+        request(base, "PUT", "/library/metadata/%s?audienceRating.value=8.5" % key_c30e)
+        request(base, "GET", "/:/unscrobble?key=%s"
+                             "&identifier=com.plexapp.plugins.library" % key_c30e)
+
+    def shelf_c30e(count_c30e, attempt_c30e):
+        hub_c30e = next(
+            (h_c30e for h_c30e in
+             (get(base, "/hubs/sections/%s?count=%s&q=%d"
+                  % (movie_section, count_c30e, attempt_c30e))[1].get("Hub") or [])
+             if "topunwatched" in (h_c30e.get("hubIdentifier") or "")), None)
+        if hub_c30e is None:
+            return None
+        return (hub_c30e.get("random"),
+                tuple(r_c30e.get("ratingKey")
+                      for r_c30e in (hub_c30e.get("Metadata") or [])))
+
+    reads_c30e = [shelf_c30e(40, attempt_c30e) for attempt_c30e in range(8)]
+    if not reads_c30e[0] or len(reads_c30e[0][1]) < 2:
+        skip("a random shelf's sample is stable",
+             "the shelf has %s row(s)" % (reads_c30e[0] and len(reads_c30e[0][1])))
+    else:
+        orders_c30e = {read_c30e[1] for read_c30e in reads_c30e if read_c30e}
+        narrow_c30e = shelf_c30e(1, 99)
+        check("a random shelf's sample is stable, and is held per count",
+              bool(reads_c30e[0][0]) and len(orders_c30e) == 1
+              and narrow_c30e is not None and len(narrow_c30e[1]) == 1,
+              "%d distinct order(s) over %d reads of %d rows; count=1 gave %s"
+              % (len(orders_c30e), len(reads_c30e), len(reads_c30e[0][1]),
+                 narrow_c30e and narrow_c30e[1]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
