@@ -16654,6 +16654,27 @@ def main():
                              "parentRatingKey", "parentTitle", "ratingKey")
                             if k_c23g in xml_keys_c23g],
           "XML %s | JSON %s" % (xml_keys_c23g[:8], json_keys_c23g[:8]))
+
+    # Cycle 23, measured on plexscratch over 138 path templates x 7 verbs: three more
+    # read-only routes answer 404 to every verb but GET and HEAD -- `/hubs/home/
+    # recentlyAdded`, `/hubs/sections/{id}` and `/library/metadata/{id}/children` -- where
+    # plexsim answered each one's own GET to POST, PUT, PATCH, DELETE and a bare OPTIONS.
+    # Cycle 19 recorded the rule and these three never had it applied. It is fix 4's
+    # failure mode from the other side: a client reading a 200 from
+    # `DELETE /hubs/sections/1` is told the write was accepted.
+    codes_c23h = {}
+    for verb_c23h in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
+        for label_c23h, path_c23h in (
+                ("home recentlyAdded", "/hubs/home/recentlyAdded"),
+                ("section hubs", "/hubs/sections/%s" % movie_section),
+                ("children", "/library/metadata/%s/children" % (show or movie))):
+            codes_c23h[(verb_c23h, label_c23h)] = request(base, verb_c23h, path_c23h)[0]
+    reads_c23h = {p_c23h: get(base, p_c23h)[0] for p_c23h in
+                  ("/hubs/home/recentlyAdded", "/hubs/sections/%s" % movie_section)}
+    check("three more read-only routes refuse every other verb",
+          set(codes_c23h.values()) == {404}
+          and set(reads_c23h.values()) == {200},
+          "%s | GETs %s" % (sorted(set(codes_c23h.values())), reads_c23h))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

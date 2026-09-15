@@ -3225,6 +3225,18 @@ class PlexSim:
                 and (method, route) not in SINGLE_SEGMENT_WRITERS):
             return self.bare_container(**plugin_container(route))
 
+        # Cycle 23, measured on plexscratch over 138 path templates x 7 verbs: three
+        # more read-only routes answer 404 to every verb but GET and HEAD, where
+        # plexsim answered each one's own GET to all five others. Cycle 19 recorded the
+        # rule; these three never had it applied, so a client reading a 200 from
+        # `DELETE /hubs/sections/1` was told the write was accepted.
+        if method not in ("GET", "HEAD") and (
+                route == "/hubs/home/recentlyAdded"
+                or (segments[:2] == ["hubs", "sections"] and len(segments) == 3)
+                or (segments[:2] == ["library", "metadata"] and len(segments) == 4
+                    and segments[3] == "children")):
+            return ("error", 404, "plexsim: not found")
+
         # Measured: an id of 2^31 or more is a 400 on the families that parse theirs
         # as a 32-bit integer, where metadata and sections answer 404; and a play
         # queue id that is not a number at all is a 400.
