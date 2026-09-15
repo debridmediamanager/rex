@@ -19225,6 +19225,33 @@ def main():
           str({k_c28c: v_c28c for k_c28c, v_c28c in cw_c28c.items()
                if v_c28c != (404 if k_c28c[1] in refused_c28c else 200)}) or "all agree")
 
+
+    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2), identically: `/clients/
+    # profiles` is the server's CLIENT PROFILE catalogue, not the hosted-client list --
+    # one `Profile` row per file in its `Resources/Profiles` directory, the same 78
+    # names plexsim already holds for `Player.profile`. The bare form and `type=0`/`00`
+    # answer all 78; `type=42` (`LOCAL` in the client's own enum) and `042` answer
+    # SEVEN; every other value, an empty one included, is a 400. plexsim answered an
+    # empty container to all of them.
+    profiles_c28d = {}
+    for value_c28d in (None, "0", "00", "42", "042", "1", "43", "-1", "abc", ""):
+        path_c28d = "/clients/profiles" + (
+            "" if value_c28d is None else "?type=%s" % quote(value_c28d))
+        status_c28d, body_c28d, _h = request(base, "GET", path_c28d, want_json=False)
+        profiles_c28d[value_c28d] = (
+            status_c28d,
+            body_c28d.decode("utf-8", "replace").count("<Profile") if status_c28d == 200
+            else None)
+    check("/clients/profiles is the profile catalogue, with a validated type",
+          profiles_c28d[None][1] and profiles_c28d[None][1] > 70
+          and profiles_c28d["0"] == profiles_c28d[None]
+          and profiles_c28d["00"] == profiles_c28d[None]
+          and profiles_c28d["42"][1] == 7 and profiles_c28d["042"][1] == 7
+          and all(profiles_c28d[bad_c28d][0] == 400
+                  for bad_c28d in ("1", "43", "-1", "abc", ""))
+          and request(base, "GET", "/clients/profiles/zzz")[0] == 404,
+          str(profiles_c28d))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
