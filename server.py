@@ -3620,6 +3620,15 @@ class PlexSim:
             return self.bare_container(size=0)
 
         if segments[:1] == ["statistics"]:
+            if len(segments) > 2:
+                # Cycle 26, measured on kids and zen: an extra segment after the leaf is
+                # a 404 -- `/statistics/bandwidth/zzz`, `/statistics/media/zzz` and
+                # `/statistics/resources/zzz` all refuse. plexsim read `segments[1]` and
+                # ignored everything after it, so `/statistics/bandwidth/zzz` answered
+                # the whole series. A 200 tells a client the endpoint exists, which is
+                # fix 4's failure mode and the same shape cycle 25 found behind
+                # `/library/sections/{id}/recentlyReleased`.
+                return ("error", 404, "plexsim: not found")
             if len(segments) == 1:
                 # Cycle 18: the BARE path is the plug-in dispatcher's empty 200 on both
                 # references, not the 404 the unknown-leaf branch answered.
@@ -3701,7 +3710,15 @@ class PlexSim:
             return ("empty", 200)
         if route == "/status/sessions/background":
             return self.bare_container(size=0)
-        if route.startswith("/status/sessions"):
+        # Cycle 26, measured on kids and zen: this is not a PREFIX. Six paths plexsim
+        # answered 200 -- `/status/sessionsfoo`, `/status/sessions/zzz`,
+        # `/status/sessions/1`, `/status/sessions/background/zzz`,
+        # `/status/sessions/history/all/zzz` and `/status/sessions/history/all/1/2` --
+        # are 404s on both references, and `startswith` matched every one of them. A 200
+        # reads to a client as "this endpoint exists and is empty", which is fix 4's trap
+        # from the other side. `terminate`, `background` and the whole `history` family
+        # are routed above this line, so an exact match is all that reaches here.
+        if route == "/status/sessions":
             if method in ("POST", "PUT", "DELETE"):
                 # Measured: all three are 404 here. plexsim answered the session
                 # listing to any verb.
