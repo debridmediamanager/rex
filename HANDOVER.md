@@ -95,7 +95,7 @@ Coverage, measured from the repository rather than asserted:
 | 24 | 1,307 (+2 in `test_mediainfo`, 27 -> 29) | 14,497 | **6** (no hunts -- the fully measured half of cycles 21-23's held-out backlog, re-derived from the corpora; 1 reported difference re-measured and refuted) |
 | 25 | 1375 (+2 in `test_mediainfo`, 29 -> 31) | 14,852 | **21** (of 13 reported across two hunts plus 6 the driver found and 1 regression it caught in its own patch; 1 hunter negative refuted on re-measurement and re-confirmed, 3 recorded rules overturned, 2 cycle-23 butler claims refuted) |
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
-| 27 | 1454 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
+| 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 
 Read that curve honestly. Cycles 1–4 closed the functional gap; everything since is fidelity
 work. **The ceiling has been the instrument, not the effort**: every time the
@@ -165,6 +165,16 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 27, run 2026-09-15 against the merged tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle: no `mediainfo` finding |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1451 PASS / 0 FAIL / 10 skipped** | ~25 minutes, most of it the butler's per-task listener waits and the cycle-26 session-TTL sleep |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | run each against its OWN server, and **never two suites at once** -- see section 10 |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline, and cycle 27 settled what the nine are: all of them the fixture's dead Real-Debrid links, none a plexapi limitation and none a server difference |
+| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
 
 Suite results at the head of cycle 26, run 2026-09-15 against the merged tree:
 
