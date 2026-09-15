@@ -15711,8 +15711,13 @@ class Handler(BaseHTTPRequestHandler):
     # Python's guesses in three places -- `.js` is `text/javascript` rather than
     # `application/javascript`, `.html` carries NO charset, and `.ico` is
     # `application/octet-stream` rather than `image/x-icon`.
+    # Cycle 29 adds the two font types, measured over the six `.woff`/`.woff2` files of
+    # kids' bundle and the four of zen's: both are `application/octet-stream`, like the
+    # `.ico` already here, where Python's map answers `font/woff`.
     WEB_TYPES = {".js": "text/javascript", ".mjs": "text/javascript",
-                 ".html": "text/html", ".ico": "application/octet-stream"}
+                 ".html": "text/html", ".ico": "application/octet-stream",
+                 ".woff": "application/octet-stream",
+                 ".woff2": "application/octet-stream"}
 
     STATIC_TYPES = {
         ".html": "text/html;charset=utf-8",
@@ -15796,13 +15801,25 @@ class Handler(BaseHTTPRequestHandler):
 
         # Resolve and confine: a path that escapes the root is refused rather
         # than served, so a traversal cannot read the rest of the filesystem.
+        # Cycle 29, measured on kids and zen: a request that escapes the root is a
+        # **400** on both -- `/web/../identity` and `/web/%2e%2e/identity` alike -- where
+        # plexsim answered 403, a status that appears nowhere else on the surface.
         target = os.path.realpath(os.path.join(root, relative))
         if not target.startswith(os.path.realpath(root) + os.sep):
-            self._send(403, "text/plain", b"plexsim: outside the web root")
+            self._send(400, "text/plain", b"plexsim: bad request")
             return
+        # Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
+        # references -- `/web/js`, `/web/js/` and `/web/static/` each answer
+        # `Content-Length: 0` -- and never the index page. plexsim substituted
+        # `index.html`, so every directory under the bundle served the whole client.
         if os.path.isdir(target):
-            target = os.path.join(target, "index.html")
-        if not os.path.isfile(target):
+            self._send(200, "application/octet-stream", b"",
+                       [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
+                        ("Content-Encoding", None)])
+            return
+        # Cycle 29: a trailing slash after a FILE is a 404 on both references, where
+        # plexsim's `realpath` collapsed it and served the file.
+        if relative.endswith("/") or not os.path.isfile(target):
             self._send(404, "text/plain", b"plexsim: not found")
             return
 

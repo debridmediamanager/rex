@@ -20235,6 +20235,71 @@ def main():
           "item %s | composite %s | resource %s"
           % (item_c29m, composite_c29m, resource_c29m))
 
+
+    # Cycle 29, measured on kids and zen: under `/web/*` a DIRECTORY is an empty
+    # `application/octet-stream` 200 (`Content-Length: 0`, never the index page), a
+    # trailing slash after a file is a 404, a path that escapes the root is a **400** (not
+    # the 403 plexsim invented, a status that is nowhere else on the surface), and
+    # `.woff`/`.woff2` are `application/octet-stream` like `.ico`. plexsim substituted
+    # `index.html` for a directory -- so every directory under the bundle served the whole
+    # client -- and served a file with a trailing slash.
+    #
+    # It needs `--web-root`, so it starts its own instance the way cycle 16's asset check
+    # does, on its own port.
+    import subprocess as subprocess_c29l
+    import sys as sys_c29l
+    import tempfile as tempfile_c29l
+    root_c29l = tempfile_c29l.mkdtemp(prefix="plexsim-c29l-")
+    os.makedirs(os.path.join(root_c29l, "js"))
+    open(os.path.join(root_c29l, "index.html"), "w").write("<html>c29l")
+    open(os.path.join(root_c29l, "js", "app.js"), "w").write("var a=1;")
+    open(os.path.join(root_c29l, "f.woff2"), "wb").write(b"wOF2" + b"fake-font")
+    # The suite's own file locates the tree: `__file__` is not in the namespace a
+    # patch's check block is exec'd in (the proof driver builds it from the module's
+    # public names), so the module is found by its basename instead.
+    tree_c29l = next(
+        os.path.dirname(os.path.dirname(os.path.abspath(argument_c29l)))
+        for argument_c29l in sys_c29l.argv
+        if argument_c29l.endswith("test_ui_surface.py"))
+    port_c29l = 32597
+    server_c29l = subprocess_c29l.Popen(
+        [sys_c29l.executable, "server.py", "--port", str(port_c29l),
+         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
+         "--web-root", root_c29l],
+        cwd=tree_c29l,
+        env=dict(os.environ, RD_TOKEN="dummy"),
+        stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)
+    try:
+        for _attempt_c29l in range(40):
+            try:
+                urllib.request.urlopen("http://127.0.0.1:%d/identity" % port_c29l,
+                                       timeout=2).read()
+                break
+            except Exception:
+                time.sleep(0.25)
+        web_base_c29l = "http://127.0.0.1:%d" % port_c29l
+
+        def web_c29l(path_c29l):
+            status_c29l, body_c29l, headers_c29l = request(
+                web_base_c29l, "GET", path_c29l, want_json=False)
+            return status_c29l, headers_c29l.get("Content-Type"), len(body_c29l)
+
+        seen_c29l = {path_c29l: web_c29l(path_c29l) for path_c29l in
+                     ("/web/index.html", "/web/js", "/web/js/", "/web/index.html/",
+                      "/web/../identity", "/web/f.woff2", "/web/zzz.js")}
+    finally:
+        server_c29l.terminate()
+        server_c29l.wait(timeout=10)
+    check("the /web/* path shapes, and a font is an octet-stream",
+          seen_c29l["/web/index.html"] == (200, "text/html", 10)
+          and seen_c29l["/web/js"] == (200, "application/octet-stream", 0)
+          and seen_c29l["/web/js/"] == (200, "application/octet-stream", 0)
+          and seen_c29l["/web/index.html/"][0] == 404
+          and seen_c29l["/web/../identity"][0] == 400
+          and seen_c29l["/web/f.woff2"][:2] == (200, "application/octet-stream")
+          and seen_c29l["/web/zzz.js"][0] == 404,
+          "%s" % seen_c29l)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
