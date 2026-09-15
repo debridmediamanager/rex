@@ -19943,6 +19943,42 @@ def main():
               % (after_c29f.get("art"), borrowed_c29f, after_c29f.get("thumb"),
                  after_c29f.get("parentThumb")))
 
+
+    # Cycle 29: `catalog.items` is keyed by INTEGER ratingKey and every row carries its
+    # key as a STRING, so the cascade's `items.get(row["parentRatingKey"])` was always
+    # None. A SEASON cascade therefore could not see its show, read the season as owning
+    # no `art`, and STRIPPED `art` from every episode under it -- measured here by
+    # clearing a season's own poster, which is a cascade that touches no artwork of its
+    # own. On the copy those episodes keep the show's `art` throughout; only their
+    # `parentThumb` goes, because a season that borrows its poster hands none down
+    # (cycle 27).
+    seasons_c29d = [r_c29d.get("ratingKey") for r_c29d in
+                    (get(base, "/library/metadata/%s/children" % show)[1]
+                     .get("Metadata") or [])]
+    target_c29d = seasons_c29d[1] if len(seasons_c29d) > 1 else None
+    show_art_c29d = (get(base, "/library/metadata/%s" % show)[1]
+                     .get("Metadata") or [{}])[0].get("art")
+    before_c29d = ((get(base, "/library/metadata/%s/children" % target_c29d)[1]
+                    .get("Metadata") or []) if target_c29d else [])
+    if not before_c29d or not show_art_c29d:
+        skip("a season cascade keeps its episodes' inherited art",
+             "season %s, show art %s" % (target_c29d, show_art_c29d))
+    else:
+        request(base, "DELETE", "/library/metadata/%s/thumb" % target_c29d)
+        season_c29d = (get(base, "/library/metadata/%s" % target_c29d)[1]
+                       .get("Metadata") or [{}])[0]
+        after_c29d = (get(base, "/library/metadata/%s/children" % target_c29d)[1]
+                      .get("Metadata") or [])
+        check("a season cascade keeps its episodes' inherited art",
+              bool(after_c29d)
+              and all(leaf_c29d.get("art") == show_art_c29d for leaf_c29d in after_c29d)
+              and all("parentThumb" not in leaf_c29d for leaf_c29d in after_c29d)
+              and season_c29d.get("thumb") == season_c29d.get("parentThumb"),
+              "show art %s | leaves %s | season thumb %s vs parentThumb %s"
+              % (show_art_c29d,
+                 sorted({str(leaf_c29d.get("art")) for leaf_c29d in after_c29d}),
+                 season_c29d.get("thumb"), season_c29d.get("parentThumb")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

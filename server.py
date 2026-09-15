@@ -11994,6 +11994,19 @@ class PlexSim:
         return str(row.get("thumb") or "").startswith(
             "/library/metadata/%s/" % row.get("ratingKey"))
 
+    def parent_row(self, row, field="parentRatingKey"):
+        """The row a `parentRatingKey`/`grandparentRatingKey` names, or None.
+
+        `catalog.items` is keyed by INTEGER ratingKey and every row carries the key as a
+        STRING, so `items.get(row["parentRatingKey"])` is always None -- which is how
+        cycle 29's first cascade patch shipped a season cascade that could find no show
+        and therefore treated every season as owning nothing. Every other lookup in this
+        file spells the `int()` out; this is the one place that has to do it for two
+        different keys, so it gets a name.
+        """
+        key = row.get(field)
+        return self.catalog.items.get(int(key)) if str(key or "").isdigit() else None
+
     @staticmethod
     def _owns(row, field):
         """Whether this row's copy of `field` is its OWN rather than one it borrows.
@@ -12086,8 +12099,7 @@ class PlexSim:
         kind = row.get("type")
         if kind not in ("show", "season"):
             return
-        show = (row if kind == "show"
-                else self.catalog.items.get(row.get("parentRatingKey")))
+        show = row if kind == "show" else self.parent_row(row)
         for child in self.catalog.children(row["ratingKey"]):
             if kind == "show":
                 if row.get("thumb") is None:
