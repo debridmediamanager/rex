@@ -20706,6 +20706,38 @@ def main():
           "pair %s | identity %s | type=abc %s | 404 %s"
           % (pair_c30f, identity_c30f, other_c30f, missing_c30f))
 
+
+    # Cycle 30, measured on BOTH writable references -- plexscratch (1.43.4) and the new
+    # plexscratch42 (1.42.2), which agree: a `collection[0].tag.tag=` write on the section
+    # path makes a TAG and not a collection. The tag appears on the row and in
+    # `/library/sections/{id}/collection`, it filters, and both search endpoints find it as
+    # a `tagType: 2` row with a `count` and **no `guid`** -- while `/library/all?type=18`
+    # and `/library/sections/{id}/collections` list nothing new, twenty minutes later and
+    # after a refresh. Only `POST /library/collections` makes an item, and that row's
+    # search hit DOES carry a guid. plexsim materialised a browsable collection from the
+    # tag write, so "Add to Collection" created a row in the Collections tab that no real
+    # PMS has.
+    before_c30g = len(get(base, "/library/all?type=18")[1].get("Metadata") or [])
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                         "&collection%%5B0%%5D.tag.tag=C30TAGONLY" % (movie_section, movie))
+    after_c30g = [r_c30g.get("title") for r_c30g in
+                  (get(base, "/library/all?type=18")[1].get("Metadata") or [])]
+    axis_c30g = [d_c30g.get("title") for d_c30g in
+                 (get(base, "/library/sections/%s/collection" % movie_section)[1]
+                  .get("Directory") or [])]
+    hit_c30g = next((r_c30g["Directory"] for r_c30g in
+                     (get(base, "/library/search?query=c30tagonly&limit=20")[1]
+                      .get("SearchResult") or []) if r_c30g.get("Directory")), None)
+    filtered_c30g = (get(base, hit_c30g.get("key"))[1] if hit_c30g else {})
+    check("a collection tag write makes a tag, not a collection",
+          "C30TAGONLY" in axis_c30g
+          and len(after_c30g) == before_c30g and "C30TAGONLY" not in after_c30g
+          and hit_c30g is not None and hit_c30g.get("tagType") == 2
+          and hit_c30g.get("count") == 1 and "guid" not in hit_c30g
+          and (filtered_c30g.get("totalSize") or filtered_c30g.get("size")) == 1,
+          "axis %s | collections %s (was %d) | hit %s"
+          % (axis_c30g, after_c30g, before_c30g, hit_c30g))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
