@@ -16876,6 +16876,50 @@ def main():
           prefs_c25f["en"] and prefs_c25f["en"] != prefs_c25f["de"],
           "en=%s de=%s" % (prefs_c25f["en"][:2], prefs_c25f["de"][:2]))
 
+
+    # Cycle 25, measured on kids and zen, both library types: `X-Plex-Platform: Samsung`
+    # -- that exact spelling, header or query; `samsung`, `Tizen`, `Samsung TV` and 27
+    # other platform strings change nothing -- appends a hidden `includeInGlobal` row to
+    # an existing library's `/prefs`. The second platform-keyed reshape on the surface,
+    # after `Roku` on `/media/providers`, and it reaches this leaf only: the Add Library
+    # form's list is unchanged under the same header.
+    def prefs_ids_c25g(path_c25g, platform_c25g=None, in_query_c25g=False):
+        # The suite's own client always sends `X-Plex-Platform: Chrome`, and the HEADER
+        # beats the query on a real PMS (re-measured on kids: header Chrome + query
+        # Samsung answers the plain list, header Samsung + query Chrome answers the
+        # extra row), so this builds its own request rather than using `request`.
+        if platform_c25g and in_query_c25g:
+            joiner_c25g = "&" if "?" in path_c25g else "?"
+            path_c25g += joiner_c25g + "X-Plex-Platform=" + quote(platform_c25g)
+        head_c25g = {"User-Agent": UA, "Accept": "application/json"}
+        if platform_c25g and not in_query_c25g:
+            head_c25g["X-Plex-Platform"] = platform_c25g
+        request_c25g = urllib.request.Request(base.rstrip("/") + path_c25g,
+                                              headers=head_c25g, method="GET")
+        with urllib.request.urlopen(request_c25g, timeout=30) as response_c25g:
+            body_c25g = json.loads(response_c25g.read() or b"{}").get("MediaContainer", {})
+        return [row_c25g.get("id") for row_c25g in body_c25g.get("Setting") or []]
+
+    plain_c25g = prefs_ids_c25g("/library/sections/%s/prefs" % movie_section)
+    samsung_c25g = prefs_ids_c25g("/library/sections/%s/prefs" % movie_section, "Samsung")
+    other_c25g = {p_c25g: prefs_ids_c25g("/library/sections/%s/prefs" % movie_section,
+                                         p_c25g)
+                  for p_c25g in ("samsung", "Tizen", "Roku", "Samsung TV")}
+    query_c25g = prefs_ids_c25g("/library/sections/%s/prefs" % movie_section, "Samsung",
+                                in_query_c25g=True)
+    new_form_c25g = prefs_ids_c25g(
+        "/library/sections/prefs?type=1&agent=tv.plex.agents.movie", "Samsung")
+    check("X-Plex-Platform Samsung appends a hidden includeInGlobal to a library's prefs",
+          samsung_c25g == plain_c25g + ["includeInGlobal"],
+          "%d -> %d, last %s" % (len(plain_c25g), len(samsung_c25g), samsung_c25g[-2:]))
+    check("the query form of that header works too",
+          query_c25g == samsung_c25g, str(query_c25g[-1:]))
+    check("no other platform spelling adds it",
+          all(ids_c25g == plain_c25g for ids_c25g in other_c25g.values()),
+          str({k_c25g: len(v_c25g) for k_c25g, v_c25g in other_c25g.items()}))
+    check("the Add Library form's list is unchanged under the same header",
+          "includeInGlobal" not in new_form_c25g, str(new_form_c25g[-2:]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
