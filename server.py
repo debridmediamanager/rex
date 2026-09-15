@@ -10040,12 +10040,23 @@ class PlexSim:
             # and a client keying artwork or a filter off the search row's tagType built
             # the wrong link.
             "tagType": {"actor": 6, "director": 4}.get(hub, 1),
-            # Cycle 28: the count is the size of the row's own `key` listing. See
-            # `search_matches`, which counts it per library.
-            "count": entry.get("count", len(entry["rows"])),
         }
+        # Cycle 28, measured on kids (`Ian Hubert`, a director) and zen (three `Amélie`
+        # actors): a PERSON tag row carries its 24-hex `tagKey` on both search endpoints,
+        # directly after `tagType` and before the `thumb`, and the `count` comes LAST of
+        # the three. A `Genre` row carries none, as it carries none on a detail row.
+        #
+        # The client builds every person link from that value -- cycle 27's finding, one
+        # surface further out: plexsim minted the key, answered
+        # `/library/people/{key}` and then left it off the search hit, so clicking an
+        # actor found by the search box went to `/library/people/undefined`.
+        if tag.get("tagKey"):
+            result["tagKey"] = tag["tagKey"]
         if tag.get("thumb"):
             result["thumb"] = tag["thumb"]
+        # Cycle 28: the count is the size of the row's own `key` listing. See
+        # `search_matches`, which counts it per library.
+        result["count"] = entry.get("count", len(entry["rows"]))
         return result
 
     @staticmethod

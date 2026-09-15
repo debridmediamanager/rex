@@ -19504,6 +19504,36 @@ def main():
           and all(pair_c28k[0] == pair_c28k[1] for pair_c28k in counts_c28k.values()),
           "%s over %d row(s)" % (counts_c28k, len(tags_c28k)))
 
+
+    # Cycle 28, measured on kids (`Ian Hubert`) and zen (three `Amélie` actors): a PERSON
+    # search tag row carries its 24-hex `tagKey`, directly after `tagType` and before the
+    # `thumb`, with `count` LAST -- and a `Genre` row carries none. The client builds
+    # every person link from it, so plexsim's search hit, which minted the key for the
+    # detail row and left it off this one, sent a click on an actor found by the search
+    # box to `/library/people/undefined`.
+    person_c28m = next((r_c28m["Directory"] for r_c28m in
+                        (get(base, "/library/search?query=derek&limit=20")[1]
+                         .get("SearchResult") or [])
+                        if (r_c28m.get("Directory") or {}).get("tagType") in (4, 5, 6, 7)),
+                       None)
+    genre_c28m = next((r_c28m["Directory"] for r_c28m in
+                       (get(base, "/library/search?query=animation&limit=20")[1]
+                        .get("SearchResult") or [])
+                       if (r_c28m.get("Directory") or {}).get("tagType") == 1), None)
+    if person_c28m is None:
+        skip("a person search tag row carries its tagKey", "no person hit")
+    else:
+        keys_c28m = list(person_c28m)
+        resolved_c28m = get(base, "/library/people/%s" % person_c28m.get("tagKey"))[0]
+        check("a person search tag row carries its tagKey, and a genre row does not",
+              len(str(person_c28m.get("tagKey") or "")) == 24
+              and all(c_c28m in "0123456789abcdef"
+                      for c_c28m in str(person_c28m.get("tagKey")))
+              and keys_c28m.index("tagKey") == keys_c28m.index("tagType") + 1
+              and keys_c28m[-1] == "count" and resolved_c28m == 200
+              and (genre_c28m is None or "tagKey" not in genre_c28m),
+              "%s -> %s | %s" % (person_c28m.get("tagKey"), resolved_c28m, keys_c28m))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
