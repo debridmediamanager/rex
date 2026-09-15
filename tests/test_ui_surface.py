@@ -20119,6 +20119,33 @@ def main():
           and len(plain_c29h) > 0 and plain_c29h == sized_c29h,
           "%s | plain %d bytes, sized %d" % (res_c29h, len(plain_c29h), len(sized_c29h)))
 
+
+    # Cycle 29, measured on kids and zen over nine values of each of six options, identical
+    # on all 54: a 0/1 option's value is `+?0*[01]`. `0`, `1`, `00`, `01`, `000`, `0000001`,
+    # `+1`, `+0` and `+01` pass; `2`, `+2`, `-1`, `+`, `++1`, `1+`, `1.5`, `true`, an empty
+    # value and either surrounding space are 400s. Cycle 23 recorded the four-value form
+    # from a sweep with no sign in it, so plexsim refused a leading `+` a real PMS accepts
+    # -- on `checkFiles` and its five siblings and on `minSize`/`upscale`.
+    bools_c29i = {}
+    for value_c29i in ("0", "1", "00", "01", "000", "0000001", "+1", "+0", "+01",
+                       "2", "+2", "-1", "+", "++1", "1+", "1.5", "true", "", " 1"):
+        bools_c29i[value_c29i] = request(
+            base, "HEAD", "/library/metadata/%s?checkFiles=%s" % (movie, quote(value_c29i)))[0]
+    photo_c29i = {}
+    for value_c29i in ("+1", "000", "+2", "2"):
+        photo_c29i[value_c29i] = request(
+            base, "GET", "/photo/:/transcode?width=200&height=300&minSize=%s&url=%s"
+                         % (quote(value_c29i), quote("/library/metadata/%s/thumb/1" % movie)),
+            want_json=False)[0]
+    check("a 0/1 option's value is +?0*[01] on every option that has one",
+          all(bools_c29i[value_c29i] == 200 for value_c29i in
+              ("0", "1", "00", "01", "000", "0000001", "+1", "+0", "+01"))
+          and all(bools_c29i[value_c29i] == 400 for value_c29i in
+                  ("2", "+2", "-1", "+", "++1", "1+", "1.5", "true", "", " 1"))
+          and photo_c29i["+1"] == 200 and photo_c29i["000"] == 200
+          and photo_c29i["+2"] == 400 and photo_c29i["2"] == 400,
+          "checkFiles %s | minSize %s" % (bools_c29i, photo_c29i))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

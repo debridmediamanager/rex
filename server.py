@@ -1427,6 +1427,24 @@ GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3
 GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
 
 
+def _bool_option(value):
+    """Whether a real PMS reads this value as one of its 0/1 options.
+
+    Cycle 29, measured on kids and zen over nine values of each of six options
+    (`checkFiles`, `skipRefresh`, `asyncCheckFiles`, `download`, `minSize`, `upscale`),
+    identical on all 54: the value is `+?0*[01]` -- `0`, `1`, `00`, `01`, `000`,
+    `0000001`, `+1`, `+0` and `+01` all pass, and `2`, `+2`, `-1`, `+`, `++1`, `1+`,
+    `1.5`, `true`, an empty value and either surrounding space are each a 400. Cycle 23
+    recorded the four-value form (`0`, `1`, `00`, `01`) from a ten-value sweep that did
+    not include a sign, so a leading `+` was refused where a real PMS accepts it -- and
+    the same integer parse is what cycle 29 found behind `includeExtras=+1`.
+    """
+    text = str(value)
+    if text.startswith("+"):
+        text = text[1:]
+    return bool(text) and text.isdigit() and int(text) in (0, 1)
+
+
 def _photo_int(value):
     """Whether `/photo/:/transcode` reads this parameter as a whole number.
 
@@ -2898,8 +2916,9 @@ class PlexSim:
                        "asyncAugmentMetadata", "asyncRefreshLocalMediaAgent",
                        "asyncRefreshAnalysis"):
             raw_check = query.get(option)
-            if raw_check is not None and not (raw_check.isdigit()
-                                              and int(raw_check) in (0, 1)):
+            # Cycle 29: the value is `+?0*[01]` -- see `_bool_option`. Cycle 23's
+            # four-value list refused the leading `+` a real PMS takes.
+            if raw_check is not None and not _bool_option(raw_check):
                 raise filters_module.FilterError(400, "%s %r" % (option, raw_check))
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
@@ -4818,7 +4837,7 @@ class PlexSim:
                 value = str(query[name])
                 if not _photo_int(value):
                     return ("error", 400, "plexsim: bad request")
-                if name in ("minSize", "upscale") and int(value) not in (0, 1):
+                if name in ("minSize", "upscale") and not _bool_option(value):
                     return ("error", 400, "plexsim: bad request")
                 if name == "blur" and int(value) < 0:
                     return ("error", 500, "plexsim: server error")
