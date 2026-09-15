@@ -18744,6 +18744,30 @@ def main():
                if k_c27j != "Language"][:4] == ["identifier", "name", "hasPrefs", "id"],
           "%s | %s" % (agent_names_c27j, agent_json_c27j[:5]))
 
+
+    # Cycle 27, measured on kids and zen over five `includeMeta=1` paths: a `Sort` row
+    # leads with `active, activeDirection` and only then `default, defaultDirection,
+    # descKey, firstCharacterKey, key, title`; and a `Hub` puts `random` BEFORE `style`.
+    # Neither element had a bucket in `_ATTR_ORDER`, so plexsim emitted the flags it
+    # adds last, last.
+    sort_xml_c27k = request(base, "GET", "/library/sections/%s/all?includeMeta=1"
+                            "&includeAdvanced=1&X-Plex-Container-Size=1" % movie_section,
+                            want_json=False)[1].decode("utf-8", "replace")
+    sort_names_c27k = re.findall(r"(\w+)=", re.search(r"<Sort [^>]*>",
+                                                      sort_xml_c27k).group(0))
+    check("a Sort row leads with active and activeDirection",
+          sort_names_c27k[:2] == ["active", "activeDirection"], str(sort_names_c27k))
+    hub_xml_c27k = request(base, "GET", "/hubs/sections/%s" % show_section,
+                           want_json=False)[1].decode("utf-8", "replace")
+    randoms_c27k = [re.findall(r"(\w+)=", h_c27k)
+                    for h_c27k in re.findall(r"<Hub [^>]*>", hub_xml_c27k)
+                    if "random=" in h_c27k]
+    check("and a Hub puts random before style",
+          bool(randoms_c27k)
+          and all(n_c27k.index("random") < n_c27k.index("style")
+                  for n_c27k in randoms_c27k if "style" in n_c27k),
+          str(randoms_c27k[:1]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
