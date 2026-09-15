@@ -487,6 +487,24 @@ def _split(name, row, container=False):
     if not container:
         # Cycle 17: a row's attributes come out in a measured order too, not in
         # whatever order the dict that built the row happened to hold them.
+        if name == "Player":
+            # Cycle 27, measured on the copy with two clients: `Player` is the ONE
+            # element inside a `/status/sessions` row that is NOT plainly alphabetical.
+            # Its STRING-valued attributes come first, alphabetically, and its
+            # non-string ones follow, alphabetically:
+            #
+            #   address device machineIdentifier model platform platformVersion
+            #   product profile state title version | local relayed secure userID
+            #
+            # Two witnesses -- a Plex Web client sending six strings and a Roku client
+            # sending eleven -- and in both the four non-strings (`local`, `relayed` and
+            # `secure` are JSON booleans, `userID` an int) sit after every string,
+            # although `local` would sort third alphabetically. A FIXED bucket list fits
+            # the same data; the type split is the model that also answers for an
+            # attribute neither witness carried, and HANDOVER 3.3 records the pair.
+            # plexsim emitted whatever order its builder's dict happened to hold.
+            attrs.sort(key=lambda key: (not isinstance(row.get(key), str), key))
+            return attrs, children
         if row.get("_session"):
             # The alphabetical block, then the decision flags. See `_SESSION_TAIL`.
             attrs.sort(key=lambda key: (_SESSION_TAIL.get(key, 0), key))
