@@ -1556,6 +1556,54 @@ precisely how the Seasons bug survived a fix attempt.
 - **An EMPTY response under `/system` carries NO `Content-Type`** -- every 404 on every
   verb and the bare OPTIONS 200 -- where a 404 anywhere else carries `text/html` and a body.
 
+- **`excludeElements=` honours an ALLOW-LIST** -- `Media Part Genre Country Guid Rating
+  Director Writer Role Producer` -- and every other name is a NO-OP, `Extras`, `Related`,
+  `Preferences`, `Field`, `Chapter` and `Review` included. Cycle 19's "every other element
+  really goes" was a two-name sample generalised the wrong way. **`Part` is on the list**
+  (it takes the Streams with it and adds `partCount` to the Media), and **the option reaches
+  the rows INSIDE the inline `Related` and `Extras` blocks**, not just the top-level row.
+- **Five more options carry `checkFiles`'s value grammar** (`skipRefresh`,
+  `asyncCheckFiles`, `asyncAugmentMetadata`, `asyncRefreshLocalMediaAgent`,
+  `asyncRefreshAnalysis`): `0`/`1`/`00`/`01` are 200s and everything else a 400. **And four
+  `include*` options parse their value as an INTEGER** -- `includeExtras`,
+  `includeRelated`, `includeChildren`, `includeOnDeck` take `01` -- while
+  `includePreferences` compares the string. **`includeRelatedCount=0` EMPTIES the hub**
+  (`size 0`, `more true`), where reading `0` as absent falls through to the default of five.
+- **A real PMS writes ONE element per line and ends the document with a newline** (236 of
+  them in one zen movie, 34 on kids). **Six more names are written PAIRED when empty** --
+  `MediaContainer`, `Stream`, `Hub`, `Extras`, `Media`, `Activity` -- while `Part`
+  self-closes, so it is an element-NAME table and not "can hold children".
+- **Three more attribute orders**: a `Part` leads `accessible, exists`, a section's pivot
+  `Directory` leads `secondary` (and `prompt, search`), a `Feature` leads `flavor`.
+  `_ATTR_ORDER` is a topological sort of observed PAIRS, so a pair no reference emitted
+  falls to the END -- that is its documented failure mode, and these were all of it.
+- **A LIGHT row's JSON child order was never the light order**: `json_body` stripped the
+  `_light` marker before the orderer read it, so cycle 19's "one answer both writers ask"
+  held everywhere but there.
+- **A text `sort=` compares RAW CODEPOINTS** -- case-sensitive, no accent folding, so
+  lowercase sorts ABOVE uppercase (`iHostage` before `Zero Tolerance` descending). It is
+  the SORT side of the split cycle 20 measured on the FILTER side; `titleSort` stays folded
+  because no zen row carries a lowercase-initial stored sort title to measure it with.
+- **A filter key whose NAME keeps a comparison character is an UNKNOWN FIELD** --
+  `collection==`, `year>=`, `title!!` are a 200 listing every row and a 200 `Error` at
+  `/query/parse`. A pair with NO `=` at all is still the 400 cycle 11 measured.
+  **When you probe an operator, send the client's encoding**: `year>>=2000` is the
+  parameter `year>>`, so `collection%3D%3D=zzzz` is the parameter `collection==` and not
+  the `==` operator -- a whole finding was wrong on that before it was re-sent.
+- **A bare `type=<v>` on the ITEM edit path is an accepted no-op** (`type` is one of cycle
+  20's lockable names); it is only on the SECTION path that it is the scoping parameter.
+- **An artwork frame carries the LIST row's own type** -- a collection's 18, a playlist's 15
+  with `sectionID "-1"`. A stored list row carries no `type`, so a lookup keyed on it
+  answers the movie's 1, and the client builds the URL it updates from that number.
+- **`/library/collections/{id}/{refresh,unmatch,analyze}` answer an EMPTY body**;
+  **`/resources/{anything}` is a real empty 200 on every verb**; **`/search/voice` with no
+  parameters is a 400** (a 404 once `query=` is given); **`/search` is a real ROUTED
+  endpoint** whose writers are a 400, not the plug-in dispatcher's listing.
+- **`PATCH` is a 404 on `/library/sections`, `/status/sessions`, `/media/providers` and
+  `/playQueues/{id}`**, and `/accounts/{id}` refuses POST too. **`/system/proxy` is the one
+  path in that subtree that answers its own 400 to every verb**, GET included, rather than
+  cycle 18's empty-bodied 404.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

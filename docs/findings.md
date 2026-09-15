@@ -6151,6 +6151,125 @@ a body. Cycle 18 recorded the empty body for the non-GET verbs and implemented i
 empty `text/html`; the GET was never covered, so it still carried plexsim's own 18-byte
 `text/plain` refusal.
 
+#### The twenty-second pass — the movie detail read, the writers at scale, and the frames a write really pushes
+
+Two hunts and a driver round. Territory A took the **movie** — the row type nobody had
+swept since cycle 13, whose instrument then was a five-clip lab where nothing is long
+enough to truncate and no movie has a second Media — and the **XML and JSON writers at
+scale**. Territory B took the **frames a write really pushes**, the dimension twenty-one
+cycles of measuring what a write STORES had left thinnest, and held `mediainfo.py` out
+against zen's 13,643 real Media. The driver re-ran every engine holdout against the
+cycle's own HEAD.
+
+---
+
+**`excludeElements=` honours an ALLOW-LIST, and cycle 19 generalised the wrong way.**
+Swept over every element name a real movie row carries on zen (74 roles, 4 extras, 5
+related) and on kids: only `Media`, `Part`, `Genre`, `Country`, `Guid`, `Rating`,
+`Director`, `Writer`, `Role` and `Producer` are honoured, and every other name — `Extras`,
+`Related`, `Preferences`, `Field`, `Chapter`, `Review` — behaves exactly like an unknown
+one. Cycle 19 measured `Image` and `UltraBlurColors` as no-ops from a two-name sample and
+recorded "every other element the option names really goes"; plexsim implemented that, so
+a client naming `Related` or `Preferences` in a bandwidth-trimming list lost a block a real
+PMS still sends. **`Part` is on the list**: naming it removes the Parts AND their Streams
+and adds `partCount` to the Media, the same substitution `Media` makes one level up.
+**And the option reaches the rows INSIDE the inline `Related` and `Extras` blocks** — with
+`excludeElements=Media` the nested related rows lose their Media and gain `mediaCount`,
+where plexsim trimmed the top-level row alone. The one request whose whole point is to make
+a preplay page smaller still carried five related rows in full.
+
+**Five more query options carry `checkFiles`'s value grammar.** `skipRefresh`,
+`asyncCheckFiles`, `asyncAugmentMetadata`, `asyncRefreshLocalMediaAgent` and
+`asyncRefreshAnalysis`: `0`, `1`, `00` and `01` are 200s and an empty value, `abc`, `2`,
+`true`, `-1` and `1.5` are 400s, measured ten values at a time on both references. A
+60-name sweep of the detail read found these six and no others — every `include*` name is a
+200 for any value. **And four `include*` options parse their value as an INTEGER**:
+`includeExtras`, `includeRelated`, `includeChildren` and `includeOnDeck` strip leading
+zeros, so `01` and `001` turn them on, while `includePreferences` compares the string and
+takes `1` alone. plexsim tested `== "1"` for all five, so the zero-padded form silently
+dropped the block — fix 4's failure mode, a valid document short a section.
+
+**`includeRelatedCount=0` EMPTIES the inline hub** — `{hubIdentifier, size: 0, more: true}`
+with no rows — where plexsim read `0` as "absent" and fell through to its default of five.
+
+**A real PMS writes one element per LINE, and ends the document with a newline.** zen's
+movie document carries 236 newlines and kids' 34; plexsim emitted one, after the
+declaration, and no trailing one. Nothing a conforming parser can see — and it changes
+`Content-Length` on every XML response and what a `Range` read of a container returns,
+which cycle 16 established applies to every body. **Six more element names are written
+PAIRED when empty**: `MediaContainer`, `Stream`, `Hub`, `Extras`, `Media` and `Activity`
+join the `Feature` cycle 21 found. `Part` self-closes while `Stream` never does (37,464 of
+37,464 on zen), so it is an element-NAME table and not "anything that can hold children".
+
+**Three more attribute orders, harvested from 633 zen paths and 133 kids paths.** A `Part`
+leads `accessible, exists, id, key`; a section's pivot `Directory` leads `secondary` (and
+`prompt, search` on the search pivot); a `Feature` leads `flavor`. `_ATTR_ORDER` is a
+topological sort of observed PAIRS, so a pair no reference was ever seen to emit falls to
+the end — which is exactly where all three were. Cycle 19 made the JSON key order follow
+the XML, so all three move both formats.
+
+**A LIGHT row's JSON child order was never the light order.** `xmlout._split` picks it off
+the row's own `_light` marker and `json_body` called `_drop_private` — which removes the
+marker — BEFORE the orderer saw it, so every light row's JSON fell back to the detail
+order. Cycle 19's "a real PMS's JSON key order IS its XML order" held on every path but
+this one.
+
+---
+
+**A text `sort=` compares RAW CODEPOINTS.** `sort=title:desc` on zen opens on
+`『ONE PIECE』…` (U+300E), then `iHostage`, then `Zero Tolerance`; `studio:desc` on
+`ufotable` before `Zide-Perry`; `summary:desc` on `Özge…`, `join 6 murder…`,
+`handu dreams…`. Descending puts the highest codepoint first every time, so lowercase sorts
+ABOVE uppercase and there is no accent folding. plexsim's `_sort_key` lower-cased every
+text key. It is the SORT side of the split cycle 20 measured on the FILTER side; `titleSort`
+itself stays folded, because no row in zen's 3,887 movies nor in the first 2,400 of its show
+library carries a lowercase-initial stored sort title to measure it with.
+
+**A filter key whose NAME keeps a comparison character is an UNKNOWN FIELD.**
+`collection==`, `year>=`, `title!!` are each a 200 listing every row and a 200 `Error` of
+type `field` at `/query/parse`, exactly as a bogus name is, where plexsim raised a 400 from
+`split_key`. The recorded 400 is a different shape and still stands: a pair with no `=` at
+all (`?year%3E2010`) is a 400 everywhere. *(The first version of this finding was wrong and
+is worth recording as such: a sweep reported 57 disagreements on the tag-table fields and
+they were an artefact of the probe's own encoding — the client puts the operator characters
+in the parameter NAME, so `year>>=2000` is the parameter `year>>`, and a probe that sends
+`collection%3D%3D=zzzz` is not sending the `==` operator at all. Re-sent the client's way,
+plexsim already agreed on all eight operators.)*
+
+**A bare `type=<v>` on the ITEM edit path is an accepted no-op.** `type=1`, `type=4` and
+`type=abc` are all 200s that read no value and change no row — `type` is one of the lockable
+names cycle 20 added. plexsim stripped it from the edit form on both paths, because on the
+SECTION path it is the scoping parameter, so a form naming only `type` looked empty on the
+item path and got the 400 an empty form answers.
+
+---
+
+**An artwork frame carries the LIST row's own type.** A collection's is `type 18` and a
+playlist's `type 15` with `sectionID "-1"`, on the artwork write as on every other frame.
+plexsim sent `type 1` for both and an empty `sectionID` for the playlist — and CLAUDE.md
+already records that the client builds the URL it updates from that number, so a Change
+Poster on a collection told every client on the socket that a MOVIE with that ratingKey had
+changed. A stored list row carries no `type` of its own; the projection mints it.
+
+**`/library/collections/{id}/{refresh,unmatch,analyze}` answer an EMPTY body**, where
+plexsim fell through to a `{size: 0}` MediaContainer. CLAUDE.md's own rule — "a mutating
+endpoint answers 200 with an EMPTY body, not a MediaContainer" — had never reached these
+three, and the client parses the body of `match` to decide whether the match took.
+
+**`/resources/{anything}` is a real 200** answering an empty container — `1`, `99999` and
+`abc` alike on kids, zen and plexscratch, and on plexscratch every verb answers the same.
+**`/search/voice` with no parameters is a 400** that becomes a 404 once a `query=` is given,
+so the path exists and validates. **And `/search` is a real ROUTED endpoint**: all three
+references refuse its writers with a 400 where plexsim fell through to the plug-in
+dispatcher and answered a listing, which reads to a client as an accepted write.
+
+**`PATCH` had never been swept on the paths cycle 6 took POST/PUT/DELETE over.** It is a 404
+on `/library/sections`, `/status/sessions`, `/media/providers` and `/playQueues/{id}`, where
+plexsim answered each one's own GET; `/accounts/{id}` refuses a POST as well as the DELETE
+cycle 19 measured. **And `/system/proxy` is the one path in that subtree that does NOT take
+cycle 18's envelope**: every verb, GET included, answers its own 400 rather than an
+empty-bodied 404.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
