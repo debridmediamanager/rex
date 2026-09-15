@@ -20324,6 +20324,25 @@ def main():
           and verbs_c29s["/library/metadata/%s/extras" % movie]["POST"] == 400,
           "%s" % verbs_c29s)
 
+
+    # Cycle 29, measured on kids and zen on a movie and a show: a properly encoded `+1`
+    # (`%2B1`) turns an `include*` block on, where a RAW `+` decodes to a SPACE and stays
+    # off. Cycle 22 recorded `+1` as off from the raw form, so plexsim refused a sign a
+    # real PMS accepts -- the same integer parse the 0/1 options have.
+    inc_c29r = {}
+    for value_c29r in ("1", "01", "001", quote("+1"), quote("+01"), "2", "true", "1.0",
+                       quote(" 1"), ""):
+        row_c29r = (get(base, "/library/metadata/%s?includeExtras=%s&includeRelated=%s"
+                              % (movie, value_c29r, value_c29r))[1]
+                    .get("Metadata") or [{}])[0]
+        inc_c29r[value_c29r] = "Related" in row_c29r
+    check("an include* option's value takes a leading plus",
+          inc_c29r["1"] and inc_c29r["01"] and inc_c29r["001"]
+          and inc_c29r[quote("+1")] and inc_c29r[quote("+01")]
+          and not any(inc_c29r[value_c29r] for value_c29r in
+                      ("2", "true", "1.0", quote(" 1"), "")),
+          "%s" % inc_c29r)
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

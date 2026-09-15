@@ -1249,11 +1249,21 @@ def _include_int(value):
 
     Cycle 22, measured on zen and kids: `includeExtras`, `includeRelated`,
     `includeChildren` and `includeOnDeck` strip leading zeros -- `01` and `001`
-    turn them on -- while `2`, `true`, `+1` and `1.0` do not, and
+    turn them on -- while `2`, `true` and `1.0` do not, and
     `includePreferences` compares the string and takes `1` alone. plexsim tested
     `== "1"` for all five, so the zero-padded form silently dropped the block.
+
+    Cycle 29 adds the SIGN: a properly encoded `+1` (`%2B1`) turns the block on, on
+    kids and zen alike, on a movie and on a show. Cycle 22 recorded `+1` as off
+    because a RAW `+` in a query string decodes to a SPACE -- so that measurement
+    was of `" 1"`, which is off on both references and stays off here. It is the same
+    integer parse the 0/1 options have (`_bool_option`), which is how the two were
+    found in the same cycle.
     """
-    return str(value or "").isdigit() and int(value) == 1
+    text = str(value or "")
+    if text.startswith("+"):
+        text = text[1:]
+    return text.isdigit() and int(text) == 1
 
 
 def _drop_private(node):
