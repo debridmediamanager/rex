@@ -17016,6 +17016,52 @@ def main():
                                                 unknown_c25i)}) == 1 and len(en_c25i) == 45,
           str([len(rows_c25i) for rows_c25i in (bare_c25i, en_c25i, de_c25i, fr_c25i)]))
 
+
+    # Cycle 25: the language a request resolves to is per-REQUEST state that `query` must
+    # not carry. Six write paths read `query` as a FORM and exclude `X-Plex-*` plus the
+    # one private key they know by name, so a second private key reads as an unknown
+    # field and the whole form is refused -- an item prefs write, a playlist rename and
+    # three more turned into 400s when it was added there. These checks are the ones that
+    # caught it; they also confirm the per-language agent list still works, so the two
+    # cannot be traded off against each other.
+    _s_c25j, _b_c25j, _h_c25j = request(
+        base, "PUT", "/library/metadata/%s/prefs?flattenSeasons=1" % show)
+    row_c25j = detail_c25j = get(base, "/library/metadata/%s?includePreferences=1" % show)[1]
+    rows_c25j = (detail_c25j.get("Metadata") or [{}])[0]
+    settings_c25j = {s_c25j.get("id"): s_c25j.get("value")
+                     for s_c25j in ((rows_c25j.get("Preferences") or {}).get("Setting")
+                                    or [])}
+    check("an item prefs write is not refused as an unknown field",
+          _s_c25j == 200 and settings_c25j.get("flattenSeasons") == "1",
+          "%s %s" % (_s_c25j, settings_c25j.get("flattenSeasons")))
+    playlist_c25j = request(base, "POST", "/playlists?type=video&title=c25j&uri="
+                            + quote("server://%s/com.plexapp.plugins.library"
+                                    "/library/metadata/%s" % (machine, movie)))
+    created_c25j = json.loads(playlist_c25j[1] or b"{}").get("MediaContainer", {})
+    key_c25j = ((created_c25j.get("Metadata") or [{}])[0]).get("ratingKey")
+    renamed_c25j = request(base, "PUT", "/playlists/%s?title=c25j-renamed" % key_c25j)
+    after_c25j = get(base, "/playlists/%s" % key_c25j)[1]
+    check("a playlist rename is not refused as an unknown field",
+          renamed_c25j[0] == 200
+          and ((after_c25j.get("Metadata") or [{}])[0]).get("title") == "c25j-renamed",
+          "%s %s" % (renamed_c25j[0],
+                     ((after_c25j.get("Metadata") or [{}])[0]).get("title")))
+    request(base, "DELETE", "/playlists/%s" % key_c25j)
+    langs_c25j = []
+    for lang_c25j in ("de", "fr"):
+        _s2_c25j, body_c25j, _h2_c25j = request(
+            base, "GET", "/system/agents?mediaType=1&X-Plex-Language=" + lang_c25j,
+            want_json=False)
+        text_c25j = (body_c25j.decode("utf-8", "replace")
+                     if isinstance(body_c25j, bytes) else body_c25j)
+        block_c25j = text_c25j.split('identifier="tv.plex.agents.movie"')
+        langs_c25j.append(re.findall(r'<Language code="([^"]+)"',
+                                     block_c25j[1].split("</Agent>")[0])[:3]
+                          if len(block_c25j) > 1 else [])
+    check("and the per-language agent list still answers from the thread-local",
+          langs_c25j == [["ar-SA", "bg-BG", "zh-CN"], ["de-DE", "en-US", "en-AU"]],
+          str(langs_c25j))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
