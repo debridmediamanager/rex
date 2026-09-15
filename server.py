@@ -7315,7 +7315,13 @@ class PlexSim:
         duration = sum(int(leaf.get("duration") or 0) for leaf in leaves)
         storage = sum(int(part.get("size") or 0) for leaf in leaves
                       for media in leaf.get("Media") or [] for part in media.get("Part") or [])
-        return dict(row, durationTotal=duration, storageTotal=storage)
+        # Cycle 27, re-measured on kids (`"10031"`, `"6273654"`) and zen
+        # (`"1440171"`, `"573936917"`): both are JSON STRINGS, where plexsim sent
+        # integers. The XML is identical either way, so it took a JSON read of the same
+        # path on both references to see it -- and a client whose model declares them
+        # `String` rejects the whole section grid row when `includeStorage=1` is on.
+        # Cycle 19 measured that the pair exists here and not what type it is.
+        return dict(row, durationTotal=str(duration), storageTotal=str(storage))
 
     @staticmethod
     def _excluded_elements(rows, query):
