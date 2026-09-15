@@ -414,9 +414,15 @@ except OSError:
 # anything with a 200 -- so a typo in the dialog looked saved and silently was not.
 # The `/:/resources/*` names plexsim's own containers reference. A real PMS 404s a
 # name it does not have; plexsim generated a tile for anything.
+# Cycle 29, measured on kids and zen, whose bytes for these are IDENTICAL (so they are
+# PMS's own bundled assets): there are SEVEN names, not nine. `library-art.png` and
+# `playlist.png` are 404s on both references -- plexsim's own `/library` container
+# advertises the first of them, exactly as a real PMS's does, and the path behind it is
+# a 404 there too. The four `.png` names are 300x300 and the three `-fanart.jpg` names
+# 1280x720, and `?width=`/`?height=` are IGNORED (a 100x100 request answers the same
+# 76,373 bytes).
 KNOWN_RESOURCES = {"movie.png", "show.png", "artist.png", "photo.png",
-                   "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg",
-                   "library-art.png", "playlist.png"}
+                   "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg"}
 
 # Which verbs each section leaf accepts. Everything absent here is a 404 for POST,
 # PUT and DELETE -- measured leaf by leaf, and a real PMS never answers 405: that
@@ -4876,7 +4882,10 @@ class PlexSim:
             # generated a tile for ANY name, so a typo'd art path silently drew.
             if route.split("/")[-1] not in KNOWN_RESOURCES:
                 return ("error", 404, "plexsim: not found")
-            return ("png", query)
+            # Cycle 29: these are fixed-size bundled assets and a real PMS ignores
+            # `width`/`height` here -- `movie.png?width=100&height=100` answers the same
+            # bytes as the bare path on both references, where plexsim resized its tile.
+            return ("png", {})
         # A real PMS serves the official Plex Web client from /web, and that
         # client talks to the server it was loaded FROM -- window.location's
         # origin -- rather than discovering servers through plex.tv. That
