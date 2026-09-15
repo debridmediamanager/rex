@@ -17490,6 +17490,59 @@ def main():
           and opt_started_c25t[0].get("subtitle") == "",
           str(opt_started_c25t[:1]))
 
+
+    # Cycle 25, measured on plexscratch and checked against the show's own REFRESH on the
+    # same copy: a show UNMATCH opens its activity with the show's BARE TITLE where a
+    # refresh opens with the frame title (`Firefly (2002)`). The show carries a year
+    # there, so it is not a row with nothing to append; it is the one place on this
+    # surface where an activity's subtitle is not the frame title. From the season
+    # onwards both paths use the frame title again.
+    def first_subtitle_c25u(path_c25u):
+        import threading
+        request_c25u = urllib.request.Request(
+            base.rstrip("/") + "/:/eventsource/notifications",
+            headers={"Accept": "text/event-stream", "User-Agent": UA})
+        try:
+            response_c25u = urllib.request.urlopen(request_c25u, timeout=20)
+        except Exception:
+            return None, None
+        threading.Timer(0.5, lambda: request(base, "PUT", path_c25u)).start()
+        name_c25u, subtitles_c25u = None, []
+        deadline_c25u = time.time() + 10
+        try:
+            while time.time() < deadline_c25u and len(subtitles_c25u) < 2:
+                line_c25u = response_c25u.readline()
+                if not line_c25u:
+                    break
+                text_c25u = line_c25u.decode("utf-8", "replace").strip()
+                if text_c25u.startswith("event:"):
+                    name_c25u = text_c25u.split(":", 1)[1].strip()
+                elif text_c25u.startswith("data:") and name_c25u == "activity":
+                    row_c25u = json.loads(text_c25u.split(":", 1)[1].strip())
+                    entry_c25u = (row_c25u.get("ActivityNotification") or {})
+                    if entry_c25u.get("event") == "started":
+                        subtitles_c25u.append(
+                            (entry_c25u.get("Activity") or {}).get("subtitle"))
+                    name_c25u = None
+                elif text_c25u.startswith("data:"):
+                    name_c25u = None
+        finally:
+            response_c25u.close()
+        return (subtitles_c25u[0] if subtitles_c25u else None), subtitles_c25u
+
+    show_title_c25u = ((get(base, "/library/metadata/%s" % show)[1].get("Metadata")
+                        or [{}])[0])
+    refresh_sub_c25u = first_subtitle_c25u("/library/metadata/%s/refresh" % show)[0]
+    unmatch_sub_c25u = first_subtitle_c25u("/library/metadata/%s/unmatch" % show)[0]
+    check("a show REFRESH opens its activity with the frame title",
+          refresh_sub_c25u == "%s (%s)" % (show_title_c25u.get("title"),
+                                           show_title_c25u.get("year")),
+          repr(refresh_sub_c25u))
+    check("and a show UNMATCH opens with the bare title",
+          unmatch_sub_c25u == show_title_c25u.get("title")
+          and unmatch_sub_c25u != refresh_sub_c25u,
+          "%r vs %r" % (unmatch_sub_c25u, refresh_sub_c25u))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

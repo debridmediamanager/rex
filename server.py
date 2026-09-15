@@ -2406,7 +2406,14 @@ class PlexSim:
         self.notify_timeline(show, 2, "matching")
         self.notify_timeline(show, self.TIMELINE_QUEUED, "matching")
         self.notify_timeline(show, self.TIMELINE_QUEUED, "queued")
-        activity = self.library.add_activity(self.frame_title(show), progress=-1)
+        # Cycle 25, measured on plexscratch and then checked against the show's REFRESH
+        # on the same copy: the two paths differ HERE. A refresh opens its activity with
+        # the show's frame title (`Firefly (2002)`, which is cycle 15's rule and still
+        # right); an UNMATCH opens with the bare TITLE. The show carries a year on the
+        # copy, so this is not a row with nothing to append -- it is the one place on
+        # this surface where the subtitle is not the frame title. From the season
+        # onwards both paths use the frame title again (`Firefly S01`).
+        activity = self.library.add_activity(show.get("title") or "", progress=-1)
         for title, progress in (("Analyzing Media", -1), ("Analyzing Media", 25),
                                 ("Updating Metadata", 25), ("Updating Metadata", 50)):
             activity["title"] = title
