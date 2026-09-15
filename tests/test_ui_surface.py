@@ -5722,14 +5722,28 @@ def main():
             % (c5_movie, movie_path8))
     deck8 = get(base, "/library/onDeck")[1].get("Metadata") or []
     home_deck8 = get(base, "/hubs/home/continueWatching")[1].get("Metadata") or []
-    heavy8 = [r.get("title") for r in deck8 + home_deck8
-              if "Guid" in r or any("id" in tag for tag in r.get("Genre") or [])
-              or any(part.get("Stream") for media in r.get("Media") or []
-                     for part in media.get("Part") or [])]
-    check("On Deck and Continue Watching rows are light, On Deck's named by UUID",
-          deck8 and home_deck8 and not heavy8
-          and all("librarySectionKey" not in r and r.get("librarySectionUUID") for r in deck8),
-          "%d on deck, %d continue, heavy %s" % (len(deck8), len(home_deck8), heavy8[:2]))
+    # Cycle 28 re-measured this against zen, which HAS a row on deck where cycle 21's fun
+    # had none: an On Deck row is the DETAIL row, child element for child element, and it
+    # names its library by KEY as well as by UUID. The light projection and the missing
+    # key are 1.43.4's answer -- plexscratch's row drops `librarySectionKey`, `Guid`,
+    # `Rating` and `Producer` and stamps `studio` instead -- and plexsim reports 1.42.2,
+    # so zen is the witness that counts. What is left here is the librarySection pair
+    # each path carries; the projection itself is cycle 28's own check further down, and
+    # 1.42.2's Continue Watching row cannot be measured at all (zen is read-only and has
+    # nothing with a stored offset), so nothing is asserted about its shape.
+    shape8 = [(sorted(k for k, v in r.items() if isinstance(v, list)),
+               sorted(k for k, v in (detail_of(r.get("ratingKey")) or {}).items()
+                      if isinstance(v, list)))
+              for r in deck8]
+    check("On Deck rows are the detail row, named by key and UUID (1.42.2)",
+          deck8 and home_deck8
+          and all(row8 == detail8 for row8, detail8 in shape8)
+          and all(r.get("librarySectionKey") and r.get("librarySectionUUID")
+                  for r in deck8)
+          and all(r.get("librarySectionKey") and "librarySectionUUID" not in r
+                  for r in home_deck8),
+          "%d on deck, %d continue, shapes %s"
+          % (len(deck8), len(home_deck8), shape8[:1]))
 
     if c5_show and c5_season:
         season8 = detail_of(c5_season)
