@@ -17838,6 +17838,63 @@ def main():
           str(sorted((get(base, "/library/sections/%s/all?type=1&excludeElements=Media"
                           % movie_section)[1].get("Metadata") or [{}])[0])[:6]))
 
+
+    # Cycle 26, measured on plexscratch over both library types and both directions:
+    # `removeFromContinueWatching` is honoured per LIBRARY TYPE, and a section's shelf
+    # and its own see-all list always agree with each other.
+    #
+    #   show library   hidden row KEPT     in `tv.inprogress.{id}` AND in its items list
+    #   movie library  hidden row REMOVED  from `movie.inprogress.{id}` AND from its list
+    #
+    # Cycle 25 measured only the episode half and implemented it for both types on the
+    # ITEMS list while leaving BOTH shelves dropping the row, so the two halves were
+    # crossed: a show library's page lost an episode from its Continue Watching shelf
+    # while the See All behind that very shelf still listed it.
+    def section_cw_c26g(section_c26g, identifier_c26g):
+        items_c26g = [r_c26g.get("ratingKey") for r_c26g in
+                      get(base, "/hubs/sections/%s/continueWatching/items"
+                          % section_c26g)[1].get("Metadata") or []]
+        shelf_c26g = None
+        for hub_c26g in get(base, "/hubs/sections/%s" % section_c26g)[1].get("Hub") or []:
+            if hub_c26g.get("hubIdentifier") == identifier_c26g:
+                shelf_c26g = [r_c26g.get("ratingKey")
+                              for r_c26g in hub_c26g.get("Metadata") or []]
+        return items_c26g, shelf_c26g
+
+    episode_c26g = [r_c26g.get("ratingKey") for r_c26g in
+                    get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                    .get("Metadata") or []][0]
+    results_c26g = {}
+    for label_c26g, key_c26g, section_c26g, ident_c26g in (
+            ("show", episode_c26g, show_section, "tv.inprogress.%s" % show_section),
+            ("movie", movie, movie_section, "movie.inprogress.%s" % movie_section)):
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                "&time=400000" % key_c26g)
+        before_c26g = section_cw_c26g(section_c26g, ident_c26g)
+        request(base, "PUT",
+                "/actions/removeFromContinueWatching?ratingKey=%s" % key_c26g)
+        after_c26g = section_cw_c26g(section_c26g, ident_c26g)
+        results_c26g[label_c26g] = (str(key_c26g), before_c26g, after_c26g)
+    key_c26g, before_c26g, after_c26g = results_c26g["show"]
+    check("a SHOW library keeps a hidden row in its shelf AND its see-all list",
+          key_c26g in before_c26g[0] and key_c26g in after_c26g[0]
+          and key_c26g in (before_c26g[1] or []) and key_c26g in (after_c26g[1] or []),
+          "items %s -> %s | shelf %s -> %s" % (before_c26g[0], after_c26g[0],
+                                               before_c26g[1], after_c26g[1]))
+    key_c26g, before_c26g, after_c26g = results_c26g["movie"]
+    check("a MOVIE library drops it from both",
+          key_c26g in before_c26g[0] and key_c26g not in after_c26g[0]
+          and key_c26g in (before_c26g[1] or [])
+          and key_c26g not in (after_c26g[1] or []),
+          "items %s -> %s | shelf %s -> %s" % (before_c26g[0], after_c26g[0],
+                                               before_c26g[1], after_c26g[1]))
+    check("and Home's On Deck still drops it whatever the library type",
+          not [r_c26g for r_c26g in
+               get(base, "/hubs/home/onDeck")[1].get("Metadata") or []
+               if r_c26g.get("ratingKey") in (str(episode_c26g), str(movie))],
+          str([r_c26g.get("ratingKey") for r_c26g in
+               get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
