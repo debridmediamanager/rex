@@ -693,6 +693,22 @@ except (OSError, ValueError):
     _SYSTEM_AGENTS_DOC = {"agents": [], "mediaTypes": {}}
 SYSTEM_AGENTS = _SYSTEM_AGENTS_DOC["agents"]
 AGENT_MEDIA_TYPES = _SYSTEM_AGENTS_DOC["mediaTypes"]
+# Cycle 25, measured on kids and confirmed identical on zen: a modern agent's `Language`
+# rows are TITLED and ORDERED in the client's language, and `system_agents.json` was
+# captured with no `X-Plex-Language` at all -- class A, the failure this project's one
+# rule exists for. The whole list is stored per language rather than translated string by
+# string, because the ORDER moves with the titles and a real PMS collates them with ICU,
+# which is deliberately not modelled here. The empty key is the NO-HEADER default, which
+# is NOT English: each language is named in itself there, and an unrecognised language
+# falls back to that rather than to English -- the opposite of every other localised
+# string on the surface.
+_AGENT_LANGUAGES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     "agent_languages.json")
+try:
+    with open(_AGENT_LANGUAGES_PATH, encoding="utf-8") as _handle:
+        AGENT_LANGUAGES = json.load(_handle)["languages"]
+except (OSError, ValueError, KeyError):
+    AGENT_LANGUAGES = {}
 
 
 # --------------------------------------------------------------------------
@@ -3198,6 +3214,11 @@ class PlexSim:
         pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
         query = {k: v for k, v in pairs}
         query["_pairs"] = pairs
+        # The resolved language, for the handlers that need it. `_localise` reads the
+        # headers itself, but it runs in the HTTP handler; a PlexSim handler shaping a
+        # response BY language -- `/system/agents`' per-language `Language` list -- has
+        # only `query`. Private, like `_pairs`, and `_drop_private` keeps it off the wire.
+        query["_language"] = request_language(query, headers)
         # Container paging arrives as query parameters from the Backbone paths and
         # as HTTP HEADERS from the React ones (`fetchRange` sets
         # `headers:{"X-Plex-Container-Start":…,"X-Plex-Container-Size":…}`). A real
@@ -12329,6 +12350,16 @@ class PlexSim:
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = [by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                   if name in by_id]
+        # Cycle 25: the list is per LANGUAGE -- titles and order both. All six modern
+        # agents share one list, measured agent by agent in every language, so one
+        # lookup answers them all. An unrecognised language takes the no-header list.
+        rows = AGENT_LANGUAGES.get(query.get("_language") or "")
+        if rows is None:
+            rows = AGENT_LANGUAGES.get("")
+        if rows:
+            agents = [dict(agent, Language=[{"code": code, "title": title}
+                                            for code, title in rows])
+                      for agent in agents]
         return self.bare_container(size=len(agents), Agent=agents,
                                    _repeatKeys=True)
 
