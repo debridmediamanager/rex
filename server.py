@@ -1436,6 +1436,55 @@ GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "La
 # server, so they are deliberately OUT: an item-dependent answer needs the matrix.
 DIRECT_PLAY_PROFILES = frozenset(["Roku", "Xbox One"])
 
+# Cycle 27: the NAME a resolved profile reports, where it differs from the file name.
+# `/status/sessions` publishes the profile the server picked for that client as
+# `Player.profile`, and for 23 of the 78 names below that is another profile's name --
+# every browser but Firefox and Edge answers `Web`, `Roku` answers `Roku-7.x`, the three
+# `Mystery` entries and `PlayStation 3 App` answer `PlayStation 4 App` or `Xbox 360 App`,
+# `Opera TV App` answers `HTML TV App`, and nine of the eleven versioned iOS device
+# profiles collapse onto two. `Plex Home Theater-RaspberryPi` answers `Raspberry PI`, a
+# name that is in no file-name list at all -- which is the tell that what is reported is
+# the profile's own `name` and not the file it was loaded from.
+#
+# Swept by opening one session per name on the writable copy and reading the Player back;
+# the 55 not listed here report themselves. Single-witness by construction: neither
+# read-only reference can be given a playback session, and the copy is 1.43.4 where
+# plexsim reports 1.42.2, so a profile Plex renamed between the two would show here.
+PROFILE_NAMES = {
+    "Chrome": "Web", "Internet Explorer": "Web", "Opera": "Web", "Safari": "Web",
+    "Unknown Browser": "Web", "Vivaldi": "Web",
+    "Mystery 3": "PlayStation 4 App", "Mystery 4": "PlayStation 4 App",
+    "Mystery 5": "Xbox 360 App", "PlayStation 3 App": "PlayStation 4 App",
+    "Opera TV App": "HTML TV App",
+    "Plex Home Theater-RaspberryPi": "Raspberry PI",
+    "Roku": "Roku-7.x", "Roku-6.x": "Roku-5.x",
+    "iOS-iPad-1,1": "iOS-iPhone-3,1", "iOS-iPhone-1,1": "iOS-iPhone-2,1",
+    "iOS-iPhone-1,2": "iOS-iPhone-2,1", "iOS-iPhone-3,2": "iOS-iPhone-3,1",
+    "iOS-iPhone-3,3": "iOS-iPhone-3,1", "iOS-iPod-1,1": "iOS-iPhone-2,1",
+    "iOS-iPod-2,1": "iOS-iPhone-2,1", "iOS-iPod-3,1": "iOS-iPhone-2,1",
+    "iOS-iPod-4,1": "iOS-iPhone-3,1",
+}
+
+
+def client_profile(query, headers):
+    """The profile a real PMS resolves for this client, or None if it resolves none.
+
+    Cycle 27, measured on the copy: `X-Plex-Client-Profile-Name`, then
+    `X-Plex-Platform`, then `X-Plex-Device` -- the FIRST of the three whose value names
+    a profile wins, and a value that names none falls THROUGH to the next name rather
+    than ending the search (`X-Plex-Platform: nonsense` beside `X-Plex-Device: Roku`
+    resolves `Roku-7.x`). Each name is read from the HEADER when the header is present,
+    even when it is EMPTY, and from the query otherwise: an empty `X-Plex-Platform`
+    header beside `X-Plex-Platform=Roku` in the query resolves nothing, where the query
+    alone resolves it. The match is exact -- `chrome`, `Roku ` and `Edge` resolve
+    nothing -- which is the same test cycle 26 measured the decision's own 400 on.
+    """
+    for name in ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device"):
+        value = headers.get(name) if headers and name in headers else query.get(name)
+        if value in CLIENT_PROFILES:
+            return PROFILE_NAMES.get(value, value)
+    return None
+
 CLIENT_PROFILES = frozenset([
     "Android", "Asus Transformer Prime TF201", "Chrome", "Chromecast", "Firefox",
     "Generic", "HTML TV App", "Internet Explorer", "Konvergo", "Microsoft Edge",
@@ -10376,7 +10425,8 @@ class PlexSim:
             if state == "stopped" and row.get("_completed") == (playing_session or True):
                 row["_completionStopped"] = True
             entry = self.sessions.touch(row, query, headers, address, state,
-                                        offset_ms, total_ms)
+                                        offset_ms, total_ms,
+                                        client_profile(query, headers))
             self.notify_playing(entry, row, state, offset_ms,
                                 self.playing_queue_fields(query))
             # Measured thresholds: nothing is reported back at or under a minute, on
