@@ -7780,6 +7780,13 @@ class PlexSim:
                     if leaf == "refresh":
                         self.notify_timeline(target_row, self.TIMELINE_QUEUED, "queued")
                     self.notify_timeline(target_row, self.TIMELINE_DONE, None)
+                    if leaf == "unmatch":
+                        # Cycle 26: this branch RETURNED before the guid write below
+                        # ever ran, so a playlist's unmatch wrote nothing at all --
+                        # not even into the projection the collection's write landed
+                        # in. Measured on the copy: `guid` becomes `local://{rk}` and
+                        # `duration` is removed. See `_playlist_row`.
+                        playlist["_unmatched"] = True
                     return ("empty", 200)
                 self.notify_timeline(target_row, self.TIMELINE_QUEUED, "queued")
                 if local or leaf == "unmatch":
@@ -7788,13 +7795,40 @@ class PlexSim:
                     activity["progress"] = 49
                     self.library.notify_activity(activity, "updated")
                     self.notify_timeline(target_row, self.TIMELINE_QUEUED, "processing")
+                    # Cycle 26, re-measured on the copy: the `ended` frame carries 100
+                    # where this one carried 49 -- the progress of its own `updated`,
+                    # left in the dict. `end_activity_quietly` pushes whatever is in
+                    # there, so the Dashboard's bar for a collection refresh stopped at
+                    # 49 % and then vanished instead of completing.
+                    activity["progress"] = 100
                     self.library.end_activity_quietly(activity)
                     self.notify_timeline(target_row, self.TIMELINE_DONE, None)
                 # A refresh on a collection that still carries its AGENT guid stops at
                 # `3/queued` -- three frames, measured twice on plexscratch.
                 if leaf == "unmatch":
                     # Measured: the unmatch is what moves a list row off its agent guid.
+                    #
+                    # Cycle 26: this line has always been here and NEVER REACHED A READ.
+                    # `_collection_row` rebuilds the public row on every read and
+                    # re-mints `collection://plexsim-{rk}`, so the write landed in a
+                    # projection that is thrown away -- the frames were right and the
+                    # row a client reads never changed. Textbook class C: the rule was
+                    # recorded, the line implementing it existed, and it wrote into a
+                    # copy -- `target_row` IS the stored dict, so the frame-count GATE
+                    # three lines above read the written value and its frames were
+                    # always right. Only the read was wrong, which is what made this
+                    # hard to see: everything on the socket said the unmatch had
+                    # happened and the row said it had not.
+                    #
+                    # What the reference's unmatch really writes, measured on the copy:
+                    #   collection  guid -> local://{rk}, ratingCount REMOVED,
+                    #               subtype -> "unknown"
+                    #   playlist    guid -> local://{rk}, duration REMOVED
+                    # The per-user state block stays in the slot `ratingCount` vacated
+                    # (after `index`, before `thumb`), measured with a rating and an
+                    # offset on the row.
                     target_row["guid"] = "local://%s" % target_row["ratingKey"]
+                    collection["_unmatched"] = True
                 return ("empty", 200)
             if leaf == "related":
                 if collection is None:
