@@ -4391,7 +4391,7 @@ class PlexSim:
             if raw is None or not str(raw).lstrip("+-").isdigit():
                 return ("error", 400, "plexsim: bad request")
             wanted = {"1": "movie", "2": "show", "4": "episode"}.get(str(int(raw)))
-            plays, viewers = {}, {}
+            plays, viewers, seen_at = {}, {}, {}
             for entry in (self.library.history() if wanted else ()):
                 key = entry.get("ratingKey")
                 row = catalog.items.get(int(key)) if str(key).isdigit() else None
@@ -4399,7 +4399,21 @@ class PlexSim:
                     continue
                 plays[int(key)] = plays.get(int(key), 0) + 1
                 viewers.setdefault(int(key), set()).add(entry.get("accountID") or 1)
-            ordered = sorted(plays, key=lambda k: (-plays[k], k))
+                seen_at[int(key)] = max(seen_at.get(int(key), 0),
+                                        int(entry.get("viewedAt") or 0))
+            # Cycle 27, measured on zen's 73 real history rows: a tie in the play count
+            # breaks on the MOST RECENT view, descending, and only then on the
+            # ratingKey. Its four seven-play episodes come back 19766, 19767, 19763,
+            # 19762 -- the first pair last viewed at 1788088024 and the second at
+            # 1788088000 -- which is neither ratingKey order nor `addedAt` order, and
+            # the row itself does not carry the number (`lastViewedAt` is absent on
+            # every one of them). It is the HISTORY's own time, which is the same place
+            # `globalViewCount` comes from: 12, 11, 9, 9, 7, 7, 7, 7 against 12, 11, 9,
+            # 9, 7, 7, 7, 7 history rows. kids agrees on its three movies.
+            #
+            # plexsim sorted on `(-plays, ratingKey)`, so the Dashboard's Top Played
+            # shelf put the least recently watched of a tied group first.
+            ordered = sorted(plays, key=lambda k: (-plays[k], -seen_at.get(k, 0), k))
             limit = int(query.get("limit", 12) or 12)
             rows = []
             for key in ordered[:limit]:

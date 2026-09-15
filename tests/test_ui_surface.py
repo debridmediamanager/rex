@@ -19056,6 +19056,37 @@ def main():
               % (before_c27t, after_c27t.get("art"),
                  borrower_c27t.get("thumb"), after_c27t.get("thumb")))
 
+
+    # Cycle 27, measured on zen's 73 real history rows and corroborated on kids: the
+    # Dashboard's Top Played shelf orders by play count descending, then by the MOST
+    # RECENT view descending, then by ratingKey. zen's four seven-play episodes come
+    # back 19766, 19767, 19763, 19762 -- the first pair last viewed at 1788088024 and
+    # the second at 1788088000 -- which is neither ratingKey nor `addedAt` order, and
+    # the row does not carry the number: it is the history's own, the same place
+    # `globalViewCount` comes from. plexsim sorted on `(-plays, ratingKey)`, so a tied
+    # group came back least-recently-watched first.
+    c27u_rows = get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []
+    if len(c27u_rows) < 2:
+        skip("Top Played breaks a tie on the most recent view", "need two movies")
+    else:
+        older_c27u, newer_c27u = c27u_rows[0]["ratingKey"], c27u_rows[1]["ratingKey"]
+        for key_c27u in (older_c27u, newer_c27u):
+            request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % key_c27u)
+        # One play each, the LOWER ratingKey scrobbled FIRST, so "most recent view" and
+        # "lowest ratingKey" predict opposite orders and the check cannot pass by luck.
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % older_c27u)
+        time.sleep(1.1)
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % newer_c27u)
+        top_c27u = [r_c27u.get("ratingKey") for r_c27u in
+                    (get(base, "/library/all/top?type=1&limit=10")[1].get("Metadata") or [])
+                    if r_c27u.get("ratingKey") in (older_c27u, newer_c27u)]
+        check("Top Played breaks a tie on the most recent view",
+              top_c27u[:2] == [newer_c27u, older_c27u],
+              "%s (scrobbled %s then %s)" % (top_c27u, older_c27u, newer_c27u))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
