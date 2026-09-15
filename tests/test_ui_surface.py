@@ -18768,6 +18768,32 @@ def main():
                   for n_c27k in randoms_c27k if "style" in n_c27k),
           str(randoms_c27k[:1]))
 
+
+    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2), which agree: the rows
+    # `?includeDetails=1` answers are ONE paged sequence -- 20 `Directory` + 1 `Type` +
+    # 8 `FieldType` = 29 -- so a 20-row window is `size=20 totalSize=29 offset=0` and
+    # `Start=20` hands back the Type and the eight FieldTypes as rows 20-28. plexsim's
+    # generic pager takes `totalSize` from the longest list, so it reported
+    # `totalSize=20` beside a `size` of 29 and answered nothing past the twentieth row.
+    def detail_page_c27l(start_c27l, size_c27l):
+        status_c27l, body_c27l, _h = request(
+            base, "GET", "/library/sections/%s?includeDetails=1"
+                         "&X-Plex-Container-Start=%d&X-Plex-Container-Size=%d"
+            % (movie_section, start_c27l, size_c27l))
+        mc_c27l = json.loads(body_c27l).get("MediaContainer") or {}
+        return (mc_c27l.get("size"), mc_c27l.get("totalSize"), mc_c27l.get("offset"),
+                len(mc_c27l.get("Directory") or []), len(mc_c27l.get("Type") or []),
+                len(mc_c27l.get("FieldType") or []))
+
+    first_c27l = detail_page_c27l(0, 20)
+    rest_c27l = detail_page_c27l(20, 20)
+    check("includeDetails pages its Directory, Type and FieldType rows as one sequence",
+          first_c27l[0] == 20 and first_c27l[1] == first_c27l[3] + 1 + rest_c27l[5]
+          and first_c27l[2] == 0 and first_c27l[4] == 0 and first_c27l[5] == 0
+          and rest_c27l[3] == 0 and rest_c27l[4] == 1 and rest_c27l[5] > 1
+          and rest_c27l[0] == 1 + rest_c27l[5],
+          "page0=%s page20=%s" % (first_c27l, rest_c27l))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

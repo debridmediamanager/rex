@@ -6084,8 +6084,18 @@ class PlexSim:
                 size += len(meta["FieldType"])
         # Measured: `size` counts the Directory rows AND the Type and FieldType
         # blocks -- 20 + 1 + 8 = 29 on the reference's movie library.
+        #
+        # Cycle 27: those 29 rows are ONE paged sequence, not three lists paged in
+        # parallel. kids and zen both answer `size=20 totalSize=29 offset=0` to a
+        # 20-row window and hand back the `Type` and the eight `FieldType` rows as rows
+        # 20-28 at `Start=20`. plexsim's generic pager takes `totalSize` from the
+        # LONGEST list, so it reported `totalSize=20` beside a `size` of 29 and answered
+        # nothing at all past the twentieth row. The marker says "window these keys as
+        # one sequence"; `_page_container` reads it and `_drop_private` takes it off.
         body = self.secondary_container(section_id, section, None, **fields)
         body["MediaContainer"]["size"] = size
+        if query.get("includeDetails") == "1":
+            body["MediaContainer"]["_pageflat"] = ["Directory", "Type", "FieldType"]
         body["MediaContainer"].pop("title2", None)
         return body
 
@@ -14854,6 +14864,27 @@ class Handler(BaseHTTPRequestHandler):
             # had not named, so a client sending both got the query's page.
             if self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
+        flat = body.get("_pageflat")
+        if flat:
+            # Cycle 27: `?includeDetails=1` pages its `Directory`, `Type` and
+            # `FieldType` rows as ONE sequence of 29 -- see `section_detail`.
+            order = [(key, row) for key in flat for row in body.get(key) or []]
+            _, paged, start, _ = self.server.sim.page_window(range(len(order)), query)
+            out = {key: value for key, value in body.items()
+                   if key != "_pageflat" and not isinstance(value, list)}
+            if not paged:
+                out["size"] = len(order)
+                out.update({key: body[key] for key in flat if key in body})
+                return {"MediaContainer": out}
+            window = order[start:start + int(query["X-Plex-Container-Size"])]
+            out["size"] = len(window)
+            out["totalSize"] = len(order)
+            out["offset"] = start
+            for key in flat:
+                rows = [row for name, row in window if name == key]
+                if rows:
+                    out[key] = rows
+            return {"MediaContainer": out}
         lists = [key for key, value in body.items() if isinstance(value, list)]
         # Measured on kids (1.43.4) and zen (1.42.2): a statistics container does NOT
         # slice its Device and Account lists with the page. They are a LOOKUP for the
