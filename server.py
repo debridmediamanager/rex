@@ -13548,6 +13548,12 @@ class PlexSim:
         """One history row as the single read projects it."""
         row = {name: entry[name] for name in cls.HISTORY_ROW_FIELDS if entry.get(name) is not None}
         row["viewType"] = 1
+        # Cycle 27: the FIELDS were right and the ORDER was not. `_split` buckets a row
+        # by its element and `type`, so this projection was sorted as an ordinary
+        # `Video[movie]` -- `type, title, librarySectionID, ...` -- where both references
+        # answer it in exactly the order `HISTORY_ROW_FIELDS` already lists. The listing
+        # row has its own marker for the same reason; this is the single read's.
+        row["_history1"] = True
         return row
 
     def history(self, query):

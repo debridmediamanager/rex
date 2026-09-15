@@ -18852,6 +18852,42 @@ def main():
           str({k_c27o: v_c27o for k_c27o, v_c27o in photo_c27o_cases.items()
                if v_c27o[0] != v_c27o[1]}) or "all agree")
 
+
+    # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): the SINGLE history read is a
+    # third projection with an order of its own -- `historyKey, librarySectionID, title,
+    # [grandparentTitle,] type, [index, parentIndex,] originallyAvailableAt, viewedAt,
+    # accountID, deviceID, viewType`. Cycle 18 measured the FIELD SET and plexsim built
+    # it correctly, then `_split` re-sorted it as an ordinary `Video[movie]` row, because
+    # nothing marked it as this projection.
+    listing_c27m = get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or []
+    if not listing_c27m:
+        # A scrobble writes one history row per leaf, which is the cheapest way to make
+        # sure this check has something to read on a freshly started fixture.
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % movie)
+        listing_c27m = (get(base, "/status/sessions/history/all?type=1")[1]
+                        .get("Metadata") or [])
+    if not listing_c27m:
+        skip("a single history read keeps its own attribute order", "no history rows")
+    else:
+        key_c27m = str(listing_c27m[0].get("historyKey") or "").rsplit("/", 1)[-1]
+        one_c27m = (get(base, "/status/sessions/history/%s" % key_c27m)[1]
+                    .get("Metadata") or [{}])[0]
+        want_c27m = ["historyKey", "librarySectionID", "title", "grandparentTitle",
+                     "type", "index", "parentIndex", "originallyAvailableAt",
+                     "viewedAt", "accountID", "deviceID", "viewType"]
+        got_c27m = list(one_c27m.keys())
+        check("a single history read keeps its own attribute order",
+              got_c27m == [n_c27m for n_c27m in want_c27m if n_c27m in one_c27m],
+              str(got_c27m))
+        xml_c27m = request(base, "GET", "/status/sessions/history/%s" % key_c27m,
+                           want_json=False)[1].decode("utf-8", "replace")
+        found_c27m = re.search(r"<Video [^>]*/?>", xml_c27m)
+        check("and the XML agrees with it",
+              bool(found_c27m)
+              and re.findall(r"(\w+)=", found_c27m.group(0)) == got_c27m,
+              found_c27m.group(0)[:200] if found_c27m else "no Video")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

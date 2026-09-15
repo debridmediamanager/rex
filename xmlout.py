@@ -221,6 +221,14 @@ _ATTR_ORDER = {
         # < primary`), which the rows plexsim actually emits do not carry.
         "identifier", "name", "hasPrefs", "id", "primary"
     ),
+    "Video[history1]": (
+        # Cycle 27, measured on kids (1.43.4) and zen (1.42.2): a SINGLE history read
+        # answers its nine (an episode's twelve) attributes in this order, which is
+        # neither the listing row's nor a movie row's.
+        "historyKey", "librarySectionID", "title", "grandparentTitle", "type",
+        "index", "parentIndex", "originallyAvailableAt", "viewedAt", "accountID",
+        "deviceID", "viewType"
+    ),
     "Genre": (
         "id", "filter", "tag"
     ),
@@ -377,6 +385,11 @@ _SESSION_TAIL = {"selected": 1, "decision": 2}
 
 def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
+    if name == "Video" and row.get("_history1"):
+        # Cycle 27: the SINGLE history read is a third projection, with neither the
+        # listing row's order nor an item row's. Measured on kids and zen against every
+        # readable row on each.
+        return "Video[history1]"
     if name == "Video" and row.get("_history"):
         # Cycle 25: a `/status/sessions/history/all` row is its own projection with its
         # own order, measured on zen and plexscratch -- `historyKey` first, `title`
