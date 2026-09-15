@@ -20391,6 +20391,38 @@ def main():
           % (bare_c29p, {k_c29p: v_c29p[1] for k_c29p, v_c29p in grouped_c29p.items()},
              refused_c29p))
 
+
+    # Cycle 29, measured on kids (whose library holds ONE extra) and zen (3,580), which
+    # agree on every value: `/library/sections/{id}/extras/all` runs the LISTING query and
+    # refuses what a listing refuses -- an unparseable `limit`, an unparseable or empty
+    # `type`, an unknown `sort` key, any `group=`, an unparseable `parent` -- each a 500.
+    # It also refuses FOUR keys the section grid accepts: `duration`, `resolution`,
+    # `mediaSize` and `file` are 500s here and 200s on `/all`, so they are the leaf's own
+    # refusal and not the column's. `extraType=`, `title=`, `audioLanguage=` and a good
+    # `limit` stay 200s. plexsim built the leaf as a fixed empty container -- true of its
+    # own libraries -- so it answered `200 size 0` to every malformed request, which a
+    # client reads as "this library has no extras".
+    extras_c29o = {}
+    for spec_c29o in ("limit=abc", "limit=", "limit=1.5", "type=abc", "type=", "sort=zzz",
+                      "group=zzz", "group=", "parent=abc", "duration%3E%3E=100000",
+                      "resolution=1080", "mediaSize%3E%3E=1", "file=x",
+                      "audioLanguage=en", "extraType=1", "title=zzz", "limit=1", ""):
+        extras_c29o[spec_c29o] = request(
+            base, "GET", "/library/sections/%s/extras/all?%s" % (movie_section, spec_c29o))[0]
+    grid_c29o = {spec_c29o: request(base, "GET", "/library/sections/%s/all?%s"
+                                                % (movie_section, spec_c29o))[0]
+                 for spec_c29o in ("duration%3E%3E=100000", "resolution=1080",
+                                   "mediaSize%3E%3E=1", "file=x")}
+    check("the section extras leaf runs the listing query, and refuses the media keys",
+          all(extras_c29o[spec_c29o] == 500 for spec_c29o in
+              ("limit=abc", "limit=", "limit=1.5", "type=abc", "type=", "sort=zzz",
+               "group=zzz", "group=", "parent=abc", "duration%3E%3E=100000",
+               "resolution=1080", "mediaSize%3E%3E=1", "file=x"))
+          and all(extras_c29o[spec_c29o] == 200 for spec_c29o in
+                  ("audioLanguage=en", "extraType=1", "title=zzz", "limit=1", ""))
+          and all(status_c29o == 200 for status_c29o in grid_c29o.values()),
+          "extras %s | grid %s" % (extras_c29o, grid_c29o))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
