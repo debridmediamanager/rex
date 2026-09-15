@@ -19252,6 +19252,30 @@ def main():
           and request(base, "GET", "/clients/profiles/zzz")[0] == 404,
           str(profiles_c28d))
 
+
+    # Cycle 28, measured on kids and zen: the `/collections` leaf is the `/all` listing
+    # with a DEFAULT `type=18`, and it runs the same query -- an unknown `sort` key, an
+    # unparseable `type` and an unparseable `limit` are each a 500, while `subtype`,
+    # `smart` and an empty `sort` are accepted and ignored, and a `type=` the library
+    # holds answers those rows instead (a movie library's `type=1` is its movies).
+    # plexsim answered a 200 and `size 0` to every one of them.
+    coll_c28e = {spec_c28e: request(
+        base, "GET", "/library/sections/%s/collections%s" % (movie_section, spec_c28e))[0]
+        for spec_c28e in ("", "?sort=zzz", "?type=zzz", "?type=", "?limit=abc",
+                          "?subtype=zzz", "?smart=zzz", "?sort=")}
+    typed_c28e = get(base, "/library/sections/%s/collections?type=1" % movie_section)[1]
+    check("the collections leaf is the /all listing, with its grammar",
+          coll_c28e[""] == 200 and coll_c28e["?subtype=zzz"] == 200
+          and coll_c28e["?smart=zzz"] == 200 and coll_c28e["?sort="] == 200
+          and coll_c28e["?sort=zzz"] == 500 and coll_c28e["?type=zzz"] == 500
+          and coll_c28e["?type="] == 500 and coll_c28e["?limit=abc"] == 500
+          and (typed_c28e.get("totalSize") or typed_c28e.get("size"))
+          and all(r_c28e.get("type") == "movie"
+                  for r_c28e in (typed_c28e.get("Metadata") or [])),
+          "%s | type=1 -> %s rows %s"
+          % (coll_c28e, typed_c28e.get("size"),
+             sorted({r_c28e.get("type") for r_c28e in (typed_c28e.get("Metadata") or [])})))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

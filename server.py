@@ -5647,11 +5647,32 @@ class PlexSim:
             # Measured: this listing keeps the SECTION's viewGroup and title2
             # ("movie" / "All Movies"), not "collection" -- the rows are
             # collections but the view is still the library's.
+            #
+            # Cycle 28, measured on kids and zen: it is the `/all` listing with a
+            # DEFAULT `type=18`, and it runs the same query. A `type=` the library holds
+            # answers those rows instead (`type=1` on a movie library is its movies,
+            # `type=2`/`4` on a show one its shows and episodes), and the grammar is
+            # validated exactly as the grid's is -- an unknown `sort` key, an
+            # unparseable `type` and an unparseable `limit` are each a 500, while
+            # `subtype`, `smart` and an empty `sort` are accepted and ignored. plexsim
+            # answered `size 0` and a 200 to every one of those.
+            if query.get("type") is not None:
+                typed = self._parsed_type(query)
+                if isinstance(typed, tuple):
+                    return typed
+                return self.section_listing(section_id, section, query)
             rows = self.library.collections(section_id)
             # Measured on both servers: a SHOW library's list carries `nocache`, paged
             # or not, as its other listings do; a movie library's does not.
             extra = {"nocache": True} if section.get("type") == "show" else {}
-            return self.listing_container(section_id, section, rows, query=query, **extra)
+            # Cycle 28: the same `sort=` and `limit=` refusals the grid makes -- an
+            # unknown sort key and an unparseable limit are each a 500 here too.
+            rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+            rows = self._limited(rows, query)
+            return self.listing_container(section_id, section, rows, query=query,
+                                          **extra)
         if leaf == "folder":
             return self.folder_view(section_id, section, query)
 
