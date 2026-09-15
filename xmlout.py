@@ -118,7 +118,12 @@ _ATTR_ORDER = {
     "Common": (
         # `/library/sections/{id}/common`, a single-row form on both servers. zen's
         # sequence is a superset of kids'.
-        "mixedFields", "ratingKey", "key", "guid", "studio", "type", "title",
+        # Cycle 23, measured on kids and zen: the GRANDPARENT pair LEADS the element
+        # and the PARENT pair comes before `ratingKey`. plexsim appended all four
+        # after the scalars, because this bucket knew none of them.
+        "grandparentRatingKey", "grandparentTitle",
+        "mixedFields", "parentRatingKey", "parentTitle",
+        "ratingKey", "key", "guid", "studio", "type", "title",
         "titleSort", "contentRating", "summary", "index", "year", "tagline",
         "originallyAvailableAt"
     ),
@@ -440,7 +445,7 @@ def _split(name, row, container=False):
     return attrs, children
 
 
-def ordered(container):
+def ordered(container, overrides=None):
     """The same container with every dict's keys in the order the XML writer emits.
 
     Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a real PMS's JSON object
@@ -451,7 +456,7 @@ def ordered(container):
     costs a correct parser nothing, and that is the same reason cycle 17's attribute
     order mattered anyway: the document is a measurement.
     """
-    def walk(name, row):
+    def walk(name, row, overrides=None):
         attrs, children = _split(name, row, container=(name.endswith("Container")
                                                        or name in _ROOT_NAMES))
         out = {}
@@ -460,15 +465,22 @@ def ordered(container):
         for key in children:
             value = row[key]
             if isinstance(value, dict):
-                out[key] = walk(_element_name(key, value), value)
+                out[key] = walk(_element_name(key, value, overrides), value)
             else:
                 # The ELEMENT name, not the container key: `_attr_bucket` reads it,
                 # and a `Metadata` row names its own element through `type`.
-                out[key] = [walk(_element_name(key, entry), entry) for entry in value]
+                # Cycle 23: the `_xml=` OVERRIDES have to reach this writer too. Without
+                # them `/library/sections/{id}/common` bucketed its row as
+                # `Video[common]`, which no index knows, so its JSON keys stayed in
+                # build order while the XML sorted them by the `Common` bucket -- the
+                # last place plexsim's two writers contradicted each other, which cycle
+                # 19 established a real PMS never does.
+                out[key] = [walk(_element_name(key, entry, overrides), entry)
+                            for entry in value]
         return out
 
     root, body = next(iter(container.items()))
-    return {root: walk(root, body)}
+    return {root: walk(root, body, overrides)}
 
 
 # Cycle 21, measured on kids and zen: a `Feature` element is never self-closed. All

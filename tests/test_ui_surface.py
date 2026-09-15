@@ -16621,6 +16621,37 @@ def main():
           % (tag_attrs_c23f,
              re.findall(r'(\w+)="', manage_row_c23f.group(1))[:3] if manage_row_c23f else None,
              manage_row_c23f.group(2) == "/" if manage_row_c23f else None))
+
+    # Cycle 23, measured on kids and zen: a `Common` row leads with the GRANDPARENT pair and
+    # puts the PARENT pair before `ratingKey` -- `grandparentRatingKey, grandparentTitle,
+    # mixedFields, parentRatingKey, parentTitle, ratingKey, ...` -- where plexsim appended
+    # all four relational attributes after the scalars. And `/library/sections/{id}/common`
+    # was the LAST place plexsim's own two writers disagreed with each other: `ordered()`
+    # called `_element_name` without the `overrides` the handler passes, so the JSON writer
+    # never saw `_xml={"Metadata": "Common"}`, bucketed the row as `Video[common]` -- which
+    # no index knows -- and left its keys in build order while the XML sorted them by the
+    # `Common` bucket. Cycle 19 established a real PMS's two formats never disagree, and
+    # this cycle confirmed that again over 1,241 reference path/format pairs.
+    _, common_xml_c23g, _ = request(
+        base, "GET", "/library/sections/%s/common?type=4" % (show_section or movie_section),
+        want_json=False)
+    row_c23g = re.search(r"<Common ([^>]*)>", common_xml_c23g.decode("utf-8", "replace"))
+    xml_keys_c23g = re.findall(r'(\w+)="', row_c23g.group(1)) if row_c23g else []
+    _, common_json_c23g, _ = get(
+        base, "/library/sections/%s/common?type=4" % (show_section or movie_section))
+    json_row_c23g = (common_json_c23g.get("Metadata") or [{}])[0]
+    json_keys_c23g = [k_c23g for k_c23g, v_c23g in json_row_c23g.items()
+                      if not isinstance(v_c23g, (list, dict))]
+    lead_c23g = [k_c23g for k_c23g in xml_keys_c23g
+                 if k_c23g in ("grandparentRatingKey", "grandparentTitle", "mixedFields",
+                               "parentRatingKey", "parentTitle", "ratingKey")]
+    check("a Common row leads with the grandparent pair, and both writers agree",
+          xml_keys_c23g[:len(json_keys_c23g)] == json_keys_c23g
+          and lead_c23g == [k_c23g for k_c23g in
+                            ("grandparentRatingKey", "grandparentTitle", "mixedFields",
+                             "parentRatingKey", "parentTitle", "ratingKey")
+                            if k_c23g in xml_keys_c23g],
+          "XML %s | JSON %s" % (xml_keys_c23g[:8], json_keys_c23g[:8]))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

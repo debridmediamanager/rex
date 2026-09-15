@@ -1279,7 +1279,7 @@ def _repeat_keys(text):
     return text
 
 
-def json_body(container):
+def json_body(container, elements=None):
     """A container as JSON with every `null` and empty list left out.
 
     Measured across ~110 endpoints of the reference: not one `null` and not one
@@ -1298,7 +1298,7 @@ def json_body(container):
     # marker to choose between the two, so `_drop_private` -- which removes it -- has
     # to run AFTER the ordering and not before. Cycle 19's "a real PMS's JSON key
     # order IS its XML order" held on every path except this one.
-    text = json.dumps(_drop_private(ordered_keys(_drop_empty(container))))
+    text = json.dumps(_drop_private(ordered_keys(_drop_empty(container), elements)))
     return (_repeat_keys(text) if repeat else text).encode()
 
 
@@ -13228,7 +13228,11 @@ class Handler(BaseHTTPRequestHandler):
         if self._wants_xml():
             self._send(200, "text/xml;charset=utf-8", to_xml(container, elements), window)
         else:
-            self._send(200, "application/json", json_body(container), window)
+            # Cycle 23: the `_xml` override has to reach the JSON writer too --
+            # `_send_container` pops it before either writer runs, so without passing
+            # it on, `/library/sections/{id}/common` bucketed its row as
+            # `Video[common]` and left its JSON keys in build order.
+            self._send(200, "application/json", json_body(container, elements), window)
 
     # -- verbs -----------------------------------------------------------
 
