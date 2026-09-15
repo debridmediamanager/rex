@@ -19633,6 +19633,63 @@ def main():
           "genre %s / %s | collection %s / %s"
           % (genre_movie_c28q, genre_show_c28q, coll_here_c28q, coll_there_c28q))
 
+
+    # Cycle 28, measured on kids (1.43.4), zen (1.42.2) and plexscratch, identically:
+    # `searchTypes=` is `/library/search`'s own filter and its vocabulary is six tokens
+    # -- `movies tv otherVideos music photos people` -- EXACT, case-sensitive and never
+    # trimmed (`Movies`, ` movies` and `zzz` each select nothing), a comma list being a
+    # UNION with unknown tokens dropped (`zzz,movies` is `movies`) and an empty value
+    # selecting everything. `collections` and `playlists` are NOT tokens: a collection
+    # goes with its library and a playlist with its MEMBERS' library. `/hubs/search`
+    # IGNORES the parameter at every value.
+    #
+    # And `limit=` caps the WHOLE list, not each hub -- kids' `firefly&limit=3` answers
+    # the show and two of its episodes -- refusing an unparseable value with a 400 and a
+    # non-positive one with a 500, the same two-way refusal `/hubs/search` makes.
+    # plexsim answered its rows whatever `searchTypes` said, capped each hub separately,
+    # and had the two refusals the wrong way round.
+    def flat_c28r(spec_c28r):
+        status_c28r, container_c28r, _h_c28r = get(
+            base, "/library/search?query=fixture&" + spec_c28r)
+        if status_c28r != 200:
+            return status_c28r, None
+        return status_c28r, [(r_c28r.get("Metadata") or r_c28r.get("Directory") or {})
+                             .get("type")
+                             for r_c28r in (container_c28r.get("SearchResult") or [])]
+
+    bare_c28r = flat_c28r("limit=50")[1]
+    movies_c28r = flat_c28r("limit=50&searchTypes=movies")[1]
+    tv_c28r = flat_c28r("limit=50&searchTypes=tv")[1]
+    union_c28r = flat_c28r("limit=50&searchTypes=movies,tv")[1]
+    dropped_c28r = flat_c28r("limit=50&searchTypes=zzz,movies")[1]
+    nothing_c28r = [flat_c28r("limit=50&searchTypes=%s" % token_c28r)[1]
+                    for token_c28r in ("Movies", "zzz", quote(" movies"),
+                                       "collections", "playlists")]
+    empty_c28r = flat_c28r("limit=50&searchTypes=")[1]
+    hubs_c28r = [sum(h_c28r.get("size") or 0 for h_c28r in
+                     (get(base, "/hubs/search?query=fixture" + spec_c28r)[1]
+                      .get("Hub") or []))
+                 for spec_c28r in ("", "&searchTypes=zzz", "&searchTypes=movies")]
+    limits_c28r = {value_c28r: flat_c28r("limit=%s" % quote(value_c28r))[0]
+                   for value_c28r in ("abc", "", "1.5", "0", "-1", "01")}
+    capped_c28r = flat_c28r("limit=3")[1]
+    if not movies_c28r or not tv_c28r:
+        skip("searchTypes filters /library/search, and limit caps the whole list",
+             "the fixture query matched %s" % (bare_c28r,))
+    else:
+        check("searchTypes filters /library/search, and limit caps the whole list",
+              set(movies_c28r) == {"movie"} and set(tv_c28r) <= {"show", "episode"}
+              and sorted(union_c28r) == sorted(bare_c28r)
+              and dropped_c28r == movies_c28r
+              and all(rows_c28r == [] for rows_c28r in nothing_c28r)
+              and sorted(empty_c28r) == sorted(bare_c28r)
+              and len(set(hubs_c28r)) == 1
+              and limits_c28r == {"abc": 400, "": 400, "1.5": 400,
+                                  "0": 500, "-1": 500, "01": 200}
+              and len(capped_c28r) == 3 and len(bare_c28r) > 3,
+              "bare %s | movies %s | tv %s | limit=3 %s | %s | hubs %s"
+              % (bare_c28r, movies_c28r, tv_c28r, capped_c28r, limits_c28r, hubs_c28r))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
