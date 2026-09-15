@@ -9039,8 +9039,20 @@ class PlexSim:
         whether the row after the last visible one exists.
         """
         limit = self.SHELF_COUNT
+        exhausted = False
         if count is not None and str(count).strip().lstrip("-").isdigit():
-            limit = max(int(count), 0)
+            # Cycle 28, measured on zen and kids over the negative edge of a ten-row
+            # shelf: `count=-1` answers ONE row with `more: false`, and `-2`, `-5` and
+            # `-100` answer NONE with `more: false` -- where `count=0` answers none with
+            # `more: TRUE`. So a negative count is `len(rows) + count` clamped at zero,
+            # and it always reports the shelf as exhausted. plexsim clamped every
+            # negative value to zero and kept `more: true`.
+            #
+            # No client sends a negative count (Plex Web sends 12), so this changes
+            # nothing anyone can see; it is recorded because the edge was measured.
+            limit = int(count)
+            if limit < 0:
+                limit, exhausted = max(len(rows) + limit, 0), True
         # Measured: a SHOW on a `mixed` shelf -- Recently Added TV, on the home
         # screen, the library tab and /hubs/promoted -- is the FULL row, Guid,
         # Location, Rating and tag ids included, where every other row on every
@@ -9055,7 +9067,7 @@ class PlexSim:
             "type": "movie",
             "hubKey": "/library/all",
             "size": len(page),
-            "more": len(rows) > len(page),
+            "more": not exhausted and len(rows) > len(page),
             "Metadata": page,
         }
         body.update(extra)
