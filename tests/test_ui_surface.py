@@ -16316,6 +16316,25 @@ def main():
           and frames_c22m["playlist"][0][2] == "-1"
           and frames_c22m["movie"] and frames_c22m["movie"][0][:2] == (1, 5),
           "%s" % frames_c22m)
+
+    # Cycle 22, measured on plexscratch: `PUT /library/collections/{id}/refresh`,
+    # `/unmatch` and `/analyze` answer 200 with an EMPTY body, where plexsim answered a
+    # `{size: 0}` MediaContainer. CLAUDE.md's own rule -- "a mutating endpoint answers 200
+    # with an EMPTY body, not a MediaContainer" -- had never reached these three; the
+    # client parses the body of `match` to decide whether a match took. The playlist form
+    # of all three is a 404 on both, which plexsim already had right.
+    bodies_c22n = {}
+    for leaf_c22n in ("refresh", "unmatch", "analyze"):
+        status_c22n, body_c22n, _ = request(
+            base, "PUT", "/library/collections/%s/%s" % (c22m_collection, leaf_c22n))
+        bodies_c22n[leaf_c22n] = (status_c22n, len(body_c22n or b""))
+    playlists_c22n = {leaf_c22n: request(base, "PUT", "/playlists/%s/%s"
+                                         % (c22m_playlist, leaf_c22n))[0]
+                      for leaf_c22n in ("refresh", "unmatch", "analyze")}
+    check("the collection action leaves answer an empty body",
+          all(v_c22n == (200, 0) for v_c22n in bodies_c22n.values())
+          and set(playlists_c22n.values()) == {404},
+          "%s | playlists path %s" % (bodies_c22n, playlists_c22n))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

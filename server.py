@@ -10937,6 +10937,16 @@ class PlexSim:
             )
 
         leaf = segments[3]
+        if leaf in ("refresh", "unmatch", "analyze"):
+            # Cycle 22, measured on plexscratch: all three answer 200 with an EMPTY
+            # body here, where plexsim fell through and answered a `{size: 0}`
+            # MediaContainer. CLAUDE.md's own rule -- "a mutating endpoint answers 200
+            # with an EMPTY body, not a MediaContainer" -- had never reached these
+            # three, and the client parses the body of `match` to decide whether the
+            # match took.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            return ("empty", 200)
         if leaf == "prefs":
             # Cycle 15, measured on the copy: a 404 on a smart collection and on a
             # plain one alike. plexsim answered an empty 200, which the client reads
