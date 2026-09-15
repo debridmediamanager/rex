@@ -19832,6 +19832,85 @@ def main():
               % (row_c29a.get("thumb"), row_c29a.get("art"),
                  [leaf_c29a.get("parentThumb") for leaf_c29a in after_c29a]))
 
+
+    # Cycle 29, measured on plexscratch over four writes on a two-season show, reading the
+    # show, both seasons and one episode of each back after every one:
+    #
+    #   * clearing the SHOW's `art` removes it from both seasons AND from every episode,
+    #     taking the episodes' `grandparentArt` with it; picking one back puts all of them
+    #     in the same read -- so a borrowed field is DERIVED and is re-created, not moved
+    #   * uploading an `art` to ONE season makes that season the owner: its episodes' own
+    #     `art` switches to `/library/metadata/<season>/art/<stamp>` while their
+    #     `grandparentArt` goes on naming the SHOW, and the other season's episode keeps
+    #     the show's
+    #   * picking a new `art` for the SHOW then leaves the owning season's own path and
+    #     stamp alone (only its `parentThumb` follows) while the borrowing season follows
+    #     on both
+    #
+    # So a row's own artwork field is its NEAREST ancestor's that OWNS one, and
+    # `parentX`/`grandparentX` always name that specific ancestor. plexsim could only MOVE
+    # a field a row already had, so a leaf that lost its `art` never got one back, a
+    # season that gained its own had it overwritten by the next show pick, and no leaf ever
+    # followed its season's.
+    def art_c29b(key_c29b):
+        row_c29b = (get(base, "/library/metadata/%s" % key_c29b)[1]
+                    .get("Metadata") or [{}])[0]
+        return (row_c29b.get("art"), row_c29b.get("grandparentArt"),
+                row_c29b.get("parentThumb"))
+
+    pairs_c29b = {}
+    for season_c29b in [r_c29b.get("ratingKey") for r_c29b in
+                        (get(base, "/library/metadata/%s/children" % show)[1]
+                         .get("Metadata") or [])]:
+        kids_c29b = (get(base, "/library/metadata/%s/children" % season_c29b)[1]
+                     .get("Metadata") or [])
+        if kids_c29b:
+            pairs_c29b[season_c29b] = kids_c29b[0].get("ratingKey")
+    cands_c29b = (get(base, "/library/metadata/%s/arts" % show)[1].get("Metadata") or [])
+    if len(pairs_c29b) < 2 or not cands_c29b:
+        skip("a row's artwork is its nearest owning ancestor's, created and not just moved",
+             "%d season(s) with episodes, %d candidate(s)"
+             % (len(pairs_c29b), len(cands_c29b)))
+    else:
+        owning_c29b, borrowing_c29b = list(pairs_c29b)[:2]
+        request(base, "DELETE", "/library/metadata/%s/art" % show)
+        cleared_c29b = [art_c29b(key_c29b)[0] for key_c29b in
+                        list(pairs_c29b) + list(pairs_c29b.values())]
+        request(base, "PUT", "/library/metadata/%s/art?url=%s"
+                % (show, quote(cands_c29b[0].get("ratingKey") or "")))
+        show_art_c29b = art_c29b(show)[0]
+        restored_c29b = {key_c29b: art_c29b(key_c29b)[0] for key_c29b in
+                         list(pairs_c29b) + list(pairs_c29b.values())}
+        request(base, "POST", "/library/metadata/%s/arts" % owning_c29b,
+                body=b"\x89PNG\r\n\x1a\n" + b"c29b-season" * 3)
+        season_art_c29b = art_c29b(owning_c29b)[0]
+        own_leaf_c29b = art_c29b(pairs_c29b[owning_c29b])
+        other_leaf_c29b = art_c29b(pairs_c29b[borrowing_c29b])
+        request(base, "PUT", "/library/metadata/%s/art?url=%s"
+                % (show, quote((cands_c29b[1] if len(cands_c29b) > 1
+                                else cands_c29b[0]).get("ratingKey") or "")))
+        after_c29b = {key_c29b: art_c29b(key_c29b) for key_c29b in
+                      (show, owning_c29b, borrowing_c29b,
+                       pairs_c29b[owning_c29b], pairs_c29b[borrowing_c29b])}
+        check("a row's artwork is its nearest owning ancestor's, created and not just moved",
+              all(value_c29b is None for value_c29b in cleared_c29b)
+              and bool(show_art_c29b)
+              and all(value_c29b == show_art_c29b
+                      for value_c29b in restored_c29b.values())
+              and str(season_art_c29b or "").startswith(
+                  "/library/metadata/%s/art/" % owning_c29b)
+              and own_leaf_c29b[0] == season_art_c29b
+              and own_leaf_c29b[1] == show_art_c29b
+              and other_leaf_c29b[0] == show_art_c29b
+              and after_c29b[owning_c29b][0] == season_art_c29b
+              and after_c29b[borrowing_c29b][0] == after_c29b[show][0]
+              and after_c29b[pairs_c29b[owning_c29b]][0] == season_art_c29b
+              and after_c29b[pairs_c29b[owning_c29b]][1] == after_c29b[show][0]
+              and after_c29b[pairs_c29b[borrowing_c29b]][0] == after_c29b[show][0],
+              "cleared %s | restored %s | season %s | own leaf %s | other leaf %s | after %s"
+              % (cleared_c29b, sorted(set(map(str, restored_c29b.values()))),
+                 season_art_c29b, own_leaf_c29b, other_leaf_c29b, after_c29b))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

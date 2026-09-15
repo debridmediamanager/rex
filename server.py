@@ -11987,6 +11987,46 @@ class PlexSim:
             "/library/metadata/%s/" % row.get("ratingKey"))
 
     @staticmethod
+    def _owns(row, field):
+        """Whether this row's copy of `field` is its OWN rather than one it borrows.
+
+        `_owns_thumb` read one field; cycle 29 needs the same test for `art` and
+        `theme`, because which ancestor a leaf borrows from depends on it.
+        """
+        return str((row or {}).get(field) or "").startswith(
+            "/library/metadata/%s/" % (row or {}).get("ratingKey"))
+
+    @classmethod
+    def _hand_down(cls, child, field, owner):
+        """Give a row the ancestor's copy of a handed-down field, or take it away.
+
+        Cycle 29: `_follow_artwork` can only MOVE -- it returns early unless the child
+        already names this owner -- so a row that lost a borrowed field when the owner's
+        was cleared never got it back when the owner's was re-created. Measured on
+        plexscratch: clearing a show's `art` removes it from both seasons and from every
+        episode (with the episodes' `grandparentArt`), and picking one puts all of them
+        back in the same read.
+        """
+        if owner is None or owner.get(field) is None:
+            child.pop(field, None)
+        else:
+            child[field] = owner[field]
+
+    def _handed_down_from(self, field, season, show):
+        """Which ancestor's copy of `field` a row under `season` carries.
+
+        Cycle 29, measured on plexscratch by uploading an `art` to one season of a
+        two-season show and then picking a new one for the SHOW: a row's own artwork
+        field is its NEAREST ancestor's that OWNS one. The season that owns an `art`
+        keeps its own through a show pick and hands it to its episodes -- all three
+        switched to `/library/metadata/7/art/<stamp>` -- while their `grandparentArt`
+        goes on naming the show at the show's own stamp; the other season and its episode
+        follow the show on both. zen's episode 11115 is the same shape and cycle 27 could
+        only record it, because the copy had no season owning an `art` to write with.
+        """
+        return season if self._owns(season, field) else show
+
+    @staticmethod
     def _borrows_from(child, field, owner):
         """Whether `child[field]` is a path naming `owner`'s copy of that artwork."""
         return str(child.get(field) or "").startswith(
@@ -12038,14 +12078,21 @@ class PlexSim:
         kind = row.get("type")
         if kind not in ("show", "season"):
             return
+        show = (row if kind == "show"
+                else self.catalog.items.get(row.get("parentRatingKey")))
         for child in self.catalog.children(row["ratingKey"]):
             if kind == "show":
-                for name in ("thumb", "art", "theme"):
-                    target = "parent" + name.capitalize() if name == "thumb" else name
-                    if row.get(name) is None:
-                        child.pop(target, None)
-                    else:
-                        child[target] = row[name]
+                if row.get("thumb") is None:
+                    child.pop("parentThumb", None)
+                else:
+                    child["parentThumb"] = row["thumb"]
+                # Cycle 29: a season that OWNS an `art` keeps it through a show pick --
+                # measured on the copy, where the season's own path and stamp survived
+                # and only its `parentThumb` followed. plexsim assigned the show's value
+                # over it, so a season's own backdrop was lost to the next show write.
+                for name in ("art", "theme"):
+                    self._hand_down(child, name,
+                                    self._handed_down_from(name, child, row))
             else:
                 # The episodes of a season that owns its poster all carry it; the
                 # episodes of a season that borrows the show's carry none at all.
@@ -12053,6 +12100,11 @@ class PlexSim:
                     child["parentThumb"] = row["thumb"]
                 else:
                     child.pop("parentThumb", None)
+                # Cycle 29: and their own `art` switches to the season's the moment the
+                # season owns one, where plexsim left it naming the show.
+                for name in ("art", "theme"):
+                    self._hand_down(child, name,
+                                    self._handed_down_from(name, row, show))
             # A row that borrows THIS row's poster shows it, so its own `thumb`
             # follows the new stamp -- and goes when the owner's does. Only this row's:
             # a value naming some other ratingKey is a shape a real PMS cannot produce
@@ -12067,11 +12119,14 @@ class PlexSim:
                     else:
                         leaf[target] = row[name]
                 # `art` is handed down borrowed or not (cycle 20), so an episode's own
-                # `art` IS the show's and moves with it -- the half plexsim left out,
+                # `art` IS an ancestor's and moves with it -- the half plexsim left out,
                 # which left `art` and `grandparentArt` naming the same image at two
-                # different versions on the same row.
+                # different versions on the same row. Cycle 29: WHICH ancestor is the
+                # nearest one that owns it, and the field is CREATED where there was
+                # none, which `_follow_artwork` could not do.
                 for name in ("art", "theme"):
-                    self._follow_artwork(leaf, name, row)
+                    self._hand_down(leaf, name,
+                                    self._handed_down_from(name, child, row))
 
     def upload_artwork(self, row, kind, body):
         """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
