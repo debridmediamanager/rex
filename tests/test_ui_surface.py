@@ -18620,6 +18620,50 @@ def main():
           line_status_c27f(b"get /identity HTTP/1.1") == "NO-RESPONSE",
           line_status_c27f(b"get /identity HTTP/1.1"))
 
+
+    # Cycle 27, measured on kids and zen with a GET and on the writable copy with a POST,
+    # which agree: an unparseable `Content-Length` is IGNORED (`abc` is a 200 everywhere,
+    # and no body is read) and a NEGATIVE one is a 500. plexsim called `int()` on the raw
+    # header, so `abc` raised inside the handler thread and the socket closed with no
+    # response, and `-1` reached `rfile.read(-1)`, which blocks until the peer hangs up.
+    #
+    # Not emulated, and recorded instead: a `Content-Length` the client does not then
+    # SEND. A real PMS answers at once -- it reads the body only where the endpoint wants
+    # one -- where plexsim reads eagerly and waits out its own 20-second socket timeout.
+    def content_length_c27g(value_c27g, verb_c27g="GET", path_c27g="/identity"):
+        sock_c27g = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c27g.settimeout(8)
+        sock_c27g.sendall(("%s %s HTTP/1.1\r\nHost: %s\r\nContent-Length: %s\r\n"
+                           "Connection: close\r\n\r\n"
+                           % (verb_c27g, path_c27g, base.split("//")[1], value_c27g)).encode())
+        got_c27g = b""
+        try:
+            while len(got_c27g) < 60:
+                chunk_c27g = sock_c27g.recv(4096)
+                if not chunk_c27g:
+                    break
+                got_c27g += chunk_c27g
+        except Exception:
+            pass
+        sock_c27g.close()
+        return got_c27g.split(b"\r\n", 1)[0].decode("latin-1") if got_c27g else "NO-RESPONSE"
+
+    lengths_c27g = {
+        "abc on a GET": content_length_c27g("abc"),
+        "abc on a POST": content_length_c27g("abc", "POST", "/hubs"),
+        "empty": content_length_c27g(""),
+        "-1": content_length_c27g("-1"),
+        "0": content_length_c27g("0"),
+    }
+    check("an unparseable Content-Length is ignored and a negative one is a 500",
+          "200" in lengths_c27g["abc on a GET"]
+          and "200" in lengths_c27g["abc on a POST"]
+          and "200" in lengths_c27g["empty"]
+          and "500" in lengths_c27g["-1"]
+          and "200" in lengths_c27g["0"],
+          str(lengths_c27g))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

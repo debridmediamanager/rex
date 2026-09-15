@@ -14577,7 +14577,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _dispatch(self, method):
         sim = self.server.sim
-        length = int(self.headers.get("Content-Length") or 0)
+        # Cycle 27, measured on kids and zen (GET) and on the writable copy (POST): an
+        # unparseable `Content-Length` is IGNORED -- `abc` is a 200 on every one of them,
+        # with no body read -- and a NEGATIVE one is a 500. plexsim called `int()` on the
+        # raw value, so `abc` raised inside the handler thread and the connection died
+        # with no response at all, and `-1` became `rfile.read(-1)`, which blocks until
+        # the peer closes. Both read to a client as a server that hung up.
+        declared = (self.headers.get("Content-Length") or "").strip()
+        if declared.startswith("-") and declared[1:].isdigit():
+            self._send(500, "text/plain", b"plexsim: server error")
+            return
+        length = int(declared) if declared.isdigit() else 0
         body = self.rfile.read(length) if length else b""
 
         target = (self.requestline.split(" ") + ["", ""])[1]
