@@ -19799,6 +19799,39 @@ def main():
                  {k_c28t: home_c28t.get(k_c28t) for k_c28t in
                   ("librarySectionKey", "librarySectionUUID")}))
 
+
+    # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading its
+    # three episodes back: an artwork UPLOAD cascades exactly as a pick does -- the
+    # season's own `thumb` and `art` land on one stamp and every episode's `parentThumb`
+    # follows it. plexsim's upload path set the row's two fields, moved `updatedAt` and
+    # pushed its frame, and never called the cascade, so the children kept the old stamp.
+    # A client caches artwork on that stamp, which is what it is for, so an uploaded
+    # poster was invisible on every episode page until the process restarted.
+    season_c29a = (get(base, "/library/metadata/%s/children" % show)[1]
+                   .get("Metadata") or [{}])[0].get("ratingKey")
+    leaves_c29a = ((get(base, "/library/metadata/%s/children" % season_c29a)[1]
+                    .get("Metadata") or []) if season_c29a else [])
+    if not leaves_c29a:
+        skip("an artwork upload cascades like a pick", "no season with episodes")
+    else:
+        request(base, "POST", "/library/metadata/%s/arts" % season_c29a,
+                body=b"\x89PNG\r\n\x1a\n" + b"c29a-upload" * 3)
+        row_c29a = (get(base, "/library/metadata/%s" % season_c29a)[1]
+                    .get("Metadata") or [{}])[0]
+        after_c29a = (get(base, "/library/metadata/%s/children" % season_c29a)[1]
+                      .get("Metadata") or [])
+        check("an artwork upload cascades like a pick",
+              str(row_c29a.get("art") or "").startswith(
+                  "/library/metadata/%s/art/" % season_c29a)
+              and str(row_c29a.get("thumb") or "").startswith(
+                  "/library/metadata/%s/thumb/" % season_c29a)
+              and bool(after_c29a)
+              and all(leaf_c29a.get("parentThumb") == row_c29a.get("thumb")
+                      for leaf_c29a in after_c29a),
+              "season thumb %s art %s | leaves %s"
+              % (row_c29a.get("thumb"), row_c29a.get("art"),
+                 [leaf_c29a.get("parentThumb") for leaf_c29a in after_c29a]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

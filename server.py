@@ -12105,6 +12105,15 @@ class PlexSim:
         # that caches on the stamp -- which is what it is for -- never refetched a
         # poster the user had just uploaded.
         row["updatedAt"] = stamp
+        # Cycle 29, measured on plexscratch by uploading an `art` to a SEASON and reading
+        # its three episodes back: an upload CASCADES exactly as a pick does -- the
+        # season's own `thumb` and `art` land on one stamp and every episode's
+        # `parentThumb` follows it. plexsim set the row's two fields, moved `updatedAt`
+        # and pushed its frame, and never called the cascade at all, so every child kept
+        # the old stamp. A client caches artwork on that stamp -- which is the entire
+        # point of versioning it -- so an uploaded poster stayed invisible on every
+        # episode and season page for the life of the process.
+        self.cascade_artwork(row)
         logger.info("ARTWORK upload %s %s %d bytes -> %s", row["ratingKey"], kind, len(body), key)
         self.notify_timeline(row, self.TIMELINE_DONE, None)
         return ("empty", 200)
