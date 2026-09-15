@@ -18256,6 +18256,92 @@ def main():
     check("and a stopped beat closes it at once",
           not ttl_listed_c26l(), str(ttl_listed_c26l()))
 
+
+    # Cycle 26, measured on the copy in BOTH formats against the same row's own detail
+    # read: `/status/sessions` is written by a different serialiser from every other
+    # container on the surface. Its attributes come out ALPHABETICALLY -- the `Video`,
+    # its `Media` and its `Part` alike -- where cycle 22's measured `_ATTR_ORDER` governs
+    # everywhere else, and the flags a decision arms follow that block. In JSON, every
+    # child element's `id`, a `Media`'s `aspectRatio`, a `Rating`'s `value` and the row's
+    # `librarySectionID` are STRINGS where the detail row sends numbers, and
+    # `UltraBlurColors` is a LIST of one where it is an object everywhere else. Nothing
+    # else changes type: `bitrate`, `width`, `duration`, `index` and `level` are numbers
+    # on both, so it is not a blanket stringification.
+    #
+    # Cycle 22 swept 2,994 paths for attribute order and this is the one path it could
+    # not reach -- reading it needs a live playback session, which neither read-only
+    # reference can be given.
+    ident_c26m = ("X-Plex-Client-Identifier=c26m-client"
+                  "&X-Plex-Session-Identifier=c26m-sess&X-Plex-Product=Plex+Web"
+                  "&X-Plex-Device-Name=Harness&X-Plex-Platform=Chrome")
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ident_c26m))
+    row_c26m = ([r_c26m for r_c26m in
+                 get(base, "/status/sessions")[1].get("Metadata") or []
+                 if (r_c26m.get("Player") or {}).get("machineIdentifier")
+                 == "c26m-client"] or [{}])[0]
+    media_c26m = (row_c26m.get("Media") or [{}])[0]
+    part_c26m = (media_c26m.get("Part") or [{}])[0]
+
+    def attr_names_c26m(element_c26m):
+        return [key_c26m for key_c26m, value_c26m in element_c26m.items()
+                if not isinstance(value_c26m, (list, dict))]
+
+    alphabetical_c26m = []
+    for label_c26m, element_c26m in (("Video", row_c26m), ("Media", media_c26m),
+                                     ("Part", part_c26m)):
+        names_c26m = [n_c26m for n_c26m in attr_names_c26m(element_c26m)
+                      if n_c26m not in ("selected", "decision")]
+        alphabetical_c26m.append((label_c26m, names_c26m == sorted(names_c26m),
+                                  len(names_c26m)))
+    check("a session row and its children write their attributes alphabetically",
+          all(ok_c26m for _l_c26m, ok_c26m, n_c26m in alphabetical_c26m)
+          and all(n_c26m > 4 for _l_c26m, _o_c26m, n_c26m in alphabetical_c26m),
+          str(alphabetical_c26m))
+    detail_c26m = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                   or [{}])[0]
+    detail_media_c26m = (detail_c26m.get("Media") or [{}])[0]
+    detail_part_c26m = (detail_media_c26m.get("Part") or [{}])[0]
+    check("its ids, aspectRatio and librarySectionID are STRINGS, the rest are not",
+          isinstance(media_c26m.get("id"), str)
+          and isinstance(part_c26m.get("id"), str)
+          and isinstance(media_c26m.get("aspectRatio"), str)
+          and isinstance(row_c26m.get("librarySectionID"), str)
+          and isinstance(detail_media_c26m.get("id"), int)
+          and isinstance(detail_part_c26m.get("id"), int)
+          and isinstance(detail_c26m.get("librarySectionID"), int)
+          and isinstance(media_c26m.get("bitrate"), int)
+          and isinstance(media_c26m.get("duration"), int),
+          "session id=%r aspect=%r section=%r bitrate=%r | detail id=%r section=%r"
+          % (media_c26m.get("id"), media_c26m.get("aspectRatio"),
+             row_c26m.get("librarySectionID"), media_c26m.get("bitrate"),
+             detail_media_c26m.get("id"), detail_c26m.get("librarySectionID")))
+    check("and UltraBlurColors is a LIST here and an object on the detail row",
+          isinstance(row_c26m.get("UltraBlurColors"), list)
+          and isinstance(detail_c26m.get("UltraBlurColors"), dict),
+          "session=%s detail=%s" % (type(row_c26m.get("UltraBlurColors")).__name__,
+                                    type(detail_c26m.get("UltraBlurColors")).__name__))
+    # The XML writer has to agree with the JSON one -- cycle 19's rule -- so the order is
+    # asserted on the document as well, where the types cannot be seen at all.
+    xml_c26m = request(base, "GET", "/status/sessions?%s" % ident_c26m,
+                       want_json=False)[1].decode("utf-8", "replace")
+    xml_names_c26m = []
+    for tag_c26m in ("Video", "Media", "Part"):
+        found_c26m = re.search(r"<%s ([^>]*?)/?>" % tag_c26m, xml_c26m)
+        names_c26m = [n_c26m for n_c26m in
+                      re.findall(r"(\w+)=", found_c26m.group(1) if found_c26m else "")
+                      if n_c26m not in ("selected", "decision")]
+        xml_names_c26m.append((tag_c26m, bool(names_c26m),
+                               names_c26m == sorted(names_c26m)))
+    check("the XML agrees with the JSON on that order",
+          all(present_c26m and ok_c26m
+              for _t_c26m, present_c26m, ok_c26m in xml_names_c26m),
+          str(xml_names_c26m))
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ident_c26m))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

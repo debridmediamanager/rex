@@ -10477,8 +10477,22 @@ class PlexSim:
             **(extra or {}),
         }])
 
+    @staticmethod
+    def _session_id(row):
+        """A child element's `id` as `/status/sessions` sends it: a string."""
+        return None if row.get("id") is None else str(row["id"])
+
     def session_rows(self):
-        """`/status/sessions` -- the item row plus its session blocks."""
+        """`/status/sessions` -- the item row plus its session blocks.
+
+        Cycle 26: this projection is written by a DIFFERENT serialiser from every other
+        container, measured on the copy in both formats against the same row's own
+        detail read. Its attributes come out ALPHABETICALLY (see `xmlout._SESSION_TAIL`),
+        every child element's `id` and a `Media`'s `aspectRatio` and a `Rating`'s `value`
+        are strings, `librarySectionID` is a string, and `UltraBlurColors` is a list of
+        one. Cycle 22's attribute-order sweep could not see any of it: reading this path
+        needs a live playback session, which a read-only reference cannot be given.
+        """
         rows = []
         for entry in self.sessions.live():
             row = entry.get("row") or {}
@@ -10509,14 +10523,56 @@ class PlexSim:
                     played = (dict(part, decision="directplay", selected=True)
                               if decided else dict(part))
                     if part.get("Stream"):
-                        played["Stream"] = [dict(stream, location="direct")
-                                            if decided else dict(stream)
-                                            for stream in part["Stream"]]
+                        played["Stream"] = [
+                            dict(stream, location="direct", id=self._session_id(stream), _session=True)
+                            if decided else dict(stream, id=self._session_id(stream), _session=True)
+                            for stream in part["Stream"]]
+                    played["id"] = self._session_id(played)
+                    played["_session"] = True
                     parts.append(played)
-                media_rows.append(dict(media, selected=True, Part=parts) if decided
-                                  else dict(media, Part=parts))
+                row_media = (dict(media, selected=True, Part=parts) if decided
+                             else dict(media, Part=parts))
+                # Cycle 26, measured on the copy against the same row's detail read:
+                # a session row's child elements send `id` and `Media.aspectRatio` as
+                # JSON STRINGS where every other projection sends numbers, and a
+                # `Rating`'s `value` is a string here too. Only those; `bitrate`,
+                # `width`, `duration`, `index`, `level` and the rest keep their types
+                # on both, so it is not a blanket stringification of the projection.
+                row_media["id"] = self._session_id(row_media)
+                if row_media.get("aspectRatio") is not None:
+                    row_media["aspectRatio"] = str(row_media["aspectRatio"])
+                row_media["_session"] = True
+                media_rows.append(row_media)
             if media_rows:
                 item["Media"] = media_rows
+            # The tag lists come from the catalog through `_full`, which copies the top
+            # level only -- so they are COPIED here rather than marked in place. Writing
+            # a marker into them would write it into the catalog, which is the trap the
+            # `selected` flags fell into before cycle 15.
+            for tags in ("Genre", "Country", "Director", "Writer", "Role", "Producer",
+                         "Collection", "Similar", "Guid", "Field"):
+                if item.get(tags):
+                    item[tags] = [dict(tag, _session=True,
+                                       **({"id": self._session_id(tag)} if tag.get("id") is not None
+                                          else {}))
+                                  for tag in item[tags]]
+            if item.get("Rating"):
+                item["Rating"] = [
+                    dict(rating, _session=True,
+                         **({"value": str(rating["value"])}
+                            if rating.get("value") is not None else {}))
+                    for rating in item["Rating"]]
+            if isinstance(item.get("UltraBlurColors"), dict):
+                # Measured: it comes back as a LIST of one on this path and as an
+                # OBJECT everywhere else. XML cannot tell the two apart -- it is one
+                # child element either way -- so this is a JSON-only difference and it
+                # is why the shape was never seen before a session was read as JSON.
+                item["UltraBlurColors"] = [dict(item["UltraBlurColors"],
+                                                _session=True)]
+            if item.get("librarySectionID") is not None:
+                # A STRING here and a number on the detail row, on both formats' behalf.
+                item["librarySectionID"] = str(item["librarySectionID"])
+            item["_session"] = True
             item["User"] = entry["User"]
             item["Player"] = entry["Player"]
             item["Session"] = entry["Session"]
