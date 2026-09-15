@@ -4406,7 +4406,15 @@ class PlexSim:
             # populated one. plexsim answered `allowSync: false` and both tag keys,
             # which is cycle 15's rule ("every hub path says allowSync true except
             # postplay") satisfied everywhere but here.
-            rows = [_listing_row(r) for r in self.continue_watching()
+            # Cycle 25, measured on plexscratch: `removeFromContinueWatching` does NOT
+            # reach this list. It empties `/hubs/home/onDeck`,
+            # `/hubs/home/continueWatching` and `/library/sections/{id}/onDeck` on both
+            # servers, and on a real PMS the row is still HERE afterwards -- stable to
+            # +20 s, so it is not a settle -- and the section's own `tv.inprogress.{id}`
+            # shelf keeps it too. plexsim removed it everywhere, so a row hidden from
+            # Home was also gone from the library page's own shelf, which is the one
+            # place a real PMS still offers it.
+            rows = [_listing_row(r) for r in self.continue_watching(include_hidden=True)
                     if str(r.get("librarySectionID")) == str(segments[2])]
             return self.bare_container(size=len(rows), allowSync=True,
                                        identifier="com.plexapp.plugins.library",
@@ -10432,7 +10440,7 @@ class PlexSim:
         """
         return [row for row in self.continue_watching() if row.get("viewOffset")]
 
-    def continue_watching(self):
+    def continue_watching(self, include_hidden=False):
         """Rows for Continue Watching and On Deck, newest first.
 
         A movie is there while it has a resume point. A SHOW contributes one row --
@@ -10457,14 +10465,16 @@ class PlexSim:
         """
         rows = [r for r in self.catalog.items.values()
                 if r.get("viewOffset") and r.get("type") == "movie"
-                and not r.get("_hiddenFromContinueWatching")]
+                and (include_hidden
+                     or not r.get("_hiddenFromContinueWatching"))]
         shows = {}
         for row in self.catalog.items.values():
             if row.get("type") == "episode":
                 shows.setdefault(str(row.get("grandparentRatingKey")), []).append(row)
         stamps = {}
         for episodes in shows.values():
-            if any(e.get("_hiddenFromContinueWatching") for e in episodes):
+            if not include_hidden and any(e.get("_hiddenFromContinueWatching")
+                                          for e in episodes):
                 continue
             episodes.sort(key=lambda e: (e.get("parentIndex") or 0, e.get("index") or 0))
             # The most recently viewed of the in-progress ones, not the lowest-numbered.
