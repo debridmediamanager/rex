@@ -3147,6 +3147,12 @@ class PlexSim:
         # a bare `OPTIONS` is a 200 with an empty body, and every other unimplemented
         # verb, and an unknown path under it, is a 404 with an EMPTY body and no
         # `Content-Type` at all. plexsim answered its own text/plain 404 to all of them.
+        if segments[:2] == ["system", "proxy"]:
+            # Cycle 22, measured on kids, zen and plexscratch: `/system/proxy` is the
+            # one path in this subtree that does NOT take cycle 18's envelope. Every
+            # verb, GET included, answers its own 400 -- not the empty-bodied 404 the
+            # rest of `/system` answers, and not the 405 a PATCH gets there.
+            return ("error", 400, "plexsim: bad request")
         if segments[:1] == ["system"]:
             if method == "PATCH":
                 return ("text", 405, "<html><head><title>405: Method Not Allowed</title>"
@@ -3161,6 +3167,17 @@ class PlexSim:
                 # and it has to come BEFORE the `/system` routes, which answered their
                 # own GET to a PUT.
                 return ("bare", 404)
+
+        # Cycle 22, measured on plexscratch: `PATCH` had never been swept on the paths
+        # cycle 6 took POST/PUT/DELETE over, and it is a 404 on all of them, where the
+        # plug-in fallthrough below answered each one's own GET. `/accounts/{id}`
+        # refuses a POST as well as the DELETE cycle 19 measured.
+        if method == "PATCH" and (route in ("/library/sections", "/status/sessions",
+                                            "/media/providers")
+                                  or segments[:1] in (["playQueues"], ["accounts"])):
+            return ("error", 404, "plexsim: not found")
+        if method == "POST" and segments[:1] == ["accounts"] and len(segments) == 2:
+            return ("error", 404, "plexsim: not found")
 
         # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
         # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
