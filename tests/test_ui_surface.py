@@ -16766,6 +16766,20 @@ def main():
           [a.get("event") for a in activity_c25b][-1:] == ["ended"],
           str([a.get("event") for a in activity_c25b]))
 
+
+    # Cycle 25, re-measured on kids over all seven verbs: `/library/metadata/{id}/match`
+    # answers its no-parameters 400 to every one of them -- GET, HEAD, PUT, POST, DELETE,
+    # PATCH and a bare OPTIONS. Cycle 17 recorded exactly that sentence and implemented
+    # it for GET and DELETE, so plexsim still 404'd HEAD, PATCH and OPTIONS: the client's
+    # own "is this matchable?" probe read as an endpoint that does not exist.
+    match_verbs_c25c = {verb_c25c: request(base, verb_c25c,
+                                           "/library/metadata/%s/match" % movie)[0]
+                        for verb_c25c in ("GET", "HEAD", "PUT", "POST", "DELETE",
+                                          "PATCH", "OPTIONS")}
+    check("/match answers its no-parameters 400 to EVERY verb",
+          set(match_verbs_c25c.values()) == {400},
+          str(sorted(match_verbs_c25c.items())))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
