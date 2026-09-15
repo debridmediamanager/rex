@@ -10148,16 +10148,27 @@ class PlexSim:
         Cycle 15 recorded the opposite from a copy that held no collection at all, so
         the absence was the fixture's and not a rule; that note is overturned.
         """
+        # Cycle 30: search reads the collection TAG table, not the collection items. A
+        # tag written onto an item with no collection behind it is found by both search
+        # endpoints on the copy -- as a `tagType: 2` row with a `count` and NO `guid`,
+        # which is the one attribute an item-backed collection's row adds.
         found = []
         for section in self.catalog.sections:
             if section_id is not None and str(section["key"]) != str(section_id):
                 continue
-            # `collections()` already answers ROWS, not the stored dicts.
-            for row in self.library.collections(section["key"]):
-                words = re.split(r"[^0-9a-z]+", str(row.get("title") or "").lower())
-                if not any(w.startswith(needle) for w in words if w):
+            seen = {}
+            for row in self.catalog.items.values():
+                if str(row.get("librarySectionID")) != str(section["key"]):
                     continue
-                found.append(self._collection_tag_result(row, section))
+                for tag in row.get("Collection") or []:
+                    name = str(tag.get("tag") or "")
+                    words = re.split(r"[^0-9a-z]+", name.lower())
+                    if not any(w.startswith(needle) for w in words if w):
+                        continue
+                    entry = seen.setdefault(name, {"tag": tag, "rows": []})
+                    entry["rows"].append(row)
+            for name in sorted(seen):
+                found.append(self._collection_tag_result(seen[name], section))
         return found
 
     def search(self, query):
@@ -10283,11 +10294,18 @@ class PlexSim:
             hubs.append(hub)
         return self.bare_container(size=len(hubs), Hub=hubs)
 
-    def _collection_tag_result(self, row, section):
-        """A collection as a search `tag` row. Cycle 15, measured on the copy."""
-        section_id = row["librarySectionID"]
+    def _collection_tag_result(self, entry, section):
+        """A collection TAG as a search row. Cycle 15, measured on the copy.
+
+        Cycle 30: built from the TAG and the rows carrying it rather than from a
+        collection item, because a tag with no collection behind it is found too -- and
+        it is the `guid` that tells them apart, which only an item can supply.
+        """
+        section_id = section["key"]
+        tag = entry["tag"]
+        collection = self.library.find_collection(str(tag.get("tag") or ""), section_id)
         return {
-            "key": "/library/sections/%s/all?collection=%s" % (section_id, row["index"]),
+            "key": "/library/sections/%s/all?collection=%s" % (section_id, tag.get("id")),
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
             "librarySectionKey": "/library/sections/%s" % section_id,
             "librarySectionTitle": section.get("title"),
@@ -10297,15 +10315,19 @@ class PlexSim:
             "reasonTitle": section.get("title"),
             "score": self._score(0.52),
             "type": "tag",
-            "id": row["index"],
-            "filter": "collection=%s" % row["index"],
-            "tag": row.get("title"),
+            "id": tag.get("id"),
+            "filter": "collection=%s" % tag.get("id"),
+            "tag": tag.get("tag"),
             # Measured: a COLLECTION tag row is tagType 2, beside the actor's 6 and
             # the director's 4.
             "tagType": 2,
-            "count": row.get("childCount") or 0,
-            "guid": row.get("guid"),
+            "count": len(entry["rows"]),
         }
+        if collection is not None:
+            # Cycle 30: only a tag with a collection ITEM behind it carries a `guid` --
+            # the copy's tag-only `C30TAGONLY` row carries none.
+            result["guid"] = self.library._collection_row(collection).get("guid")
+        return result
 
     def _tag_result(self, entry, hub):
         """One tag row of a search result, field for field off the reference."""

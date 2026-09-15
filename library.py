@@ -2007,27 +2007,26 @@ class Library:
         return None
 
     def _sync_collection_tag(self, row, title):
-        """Editing a `collection[0].tag.tag` on an item is how the UI's
-        "Add to Collection" works, so the collection has to appear from that
-        side too -- creating it if this is its first member."""
+        """Editing a `collection[0].tag.tag` on an item makes a TAG, not a collection.
+
+        Cycle 30, measured on BOTH writable references -- plexscratch (1.43.4) and the
+        new plexscratch42 (1.42.2): the write is a 200, the tag appears on the row and in
+        `/library/sections/{id}/collection`, it filters (`?collection=<id>` answers the
+        member) and both search endpoints find it as a `tagType: 2` row -- and
+        `/library/all?type=18` and `/library/sections/{id}/collections` list NOTHING new,
+        twenty minutes later and after a refresh. The copy's axis holds eleven collection
+        tags against four collection items, which is its steady state. Only
+        `POST /library/collections` makes an item.
+        //
+        plexsim materialised a full, browsable collection from the tag write, so "Add to
+        Collection" on an item created a row in the Collections tab that a real PMS does
+        not have -- and the search row it answered carried a `guid`, which a tag-only
+        collection's does not.
+        """
         section = row.get("librarySectionID")
         collection = self.find_collection(title, section)
         if collection is None:
-            self._next_collection += 1
-            key = self._next_collection
-            stamp = _now()
-            collection = {
-                "ratingKey": key,
-                "title": title,
-                "librarySectionID": section,
-                "subtype": row.get("type") or "movie",
-                "smart": False,
-                "summary": "",
-                "addedAt": stamp,
-                "updatedAt": stamp,
-                "items": [],
-            }
-            self._collections[key] = collection
+            return
         if int(row["ratingKey"]) not in [int(k) for k in collection["items"]]:
             collection["items"].append(int(row["ratingKey"]))
             collection["updatedAt"] = _now()
