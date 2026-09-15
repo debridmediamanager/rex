@@ -9837,10 +9837,33 @@ class PlexSim:
                     if len(needle) < 2 or not any(w.startswith(needle)
                                                   for w in words if w):
                         continue
-                    entry = seen.setdefault(name, {"tag": tag, "rows": [], "row": row})
+                    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a tag hit
+                    # is per LIBRARY, not per NAME. kids' `drama` answers TWO `Drama`
+                    # rows -- one for each library holding the genre, each naming its
+                    # own `librarySectionID`, `key` and `count` -- and zen's `comedy`
+                    # answers two Comedy rows carrying 590 and 179 against the SAME tag
+                    # id 667, so the id is shared and the row is not.
+                    #
+                    # plexsim keyed the hits by name alone, so a genre both libraries
+                    # hold was ONE row naming whichever library the catalog reached
+                    # first, counting both libraries' rows together, and the other
+                    # library's filter link never appeared on the search page at all.
+                    entry = seen.setdefault((name, str(row.get("librarySectionID"))),
+                                            {"tag": tag, "rows": [], "row": row})
                     entry["rows"].append(row)
+            for entry in seen.values():
+                # Cycle 28: the `count` is the size of the listing the row's own `key`
+                # names -- the library's own top-level type -- not every row carrying
+                # the tag. Comedy's 590 is `/library/sections/1/all?genre=667`'s 590 and
+                # its 179 the show library's 179; kids' Drama is 1 and 1, on libraries
+                # whose episodes carry no genre at all. plexsim counted every row that
+                # carried the tag, so a catalog whose episodes carry one advertised a
+                # count its own link could not answer.
+                section = self.catalog.section(entry["row"].get("librarySectionID")) or {}
+                entry["count"] = len([r for r in entry["rows"]
+                                      if r.get("type") == section.get("type")])
             if seen:
-                tags[hub] = [seen[name] for name in sorted(seen)][:limit]
+                tags[hub] = [seen[key] for key in sorted(seen)][:limit]
         return typed, tags
 
     def search(self, query):
@@ -10017,7 +10040,9 @@ class PlexSim:
             # and a client keying artwork or a filter off the search row's tagType built
             # the wrong link.
             "tagType": {"actor": 6, "director": 4}.get(hub, 1),
-            "count": len(entry["rows"]),
+            # Cycle 28: the count is the size of the row's own `key` listing. See
+            # `search_matches`, which counts it per library.
+            "count": entry.get("count", len(entry["rows"])),
         }
         if tag.get("thumb"):
             result["thumb"] = tag["thumb"]

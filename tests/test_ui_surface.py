@@ -19477,6 +19477,33 @@ def main():
               and edges_c28j["0"] == (0, True),
               "%s of %s rows" % (edges_c28j, rows_c28j[0]))
 
+
+    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a search tag hit is per
+    # LIBRARY, not per NAME -- kids' `drama` answers TWO `Drama` rows, one per library
+    # holding the genre, each with its own `librarySectionID`, `key` and `count` against
+    # the same tag id, and zen's `comedy` answers 590 and 179 the same way. And the
+    # `count` is the size of the listing the row's own `key` names, which is the
+    # library's own top-level type: 3 of 3 rows on zen and kids.
+    #
+    # plexsim keyed the hits by name alone and counted every row carrying the tag, so a
+    # genre both libraries hold was one row naming whichever library the catalog reached
+    # first, with a count its own filter link could not answer, and the other library's
+    # link was missing from the search page.
+    tags_c28k = [r_c28k["Directory"] for r_c28k in
+                 (get(base, "/library/search?query=animation&limit=50")[1]
+                  .get("SearchResult") or []) if r_c28k.get("Directory")]
+    counts_c28k = {}
+    for row_c28k in tags_c28k:
+        listing_c28k = get(base, row_c28k.get("key"))[1]
+        counts_c28k[str(row_c28k.get("librarySectionID"))] = (
+            row_c28k.get("count"),
+            listing_c28k.get("totalSize") or listing_c28k.get("size"))
+    check("a search tag hit is per library, and its count is its own key's size",
+          len(counts_c28k) == 2
+          and str(movie_section) in counts_c28k and str(show_section) in counts_c28k
+          and all(pair_c28k[0] == pair_c28k[1] for pair_c28k in counts_c28k.values()),
+          "%s over %d row(s)" % (counts_c28k, len(tags_c28k)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
