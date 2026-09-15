@@ -10134,7 +10134,20 @@ class PlexSim:
         raw_index = str(query.get("mediaIndex") or "")
         chosen = int(raw_index) if raw_index.isdigit() else 0
         media = []
-        for position, source in enumerate(item.get("Media") or []):
+        # Cycle 26, measured on zen's rk=401, which carries fifteen Media on its library
+        # row: a decision answers exactly ONE -- the `mediaIndex` asked for, or media 0
+        # when the value does not parse -- and an index naming a version the profile
+        # refuses answers the row with an EMPTY Media list. plexsim echoed every version
+        # with `selected` on the chosen one, so a client counting the Media on a decision
+        # saw the whole edition list and could pick one the server never decided for.
+        #
+        # Single witness by construction: kids holds no multi-Media row, so it agrees
+        # with this rather than corroborating it. zen cannot be written, so the
+        # refused-version half cannot be driven here either.
+        sources = list(item.get("Media") or [])
+        if sources:
+            sources = [sources[chosen if chosen < len(sources) else 0]]
+        for position, source in enumerate(sources, chosen if sources else 0):
             copy = {k: v for k, v in source.items() if k != "Part"}
             copy["id"] = str(copy.get("id"))
             if copy.get("aspectRatio") is not None:
@@ -14293,6 +14306,17 @@ class Handler(BaseHTTPRequestHandler):
             return result
         body = result["MediaContainer"]
         if not isinstance(body, dict):
+            return result
+        if urllib.parse.urlsplit(self.path).path.startswith(
+                "/video/:/transcode/universal/decision"):
+            # Cycle 26, measured on kids and zen: `excludeElements=` is a NO-OP on a
+            # DECISION. The container keeps its Media, Part and Streams whatever the
+            # option names (`Media`, `Part`, `Genre` all tried), where cycle 15's rule --
+            # this is a property of the RESPONSE, and every container that carries rows
+            # honours it -- holds everywhere else. plexsim applied it and substituted
+            # `mediaCount`, leaving the client a decision with nothing to play. No client
+            # sends the option here, so the cost is to an API caller; the exception is
+            # the finding.
             return result
         query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
                                             keep_blank_values=True))
