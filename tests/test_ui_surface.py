@@ -17759,6 +17759,36 @@ def main():
           bool(want_c26d) and at_c26d == want_c26d,
           "series=%d got=%s want=%s" % (len(series_c26d), at_c26d, want_c26d))
 
+
+    # Cycle 26, measured on kids and zen: neither `/status/sessions` nor
+    # `/statistics/{which}` is a PREFIX. Six session paths and three statistics ones that
+    # plexsim answered 200 are 404s on both references -- and a 200 reads to a client as
+    # "this endpoint exists and is empty", which is fix 4's trap from the other side and
+    # the same shape cycle 25 found behind `/library/sections/{id}/recentlyReleased`.
+    prefixes_c26e = {path_c26e: get(base, path_c26e)[0] for path_c26e in (
+        "/status/sessionsfoo", "/status/sessions/zzz", "/status/sessions/1",
+        "/status/sessions/background/zzz", "/status/sessions/history/all/zzz",
+        "/status/sessions/history/all/1/2", "/statistics/bandwidth/zzz",
+        "/statistics/media/zzz", "/statistics/resources/zzz")}
+    real_c26e = {path_c26e: get(base, path_c26e)[0] for path_c26e in (
+        "/status/sessions", "/status/sessions/background",
+        "/status/sessions/history/all?type=1", "/statistics/bandwidth?timespan=6",
+        "/statistics/media?timespan=4", "/statistics/resources?timespan=6")}
+    check("an extra segment under /status/sessions or /statistics is a 404",
+          set(prefixes_c26e.values()) == {404},
+          str({k_c26e: v_c26e for k_c26e, v_c26e in prefixes_c26e.items()
+               if v_c26e != 404}))
+    check("and the real leaves still answer",
+          set(real_c26e.values()) == {200},
+          str({k_c26e: v_c26e for k_c26e, v_c26e in real_c26e.items()
+               if v_c26e != 200}))
+    check("terminate keeps its own refusals",
+          get(base, "/status/sessions/terminate")[0] == 400
+          and request(base, "GET", "/status/sessions/terminate?sessionId=zzz")[0] == 404,
+          "%s %s" % (get(base, "/status/sessions/terminate")[0],
+                     request(base, "GET",
+                             "/status/sessions/terminate?sessionId=zzz")[0]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
