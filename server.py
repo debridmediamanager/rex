@@ -4520,6 +4520,14 @@ class PlexSim:
             _row, refusal = self._decision_target(query, headers)
             if refusal:
                 return refusal
+            if int(_row["ratingKey"]) not in self.decided:
+                # Cycle 26, measured on the copy: a transcode start for a `session=` that
+                # has made no DECISION is a 400, not a 404 -- the reference's own log
+                # says "Denying access due to session lacking decision for transcode of
+                # key /library/metadata/18". The gate runs BEFORE the encoder question,
+                # so it is the answer a real PMS gives whether or not it could transcode.
+                # plexsim already keeps `self.decided`; it just never consulted it here.
+                return ("error", 400, "plexsim: no decision for this session")
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
         if route == "/subtitles/:/transcode/universal/start":
@@ -10135,8 +10143,12 @@ class PlexSim:
         item = _full(row)
         item.pop("Guid", None)
         item.pop("Image", None)
-        if row.get("type") == "movie":
-            item.pop("summary", None)
+        # Cycle 26, re-measured on the copy over four movies with real summaries and two
+        # episodes: a decision row KEEPS `summary`, whatever the row type. The rule this
+        # replaces was fitted to movie 1, the one row on the copy whose summary is the
+        # EMPTY STRING -- so the attribute was absent there for a different reason
+        # entirely, and plexsim dropped it from every movie. Class B: data too thin to
+        # show the rule, refuted by four rows that can disagree and do.
         # Cycle 26: an unparseable, negative or empty `mediaIndex` falls back to
         # media 0 on both references (and used to be a 400 here, so this path never
         # saw one). `int()` on `abc` is a 500, and `int("-1")` selects the LAST media.

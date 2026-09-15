@@ -17895,6 +17895,51 @@ def main():
           str([r_c26g.get("ratingKey") for r_c26g in
                get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]))
 
+
+    # Cycle 26, measured on the copy. Three small playback fixes.
+    #
+    # A decision row KEEPS `summary` whatever the row type -- the rule it replaces was
+    # fitted to movie 1, the one row on the copy whose summary is the EMPTY STRING, so
+    # the attribute was absent there for a different reason and plexsim dropped it from
+    # every movie. Four movies with real summaries and two episodes refute it.
+    #
+    # A transcode START for a `session=` that has made no decision is a 400, not a 404:
+    # the reference's own log says "Denying access due to session lacking decision for
+    # transcode". The gate runs before the encoder question, so it is the answer a real
+    # PMS gives whether or not it could transcode.
+    def decide_full_c26h(rk_c26h, session_c26h="c26h"):
+        url_c26h = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                    "&partIndex=0&protocol=dash&directPlay=1&directStream=1&hasMDE=1"
+                    "&session=%s" % (quote("/library/metadata/%s" % rk_c26h),
+                                     session_c26h))
+        request_c26h = urllib.request.Request(
+            base.rstrip("/") + url_c26h,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Platform": "Chrome"}, method="GET")
+        with urllib.request.urlopen(request_c26h, timeout=30) as response_c26h:
+            body_c26h = json.loads(response_c26h.read() or b"{}")
+        return (body_c26h.get("MediaContainer", {}).get("Metadata") or [{}])[0]
+
+    detail_c26h = (get(base, "/library/metadata/%s" % spare)[1].get("Metadata")
+                   or [{}])[0]
+    row_c26h = decide_full_c26h(spare)
+    check("a MOVIE's decision row keeps its summary",
+          bool(detail_c26h.get("summary"))
+          and row_c26h.get("summary") == detail_c26h.get("summary"),
+          "detail=%d decision=%s" % (len(detail_c26h.get("summary") or ""),
+                                     len(row_c26h.get("summary") or "")
+                                     if "summary" in row_c26h else "ABSENT"))
+    start_c26h = ("/video/:/transcode/universal/start.mpd?path=%s&mediaIndex=0"
+                  "&partIndex=0&protocol=dash&directPlay=0&directStream=1"
+                  "&session=c26h-undecided&X-Plex-Platform=Chrome"
+                  % quote("/library/metadata/%s" % movie))
+    undecided_c26h = request(base, "GET", start_c26h)[0]
+    decide_full_c26h(movie, "c26h-decided")
+    decided_c26h = request(base, "GET", start_c26h)[0]
+    check("a transcode start with no decision is a 400, and 404 once one is made",
+          undecided_c26h == 400 and decided_c26h == 404,
+          "undecided=%s decided=%s" % (undecided_c26h, decided_c26h))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
