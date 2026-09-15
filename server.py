@@ -1421,6 +1421,16 @@ GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3
 GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
 
 
+def _photo_int(value):
+    """Whether `/photo/:/transcode` reads this parameter as a whole number.
+
+    Cycle 27, measured on kids and zen: `0`, `1`, `01` and `+1` parse; `1.5`, an empty
+    value, `abc` and a leading space do not, and each is a 400.
+    """
+    text = str(value)
+    return bool(text) and text.lstrip("+-").isdigit() and text[0] in "+-0123456789"
+
+
 # The client profiles a real PMS ships -- the file names of its Resources/Profiles
 # directory, read off the reference. A decision is refused (400) unless
 # X-Plex-Client-Profile-Name, X-Plex-Platform or X-Plex-Device names one of them
@@ -4635,8 +4645,34 @@ class PlexSim:
             for name in ("width", "height"):
                 if not query.get(name):
                     return ("error", 400, "plexsim: bad request")
-                if not str(query[name]).lstrip("-").isdigit():
+                if not _photo_int(query[name]):
                     return ("error", 400, "plexsim: bad request")
+            # Cycle 27, swept over eleven values of each of seven parameters on kids
+            # (1.43.4) and zen (1.42.2), which agree on all 77: five more parameters are
+            # VALIDATED here and plexsim took anything for all five.
+            #
+            #   minSize, upscale  a BOOLEAN -- `0`, `1`, `01` and `+1` pass and `2`,
+            #                     `-1`, `100`, `1.5`, an empty value, `abc` and a
+            #                     leading space are each a 400
+            #   opacity, quality  any INTEGER passes, `-1` and `100` included; only a
+            #                     value that does not parse is a 400
+            #   blur              the same, except that a NEGATIVE one is a 500
+            #
+            # What is NOT emulated, and recorded rather than guessed: the 500s a real
+            # PMS answers for a width or height that scales the image to nothing
+            # (`width=1&height=100` on a 1000x1500 poster is a 500 where `width=2` is a
+            # 200, and `height=-1` is a 200 where `width=-1` is a 500). Those depend on
+            # the image's own aspect ratio and on a resizer plexsim does not have.
+            for name in ("opacity", "quality", "blur", "minSize", "upscale"):
+                if name not in query:
+                    continue
+                value = str(query[name])
+                if not _photo_int(value):
+                    return ("error", 400, "plexsim: bad request")
+                if name in ("minSize", "upscale") and int(value) not in (0, 1):
+                    return ("error", 400, "plexsim: bad request")
+                if name == "blur" and int(value) < 0:
+                    return ("error", 500, "plexsim: server error")
             inner = urllib.parse.urlparse(urllib.parse.unquote(query["url"])).path
             owner = re.match(r"^/library/metadata/(\d+)/", inner)
             if owner and int(owner.group(1)) not in catalog.items:

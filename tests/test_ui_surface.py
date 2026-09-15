@@ -18818,6 +18818,40 @@ def main():
     check("an empty Type, an empty Related and the Home Directory are written paired",
           all(paired_c27n.values()), str(paired_c27n))
 
+
+    # Cycle 27, swept over eleven values of each of seven parameters on kids (1.43.4) and
+    # zen (1.42.2), which agree on all 77: `/photo/:/transcode` validates five more
+    # parameters, and plexsim took anything for all five -- so a client sending a
+    # malformed tile URL got an image where a real PMS refuses the request.
+    # `minSize` and `upscale` are BOOLEANS (`0`, `1`, `01`, `+1` only); `opacity` and
+    # `quality` take any integer; `blur` takes any integer but 500s a negative one.
+    def photo_c27o(extra_c27o):
+        art_c27o = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                    or [{}])[0].get("thumb") or ""
+        return request(base, "GET", "/photo/:/transcode?width=100&height=100&url=%s%s"
+                       % (quote(art_c27o), extra_c27o))[0]
+
+    photo_c27o_cases = {
+        "minSize=1": (photo_c27o("&minSize=1"), 200),
+        "minSize=2": (photo_c27o("&minSize=2"), 400),
+        "minSize=-1": (photo_c27o("&minSize=-1"), 400),
+        "minSize=abc": (photo_c27o("&minSize=abc"), 400),
+        "upscale=01": (photo_c27o("&upscale=01"), 200),
+        "upscale=100": (photo_c27o("&upscale=100"), 400),
+        "opacity=-1": (photo_c27o("&opacity=-1"), 200),
+        "opacity=1.5": (photo_c27o("&opacity=1.5"), 400),
+        "quality=100": (photo_c27o("&quality=100"), 200),
+        "quality=": (photo_c27o("&quality="), 400),
+        "blur=10": (photo_c27o("&blur=10"), 200),
+        "blur=-1": (photo_c27o("&blur=-1"), 500),
+        "blur=abc": (photo_c27o("&blur=abc"), 400),
+    }
+    check("the photo transcoder validates minSize, upscale, opacity, quality and blur",
+          all(got_c27o == want_c27o
+              for got_c27o, want_c27o in photo_c27o_cases.values()),
+          str({k_c27o: v_c27o for k_c27o, v_c27o in photo_c27o_cases.items()
+               if v_c27o[0] != v_c27o[1]}) or "all agree")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
