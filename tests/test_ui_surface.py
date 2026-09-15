@@ -17220,6 +17220,44 @@ def main():
           "%s -> %s for %d leaves" % (after_unscrobble_c25o, show_c25o,
                                       len(leaves_c25o)))
 
+
+    # Cycle 25, measured on zen (1.42.2, the build plexsim reports -- 73 of 73 episode
+    # rows) and on plexscratch (1.43.4): an EPISODE history row carries `title` and
+    # `originallyAvailableAt`, in a fixed order that is its own and not an ordinary
+    # `Video`'s. plexsim carried neither, so the History page listed the episode with no
+    # episode name; and because a real PMS's JSON key order is its XML order, both
+    # formats were wrong.
+    episode_key_c25n = [r_c25n.get("ratingKey") for r_c25n in
+                        get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                        .get("Metadata") or []][0]
+    request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+            % episode_key_c25n)
+    _s_c25n, body_c25n, _h_c25n = request(
+        base, "GET", "/status/sessions/history/all?type=1", want_json=False)
+    text_c25n = (body_c25n.decode("utf-8", "replace")
+                 if isinstance(body_c25n, bytes) else body_c25n)
+    rows_c25n = re.findall(r"<Video ([^>]*?)/>", text_c25n)
+    episode_c25n = next((r_c25n for r_c25n in rows_c25n
+                         if 'type="episode"' in r_c25n), "")
+    names_c25n = re.findall(r"([A-Za-z]+)=", episode_c25n)
+    check("an episode history row carries title and originallyAvailableAt",
+          "title" in names_c25n and "originallyAvailableAt" in names_c25n,
+          str(names_c25n))
+    check("and they sit where a real PMS puts them",
+          names_c25n[:4] == ["historyKey", "key", "ratingKey", "librarySectionID"]
+          and names_c25n.index("title") < names_c25n.index("type")
+          and names_c25n.index("originallyAvailableAt") < names_c25n.index("viewedAt")
+          and names_c25n.index("parentIndex") < names_c25n.index("originallyAvailableAt")
+          and names_c25n[-1] == "viewType",
+          str(names_c25n))
+    json_c25n = get(base, "/status/sessions/history/all?type=1")[1].get("Metadata") or []
+    episode_json_c25n = next((r_c25n for r_c25n in json_c25n
+                              if r_c25n.get("type") == "episode"), {})
+    check("the JSON key order follows the XML, and the marker reaches no client",
+          list(episode_json_c25n)[:4] == names_c25n[:4]
+          and not any(k_c25n.startswith("_") for k_c25n in episode_json_c25n),
+          str(list(episode_json_c25n)[:5]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

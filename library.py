@@ -528,6 +528,13 @@ class Library:
             "accountID": account_id,
             "deviceID": device_id,
         }
+        # Cycle 25, measured on zen (1.42.2, 73 episode rows) and on plexscratch
+        # (1.43.4): an EPISODE history row carries `title` and `originallyAvailableAt`
+        # too, so it is not the movie's fields against the episode's -- every row of
+        # both types carries both. The comment above says the field set was measured on
+        # fun; both current references disagree with it, and the History page listed the
+        # episode with no episode name at all.
+        entry["_history"] = True
         if row.get("type") == "episode":
             for source, target in (("parentRatingKey", "parentKey"),
                                    ("grandparentRatingKey", "grandparentKey")):
@@ -538,9 +545,11 @@ class Library:
                 if row.get(key) is not None:
                     entry[key] = row[key]
         else:
-            for key in ("title", "originallyAvailableAt", "thumb"):
-                if row.get(key) is not None:
-                    entry[key] = row[key]
+            if row.get("thumb") is not None:
+                entry["thumb"] = row["thumb"]
+        for key in ("title", "originallyAvailableAt"):
+            if row.get(key) is not None:
+                entry[key] = row[key]
         self._history.append(entry)
         return entry
 
