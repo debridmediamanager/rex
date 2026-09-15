@@ -12645,6 +12645,18 @@ class PlexSim:
                         "media": frozenset((0, 1, 2, 3, 4)),
                         "resources": frozenset((6,))}
 
+    # The `sort=` keys each statistics endpoint accepts, measured on kids and zen: every
+    # other key -- and an empty value, and an unknown DIRECTION (`at:zzz`, `at:nocollate`)
+    # -- is a 400 on both, even on `/statistics/resources` where the value changes
+    # nothing. `metadataType` is NOT a media key, which is the one that looks like it
+    # should be. plexsim answered 200 to all of them and sorted by none.
+    STATISTICS_SORTS = {
+        "bandwidth": ("at", "bytes", "deviceID", "accountID", "lan", "timespan"),
+        "media": ("at", "deviceID", "accountID", "timespan", "count", "duration"),
+        "resources": ("at", "timespan", "hostCpuUtilization", "processCpuUtilization",
+                      "hostMemoryUtilization", "processMemoryUtilization"),
+    }
+
     def statistics(self, which, query=None):
         """`/statistics/{bandwidth,media,resources}` -- the Dashboard graphs.
 
@@ -12671,6 +12683,22 @@ class PlexSim:
         # a window the server has no data for. The client's own enum names 5
         # ("Minutes"), so it is reachable.
         raw_span = (query or {}).get("timespan")
+        # Cycle 26, measured on kids and zen on all three endpoints: `limit=` is a real
+        # CAP and it is PARSED -- `1`, `01`, `0`, `-1` and `-5` are 200s (a non-positive
+        # one answers no rows at all) and `1.5`, `abc`, an empty value, a leading space
+        # and `+1` are 400s, even where the value does nothing. `sort=` is a real
+        # ORDERING and is validated against a per-endpoint key list. plexsim ignored both
+        # and answered 200 to every value, so the Dashboard's own capped and sorted reads
+        # got the whole unsorted series.
+        raw_limit = (query or {}).get("limit")
+        if raw_limit is not None and not str(raw_limit).lstrip("-").isdigit():
+            return ("error", 400, "plexsim: bad request")
+        raw_sort = (query or {}).get("sort")
+        if raw_sort is not None:
+            key, _, direction = str(raw_sort).partition(":")
+            if key not in self.STATISTICS_SORTS[which] or direction not in ("", "asc",
+                                                                           "desc"):
+                return ("error", 400, "plexsim: bad request")
         if raw_span is not None and int(raw_span) not in self.STORED_TIMESPANS[which]:
             return self.bare_container(size=0)
         if which == "resources":
@@ -12679,13 +12707,29 @@ class PlexSim:
         query = query or {}
         # Measured: with NO `timespan` a real PMS answers every rollup at once.
         timespan = query.get("timespan") or None
-        since = query.get("at>") or query.get("at>=")
-        try:
-            since = int(since) if since else None
-        except ValueError:
-            since = None
+        # Cycle 26, measured on kids (175 rows) and zen (153): the `at` family is four
+        # operators and only four. `at>` returns the `>=` set and `at<` the `<=` set --
+        # the strict forms are not implemented at all -- `at=` is exact, and `at>=`,
+        # `at<=` and `at!=` are UNKNOWN keys that are ignored and answer every row.
+        # (The hunt reported `at!=` as the complement; driven against the true counts it
+        # answers all 175 and all 153, so it is ignored like the other two.) plexsim read
+        # `at>` or `at>=` and applied `>=`, and ignored `at<` and `at=` -- so a Dashboard
+        # graph asking for a window got the whole series. Its own saga sends `at>`, which
+        # is the one both already agreed on.
+        def at_bound(name):
+            raw = query.get(name)
+            try:
+                return int(raw) if raw else None
+            except ValueError:
+                return None
+
+        since, until, exact = at_bound("at>"), at_bound("at<"), at_bound("at=")
         if which == "bandwidth":
             rows = self.sessions.bandwidth(timespan, since)
+            if until is not None:
+                rows = [r for r in rows if r.get("at") <= until]
+            if exact is not None:
+                rows = [r for r in rows if r.get("at") == exact]
             element = "StatisticsBandwidth"
             # Measured on both servers: the Dashboard's per-account and per-device
             # graphs filter the series -- `accountID` and `deviceID` keep matching rows
@@ -12703,6 +12747,12 @@ class PlexSim:
                 rows = [r for r in rows if bool(r.get("lan")) == (query["lan"] == "1")]
         else:
             rows = self.sessions.media_statistics(timespan)
+            if since is not None:
+                rows = [r for r in rows if r.get("at") >= since]
+            if until is not None:
+                rows = [r for r in rows if r.get("at") <= until]
+            if exact is not None:
+                rows = [r for r in rows if r.get("at") == exact]
             element = "StatisticsMedia"
             # Measured on both servers: this one filters like /statistics/bandwidth, which
             # cycle 8 implemented and left this out -- an `accountID` or `deviceID` the
@@ -12715,6 +12765,7 @@ class PlexSim:
                     if not str(query[name]).isdigit():
                         return ("error", 400, "plexsim: bad request")
                     rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
+        rows = self._statistics_window(rows, query)
         if not rows:
             # Measured on a real server with no rows for the window: nothing but
             # `size`. The Device and Account blocks only appear with a series.
@@ -12788,6 +12839,26 @@ class PlexSim:
          "enabled": True},
     ]
 
+    def _statistics_window(self, rows, query):
+        """`sort=` and `limit=` applied to a statistics series, measured on both
+        references.
+
+        `sort=at:desc` really reverses the series; `limit=N` caps it and rewrites
+        `totalSize` with it, and a non-positive limit answers no rows at all. The
+        parameters are VALIDATED in `statistics` before this runs -- a bad one is a 400
+        even on `/statistics/resources`, where neither changes the single sample.
+        """
+        raw_sort = (query or {}).get("sort")
+        if raw_sort:
+            key, _, direction = str(raw_sort).partition(":")
+            rows = sorted(rows, key=lambda row: (row.get(key) is None, row.get(key)),
+                          reverse=direction == "desc")
+        raw_limit = (query or {}).get("limit")
+        if raw_limit is not None:
+            cap = int(raw_limit)
+            rows = rows[:cap] if cap > 0 else []
+        return rows
+
     def resource_statistics(self, query):
         """`/statistics/resources` -- the Dashboard's CPU and memory graph.
 
@@ -12839,7 +12910,7 @@ class PlexSim:
                 })
                 # The reference kept about two and a half minutes at this bucket.
                 del self._resource_series[:-180]
-            series = list(self._resource_series)
+            series = self._statistics_window(list(self._resource_series), query)
         since = query.get("at>") or query.get("at>=")
         if str(since).isdigit():
             series = [s for s in series if s["at"] > int(since)]
