@@ -11412,8 +11412,25 @@ class PlexSim:
     @staticmethod
     def _borrows_from(child, field, owner):
         """Whether `child[field]` is a path naming `owner`'s copy of that artwork."""
-        return owner.get(field) is not None and str(child.get(field) or "").startswith(
+        return str(child.get(field) or "").startswith(
             "/library/metadata/%s/" % owner.get("ratingKey"))
+
+    @classmethod
+    def _follow_artwork(cls, child, field, owner):
+        """Re-derive one borrowed field from the row it is borrowed from.
+
+        A borrower carries the owner's path verbatim, so "does this name the owner"
+        is the whole test. When the owner no longer has that artwork at all the
+        borrower's copy goes with it -- the same shape `parentThumb` and
+        `grandparentThumb` already have here, and the state a row is left in when the
+        owner's field is cleared is not otherwise measured.
+        """
+        if not cls._borrows_from(child, field, owner):
+            return
+        if owner.get(field) is None:
+            child.pop(field, None)
+        else:
+            child[field] = owner[field]
 
     def cascade_artwork(self, row):
         """Re-derive every borrowed artwork field under a row whose artwork changed.
@@ -11459,12 +11476,12 @@ class PlexSim:
                     child["parentThumb"] = row["thumb"]
                 else:
                     child.pop("parentThumb", None)
-            if self._borrows_from(child, "thumb", row):
-                # A row that borrows THIS row's poster shows it, so its own `thumb`
-                # follows the new stamp. Only this row's: a value naming some other
-                # ratingKey is a shape a real PMS cannot produce (a season borrows from
-                # its show and an episode from its season) and is left alone.
-                child["thumb"] = row["thumb"]
+            # A row that borrows THIS row's poster shows it, so its own `thumb`
+            # follows the new stamp -- and goes when the owner's does. Only this row's:
+            # a value naming some other ratingKey is a shape a real PMS cannot produce
+            # (a season borrows from its show and an episode from its season) and is
+            # left alone.
+            self._follow_artwork(child, "thumb", row)
             for leaf in self.catalog.leaves(child["ratingKey"]) if kind == "show" else []:
                 for name in ("thumb", "art", "theme"):
                     target = "grandparent" + name.capitalize()
@@ -11477,8 +11494,7 @@ class PlexSim:
                 # which left `art` and `grandparentArt` naming the same image at two
                 # different versions on the same row.
                 for name in ("art", "theme"):
-                    if self._borrows_from(leaf, name, row):
-                        leaf[name] = row[name]
+                    self._follow_artwork(leaf, name, row)
 
     def upload_artwork(self, row, kind, body):
         """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
