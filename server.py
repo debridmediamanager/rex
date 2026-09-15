@@ -6910,8 +6910,20 @@ class PlexSim:
     # control rather than a missing one.
     TEXT_SORTS = ("titleSort", "title", "originallyAvailableAt", "contentRating",
                   # Cycle 14: seven more text columns sort on both references.
-                  "guid", "originalTitle", "studio", "type", "tagline", "summary",
+                  # Cycle 29 takes `type` back out: it sorts on the type NUMBER.
+                  "guid", "originalTitle", "studio", "tagline", "summary",
                   "editionTitle")
+
+    # Cycle 29, measured on kids (whose 14 rows come back
+    # `movie x5, show, season x2, episode x6` ascending and exactly reversed descending)
+    # and on zen's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show 2,
+    # season 3, episode 4 -- not by the type's NAME. plexsim had `type` in `TEXT_SORTS`,
+    # which lower-cases it, so its order was alphabetical: `episode, movie, season, show`.
+    # Cycle 14 added the key as "a real ordering" without checking the ordering.
+    TYPE_SORT_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4, "trailer": 5,
+                         "comic": 6, "person": 7, "artist": 8, "album": 9, "track": 10,
+                         "photoAlbum": 11, "picture": 12, "clip": 12, "playlist": 15,
+                         "photo": 13, "collection": 18, "userPlaylistItem": 20}
 
     NUMERIC_SORTS = ("addedAt", "lastViewedAt", "year", "rating", "audienceRating",
                      "duration", "viewCount", "viewOffset", "index",
@@ -6957,6 +6969,11 @@ class PlexSim:
         if key == "mediaBitrate":
             return lambda r: max([m.get("bitrate") or 0
                                   for m in r.get("Media") or []] or [0])
+        if key == "type":
+            # Cycle 29: the type NUMBER, with a row that has no type sorting below every
+            # row that has one, like every other key. See `TYPE_SORT_NUMBERS`.
+            return lambda r: (r.get("type") is not None,
+                              self.TYPE_SORT_NUMBERS.get(r.get("type"), 99))
         if key in self.TEXT_SORTS:
             def text(row):
                 value = row.get(key)

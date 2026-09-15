@@ -20343,6 +20343,27 @@ def main():
                       ("2", "true", "1.0", quote(" 1"), "")),
           "%s" % inc_c29r)
 
+
+    # Cycle 29, measured on kids (whose 14 rows come back `movie x5, show, season x2,
+    # episode x6` under `sort=type` and exactly reversed under `type:desc`) and sampled
+    # across zen's 14,434: `sort=type` orders by the type NUMBER -- movie 1, show 2,
+    # season 3, episode 4 -- not by the type's NAME. plexsim kept `type` in its text-sort
+    # list, so its order was alphabetical (`episode` first), which is a different order
+    # for python-plexapi and for any stored smart-list uri naming the key.
+    def types_c29q(spec_c29q):
+        return [row_c29q.get("type") for row_c29q in
+                (get(base, "/library/all?sort=%s" % spec_c29q)[1].get("Metadata") or [])]
+
+    asc_c29q = types_c29q("type")
+    desc_c29q = types_c29q("type:desc")
+    order_c29q = {"movie": 1, "show": 2, "season": 3, "episode": 4, "collection": 18}
+    check("sort=type orders by the type number, not the name",
+          bool(asc_c29q) and len(set(asc_c29q)) > 1
+          and all(order_c29q.get(a_c29q, 99) <= order_c29q.get(b_c29q, 99)
+                  for a_c29q, b_c29q in zip(asc_c29q, asc_c29q[1:]))
+          and desc_c29q == list(reversed(asc_c29q)),
+          "asc %s | desc %s" % (asc_c29q, desc_c29q))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
