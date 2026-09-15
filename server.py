@@ -13286,6 +13286,14 @@ class Handler(BaseHTTPRequestHandler):
     # movie, a show, a season and an episode with every include option set.
     _LOCALISED_BLOCKS = frozenset(("Preferences",))
 
+    # Cycle 25, measured on kids and on zen in de, fr and ja: the `Setting` rows a
+    # SHOW's `/tree` node ends with are NOT localised -- all eight stay English in every
+    # language, where the same settings under `?includePreferences=1` move. A tree node
+    # is a ROW; it is keyed by `id` rather than `ratingKey`, so the row guard did not
+    # recognise it and plexsim translated labels a real PMS leaves alone. It is the
+    # inverse of the usual defect, and it is still a rule broken.
+    _ROW_BLOCKS = frozenset(("MetadataItem",))
+
     def _localise(self, node, language, attribute=None, in_row=False):
         """Translate the server's own text in a response -- measured, not guessed.
 
@@ -13302,7 +13310,7 @@ class Handler(BaseHTTPRequestHandler):
             # `ratingKey`; inside one only a GENERATED `Season N`/`Episode N` is
             # translated, which is the reference's own behaviour (an episode's
             # `parentTitle` is the only `parentTitle` the capture ever saw change).
-            row = "ratingKey" in node
+            row = "ratingKey" in node or attribute in self._ROW_BLOCKS
             # Cycle 17, mapped by diffing a whole item document against itself in
             # German: the `Preferences` block inside a row IS translated -- every
             # `label`, `summary` and `enumValues` of it, on a movie, a show and a
