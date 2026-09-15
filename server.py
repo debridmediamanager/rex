@@ -9866,6 +9866,28 @@ class PlexSim:
                 tags[hub] = [seen[key] for key in sorted(seen)][:limit]
         return typed, tags
 
+    def collection_matches(self, needle, section_id=None):
+        """The collections a query matches, as `tagType: 2` tag rows.
+
+        Cycle 28, re-measured on plexscratch now that the copy holds collections: a
+        collection IS found by `/library/search` as well -- `query=c26act` answers the
+        three `C26ACT*` collections there as `Directory` rows, the same rows the
+        `/hubs/search` collection hub carries minus the flat form's dropped attributes.
+        Cycle 15 recorded the opposite from a copy that held no collection at all, so
+        the absence was the fixture's and not a rule; that note is overturned.
+        """
+        found = []
+        for section in self.catalog.sections:
+            if section_id is not None and str(section["key"]) != str(section_id):
+                continue
+            # `collections()` already answers ROWS, not the stored dicts.
+            for row in self.library.collections(section["key"]):
+                words = re.split(r"[^0-9a-z]+", str(row.get("title") or "").lower())
+                if not any(w.startswith(needle) for w in words if w):
+                    continue
+                found.append(self._collection_tag_result(row, section))
+        return found
+
     def search(self, query):
         """`/hubs/search` -- the search page, which is seventeen hubs every time.
 
@@ -9964,19 +9986,10 @@ class PlexSim:
                 hub["Metadata"] = rows
             if kind == "collection":
                 # Cycle 15, measured on the copy: a collection is found HERE, as a
-                # `tag` row with `tagType: 2` and the collection's own guid, and it is
-                # NOT found by `/library/search` -- which refutes cycle 14's note.
-                # plexsim's collection hub was empty for every query, so the search
-                # box never found a collection at all.
-                found = []
-                for section in self.catalog.sections:
-                    # `collections()` already answers ROWS, not the stored dicts.
-                    for row in self.library.collections(section["key"]):
-                        words = re.split(r"[^0-9a-z]+",
-                                         str(row.get("title") or "").lower())
-                        if not any(w.startswith(needle) for w in words if w):
-                            continue
-                        found.append(self._collection_tag_result(row, section))
+                # `tag` row with `tagType: 2` and the collection's own guid. plexsim's
+                # collection hub was empty for every query, so the search box never
+                # found a collection at all.
+                found = self.collection_matches(needle)
                 if found:
                     hub["Directory"] = found
                     hub["size"] = len(found)
@@ -10117,6 +10130,13 @@ class PlexSim:
                     else 0.33
                 results.append({"score": float(self._score(score)),
                                 "Metadata": self._search_result_row(row)})
+            if kind == "collection":
+                # Cycle 28, re-measured on plexscratch: a collection is found HERE too.
+                # See `collection_matches` -- cycle 15's note was the copy's empty
+                # collection list, not a rule.
+                for row in self.collection_matches(needle):
+                    score, shown = self._flat_search_tag(row)
+                    results.append({"score": score, "Directory": shown})
             for entry in tags.get(kind, []):
                 # Cycle 28: the flat form drops the reason triple and the row's own
                 # score. See `_flat_search_tag`.

@@ -19578,6 +19578,30 @@ def main():
           and bool(json_c28o) and all(isinstance(s_c28o, float) for s_c28o in json_c28o),
           "xml %s | json %s" % (scores_c28o, json_c28o))
 
+
+    # Cycle 28, re-measured on plexscratch now that the copy holds collections: a
+    # COLLECTION is found by `/library/search` as well as by `/hubs/search` -- three
+    # `C26ACT*` collections answer `query=c26act` there as `tagType: 2` `Directory` rows,
+    # the same rows the collection hub carries minus the flat form's dropped attributes.
+    # Cycle 15 recorded the opposite from a copy holding no collection at all, so the
+    # absence was the fixture's and not a rule.
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s"
+                         "&collection%%5B0%%5D.tag.tag=C28SEARCHCOLL"
+                         % (movie_section, movie))
+    flat_c28p = [r_c28p["Directory"] for r_c28p in
+                 (get(base, "/library/search?query=c28searchcoll&limit=20")[1]
+                  .get("SearchResult") or []) if r_c28p.get("Directory")]
+    hub_c28p = next((h_c28p for h_c28p in
+                     (get(base, "/hubs/search?query=c28searchcoll")[1].get("Hub") or [])
+                     if h_c28p.get("type") == "collection"), {})
+    hubrow_c28p = (hub_c28p.get("Directory") or [{}])[0]
+    check("a collection is found by /library/search too",
+          len(flat_c28p) == 1 and flat_c28p[0].get("tagType") == 2
+          and flat_c28p[0].get("tag") == "C28SEARCHCOLL"
+          and flat_c28p[0].get("key") == hubrow_c28p.get("key")
+          and get(base, flat_c28p[0].get("key") or "/zzz")[0] == 200,
+          "flat %s | hub %s" % (flat_c28p, hubrow_c28p.get("tag")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
