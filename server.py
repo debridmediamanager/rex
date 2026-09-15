@@ -4254,9 +4254,24 @@ class PlexSim:
             # client's On Deck reads (plexapi, Kodi/PKC, the legacy apps).
             rows = []
             for row in self.continue_watching():
-                # Measured on fun, the reference having nothing in progress: the light
-                # projection, naming its library by id, title and UUID and not by key.
-                entry = _grid_row(_listing_row(row))
+                # Cycle 28, measured on zen -- which, unlike either reference in cycle
+                # 21, actually has a row on deck: all three On Deck paths
+                # (`/library/onDeck`, `/library/sections/{id}/onDeck` and
+                # `/hubs/home/onDeck`) answer the FULL DETAIL row, child for child
+                # identical to `/library/metadata/{id}` -- `Guid`, `Rating`, and
+                # `Director`/`Writer`/`Role`/`Producer` carrying `id`, `filter`,
+                # `tagKey`, `role` and `thumb` -- plus `Media` -> `Part` -> `Stream`.
+                # The only key not on the detail row is `lastViewedAt`.
+                #
+                # The control that rules out "it is that row" and "it is that section":
+                # the same row fetched as `/library/sections/4/all?type=4&id=19766` is
+                # the LIGHT row, and so is every other subset of that library. It is the
+                # ENDPOINT. The earlier note here was written from fun, which had
+                # nothing in progress, so the projection was inferred rather than seen.
+                #
+                # Single-witness by instrument: kids' On Deck is empty on every path, so
+                # only zen can show it. See HANDOVER 3.3.
+                entry = _listing_row(row)
                 entry.pop("librarySectionKey", None)
                 # Cycle 21, measured on zen's own on-deck row: this list's rows LEAD
                 # with `allowSync` and the librarySection triple, exactly as
@@ -6448,9 +6463,15 @@ class PlexSim:
             rows, _ = self._sorted(self.typed_rows(section_id, {"type": "4" if is_show else "1"}),
                                    "titleSort")
             if leaf == "onDeck":
+                # Cycle 28: the FULL detail row here too -- see `/library/onDeck`. This
+                # leaf is the one listing that is NOT the grid projection, so it returns
+                # its own container rather than going through `listing_container`.
                 rows = [r for r in self.continue_watching()
                         if str(r.get("librarySectionID")) == str(section_id)
                         and r.get("type") == kind]
+                return self.listing_container(
+                    section_id, section, [_listing_row(r) for r in rows],
+                    view_group=view_group, query=query, full_rows=True, **extra)
             elif leaf == "recentlyViewed":
                 rows = sorted([r for r in rows if r.get("lastViewedAt")],
                               key=lambda r: -r["lastViewedAt"])[:100]
@@ -7576,11 +7597,16 @@ class PlexSim:
         return [{k: v for k, v in row.items() if k != "Guid"} for row in rows]
 
     def listing_container(self, section_id, section, rows, view_group=None,
-                          query=None, **extra):
-        """The container a section listing returns, with the client's paging."""
+                          query=None, full_rows=False, **extra):
+        """The container a section listing returns, with the client's paging.
+
+        Cycle 28: `full_rows` is the ON DECK leaf's exemption -- the one section listing
+        a real PMS answers with the DETAIL row rather than the grid projection.
+        """
         rows = self._guid_gate(rows, query)
         page, paged, start, total = self.page_window(rows, query)
-        page = [_grid_row(r, keep_section=False, keep_guid=True) for r in page]
+        if not full_rows:
+            page = [_grid_row(r, keep_section=False, keep_guid=True) for r in page]
         fields = {
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
             "librarySectionTitle": section.get("title"),

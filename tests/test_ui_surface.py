@@ -19320,6 +19320,44 @@ def main():
               for r_c28f in early_c28f),
           "%d season row(s)" % len(early_c28f))
 
+
+    # Cycle 28, measured on zen -- which, unlike either reference in cycle 21, has a row
+    # on deck: all three On Deck paths answer the FULL DETAIL row, child for child
+    # identical to `/library/metadata/{id}` (`Guid`, `Rating`, and the four person tags
+    # carrying `id`, `filter`, `tagKey`, `role`, `thumb`), where the same row through the
+    # section grid is the light one. plexsim answered the light row on `/library/onDeck`
+    # and `/library/sections/{id}/onDeck` -- which is what every non-web client reads.
+    ident_c28g = ("X-Plex-Client-Identifier=c28g&X-Plex-Session-Identifier=c28g"
+                  "&X-Plex-Product=Plex+Web&X-Plex-Platform=Chrome")
+    leaf_c28g = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
+                 .get("Metadata") or [{}])[0].get("ratingKey")
+    if not leaf_c28g:
+        skip("On Deck answers the full detail row on every path", "no episode left")
+    else:
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=300000&%s" % (leaf_c28g, ident_c28g))
+
+        def shape_c28g(path_c28g):
+            rows_c28g = get(base, path_c28g)[1].get("Metadata") or []
+            row_c28g = next((r_c28g for r_c28g in rows_c28g
+                             if str(r_c28g.get("ratingKey")) == str(leaf_c28g)), None)
+            if row_c28g is None:
+                return None
+            tag_c28g = (row_c28g.get("Role") or [{}])[0]
+            return (sorted(k_c28g for k_c28g, v_c28g in row_c28g.items()
+                           if isinstance(v_c28g, list)),
+                    sorted(tag_c28g.keys()))
+
+        detail_c28g = shape_c28g("/library/metadata/%s" % leaf_c28g)
+        paths_c28g = {p_c28g: shape_c28g(p_c28g) for p_c28g in
+                      ("/hubs/home/onDeck", "/library/onDeck",
+                       "/library/sections/%s/onDeck" % show_section)}
+        check("On Deck answers the full detail row on every path",
+              detail_c28g is not None
+              and all(shape_c28g_v == detail_c28g
+                      for shape_c28g_v in paths_c28g.values()),
+              "detail %s | %s" % (detail_c28g, paths_c28g))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
