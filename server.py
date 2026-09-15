@@ -4438,6 +4438,17 @@ class PlexSim:
                 source = [r for r in source if wanted and r.get("type") == wanted]
             source, _ = self.apply_filters(source, query)
             source = self._guid_prefix(source, query)
+            if "group" in query:
+                # Cycle 29, measured on kids (14 rows -> 4 by type, 7 by year, 10 by
+                # title) and zen (14,434 -> 4, 90, 8,358), which agree: `group=` is
+                # honoured HERE as well, and an unknown or empty field is a 500 exactly
+                # as it is on a section listing. kids' `group=type` answers one row per
+                # type, `movie show season episode`. plexsim's `grouped()` was right and
+                # this handler never called it, so the cross-library Group control did
+                # nothing and an ungroupable field answered every row.
+                source = self.grouped(source, query.get("group"))
+                if isinstance(source, tuple):
+                    return source
             if query.get("sort"):
                 source, unsupported = self._sorted(source, query["sort"])
                 if unsupported:
