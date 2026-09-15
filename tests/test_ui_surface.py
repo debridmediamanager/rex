@@ -18115,6 +18115,92 @@ def main():
     for who_c26j in (a_c26j, b_c26j):
         beat_c26j(who_c26j, "stopped", 73000, item_c26j)
 
+
+    # Cycle 26, measured twice over on a freshly reset copy with an uncontended socket:
+    # the `butler` wrapper steps once PER TASK -- `updated` at 100 for the task just
+    # finished, then `updated` at `round(100 * n / (n + 1))` for the queue -- with no
+    # step after the last task, so a run of N pushes N `updated 100` frames and N-1
+    # steps before its `ended 100`. Both runs were identical frame for frame. plexsim
+    # pushed a single `updated 100` for the whole run.
+    #
+    # Two of the three task shapes were also in the wrong order. `CleanOldBundles`
+    # INTERLEAVES its two messages with its own activity's phases; plexsim pushed both
+    # after the activity had ended, so the Dashboard reported the media bundles after it
+    # had moved on to the metadata ones. And `RefreshLibraries` REPORTS BEFORE IT SCANS:
+    # the message goes out, the wrapper steps to 100 and ends, and only then does the
+    # first `library.update.section` frame appear -- the scan is work the task queues,
+    # not work it waits for.
+    #
+    # NOT emulated, and recorded rather than guessed: `POST /butler` runs only what is
+    # DUE. The copy ran 22 of its 23 tasks on a fresh reset -- `RefreshLibraries`, run
+    # by hand a moment earlier, was skipped -- and an immediate second POST ran 12. No
+    # row of `GET /butler` carries a last-run or next-run time, so which tasks are due
+    # is not observable from the surface and two runs cannot separate "its interval has
+    # not elapsed" from "it found nothing to do". plexsim runs every enabled task. What
+    # IS refuted, 2 of 2, is the older reading that a second POST is one
+    # `backgroundProcessingQueue` frame and nothing else: it is a full run of its own.
+    def butler_frames_c26k(path_c26k):
+        _s_c26k, frames_c26k = notifications(
+            base, lambda: request(base, "POST", path_c26k), seconds=12)
+        out_c26k = []
+        for frame_c26k in frames_c26k:
+            body_c26k = frame_c26k.get("NotificationContainer") or {}
+            for a_c26k in body_c26k.get("ActivityNotification") or []:
+                activity_c26k = a_c26k.get("Activity") or {}
+                out_c26k.append((activity_c26k.get("type"), a_c26k.get("event"),
+                                 activity_c26k.get("progress"),
+                                 activity_c26k.get("subtitle")))
+            for p_c26k in body_c26k.get("ProgressNotification") or []:
+                out_c26k.append(("progress", "message", None, p_c26k.get("message")))
+        return out_c26k
+
+    all_c26k = butler_frames_c26k("/butler")
+    wrapper_c26k = [step_c26k for kind_c26k, event_c26k, step_c26k, _t_c26k in all_c26k
+                    if kind_c26k == "butler" and event_c26k == "updated"]
+    hundreds_c26k = wrapper_c26k[0::2]
+    steps_c26k = wrapper_c26k[1::2]
+    expected_c26k = [int(round(100.0 * n_c26k / (n_c26k + 1)))
+                     for n_c26k in range(1, len(steps_c26k) + 1)]
+    # `len(hundreds) > 1` is load-bearing: without it the check passes on a server that
+    # pushes ONE `updated 100` for the whole run, which is exactly what plexsim did.
+    check("the butler wrapper steps round(100n/(n+1)) between its tasks",
+          len(hundreds_c26k) > 1
+          and len(steps_c26k) == len(hundreds_c26k) - 1
+          and set(hundreds_c26k) == {100} and steps_c26k == expected_c26k,
+          "%d hundreds, steps %s" % (len(hundreds_c26k), steps_c26k))
+    ended_c26k = [step_c26k for kind_c26k, event_c26k, step_c26k, _t_c26k in all_c26k
+                  if kind_c26k == "butler" and event_c26k == "ended"]
+    check("and ends at 100 once, after the last task's own 100",
+          ended_c26k == [100], str(ended_c26k))
+    clean_c26k = butler_frames_c26k("/butler/CleanOldBundles")
+    shape_c26k = [(event_c26k, step_c26k,
+                   "media" if "media bundle" in (text_c26k or "") else
+                   "metadata" if "metadata bundle" in (text_c26k or "") else text_c26k)
+                  for kind_c26k, event_c26k, step_c26k, text_c26k in clean_c26k
+                  if kind_c26k in ("general.bundle.clean", "progress")]
+    check("CleanOldBundles interleaves its two messages with its own phases",
+          [row_c26k for row_c26k in shape_c26k if row_c26k[0] == "message"]
+          == [("message", None, "media"), ("message", None, "metadata")]
+          and shape_c26k.index(("message", None, "media"))
+          < [i_c26k for i_c26k, row_c26k in enumerate(shape_c26k)
+             if row_c26k[1] == 25][0]
+          and shape_c26k.index(("message", None, "metadata"))
+          < [i_c26k for i_c26k, row_c26k in enumerate(shape_c26k)
+             if row_c26k[0] == "ended"][0],
+          str(shape_c26k))
+    refresh_c26k = butler_frames_c26k("/butler/RefreshLibraries")
+    order_c26k = [(kind_c26k, event_c26k) for kind_c26k, event_c26k, _p_c26k, _t_c26k
+                  in refresh_c26k
+                  if (kind_c26k, event_c26k) in (("butler", "ended"),
+                                                 ("library.update.section", "started"))
+                  or (kind_c26k == "progress" and "librar" in (_t_c26k or ""))]
+    check("RefreshLibraries reports and closes the wrapper BEFORE it scans",
+          order_c26k[:1] == [("progress", "message")]
+          and ("butler", "ended") in order_c26k
+          and order_c26k.index(("butler", "ended"))
+          < order_c26k.index(("library.update.section", "started")),
+          str(order_c26k))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
