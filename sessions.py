@@ -31,8 +31,24 @@ for a server with no encoder.
 
 import time
 
-# Measured: a row survived 60 s past its last timeline and was gone by 80 s.
-SESSION_TTL = 70
+# Cycle 26, re-measured on the writable copy on `long` media over TEN runs, polling once
+# a second and with the row identified by its own client identifier: the row went at
+# +184.0 at the earliest and +210.4 at the latest, and was still there at +209.4 in one
+# of them. That is not one constant with a fine sweep -- a session alive at +209.4 in one
+# run and gone at +184.0 in another -- so it is a cutoff plus a reaper TICK. The bracket
+# the ten samples give is a cutoff at or below 184 s with a tick of at least 26 s; 180
+# and 30 are the round pair inside it, and the boundary is not bisected. Two durations
+# (10 s and 30 min) and two rows behaved the same, so it is not a function of either.
+#
+# Cycle 9's 60-80 s came from the lab's ten-second clips before `long` mode existed, and
+# is the shape §3.3 warns about for everything measured there. The consequence of the old
+# value is a client that stops beating -- several TV apps stop while paused -- vanishing
+# from Now Playing after seventy seconds where a real PMS holds it for three minutes.
+#
+# plexsim prunes lazily on read, so its row goes exactly at the cutoff rather than at the
+# next tick; the tick is the reference's own scheduler and nothing on the surface reports
+# it. What is emulated is the cutoff.
+SESSION_TTL = 180
 
 # Statistics bucket sizes, decoded from a real PMS's own rows: 6 is per second,
 # then hour, day, ISO week, month, year. The client sends `timespan=6` for the

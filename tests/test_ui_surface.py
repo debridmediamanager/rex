@@ -18222,6 +18222,40 @@ def main():
           < order_c26k.index(("library.update.section", "started")),
           str(order_c26k))
 
+
+    # Cycle 26, re-measured on the copy over ten runs: a session with no further beat
+    # went at +184.0 at the earliest and +210.4 at the latest. plexsim's
+    # cutoff was SEVENTY seconds, fitted in cycle 9 to the lab's ten-second clips before
+    # `long` media existed, so a client that stops beating -- several TV apps stop while
+    # paused -- fell off Now Playing after a minute and a bit.
+    #
+    # The wait is the check: nothing on the surface reports the cutoff, and the only way
+    # to age a session from outside is to let it age. 95 seconds is the cheapest number
+    # that separates 70 from 180 with margin on both sides, and it is spent once.
+    ttl_ident_c26l = ("X-Plex-Client-Identifier=c26l-client"
+                      "&X-Plex-Session-Identifier=c26l-sess&X-Plex-Product=Plex+Web"
+                      "&X-Plex-Device-Name=Harness&X-Plex-Platform=Chrome")
+
+    def ttl_listed_c26l():
+        return [row_c26l for row_c26l in
+                get(base, "/status/sessions")[1].get("Metadata") or []
+                if (row_c26l.get("Player") or {}).get("machineIdentifier") == "c26l-client"]
+
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ttl_ident_c26l))
+    opened_c26l = bool(ttl_listed_c26l())
+    time.sleep(95)
+    alive_c26l = bool(ttl_listed_c26l())
+    check("a session with no beat is still there 95 s later",
+          opened_c26l and alive_c26l,
+          "opened=%s at+95=%s" % (opened_c26l, alive_c26l))
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=5000"
+                           "&duration=600000&%s"
+              % (movie, quote("/library/metadata/%s" % movie), ttl_ident_c26l))
+    check("and a stopped beat closes it at once",
+          not ttl_listed_c26l(), str(ttl_listed_c26l()))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
