@@ -16570,6 +16570,30 @@ def main():
                or (cells_c23d["show type=3"][:1] == [("season", "show.titleSort,index", "asc")]
                    and [c_c23d[0] for c_c23d in cells_c23d["show type=4"]] == ["episode"])),
           "%s" % cells_c23d)
+
+    # Cycle 23, measured on kids and zen: `?includeDetails=1&includeAdvanced=1` carries NO
+    # Duplicates Filter row at all -- the option pair that adds it to the `includeMeta`
+    # form adds nothing here -- where plexsim emitted one (without `advanced`). Cycle 16
+    # recorded "`includeDetails=1` carries no `advanced` on a Filter" from a request that
+    # had no `includeAdvanced=1`, so the row did not exist to carry it, and plexsim
+    # implemented the absence of the FLAG rather than the absence of the ROW. The
+    # `includeMeta` form is unchanged and still carries the row with `advanced="1"`.
+    _, details_c23e, _ = request(
+        base, "GET", "/library/sections/%s?includeDetails=1&includeAdvanced=1" % movie_section,
+        want_json=False)
+    _, meta_c23e, _ = request(
+        base, "GET", "/library/sections/%s/all?includeMeta=1&includeAdvanced=1" % movie_section,
+        want_json=False)
+    details_rows_c23e = [m_c23e for m_c23e in
+                         re.findall(r"<Filter [^>]*>", details_c23e.decode("utf-8", "replace"))
+                         if "duplicate" in m_c23e]
+    meta_rows_c23e = [m_c23e for m_c23e in
+                      re.findall(r"<Filter [^>]*>", meta_c23e.decode("utf-8", "replace"))
+                      if "duplicate" in m_c23e]
+    check("includeDetails carries no Duplicates filter row at all",
+          not details_rows_c23e
+          and len(meta_rows_c23e) == 1 and 'advanced="1"' in meta_rows_c23e[0],
+          "includeDetails %s | includeMeta %s" % (details_rows_c23e, meta_rows_c23e))
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
