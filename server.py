@@ -1931,8 +1931,15 @@ class PlexSim:
         # Sidecar subtitles the Upload modal has sent, by stream id: the bytes are kept
         # so a DELETE of one can tell an uploaded stream from an embedded track.
         self.uploaded_subtitles = {}
-        # ratingKeys a decision has been made for. The timeline's `Bandwidths`
-        # block appears only after one, measured -- not merely while playing.
+        # (session, ratingKey) pairs a decision has been made for. The timeline's
+        # `Bandwidths` block appears only after one, measured -- not merely while
+        # playing -- and cycle 26 drove the other half of that: the arming belongs
+        # to the SESSION that decided, not to the item. Two sessions on the same
+        # row, one of which decided, were measured on the copy: only that one's
+        # timeline carries the block, only its session row carries the `selected`
+        # and `decision` flags, and only its own `stopped` beat disarms it. Keyed
+        # on the ratingKey alone, one client's decision armed every other client's
+        # timeline for that item and its own stop disarmed theirs.
         self.decided = set()
         # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
         # `upload://` id a real PMS mints from the bytes.
@@ -4520,13 +4527,21 @@ class PlexSim:
             _row, refusal = self._decision_target(query, headers)
             if refusal:
                 return refusal
-            if int(_row["ratingKey"]) not in self.decided:
-                # Cycle 26, measured on the copy: a transcode start for a `session=` that
+            if (self._playback_session(query, headers),
+                    int(_row["ratingKey"])) not in self.decided:
+                # Cycle 26, measured on the copy: a transcode start from a session that
                 # has made no DECISION is a 400, not a 404 -- the reference's own log
                 # says "Denying access due to session lacking decision for transcode of
-                # key /library/metadata/18". The gate runs BEFORE the encoder question,
-                # so it is the answer a real PMS gives whether or not it could transcode.
-                # plexsim already keeps `self.decided`; it just never consulted it here.
+                # key /library/metadata/18". The gate runs BEFORE the encoder question:
+                # it is a 400 on every protocol and every leaf of the start family, and
+                # a transcode decision for that session turns the same HLS request into
+                # a 200. plexsim already kept the set; it just never consulted it here.
+                #
+                # What plexsim answers ONCE a decision exists is its own 404 -- it has
+                # no encoder -- which is not the reference's answer and is not meant to
+                # be. Recorded rather than modelled, because the reference's own answer
+                # there depends on what it can convert: a DASH `start.mpd` is a 404 on
+                # the copy where the same session's `start.m3u8` is a 200.
                 return ("error", 400, "plexsim: no decision for this session")
             logger.warning("TRANSCODE REQUESTED -- client refused direct play: %s", query.get("path"))
             return ("error", 404, "plexsim: no transcoder")
@@ -10075,7 +10090,8 @@ class PlexSim:
             # CLAUDE.md's "a direct play is ONLY `mdeDecisionCode: 1000`" is the MDE
             # form's rule and stays right; this is the other form, which plexsim never
             # emitted at all.
-            self.decided.add(int(row["ratingKey"]))
+            self.decided.add((self._playback_session(query, headers),
+                              int(row["ratingKey"])))
             fields["resourceSession"] = (param("X-Plex-Session-Identifier")
                                          or param("X-Plex-Client-Identifier") or "")
             fields.update(directPlayDecisionCode=1000,
@@ -10115,12 +10131,32 @@ class PlexSim:
 
         # The timeline's Bandwidths block appears only once a decision has been
         # made for the item, so the decision is what arms it.
-        self.decided.add(int(row["ratingKey"]))
+        self.decided.add((self._playback_session(query, headers),
+                          int(row["ratingKey"])))
         fields["resourceSession"] = (param("X-Plex-Session-Identifier")
                                      or param("X-Plex-Client-Identifier") or "")
         fields.update(mdeDecisionCode=1000, mdeDecisionText="Direct play OK.")
         logger.info("DECISION direct play for path=%s", path)
         return self.container(Metadata=[self._decision_row(row, query)], **fields)
+
+    def _playback_session(self, query, headers=None):
+        """The identity a decision arms and a timeline, a start and a session row read.
+
+        Measured on the copy: it is `X-Plex-Session-Identifier` -- in the query or
+        the header, Plex Web sends every X-Plex-* in the query string -- falling
+        back to the client identifier and then to a constant, which is the same
+        chain `sessions.touch` keys a session row by. The decision's own `session=`
+        parameter is NOT it, which is the part that has to be measured rather than
+        assumed: a decision sent with `session=QX` and the header `HY` arms `HY`,
+        and one sent with `session=QZ` and no session header arms the CLIENT
+        identifier. The `session=` value names the transcode session, not the
+        playback one.
+        """
+        def value(name):
+            return query.get(name) or (headers or {}).get(name)
+
+        return (value("X-Plex-Session-Identifier")
+                or value("X-Plex-Client-Identifier") or "plexsim")
 
     def _decision_target(self, query, headers=None):
         """The row a decision or a transcode start is FOR, or the 400 refusing it.
@@ -10373,14 +10409,18 @@ class PlexSim:
             # state alone, so it was present before any decision and absent on the
             # stop -- exactly inverted at both ends. The resolution here is the
             # LABEL (`1080p`), not the raw `videoResolution`.
-            if int(rating_key) in self.decided and bitrate:
+            if (self._playback_session(query, headers),
+                    int(rating_key)) in self.decided and bitrate:
                 resolution = media.get("videoResolution") or ""
                 fields["Bandwidths"] = [{"Bandwidth": [{
                     "time": 0, "bandwidth": int(round(bitrate * 2.1)),
                     "resolution": filters_module.RESOLUTION_TITLES.get(
                         str(resolution), str(resolution))}]}]
             if state == "stopped":
-                self.decided.discard(int(rating_key))
+                # Only this session's own pair: measured with two decided sessions on
+                # one row, where one's stop left the other's next beat still armed.
+                self.decided.discard((self._playback_session(query, headers),
+                                      int(rating_key)))
             # A terminate is delivered HERE, not in the terminate response.
             session_id = entry.get("id")
             killed = self.sessions.termination(session_id)
@@ -10452,16 +10492,29 @@ class PlexSim:
             # Media wrote them into the catalog: after one play every detail, listing
             # and search row of the item said `selected` and `directplay`, which no read
             # outside a session carries on either real server.
+            #
+            # Cycle 26: and they are armed by a DECISION from THIS session, measured on
+            # the copy with two sessions on one row. A session that has only ever sent
+            # timelines carries a bare Media and Part -- no `selected`, no `decision`,
+            # and no `location` on its Streams, though the Stream's own `selected` for
+            # the chosen audio track stays. plexsim stamped all four on every session,
+            # so the Dashboard said "Direct Play" for a client that had never asked
+            # whether it could play the file.
+            decided = (entry.get("id"),
+                       int(entry["ratingKey"])) in self.decided
             media_rows = []
             for media in item.get("Media") or []:
                 parts = []
                 for part in media.get("Part") or []:
-                    played = dict(part, decision="directplay", selected=True)
+                    played = (dict(part, decision="directplay", selected=True)
+                              if decided else dict(part))
                     if part.get("Stream"):
                         played["Stream"] = [dict(stream, location="direct")
+                                            if decided else dict(stream)
                                             for stream in part["Stream"]]
                     parts.append(played)
-                media_rows.append(dict(media, selected=True, Part=parts))
+                media_rows.append(dict(media, selected=True, Part=parts) if decided
+                                  else dict(media, Part=parts))
             if media_rows:
                 item["Media"] = media_rows
             item["User"] = entry["User"]

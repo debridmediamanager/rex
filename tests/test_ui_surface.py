@@ -2061,16 +2061,16 @@ def main():
     _, no_decision, _ = beat("playing", 5000)
     container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
                            "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest"
-                           "&directPlay=1&directStream=1&hasMDE=1"
-                           % quote("/library/metadata/%s" % session_item))
+                           "&directPlay=1&directStream=1&hasMDE=1&%s"
+                           % (quote("/library/metadata/%s" % session_item), identity))
     _, after_decision, _ = beat("playing", 90000)
     _, on_stop, _ = beat("stopped", 90000)
     # The stopping beat closed the session and disarmed Bandwidths; the terminate
     # checks below need a live one, so it is re-opened here.
     container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
                            "&mediaIndex=0&partIndex=0&protocol=dash&session=uitest"
-                           "&directPlay=1&directStream=1&hasMDE=1"
-                           % quote("/library/metadata/%s" % session_item))
+                           "&directPlay=1&directStream=1&hasMDE=1&%s"
+                           % (quote("/library/metadata/%s" % session_item), identity))
     beat("playing", 90000)
     check("Bandwidths is armed by a decision, not by the state",
           not no_decision.get("Bandwidths") and after_decision.get("Bandwidths")
@@ -18032,6 +18032,88 @@ def main():
           ends_c26i and set(ends_c26i) == {100}, str(ends_c26i))
     request(base, "DELETE", "/library/collections/%s" % coll_c26i)
     request(base, "DELETE", "/playlists/%s" % play_c26i)
+
+
+    # Cycle 26, measured on the copy with two sessions on one row: a decision arms the
+    # SESSION that made it, not the item. Everything keyed on `self.decided` -- the
+    # timeline's `Bandwidths`, the session row's `selected`/`decision`/`location`, and
+    # the transcode start's gate -- was keyed on the ratingKey alone, so one client's
+    # decision armed every other client's timeline for that row and its stop disarmed
+    # theirs. The arming identity is `X-Plex-Session-Identifier` (query or header),
+    # then the client identifier: a decision sent with `session=QX` and the header `HY`
+    # arms `HY`, so the `session=` parameter names the transcode session and not this.
+    def ident_c26j(session_c26j, client_c26j):
+        return ("X-Plex-Client-Identifier=%s&X-Plex-Session-Identifier=%s"
+                "&X-Plex-Product=Plex+Web&X-Plex-Device-Name=Harness"
+                "&X-Plex-Platform=Chrome" % (client_c26j, session_c26j))
+
+    def beat_c26j(who_c26j, state_c26j, offset_c26j, item_c26j):
+        return container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=%s&time=%d"
+                                      "&duration=600000&%s"
+                         % (item_c26j, quote("/library/metadata/%s" % item_c26j),
+                            state_c26j, offset_c26j, who_c26j))[1]
+
+    def decide_c26j(who_c26j, item_c26j):
+        return container(base, "GET", "/video/:/transcode/universal/decision?path=%s"
+                                      "&mediaIndex=0&partIndex=0&protocol=dash"
+                                      "&session=c26j&directPlay=1&directStream=1"
+                                      "&hasMDE=1&%s"
+                         % (quote("/library/metadata/%s" % item_c26j), who_c26j))[0]
+
+    def session_row_c26j(client_c26j):
+        for row_c26j in get(base, "/status/sessions")[1].get("Metadata") or []:
+            if (row_c26j.get("Player") or {}).get("machineIdentifier") == client_c26j:
+                return row_c26j
+        return None
+
+    item_c26j = spare or movie
+    a_c26j = ident_c26j("c26j-A", "c26j-clientA")
+    b_c26j = ident_c26j("c26j-B", "c26j-clientB")
+    beat_c26j(b_c26j, "playing", 70000, item_c26j)
+    decide_c26j(a_c26j, item_c26j)
+    armed_c26j = beat_c26j(a_c26j, "playing", 70000, item_c26j)
+    other_c26j = beat_c26j(b_c26j, "playing", 71000, item_c26j)
+    check("a decision arms the session that made it, not the item",
+          armed_c26j.get("Bandwidths") and not other_c26j.get("Bandwidths"),
+          "decider=%s other=%s" % (bool(armed_c26j.get("Bandwidths")),
+                                   bool(other_c26j.get("Bandwidths"))))
+    # And the session ROW's flags follow the same arming. A session that has only ever
+    # sent timelines carries a bare Media and Part; the Stream's own `selected` for the
+    # chosen audio track is not one of them and stays.
+    def flags_c26j(row_c26j):
+        media_c26j = (row_c26j.get("Media") or [{}])[0]
+        part_c26j = (media_c26j.get("Part") or [{}])[0]
+        return (media_c26j.get("selected"), part_c26j.get("selected"),
+                part_c26j.get("decision"),
+                sorted({stream_c26j.get("location")
+                        for stream_c26j in part_c26j.get("Stream") or []}))
+
+    decided_row_c26j = flags_c26j(session_row_c26j("c26j-clientA") or {})
+    plain_row_c26j = flags_c26j(session_row_c26j("c26j-clientB") or {})
+    check("and so do the session row's selected, decision and location",
+          decided_row_c26j == (True, True, "directplay", ["direct"])
+          and plain_row_c26j == (None, None, None, [None]),
+          "decided=%s plain=%s" % (decided_row_c26j, plain_row_c26j))
+    # A `stopped` beat disarms that session's pair and no other's.
+    decide_c26j(b_c26j, item_c26j)
+    beat_c26j(a_c26j, "stopped", 72000, item_c26j)
+    after_c26j = beat_c26j(b_c26j, "playing", 72000, item_c26j)
+    own_c26j = beat_c26j(a_c26j, "playing", 72000, item_c26j)
+    check("a stop disarms only the session that sent it",
+          after_c26j.get("Bandwidths") and not own_c26j.get("Bandwidths"),
+          "other=%s own=%s" % (bool(after_c26j.get("Bandwidths")),
+                               bool(own_c26j.get("Bandwidths"))))
+    # The transcode start's gate reads the same pair: a session that decided on ANOTHER
+    # row is still ungated for this one.
+    gate_c26j = request(base, "GET", "/video/:/transcode/universal/start.mpd?path=%s"
+                                     "&mediaIndex=0&partIndex=0&protocol=dash"
+                                     "&directPlay=0&directStream=1&session=c26j-gate&%s"
+                        % (quote("/library/metadata/%s" % movie),
+                           ident_c26j("c26j-C", "c26j-clientC")))[0]
+    check("a start from a session that decided on nothing here is a 400",
+          gate_c26j == 400, "HTTP %s" % gate_c26j)
+    for who_c26j in (a_c26j, b_c26j):
+        beat_c26j(who_c26j, "stopped", 73000, item_c26j)
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
