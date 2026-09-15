@@ -48,7 +48,19 @@ import urllib.parse
 import urllib.request
 import zipfile
 import zlib
+import http.client  # noqa: E402  -- for the header caps below
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# Cycle 27, bisected on kids (1.43.4) and zen (1.42.2), identically on both: a real PMS
+# accepts exactly **100 header lines** and answers 400 to the 101st. The TOTAL size of
+# the header block is not what is bounded -- 200 KB of headers in fifty lines is a 200 --
+# so HANDOVER 3.3's "~41 KB" is refuted: that measurement used ~410-byte headers and hit
+# the count at 100 of them.
+#
+# Python's own reader raises at `_MAXHEADERS` counting the blank terminator line, so 100
+# is one too few: plexsim refused a request a real PMS answers. One more lets the
+# hundredth through and leaves the hundred-and-first to `parse_request`'s own check.
+http.client._MAXHEADERS = 101
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -13783,6 +13795,21 @@ class Handler(BaseHTTPRequestHandler):
     # a ThreadingHTTPServer thread for the life of the process.
     timeout = 20
 
+    def send_error(self, code, message=None, explain=None):
+        """A real PMS answers 400 to every header refusal -- never 431.
+
+        Cycle 27, measured on kids and zen: a single 70 KB header line and a 101st
+        header are both a plain `400 Bad Request` there, where Python's own reader
+        raises and `BaseHTTPRequestHandler` turns both into
+        `431 Request Header Fields Too Large`. plexsim shipped both, and 431 is a
+        status neither reference sends on any path. The name and value caps below
+        were already 400s, so this is the two refusals Python made before plexsim's
+        own code could see the request.
+        """
+        if code == 431:
+            code, message, explain = 400, None, None
+        return BaseHTTPRequestHandler.send_error(self, code, message, explain)
+
     def parse_request(self):
         """Refuse a malformed request header the way a real PMS does -- measured.
 
@@ -13790,8 +13817,17 @@ class Handler(BaseHTTPRequestHandler):
         value (a space is fine), a name over 1024 bytes and a value over 4096 are each
         a 400. plexsim accepted all of them and only refused at Python's own 64 KiB
         line limit, answering Python's HTML error page rather than a 400.
+
+        Cycle 27 bisected the two caps rather than bracketing them: a name of exactly
+        1024 bytes and a value of exactly 4096 are 200s on both references and 1025 and
+        4097 are 400s, so the two constants above are right to the byte. The third of
+        that family -- HANDOVER 3.3's "~41 KB" total -- is a COUNT and not a size: 100
+        header lines pass and the 101st is a 400, whatever the bytes add up to.
         """
         if not BaseHTTPRequestHandler.parse_request(self):
+            return False
+        if len(self.headers.items()) > 100:
+            self.send_error(400)
             return False
         for name, value in self.headers.items():
             if len(name) > 1024 or len(value) > 4096 or "\t" in value:
