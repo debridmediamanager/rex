@@ -139,12 +139,18 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     # field". Eleven names (`album`, `artist`, `chapterSource`,
                     # `childCount`, `hasChapterVideoStream`, `leafCount`, `logo`,
                     # `poster`, `role`, `sourceType`, `track`) are a 400 on both and
-                    # stay refused, and `hdr10plus` alone is a 200 that stores nothing.
-                    # The five media-codec names beside it (`atmos`, `audioCodec`,
-                    # `audioLayout`, `subtitleCodec`, `videoCodec`) are held OUT:
-                    # cycle 20 established that family is 1.43.4-only and plexscratch
-                    # is 1.43.4, so their 1.42.2 status -- the build plexsim reports --
-                    # cannot be measured on a writable reference.
+                    # stay refused.
+                    #
+                    # Cycle 30 settled the two questions cycle 21 had to leave open, on
+                    # **plexscratch42** -- a fresh writable 1.42.2 copy built for exactly
+                    # this (HANDOVER 4). On 1.42.2 the five media-codec names (`atmos`,
+                    # `audioCodec`, `audioLayout`, `subtitleCodec`, `videoCodec`) are each
+                    # a **400** where 1.43.4 answers 200, so plexsim's refusal was right
+                    # and that hold-out is CLOSED rather than implemented. `hdr10plus` is
+                    # the opposite: a **200** on 1.42.2 as well as on 1.43.4 -- two
+                    # witnesses, both versions -- so it belongs here, a lock that stores
+                    # no value, where plexsim answered 400 "unknown field".
+                    "hdr10plus",
                     "audioLanguage", "dovi", "duplicate", "file", "format", "hdr",
                     "id", "lastRatedAt", "make", "mediaBitrate", "mediaSize", "model",
                     "parent", "place", "resolution", "source", "subformat",

@@ -20540,6 +20540,30 @@ def main():
               and paths_c30a["/hubs/home/continueWatching"] == (False, True),
               "detail %s | %s" % (detail_c30a, paths_c30a))
 
+
+    # Cycle 30, measured on **plexscratch42**, a fresh writable copy of 1.42.2.10156 -- the
+    # build plexsim reports -- built this cycle for the questions cycle 21 could not ask:
+    # `hdr10plus.locked=1` is a **200** there as well as on plexscratch (1.43.4), so it is
+    # a lockable name on both versions and plexsim's 400 was wrong; while the five
+    # media-codec names beside it (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`,
+    # `videoCodec`) are each a **400** on 1.42.2 against 1.43.4's 200, so plexsim's refusal
+    # of those is right and cycle 21's hold-out is CLOSED by measurement.
+    locks_c30b = {}
+    for name_c30b in ("hdr10plus", "hdr", "dovi", "atmos", "audioCodec", "audioLayout",
+                      "subtitleCodec", "videoCodec", "title", "album", "poster"):
+        locks_c30b[name_c30b] = request(
+            base, "PUT", "/library/metadata/%s?%s.locked=1" % (movie, name_c30b))[0]
+    fields_c30b = [entry_c30b.get("name") for entry_c30b in
+                   ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                    .get("Field") or [])]
+    check("hdr10plus takes a lock on both versions, and the five codec names do not",
+          locks_c30b["hdr10plus"] == 200 and "hdr10plus" in fields_c30b
+          and all(locks_c30b[name_c30b] == 200 for name_c30b in ("hdr", "dovi", "title"))
+          and all(locks_c30b[name_c30b] == 400 for name_c30b in
+                  ("atmos", "audioCodec", "audioLayout", "subtitleCodec", "videoCodec",
+                   "album", "poster")),
+          "%s | Field %s" % (locks_c30b, sorted(set(fields_c30b))))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
