@@ -1281,7 +1281,12 @@ def json_body(container):
     # rather than an array, and it marks its own container to say so.
     repeat = bool((container.get("MediaContainer") or {}).pop("_repeatKeys", False)) \
         if isinstance(container, dict) else False
-    text = json.dumps(ordered_keys(_drop_private(_drop_empty(container))))
+    # Cycle 22, measured on zen and kids: a LIGHT row's JSON child order is the LIGHT
+    # order, as its XML already was. `ordered_keys` reads the row's own `_light`
+    # marker to choose between the two, so `_drop_private` -- which removes it -- has
+    # to run AFTER the ordering and not before. Cycle 19's "a real PMS's JSON key
+    # order IS its XML order" held on every path except this one.
+    text = json.dumps(_drop_private(ordered_keys(_drop_empty(container))))
     return (_repeat_keys(text) if repeat else text).encode()
 
 
