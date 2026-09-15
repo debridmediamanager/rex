@@ -254,6 +254,14 @@ _ATTR_ORDER = {
     "Role": (
         "id", "filter", "tag", "tagKey", "role", "thumb"
     ),
+    # Cycle 25, measured on zen's 73 episode rows and kids' five movie rows: a history
+    # row's order. The movie form is a subsequence of this, so one bucket answers both.
+    "Video[history]": (
+        "historyKey", "key", "ratingKey", "librarySectionID", "parentKey",
+        "grandparentKey", "title", "grandparentTitle", "type", "thumb", "parentThumb",
+        "grandparentThumb", "grandparentArt", "index", "parentIndex",
+        "originallyAvailableAt", "viewedAt", "accountID", "deviceID", "viewType"
+    ),
     "Stream": (
         "id", "streamType", "canAutoSync", "selected", "default", "codec",
         "index", "channels", "bitrate", "language", "languageTag", "languageCode",
@@ -337,6 +345,14 @@ _SEARCH_LEAD = {"librarySectionTitle": -2, "score": -1}
 
 def _attr_bucket(name, row):
     """The `_ATTR_ORDER` key for one element."""
+    if name == "Video" and row.get("_history"):
+        # Cycle 25: a `/status/sessions/history/all` row is its own projection with its
+        # own order, measured on zen and plexscratch -- `historyKey` first, `title`
+        # between the parent keys and the type, `originallyAvailableAt` between the
+        # indexes and `viewedAt`. Nothing in the row distinguishes it from an ordinary
+        # `Video`, so the builder marks it, as `_light` already does; `_drop_private`
+        # takes the marker off both writers.
+        return "Video[history]"
     if name in ("Video", "Directory", "Track", "Playlist"):
         if row.get("agent") is not None or row.get("scanner") is not None:
             # Cycle 19: the library `Directory` of `/media/providers` is a DIFFERENT
