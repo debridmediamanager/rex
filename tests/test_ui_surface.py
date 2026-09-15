@@ -40,6 +40,7 @@ import argparse
 import json
 import os
 import re
+import socket
 import sys
 import time
 import urllib.error
@@ -18503,6 +18504,43 @@ def main():
               bool(picked_c27c) and bool(regained_c27c)
               and all(p_c27c == picked_c27c for p_c27c in regained_c27c),
               "season=%s episodes=%s" % (picked_c27c, regained_c27c))
+
+
+    # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2) and identical on both: the
+    # header refusals are a COUNT and two byte caps, and every one of them is a plain
+    # 400. 100 header lines pass and the 101st is refused, whatever they weigh -- 200 KB
+    # of headers in fifty lines is a 200 -- so the "~41 KB total" HANDOVER 3.3 carried is
+    # refuted; it was the same cap measured with ~410-byte headers.
+    #
+    # plexsim answered Python's own `431 Request Header Fields Too Large` twice over: at
+    # a HUNDRED headers, one short of the reference, because Python's reader counts the
+    # blank terminator line; and for any header line over 64 KiB. 431 is a status neither
+    # reference sends on any path.
+    def headers_c27d(count_c27d, value_len_c27d=1):
+        sock_c27d = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        block_c27d = "".join("X-P%05d: %s\r\n" % (i_c27d, "v" * value_len_c27d)
+                             for i_c27d in range(count_c27d))
+        sock_c27d.sendall(("GET /identity HTTP/1.1\r\nHost: %s\r\n%sConnection: close"
+                           "\r\n\r\n" % (base.split("//")[1], block_c27d)).encode())
+        got_c27d = b""
+        while len(got_c27d) < 200:
+            chunk_c27d = sock_c27d.recv(4096)
+            if not chunk_c27d:
+                break
+            got_c27d += chunk_c27d
+        sock_c27d.close()
+        return got_c27d.split(b"\r\n", 1)[0].decode("latin-1")
+
+    check("a real PMS takes 100 header lines and 400s the 101st",
+          "200" in headers_c27d(98) and "400" in headers_c27d(99),
+          "at 100=%r at 101=%r" % (headers_c27d(98), headers_c27d(99)))
+    check("and a header line over 64 KiB is a 400, not Python's 431",
+          "400" in headers_c27d(1, 70000),
+          headers_c27d(1, 70000))
+    check("while 200 KB of headers inside the count is a 200",
+          "200" in headers_c27d(50, 4000),
+          headers_c27d(50, 4000))
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
