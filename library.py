@@ -289,11 +289,18 @@ class Library:
                 leaf["viewCount"] = int(leaf.get("viewCount", 0)) + 1
                 leaf["lastViewedAt"] = _now()
                 leaf.pop("viewOffset", None)
-                # Measured: a scrobble writes NO history row -- the reference's
-                # history stayed at one row through three scrobbles, because rows
-                # come only from a timeline that reaches the end. plexsim recorded
-                # one per mark-as-played, so the History page and the Top shelf
-                # counted things nobody had watched.
+                # Cycle 25, re-measured on plexscratch and OVERTURNING cycle 9's rule
+                # above: a scrobble writes one history row per LEAF it marks. A movie
+                # scrobbled twice adds two rows; a SEASON adds one per episode (9 rows
+                # -> 12 on a three-episode season) and a SHOW one per leaf (12 -> 18);
+                # an UNSCROBBLE removes none of them. Cycle 9 measured the copy's
+                # history "staying at one row through three scrobbles"; driven again,
+                # one scrobble at a time with the count read between each, it moves
+                # every time. The row that does NOT appear is a timeline's, which is the
+                # copy's already-recorded session-bound limit (HANDOVER section 8,
+                # cycle 9) -- so only the additive half is asserted, the half where the
+                # instrument produced a row rather than failed to.
+                self.record_view(leaf, account_id, device_id)
             else:
                 leaf.pop("viewCount", None)
                 leaf.pop("viewOffset", None)
