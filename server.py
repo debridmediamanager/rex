@@ -12636,6 +12636,15 @@ class PlexSim:
         return self.bare_container(
             size=len(rows), identifier="com.plexapp.system.devices", Device=rows)
 
+    # Which rollup buckets each statistics endpoint KEEPS, measured on kids and zen over
+    # sixteen `timespan` values. Anything else is an empty 200 -- see `statistics`.
+    # `/statistics/resources` keeps only the per-second one, which is why its own handler
+    # compared the raw string; that comparison is gone now, so `timespan=06` reaches it
+    # the way it reaches the other two.
+    STORED_TIMESPANS = {"bandwidth": frozenset((0, 1, 2, 3, 4, 6)),
+                        "media": frozenset((0, 1, 2, 3, 4)),
+                        "resources": frozenset((6,))}
+
     def statistics(self, which, query=None):
         """`/statistics/{bandwidth,media,resources}` -- the Dashboard graphs.
 
@@ -12652,6 +12661,18 @@ class PlexSim:
             # plexsim ran an unguarded int() on it: a 500 on two of the three endpoints
             # and, on /statistics/resources, a silently ignored parameter.
             return ("error", 400, "plexsim: bad request")
+        # Cycle 26, measured on kids and zen over sixteen values on all three endpoints:
+        # a `timespan` the server does not KEEP is an empty 200, not the nearest bucket.
+        # Each endpoint stores its own set -- bandwidth `0 1 2 3 4 6`, media `0 1 2 3 4`,
+        # resources `6` -- and 5, 7, 8, 9, 10, 99, -1 and 007 each answer `size 0` on
+        # both references. plexsim ran `TIMESPANS.get(int(timespan), 1)`, which falls
+        # back to the ONE-SECOND bucket, so every unstored value answered the live
+        # per-second series RELABELLED with the asked-for timespan -- invented rows for
+        # a window the server has no data for. The client's own enum names 5
+        # ("Minutes"), so it is reachable.
+        raw_span = (query or {}).get("timespan")
+        if raw_span is not None and int(raw_span) not in self.STORED_TIMESPANS[which]:
+            return self.bare_container(size=0)
         if which == "resources":
             return self.resource_statistics(query or {})
 
@@ -12787,9 +12808,12 @@ class PlexSim:
         if not query.get("timespan"):
             # Measured: no timespan is an empty 200, not an error.
             return self.bare_container(size=0)
-        timespan = str(query["timespan"])
-        if timespan != "6":
-            # Measured on both servers: only the finest bucket carries samples.
+        # Cycle 26: `06` parses as 6 on both references and answers the series here
+        # as it does on the other two endpoints; this compared the raw STRING, so
+        # `/statistics/resources?timespan=06` was the one place the same value in the
+        # same request meant two different things. The unstored-bucket refusal moved
+        # up to `statistics`, which now owns it for all three endpoints.
+        if int(query["timespan"]) != 6:
             return self.bare_container(size=0)
         now = int(time.time())
         with self.lock:
