@@ -20660,6 +20660,52 @@ def main():
               % (len(orders_c30e), len(reads_c30e), len(reads_c30e[0][1]),
                  narrow_c30e and narrow_c30e[1]))
 
+
+    # Cycle 30, measured on kids and zen 3/3 on each of seven paths: the 400 a query pair
+    # with no `=` answers CLOSES the connection, and it is the ONLY handler-level refusal
+    # on the surface that does -- seventeen other reachable 400s keep it alive on both
+    # references. plexsim kept this one alive, so a harness that sends a malformed pair and
+    # then reuses the socket passes here and hangs against a real PMS.
+    import socket as socket_c30f_mod
+
+    def reuse_c30f(path_c30f):
+        """(status, was the socket reusable) -- raw, because `http.client` RECONNECTS.
+
+        A `HTTPConnection` transparently reopens a closed socket on the next request, so
+        it cannot tell a server that hung up from one that did not; this sends the second
+        request down the same fd and reads what comes back.
+        """
+        host_c30f, _, port_c30f = base.split("//")[1].partition(":")
+        head_c30f = ("GET %s HTTP/1.1" + chr(13) + chr(10) + "Host: %s" + chr(13)
+                     + chr(10) + "User-Agent: %s" + chr(13) + chr(10)
+                     + chr(13) + chr(10))
+        sock_c30f = socket_c30f_mod.create_connection(
+            (host_c30f, int(port_c30f or 80)), timeout=10)
+        status_c30f, reused_c30f = 0, False
+        try:
+            sock_c30f.sendall((head_c30f % (path_c30f, host_c30f, UA)).encode())
+            first_c30f = sock_c30f.recv(16384)
+            if first_c30f.split():
+                status_c30f = int(first_c30f.split()[1])
+            sock_c30f.sendall((head_c30f % ("/identity", host_c30f, UA)).encode())
+            second_c30f = sock_c30f.recv(16384)
+            reused_c30f = second_c30f.split()[1:2] == [b"200"]
+        except OSError:
+            reused_c30f = False
+        finally:
+            sock_c30f.close()
+        return status_c30f, reused_c30f
+
+    pair_c30f = reuse_c30f("/library/sections/%s/all?justakey" % movie_section)
+    identity_c30f = reuse_c30f("/identity?justakey")
+    other_c30f = reuse_c30f("/library/sections/%s/all?type=abc" % movie_section)
+    missing_c30f = reuse_c30f("/library/metadata/999999")
+    check("the malformed-pair 400 closes the connection, and no other refusal does",
+          pair_c30f == (400, False) and identity_c30f == (400, False)
+          and other_c30f == (500, True) and missing_c30f == (404, True),
+          "pair %s | identity %s | type=abc %s | 404 %s"
+          % (pair_c30f, identity_c30f, other_c30f, missing_c30f))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

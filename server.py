@@ -3364,7 +3364,15 @@ class PlexSim:
             # `?foo`, even `?&` -- is a 400 on every path, `/identity` included.
             # plexsim read a bare `includeGuids` as true.
             if parsed.query and any("=" not in piece for piece in parsed.query.split("&")):
-                return ("error", 400, "plexsim: bad request")
+                # Cycle 30, measured on kids and zen 3/3 on each of seven paths: this
+                # 400 CLOSES the connection, and it is the ONLY handler-level refusal on
+                # the surface that does -- seventeen other reachable 400s (`type=abc` on
+                # six leaves, `checkFiles=2`, the transcoder's missing dimension,
+                # `limit=abc` on four paths, `timespan=abc`, `accountID=abc`) all keep it
+                # alive on both references, as does a 404 for an empty path segment.
+                # plexsim kept this one alive: a harness that sends a malformed pair and
+                # reuses the socket passes here and hangs against a real PMS.
+                return ("error", 400, "plexsim: bad request", {"close": True})
         # Both shapes are needed. The dict is what every endpoint reads, but a
         # filter query is ORDERED and may repeat a key -- `?genre=6&genre=23` is
         # an intersection and `push`/`pop` are positional -- so the pairs are
@@ -15616,6 +15624,11 @@ class Handler(BaseHTTPRequestHandler):
 
         if isinstance(result, tuple):
             kind = result[0]
+            if kind == "error" and len(result) > 3 and isinstance(result[3], dict) \
+                    and result[3].get("close"):
+                # Cycle 30: the one refusal that closes the connection. See the
+                # malformed-pair check in `handle`.
+                self.close_connection = True
             if kind == "stream":
                 self._serve_part(result[1], result[2], method)
                 return
