@@ -18507,11 +18507,20 @@ def main():
                       e_c27c.get("grandparentArt"))
                      for s_c27c in seasons_c27c
                      for e_c27c in kids_of_c27c(s_c27c["ratingKey"])]
+    # The rule measured is that a leaf whose `art` NAMES the show follows the show's new
+    # stamp, where plexsim moved `grandparentArt` and left `art` behind. Whether a leaf
+    # that carries no `art` at all GAINS one is a different question and is not measured
+    # -- the only way to produce that state is a show unmatch, which the suite runs
+    # before this point, so the check is stated over the leaves that still borrow.
+    borrowed_c27c = [entry_c27c for entry_c27c in leaf_art_c27c if entry_c27c[1]]
     check("a show poster pick moves its episodes' own art, not just grandparentArt",
           bool(show_art_c27c) and bool(leaf_art_c27c)
-          and all(art_c27c == show_art_c27c and gp_c27c == show_art_c27c
-                  for _rk_c27c, art_c27c, gp_c27c in leaf_art_c27c),
-          "show=%s leaves=%s" % (show_art_c27c, leaf_art_c27c[:3]))
+          and all(gp_c27c == show_art_c27c
+                  for _rk_c27c, _art_c27c, gp_c27c in leaf_art_c27c)
+          and all(art_c27c == show_art_c27c
+                  for _rk_c27c, art_c27c, _gp_c27c in borrowed_c27c),
+          "show=%s borrowed=%d leaves=%s"
+          % (show_art_c27c, len(borrowed_c27c), leaf_art_c27c[:3]))
     if owner_c27c is not None:
         request(base, "DELETE", "/library/metadata/%s/thumb" % owner_c27c["ratingKey"])
         cleared_c27c = detail_c27c(owner_c27c["ratingKey"])
@@ -18850,17 +18859,27 @@ def main():
     # absorbs it), so the row is read LIVE from the section rather than from the variable
     # the suite opened with -- section 6's rule, which this check did not survive on its
     # first run.
+    # The url has to name a row that still EXISTS and still OWNS its poster: by this
+    # point the fixture's `movie` has been merged away and several rows carry a `thumb`
+    # naming a ratingKey that is gone, which is a 404 whatever the parameters say. Both
+    # are section 6's rule -- a check must survive the end of the suite, not just its own
+    # proof -- and this one did not on its first run.
     live_c27o = [r_c27o.get("ratingKey") for r_c27o in
                  get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata")
                  or []]
+    owned_c27o = next(
+        (t_c27o for t_c27o in
+         [(get(base, "/library/metadata/%s" % k_c27o)[1].get("Metadata") or [{}])[0]
+          .get("thumb") for k_c27o in live_c27o]
+         if t_c27o and request(
+             base, "GET", "/photo/:/transcode?width=100&height=100&url=%s"
+             % quote(t_c27o))[0] == 200), None)
 
     def photo_c27o(extra_c27o):
-        if not live_c27o:
+        if not owned_c27o:
             return None
-        art_c27o = (get(base, "/library/metadata/%s" % live_c27o[0])[1].get("Metadata")
-                    or [{}])[0].get("thumb") or ""
         return request(base, "GET", "/photo/:/transcode?width=100&height=100&url=%s%s"
-                       % (quote(art_c27o), extra_c27o))[0]
+                       % (quote(owned_c27o), extra_c27o))[0]
 
     photo_c27o_cases = {
         "minSize=1": (photo_c27o("&minSize=1"), 200),
@@ -18991,8 +19010,9 @@ def main():
                               .get("Directory") or [])[:1]]
                     for t_c27s in (1, 4, 5, 6, 7)}
     check("and /library/tags carries it for types 4, 5, 6 and 7 and not for 1",
-          all(tagrows_c27s[t_c27s] and tagrows_c27s[t_c27s][0]
-              for t_c27s in (4, 5, 6, 7) if tagrows_c27s[t_c27s])
+          any(tagrows_c27s[t_c27s] for t_c27s in (4, 5, 6, 7))
+          and all(tagrows_c27s[t_c27s][0]
+                  for t_c27s in (4, 5, 6, 7) if tagrows_c27s[t_c27s])
           and not (tagrows_c27s[1] and tagrows_c27s[1][0]),
           str(tagrows_c27s))
     one_c27s = next(iter(keys_c27s.values()), None)

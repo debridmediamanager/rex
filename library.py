@@ -38,7 +38,8 @@ import urllib.parse
 import uuid
 import zlib
 
-from hierarchy import _GENERATED_TITLE as GENERATED_SEASON_TITLE, sort_title
+from hierarchy import (_GENERATED_TITLE as GENERATED_SEASON_TITLE,
+                       PERSON_TAG_ELEMENTS, person_tag_key, sort_title)
 
 # Fields a row carries as a number. The client sends every edit as a string.
 # The columns whose VALUE the ITEM edit path really reads. Cycle 20, measured one at a
@@ -1095,6 +1096,15 @@ class Library:
             tag_id = zlib.crc32(("%s:%s" % (key, value)).encode()) % 900000 + 1000
             minted = {"id": tag_id, "tag": value,
                       "filter": "%s=%s" % (tag_type, tag_id)}
+            if key in PERSON_TAG_ELEMENTS:
+                # Cycle 27: a PERSON tag carries a `tagKey` wherever it comes from, and
+                # a tag the Edit dialog creates is a person tag like any other. The
+                # catalog's own are minted at load (`hierarchy.normalize_rows`); this is
+                # the other door into the tag table, and the suite found it -- after an
+                # unmatch had dropped the agent's people and an edit had added one back,
+                # the row's only `Role` had no key and its Cast & Crew tile linked to
+                # `/library/people/undefined` again.
+                minted["tagKey"] = person_tag_key(value)
             if key == "Role":
                 # Measured: an actor added through an edit carries `role: ""`, where
                 # plexsim omitted the field.
@@ -1280,8 +1290,11 @@ class Library:
         # Minted the way the catalog mints them (Catalog._number_tags): from the
         # text, so the same tag added twice keeps one id and the filter agrees.
         tag_id = zlib.crc32(("%s:%s" % (TAG_KEYS[tag_type], value)).encode()) % 900000 + 1000
-        tags.append({"id": tag_id, "tag": value,
-                     "filter": "%s=%s" % (tag_type, tag_id)})
+        minted = {"id": tag_id, "tag": value,
+                  "filter": "%s=%s" % (tag_type, tag_id)}
+        if key in PERSON_TAG_ELEMENTS:
+            minted["tagKey"] = person_tag_key(value)      # see `_set_tags`
+        tags.append(minted)
         if key == "Collection":
             self._sync_collection_tag(row, value)
 
