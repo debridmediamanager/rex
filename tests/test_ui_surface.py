@@ -19820,16 +19820,22 @@ def main():
                     .get("Metadata") or [{}])[0]
         after_c29a = (get(base, "/library/metadata/%s/children" % season_c29a)[1]
                       .get("Metadata") or [])
+        # The cascade is read off `art`, the field the upload wrote: a season that
+        # BORROWS its poster hands no `parentThumb` down at all (cycle 27), and by the
+        # time this runs in the whole suite the fixture's seasons may borrow theirs.
         check("an artwork upload cascades like a pick",
               str(row_c29a.get("art") or "").startswith(
                   "/library/metadata/%s/art/" % season_c29a)
-              and str(row_c29a.get("thumb") or "").startswith(
-                  "/library/metadata/%s/thumb/" % season_c29a)
               and bool(after_c29a)
-              and all(leaf_c29a.get("parentThumb") == row_c29a.get("thumb")
-                      for leaf_c29a in after_c29a),
-              "season thumb %s art %s | leaves %s"
+              and all(leaf_c29a.get("art") == row_c29a.get("art")
+                      for leaf_c29a in after_c29a)
+              and (not str(row_c29a.get("thumb") or "").startswith(
+                  "/library/metadata/%s/thumb/" % season_c29a)
+                   or all(leaf_c29a.get("parentThumb") == row_c29a.get("thumb")
+                          for leaf_c29a in after_c29a)),
+              "season thumb %s art %s | leaves art %s parentThumb %s"
               % (row_c29a.get("thumb"), row_c29a.get("art"),
+                 [leaf_c29a.get("art") for leaf_c29a in after_c29a],
                  [leaf_c29a.get("parentThumb") for leaf_c29a in after_c29a]))
 
 
@@ -19867,20 +19873,27 @@ def main():
         if kids_c29b:
             pairs_c29b[season_c29b] = kids_c29b[0].get("ratingKey")
     cands_c29b = (get(base, "/library/metadata/%s/arts" % show)[1].get("Metadata") or [])
-    if len(pairs_c29b) < 2 or not cands_c29b:
+    if len(pairs_c29b) < 2 or not cands_c29b or not art_c29b(show)[0]:
         skip("a row's artwork is its nearest owning ancestor's, created and not just moved",
              "%d season(s) with episodes, %d candidate(s)"
              % (len(pairs_c29b), len(cands_c29b)))
     else:
         owning_c29b, borrowing_c29b = list(pairs_c29b)[:2]
+        # Only the rows that BORROW the show's art lose it when the show's goes -- a
+        # season that owns one keeps it, which is the rule further down -- so the set is
+        # built from what each row carried BEFORE the clear. By the time this runs in the
+        # whole suite an earlier check has given one season an `art` of its own.
+        show_before_c29b = art_c29b(show)[0]
+        borrowers_c29b = [key_c29b for key_c29b in
+                          list(pairs_c29b) + list(pairs_c29b.values())
+                          if art_c29b(key_c29b)[0] == show_before_c29b]
         request(base, "DELETE", "/library/metadata/%s/art" % show)
-        cleared_c29b = [art_c29b(key_c29b)[0] for key_c29b in
-                        list(pairs_c29b) + list(pairs_c29b.values())]
+        cleared_c29b = [art_c29b(key_c29b)[0] for key_c29b in borrowers_c29b]
         request(base, "PUT", "/library/metadata/%s/art?url=%s"
                 % (show, quote(cands_c29b[0].get("ratingKey") or "")))
         show_art_c29b = art_c29b(show)[0]
-        restored_c29b = {key_c29b: art_c29b(key_c29b)[0] for key_c29b in
-                         list(pairs_c29b) + list(pairs_c29b.values())}
+        restored_c29b = {key_c29b: art_c29b(key_c29b)[0]
+                         for key_c29b in borrowers_c29b}
         request(base, "POST", "/library/metadata/%s/arts" % owning_c29b,
                 body=b"\x89PNG\r\n\x1a\n" + b"c29b-season" * 3)
         season_art_c29b = art_c29b(owning_c29b)[0]
@@ -20064,6 +20077,14 @@ def main():
     # three days where a real PMS refuses and the client draws its own placeholder.
     leaf_c29g = (get(base, "/library/metadata/%s/allLeaves" % show)[1]
                  .get("Metadata") or [{}])[0].get("ratingKey")
+    # The suite has taken the fixture movie's own poster away by the time this runs (cycle
+    # 23's artwork DELETE check), and an artwork path is a 200 only on the row that OWNS the
+    # image -- so the check uploads one first and reads the row's own path back.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"c29g-own" * 3)
+    own_c29g = (get(base, "/library/metadata/%s" % movie)[1]
+                   .get("Metadata") or [{}])[0].get("thumb")
+
 
     def photo_c29g(url_c29g, dims_c29g="width=200&height=300"):
         path_c29g = "/photo/:/transcode?" + dims_c29g
@@ -20072,7 +20093,7 @@ def main():
         return request(base, "GET", path_c29g, want_json=False)[0]
 
     shapes_c29g = {
-        "own": photo_c29g("/library/metadata/%s/thumb/1" % movie),
+        "own": photo_c29g(own_c29g or "/library/metadata/%s/thumb/1" % movie),
         "unknown row": photo_c29g("/library/metadata/987654/thumb/1"),
         "identity": photo_c29g("/identity"),
         "listing": photo_c29g("/library/sections/%s/all" % movie_section),
@@ -20131,11 +20152,19 @@ def main():
                        "2", "+2", "-1", "+", "++1", "1+", "1.5", "true", "", " 1"):
         bools_c29i[value_c29i] = request(
             base, "HEAD", "/library/metadata/%s?checkFiles=%s" % (movie, quote(value_c29i)))[0]
+    # The suite has taken the fixture movie's own poster away by the time this runs (cycle
+    # 23's artwork DELETE check), and an artwork path is a 200 only on the row that OWNS the
+    # image -- so the check uploads one first and reads the row's own path back.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"c29i-own" * 3)
+    own_c29i = (get(base, "/library/metadata/%s" % movie)[1]
+                   .get("Metadata") or [{}])[0].get("thumb")
     photo_c29i = {}
     for value_c29i in ("+1", "000", "+2", "2"):
         photo_c29i[value_c29i] = request(
             base, "GET", "/photo/:/transcode?width=200&height=300&minSize=%s&url=%s"
-                         % (quote(value_c29i), quote("/library/metadata/%s/thumb/1" % movie)),
+                         % (quote(value_c29i),
+                            quote(own_c29i or "/library/metadata/%s/thumb/1" % movie)),
             want_json=False)[0]
     check("a 0/1 option's value is +?0*[01] on every option that has one",
           all(bools_c29i[value_c29i] == 200 for value_c29i in
@@ -20185,8 +20214,14 @@ def main():
     # original media type and the full success header set, so a client got an `image/jpeg`
     # carrying zero bytes. plexsim keeps its own text/plain error body (cycle 1's
     # deliberate deviation) and now sends a body, a plain type and no `Accept-Ranges`.
-    art_c29k = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    path_c29k = art_c29k.get("thumb") or "/library/metadata/%s/thumb/1" % movie
+    # The suite has taken the fixture movie's own poster away by the time this runs (cycle
+    # 23's artwork DELETE check), and an artwork path is a 200 only on the row that OWNS the
+    # image -- so the check uploads one first and reads the row's own path back.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"c29k-own" * 3)
+    own_c29k = (get(base, "/library/metadata/%s" % movie)[1]
+                   .get("Metadata") or [{}])[0].get("thumb")
+    path_c29k = own_c29k or "/library/metadata/%s/thumb/1" % movie
     ok_c29k, body_ok_c29k, head_ok_c29k = request(base, "GET", path_c29k, want_json=False)
 
     def ranged_c29k(path_arg_c29k):
@@ -20224,8 +20259,14 @@ def main():
                                                        want_json=False)
         return status_c29m, headers_c29m.get("X-Plex-Local-Asset")
 
-    row_c29m = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    item_c29m = local_c29m(row_c29m.get("thumb") or "/library/metadata/%s/thumb/1" % movie)
+    # The suite has taken the fixture movie's own poster away by the time this runs (cycle
+    # 23's artwork DELETE check), and an artwork path is a 200 only on the row that OWNS the
+    # image -- so the check uploads one first and reads the row's own path back.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=b"\x89PNG\r\n\x1a\n" + b"c29m-own" * 3)
+    own_c29m = (get(base, "/library/metadata/%s" % movie)[1]
+                   .get("Metadata") or [{}])[0].get("thumb")
+    item_c29m = local_c29m(own_c29m or "/library/metadata/%s/thumb/1" % movie)
     composite_c29m = local_c29m("/library/sections/%s/composite/1" % movie_section)
     resource_c29m = local_c29m("/:/resources/movie.png")
     check("X-Plex-Local-Asset marks an item's own artwork and nothing else",
