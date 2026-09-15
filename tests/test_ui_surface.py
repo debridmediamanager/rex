@@ -4849,15 +4849,26 @@ def main():
                               + urllib.parse.urlencode(spec), headers=sent)
         return status, (json.loads(body).get("MediaContainer", {}) if body[:1] == b"{" else {})
 
-    statuses = [decide(params)[0] for params in (
+    # Cycle 26, re-measured on kids and zen over nine parameter shapes: this check
+    # asserted more than a real PMS refuses, and is SPLIT rather than deleted. What
+    # refuses is a path that names nothing playable and an OUT-OF-RANGE `mediaIndex`
+    # (`1` on a one-Media row). What does NOT refuse -- 200 on both references, where
+    # plexsim answered 400 -- is a missing, non-numeric, negative or empty `mediaIndex`
+    # and any `partIndex` at all. python-plexapi's `getStreamURL` and several TV apps
+    # omit `mediaIndex`, so the old behaviour refused them before any profile question.
+    refusals = [decide(params)[0] for params in (
         {"path": "/library/metadata/99999999"},
         {"path": "/library/metadata/%s" % (c5_show or 99999999)},
         {"path": "/library/sections/%s" % movie_lib},
-        {"mediaIndex": None}, {"mediaIndex": "1"}, {"mediaIndex": "abc"}, {"partIndex": "5"})]
-    status_no_part, _ = decide({"partIndex": None})
-    check("a decision for nothing playable, or a bad index, is a 400",
-          statuses == [400] * 7 and status_no_part == 200,
-          "%s, missing partIndex %s" % (statuses, status_no_part))
+        {"mediaIndex": "1"})]
+    accepted = [decide(params)[0] for params in (
+        {"mediaIndex": None}, {"mediaIndex": "abc"}, {"mediaIndex": "-1"},
+        {"mediaIndex": ""}, {"partIndex": "5"}, {"partIndex": "abc"},
+        {"partIndex": None})]
+    check("a decision for nothing playable, or an OUT-OF-RANGE mediaIndex, is a 400",
+          refusals == [400] * 4, str(refusals))
+    check("and a missing or unparseable index is accepted, as both references accept it",
+          accepted == [200] * 7, str(accepted))
     profiles = [decide(headers={"X-Plex-Platform": platform})[0]
                 for platform in ("Darwin", None, "chrome", "Microsoft Edge")]
     status_named, _ = decide(headers={"X-Plex-Platform": "Darwin",
