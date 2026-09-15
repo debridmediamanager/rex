@@ -17924,8 +17924,16 @@ def main():
                                      session_c26h))
         request_c26h = urllib.request.Request(
             base.rstrip("/") + url_c26h,
+            # The client identifier is load-bearing, and was added when the arming was
+            # measured to be per SESSION: this decision and the start below have to be
+            # the SAME session, as a real client's are. `request()` sends
+            # `plexsim-ui-test`, and the identity falls back to it when no
+            # X-Plex-Session-Identifier is sent, so both requests arm and read the same
+            # pair. Without it the decision armed one session and the start read another
+            # and the gate refused a request a real PMS would have let through.
             headers={"User-Agent": UA, "Accept": "application/json",
-                     "X-Plex-Platform": "Chrome"}, method="GET")
+                     "X-Plex-Platform": "Chrome",
+                     "X-Plex-Client-Identifier": "plexsim-ui-test"}, method="GET")
         with urllib.request.urlopen(request_c26h, timeout=30) as response_c26h:
             body_c26h = json.loads(response_c26h.read() or b"{}")
         return (body_c26h.get("MediaContainer", {}).get("Metadata") or [{}])[0]
@@ -17946,7 +17954,10 @@ def main():
     undecided_c26h = request(base, "GET", start_c26h)[0]
     decide_full_c26h(movie, "c26h-decided")
     decided_c26h = request(base, "GET", start_c26h)[0]
-    check("a transcode start with no decision is a 400, and 404 once one is made",
+    # The 404 is plexsim's OWN answer -- it has no encoder -- and not the reference's,
+    # whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200.
+    # What is emulated, and what this check is for, is the 400 that comes first.
+    check("a transcode start with no decision is a 400, and not once one is made",
           undecided_c26h == 400 and decided_c26h == 404,
           "undecided=%s decided=%s" % (undecided_c26h, decided_c26h))
 
