@@ -589,9 +589,21 @@ def ordered(container, overrides=None):
 # servers. Cycle 22 censused ~45 paths and none of them was `/manage`, so it read a
 # name rule where the rule is the one it left open for `Directory`: paired when the
 # element carries a (possibly empty) child collection, self-closed when it carries none.
+# Cycle 27, measured on kids and zen: two more names join the table. An empty `Type`
+# (a `Meta/Type` row with no `Filter`, `Sort` or `Field`, which is what
+# `/hubs/home/recentlyAdded?includeMeta=1` answers) and an empty `Related` block are
+# both written PAIRED on both references, where plexsim self-closed them.
 _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
-                  "Activity")
+                  "Activity", "Type", "Related")
 _PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
+
+# Cycle 27: and the `/media/providers` provider rows are paired even when they carry no
+# children at all -- the `Home` row, which names no library, is `<Directory hubKey="/hubs"
+# title="Home">\n</Directory>` on both references while every other childless `Directory`
+# on the surface (an axis, a pivot, a sort) self-closes. That is the attribute-level rule
+# cycle 22 left OPEN for `Directory`, and `hubKey` is the signal cycle 19 already uses to
+# tell a provider row from a `/library/sections` one.
+_PAIRED_DIRECTORY_KEY = "hubKey"
 
 
 def _render(name, row, out, overrides=None, container=False):
@@ -614,7 +626,8 @@ def _render(name, row, out, overrides=None, container=False):
         paired = name in _ALWAYS_PAIRED or (
             name in _PAIRED_WITH_EMPTY_CHILDREN
             and any(isinstance(value, (list, tuple, dict))
-                    for key, value in row.items() if not str(key).startswith("_")))
+                    for key, value in row.items() if not str(key).startswith("_"))
+        ) or (name == "Directory" and row.get(_PAIRED_DIRECTORY_KEY) is not None)
         out.append(">\n</%s>\n" % name if paired else " />\n")
         return
 

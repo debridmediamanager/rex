@@ -18794,6 +18794,30 @@ def main():
           and rest_c27l[0] == 1 + rest_c27l[5],
           "page0=%s page20=%s" % (first_c27l, rest_c27l))
 
+
+    # Cycle 27, measured on kids and zen: three more empty elements are written PAIRED.
+    # An empty `Meta/Type` row (what `/hubs/home/recentlyAdded?includeMeta=1` answers),
+    # an empty `Related` block, and the `/media/providers` `Home` `Directory`, which
+    # carries no children at all -- `<Directory hubKey="/hubs" title="Home"></Directory>`
+    # on both references, while every other childless `Directory` self-closes. The last
+    # is the attribute-level rule cycle 22 left explicitly OPEN for `Directory`.
+    paired_c27n = {}
+    hub_meta_c27n = request(base, "GET", "/hubs/home/recentlyAdded?type=1&includeMeta=1",
+                            want_json=False)[1].decode("utf-8", "replace")
+    paired_c27n["Type"] = bool(re.search(r"<Type\b[^>]*>\s*</Type>", hub_meta_c27n)) \
+        and not re.search(r"<Type\b[^>]*/>", hub_meta_c27n)
+    related_c27n = request(base, "GET", "/library/metadata/%s?includeRelated=1" % movie,
+                           want_json=False)[1].decode("utf-8", "replace")
+    paired_c27n["Related"] = ("<Related/>" not in related_c27n
+                              and "<Related />" not in related_c27n)
+    providers_c27n = request(base, "GET", "/media/providers",
+                             want_json=False)[1].decode("utf-8", "replace")
+    home_c27n = re.search(r"<Directory[^>]*title=\"Home\"[^>]*(?:/>|>\s*</Directory>)",
+                          providers_c27n)
+    paired_c27n["Home"] = bool(home_c27n) and home_c27n.group(0).endswith("</Directory>")
+    check("an empty Type, an empty Related and the Home Directory are written paired",
+          all(paired_c27n.values()), str(paired_c27n))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
