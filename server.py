@@ -6177,7 +6177,22 @@ class PlexSim:
                 # ascending, last descending -- so the "missing" flag has to sort
                 # FIRST, not last. `(value is None, ...)` put it above every value,
                 # and twelve of the fifteen advertised sorts default to `desc`.
-                return (value is not None, str(value or "").lower())
+                #
+                # Cycle 22, measured on zen's 3,887 real movies: the comparison is of
+                # RAW CODEPOINTS -- case-sensitive, no accent folding. `title:desc`
+                # opens on `\u300eONE PIECE\u300f...`, then `iHostage`, then `Zero
+                # Tolerance`; `studio:desc` on `ufotable` before `Zide-Perry`;
+                # `summary:desc` on `\xd6zge...` then `join 6 murder...`. Lowercase sorts
+                # ABOVE uppercase, which `.lower()` here destroyed on every text key.
+                # It is the sort side of the split cycle 20 measured on the FILTER
+                # side. `titleSort` is the exception and stays folded: no row in
+                # zen's movies, nor in the first 2,400 of its show library, carries a
+                # lowercase-initial STORED sort title to measure it with, and the
+                # default listing order rests on it.
+                text_value = str(value or "")
+                if key == "titleSort":
+                    text_value = text_value.lower()
+                return (value is not None, text_value)
             return text
         if key == "mediaSize":
             # The Part's own size, the way the `mediaSize` FILTER reads it.

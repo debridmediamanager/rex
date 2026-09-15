@@ -16007,6 +16007,43 @@ def main():
           and nosep_c22b == 400,
           "listing %s | parse %s | no-separator %s"
           % (listing_c22b, parse_c22b, nosep_c22b))
+
+    # Cycle 22, measured on zen's 3,887 real movies: `sort=` on a text column compares RAW
+    # CODEPOINTS -- case-sensitive, with no accent folding. `sort=title:desc` opens on
+    # `『ONE PIECE』…` (U+300E), then `iHostage`, then `Zero Tolerance`; `studio:desc` on
+    # `ufotable` before `Zide-Perry`; `summary:desc` on `Özge…` then `join 6 murder…` then
+    # `handu dreams…`; `originalTitle:desc` on Hangul above Latin. Every one puts the
+    # highest codepoint first, so lowercase sorts ABOVE uppercase. plexsim's `_sort_key`
+    # returned `str(value).lower()` for every text key, which reorders any library holding
+    # a lowercase-initial or non-ASCII value. It is the SORT side of the split cycle 20
+    # measured on the FILTER side, where only `titleSort` folds case -- and `titleSort`
+    # itself stays folded here, because no row in zen's movies nor in the first 2,400 of
+    # its show library carries a lowercase-initial stored sort title to measure it with.
+    c22c_rows = [r_c22c.get("ratingKey") for r_c22c in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                  .get("Metadata") or [])]
+    if len(c22c_rows) >= 2:
+        request(base, "PUT", "/library/metadata/%s?title.value=zebra%%20lower"
+                % c22c_rows[0])
+        request(base, "PUT", "/library/metadata/%s?title.value=Zebra%%20Upper"
+                % c22c_rows[1])
+        order_c22c = [r_c22c.get("title") for r_c22c in
+                      (get(base, "/library/sections/%s/all?type=1&sort=title:desc"
+                           % movie_section)[1].get("Metadata") or [])]
+        studio_c22c = None
+        request(base, "PUT", "/library/metadata/%s?studio.value=aaa%%20lower" % c22c_rows[0])
+        request(base, "PUT", "/library/metadata/%s?studio.value=ZZZ%%20Upper" % c22c_rows[1])
+        studio_c22c = [r_c22c.get("studio") for r_c22c in
+                       (get(base, "/library/sections/%s/all?type=1&sort=studio:desc"
+                            % movie_section)[1].get("Metadata") or [])
+                       if r_c22c.get("studio")]
+        check("a text sort compares raw codepoints, so lowercase sorts above uppercase",
+              order_c22c[:2] == ["zebra lower", "Zebra Upper"]
+              and studio_c22c[:2] == ["aaa lower", "ZZZ Upper"],
+              "title:desc %s | studio:desc %s" % (order_c22c[:3], studio_c22c[:3]))
+    else:
+        skip("a text sort compares raw codepoints, so lowercase sorts above uppercase",
+             "needs two movies")
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
