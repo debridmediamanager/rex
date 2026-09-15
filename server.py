@@ -4468,15 +4468,21 @@ class PlexSim:
             # populated one. plexsim answered `allowSync: false` and both tag keys,
             # which is cycle 15's rule ("every hub path says allowSync true except
             # postplay") satisfied everywhere but here.
-            # Cycle 25, measured on plexscratch: `removeFromContinueWatching` does NOT
-            # reach this list. It empties `/hubs/home/onDeck`,
-            # `/hubs/home/continueWatching` and `/library/sections/{id}/onDeck` on both
-            # servers, and on a real PMS the row is still HERE afterwards -- stable to
-            # +20 s, so it is not a settle -- and the section's own `tv.inprogress.{id}`
-            # shelf keeps it too. plexsim removed it everywhere, so a row hidden from
-            # Home was also gone from the library page's own shelf, which is the one
-            # place a real PMS still offers it.
-            rows = [_listing_row(r) for r in self.continue_watching(include_hidden=True)
+            # Cycle 25 measured that `removeFromContinueWatching` does not reach this
+            # list -- on an EPISODE -- and cycle 26 drove the other half: the rule is per
+            # LIBRARY TYPE, and the shelf and its own see-all list always agree.
+            #
+            #   show library   hidden row KEPT     in the shelf AND in this list
+            #   movie library  hidden row REMOVED  from the shelf AND from this list
+            #
+            # Cycle 25 applied the show half to both types here and left BOTH shelves
+            # dropping the row, so the two halves were crossed: a show library's page
+            # lost an episode from its Continue Watching shelf while the See All behind
+            # that very shelf still listed it, and a movie library's See All kept a movie
+            # the user had explicitly removed.
+            section = self.catalog.section(segments[2]) or {}
+            rows = [_listing_row(r) for r in
+                    self.continue_watching(include_hidden=section.get("type") == "show")
                     if str(r.get("librarySectionID")) == str(segments[2])]
             return self.bare_container(size=len(rows), allowSync=True,
                                        identifier="com.plexapp.plugins.library",
@@ -9031,7 +9037,10 @@ class PlexSim:
         episodes = [r for r in self.catalog.items.values()
                     if r.get("type") == "episode"
                     and str(r.get("librarySectionID")) == str(section_id)]
-        in_progress = [r for r in self.continue_watching()
+        # Cycle 26: the section's own Continue Watching SHELF follows its see-all list,
+        # and both follow the LIBRARY TYPE -- a show library keeps a hidden row, a movie
+        # library drops it. See the `continueWatching/items` leaf for the measurement.
+        in_progress = [r for r in self.continue_watching(include_hidden=is_show)
                        if str(r.get("librarySectionID")) == str(section_id)]
         watched = sorted([r for r in (episodes if is_show else items)
                           if r.get("lastViewedAt")],
