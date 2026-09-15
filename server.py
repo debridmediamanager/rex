@@ -5724,6 +5724,14 @@ class PlexSim:
                 for sort in described.get("Sort") or []:
                     sort.pop("active", None)
                     sort.pop("activeDirection", None)
+                # Cycle 23, measured on kids and zen: this form carries NO Duplicates
+                # Filter row at all, even with `includeAdvanced=1` -- the option pair
+                # that adds the row to the `includeMeta` form adds nothing here. Cycle
+                # 16 measured this path WITHOUT `includeAdvanced=1`, where the row does
+                # not exist to carry a flag, so the rule it recorded was the absence of
+                # the FLAG and plexsim implemented exactly that -- leaving the row.
+                described["Filter"] = [entry for entry in described.get("Filter") or []
+                                       if entry.get("filter") != "duplicate"]
                 for entry in described.get("Filter") or []:
                     entry.pop("advanced", None)
             if meta.get("Type"):
