@@ -8584,6 +8584,7 @@ class PlexSim:
                 was = [dict(row) for row in rows]
                 for row in rows:
                     self.library.edit(row, query, pairs=query.get("_pairs"), section=True)
+                    self.after_artwork_edit(row, query)
                 # Measured: a save through the section path frames its rows in LISTING
                 # order -- the sort title, whatever order `id=` named them in -- and
                 # sends every row's state 3 before any row's state 5. A comma-joined key
@@ -8599,6 +8600,7 @@ class PlexSim:
             else:
                 for row in rows:
                     self.library.edit(row, query, pairs=query.get("_pairs"))
+                    self.after_artwork_edit(row, query)
                     self.notify_edited(row, metadata_state)
         except library_module.EditError as refused:
             logger.warning("EDIT REFUSED: %s", refused.detail)
@@ -12242,6 +12244,37 @@ class PlexSim:
             metadata_module.enrich(row, self.tmdb, parsed, chosen=chosen)
         except Exception as error:  # a failed lookup must not fail the match
             logger.debug("re-identify failed for %s: %s", guid, error)
+
+    def after_artwork_edit(self, row, query):
+        """The fallback and the cascade an artwork CLEAR owes its children. Cycle 31.
+
+        An EMPTY `thumb.value=` or `art.value=` removes the column (measured on both
+        copies), and on 1.42.2 -- the build plexsim reports -- it is the only way to clear
+        artwork at all, because `DELETE /library/metadata/{id}/thumb` is a 404 there. So
+        everything `clear_artwork` does after dropping the field is owed here too: the row
+        falls back to its nearest ancestor that OWNS one, and every borrower below is
+        re-derived. Without it a cleared show kept handing its old path to its seasons and
+        episodes -- which is cycle 29's rule, and four of its checks caught the gap the
+        moment the clear moved off the DELETE.
+        """
+        for field in ("thumb", "art"):
+            name = "%s.value" % field
+            if query.get(name) != "" and query.get(field) != "":
+                continue
+            if row.get(field):
+                continue
+            if field == "thumb" and row.get("parentThumb"):
+                row[field] = row["parentThumb"]
+            elif field == "art" and row.get("type") in ("season", "episode"):
+                if row.get("type") == "episode":
+                    source = self._handed_down_from(
+                        field, self.parent_row(row),
+                        self.parent_row(row, "grandparentRatingKey"))
+                else:
+                    source = self._handed_down_from(field, None, self.parent_row(row))
+                if source is not None and source.get(field):
+                    row[field] = source[field]
+            self.cascade_artwork(row)
 
     def clear_artwork(self, row, leaf):
         """Remove one artwork field, re-stamp the rest, and frame it. Cycle 15."""

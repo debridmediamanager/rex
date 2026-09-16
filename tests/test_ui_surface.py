@@ -21412,6 +21412,31 @@ def main():
           "'Salaire de' %s | 'Le Sal' %s | 'Salaire peur' %s | 'e Salaire' %s"
           % (adjacent_c31q, partial_c31q, gapped_c31q, midword_c31q))
 
+
+    # Cycle 31: the artwork CLEAR moved off the DELETE -- a 404 on 1.42.2 -- and onto the
+    # empty-value edit, which is the only clear route the version plexsim reports has. That
+    # clear owes its children exactly what the DELETE owed them: cycle 29's derivation says
+    # a borrower's field is DERIVED from the nearest ancestor that owns one, so clearing a
+    # show's `art` must remove it from every season and episode below. The edit path did not
+    # cascade, and four cycle-27/29 checks caught it at once.
+    request(base, "PUT", "/library/metadata/%s?art.value=%s"
+                         % (show, quote("http://example.com/showart.jpg")))
+    kids_c31r = [r_c31r.get("ratingKey") for r_c31r in
+                 (get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or [])]
+    leaves_c31r = [r_c31r.get("ratingKey") for r_c31r in
+                   (get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [])]
+    family_c31r = [show] + kids_c31r[:1] + leaves_c31r[:1]
+    before_c31r = [(get(base, "/library/metadata/%s" % key_c31r)[1].get("Metadata")
+                    or [{}])[0].get("art")
+                   for key_c31r in family_c31r]
+    request(base, "PUT", "/library/metadata/%s?art.value=" % show)
+    after_c31r = [(get(base, "/library/metadata/%s" % key_c31r)[1].get("Metadata")
+                   or [{}])[0].get("art")
+                  for key_c31r in family_c31r]
+    check("clearing an owner's art through the edit path clears every borrower",
+          all(before_c31r) and not any(after_c31r),
+          "%s: before %s -> after %s" % (family_c31r, before_c31r, after_c31r))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
