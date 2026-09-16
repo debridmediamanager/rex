@@ -11894,8 +11894,12 @@ def main():
     # Cycle 31: the composite needs a member that OWNS a poster, and by this point the
     # artwork checks above have cleared the movie's -- the empty-value edit is 1.42.2's
     # clear, so the state a check needs has to be made rather than assumed (section 10).
-    request(base, "PUT", "/library/metadata/%s?thumb.value=%s"
-                         % (movie, quote("http://example.com/composite.jpg")))
+    # Cycle 31: the composite needs a member that owns real IMAGE BYTES, and by this point
+    # the artwork checks have cleared the movie's. A column write is not enough -- the path
+    # it creates has no image behind it, which is what both references answer too -- so
+    # upload one.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + bytes(24))
     bare_c16j = request(base, "GET", "/library/sections/%s/composite" % movie_section)
     versioned_c16j = request(base, "GET", "/library/sections/%s/composite/1" % movie_section)
     check("a section's bare /composite is a 404 and only the versioned form answers",
@@ -12824,9 +12828,13 @@ def main():
         if listing_c16f1[0] == 200 else {}
     if made_c16f1:
         request(base, "DELETE", "/playlists/%s" % made_c16f1["ratingKey"])
-    check("a smart playlist create takes a listing uri and refuses a key list",
+    # Cycle 31: the key-list create is a 200 on 1.42.2 -- see the cycle-31 check below.
+    if keylist_c16f1[0] == 200:
+        request(base, "DELETE", "/playlists/%s"
+                % json.loads(keylist_c16f1[1])["MediaContainer"]["Metadata"][0]["ratingKey"])
+    check("a smart playlist create takes a listing uri and a key list",
           listing_c16f1[0] == 200 and made_c16f1.get("smart") is True
-          and keylist_c16f1[0] == 400,
+          and keylist_c16f1[0] == 200,
           "listing=%s smart=%r keylist=%s"
           % (listing_c16f1[0], made_c16f1.get("smart"), keylist_c16f1[0]))
 
@@ -12911,6 +12919,9 @@ def main():
     dead_c16a21 = {leaf_c16a21: request(base, "GET", "/playlists/%s/%s"
                                         % (made_c16a21, leaf_c16a21))[0]
                    for leaf_c16a21 in ("posters", "arts", "thumb", "art", "composite")}
+    # Cycle 31: same as the section composite -- a member has to own real image bytes.
+    request(base, "POST", "/library/metadata/%s/posters" % movie,
+            body=bytes([0x89]) + b"PNG" + bytes([13, 10, 26, 10]) + bytes(24))
     versioned_c16a21 = request(base, "GET", "/playlists/%s/composite/1" % made_c16a21)[0]
     request(base, "DELETE", "/playlists/%s" % made_c16a21)
     check("a playlist's artwork paths live under /library/metadata, not /playlists",
@@ -14218,6 +14229,20 @@ def main():
     # a season `firstCharacter` listing answers none of them while `#` answers them all.
     # plexsim read the row's TITLE where it stores no sort title, so its synthesised
     # seasons filtered and bucketed under `S`.
+    # Cycle 31: an earlier check leaves a LOCKED sort title on a season, which is stored
+    # exactly as kids' agent-titled season 7 stores one -- and since cycle 31 a stored value
+    # equal to the generated title counts as stored, so the reconstruction below no longer
+    # describes it. Put the seasons back to the synthesised state the rule is about:
+    # unlock, then rewrite the title, which re-derives and drops the sort title.
+    for season_c18ts in (get(base, "/library/metadata/%s/children" % show)[1]
+                         .get("Metadata") or []):
+        if season_c18ts.get("type") != "season":
+            continue
+        request(base, "PUT", "/library/metadata/%s?titleSort.locked=0"
+                             % season_c18ts.get("ratingKey"))
+        request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                             % (season_c18ts.get("ratingKey"),
+                                quote(str(season_c18ts.get("title") or ""))))
     status, listing, _ = get(base, "/library/sections/%s/all?type=3&titleSort=" % show_section)
     # Counted live: by this point an earlier check may have given a season a title or a
     # SORT TITLE of its own, and either is stored like any other -- which is the
@@ -17834,11 +17859,14 @@ def main():
     check("an unstored statistics timespan is an EMPTY 200",
           set(unstored_c26c.values()) == {0},
           str({k_c26c: v_c26c for k_c26c, v_c26c in unstored_c26c.items() if v_c26c}))
+    # Cycle 31: read each value ONCE. These series grow while the suite runs, so calling
+    # `span_size_c26c` again to build the message could compare two different moments.
+    zero_six_c26c = {which_c26c: (span_size_c26c(which_c26c, "06"),
+                                  span_size_c26c(which_c26c, "6"))
+                     for which_c26c in ("resources", "bandwidth")}
     check("and 06 parses as 6 on every endpoint, resources included",
-          span_size_c26c("resources", "06") == span_size_c26c("resources", "6")
-          and span_size_c26c("bandwidth", "06") == span_size_c26c("bandwidth", "6"),
-          "resources 06=%s 6=%s" % (span_size_c26c("resources", "06"),
-                                    span_size_c26c("resources", "6")))
+          all(pair_c26c[0] == pair_c26c[1] for pair_c26c in zero_six_c26c.values()),
+          str(zero_six_c26c))
     check("a stored timespan still answers, and an unparseable one is still a 400",
           all(span_size_c26c(w_c26c, s_c26c) is not None
               for w_c26c, spans_c26c in stored_c26c.items() for s_c26c in spans_c26c)
@@ -20619,8 +20647,12 @@ def main():
     fields_c30b = [entry_c30b.get("name") for entry_c30b in
                    ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
                     .get("Field") or [])]
-    check("hdr10plus takes a lock on both versions, and the five codec names do not",
-          locks_c30b["hdr10plus"] == 200 and "hdr10plus" in fields_c30b
+    # Cycle 31 re-measured this and read the `Field` list BACK: `hdr10plus` is a 200 that
+    # stores NOTHING -- not a value and not a lock -- on both versions, which is what cycle
+    # 21 recorded before cycle 30 put the name in the lock-recording set. The five codec
+    # names are unchanged: 400 on 1.42.2, and plexsim refuses them.
+    check("hdr10plus is accepted and stores nothing, and the five codec names are refused",
+          locks_c30b["hdr10plus"] == 200 and "hdr10plus" not in fields_c30b
           and all(locks_c30b[name_c30b] == 200 for name_c30b in ("hdr", "dovi", "title"))
           and all(locks_c30b[name_c30b] == 400 for name_c30b in
                   ("atmos", "audioCodec", "audioLayout", "subtitleCodec", "videoCodec",
@@ -21017,11 +21049,13 @@ def main():
                         "/library/metadata/%s?absoluteIndex.locked=1" % movie)[0]
     locked_c31b = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
     names_c31b = [f_c31b.get("name") for f_c31b in (locked_c31b.get("Field") or [])]
-    check("absoluteIndex stores no value on either path, and still takes a lock",
+    word_c31b = request(base, "PUT",
+                        "/library/metadata/%s?absoluteIndex.value=ZZQ1" % movie)[0]
+    check("absoluteIndex is parsed, dropped, and still takes a lock",
           "absoluteIndex" not in row_c31b and lock_c31b == 200
-          and "absoluteIndex" in names_c31b,
-          "value -> %r | lock %s -> Field %s"
-          % (row_c31b.get("absoluteIndex"), lock_c31b, sorted(names_c31b)))
+          and "absoluteIndex" in names_c31b and word_c31b == 500,
+          "value -> %r | word %s | lock %s -> Field %s"
+          % (row_c31b.get("absoluteIndex"), word_c31b, lock_c31b, sorted(names_c31b)))
 
 
     # Cycle 31, re-measured on plexscratch42 (1.42.2, on a show that owns no poster) and
@@ -22466,10 +22500,18 @@ def main():
                       for f_c20k in ((doc_c20k.get("Metadata") or [{}])[0].get("Field") or [])]
         edits_c20k[field_c20k] = (status_c20k, field_c20k in locks_c20k)
     word_c20k, _, _ = request(base, "PUT", "/library/metadata/%s?absoluteIndex.value=ZZQ1" % movie)
+    # Cycle 31: `absoluteIndex` is PARSED and then DROPPED -- `=7` is a 200 that stores
+    # nothing while `=ZZQ1` and `=1.5` are 500s, on both versions -- so its lock is recorded
+    # like the other ten and its value is not. The stored half is asserted in the cycle-31
+    # check; this one is about the lock, which is unchanged.
+    stored_c20k = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata")
+                   or [{}])[0].get("absoluteIndex")
     check("eleven more columns take an item edit and a lock",
           all(edits_c20k[field_c20k] == (200, True) for field_c20k in lockable_c20k)
-          and edits_c20k["bogusXY"] == (400, False) and word_c20k == 500,
-          "%s | absoluteIndex=ZZQ1 %s" % (edits_c20k, word_c20k))
+          and edits_c20k["bogusXY"] == (400, False) and word_c20k == 500
+          and stored_c20k is None,
+          "%s | absoluteIndex=ZZQ1 %s stored %r"
+          % (edits_c20k, word_c20k, stored_c20k))
 
     # Cycle 20, measured column by column on plexscratch with `12` and with `ZZQ1`: the
     # SECTION save path reads every numeric column where the item path reads three.
