@@ -20992,6 +20992,45 @@ def main():
           set(section_c31d.values()) == {500} and item_c31d == 200,
           "section %s | item %s" % (section_c31d, item_c31d))
 
+
+    # Cycle 31, read off kids' OWN DATABASE and then confirmed through its API. Season 7 --
+    # the season an agent titled `Season 1` -- stores `title = ''` and
+    # `title_sort = 'Season 1'`; its unmatched season 11 stores both empty. So a generated
+    # display title is derived from the index in both cases and what the agent supplied is
+    # the stored SORT title, which is why cycle 18's `titleSort=` split works at all.
+    #
+    # On kids: `titleSort=Season 1` answers season 7, `titleSort=` answers season 11 alone,
+    # and `titleSort>>=Season 0` answers 7. plexsim treated a stored sort title EQUAL to the
+    # generated title as no sort title at all, so it answered nothing to the first and third
+    # and wrongly kept the row in the second -- one clause, three symptoms, and invisible
+    # until the storage was read.
+    seasons_c31e = [r_c31e.get("ratingKey") for r_c31e in
+                    (get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or [])
+                    if r_c31e.get("type") == "season"]
+    if len(seasons_c31e) < 2:
+        skip("a stored sort title equal to a generated title is still stored",
+             "the show has %d season(s)" % len(seasons_c31e))
+    else:
+        subject_c31e, control_c31e = seasons_c31e[0], seasons_c31e[1]
+        generated_c31e = (get(base, "/library/metadata/%s" % subject_c31e)[1]
+                          .get("Metadata") or [{}])[0].get("title")
+        request(base, "PUT", "/library/metadata/%s?titleSort.value=%s&titleSort.locked=1"
+                             % (subject_c31e, quote(generated_c31e)))
+
+        def sorted_keys_c31e(spec_c31e):
+            return [r_c31e.get("ratingKey") for r_c31e in
+                    (get(base, "/library/sections/%s/all?type=3&%s"
+                         % (show_section, spec_c31e))[1].get("Metadata") or [])]
+
+        equal_c31e = sorted_keys_c31e("titleSort=" + quote(generated_c31e))
+        empty_c31e = sorted_keys_c31e("titleSort=")
+        above_c31e = sorted_keys_c31e("titleSort%3E%3E=" + quote("Season 0"))
+        check("a stored sort title equal to a generated title is still stored",
+              subject_c31e in equal_c31e and subject_c31e not in empty_c31e
+              and control_c31e in empty_c31e and subject_c31e in above_c31e,
+              "equal %s | empty %s | >> %s (subject %s, control %s)"
+              % (equal_c31e, empty_c31e, above_c31e, subject_c31e, control_c31e))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
