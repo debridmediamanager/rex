@@ -22343,6 +22343,49 @@ def main():
     check("a library create pushes the scan skeleton, with nothing to scan",
           got_c35d[:len(want_c35d)] == want_c35d, str(got_c35d)[:400])
 
+
+    # Cycle 35, measured on kids and zen over sixteen (query, row) cells: the SCORE tier a
+    # search hit gets is the matcher's own in-order rule, plus the condition that the
+    # query's first term matches the title's FIRST word -- `Tears Steel` and `Big Bunny`
+    # are 0.73, `Steel`, `Bunny`, `Buck Bunny` and `of Steel` are the 0.33 fuzzy band, and
+    # an exact title is 0.93 on both references where plexsim said 0.95. Both scorers read
+    # a title PREFIX instead, so a skipped middle word scored below the threshold the
+    # client promotes a hub on and a middle word alone scored above it.
+    def hubscore_c35e(query_c35e, path_c35e="/hubs/search"):
+        _, body_c35e, _ = get(base, "%s?query=%s" % (path_c35e, quote(query_c35e)))
+        found_c35e = {}
+        for hub_c35e in body_c35e.get("Hub") or []:
+            for row_c35e in hub_c35e.get("Metadata") or []:
+                if row_c35e.get("type") in ("movie", "show", "season", "episode"):
+                    found_c35e[row_c35e.get("title")] = str(row_c35e.get("score"))
+        for result_c35e in body_c35e.get("SearchResult") or []:
+            row_c35e = result_c35e.get("Metadata") or {}
+            if row_c35e.get("type") in ("movie", "show", "season", "episode"):
+                found_c35e[row_c35e.get("title")] = str(result_c35e.get("score"))
+        return found_c35e
+
+    row_c35e = (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                .get("Metadata") or [{}])[0].get("title") or ""
+    words_c35e = row_c35e.split()
+    tiers_c35e = {}
+    if len(words_c35e) >= 3:
+        for label_c35e, query_c35e in (("exact", row_c35e),
+                                       ("skip", "%s %s" % (words_c35e[0], words_c35e[-1])),
+                                       ("first", words_c35e[0]),
+                                       ("later", words_c35e[-1])):
+            for path_c35e in ("/hubs/search", "/library/search"):
+                tiers_c35e[(label_c35e, path_c35e)] = \
+                    hubscore_c35e(query_c35e, path_c35e).get(row_c35e)
+    want_c35e = {"exact": "0.93", "skip": "0.73", "first": "0.73", "later": "0.33"}
+    wrong_c35e = {key_c35e: value_c35e for key_c35e, value_c35e in tiers_c35e.items()
+                  if not str(value_c35e or "").startswith(want_c35e[key_c35e[0]])}
+    if tiers_c35e:
+        check("a search hit's score tier is the matcher's rule, not a title prefix",
+              not wrong_c35e, "%s | wrong %s" % (tiers_c35e, wrong_c35e))
+    else:
+        skip("a search hit's score tier is the matcher's rule, not a title prefix",
+             "need a three-word title")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
