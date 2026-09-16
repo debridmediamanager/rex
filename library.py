@@ -125,7 +125,15 @@ SECTION_INTEGER_FIELDS = {"addedAt", "duration", "parentIndex", "ratingCount", "
                           "createdAt", "contentRatingAge"}
 SECTION_STORED_FIELDS = {"addedAt", "ratingCount", "updatedAt", "contentRatingAge"}
 SECTION_REFUSED_FIELDS = {"viewCount", "lastViewedAt", "skipCount", "viewOffset", "type",
-                          "viewedLeafCount", "mediaCount", "extraType"}
+                          "viewedLeafCount", "mediaCount", "extraType",
+                          # Cycle 31, re-measured on both writable copies over five values
+                          # (`5`, `0`, `abc`, empty, a real epoch): `lastRatedAt.value=` is
+                          # a **500 on the section path on both versions**, every time,
+                          # where the ITEM path takes it with a 200. It is the ninth member
+                          # of this set and the one plexsim answered with the unknown-field
+                          # 400 -- a refusal either way, so nothing renders differently;
+                          # it is the status a client logs and retries on.
+                          "lastRatedAt"}
 
 # Stored as NUMBERS. Measured: `audienceRating.value=5.5` reads back 5.5, not "5.5".
 FLOAT_FIELDS = {"audienceRating", "rating", "userRating"}
