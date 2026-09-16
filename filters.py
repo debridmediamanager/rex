@@ -42,7 +42,7 @@ import os
 import re
 import time
 
-from hierarchy import fold_marks
+from hierarchy import fold_query, fold_case
 
 # The operator a key's trailing punctuation means, keyed by what survives the
 # client's `slice(0, -1)`. The right-hand side is the operator as the `Meta`
@@ -415,10 +415,21 @@ def _folded_word_run(wanted, text):
     An empty term fails outright -- that is `title=Bogota ` and `title=Bogota:  City`,
     both of which a real PMS answers nothing to while the raw pass also misses them.
     """
-    words = fold_marks(wanted).lower().split(" ")
+    # Cycle 32, swept on kids over 2,098 codepoints and on zen, which agree, then held out
+    # on both writable copies: the QUERY is folded by the same 100-character table a sort
+    # title is derived with and then case-folded, while the STORED sort title is only
+    # case-folded. A locked sort title `\u00c9gg\u0119head Zo\u017fa` answers `Zosa` (the
+    # case fold takes the long s) and answers neither `Egghead` nor `Egg\u0119head` -- the
+    # stored side is not run through the table again. That pair is the whole of hunt B's
+    # 102-character query table: the 100 plus `\u017f` and `\u212a`, which only a case fold
+    # reaches.
+    #
+    # plexsim decomposed both sides with NFD, which folds 134 characters a real PMS does
+    # not (`Sint\u0119l`, `\u0100ra`) and misses the two the case fold does.
+    words = fold_query(wanted).split(" ")
     if any(word == "" for word in words):
         return False
-    title_words = fold_marks(text).lower().split()
+    title_words = fold_case(text).split()
     position = 0
     for index, word in enumerate(words):
         last = index == len(words) - 1

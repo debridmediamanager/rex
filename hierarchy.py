@@ -191,6 +191,25 @@ def fold_title(text):
     return "".join(_TITLE_FOLD.get(ch, ch) for ch in text if not unicodedata.combining(ch))
 
 
+def fold_case(text):
+    """Simple case folding, one character to one character.
+
+    Cycle 32, measured on both copies: the `title=` folded pass compares CASE-FOLDED text,
+    and it is the simple fold -- the long s `\u017f` and the Kelvin sign `\u212a` match `s`
+    and `k`, which `lower()` leaves alone, while `\u1e9e` does not become `ss`.
+    """
+    out = []
+    for ch in text:
+        folded = ch.casefold()
+        out.append(folded if len(folded) == 1 else ch.lower())
+    return "".join(out)
+
+
+def fold_query(text):
+    """A `title=` query as the folded pass reads it: the title table, then the case fold."""
+    return fold_case(fold_title(text))
+
+
 def fold_marks(text):
     """Drop Unicode combining marks, then the eleven characters NFD cannot reach."""
     return "".join(_FOLD.get(ch, ch)

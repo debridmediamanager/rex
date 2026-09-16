@@ -21672,6 +21672,37 @@ def main():
           == "Zo\u0119 \u0106afe S\u0105\u0142\u017f \u0100ra Cafe",
           "titleSort %r" % row_c32d.get("titleSort"))
 
+
+    # Cycle 32, measured on kids (2,098 codepoints) and zen, held out on both writable
+    # copies: the `title=` folded pass folds the QUERY by the title table and a simple case
+    # fold, and the STORED sort title by the case fold only. So the long s finds `s`, an
+    # ogonek or a capital macron finds nothing, and a locked accented sort title is not
+    # folded back to ASCII. plexsim ran NFD over both sides.
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (movie, quote("Zeta Sorcery")))
+
+    def titled_c32e(query_c32e):
+        return movie in [r_c32e.get("ratingKey") for r_c32e in
+                         (get(base, "/library/sections/%s/all?type=1&title=%s"
+                              % (movie_section, quote(query_c32e)))[1].get("Metadata") or [])]
+
+    long_s_c32e = titled_c32e("Zeta \u017forcery")
+    ogonek_c32e = titled_c32e("Z\u0119ta")
+    macron_c32e = titled_c32e("Z\u0112ta")
+    acute_c32e = titled_c32e("Z\u00e9ta Sorcery")
+    request(base, "PUT", "/library/metadata/%s?titleSort.value=%s&titleSort.locked=1"
+                         % (movie, quote("\u00c9gg\u0119head Zo\u017fa")))
+    stored_plain_c32e = titled_c32e("Egg\u0119head")
+    stored_case_c32e = titled_c32e("Zosa")
+    request(base, "PUT", "/library/metadata/%s?titleSort.value=&titleSort.locked=0" % movie)
+    check("the title= query folds by the table and a case fold, the stored sort title by "
+          "the case fold only",
+          long_s_c32e and not ogonek_c32e and not macron_c32e and acute_c32e
+          and not stored_plain_c32e and stored_case_c32e,
+          "long s %s | ogonek %s | capital macron %s | acute %s | stored accented: by table %s, "
+          "long s %s" % (long_s_c32e, ogonek_c32e, macron_c32e, acute_c32e,
+                         stored_plain_c32e, stored_case_c32e))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
