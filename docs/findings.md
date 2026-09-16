@@ -7769,6 +7769,129 @@ so it is recorded rather than built. `/livetv` is the third: both copies answer 
 today where cycle 18 recorded a three-row container from the same copy, so plexsim is left alone until
 that contradiction is settled.
 
+#### The thirty-second pass — concurrency, the fold table in full, and the decision model from the profile files
+
+Two hunts and a driver round, carried across two sessions: **nine findings in nine fix commits and one
+test commit**, four §3.3 entries CLOSED, and two instruments used in anger that no cycle before had:
+**threads released from one barrier**, and the **reference image's own profile files as a model's
+input**.
+
+**Territory A swept CONCURRENCY — the first time any cycle asked what happens when two requests
+overlap.** Every pair was driven from two threads released by one `threading.Barrier`, on both writable
+copies and plexsim, and the row read back afterwards. The negative result is
+large: two writers on one row, a read during a write (6,870 body-validated reads on plexsim and 3,655 on the copies, with no
+torn body in either format), two sessions on one item, the full 28-pair play-queue mutation matrix, duplicate
+creates, frames under overlapping writes and HTTP pipelining all agree on all three servers. What does
+not agree is one shape, twice:
+
+- **`POST /playQueues` answered 404 for the queue it had just created**, in 9 of 60 barrier pairs
+  carrying one client identifier, where both references refuse none in 110. The retire-and-insert ran
+  under the lock and the answer was built after releasing it, so a sibling create retired the queue in
+  a sub-millisecond gap (4 of 30 at a 0 ms offset, 0 of 30 at 1 ms). Plex Web creates the queue before
+  it asks for a decision, so a double-clicked Play did not play.
+- **Two concurrent ADDS answered the same container** — both naming the other's
+  `playQueueLastAddedItemID` — in 11 of 67 pairs, where each reference answer is the queue as that add
+  left it (110 of 110). The first fix's comment claimed to cover this and did not: re-measured on its
+  own tree, 9 of 180 pairs still collided. Every write to an existing queue — the add, the clear, the
+  item delete, the move — now builds its answer inside the lock it wrote under.
+
+And one deterministic finding it tripped over: **a WRITE's response honours the paging headers and
+`excludeElements=`**, on both versions, over twelve playlist, collection and play-queue writes.
+plexsim gated both post-processors on GET and HEAD, so cycle 21's "paging is a property of the
+response" held for half the surface.
+
+**Territory B closed the two §3.3 entries it was given.** The `title=` query fold is a table of 102
+characters, identical on kids and zen over every codepoint both could probe; and the decision model is
+exact.
+
+**The fold, finished by the driver on the write side.** The query table raised the question the read
+side cannot answer — is the sort title folded by the same table? — and two writes per copy settled it.
+Writing 2,076 codepoints into titles, forty at a time, on plexscratch42 and plexscratch (which agree on
+every one): **the sort title folds exactly 100 characters**, which is the query table minus `ſ` and the
+Kelvin sign, case preserved (`ð` sorts as `O`, `Æ` as `E`). NFD cannot express it in either direction:
+it folds `ę ą ş ć` and the capital macrons, which a real PMS keeps, while the lower-case macrons fold.
+A decomposed accent is still dropped (`Café` sorts as `Cafe`). Then a locked sort title with
+accents in it showed how the two sides meet: `Éggęhead Zoſa` is found by `Zosa` and by neither
+`Egghead` nor `Eggęhead`. So the **query** is the table plus a simple case fold (which is the whole
+of the difference between the two tables: `ſ` and `K` are case folds, not table entries), and the
+**stored** sort title is only case-folded. Hunt B's own finding sits on top: **the folded pass reads
+the stored SORT title, not the title** — `Tráin Job` finds "The Train Job" and `Thé Train` finds
+nothing, because the article is not in the string the folded pass reads.
+
+**The hub search matcher uses the same table**, swept by the driver with 825 probes on kids: all 100
+table characters match at a word score at the start and inside a word, and none of the 400-odd letters
+only NFD reaches does. Its CASE handling is not the `title=` one and is not modelled: a capital macron,
+`ſ` and `İ` match inside a title's LAST word (`Cosmos LaundrŌmat`, `SintĒl`, `Tears of ſteel` all 0.93)
+and fail in an earlier word (`CŌsmos`, `TĒars`, `ſteel` alone 0.33), which says the scorer runs two
+passes with different case folding. plexsim uses the query fold on both sides and says so.
+
+**The decision model, from the files.** Cycle 31 named the four inputs; hunt B scored a model over 78
+profiles × 24 rows and the driver fitted the ORDER of its checks against the reference's own refusal
+texts. Of 1,872 cells the outcome is exact on 1,871 and the `directPlayDecisionText` on 1,864:
+
+1. a SELECTED audio stream that is not the first refuses before anything is matched, unless the profile
+   declares `DirectPlayStreamSelection`;
+2. a direct-play `VideoProfile` must name the container and video codec (`…with container mkv, and
+   video codec h264.`);
+3. the stream the server would PLAY (the selected one; with no language, the default with the most
+   channels) refuses the same way;
+4. a selected sidecar subtitle needs a `SubtitleProfile`;
+5. the entry must name the selected audio codec (`…video codec h264, and audio codec eac3.`), then a
+   selected embedded subtitle's (`…using video codec vc1, audio codec dca, and subtitle codec pgs.`);
+6. limitations: the CONTAINER's first, then a codec profile naming the codec, then `*` (`This app cannot
+   play this item. The reason is: video.level limitation applies: 51 > 41.`); `onlyTranscodes="true"`
+   is skipped;
+7. with direct play refused, a transcode target for the request's protocol decides "Conversion OK"
+   against "neither", `context="static"` never serves, and Xbox 360's asf-only target is a 400.
+
+Firefox and Edge answer "neither" because they declare only `dash` and `hls` targets, where Web also
+declares `http/mkv`. **44 of 78 profiles direct play a real row; plexsim hard-coded two** — and neither
+of those two lists webm/vp8 or eac3, so Roku and Xbox One were told to direct play fixture files they
+cannot decode, while Samsung, tvOS, iOS, Windows, PlayStation and every DLNA renderer were told nothing
+could play. The profile blocks are `client_profiles.json`, read off the lab image and parsed twice by
+two independent parsers with identical results. plexsim still cannot convert, so a refusal answers the
+"neither" triple whatever the transcode targets say.
+
+The eight cells it misses are all **zen 19813**, the one measured row whose two audio tracks carry no
+language: which stream it evaluates, and where the sidecar check falls, differ by profile in a way one
+row cannot separate (a search over every order of the checks, and a second hypothesis choosing the
+stream by the transcode targets' codecs, both scored worse). Recorded, not fitted.
+
+**The JSON byte form, found by the driver in the revalidation step.** Settling `/livetv` meant reading
+bodies side by side, and plexsim's were 11% longer. A real PMS writes JSON **compact** — no space after
+`:` or `,` — in **raw UTF-8** (an accent, U+2028, a C1 control and an emoji written as themselves, `/`
+`<` `>` `&` unescaped), with `\b \t \n \f \r \" \\` short and every other C0 control as `\u00XX` in
+**upper-case** hex. Measured on zen and kids over real rows and on both copies over a title carrying
+every C0 control; the notification frames are written the same way. plexsim wrote Python's defaults on
+all three counts, so every JSON body and its `X-Plex-Content-Original-Length` named a size no real PMS
+sends.
+
+**`/livetv`'s 403 was the instrument.** Both CLAIMED references answer `/livetv` with the dispatcher's
+three-row container, `/livetv/dvrs` and `/livetv/sessions` empty, `/livetv/epg` a 404 and
+`/media/grabbers` four grabbers — exactly plexsim's answers. The two UNCLAIMED copies 403 all of them
+and answer the container at `/livetv/` with a trailing slash. Class E, closed without a code change.
+
+**Two checks this cycle had to be refitted to the state the suite leaves them**, the recorded §10 trap:
+the write-exclude check assumed one Media on a movie that an earlier merge check has given two, and the
+add-race check needed a third movie the suite has deleted by then. Both were re-proved by hand against
+their own pre-patch trees, and the exclude check against a server with the second version merged in.
+
+Measured and not acted on:
+
+- **The delete window.** Two concurrent `DELETE /playlists/{id}` of one row are both 204 on the
+  references (20/20 and 17/20) where plexsim answers 204 and 404; a read racing the delete can even see
+  `{"size":0,"totalSize":3}`. The difference is the WIDTH of a 2-5 ms window, a class-D shape;
+  matching it would mean inventing a grace period in which a deleted row answers success.
+- **A second refresh of a row already refreshing.** 1.43.4 coalesces (one activity, 8 frames for two
+  refreshes), 1.42.2 runs both — on unmatched rows, the only kind the 1.42.2 copy has. plexsim runs
+  both. The references disagree and neither is picked.
+- **`/activities` does carry a running row** (caught by polling s42 during a forced section refresh),
+  correcting cycle 19's "a running Activity could not be caught". plexsim registers its activities in
+  the same list; its writes finish in well under a millisecond, so nothing can be caught there (class E).
+- **The hub matcher's position-dependent case folding**, and **zen 19813's audio selection**, above.
+- REFUTED: hunt B's "plexsim does not fold K" (the Kelvin sign has a canonical decomposition to `K`, so
+  NFD did fold it; what plexsim missed was `ſ`), and the first race fix's claim to have covered the adds.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
