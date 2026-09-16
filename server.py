@@ -70,6 +70,7 @@ import library as library_module  # noqa: E402
 import filters as filters_module  # noqa: E402
 import mediainfo as mediainfo_module  # noqa: E402
 import hierarchy as hierarchy_module  # noqa: E402
+import decision as decision_module  # noqa: E402
 import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
@@ -1532,27 +1533,8 @@ def _photo_int(value):
 # X-Plex-Client-Profile-Name, X-Plex-Platform or X-Plex-Device names one of them
 # exactly: `Chrome`, `Windows` and `Microsoft Edge` are accepted, where `Edge`,
 # `Darwin`, `Kodi`, `webOS`, `chrome` and `Chrome ` are all 400s.
-# The client profiles that DIRECT PLAY an h264/aac item without `hasMDE=1`, measured on
-# kids (1.43.4) and zen (1.42.2) across four items in both containers. A decision with no
-# `hasMDE` runs the client's own profile against the item and answers one of three shapes:
-#
-#   Roku, Xbox One                      -> directPlay 1000 / general 1000, the Metadata row
-#                                          and `resourceSession`, and NO transcode codes
-#   Chrome, Safari, Chromecast,         -> directPlay 3000 / general 1001 / transcode 1001,
-#   Plex Desktop, Konvergo,                "Conversion OK" -- which plexsim cannot answer,
-#   HTML TV App, Opera                     because it has no encoder (section 8)
-#   Firefox, Microsoft Edge, Generic,   -> directPlay 3000 / general 2000 / transcode 4005,
-#   Plexamp                                "Neither direct play nor conversion is available"
-#
-# plexsim answered the THIRD shape to every client that does not send `hasMDE=1` -- Roku,
-# plex-for-kodi's `ServerDecision`, python-plexapi and the older TV apps -- so a server
-# whose whole purpose is direct play told them its catalog was unplayable.
-#
-# This list is the profiles measured to direct play, not a model of Plex's
-# `Resources/Profiles` matrix, which plexsim does not hold. `Android` and
-# `PlayStation 4 App` direct-played some of the four items and not others on the same
-# server, so they are deliberately OUT: an item-dependent answer needs the matrix.
-DIRECT_PLAY_PROFILES = frozenset(["Roku", "Xbox One"])
+# Which client direct plays WHAT is not a list: cycle 32 read every profile file out of
+# the reference image and it is decided per item in `decision.py`.
 
 
 class _AlreadyHeld:
@@ -11130,47 +11112,60 @@ class PlexSim:
             "librarySectionUUID": section.get("uuid"),
         }
         path = query.get("path", "")
-        if (query.get("hasMDE") != "1" and query.get("directPlay") != "0"
-                and any(param(name) in DIRECT_PLAY_PROFILES for name in
-                        ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device"))):
-            # Measured on kids and zen: a decision with NO `hasMDE` from a profile that
-            # direct plays the item answers the directPlay/general PAIR -- both 1000,
-            # both "Direct play OK." -- with NO transcode codes, and it carries the same
-            # Metadata row and `resourceSession` the MDE form does. The row is BYTE
-            # IDENTICAL between the two forms; only the container's codes differ.
+        refusal = None
+        if query.get("hasMDE") != "1":
+            # Cycle 32: a decision with no `hasMDE` runs the CLIENT's own profile -- the
+            # file the reference ships in `Resources/Profiles/` -- against the Media it
+            # was asked about. See `decision.py` for the rules and how they were scored.
             #
-            # CLAUDE.md's "a direct play is ONLY `mdeDecisionCode: 1000`" is the MDE
-            # form's rule and stays right; this is the other form, which plexsim never
-            # emitted at all.
-            self.decided.add((self._playback_session(query, headers),
-                              int(row["ratingKey"])))
-            fields["resourceSession"] = (param("X-Plex-Session-Identifier")
-                                         or param("X-Plex-Client-Identifier") or "")
-            fields.update(directPlayDecisionCode=1000,
-                          directPlayDecisionText="Direct play OK.",
-                          generalDecisionCode=1000,
-                          generalDecisionText="Direct play OK.")
-            logger.info("DECISION direct play (no MDE) for path=%s", path)
-            return self.container(Metadata=[self._decision_row(row, query)], **fields)
-        if query.get("directPlay") == "0" or query.get("hasMDE") != "1":
-            # Direct play refused -- and plexsim cannot convert, so this is the
-            # measured "neither" answer, not the "Conversion OK" a PMS with an
-            # encoder gives. A real PMS answers exactly this for a client whose
-            # profile has no conversion target (`Generic`, `Sonos`): general 2000,
-            # transcode 4005 naming the protocol, NO Metadata and no
-            # resourceSession. plexsim answered 1001 "Conversion OK.", so the client
-            # went on to request a transcode that 404'd and showed a generic error;
-            # a code of 2000 or more is what it shows its own message for.
-            # Without hasMDE the direct-play text always names protocol `http`,
-            # whatever protocol was asked for (measured).
-            media = (row.get("Media") or [{}])[0]
-            reason = ("Direct play is disabled." if query.get("directPlay") == "0"
-                      else "No direct play video profile exists for protocol http, "
-                           "with container %s, and video codec %s."
-                           % (media.get("container") or "", media.get("videoCodec") or ""))
+            # Cycle 26 recorded WHICH products direct play and plexsim hard-coded two of
+            # them, but 44 of the 78 profiles direct play a real row, so every other
+            # non-MDE client -- Samsung, tvOS, iOS, Windows, PlayStation, the DLNA
+            # renderers, python-plexapi -- was told nothing could play. And the reverse:
+            # Roku and Xbox One were told to direct play webm/vp8 and eac3 files neither
+            # profile lists, so the client started a play it could not decode.
+            profile_name = next((param(name) for name in
+                                 ("X-Plex-Client-Profile-Name", "X-Plex-Platform",
+                                  "X-Plex-Device") if param(name) in CLIENT_PROFILES), None)
+            sources = row.get("Media") or []
+            raw_index = str(query.get("mediaIndex") or "")
+            media = sources[int(raw_index) if raw_index.isdigit() else 0]
+            outcome, refusal = decision_module.decide(
+                profile_name, media, query.get("protocol") or "http",
+                direct=query.get("directPlay") != "0")
+            if outcome == "refuse":
+                # Xbox 360's one video target is an asf with no protocol, and both
+                # references answer a 400 for every row it cannot direct play.
+                return ("error", 400, "plexsim: bad request")
+            if outcome == "directplay":
+                # Measured on kids and zen: the directPlay/general PAIR -- both 1000,
+                # both "Direct play OK." -- with NO transcode codes, and the same
+                # Metadata row and `resourceSession` the MDE form carries. The row is
+                # BYTE IDENTICAL between the two forms; only the codes differ.
+                self.decided.add((self._playback_session(query, headers),
+                                  int(row["ratingKey"])))
+                fields["resourceSession"] = (param("X-Plex-Session-Identifier")
+                                             or param("X-Plex-Client-Identifier") or "")
+                fields.update(directPlayDecisionCode=1000,
+                              directPlayDecisionText="Direct play OK.",
+                              generalDecisionCode=1000,
+                              generalDecisionText="Direct play OK.")
+                logger.info("DECISION direct play (no MDE, %s) for path=%s",
+                            profile_name, path)
+                return self.container(Metadata=[self._decision_row(row, query)], **fields)
+        elif query.get("directPlay") == "0":
+            refusal = "App cannot direct play this item. Direct play is disabled."
+        if refusal is not None:
+            # Direct play refused -- and plexsim cannot convert, so this is the measured
+            # "neither" answer, not the "Conversion OK" a PMS with an encoder gives a
+            # profile with a matching transcode target. A real PMS answers exactly this
+            # for a client whose profile has no conversion target (`Generic`, `Sonos`):
+            # general 2000, transcode 4005 naming the protocol, NO Metadata and no
+            # resourceSession. A code of 2000 or more is what a client shows its own
+            # message for, where a 1001 sends it on to a transcode that 404s.
             fields.update(
                 directPlayDecisionCode=3000,
-                directPlayDecisionText="App cannot direct play this item. " + reason,
+                directPlayDecisionText=refusal,
                 generalDecisionCode=2000,
                 generalDecisionText="Neither direct play nor conversion is available.",
                 transcodeDecisionCode=4005,

@@ -1,0 +1,4615 @@
+{
+ "Android": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.anamorphic",
+      "tag": "NotMatch",
+      "value": "1"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "list": "baseline|main|high",
+      "name": "video.profile",
+      "tag": "Match"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "containerprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "part.optimizedForStreaming",
+      "tag": "Match",
+      "value": "1"
+     }
+    ],
+    "name": "mp4",
+    "tag": "VideoContainer"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Asus Transformer Prime TF201": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "mp2,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "mpeg4,h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Chrome": {
+  "redirect": "Web"
+ },
+ "Chromecast": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "42"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac,mp3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Firefox": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Generic": {},
+ "HTML TV App": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile",
+    "videoCodec": "h264"
+   },
+   {
+    "audioCodec": "aac",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile",
+    "videoCodec": "h264"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Internet Explorer": {
+  "redirect": "Web"
+ },
+ "Konvergo": {
+  "targets": [
+   {
+    "audioCodec": "opus,vorbis,flac",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "subtitleCodec": "ass,pgs,vobsub,*",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Microsoft Edge": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Mystery 3": {
+  "redirect": "PlayStation 4 App"
+ },
+ "Mystery 4": {
+  "redirect": "PlayStation 4 App"
+ },
+ "Mystery 5": {
+  "redirect": "Xbox 360 App"
+ },
+ "Opera": {
+  "redirect": "Web"
+ },
+ "Opera TV App": {
+  "redirect": "HTML TV App"
+ },
+ "Panasonic Viera 3D TV": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,mp3",
+    "codec": "mpeg2video,mpeg4",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3,pcm",
+    "codec": "h264",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3,pcm",
+    "codec": "h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,pcm",
+    "codec": "h264",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "pcm",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "flv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "ac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "PlayStation 3": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "15360"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.bitrate",
+      "tag": "UpperBound",
+      "value": "640"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "wmapro",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.profile",
+      "substring": "he-aac",
+      "tag": "NotMatch"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "mp2,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,mp2,mp3,aac",
+    "codec": "mpeg1video,mpeg2video,h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "mp3,aac,ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "PlayStation 3 App": {
+  "redirect": "PlayStation 4 App"
+ },
+ "PlayStation 4 App": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "LowerBound",
+      "value": "50"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "LowerBound",
+      "value": "50"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.bitrate",
+      "tag": "LowerBound",
+      "value": "96"
+     },
+     {
+      "name": "audio.bitrate",
+      "tag": "UpperBound",
+      "value": "256"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "LowerBound",
+      "value": "32000"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "UpperBound",
+      "value": "48000"
+     },
+     {
+      "list": "32000|44100|48000",
+      "name": "audio.samplingRate",
+      "tag": "Match"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile",
+    "videoCodec": "h264"
+   },
+   {
+    "audioCodec": "aac",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile",
+    "videoCodec": "h264"
+   }
+  ]
+ },
+ "Plex Desktop": {
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "opus,vorbis,flac,*",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "subtitleCodec": "ass,pgs,vobsub,*",
+    "tag": "VideoProfile",
+    "videoCodec": "h264,hevc,*"
+   },
+   {
+    "audioCodec": "opus,vorbis,flac,*",
+    "container": "mkv",
+    "context": "static",
+    "protocol": "http",
+    "subtitleCodec": "ass,pgs,vobsub,*",
+    "tag": "VideoProfile",
+    "videoCodec": "h264,hevc,*"
+   }
+  ]
+ },
+ "Plex Home Theater": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "mp3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Plex Home Theater-RaspberryPi": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264,mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.bitrate",
+      "tag": "UpperBound",
+      "value": "1000"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3,dca",
+    "codec": "h264",
+    "container": "matroska",
+    "context": "streaming",
+    "protocol": "http",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Plexamp": {},
+ "Popcorn Hour": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.anamorphic",
+      "tag": "NotMatch",
+      "value": "1"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "containerprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "part.optimizedForStreaming",
+      "tag": "Match",
+      "value": "1"
+     }
+    ],
+    "name": "mp4",
+    "tag": "VideoContainer"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro",
+    "codec": "wmv3,vc1",
+    "container": "asf,wmv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,eac3,mp2,pcm",
+    "codec": "mpeg4,msmpeg4v3",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,ac3,eac3,mp2,pcm",
+    "codec": "h264",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Roku": {
+  "redirect": "Roku-7.x"
+ },
+ "Roku-3.1": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "5"
+     },
+     {
+      "name": "video.anamorphic",
+      "tag": "NotMatch",
+      "value": "1"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.bitrate",
+      "tag": "UpperBound",
+      "value": "256"
+     },
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2",
+    "codec": "wmv3,vc1",
+    "container": "wmv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Roku-5.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "LowerBound",
+      "value": "22050"
+     }
+    ],
+    "name": "aac,mp3,mp2,pcm,flac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "LowerBound",
+      "value": "2"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,flac",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "subtitleCodec": "srt",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Roku-5000X-6.0": {
+  "codecprofiles": [
+   {
+    "limitations": [],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "flv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac,wmav2,wmapro,wmavoice",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Roku-6.x": {
+  "redirect": "Roku-5.x"
+ },
+ "Roku-7.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "LowerBound",
+      "value": "22050"
+     }
+    ],
+    "name": "aac,mp3,mp2,pcm,flac,alac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "LowerBound",
+      "value": "2"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,flac",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac,alac",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "subtitleCodec": "srt",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-3.1": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "8000"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "5"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-4400X-7.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "3840"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "2176"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "16000"
+     }
+    ],
+    "name": "h265,vp9",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "18000"
+     }
+    ],
+    "name": "h264,mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "list": "8000|11025|16000|22050|24000|32000|44100|48000",
+      "name": "audio.samplingRate",
+      "tag": "Match"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "aac,flac,alac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "pcm,mp2,mp3,wma",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h265,h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h265,h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2",
+    "codec": "h265,h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac,alac",
+    "codec": "vp9,h265,h264,mpeg4",
+    "container": "mkv",
+    "subtitleCodec": "srt,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac",
+    "codec": "h264,mpeg4",
+    "container": "flv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac,wmav2,wmapro",
+    "codec": "h264,mpeg4,msmpeg4v2",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264,mpeg4,h265",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-5.1": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "12000"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.scanType",
+      "tag": "NotMatch",
+      "value": "interlaced"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac",
+    "codec": "h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-5000X-6.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     }
+    ],
+    "name": "mpeg1video,mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "16000"
+     }
+    ],
+    "name": "h264,mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac,pcm,mp3,mp2,flac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "flv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2,pcm,flac,wmav2,wmapro",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4,msmpeg4v2",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "ac3,aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-5000X-7.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     }
+    ],
+    "name": "mpeg1video,mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "16000"
+     }
+    ],
+    "name": "h264,mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "list": "8000|11025|16000|22050|24000|32000|44100|48000",
+      "name": "audio.samplingRate",
+      "tag": "Match"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "aac,flac,alac,ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "pcm,mp2,mp3,wma",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac,alac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mkv",
+    "subtitleCodec": "srt,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "flv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac,wmav2,wmapro",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4,msmpeg4v2",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3,eac3",
+    "codec": "h264,mpeg1video,mpeg2video,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-6.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "12000"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm,flac",
+    "codec": "h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "RokuDLNA-6000X-7.x": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "3840"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "2176"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "16000"
+     }
+    ],
+    "name": "h265,vp9",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     }
+    ],
+    "name": "mpeg1video,mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1088"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "18000"
+     }
+    ],
+    "name": "h264,mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "list": "8000|11025|16000|22050|24000|32000|44100|48000",
+      "name": "audio.samplingRate",
+      "tag": "Match"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "aac,flac,alac,ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "pcm,mp2,mp3,wma",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "h265,mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "h265,mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2",
+    "codec": "h265,mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac,alac",
+    "codec": "vp9,h265,mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "mkv",
+    "subtitleFormat": "srt,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4",
+    "container": "flv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "eac3,ac3,aac,mp3,mp2,pcm,flac,wmav2,wmapro",
+    "codec": "mpeg1video,mpeg2video,h264,mpeg4,msmpeg4v2",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3,eac3",
+    "codec": "h264,mpeg1video,mpeg2video,mpeg4,h265",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Safari": {
+  "redirect": "Web"
+ },
+ "Samsung": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3,wmav2,dca,aac,mp3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmav2,wmapro,wmavoice,pcm",
+    "codec": "wmv3,wmv3,vc1",
+    "container": "asf",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,eac3,dca,pcm",
+    "codec": "h264,msmpeg4v3,mpeg4,mjpeg",
+    "container": "avi",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,eac3,dca,aac,pcm,vorbis",
+    "codec": "h264,mpeg4,mjpeg,mpeg2video,vc1,hevc",
+    "container": "mkv",
+    "subtitleCodec": "srt,smi,ssa,ass,subrip",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,eac3,aac,pcm",
+    "codec": "h264,mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,pcm",
+    "codec": "h264",
+    "container": "flv",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,eac3,dca,pcm",
+    "codec": "h264,mpeg2video,vc1",
+    "container": "mpegts",
+    "subtitleCodec": "srt,ssa,ass",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,aac,pcm",
+    "codec": "mpeg2video",
+    "container": "wtv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,he-aac",
+    "codec": "h264,mpeg4",
+    "container": "3gpp",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "srt",
+    "container": "srt",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Samsung SmartTV": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "30720"
+     }
+    ],
+    "name": "mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "8192"
+     }
+    ],
+    "name": "mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "37500"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "25600"
+     }
+    ],
+    "name": "wmv2,wmv3,vc1",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3,wmav2,dca,aac,mp3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "mp3,ac3,wmav2,wmapro,wmavoice",
+    "codec": "h264,mpeg4,mjpeg",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,dca",
+    "codec": "h264,mpeg4,mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,dca,aac",
+    "codec": "h264,mpeg4,mjpeg",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,aac,ac3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "3gpp",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,mp2,mp3,aac",
+    "codec": "mpeg1video,mpeg2video,h264",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "mpeg2video,h264,vc1",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmavoice",
+    "codec": "wmv2,wmv3",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Samsung Tizen": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3,wmav2,dca,aac,mp3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,mp3,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmav2,wmapro,wmavoice,pcm",
+    "codec": "wmv3,wmv3,vc1",
+    "container": "asf",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,dca,pcm",
+    "codec": "h264,mpeg4,mjpeg",
+    "container": "avi",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,dca,aac,pcm,vorbis",
+    "codec": "h264,mpeg4,mjpeg,mpeg2video,vc1",
+    "container": "mkv",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,aac,pcm",
+    "codec": "h264,mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3,pcm",
+    "codec": "h264",
+    "container": "flv",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3,ac3,dca,pcm",
+    "codec": "h264,mpeg2video,vc1",
+    "container": "mpegts",
+    "subtitleFormat": "srt,smi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "3gpp",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp2,mp3,ac3,eac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sonos": {},
+ "Sony Blu-ray": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "15360"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video,h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,pcm,mp3",
+    "codec": "mpeg4,h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,pcm",
+    "codec": "mpeg4,h264",
+    "container": "avi",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "h264,mpeg2video",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Blu-ray 2013": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video,h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,mp3,mp2,pcm",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,pcm",
+    "codec": "mpeg4,h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,pcm",
+    "codec": "mpeg4,h264",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,dca,aac,mp3,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3,dca",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Bravia 2010": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.frameRateMode",
+      "tag": "Match",
+      "value": "cfr"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     }
+    ],
+    "name": "mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     },
+     {
+      "name": "audio.profile",
+      "substring": "he-aac",
+      "tag": "NotMatch"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,mp3",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Bravia 2011": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "20000"
+     }
+    ],
+    "name": "mpeg2video",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     },
+     {
+      "name": "audio.profile",
+      "substring": "he-aac",
+      "tag": "NotMatch"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video,mpeg1video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Bravia 2012": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video,mpeg1video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Bravia 2013": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,eac3,aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,aac,mp3,mp2",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,aac,mp3,mp2",
+    "codec": "h264,mpeg4,mjpeg",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,aac,mp3,mp2,pcm,vorbis",
+    "codec": "h264,mpeg4,vp8",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "pcm",
+    "codec": "mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2",
+    "codec": "mpeg2video,mpeg1video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3,eac3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Sony Streaming Player": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "15360"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.bitrate",
+      "tag": "UpperBound",
+      "value": "640"
+     }
+    ],
+    "name": "ac3",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "mp2,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp2,mp3,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp2,mp3",
+    "codec": "h264,mpeg2video,mpeg4",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Universal Mobile": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.anamorphic",
+      "tag": "NotMatch",
+      "value": "1"
+     },
+     {
+      "name": "video.hasScalingMatrix",
+      "tag": "NotMatch",
+      "value": "1"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "40"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "5"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "containerprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "part.optimizedForStreaming",
+      "tag": "Match",
+      "value": "1"
+     }
+    ],
+    "name": "mp4",
+    "tag": "VideoContainer"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "srt",
+    "container": "srt",
+    "tag": "SubtitleProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "srt",
+    "container": "srt",
+    "context": "static",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Universal Recording": {
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "opus,*",
+    "container": "mpegts",
+    "context": "static",
+    "protocol": "http",
+    "subtitleCodec": "dvb_subtitle,*",
+    "tag": "VideoProfile",
+    "videoCodec": "hevc,h264,*"
+   },
+   {
+    "audioCodec": "opus,*",
+    "container": "mpegts",
+    "context": "static",
+    "protocol": "hls",
+    "subtitleCodec": "dvb_subtitle,*",
+    "tag": "VideoProfile",
+    "videoCodec": "hevc,h264,*"
+   }
+  ]
+ },
+ "Universal TV": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.anamorphic",
+      "tag": "NotMatch",
+      "value": "1"
+     },
+     {
+      "name": "video.hasScalingMatrix",
+      "tag": "NotMatch",
+      "value": "1"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "40"
+     },
+     {
+      "name": "video.refFrames",
+      "tag": "UpperBound",
+      "value": "5"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   }
+  ],
+  "containerprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "part.optimizedForStreaming",
+      "tag": "Match",
+      "value": "1"
+     }
+    ],
+    "name": "mp4",
+    "tag": "VideoContainer"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "srt",
+    "container": "srt",
+    "tag": "SubtitleProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "srt",
+    "container": "srt",
+    "context": "static",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Unknown Browser": {
+  "redirect": "Web"
+ },
+ "Vivaldi": {
+  "redirect": "Web"
+ },
+ "Web": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mkv",
+    "context": "streaming",
+    "protocol": "http",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Western Digital TV Live": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,dca,mp2,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video,mpeg4,h264,vc1",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,dca,mp2,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video",
+    "container": "mpeg",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,dca,aac,mp2,mp3,pcm",
+    "codec": "mpeg1video,mpeg2video,mpeg4,h264,vc1",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,dca,mp2,mp3",
+    "codec": "mpeg1video,mpeg2video,h264,vc1",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac,mp2,mp3",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro",
+    "codec": "vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp2,ac3",
+    "codec": "mpeg2video",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3,ac3,dca",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Wii U": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Windows": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.profile",
+      "tag": "NotMatch",
+      "value": "main"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "UpperBound",
+      "value": "48000"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264,mpeg4,msmpeg4,msmpeg4v2",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,eac3,mp2,pcm",
+    "codec": "mpeg4,msmpeg4v2,msmpeg4,msmpeg4v3,mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Windows 10 Desktop": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.profile",
+      "tag": "NotMatch",
+      "value": "main"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "UpperBound",
+      "value": "48000"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,flac,pcm",
+    "codec": "mpeg4,msmpeg4,msmpeg4v2,hevc,h264,vc1",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "mpeg4,msmpeg4,msmpeg4v2,hevc,h264,vc1,wmv1,wmv2,wmv3,dvvideo,mjpeg",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,pcm",
+    "codec": "mpeg4,msmpeg4,msmpeg4v2,hevc,h264,vc1,wmv1,wmv2,wmv3,dvvideo,mjpeg",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "vc1,wmv1,wmv2,wmv3",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,eac3,mp2,pcm",
+    "codec": "mpeg4,msmpeg4,msmpeg4v2,h264,vc1,wmv1,wmv2,wmv3,dvvideo,mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,ac3,eac3,mp2,pcm",
+    "codec": "dvvideo",
+    "container": "dv",
+    "tag": "VideoProfile"
+   },
+   {
+    "container": "webvtt",
+    "subtitleCodec": "webvtt",
+    "tag": "SubtitleProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "container": "webvtt",
+    "subtitleCodec": "webvtt",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Windows 10 Mobile": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "40000"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "name": "audio.profile",
+      "tag": "NotMatch",
+      "value": "main"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "UpperBound",
+      "value": "48000"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3,flac,pcm",
+    "codec": "mpeg4,msmpeg4,hevc,h264,vc1",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "mpeg4,msmpeg4,hevc,h264,vc1,mjpeg",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,pcm",
+    "codec": "mpeg4,msmpeg4,hevc,h264,vc1,mjpeg",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "mp3,mp2,pcm",
+    "codec": "mpeg4,msmpeg4,h264,vc1,mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "container": "webvtt",
+    "subtitleCodec": "webvtt",
+    "tag": "SubtitleProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "container": "webvtt",
+    "subtitleCodec": "webvtt",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "Windows Phone": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "40000"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.profile",
+      "tag": "NotMatch",
+      "value": "main"
+     },
+     {
+      "name": "audio.samplingRate",
+      "tag": "UpperBound",
+      "value": "48000"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Xbox 360": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1280"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "720"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "5120"
+     }
+    ],
+    "name": "mpeg4",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "10240"
+     },
+     {
+      "name": "video.level",
+      "tag": "UpperBound",
+      "value": "41"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.frameRate",
+      "tag": "UpperBound",
+      "value": "30"
+     },
+     {
+      "name": "video.bitrate",
+      "tag": "UpperBound",
+      "value": "15360"
+     }
+    ],
+    "name": "wmv2,wmv3,vc1",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3,wmav2,wmapro",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     },
+     {
+      "name": "audio.profile",
+      "tag": "Match",
+      "value": "lc"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "containerprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "part.has64bitOffsets",
+      "tag": "Match",
+      "value": "0"
+     }
+    ],
+    "name": "mp4,mov",
+    "tag": "VideoContainer"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "ac3,mp3",
+    "codec": "mpeg4",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "wmav2",
+    "codec": "wmv2",
+    "container": "asf",
+    "context": "streaming",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Xbox 360 App": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     }
+    ],
+    "name": "ac3, eac3",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3,pcm",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp2,pcm",
+    "codec": "h264",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2,wmapro,wmavoice",
+    "codec": "wmv2,wmv3,vc1",
+    "container": "asf",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,eac3,mp2,pcm",
+    "codec": "mpeg4,msmpeg4v3,mjpeg",
+    "container": "avi",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "Xbox One": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "6"
+     },
+     {
+      "list": "32000|44100|48000",
+      "name": "audio.samplingRate",
+      "tag": "Match"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264,hevc,mpeg4,vc1,wmv3",
+    "container": "mp4",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3,pcm,flac,alac",
+    "codec": "h264,hevc,mpeg4,msmpeg4v2,msmpeg4v3,vc1,vp9,wmv3",
+    "container": "mkv",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp2",
+    "codec": "h264,mpeg2video",
+    "container": "mpegts",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,mp3",
+    "codec": "mpeg4,msmpeg4,msmpeg4v2,msmpeg4v3,vc1,wmv3",
+    "container": "avi",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mov",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "wmav2",
+    "codec": "vc1,wmv2",
+    "container": "asf",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "ac3,aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "streaming",
+    "protocol": "dash",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "ac3,aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3,eac3,mp3",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "codec": "ass",
+    "container": "ass",
+    "context": "all",
+    "tag": "SubtitleProfile"
+   }
+  ]
+ },
+ "ZP": {},
+ "iOS": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.separateFields",
+      "tag": "NotMatch",
+      "value": "1"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "onlyTranscodes": "true",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "*",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "mp4,mov",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "subtitleCodec": "mov_text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "subtitleCodec": "eia_608_embedded",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "iOS-iPad-1,1": {
+  "redirect": "iOS-iPhone-3,1"
+ },
+ "iOS-iPhone-1,1": {
+  "redirect": "iOS-iPhone-2,1"
+ },
+ "iOS-iPhone-1,2": {
+  "redirect": "iOS-iPhone-2,1"
+ },
+ "iOS-iPhone-2,1": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "720"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "576"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "iOS-iPhone-3,1": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1280"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "720"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mp4",
+    "context": "static",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ]
+ },
+ "iOS-iPhone-3,2": {
+  "redirect": "iOS-iPhone-3,1"
+ },
+ "iOS-iPhone-3,3": {
+  "redirect": "iOS-iPhone-3,1"
+ },
+ "iOS-iPod-1,1": {
+  "redirect": "iOS-iPhone-2,1"
+ },
+ "iOS-iPod-2,1": {
+  "redirect": "iOS-iPhone-2,1"
+ },
+ "iOS-iPod-3,1": {
+  "redirect": "iOS-iPhone-2,1"
+ },
+ "iOS-iPod-4,1": {
+  "redirect": "iOS-iPhone-3,1"
+ },
+ "tvOS": {
+  "codecprofiles": [
+   {
+    "limitations": [
+     {
+      "isRequired": "true",
+      "name": "video.width",
+      "tag": "UpperBound",
+      "value": "1920"
+     },
+     {
+      "isRequired": "true",
+      "name": "video.height",
+      "tag": "UpperBound",
+      "value": "1080"
+     },
+     {
+      "name": "video.bitDepth",
+      "tag": "UpperBound",
+      "value": "8"
+     },
+     {
+      "name": "video.separateFields",
+      "tag": "NotMatch",
+      "value": "1"
+     }
+    ],
+    "name": "h264",
+    "tag": "VideoCodec"
+   },
+   {
+    "limitations": [
+     {
+      "name": "audio.channels",
+      "tag": "UpperBound",
+      "value": "2"
+     }
+    ],
+    "name": "aac",
+    "tag": "VideoAudioCodec"
+   }
+  ],
+  "directplay": [
+   {
+    "audioCodec": "aac,ac3,eac3",
+    "codec": "h264,mpeg4",
+    "container": "mp4",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac,ac3",
+    "codec": "h264,mpeg4",
+    "container": "mov",
+    "subtitleCodec": "mov_text,tx3g,ttxt,text",
+    "tag": "VideoProfile"
+   },
+   {
+    "audioCodec": "aac",
+    "codec": "h264",
+    "container": "mpegts",
+    "protocol": "hls",
+    "tag": "VideoProfile"
+   }
+  ],
+  "settings": [
+   {
+    "name": "DirectPlayStreamSelection",
+    "value": "true"
+   }
+  ],
+  "targets": [
+   {
+    "audioCodec": "aac,eac3,ac3,mp3",
+    "codec": "h264",
+    "container": "mpegts",
+    "context": "streaming",
+    "protocol": "hls",
+    "subtitleCodec": "eia_608_embedded",
+    "tag": "VideoProfile"
+   }
+  ]
+ }
+}
