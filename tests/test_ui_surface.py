@@ -21277,6 +21277,30 @@ def main():
               "%r -> %s | with a comma %s | doubled %s | with a dot %s (of %s rows)"
               % (word_c31l, plain_c31l, comma_c31l, double_c31l, dotted_c31l, all_c31l))
 
+
+    # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
+    # instrument that can show it: the in-library search box reads the TITLE alone.
+    # `?query=Salaire`, `Douai`, `Meurtres` and `Chung` each answer 0 rows there, while the
+    # rows carrying those original titles are present and findable by their titles; a
+    # title-only model scores 1,244 of 1,244 generated queries on both zen libraries where
+    # the title-or-original model misses 102. plexsim read both, so the box listed foreign
+    # films under a name a real PMS does not index here.
+    request(base, "PUT", "/library/metadata/%s?originalTitle.value=%s"
+                         % (movie, quote("Zarquon Original")))
+    box_c31m = [r_c31m.get("ratingKey") for r_c31m in
+                (get(base, "/library/sections/%s/search?type=1&query=%s"
+                     % (movie_section, quote("zarquon")))[1].get("Metadata") or [])]
+    row_c31m = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    title_c31m = [r_c31m.get("ratingKey") for r_c31m in
+                  (get(base, "/library/sections/%s/search?type=1&query=%s"
+                       % (movie_section, quote(str(row_c31m.get("title"))[:4])))[1]
+                   .get("Metadata") or [])]
+    check("the in-library search box reads the title alone",
+          row_c31m.get("originalTitle") == "Zarquon Original"
+          and box_c31m == [] and movie in title_c31m,
+          "originalTitle %r | by original %s | by title %s"
+          % (row_c31m.get("originalTitle"), box_c31m, title_c31m))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
