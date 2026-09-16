@@ -22015,6 +22015,41 @@ def main():
               and frames_c33f[:3] == [(2, "matching"), (5, None), (3, "queued")],
               "guid %s | %s" % (guid_c33f, frames_c33f[:4]))
 
+
+    # Cycle 33, measured on kids and zen in XML and in JSON: a 206 of a CONTAINER answers
+    # `Content-Length` TWICE -- the whole body's length in its usual place, then
+    # `Content-Range`, then the SLICE's after the connection state -- while the body is
+    # the slice. A ranged artwork or asset answers the slice's length alone. plexsim
+    # answered one length everywhere.
+    #
+    # Read with a RAW SOCKET on purpose: a client that takes the FIRST `Content-Length`
+    # waits for bytes that never come, which is what `http.client` does and what a real
+    # PMS does to it. No Plex client ranges a container, so nothing on the surface sees it.
+    sock_c33g = socket.create_connection(
+        (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+    sock_c33g.settimeout(8)
+    sock_c33g.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nRange: bytes=0-5\r\n"
+                      b"Connection: close\r\n\r\n")
+    raw_c33g = b""
+    try:
+        while b"\r\n\r\n" not in raw_c33g:
+            chunk_c33g = sock_c33g.recv(4096)
+            if not chunk_c33g:
+                break
+            raw_c33g += chunk_c33g
+    except Exception:
+        pass
+    sock_c33g.close()
+    lines_c33g = raw_c33g.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+    names_c33g = [line_c33g.split(":", 1)[0] for line_c33g in lines_c33g[1:] if line_c33g]
+    lengths_c33g = [line_c33g.split(":", 1)[1].strip() for line_c33g in lines_c33g[1:]
+                    if line_c33g.lower().startswith("content-length")]
+    check("a ranged container answers the whole length and the slice's, in that order",
+          lines_c33g[0].startswith("HTTP/1.1 206") and len(lengths_c33g) == 2
+          and int(lengths_c33g[0]) > int(lengths_c33g[1]) == 6
+          and names_c33g.index("Content-Range") == names_c33g.index("Content-Length") + 1,
+          "%s | %s" % (lengths_c33g, names_c33g))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -15222,9 +15222,16 @@ class Handler(BaseHTTPRequestHandler):
     # XML attribute order of cycle 22 and the JSON byte form of cycle 32, and it is
     # what a byte-for-byte diff of two servers reads.
     HEADER_ORDER = {
+        # A 206 of a CONTAINER carries `Content-Length` TWICE -- the whole body's length
+        # in its usual place and the SLICE's after the connection state, with
+        # `Content-Range` between them (`Content-Length: 208`, `Content-Range: bytes
+        # 0-5/208`, `Connection: close`, `Content-Length: 6`). Measured on both
+        # references, in XML and in JSON. A repeated name is ranked by OCCURRENCE, which
+        # is why the list may name one twice.
         "container": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
-                      "Content-Type", "Content-Length", "X-Plex-Container-Start",
-                      "X-Plex-Container-Total-Size", "Connection", "Keep-Alive",
+                      "Content-Type", "Content-Length", "Content-Range",
+                      "X-Plex-Container-Start", "X-Plex-Container-Total-Size",
+                      "Connection", "Keep-Alive", "Content-Length",
                       "Cache-Control", "Access-Control-Allow-Headers",
                       "Access-Control-Allow-Origin", "Date"),
         # A gzipped body moves `Connection` ahead of the encoding pair and the length
@@ -15249,14 +15256,14 @@ class Handler(BaseHTTPRequestHandler):
                    "Connection", "Keep-Alive", "Cache-Control",
                    "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
         "artwork": ("X-Plex-Protocol", "Content-Type", "X-Plex-Local-Asset",
-                    "Cache-Control", "Accept-Ranges", "Connection", "Keep-Alive",
-                    "Content-Length", "Access-Control-Allow-Headers",
+                    "Cache-Control", "Accept-Ranges", "Content-Range", "Connection",
+                    "Keep-Alive", "Content-Length", "Access-Control-Allow-Headers",
                     "Access-Control-Allow-Origin", "Date"),
         "photo": ("X-Plex-Protocol", "Accept-Ranges", "Connection", "Keep-Alive",
                   "Content-Length", "Content-Type", "Cache-Control",
                   "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
-        "asset": ("X-Plex-Protocol", "Cache-Control", "Accept-Ranges", "Connection",
-                  "Keep-Alive", "Content-Length", "Content-Type", "Date"),
+        "asset": ("X-Plex-Protocol", "Cache-Control", "Accept-Ranges", "Content-Range",
+                  "Connection", "Keep-Alive", "Content-Length", "Content-Type", "Date"),
         # A part read carries no `Cache-Control` at all -- which is the one exception to
         # cycle 16's "no-cache goes on EVERY response", measured on both references --
         # and `Content-Disposition` sits between `Last-Modified` and `Accept-Ranges`.
@@ -15345,10 +15352,23 @@ class Handler(BaseHTTPRequestHandler):
             family = self._header_family(values, status)
             order = self.HEADER_ORDER.get(family or "")
             if order:
-                rank = {name.lower(): index for index, name in enumerate(order)}
+                ranks = {}
+                for index, name in enumerate(order):
+                    ranks.setdefault(name.lower(), []).append(index)
                 # An unmeasured header goes where plexsim put it, just before `Date`.
-                unknown = rank["date"] - 0.5
-                lines.sort(key=lambda pair: rank.get(pair[0].lower(), unknown))
+                unknown = ranks["date"][0] - 0.5
+                seen = {}
+                ranked = []
+                for name, raw in lines:
+                    slots = ranks.get(name.lower())
+                    if slots:
+                        which = min(seen.get(name.lower(), 0), len(slots) - 1)
+                        seen[name.lower()] = which + 1
+                        ranked.append((slots[which], name, raw))
+                    else:
+                        ranked.append((unknown, name, raw))
+                ranked.sort(key=lambda entry: entry[0])
+                lines = [(name, raw) for _rank, name, raw in ranked]
             else:
                 lines.sort(key=lambda pair: 1 if pair[0].lower() == "date" else 0)
             self._headers_buffer = [buffered[0]] + [raw for _name, raw in lines]
@@ -15523,6 +15543,13 @@ class Handler(BaseHTTPRequestHandler):
         if content_range is None and content_type is not None:
             payload = self._maybe_gzip(content_type, payload, names)
         elif content_range is not None:
+            # Cycle 33, measured on both references: a ranged CONTAINER answers the WHOLE
+            # body's length as well as the slice's -- the full one here, before the range,
+            # and the slice's below. A ranged artwork, asset or part answers the slice
+            # alone, and each of those carries `Accept-Ranges`, which is what tells them
+            # apart. plexsim answered one length for all of them.
+            if not any(name.lower() == "accept-ranges" for name, _ in extra_headers):
+                self.send_header("Content-Length", content_range.rsplit("/", 1)[-1])
             self.send_header("Content-Range", content_range)
         if content_type is not None:
             # Cycle 21: a None type means the response carries no `Content-Type` at
