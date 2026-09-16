@@ -21627,6 +21627,36 @@ def main():
               "%d create(s), statuses %s"
               % (len(statuses_c32b), sorted(set(statuses_c32b))))
 
+
+    # Cycle 32, measured on kids and zen: the `title=` matcher's RAW pass reads the title
+    # and its FOLDED pass reads the row's stored SORT title. kids' episode 8 is "The Train
+    # Job" with the sort title "Train Job": `title=The Train` answers it through the raw
+    # pass, `title=Tráin Job` through the folded one, and `The Tráin`, `Thé Train` and
+    # `Thé Tráin Jób` each answer NOTHING -- a folded query carrying the article cannot
+    # match, because the article is not in the string the folded pass reads.
+    #
+    # plexsim folded the TITLE, so it answered rows a real PMS does not and missed every
+    # row findable only by its sort title. Rows with no article match either way, which is
+    # why thirteen cycles never saw it.
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (movie, quote("The Zarquon Machine")))
+    row_c32c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+
+    def titled_c32c(query_c32c):
+        return [r_c32c.get("ratingKey") for r_c32c in
+                (get(base, "/library/sections/%s/all?type=1&title=%s"
+                     % (movie_section, quote(query_c32c)))[1].get("Metadata") or [])]
+
+    raw_c32c = titled_c32c("The Zarquon")
+    folded_sort_c32c = titled_c32c("Zárquon Machine")
+    folded_title_c32c = titled_c32c("Thé Zarquon")
+    check("the title= folded pass reads the stored sort title, not the title",
+          row_c32c.get("titleSort") == "Zarquon Machine"
+          and movie in raw_c32c and movie in folded_sort_c32c
+          and movie not in folded_title_c32c,
+          "titleSort %r | raw %s | folded over the sort title %s | folded with the article %s"
+          % (row_c32c.get("titleSort"), raw_c32c, folded_sort_c32c, folded_title_c32c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -1944,9 +1944,12 @@ class _TitleValue(str):
     than being spliced into it.
     """
 
-    def __new__(cls, title, original):
+    def __new__(cls, title, original, sort=None):
         value = str.__new__(cls, title)
         value.original = original
+        # Cycle 32: the FOLDED half of the matcher reads the stored SORT title, so it
+        # travels with the value like the original title does. See `filters._word_prefixes`.
+        value.sort = title if sort is None else sort
         return value
 
 
@@ -7528,7 +7531,8 @@ class PlexSim:
             # A str subclass rather than a list: a list routes through set membership
             # and would break the other five operators.
             return _TitleValue(hierarchy_module.stored_title(row),
-                               row.get("originalTitle") or "")
+                               row.get("originalTitle") or "",
+                               hierarchy_module.stored_sort_title(row))
         if field == "titleSort":
             # A row omits titleSort when it equals the title; the value is still
             # there to compare (`titleSort=sintel` finds Sintel, measured). Cycle 18:

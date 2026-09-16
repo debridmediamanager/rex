@@ -299,7 +299,7 @@ def _values(actual):
 EXACT_STRING_FIELDS = {"titleSort", "summary", "tagline"}
 
 
-def _word_prefixes(wanted, text):
+def _word_prefixes(wanted, text, sort=None):
     """`title=` on a listing: each query WORD begins a distinct title word, in order.
 
     Measured on two servers, and not the substring match every other string field
@@ -356,7 +356,22 @@ def _word_prefixes(wanted, text):
     # query, so `Steel,` found one row where a real PMS answers all of them and `Steel.`
     # found one where a real PMS answers none. It is the filter bar's own text box, so a
     # typed comma or a trailing period silently gave a different row set.
-    return _raw_word_prefixes(wanted, text) or _folded_word_run(wanted, text)
+    # Cycle 32, measured on kids and zen: the RAW pass reads the title and the FOLDED
+    # pass reads the row's stored SORT title. kids' episode 8 is "The Train Job" with a
+    # sort title of "Train Job": `title=The Train` is 1 row (the raw pass), `Tráin Job` is
+    # 1 (the folded pass over the sort title), and `The Tráin`, `Thé Train` and
+    # `Thé Tráin Jób` are each **0** -- a folded query carrying the article cannot match,
+    # because the article is not in the string the folded pass reads. zen's season 11046,
+    # whose generated title is `Season 22` and whose agent sort title is `Egghead`, is the
+    # witness with no article at all: `title=Egghead` and `Egghéad` each answer it and
+    # `title=Season 22` answers nothing.
+    #
+    # Rows with no article match either way, which is why thirteen cycles of this matcher
+    # never saw it. plexsim folded the TITLE, so it answered rows a real PMS does not
+    # (`Thé Simpsons`) and missed every row findable only by its sort title -- including,
+    # on a real library, every generated-title season whose agent gave it one.
+    return (_raw_word_prefixes(wanted, text)
+            or _folded_word_run(wanted, sort if sort is not None else text))
 
 
 def _original_phrase(wanted, text):
@@ -799,7 +814,10 @@ def compare(kind, operator, actual, wanted, field=""):
         # the title matcher over it, which matched 14 extra rows in a 1,244-query corpus --
         # `A` finding 'The Doway Murders' through `à`, `La La` finding a row whose two
         # `la`s are not adjacent.
-        return (_word_prefixes(wanted, text)
+        # Cycle 32: `text` is the plain title (compare() stringifies `actual` early);
+        # the folded pass needs the row's stored SORT title, which rides on the value.
+        return (_word_prefixes(wanted, text,
+                               str(getattr(actual, "sort", text) or ""))
                 or _original_phrase(wanted, str(getattr(actual, "original", "") or "")))
     if field in UNLISTED_STRING_FIELDS and operator in ("<=", "<<=", ">=", ">>="):
         # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
