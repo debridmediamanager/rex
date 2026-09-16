@@ -79,11 +79,14 @@ EDITABLE_FIELDS = {
 IGNORED_EDIT_FIELDS = {"userRating"}
 
 # Accepted with a 200 and DISCARDED as values. Measured on a writable copy of the
-# reference: `thumb.value=`, `art.value=`, `addedAt.value=`, `guid.value=`,
-# `lastViewedAt.value=`, `viewCount.value=` and an episode's `parentIndex.value=` change
-# nothing, where plexsim refused each as an unknown field. Artwork is written through
-# the poster and art endpoints, play state through /:/scrobble.
-IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "viewCount",
+# reference: `addedAt.value=`, `guid.value=`, `lastViewedAt.value=`, `viewCount.value=`
+# and an episode's `parentIndex.value=` change nothing, where plexsim refused each as an
+# unknown field. Play state is written through /:/scrobble.
+#
+# Cycle 31 moved `thumb` and `art` OUT of this set: they are artwork COLUMNS that take a
+# value, and cycle 20 read them as discarded because the rows it wrote to already owned a
+# poster. See ARTWORK_VALUE_FIELDS.
+IGNORED_VALUE_FIELDS = {"addedAt", "guid", "lastViewedAt", "viewCount",
                         "parentIndex",
                         # Cycle 20: ten more are accepted and discarded on the ITEM
                         # path -- 200 for a number and 200 for a word alike, and
@@ -148,7 +151,23 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
 # Cycle 20, measured on plexscratch: `theme` and `banner` are ARTWORK columns on the
 # edit path. The URL written is DISCARDED and the column becomes a versioned path of the
 # row's own, minted at its current `updatedAt` -- the same shape a poster pick produces.
-ARTWORK_VALUE_FIELDS = {"theme", "banner"}
+# Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): `thumb` and
+# `art` belong here too. The column has to be EMPTY for the rule to be visible, which is
+# why cycle 20 concluded they were not artwork columns -- on a row that already owns a
+# poster the write looks like a no-op. Cleared first (1.43.4 through `DELETE .../thumb`,
+# 1.42.2 on a show that owns none, since that DELETE does not exist there):
+#
+#   1.42.2  show 15, no thumb   PUT ?thumb.value=http://example.com/x.jpg
+#                               -> 200, thumb = /library/metadata/15/thumb/1789514219
+#   1.43.4  movie 1, cleared    PUT ?thumb.value=...
+#                               -> 200, thumb = /library/metadata/1/thumb/1789554952
+#
+# The url is DISCARDED and the column becomes the row's own versioned path, exactly as
+# `theme` and `banner` already did. There is no image behind it either way -- a GET of the
+# new path is a 404 on both references -- so it is a column write and nothing more.
+# plexsim discarded the value AND the column, so the Edit dialog's artwork fields wrote
+# nothing and the save read as a silent no-op.
+ARTWORK_VALUE_FIELDS = {"theme", "banner", "thumb", "art"}
 
 LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt",
                     "viewCount", "network", "parentIndex",
