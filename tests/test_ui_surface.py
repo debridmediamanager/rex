@@ -22175,6 +22175,38 @@ def main():
                              "Cache-Control", "Access-Control-Allow-Origin", "Date"],
           str(names_c34c))
 
+
+    # Cycle 35, measured off a raw socket on kids and zen: a real PMS zeroes the MTIME
+    # field of its gzip header, so a compressed response is a pure function of its body
+    # -- the same request twice answers the same bytes. Python's `gzip.compress` stamps
+    # the current time. With `mtime=0` the whole member is byte-identical to the
+    # reference's on every body measured.
+    def gzipped_c35a():
+        sock_c35a = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c35a.settimeout(15)
+        sock_c35a.sendall(("GET /library/sections HTTP/1.1\r\nHost: h\r\n"
+                           "Accept: application/json\r\nAccept-Encoding: gzip\r\n"
+                           "Connection: close\r\n\r\n").encode())
+        blob_c35a = b""
+        while True:
+            chunk_c35a = sock_c35a.recv(65536)
+            if not chunk_c35a:
+                break
+            blob_c35a += chunk_c35a
+        sock_c35a.close()
+        return blob_c35a.partition(b"\r\n\r\n")[2]
+
+    first_c35a = gzipped_c35a()
+    time.sleep(1.2)
+    second_c35a = gzipped_c35a()
+    stamp_c35a = (int.from_bytes(first_c35a[4:8], "little")
+                  if first_c35a[:2] == b"\x1f\x8b" else None)
+    check("a gzipped body zeroes its MTIME, so the same request answers the same bytes",
+          first_c35a[:2] == b"\x1f\x8b" and stamp_c35a == 0
+          and first_c35a == second_c35a,
+          "mtime %s, identical %s" % (stamp_c35a, first_c35a == second_c35a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
