@@ -6116,9 +6116,17 @@ class PlexSim:
                 # measured on plexscratch, where the reference's `Season 2` and its
                 # three unmatched `Episode N` rows answer nothing and the same season
                 # renamed answers at once.
+                # Cycle 31, measured on zen, whose 471 rows with an `originalTitle` are
+                # the only instrument that can show it: this box reads the TITLE alone.
+                # `query=Salaire`, `Douai`, `Meurtres` and `Chung` each answer 0 where the
+                # rows carrying those original titles are there to be found, and the
+                # title-only model scores 1,244 of 1,244 generated queries on both of
+                # zen's libraries where the title-or-original model misses 102 of them.
+                # plexsim listed the extra rows, so the in-library box found foreign films
+                # by a name a real PMS does not index here -- the HUB search is the
+                # endpoint that reads the original title.
                 rows = [r for r in rows
-                        if text in hierarchy_module.stored_title(r).lower()
-                        or text in str(r.get("originalTitle") or "").lower()]
+                        if text in hierarchy_module.stored_title(r).lower()]
             # Cycle 15, measured on kids and zen: this row is the LIGHT grid
             # projection, like every other listing's -- no `Guid`, no `Rating`, no
             # tag ids and no `Stream`. Both references answer a search row that is
