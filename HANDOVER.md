@@ -177,8 +177,8 @@ Suite results at the head of cycle 30, run 2026-09-16 against the merged tree:
 | `tests/test_mediainfo.py` | **31/31** | unchanged this cycle: no `mediainfo` finding |
 | `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1498 PASS / 0 FAIL / 10 skipped** | ~13 minutes, and longer than it looks: this cycle's checks include a 25-second ping capture with a pong to each ping and a 260-write starvation probe. The 10 skips are the fixture's own limits |
 | `tests/test_navigation.py` | **28/28** on the UI fixture | run each against its OWN server, and **never two suites at once** -- see section 10 |
-| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline, unchanged |
-| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline (the catalog's RD links are account-scoped and dead) |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline. Cycle 31 settled WHY, and it is structural: all nine are downstream of ONE part read, which fails with `RD_TOKEN=dummy` (Real-Debrid answers **401**, so the harness's token is what the suite actually hits) and fails with a real token too, because the checked-in fixture's link is the literal placeholder `…/d/EXAMPLELINKID00000` and RD answers **`unavailable_file`, error_code 24**. A working `/d/` link is a credential the repo may never hold, so these nine cannot be made to pass |
+| `tests/test_all.py --skip-decode` | **0/3 served** | the recorded baseline, and the same cause as the row above -- not "links that went dead" |
 
 Suite results at the head of cycle 29, run 2026-09-16 against the merged tree:
 
@@ -534,7 +534,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | **The `Specials` and `[Unknown Season]` season labels** | Both are zen's alone -- kids holds neither, its two seasons being `Season N`. 4 and 5 rows, each corroborated by three independent probes (`titleSort=`, `title=`, `/search`) plus the `#` bucket, and the MECHANISM behind them is cycle 18's two-witness rule | A second library with a season 0 or an index-less season |
 | **`createdAt` read as `addedAt`** | The column is real on both references (every row answers `createdAt>=2000-01-01`) and tracks `addedAt` almost exactly on zen -- 2,437 rows above one epoch against `addedAt`'s 2,436 -- but the one row that differs proves they are not the same column. plexsim holds no other creation time | Nothing the API exposes |
-| **The episode `contentRating` re-inherit** | The rule is a READ-TIME fallback and it is implemented on the WRITE side, because `_public_row` cannot reach the catalog. Every step of the measured sequence is reproduced; a rating cleared by some path that does not go through `library.edit` would not be | Move the fallback into the row projection if one is ever given the catalog |
+| ~~**The episode `contentRating` re-inherit**~~ | **CLOSED in cycle 31 by enumeration.** The entry's own condition was "a rating cleared by some path that does not go through `library.edit` would not be [re-inherited]", and there is no such path: every `contentRating` mutation in `library.py` is in `_edit` (the re-inherit), `carry` (the show cascade) or `unmatch` (the deliberate drop, which a real PMS makes too), and `edit(..., section=False|True)` is ONE function whose both paths reach `_edit`. Driven on plexsim: the item path clears to `TV-14`, the SECTION path clears to `TV-14`, a later show write moves it to `TV-Y7`, and a show unmatch drops it -- the whole measured sequence. The invariant to keep is that any NEW mutating path calls the same hook, which is cheaper than the read-time projection this entry asked for | -- |
 | ~~**The `mediaCount` column on a parent**~~ | **SETTLED in cycle 27 by asking for a VALUE rather than a split.** On zen's shows `mediaCount=2` is 30, `=3` is 10 and `>>2` is 17, against 44 for `>>1`. Under a MAX-over-leaves reading those are disjoint and sum to 47, which is more shows than have any duplicated leaf at all -- so max is refuted, and the per-leaf ANY reading plexsim implements is the one that fits. The Duplicates coincidence was an artefact of only ever asking the `=1`/`>>1` question | -- |
 | **`slug` minted by the agent** | Measured on 2,406 of zen's rows (every `local://` movie and show carries none) and deliberately NOT implemented: plexsim mints a `plex://` guid for every row, so the two rules coincide for its catalog. The children's `parentSlug`/`grandparentSlug` are derived from the parent TITLE rather than from the parent's slug -- a proxy that agrees today | A catalog row that fails identification |
 | ~~**The five codec edit-field names held out**~~ | **CLOSED in cycle 30 by measurement, on the new 1.42.2 copy: all five are a 400 there**, so plexsim's refusal was right all along and nothing needed building. `hdr10plus` is the opposite -- a 200 on both versions -- so it became a lockable name. Original entry: `atmos`, `audioCodec`, `audioLayout`, `subtitleCodec` and `videoCodec` take an item lock on plexscratch, which is **1.43.4**. Cycle 20 established that family is 1.43.4-only on the filter and parse surface, and zen cannot be written, so 1.42.2 -- the build plexsim reports -- is unmeasurable. Held out; `hdr10plus` is a 200 that stores nothing on a single witness | A writable 1.42.2 copy. Nothing else settles it |
@@ -624,9 +624,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **plexsim closing the eventsource channel at ~256 s** | The reference has no deadline at all (still open at 430 s) and plexsim's 300-second constant is GONE -- but a 320-second capture taken after the fix showed the channel closing at **256.0 s** anyway, and nothing in `server.py` names that number. It is not the ping loop (the websocket survives past it) and not the socket idle close (frames are flowing). Recorded as OPEN rather than claimed fixed | Bisect it: run the capture with each of the SSE loop's own timeouts raised in turn. Suspect a read timeout compounding, or the harness rather than the server |
+| ~~**plexsim closing the eventsource channel at ~256 s**~~ | **CLOSED in cycle 31: it does not reproduce, and the 256 s was the PROBE's.** Re-measured with a raw socket that imposes no read timeout of its own (`settimeout(None)`, every frame logged): **open at 460.2 s** -- outliving the reference's own 430-second capture -- with 46 ping frames at gaps of 10.00 to 10.10 s and no drift, carrying real frames alongside the pings. The cycle-30 capture script is no longer on disk, so which client limit produced 256 s cannot be named, and that is the finding rather than a gap in it: **a duration measured through a client is the client's** until a probe with no limit of its own says otherwise -- §3.1 class G one step out from a pasted response | -- |
 | **What makes a real PMS REDRAW a `random="1"` shelf** | The stability is measured hard -- 21 reads over seven minutes on three shelves, a different client identifier getting the same sample, and a different `count=` getting its own -- and the expiry is not measured at all. plexsim mints one seed per (shelf, count) and holds it for the life of the process, which reproduces everything seen and invents no TTL | Read one shelf for an hour; write to its key set and re-read; restart a copy's PMS and compare. Only the copy can be restarted |
-| **The reference's per-socket notification BACKLOG bound** | Measured as a shape and a rough size: a dead consumer took ~415 KB of frames on the reference and then stopped queueing, with every request between 0.019 and 0.031 s throughout. Whether it drops the channel, drops frames or blocks the producer is invisible from outside. plexsim gives a sink a two-second budget and DROPS it, which is the half it can implement | Instrument the copy's own socket state while it is being starved, if PMS ever exposes it |
+| **The reference's per-socket notification BACKLOG bound** | Measured as a shape and a rough size: a dead consumer took ~415 KB of frames on the reference and then stopped queueing, with every request between 0.019 and 0.031 s throughout. Whether it drops the channel, drops frames or blocks the producer is invisible from outside. plexsim gives a sink a two-second budget and DROPS it, which is the half it can implement. **Cycle 31 quantified plexsim's side and the two are within noise**: a dead consumer absorbs **400,667 bytes** over 350 writes at ~0 ms each, then writes 351 and 352 take exactly 2.00 s and the sink is dropped at 353 -- 4 seconds of writer cost in total, not the 20 s of one write that cycle 30 started from -- while a **slow but alive** consumer (draining 4 KB every 20th write) survives 200 writes with a slowest write of 0.00 s and the channel still open, which was the risk the fix introduced. The 400 KB is the HOST's TCP send buffer (`net.inet.tcp.sendspace` 131072, `autosndbufmax` 4 MB), so it is a platform number and not a constant to write down (class D) | The reference's side stays outside-in. plexsim's side is now measured; re-run `c31/D/backlog.py` on a host with a different send buffer before quoting the 400 KB anywhere |
 | **The row-CREATION frame sequence** | Measured in full on the copy (eight frames per new row -- `state 0` with an empty title, five `state 1`s, `state 4 loading`, `state 5` -- plus a `library.update.item.metadata` activity each) and unreachable: plexsim cannot create a metadata row during a scan, because its catalog is loaded at start. Recorded rather than built | Nothing until plexsim has a scanner that adds rows |
 | **Every notification-channel rule this cycle** | Single-witness BY CONSTRUCTION, and it is a SAFETY rule rather than an instrument limit: kids and zen are GET and HEAD only and **a websocket or eventsource must never be opened on either**, so the copy is the only server a socket may be opened on at all | A second writable copy is the only answer, and plexscratch42 (§4.6) is now one -- re-run the ping and backlog captures there for a second version as well as a second witness |
 | **plexscratch42's own SETTINGS counts** | The copy is unclaimed and unsubscribed, so `/:/prefs` answers 151 rows against zen's 173 and `/library/sections/prefs?type=1&agent=tv.plex.agents.movie` answers 14 against 19. plexsim's fixtures match ZEN's counts exactly, so they are right and the copy's numbers are its own limit -- a class-E trap sitting inside the new instrument | Nothing: it needs a claimed, subscribed server. **Never read a settings count off plexscratch42** |
@@ -2462,12 +2462,15 @@ reports a live socket as closed the moment a body arrives in its own segment.
    titles back) and a `Common`'s string `userRating` (rate every row of one library). Both are an
    hour. And every notification finding this cycle is single-witness on plexscratch (1.43.4) -- the
    ping cadence and the backlog shape should be re-driven on 1.42.2.
-3. **plexsim's own ~256 s eventsource close** (§3.3, §8). The constant is gone and the behaviour is
-   not. Bisect it by raising the SSE loop's own timeouts one at a time.
+3. ~~**plexsim's own ~256 s eventsource close**~~ **REFUTED in cycle 31**: a probe with no read
+   timeout of its own sees the channel open at 460.2 s. The number was the old capture client's.
 4. **A catalog with extras in it**, which would make cycle 29's clip spec buildable: `clip` rows,
    `primaryExtraKey`, the three projections and the section extras query all wait on it.
-5. **`tests/conformance.py`'s nine failures**, re-confirmed in cycle 27 as the fixture's dead
-   Real-Debrid links. Prove that or find the real cause.
+5. ~~**`tests/conformance.py`'s nine failures.**~~ **ANSWERED in cycle 31, and the recorded cause
+   was wrong**: all nine are downstream of one part read, which the harness's `RD_TOKEN=dummy`
+   turns into a 401 and which a real token turns into `unavailable_file` on the fixture's
+   placeholder link. They cannot be made to pass, because a working `/d/` link is a credential
+   the repo may never hold. Stop asking.
 6. **The session cutoff's bisection** (§3.3), if it is ever worth ~200 s a sample.
 
 ### Next: cycle 30 (superseded)
@@ -2824,13 +2827,13 @@ same title stem, so release, alphabetical and insertion order coincided.
 - **The `Analyzing Media` per-leaf progress of a three-season show's unmatch.** Measured on
   plexscratch42 and NOT built: the show was already unmatched and the server is 1.42.2, where
   cycle 25 measured a matched show on 1.43.4, so the two are not comparable. See §3.3.
-- **plexsim's own ~256 s eventsource close.** The 300-second constant is gone and the channel
-  still closes at 256 s for an unfound reason. Recorded as open rather than claimed fixed -- and
-  it is the one fix this cycle that carries **no suite check**, deliberately: the check the rule
-  deserves is "the channel is still open at 430 s", which would fail, and a check written to the
-  256 s that is actually observed would enshrine plexsim's own bug as the measurement (§3.1 class
-  G). The removal of the constant was proved by a 320-second capture by hand, recorded in the
-  cycle's scratch directory. Nothing else this cycle landed without a proven check.
+- **plexsim's own ~256 s eventsource close** -- **which cycle 31 refuted: re-measured with a probe
+  that imposes no read timeout, the channel is open at 460.2 s with 46 pings at a steady 10 s.**
+  The 300-second constant is gone and nothing replaced it; the 256 s belonged to the old capture's
+  client. The fix still carries **no suite check**, deliberately: a check cheap enough for the
+  suite (35 s, three pings) cannot fail against a re-introduced 300-second deadline, and one that
+  can costs five minutes of suite time. The proof is the hand capture, now kept as
+  `c31/D/sse_life.py` and its log rather than in a transcript.
 
 
 Keep these in the hunt prompt's "do not re-report" list. Each one's reason is in
