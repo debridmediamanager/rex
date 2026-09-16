@@ -15603,7 +15603,14 @@ class Handler(BaseHTTPRequestHandler):
         if not any(content_type.startswith(kind) for kind in self.GZIP_TYPES):
             return payload
         import gzip as gzip_module
-        squeezed = gzip_module.compress(payload, 6)
+        # Cycle 35: the MTIME field of the gzip member is ZERO on both references, and
+        # with it the whole stream is byte-identical to `gzip.compress(payload, 6,
+        # mtime=0)` -- checked on six bodies from 163 to 20,544 bytes on kids (1.43.4)
+        # and zen (1.42.2), header, deflate stream and trailer alike. Python stamps the
+        # current time instead, so plexsim answered the SAME request with different
+        # BYTES every second: cycle 30's same-request-twice sweep could not see it,
+        # because it compared the decoded bodies.
+        squeezed = gzip_module.compress(payload, 6, mtime=0)
         # Re-measured on kids (1.43.4) and zen (1.42.2): the gate is the client's offer
         # and NOTHING else. Both compress an 83-byte body into 90 bytes and send it
         # gzipped, and both send it plain for `Accept-Encoding: identity`. The earlier
