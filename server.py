@@ -4965,6 +4965,18 @@ class PlexSim:
             # Recommended tab answered a NameError's 500. A check that asserts a 500
             # cannot tell a refusal from a crash: this is why the suite also reads the
             # page back.
+            # Cycle 36, measured on kids and zen, which agree: `/hubs/sections/{id}`
+            # and its Continue Watching see-all leaf 404 a section id the server does
+            # not hold -- `999`, `0`, `-1`, `1.5`, `abc` and a twenty-digit number all
+            # answer the 85-byte Not Found document -- while `01` and `+1` answer the
+            # real library, which is this cycle's path-segment id rule. plexsim ignored
+            # the id entirely and built a full Recommended page for any of them, which
+            # is fix 4's trap: a client asking for a library that is gone reads a valid
+            # empty page as "this library exists and has nothing in it". Every other
+            # section leaf has answered 404 since cycle 15; these two were missed
+            # because neither reads the section row before it builds its answer.
+            if self.catalog.section(segments[2]) is None:
+                return ("error", 404, "plexsim: no such section")
             if (self.catalog.section(segments[2]) or {}).get("type") == "show":
                 refusal = hub_refusal(query)
                 if refusal:
@@ -4993,7 +5005,11 @@ class PlexSim:
             # lost an episode from its Continue Watching shelf while the See All behind
             # that very shelf still listed it, and a movie library's See All kept a movie
             # the user had explicitly removed.
-            section = self.catalog.section(segments[2]) or {}
+            section = self.catalog.section(segments[2])
+            if section is None:
+                # Cycle 36: the see-all leaf 404s an unknown section like the shelf it
+                # sits behind -- measured on both references, and they always agree.
+                return ("error", 404, "plexsim: no such section")
             rows = [_listing_row(r) for r in
                     self.continue_watching(include_hidden=section.get("type") == "show")
                     if str(r.get("librarySectionID")) == str(segments[2])]
