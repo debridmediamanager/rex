@@ -10344,7 +10344,7 @@ class PlexSim:
         section_id = section["key"]
         tag = entry["tag"]
         collection = self.library.find_collection(str(tag.get("tag") or ""), section_id)
-        return {
+        result = {
             "key": "/library/sections/%s/all?collection=%s" % (section_id, tag.get("id")),
             "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
             "librarySectionKey": "/library/sections/%s" % section_id,
