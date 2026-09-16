@@ -21333,6 +21333,29 @@ def main():
               "%r -> %s | %r -> %s" % (gapped_c31n, in_order_c31n, words_c31n[0],
                                        phrase_c31n))
 
+
+    # Cycle 31, measured on zen -- the only library holding punctuated titles: the hub
+    # matcher tokenises the TITLE on WHITESPACE, so punctuation stays inside the word.
+    # `query=don't` answers "Don't Look Up" and "Don't Move" at 0.53, `Don't Move` answers
+    # 0.93041, `Dont Move` falls to the 0.33 fuzzy band, `Handmaid` answers "The Handmaid's
+    # Tale", and `Delete` does not find 'Control-Alt-Delete' at a word score while
+    # `Control-Alt` does. plexsim split on `[^0-9a-z]+`, so an apostrophe and a hyphen were
+    # separators: a query carrying one could never match, and `Air` found "L'air Perdu".
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (spare, quote("Don't Move")))
+    def hub_keys_c31o(query_c31o):
+        found_c31o = []
+        for hub_c31o in get(base, "/hubs/search?query=%s" % quote(query_c31o))[1].get("Hub") or []:
+            found_c31o += [r_c31o.get("ratingKey") for r_c31o in (hub_c31o.get("Metadata") or [])]
+        return found_c31o
+    apostrophe_c31o = hub_keys_c31o("don't")
+    whole_c31o = hub_keys_c31o("Don't Move")
+    split_c31o = hub_keys_c31o("move")
+    check("the hub matcher keeps punctuation inside a title word",
+          spare in apostrophe_c31o and spare in whole_c31o and spare in split_c31o,
+          "don't -> %s | Don't Move -> %s | move -> %s"
+          % (apostrophe_c31o, whole_c31o, split_c31o))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
