@@ -21657,6 +21657,21 @@ def main():
           "titleSort %r | raw %s | folded over the sort title %s | folded with the article %s"
           % (row_c32c.get("titleSort"), raw_c32c, folded_sort_c32c, folded_title_c32c))
 
+
+    # Cycle 32, swept on both writable copies (1.42.2 and 1.43.4 agree on all 2,076
+    # codepoints): the sort title folds a TABLE of 100 characters, not every letter NFD
+    # can decompose. `\u0119 \u0105 \u015f \u0107` and the capital macron `\u0100` survive,
+    # the long s `\u017f` survives, `\u00e9` and `\u0160` fold, and a decomposed accent is
+    # dropped. plexsim folded by NFD, so a Polish or Turkish title sorted -- and landed in a
+    # `firstCharacter` bucket -- on a letter it does not have.
+    title_c32d = "Zo\u0119 \u0106af\u00e9 \u0160\u0105\u0142\u017f \u0100ra Cafe\u0301"
+    request(base, "PUT", "/library/metadata/%s?title.value=%s" % (movie, quote(title_c32d)))
+    row_c32d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("a sort title folds the measured table, not NFD",
+          row_c32d.get("titleSort")
+          == "Zo\u0119 \u0106afe S\u0105\u0142\u017f \u0100ra Cafe",
+          "titleSort %r" % row_c32d.get("titleSort"))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

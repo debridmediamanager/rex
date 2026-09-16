@@ -128,6 +128,68 @@ _FOLD = {"\u00c6": "E", "\u00d0": "D", "\u00d7": "x", "\u00d8": "0", "\u00de": "
          "\u00df": "s", "\u00e6": "e", "\u00f0": "O", "\u00f7": "/", "\u00f8": "0",
          "\u00fe": "p"}
 
+# The characters a real PMS folds in a TITLE, and it is a TABLE, not a decomposition.
+# Cycle 32, swept on both writable copies -- plexscratch42 (1.42.2) and plexscratch
+# (1.43.4), which agree on every codepoint -- by writing 2,076 codepoints across
+# U+0080..U+02FF, Greek, Cyrillic, the phonetic and Latin Extended Additional blocks,
+# the letterlike symbols, Latin Extended-C/D and the fullwidth forms into a title, forty
+# at a time between two ASCII letters, and reading the sort title back. Exactly these
+# 100 fold, and nothing outside Latin-1 and part of Latin Extended-A/B does.
+#
+# NFD cannot express it in either direction. It OVER-folds: `\u0119 \u0105 \u015f \u0107
+# \u0142` and the CAPITAL macrons `\u0100 \u0112 \u012a \u014c \u016a` all survive a real
+# PMS while their lower-case macrons fold, so a Polish, Turkish, Romanian or Baltic title
+# sorted and bucketed on a letter it does not start with. And cycle 18's eleven are the
+# ones it cannot reach at all. The targets are not a transliteration anyone would write:
+# `\u00f8` becomes the digit zero, `\u00f0` a capital `O`, `\u00d7` an `x`, `\u00f7` a
+# slash. A COMBINING mark is still dropped -- a decomposed `Cafe\u0301` sorts as `Cafe`
+# on both copies -- which is the one thing the old NFD pass got right on its own.
+_TITLE_FOLD = {source: target for target, sources in (
+    ("/", "\u00f7"),
+    ("0", "\u00d8\u00f8"),
+    ("A", "\u00c0\u00c1\u00c2\u00c3\u00c4\u00c5\u01cd"),
+    ("a", "\u00e0\u00e1\u00e2\u00e3\u00e4\u00e5\u0101\u01ce"),
+    ("C", "\u00c7\u010c"),
+    ("c", "\u00e7\u010d"),
+    ("D", "\u00d0\u010e"),
+    ("d", "\u010f"),
+    ("E", "\u00c6\u00c8\u00c9\u00ca\u00cb\u011a"),
+    ("e", "\u00e6\u00e8\u00e9\u00ea\u00eb\u0113\u011b"),
+    ("G", "\u01e6"),
+    ("g", "\u01e7"),
+    ("I", "\u00cc\u00cd\u00ce\u00cf\u01cf"),
+    ("i", "\u00ec\u00ed\u00ee\u00ef\u012b\u01d0"),
+    ("j", "\u01f0"),
+    ("K", "\u01e8"),
+    ("k", "\u01e9"),
+    ("L", "\u013d"),
+    ("l", "\u013e"),
+    ("N", "\u00d1\u0147"),
+    ("n", "\u00f1\u0148"),
+    ("O", "\u00d2\u00d3\u00d4\u00d5\u00d6\u00f0\u01d1"),
+    ("o", "\u00f2\u00f3\u00f4\u00f5\u00f6\u014d\u01d2"),
+    ("P", "\u00de"),
+    ("p", "\u00fe"),
+    ("R", "\u0158"),
+    ("r", "\u0159"),
+    ("S", "\u0160"),
+    ("s", "\u00df\u0161"),
+    ("T", "\u0164"),
+    ("t", "\u0165"),
+    ("U", "\u00d9\u00da\u00db\u00dc\u01d3"),
+    ("u", "\u00f9\u00fa\u00fb\u00fc\u016b\u01d4"),
+    ("x", "\u00d7"),
+    ("Y", "\u00dd"),
+    ("y", "\u00fd\u00ff"),
+    ("Z", "\u017d"),
+    ("z", "\u017e"),
+) for source in sources}
+
+
+def fold_title(text):
+    """The title with combining marks dropped and the measured table applied."""
+    return "".join(_TITLE_FOLD.get(ch, ch) for ch in text if not unicodedata.combining(ch))
+
 
 def fold_marks(text):
     """Drop Unicode combining marks, then the eleven characters NFD cannot reach."""
@@ -188,7 +250,8 @@ def sort_title(title):
     Only the LEADING half of the whitespace trim has a witness (zen holds no title
     with trailing or doubled whitespace); `.strip()` here is the symmetric reading.
     """
-    folded = fold_marks(title or "")
+    # Cycle 32: the fold is the measured TABLE, not NFD -- see `_TITLE_FOLD`.
+    folded = fold_title(title or "")
     trimmed = folded.lstrip(_LEADING_STRIP)
     # A title made of nothing but strippable characters keeps its own text: measured,
     # `'''` and `(((` carry no titleSort at all, which is what a derived string equal
