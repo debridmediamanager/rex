@@ -1179,9 +1179,21 @@ class Catalog:
             return []
 
         def hit(text):
-            words = re.split(r"[^0-9a-z]+",
-                             hierarchy_module.fold_marks(str(text or "")).lower())
-            words = [w for w in words if w]
+            # Cycle 31, measured on zen -- the only library with punctuated titles: the
+            # TITLE is tokenised on WHITESPACE and punctuation stays inside the word.
+            # `query=don't` answers "Don't Look Up" and "Don't Move" at 0.53, `Don't Move`
+            # answers 0.93041, and `Dont Move` and `Don t Move` fall to the 0.33 fuzzy
+            # band; `Handmaid` answers "The Handmaid's Tale"; and `Delete` does NOT find
+            # 'Control-Alt-Delete' at a word score (0.31, fuzzy) while `Control-Alt` does
+            # at 0.51.
+            #
+            # plexsim split the title on `[^0-9a-z]+`, which makes an apostrophe and a
+            # hyphen SEPARATORS: a needle of `don't` could never match ('don', 't'), while
+            # `Air` found "L'air Perdu" and `Am` found "Boss Ma'am" -- 44 rows zen does not
+            # answer at all, across 24 queries. A title with an apostrophe could not be
+            # found by typing it.
+            words = [w for w in hierarchy_module.fold_marks(str(text or "")).lower().split()
+                     if w]
             if any(word.startswith(needle) for word in words) \
                     or " ".join(words).startswith(needle):
                 return True
