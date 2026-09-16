@@ -284,7 +284,7 @@ ADVANCED_META = {
 # and an unprefixed field is read against the prefix the requested `type` implies
 # -- measured: `?type=2&title=x` answers `fieldTitle: "Show Title"`.
 TYPE_NUMBERS = {"movie": 1, "show": 2, "season": 3, "episode": 4,
-                "artist": 8, "album": 9, "track": 10, "photo": 13,
+                "artist": 8, "album": 9, "track": 10, "clip": 12, "photo": 13,
                 "collection": 18}
 IMPLICIT_SCOPE = {1: "", 2: "show", 3: "season", 4: "episode"}
 
@@ -824,6 +824,8 @@ class Catalog:
         self.items = {}
         self._by_section = {}
         self._children = {}
+        self._extras = {}
+        self._extras_by_section = {}
         # (section id, setting id) -> the library-wide value of a show setting
         # a show inherits when its own is `-1`. Seeded from SECTION_PREFS at load.
         self.section_show_prefs = {}
@@ -838,9 +840,32 @@ class Catalog:
             self.items[rating_key] = row
             if row.get("type") in top_level:
                 self._by_section.setdefault(str(row["librarySectionID"]), []).append(rating_key)
-            parent = row.get("parentRatingKey")
-            if parent:
+            parent = row.get("_parentRatingKey") if row.get("type") == "clip" \
+                else row.get("parentRatingKey")
+            if parent and row.get("type") == "clip":
+                self._extras.setdefault(str(parent), []).append(rating_key)
+            elif parent:
                 self._children.setdefault(str(parent), []).append(rating_key)
+
+        # Cycle 29 measured the clip surface over 3,905 reference rows. A clip
+        # publishes no librarySection triple of its own; its owning section is
+        # nevertheless the parent's, kept privately for the section extras leaf.
+        # The parent's primaryExtraKey is the lowest-index trailer's key.
+        for parent_key, keys in self._extras.items():
+            parent = self.items.get(int(parent_key)) if parent_key.isdigit() else None
+            if parent is None:
+                continue
+            section_id = parent.get("librarySectionID")
+            ordered = sorted((self.items[key] for key in keys),
+                             key=lambda extra: (extra.get("index") or 0))
+            self._extras[parent_key] = [int(extra["ratingKey"]) for extra in ordered]
+            for extra in ordered:
+                extra["_librarySectionID"] = section_id
+                self._extras_by_section.setdefault(str(section_id), []).append(
+                    int(extra["ratingKey"]))
+            trailers = [extra for extra in ordered if int(extra.get("extraType") or 0) == 1]
+            if trailers:
+                parent["primaryExtraKey"] = trailers[0].get("key")
 
         self._number_tags()
         self._strip_show_fields()
@@ -1070,6 +1095,15 @@ class Catalog:
         keys = self._children.get(str(rating_key), [])
         rows = [self.items[k] for k in keys]
         return sorted(rows, key=lambda r: (r.get("index") or 0))
+
+    def extras(self, rating_key):
+        """A parent's clips in their measured index order."""
+        return [self.items[key] for key in self._extras.get(str(rating_key), [])]
+
+    def section_extras(self, section_id):
+        """Every clip owned by a parent in one section, in index order."""
+        return [self.items[key]
+                for key in self._extras_by_section.get(str(section_id), [])]
 
     def leaves(self, rating_key):
         """Every episode beneath a show, across its seasons."""
@@ -3047,7 +3081,14 @@ class PlexSim:
         leaves = self.catalog.leaves(row["ratingKey"])
 
         if _include_int(query.get("includeExtras")):
-            detail["Extras"] = {"size": 0}
+            rows = []
+            for extra in self.catalog.extras(row["ratingKey"]):
+                projected = _full(extra)
+                projected.pop("art", None)
+                rows.append(projected)
+            detail["Extras"] = {"size": len(rows)}
+            if rows:
+                detail["Extras"]["Metadata"] = rows
 
         if _include_int(query.get("includeOnDeck")):
             # First episode with no view offset, else the first episode.
@@ -7143,7 +7184,32 @@ class PlexSim:
         if not rest:
             return self.bare_container(size=1, Directory=[
                 {"key": "all", "title": "All %s" % (section.get("title") or "")}], **fields)
-        return self.bare_container(size=0, **fields)
+        rows = list(self.catalog.section_extras(section.get("key")))
+        typed = self._parsed_type(query or {})
+        if typed is not None and typed != TYPE_NUMBERS["clip"]:
+            rows = []
+        # `extraType` is parse-only on ordinary library listings, but it is a
+        # real integer column on this leaf (`extraType=1` constrained 3,580 zen
+        # rows to 1,264). Keep that endpoint-specific grammar endpoint-specific.
+        for name, value in (query or {}).get("_pairs") or []:
+            if name == "extraType":
+                rows = [row for row in rows
+                        if str(row.get("extraType") or "") == str(value)]
+        rows, _tree = self.apply_filters(rows, query or {}, section)
+        rows, unsupported = self._sorted(rows, (query or {}).get("sort") or "index")
+        if unsupported:
+            return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
+        rows = self._limited(rows, query or {})
+        page, paged, start, total = self.page_window(rows, query or {})
+        fields["size"] = len(page)
+        if paged:
+            fields["totalSize"] = total
+            fields["offset"] = start
+        if page:
+            # The section projection is the light row: no Stream children and no
+            # librarySection triple, exactly as cycle 29's census found.
+            fields["Metadata"] = [_grid_row(row, keep_section=False) for row in page]
+        return self.bare_container(**fields)
 
     def section_leaf(self, section_id, section, leaf, query):
         """Six section leaves the community OpenAPI description names, all 404 on plexsim.
@@ -9149,7 +9215,8 @@ class PlexSim:
                 # Measured on a writable copy of the reference: a POST to an item is a
                 # 404 -- edits are PUTs -- where plexsim answered the detail row.
                 return ("error", 404, "plexsim: not found")
-            section = self.catalog.section(row["librarySectionID"]) or {}
+            section_id = row.get("librarySectionID") or row.get("_librarySectionID")
+            section = self.catalog.section(section_id) or {}
             detail = _full(row)
             if row.get("type") in ("show", "season"):
                 detail = (self.show_detail(row, detail, query)
@@ -9157,7 +9224,14 @@ class PlexSim:
                           else self.parent_detail(row, detail, query))
             elif _include_int(query.get("includeExtras")):
                 # Measured: an episode and a movie carry the Extras block too.
-                detail["Extras"] = {"size": 0}
+                rows = []
+                for extra in self.catalog.extras(row["ratingKey"]):
+                    projected = _full(extra)
+                    projected.pop("art", None)
+                    rows.append(projected)
+                detail["Extras"] = {"size": len(rows)}
+                if rows:
+                    detail["Extras"]["Metadata"] = rows
             if row.get("type") == "movie":
                 # Measured on a writable copy of the reference: a movie's written setting
                 # shows on its row as a show's does -- `useOriginalTitle: "1"`.
@@ -9171,14 +9245,15 @@ class PlexSim:
             # a client uses to resolve a tag into an image URL.
             fields = {
                 "size": 1,
-                "allowSync": True,
+                "allowSync": row.get("type") != "clip",
                 "identifier": "com.plexapp.plugins.library",
                 "mediaTagPrefix": "/system/bundle/media/flags/",
                 "mediaTagVersion": 1655122614,
-                "librarySectionID": row["librarySectionID"],
-                "librarySectionTitle": section.get("title"),
-                "librarySectionUUID": section.get("uuid"),
             }
+            if row.get("type") != "clip":
+                fields.update(librarySectionID=row["librarySectionID"],
+                              librarySectionTitle=section.get("title"),
+                              librarySectionUUID=section.get("uuid"))
             if query.get("asyncCheckFiles") == "1" \
                     or query.get("asyncRefreshLocalMediaAgent") == "1":
                 # Measured, and not guessable: either `async*` flag makes the
@@ -9515,7 +9590,9 @@ class PlexSim:
                 # left the code answering the GET listing, which reads to a client as
                 # an accepted upload.
                 return ("error", 400, "plexsim: bad request")
-            return self.tag_container(size=0)
+            rows = [_full(extra) for extra in self.catalog.extras(row["ratingKey"])]
+            return self.tag_container(size=len(rows), allowSync=False,
+                                      Metadata=rows or None)
         if leaf == "related":
             # NOTE: this is NOT /hubs/metadata/{id}/related -- the client rewrites
             # the path for that one. Re-measured, overturning the note that stood
