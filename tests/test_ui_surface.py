@@ -21842,6 +21842,22 @@ def main():
     check("Xbox 360, whose only video target is asf, is a 400",
           xbox360_c32h[0] == 400, str(xbox360_c32h[0]))
 
+
+    # Cycle 32, measured on zen, kids and both writable copies: a real PMS writes JSON
+    # COMPACT and in raw UTF-8 -- no space after `:` or `,`, an accent written as itself,
+    # and a C0 control as `\\u00XX` in upper-case hex. plexsim wrote Python's defaults.
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (movie, quote("Zq \u00e9t\u00e9\x1f/end")))
+    status_c32i, raw_c32i, _h_c32i = request(base, "GET", "/library/metadata/%s" % movie)
+    text_c32i = raw_c32i.decode("utf-8", "replace")
+    check("JSON is compact, in raw UTF-8, with upper-case control escapes",
+          text_c32i.startswith('{"MediaContainer":{"size":')
+          and '": ' not in text_c32i and '", "' not in text_c32i
+          and '"title":"Zq \u00e9t\u00e9\\u001F/end"' in text_c32i,
+          text_c32i[:60])
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (movie, quote("Quarrel of Steelworks")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
