@@ -11550,6 +11550,13 @@ def main():
                      get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []]
     leaves_c15r2 = get(base, "/library/metadata/%s/children" % seasons_c15r2[0])[1] \
         .get("Metadata") or []
+    # Cycle 33: the seven-frame count is a MATCHED row's. A never-matched (`local://`)
+    # row opens with the measured `state 2 matching` + bare `state 5` pair first, so by
+    # this point in the suite -- where an earlier check has unmatched this episode -- the
+    # right expectation is nine. Derived from the row rather than assumed either way.
+    ep_guid_c15r2 = ((get(base, "/library/metadata/%s" % leaves_c15r2[0]["ratingKey"])[1]
+                      .get("Metadata") or [{}])[0].get("guid") or "")
+    ep_expected_c15r2 = 9 if ep_guid_c15r2.startswith("local://") else 7
     ep_frames_c15r2 = frames_for_c15r2(leaves_c15r2[0]["ratingKey"])
     season_frames_c15r2 = frames_for_c15r2(seasons_c15r2[0])
     show_frames_c15r2 = frames_for_c15r2(show)
@@ -11572,7 +11579,7 @@ def main():
     # The COUNT depends on how many rows the tree holds, so what is asserted is which
     # ROWS the cascade reaches -- which is the whole of the finding.
     check("a refresh cascades: an episode alone, a season with its episodes, a show with its tree",
-          len(ep_frames_c15r2) == 7
+          len(ep_frames_c15r2) == ep_expected_c15r2
           and ids_c15r2(ep_frames_c15r2) == {str(leaves_c15r2[0]["ratingKey"])}
           and ids_c15r2(season_frames_c15r2)
           == {str(seasons_c15r2[0])} | {str(r_c15r2["ratingKey"]) for r_c15r2 in leaves_c15r2}
