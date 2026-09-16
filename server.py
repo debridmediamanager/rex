@@ -15930,10 +15930,10 @@ class Handler(BaseHTTPRequestHandler):
             sim = self.server.sim
             identifier = (self.headers.get("X-Plex-Client-Identifier")
                           or urllib.parse.parse_qs(
-                              urllib.parse.urlparse(self.path).query
+                              _target_parts(self.path)[1]
                           ).get("X-Plex-Client-Identifier", [""])[-1])
             address = self.client_address[0] if self.client_address else None
-            params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            params = urllib.parse.parse_qs(_target_parts(self.path)[1])
 
             def plex(name):
                 return self.headers.get(name) or params.get(name, [""])[0]
@@ -16219,7 +16219,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         if query is None:
             query = dict(urllib.parse.parse_qsl(
-                urllib.parse.urlsplit(self.path).query, keep_blank_values=True))
+                _target_parts(self.path)[1], keep_blank_values=True))
         return request_language(query, self.headers)
 
     # The blocks inside a row that carry the SERVER's vocabulary rather than the
@@ -16978,7 +16978,8 @@ class Handler(BaseHTTPRequestHandler):
         body = result["MediaContainer"]
         if not isinstance(body, dict):
             return result
-        if urllib.parse.urlsplit(self.path).path.startswith(
+        route, raw_query = _target_parts(self.path)
+        if route.startswith(
                 "/video/:/transcode/universal/decision"):
             # Cycle 26, measured on kids and zen: `excludeElements=` is a NO-OP on a
             # DECISION. The container keeps its Media, Part and Streams whatever the
@@ -16989,7 +16990,7 @@ class Handler(BaseHTTPRequestHandler):
             # sends the option here, so the cost is to an API caller; the exception is
             # the finding.
             return result
-        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
+        query = dict(urllib.parse.parse_qsl(raw_query,
                                             keep_blank_values=True))
         if not _excluded(query):
             return result
@@ -17026,13 +17027,14 @@ class Handler(BaseHTTPRequestHandler):
         body = result["MediaContainer"]
         if not isinstance(body, dict) or "totalSize" in body or "noHistory" in body:
             return result
-        if urllib.parse.urlsplit(self.path).path.rstrip("/") == "/system/search":
+        route, raw_query = _target_parts(self.path)
+        if route.rstrip("/") == "/system/search":
             # Cycle 18, measured on kids and zen with both paging headers: this one
             # does not page at all -- no `totalSize`, no `offset` and no response
             # headers -- although it carries neither `noHistory` nor a `totalSize` of
             # its own, which are the two markers the rule above is written from.
             return result
-        query = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(self.path).query,
+        query = dict(urllib.parse.parse_qsl(raw_query,
                                             keep_blank_values=True))
         for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
             # Cycle 16, measured on kids and zen: when BOTH are sent the
@@ -17317,14 +17319,15 @@ class Handler(BaseHTTPRequestHandler):
         upgrade.append("Date: " + self.date_time_string())
         self.wfile.write(("\r\n".join(upgrade) + "\r\n\r\n").encode())
         self.wfile.flush()
+        raw_query = _target_parts(self.path)[1]
         filters = [f for f in (urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query).get("filters", [""])[-1]
+            raw_query).get("filters", [""])[-1]
         ).split(",") if f]
         # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
         # everything INCLUDING the log stream, which a socket with no `filters` at all
         # does not get.
         everything = not filters and "filters" in urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query, keep_blank_values=True)
+            raw_query, keep_blank_values=True)
         logger.info("websocket event channel opened filters=%s", filters or "all")
 
         sim = self.server.sim
@@ -17457,14 +17460,15 @@ class Handler(BaseHTTPRequestHandler):
 
         sim = self.server.sim
         lock = threading.Lock()
+        raw_query = _target_parts(self.path)[1]
         filters = [f for f in (urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query).get("filters", [""])[-1]
+            raw_query).get("filters", [""])[-1]
         ).split(",") if f]
         # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
         # everything INCLUDING the log stream, which a socket with no `filters` at all
         # does not get.
         everything = not filters and "filters" in urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query, keep_blank_values=True)
+            raw_query, keep_blank_values=True)
 
         def sink(kind, element, rows, deadline=None):
             # Cycle 30: the same send budget as the websocket sink.

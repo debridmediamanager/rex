@@ -23153,6 +23153,43 @@ def main():
           immediate_c37c == [b"HTTP/1.1 200 OK"] * 4,
           repr(immediate_c37c))
 
+
+    # Cycle 37 follow-through: raw query semantics apply to the response-wide helpers
+    # too.  `#` is query data, so it must not make `Media#x` act like `Media` when
+    # excludeElements is applied after the route handler has built the container.
+    def raw_query_c37d(target_c37d):
+        parsed_c37d = urllib.parse.urlsplit(base)
+        host_c37d, port_c37d = parsed_c37d.hostname, parsed_c37d.port
+        with socket.create_connection((host_c37d, port_c37d), timeout=3) as sock_c37d:
+            sock_c37d.sendall(("GET %s HTTP/1.1\r\nHost: %s:%s\r\n"
+                               "Accept: application/json\r\nConnection: close\r\n\r\n"
+                               % (target_c37d, host_c37d, port_c37d)).encode("ascii"))
+            raw_c37d = b""
+            while b"\r\n\r\n" not in raw_c37d:
+                piece_c37d = sock_c37d.recv(65536)
+                if not piece_c37d:
+                    break
+                raw_c37d += piece_c37d
+            head_c37d, _, body_c37d = raw_c37d.partition(b"\r\n\r\n")
+            lines_c37d = head_c37d.split(b"\r\n")
+            status_c37d = int(lines_c37d[0].split()[1])
+            length_c37d = next((int(line_c37d.split(b":", 1)[1])
+                                for line_c37d in lines_c37d[1:]
+                                if line_c37d.lower().startswith(b"content-length:")), 0)
+            while len(body_c37d) < length_c37d:
+                piece_c37d = sock_c37d.recv(length_c37d - len(body_c37d))
+                if not piece_c37d:
+                    break
+                body_c37d += piece_c37d
+            return status_c37d, json.loads(body_c37d) if body_c37d else {}
+
+    status_c37d, payload_c37d = raw_query_c37d(
+        "/library/sections/%s/all?type=1&excludeElements=Media#not-media" % movie_section)
+    rows_c37d = (payload_c37d.get("MediaContainer") or {}).get("Metadata") or []
+    check("raw query data reaches the response-wide helpers",
+          status_c37d == 200 and bool(rows_c37d) and "Media" in rows_c37d[0],
+          str((status_c37d, bool(rows_c37d), bool(rows_c37d and "Media" in rows_c37d[0]))))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
