@@ -2118,6 +2118,11 @@ def _known_languages():
 KNOWN_LANGUAGES = _known_languages()
 
 
+# Cycle 36: an id in a path SEGMENT is `+?0*<digits>` on both references. Only the
+# non-canonical spellings are rewritten, so a plain `1` and a bucket key are untouched.
+_PADDED_ID_SEGMENT = re.compile(r"\+?0*[0-9]+\Z")
+
+
 class PlexSim:
     # Cycle 30: one seed per (random shelf, `count=`), minted on first use and held for
     # the life of the process -- see `shelf()`.
@@ -3537,6 +3542,27 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             if len(route) > 1 and route.endswith("/"):
                 route = route[:-1]
+            # Cycle 36, measured on kids and zen over six path families -- a section
+            # grid, a section row, `/filters`, `/library/people/{id}`, an item detail
+            # and an item's `/thumb` -- and BYTE-IDENTICAL in every one: an id in a path
+            # SEGMENT is parsed as a number, so `01`, `001`, `0001`, `+1` and `+01` all
+            # name the same row as `1`. What does not parse names nothing: `++1`, `1+`,
+            # `-1`, `0x1`, `1_0`, `1.0`, `1e3`, a surrounding space and every non-ASCII
+            # digit are 404s on both references. It is the general case of the `+?0*[01]`
+            # grammar cycle 29 measured for a 0/1 option VALUE.
+            #
+            # plexsim compared the segment as a STRING (`str(section["key"]) ==
+            # str(section_id)`, `items.get(int(x)) if str(x).isdigit()`), so a zero-padded
+            # or plus-signed id -- what a URL built by concatenation, or a client that pads,
+            # produces -- was a 404 from a server that holds the row. Normalised here,
+            # once, rather than at each of the forty lookups that read an id segment.
+            # `\d` is deliberately `[0-9]`: Python's `\d` matches the Arabic-Indic and
+            # fullwidth digits that both references refuse.
+            pieces = route.split("/")
+            if any(_PADDED_ID_SEGMENT.match(piece) for piece in pieces):
+                route = "/".join(
+                    str(int(piece)) if _PADDED_ID_SEGMENT.match(piece) else piece
+                    for piece in pieces)
             # Measured: a query parameter with no `=` at all -- `?includeGuids`,
             # `?foo`, even `?&` -- is a 400 on every path, `/identity` included.
             # plexsim read a bare `includeGuids` as true.
