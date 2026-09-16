@@ -289,20 +289,58 @@ def direct_play(profile, media):
     return True, "Direct play OK."
 
 
-def conversion(profile, protocol):
+def _dolby_vision_profile(media):
+    """The DoVi profile of the media's first video stream, or None."""
+    video = next((s for s in _streams(media) if s.get("streamType") == 1), {})
+    return video.get("DOVIProfile") if video.get("DOVIPresent") else None
+
+
+def conversion(profile, protocol, media=None):
     """"convert", "neither" or "refuse" for a request whose direct play was refused."""
+    source_codec = None
+    if media is not None and _number(_dolby_vision_profile(media)) == 5:
+        # Cycle 36, measured on zen over three Dolby Vision PROFILE 5 rows (967 and 1120,
+        # mkv/hevc/1080; 4813, mp4/hevc/4k) against all 78 profiles: the server refuses to
+        # convert a profile-5 source at all. `transcodeDecisionCode 2003`, "File is
+        # unplayable. DoVi (Profile 5) color space is not supported." -- where the same
+        # 78 profiles against a profile 7 or 8 row, and against the two non-DV hevc
+        # controls already in the corpus, answer the ordinary 4002. So it is keyed on the
+        # DV profile and not on hevc, not on the container and not on server load.
+        #
+        # It is not a blanket veto: ONE of the 38 profiles that declare a matching http
+        # target still converts it, and that one is the only one whose target names the
+        # SOURCE's own video codec (`Plex Desktop`, `videoCodec="h264,hevc,*"`). Every
+        # other target would re-encode to h264 and lose the colour space. Exact on all 78
+        # cells in both directions.
+        #
+        # Class D risk, recorded in HANDOVER 3.3: `h264,hevc,*` is the only positive
+        # witness on either reference, so "the target names the source codec" and "the
+        # target declares `*`" fit the same 78 cells. The narrower of the two is built.
+        video = next((s for s in _streams(media) if s.get("streamType") == 1), {})
+        source_codec = str(video.get("codec") or "").lower()
     for target in profile.get("targets") or []:
         if target.get("tag") != "VideoProfile" or target.get("context") == "static":
             # Universal Recording's only http target says `context="static"`, and both
             # references refuse it.
             continue
+        names = [piece.strip().lower() for piece
+                 in str(target.get("videoCodec") or "").split(",") if piece.strip()]
+        blocked = source_codec is not None and source_codec not in names
         declared = target.get("protocol")
         if declared == protocol:
+            if blocked:
+                continue
             return "convert"
         if declared is None and protocol == "http":
             # Xbox 360's one video target is an asf with no protocol: a 400 on both
-            # references, for every row it cannot direct play. One profile.
-            return "refuse" if target.get("container") == "asf" else "convert"
+            # references, for every row it cannot direct play. One profile. The refusal
+            # is the ROUTE's, so the Dolby Vision veto above does not reach it -- Xbox
+            # 360 answers its 400 on a profile-5 row as on every other.
+            if target.get("container") == "asf":
+                return "refuse"
+            if blocked:
+                continue
+            return "convert"
     return "neither"
 
 
@@ -315,4 +353,4 @@ def decide(name, media, protocol="http", direct=True):
         ok, text = direct_play(profile, media)
         if ok:
             return "directplay", text
-    return conversion(profile, protocol or "http"), text
+    return conversion(profile, protocol or "http", media), text
