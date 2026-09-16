@@ -20954,6 +20954,28 @@ def main():
           "value -> %r | lock %s -> Field %s"
           % (row_c31b.get("absoluteIndex"), lock_c31b, sorted(names_c31b)))
 
+
+    # Cycle 31, re-measured on plexscratch42 (1.42.2, on a show that owns no poster) and
+    # plexscratch (1.43.4, on a movie whose poster was cleared first): `thumb.value=` and
+    # `art.value=` are artwork COLUMN writes -- the url is discarded and the column becomes
+    # the row's own versioned path -- exactly as `theme` and `banner` already were. The
+    # column has to be EMPTY for it to be visible, which is why cycle 20 read them as
+    # discarded: on a row that already owns a poster the write looks like a no-op.
+    #
+    # plexsim discarded the value and left the column alone, so the Edit dialog's artwork
+    # fields wrote nothing and every Save there was a silent no-op.
+    request(base, "DELETE", "/library/metadata/%s/thumb" % movie)
+    request(base, "DELETE", "/library/metadata/%s/art" % movie)
+    for field_c31c in ("thumb", "art"):
+        request(base, "PUT", "/library/metadata/%s?%s.value=%s"
+                             % (movie, field_c31c, quote("http://example.com/x.jpg")))
+    row_c31c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("thumb.value and art.value write the row's own versioned path",
+          all(str(row_c31c.get(field_c31c) or "").startswith(
+                  "/library/metadata/%s/%s/" % (movie, field_c31c))
+              for field_c31c in ("thumb", "art")),
+          "thumb=%r art=%r" % (row_c31c.get("thumb"), row_c31c.get("art")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
