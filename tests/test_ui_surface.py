@@ -21953,6 +21953,34 @@ def main():
           and leads_c33d("agents") == "Content-Type",
           str({k_c33d: leads_c33d(k_c33d) for k_c33d in system_order_c33d}))
 
+
+    # Cycle 27's malformed-request-line checks, which cycle 33's header-order patch broke
+    # by reading `self.path` in a code path that runs before the request line is parsed.
+    def line_status_c33e(line_c33e, ending_c33e=b"\r\n"):
+        sock_c33e = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c33e.settimeout(8)
+        sock_c33e.sendall(line_c33e + ending_c33e + b"Host: h" + ending_c33e
+                          + b"Connection: close" + ending_c33e + ending_c33e)
+        got_c33e = b""
+        try:
+            while len(got_c33e) < 60:
+                chunk_c33e = sock_c33e.recv(4096)
+                if not chunk_c33e:
+                    break
+                got_c33e += chunk_c33e
+        except Exception:
+            pass
+        sock_c33e.close()
+        return got_c33e.split(b"\r\n", 1)[0].decode("latin-1") if got_c33e else "NO-RESPONSE"
+
+    refusals_c33e = {"two spaces": line_status_c33e(b"GET  /identity HTTP/1.1"),
+                     "tab separators": line_status_c33e(b"GET\t/identity\tHTTP/1.1"),
+                     "long url": line_status_c33e(b"GET /" + b"z" * 70000 + b" HTTP/1.1")}
+    check("a refusal written before the request line parses still answers",
+          all("400" in value_c33e for value_c33e in refusals_c33e.values()),
+          str(refusals_c33e))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
