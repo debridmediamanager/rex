@@ -1790,7 +1790,16 @@ class Library:
         marker = "/com.plexapp.plugins.library"
         if marker in path:
             path = path.split(marker, 1)[1]
-        return "library://x/directory/" + urllib.parse.quote(path, safe="")
+        # Cycle 31, measured on plexscratch42: the middle segment is `item` when the uri
+        # names ONE metadata row and `directory` otherwise -- a comma-joined key list is a
+        # `directory` (`library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2`) and a single
+        # key is an `item` (`library://x/item/%2Flibrary%2Fmetadata%2F4`). plexsim wrote
+        # `directory` for both, so the Save of a single-item smart query came back with a
+        # content string the client cannot reopen as a rule.
+        kind = ("item" if (path.startswith("/library/metadata/")
+                           and "," not in path and "?" not in path)
+                else "directory")
+        return "library://x/%s/%s" % (kind, urllib.parse.quote(path, safe=""))
 
     def add_playlist_items(self, playlist, rows):
         """`PUT /playlists/{id}/items?uri=` -- returns how many were added.
