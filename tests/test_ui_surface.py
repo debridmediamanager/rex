@@ -22710,6 +22710,40 @@ def main():
               "rating %s want %s got %s" % (rating_c36j, want_c36j, scored_c36j))
 
 
+    # Cycle 36, measured on zen and kids: a TAG row's ladder is the item ladder with the
+    # anchored tier collapsed away -- an exact name 0.92, a token-wise prefix from the
+    # first word 0.52, a later-word reach 0.32 -- and there is no 0.72. plexsim
+    # hard-coded 0.52 on a collection row and 0.32 on every other tag row, and its tag
+    # matcher compared the whole query against ONE word, so a multi-word tag name could
+    # not be found by typing it at all.
+    genre_c36k = None
+    for row_c36k in get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or []:
+        for tag_c36k in row_c36k.get("Genre") or []:
+            genre_c36k = genre_c36k or tag_c36k.get("tag")
+    if not genre_c36k:
+        skip("a tag row's score ladder is 0.92 / 0.52 / 0.32", "the fixture movie has no genre")
+    else:
+        def tagscore_c36k(query_c36k):
+            found_c36k = {}
+            for hub_c36k in get(base, "/hubs/search?query=%s" % quote(query_c36k))[1].get("Hub") or []:
+                for tag_row_c36k in hub_c36k.get("Directory") or []:
+                    if tag_row_c36k.get("type") == "tag":
+                        found_c36k.setdefault(tag_row_c36k.get("tag"),
+                                              str(tag_row_c36k.get("score")))
+            return found_c36k
+
+        first_c36k = genre_c36k.split()[0]
+        ladder_c36k = {"exact": tagscore_c36k(genre_c36k).get(genre_c36k),
+                       "prefix": tagscore_c36k(first_c36k[:-1]).get(genre_c36k)}
+        if len(genre_c36k.split()) > 1:
+            ladder_c36k["later word"] = tagscore_c36k(genre_c36k.split()[-1]).get(genre_c36k)
+        want_c36k = {"exact": "0.92000", "prefix": "0.52000"}
+        if len(genre_c36k.split()) > 1:
+            want_c36k["later word"] = "0.32000"
+        check("a tag row's score ladder is 0.92 / 0.52 / 0.32",
+              ladder_c36k == want_c36k, "genre %r -> %s" % (genre_c36k, ladder_c36k))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
