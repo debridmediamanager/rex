@@ -89,6 +89,19 @@ IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "view
 # nothing visible, where plexsim 400'd it.
 IGNORED_TAG_TYPES = {"network"}
 
+# Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
+# `hdr10plus` is accepted on BOTH halves of the grammar and stores NEITHER -- `.locked=1`
+# and `.value=1` are each a 200 and the row's `Field` list is unchanged (1.42.2's stays
+# `collection, hdr, dovi`, 1.43.4's stays its seven). It is the only name on the surface in
+# that position: every other accepted name either stores a value or records a lock.
+#
+# Cycle 21 recorded it correctly as "a 200 that stores nothing" and cycle 30, having
+# confirmed the 200 on the new 1.42.2 copy, put it in LOCK_ONLY_FIELDS -- which records a
+# lock. HANDOVER 3.1 class C inside the cycle that re-measured it: the status was checked
+# and the row was never read back. The Edit dialog draws its lock icons from `Field`, so
+# the regression drew a lock on a field it cannot show.
+NO_OP_FIELDS = {"hdr10plus"}
+
 # Cycle 20, measured one column at a time on plexscratch: the SECTION save path reads
 # every numeric column, where the item path reads three. These seven parse -- a number
 # is a 200 and a word a 500 -- and the eight below are refused outright, 500 even for a
@@ -148,9 +161,9 @@ LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt"
                     # a **400** where 1.43.4 answers 200, so plexsim's refusal was right
                     # and that hold-out is CLOSED rather than implemented. `hdr10plus` is
                     # the opposite: a **200** on 1.42.2 as well as on 1.43.4 -- two
-                    # witnesses, both versions -- so it belongs here, a lock that stores
-                    # no value, where plexsim answered 400 "unknown field".
-                    "hdr10plus",
+                    # witnesses, both versions. Cycle 31 read the `Field` list BACK and it
+                    # does not belong here: the 200 stores nothing at all, not even a lock,
+                    # so the name lives in `NO_OP_FIELDS` below.
                     "audioLanguage", "dovi", "duplicate", "file", "format", "hdr",
                     "id", "lastRatedAt", "make", "mediaBitrate", "mediaSize", "model",
                     "parent", "place", "resolution", "source", "subformat",
@@ -818,10 +831,14 @@ class Library:
             elif name.endswith(".locked"):
                 field = name[: -len(".locked")]
                 if field not in EDITABLE_FIELDS and field not in TAG_KEYS \
-                        and field not in LOCK_ONLY_FIELDS:
+                        and field not in LOCK_ONLY_FIELDS and field not in NO_OP_FIELDS:
                     if not section:
                         continue
                     raise EditError(400, "unknown field %r" % field)
+                if field in NO_OP_FIELDS:
+                    # Cycle 31: accepted, and recorded NOWHERE -- see NO_OP_FIELDS.
+                    changed = True
+                    continue
                 if section:
                     # Measured: the section path PARSES the lock as an integer that must
                     # be 0 or 1 -- `01` and `001` lock, `00` unlocks, and `true`, `2`,
@@ -846,7 +863,7 @@ class Library:
                     self._set_field(row, field, value, section)
                     changed = True
                     continue
-                if field in IGNORED_VALUE_FIELDS \
+                if field in IGNORED_VALUE_FIELDS or field in NO_OP_FIELDS \
                         or (field in ("duration", "index") and row.get("type") == "movie") \
                         or (field in TAG_KEYS and not name.endswith(".value")):
                     # Measured: each is a 200 that changes nothing -- the value-less
@@ -964,7 +981,8 @@ class Library:
             field = name[: -len(".locked")] if name.endswith(".locked") else name
             field = field[: -len(".value")] if field.endswith(".value") else field
             if field in EDITABLE_FIELDS or field in TAG_KEYS \
-                    or field in LOCK_ONLY_FIELDS or field in IGNORED_VALUE_FIELDS:
+                    or field in LOCK_ONLY_FIELDS or field in IGNORED_VALUE_FIELDS \
+                    or field in NO_OP_FIELDS:
                 return True
         return False
 
