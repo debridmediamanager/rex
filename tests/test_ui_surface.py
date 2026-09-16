@@ -7060,12 +7060,30 @@ def main():
 
     # Measured on plexscratch: a movie's written setting shows on its row, as a show's does;
     # plexsim stored it and never showed it.
-    request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
-    shown_w15c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0].get("useOriginalTitle")
-    request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=" % movie)
-    cleared_w15c = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0].get("useOriginalTitle")
-    check("a movie's written setting shows on its row", shown_w15c == "1" and cleared_w15c is None,
-          "%r then %r" % (shown_w15c, cleared_w15c))
+    #
+    # Cycle 36: the row this ran against has been UNMATCHED three thousand lines above,
+    # and an unmatched movie's `Preferences` block is EMPTY -- so every prefs write to it
+    # is a 400 on both references and the setting can no longer be written at all. The
+    # check needs a matched row, and the fixture still has one; it picks the first movie
+    # whose guid is not `local://`/`none://` rather than assuming which.
+    matched_w15c = next(
+        (row_w15c.get("ratingKey") for row_w15c in
+         (get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or [])
+         if not str((get(base, "/library/metadata/%s" % row_w15c.get("ratingKey"))[1]
+                     .get("Metadata") or [{}])[0].get("guid") or "")
+         .startswith(("local://", "none://", "tv.plex.agents.none://"))), None)
+    if matched_w15c is None:
+        skip("a movie's written setting shows on its row", "no matched movie left")
+    else:
+        request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % matched_w15c)
+        shown_w15c = (get(base, "/library/metadata/%s" % matched_w15c)[1]
+                      .get("Metadata") or [{}])[0].get("useOriginalTitle")
+        request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=" % matched_w15c)
+        cleared_w15c = (get(base, "/library/metadata/%s" % matched_w15c)[1]
+                        .get("Metadata") or [{}])[0].get("useOriginalTitle")
+        check("a movie's written setting shows on its row",
+              shown_w15c == "1" and cleared_w15c is None,
+              "%r then %r" % (shown_w15c, cleared_w15c))
 
     # Measured on plexscratch: a library create applies its prefs[...] and answers a bare
     # container; plexsim dropped the prefs and sent the library container's extras.
@@ -10396,6 +10414,13 @@ def main():
                     for e_c14y in (f_c14y.get("NotificationContainer") or {})
                     .get("TimelineEntry") or []]
 
+        # Cycle 36: `showOrdering` is a 500 on a show with no agent ordering behind it --
+        # measured on plexscratch42's two `local://` shows with plexscratch's matched
+        # Firefly as a control -- and the fixture's show has been unmatched by the checks
+        # above, so the cascade this check is about cannot run there at all. Matched back
+        # first; the cycle-36 prefs check further down unmatches it again.
+        request(base, "PUT", "/library/metadata/%s/match?guid=%s&name=%s"
+                % (show, quote("plex://show/5d9c086c7d06d9001ffd27aa"), quote("Rematched")))
         ordering_c14y = prefframes_c14y("showOrdering=dvd")
         flatten_c14y = prefframes_c14y("flattenSeasons=1")
         sortpref_c14y = prefframes_c14y("episodeSort=1")
