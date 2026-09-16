@@ -16755,7 +16755,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error(500, "plexsim: server error")
             return
         length = int(declared) if declared.isdigit() else 0
-        body = self.rfile.read(length) if length else b""
+        # Cycle 37, raw sockets on kids and zen: GET and HEAD answer immediately
+        # without consuming a declared body, with or without Expect: 100-continue.
+        # Reading it here let a slow or absent request body stall every read-only
+        # endpoint even though a real PMS had already sent the response.
+        body = self.rfile.read(length) if length and method not in ("GET", "HEAD") else b""
 
         target = (self.requestline.split(" ") + ["", ""])[1]
         if target.startswith("//"):
