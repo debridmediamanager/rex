@@ -22583,6 +22583,28 @@ def main():
           "unknown %s | real %s" % (unknown_c36f, real_c36f))
 
 
+    # Cycle 36, measured on kids and zen: `/hubs/metadata/{id}/related` never resolves
+    # the row -- an id the server does not hold answers the empty hub container, where
+    # `/library/metadata/{id}/related` and `/hubs/metadata/{id}/postplay` on the same id
+    # are 404s. plexsim 404'd all three.
+    status_c36g, body_c36g, _headers_c36g = request(base, "GET", "/hubs/metadata/999999/related")
+    word_c36g, container_c36g, _h2_c36g = get(base, "/hubs/metadata/abc/related")
+    others_c36g = {
+        "library form": request(base, "GET", "/library/metadata/999999/related")[0],
+        "postplay": request(base, "GET", "/hubs/metadata/999999/postplay")[0],
+    }
+    real_c36g = get(base, "/hubs/metadata/%s/related" % movie)
+    check("/hubs/metadata/{id}/related answers the empty hub for an id that is not there",
+          status_c36g == 200 and word_c36g == 200
+          and container_c36g.get("size") == 0
+          and container_c36g.get("allowSync") is True
+          and "librarySectionID" not in container_c36g
+          and set(others_c36g.values()) == {404}
+          and real_c36g[0] == 200 and "librarySectionID" in real_c36g[1],
+          "unknown %s/%s %s | others %s | real %s"
+          % (status_c36g, word_c36g, container_c36g, others_c36g, real_c36g[0]))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
