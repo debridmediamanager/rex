@@ -21374,6 +21374,30 @@ def main():
           equal_c31p == [spare] and other_c31p == [],
           "X -> %s | 9 -> %s" % (equal_c31p, other_c31p))
 
+
+    # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
+    # instrument for it: `title=` matches the ORIGINAL title as a CONSECUTIVE run of whole
+    # words, unfolded. `Le Salaire`, `Salaire de`, `de la peur`, `Le Sal` and `la peur` each
+    # answer the one row; `Salaire peur`, `Le peur`, `Sal de`, `e Salaire` and
+    # `Meurtres Douai` answer none. plexsim ran the TITLE's two-pass folded matcher over it,
+    # so a query whose words are not adjacent, or which needs a fold, matched rows a real
+    # PMS does not answer -- 14 of them in a 1,244-query corpus.
+    request(base, "PUT", "/library/metadata/%s?originalTitle.value=%s"
+                         % (movie, quote("Le Salaire de la Peur")))
+    def orig_c31q(query_c31q):
+        doc_c31q = get(base, "/library/sections/%s/all?type=1&title=%s"
+                       % (movie_section, quote(query_c31q)))[1]
+        return [r_c31q.get("ratingKey") for r_c31q in (doc_c31q.get("Metadata") or [])]
+    adjacent_c31q = orig_c31q("Salaire de")
+    gapped_c31q = orig_c31q("Salaire peur")
+    partial_c31q = orig_c31q("Le Sal")
+    midword_c31q = orig_c31q("e Salaire")
+    check("title= matches the original title as a consecutive run of whole words",
+          movie in adjacent_c31q and movie in partial_c31q
+          and movie not in gapped_c31q and movie not in midword_c31q,
+          "'Salaire de' %s | 'Le Sal' %s | 'Salaire peur' %s | 'e Salaire' %s"
+          % (adjacent_c31q, partial_c31q, gapped_c31q, midword_c31q))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
