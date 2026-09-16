@@ -10408,6 +10408,44 @@ class PlexSim:
             tail = 0.0
         return self._score(round(base - self.SEARCH_TIER_DROP[tier] + tail, 5))
 
+    # Cycle 36, measured on zen and kids, which agree on every cell: a TAG row's ladder
+    # is the item ladder with the ANCHORED tier collapsed away. An exact tag name is
+    # **0.92** (`Science Fiction`, `Drama`, `Comedy`, `Action`, `Drake Rodger`), a query
+    # that is a token-wise PREFIX of the name from its first word is **0.52** (`Science`,
+    # `Scienc`, `Drake Rodge`, `Rodger` against "Rodger Bumpass"), and a query that only
+    # reaches a LATER word is **0.32** (`Fiction` against "Science Fiction", `Rodger`
+    # against "Mary Ann Rodgers"). There is no 0.72: `Drake` against "Drake Bell" is
+    # 0.52 where a movie whose first word matched would be 0.73. A tag carries no
+    # `audienceRating`, so every tag score ends `000`.
+    #
+    # plexsim hard-coded 0.52 on a collection row and 0.32 on every other tag row, so a
+    # genre typed in full came back two steps below where a real PMS puts it -- under
+    # every item hit on the page. And its tag MATCHER compared the whole query against
+    # one word, so a multi-word tag name could not be found by typing it: `Science
+    # Fiction` answered no tag row at all where both references answer one per library.
+    TAG_TIER_SCORE = {"exact": 0.92, "prefix": 0.52, "fuzzy": 0.32}
+
+    @staticmethod
+    def tag_tier(name, terms):
+        """The tier one tag NAME earns, or None when the query does not reach it."""
+        words = [word for word in
+                 hierarchy_module.fold_query(str(name or "")).split() if word]
+        if not words or not terms:
+            return None
+        if words == terms:
+            return "exact"
+        if (len(terms) <= len(words) and words[0].startswith(terms[0])
+                and all(words[index].startswith(terms[index])
+                        for index in range(1, len(terms)))):
+            return "prefix"
+        if len(terms) == 1 and any(word.startswith(terms[0]) for word in words[1:]):
+            return "fuzzy"
+        return None
+
+    def tag_score(self, entry):
+        """The score for one tag hit, from the tier stored when it matched."""
+        return self._score(self.TAG_TIER_SCORE[entry.get("tier") or "prefix"])
+
     def _score(self, rank):
         """A relevance score in the shape the reference prints it.
 
@@ -10446,6 +10484,8 @@ class PlexSim:
         """
         rows = self.catalog.search(text)
         needle = (text or "").strip().lower()
+        needle_terms = [term for term in
+                        hierarchy_module.fold_query(str(text or "")).split() if term]
 
         def rank(row):
             return float(self.search_score(row, needle))
@@ -10487,9 +10527,8 @@ class PlexSim:
             for row in self.catalog.items.values():
                 for tag in row.get(field) or []:
                     name = str(tag.get("tag") or "")
-                    words = re.split(r"[^0-9a-z]+", name.lower())
-                    if len(needle) < 2 or not any(w.startswith(needle)
-                                                  for w in words if w):
+                    tier = self.tag_tier(name, needle_terms)
+                    if len(needle) < 2 or tier is None:
                         continue
                     # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a tag hit
                     # is per LIBRARY, not per NAME. kids' `drama` answers TWO `Drama`
@@ -10503,7 +10542,8 @@ class PlexSim:
                     # first, counting both libraries' rows together, and the other
                     # library's filter link never appeared on the search page at all.
                     entry = seen.setdefault((name, str(row.get("librarySectionID"))),
-                                            {"tag": tag, "rows": [], "row": row})
+                                            {"tag": tag, "rows": [], "row": row,
+                                             "tier": tier})
                     entry["rows"].append(row)
             for entry in seen.values():
                 # Cycle 28: the `count` is the size of the listing the row's own `key`
@@ -10708,7 +10748,7 @@ class PlexSim:
             "reason": "section",
             "reasonID": int(section_id) if str(section_id).isdigit() else section_id,
             "reasonTitle": section.get("title"),
-            "score": self._score(0.52),
+            "score": self.tag_score(entry),
             "type": "tag",
             "id": tag.get("id"),
             "filter": "collection=%s" % tag.get("id"),
@@ -10741,7 +10781,7 @@ class PlexSim:
             "reason": "section",
             "reasonID": int(section_id) if str(section_id).isdigit() else section_id,
             "reasonTitle": section.get("title"),
-            "score": self._score(0.32),
+            "score": self.tag_score(entry),
             "type": "tag",
             "id": tag.get("id"),
             "filter": "%s=%s" % (field, tag.get("id")),
