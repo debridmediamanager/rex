@@ -63,6 +63,23 @@ def main():
     check("an episode-only normal hit leaves the global spelling gate open",
           train_titles.get("episode") == ["The Train Job"]
           and train_titles.get("movie") == ["Elephants Dream"])
+
+    # Cycle 38 recovered the final comparator from both PMS binaries.  The score is
+    # compared at full precision and only formatted to five decimals afterwards.
+    # These two rows deliberately serialize to the same value; the higher hidden
+    # audience component still wins even though its title sorts later.
+    catalog.items[101]["audienceRating"] = 8.400
+    catalog.items[102]["audienceRating"] = 8.372
+    feature_hubs = sim.search({"query": "feature", "limit": "100"})["MediaContainer"]
+    feature_movies = next(hub for hub in feature_hubs["Hub"]
+                          if hub["hubIdentifier"] == "movie").get("Metadata") or []
+    check("hub search sorts the unrounded score before formatting it",
+          [row.get("ratingKey") for row in feature_movies[:2]] == ["101", "102"]
+          and [row.get("score") for row in feature_movies[:2]]
+          == ["0.33084", "0.33084"])
+    catalog.items[101].pop("audienceRating", None)
+    catalog.items[102].pop("audienceRating", None)
+
     tudik_titles, tudik_tags = matches("Tudik", tagged=True)
     tudik_hubs = sim.search({"query": "Tudik", "limit": "100"})["MediaContainer"]
     tudik_movies = next(hub for hub in tudik_hubs["Hub"]
