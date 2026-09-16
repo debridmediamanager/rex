@@ -22207,6 +22207,55 @@ def main():
           and first_c35a == second_c35a,
           "mtime %s, identical %s" % (stamp_c35a, first_c35a == second_c35a))
 
+
+    # Cycle 35, 43 `Range` header values swept against kids and zen over a container and
+    # a `/web` asset -- 172 cells, the two references and the two body kinds identical in
+    # every one. plexsim had twelve of the 43 wrong; these are the cells a real client can
+    # provoke, and each was a 206 with no bytes or a 200 with no `Content-Range`.
+    def ranged_c35b(value_c35b):
+        sock_c35b = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c35b.settimeout(15)
+        sock_c35b.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\nAccept: application/json"
+                           "\r\nAccept-Encoding: identity\r\nRange: %s\r\n"
+                           "Connection: close\r\n\r\n" % value_c35b).encode())
+        blob_c35b = b""
+        while True:
+            chunk_c35b = sock_c35b.recv(65536)
+            if not chunk_c35b:
+                break
+            blob_c35b += chunk_c35b
+        sock_c35b.close()
+        line_c35b, _, rest_c35b = blob_c35b.partition(b"\r\n")
+        block_c35b, _, body_c35b = rest_c35b.partition(b"\r\n\r\n")
+        span_c35b = None
+        for header_c35b in block_c35b.decode("latin-1").split("\r\n"):
+            if header_c35b.lower().startswith("content-range"):
+                span_c35b = header_c35b.partition(":")[2].strip()
+        return int(line_c35b.decode().split()[1]), span_c35b, len(body_c35b)
+
+    size_c35b = ranged_c35b("bytes=0-")[2]
+    want_c35b = {
+        "bytes=5-4": (416, None, None),
+        "bytes=5-abc": (416, None, None),
+        "bytes=-0": (206, "bytes 0-0/%d" % size_c35b, size_c35b),
+        "bytes=abc-def": (206, "bytes 0-%d/%d" % (size_c35b - 1, size_c35b), size_c35b),
+        "bytes= 0-10": (206, "bytes 0-%d/%d" % (size_c35b - 1, size_c35b), size_c35b),
+        "bytes=0-10-20": (206, "bytes 0-%d/%d" % (size_c35b - 1, size_c35b), size_c35b),
+        "bytes=0-abc": (206, "bytes 0-0/%d" % size_c35b, 1),
+        "bytes=0-10,": (206, "bytes 0-0/%d" % size_c35b, 1),
+        "0-10": (200, None, size_c35b),
+    }
+    got_c35b = {}
+    for value_c35b in want_c35b:
+        answer_c35b = ranged_c35b(value_c35b)
+        got_c35b[value_c35b] = ((answer_c35b[0], None, None) if answer_c35b[0] == 416
+                                else answer_c35b)
+    wrong_c35b = {k_c35b: (want_c35b[k_c35b], got_c35b[k_c35b])
+                  for k_c35b in want_c35b if want_c35b[k_c35b] != got_c35b[k_c35b]}
+    check("the Range grammar is the reference's, byte span and status alike",
+          not wrong_c35b, str(wrong_c35b)[:400])
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
