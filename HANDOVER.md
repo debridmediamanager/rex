@@ -2504,7 +2504,7 @@ run. §10 now says what that failure looks like, along with the probe rule that 
 socket-reuse probe must drain each response by its `Content-Length`**, because a bare `recv()`
 reports a live socket as closed the moment a body arrives in its own segment.
 
-#### The thirty-first pass — the write surface per version, the derivations held out, and the reference's own files
+### Cycle 31 -- the write surface per version, the derivations held out, and the reference's own files
 
 Two hunts and a driver round: **22 findings in 21 fix commits and 3 test commits**, six §3.3 entries
 CLOSED, and two instrument steps — one of them the most consequential thing in the cycle.
