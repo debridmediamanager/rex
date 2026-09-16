@@ -23123,6 +23123,36 @@ def main():
           parents_c37b == [400] * 5 and terminals_c37b == [404] * 3,
           str((parents_c37b, terminals_c37b)))
 
+
+    # Cycle 37, raw sockets on both references: GET and HEAD ignore a declared body
+    # and answer immediately, with or without `Expect: 100-continue`.  plexsim read
+    # Content-Length bytes before routing every verb, so a slow or absent body stalled
+    # a read-only request indefinitely.
+    def early_read_c37c(method_c37c, expect_c37c):
+        parsed_c37c = urllib.parse.urlsplit(base)
+        host_c37c, port_c37c = parsed_c37c.hostname, parsed_c37c.port
+        lines_c37c = ["%s /identity HTTP/1.1" % method_c37c,
+                      "Host: %s:%s" % (host_c37c, port_c37c),
+                      "Accept: application/json", "Content-Length: 10",
+                      "Connection: close"]
+        if expect_c37c:
+            lines_c37c.append("Expect: 100-continue")
+        with socket.create_connection((host_c37c, port_c37c), timeout=3) as sock_c37c:
+            sock_c37c.sendall(("\r\n".join(lines_c37c) + "\r\n\r\nabc").encode("ascii"))
+            sock_c37c.settimeout(0.7)
+            try:
+                raw_c37c = sock_c37c.recv(4096)
+            except socket.timeout:
+                raw_c37c = b""
+        return raw_c37c.split(b"\r\n", 1)[0]
+
+    immediate_c37c = [early_read_c37c(method_c37c, expect_c37c)
+                      for method_c37c, expect_c37c in
+                      (("GET", False), ("GET", True), ("HEAD", False), ("HEAD", True))]
+    check("GET and HEAD do not wait for a declared request body",
+          immediate_c37c == [b"HTTP/1.1 200 OK"] * 4,
+          repr(immediate_c37c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
