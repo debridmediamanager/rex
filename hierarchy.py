@@ -264,8 +264,24 @@ def stored_sort_title(row):
     """
     title = row.get("title") or ""
     if row.get("type") == "season" and _GENERATED_TITLE.match(title):
-        stored = row.get("titleSort")
-        if not stored or stored == title:
+        # Cycle 31 read this off the reference's OWN DATABASE, which settles what the API
+        # could only imply. kids' season 7 -- the one agent-titled `Season 1` -- stores
+        # `title = ''` and `title_sort = 'Season 1'`, while its unmatched season 11 stores
+        # both empty, and every season and episode of a fresh 1.42.2 copy stores `''`/`''`.
+        # So the generated DISPLAY title is derived from the index in both cases, and what
+        # an agent supplied for season 7 is the stored SORT title.
+        #
+        # The consequence is the clause that used to be here. `stored == title` treated a
+        # stored sort title equal to the generated title as no sort title at all -- which is
+        # exactly kids' season 7, the only row in either reference that can show the
+        # difference. Measured there: `titleSort=Season 1` answers season 7, `titleSort=`
+        # answers season 11 alone, and `titleSort>>=Season 0` answers 7. plexsim answered
+        # NOTHING to the first and third and wrongly included the row in the second, under
+        # every operator -- one clause with three visible symptoms.
+        #
+        # A row that stores no sort title at all still answers `""`, which is every season
+        # plexsim synthesises for itself, so cycle 18's whole measured set is unchanged.
+        if not row.get("titleSort"):
             return ""
     return row.get("titleSort") or title
 
