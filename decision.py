@@ -5,10 +5,15 @@ profile is a file the reference ships: its `Resources/Profiles/` was read out of
 image read-only (78 `<Client>` files, parsed twice by two different parsers with identical
 results) into `client_profiles.json`. The rules below were fitted to the decision endpoint
 itself and scored cell by cell: kids (1.43.4) 78 profiles x 8 rows, zen (1.42.2) 78 x 16
-rows chosen for their containers, codecs, channel counts, bit depths and subtitle kinds --
-1,872 cells, of which the outcome is exact on 1,871 and the refusal TEXT on 1,864. The
-eight it misses are all zen 19813, the one row whose audio tracks carry no language; they
-are recorded as open (HANDOVER 3.3) rather than fitted to a single witness.
+rows chosen for their containers, codecs, channel counts, bit depths and subtitle kinds,
+and cycle 34's 78 cells on a row MADE to carry two audio tracks with no language at all --
+1,950 cells, exact in outcome and refusal TEXT on 1,906.
+
+All 44 it misses are zen 19813's cells, and they are a state rather than a shape: a row
+whose tracks name no language answers differently before any client has chosen a track
+(41 profiles refuse it as "not the first audio stream") and after one has, with the
+item's `Stream` rows byte-identical either way. plexsim carries a chosen track, so the
+model is the after; the before is measured in docs/findings.md and not emulated.
 
 In order, each refusal naming itself in the reference's own words:
 
@@ -84,20 +89,21 @@ def _streams(media):
 
 
 def evaluated_audio(media):
-    """The audio stream the server would PLAY, or None."""
+    """The audio stream the server would PLAY, or None.
+
+    Cycle 32 re-picked the widest DEFAULT track here when the selected one carried no
+    language, fitted to zen 19813 -- the one measured row whose two audio tracks name
+    none. Cycle 34 made that row's shape on plexscratch and found the re-pick is not a
+    property of the row at all: the same bytes answer 41 of 78 profiles "not the first
+    audio stream" before any client has chosen a track and answer every one of the 78
+    from the visible row afterwards, with `Stream` byte-identical either way. See the
+    module docstring; the selection plexsim holds is the one a client has made.
+    """
     audio = [s for s in _streams(media) if s.get("streamType") == 2]
     if not audio:
         return None
     selected = [s for s in audio if s.get("selected")]
-    chosen = selected[0] if selected else audio[0]
-    if not chosen.get("language") and not chosen.get("languageCode"):
-        # zen 19813 stores its 2-channel mp3 as selected and names no language on either
-        # track, and 41 profiles refuse it as "not the first audio stream" -- which only
-        # the 6-channel ac3 can be. One witness, and see HANDOVER 3.3.
-        defaults = [s for s in audio if s.get("default")] or audio
-        chosen = max(defaults, key=lambda s: (s.get("channels") or 0,
-                                              -audio.index(s)))
-    return chosen
+    return selected[0] if selected else audio[0]
 
 
 def _values(media, audio):
@@ -182,9 +188,8 @@ def direct_play(profile, media):
     """(True, "Direct play OK.") or (False, the directPlayDecisionText refusing it).
 
     The checks run in the order the reference's refusal texts put them, fitted over all
-    1,872 measured (profile, row) cells and exact on 1,864 of them. The eight it misses
-    are all zen 19813, the one row whose two audio tracks carry no language, and are
-    recorded as open in HANDOVER 3.3 rather than fitted to a single witness.
+    1,950 measured (profile, row) cells and exact on 1,906 of them -- every miss being
+    zen 19813 read in the reference's pre-selection state, which the row does not carry.
     """
     streams = _streams(media)
     audio_streams = [s for s in streams if s.get("streamType") == 2]
@@ -217,9 +222,26 @@ def direct_play(profile, media):
     if subtitle is not None and subtitle.get("key") and not _has_subtitle_target(profile):
         return False, ("App cannot direct play this item. Selected sidecar subtitle stream "
                        "cannot be direct played.")
-    # The audio codec a profile entry is matched on is the SELECTED track's: zen 19813's
-    # refusals name its selected mp3 on Android, Popcorn Hour and the Universal profiles.
+    # EVERY audio stream has to be direct-playable, not only the selected one, and the
+    # first in INDEX order that is not is the codec the refusal names. A profile that
+    # declares `StreamUnselectedIncompatibleAudioStreams` skips the UNSELECTED ones --
+    # the server streams those separately -- which is the whole difference between
+    # Windows Phone (aac,mp3: direct plays the made row) and Universal TV (aac,ac3:
+    # refuses it naming the mp3 it does not list), the two being otherwise alike.
+    skip_unselected = any(setting.get("name")
+                          == "StreamUnselectedIncompatibleAudioStreams"
+                          and setting.get("value") == "true"
+                          for setting in profile.get("settings") or [])
     audio_codec = selected_audio.get("codec") if selected_audio is not None else None
+    for stream in audio_streams:
+        if skip_unselected and stream is not selected_audio:
+            continue
+        codec = stream.get("codec")
+        if not [entry for entry in candidates
+                if not entry.get("audioCodec") or codec is None
+                or codec in _names(entry.get("audioCodec"))]:
+            return False, (NO_PROFILE + ", video codec %s, and audio codec %s.") % (
+                container, video_codec, codec)
     candidates = [entry for entry in candidates
                   if not entry.get("audioCodec") or audio_codec is None
                   or audio_codec in _names(entry.get("audioCodec"))]
