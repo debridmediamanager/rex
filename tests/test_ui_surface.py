@@ -21543,6 +21543,44 @@ def main():
           all(before_c31r) and not any(after_c31r),
           "%s: before %s -> after %s" % (family_c31r, before_c31r, after_c31r))
 
+
+    # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
+    # a container a WRITE answers honours the paging headers and `excludeElements=` exactly
+    # as a read's does. With the client's own play-queue form over three rows and
+    # `X-Plex-Container-Start: 1` / `X-Plex-Container-Size: 1`, both answer `size 1,
+    # totalSize 3, offset 1` and ONE row, and with `excludeElements=Media` both drop the
+    # Media tree and substitute `mediaCount: 1`. plexsim gated both post-processors on the
+    # METHOD, so the twelve playlist, collection and play-queue write responses escaped
+    # cycle 21's rule that paging is a property of the RESPONSE.
+    keys_c32a = [r_c32a.get("ratingKey") for r_c32a in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                  .get("Metadata") or [])][:3]
+    if len(keys_c32a) < 2:
+        skip("a write's response pages and excludes", "need two movies")
+    else:
+        uri_c32a = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(str(k_c32a) for k_c32a in keys_c32a)))
+        # The suite's helpers send no extra headers, so page through the QUERY, which a
+        # real PMS reads the same way (the header beats the query when both are sent).
+        made_c32a = container(
+            base, "POST", "/playQueues?type=video&shuffle=0&repeat=0&continuous=0&own=1"
+                          "&X-Plex-Container-Start=1&X-Plex-Container-Size=1"
+                          "&uri=%s" % uri_c32a)[1]
+        excluded_c32a = (container(
+            base, "POST", "/playQueues?type=video&shuffle=0&repeat=0&continuous=0&own=1"
+                          "&excludeElements=Media&uri=%s" % uri_c32a)[1]
+            .get("Metadata") or [{}])[0]
+        check("a write's response pages and excludes, like every other container",
+              made_c32a.get("size") == 1 and made_c32a.get("totalSize") == len(keys_c32a)
+              and made_c32a.get("offset") == 1
+              and len(made_c32a.get("Metadata") or []) == 1
+              and "Media" not in excluded_c32a
+              and excluded_c32a.get("mediaCount") == 1,
+              "paged size=%s totalSize=%s offset=%s rows=%d | excluded Media=%s mediaCount=%r"
+              % (made_c32a.get("size"), made_c32a.get("totalSize"), made_c32a.get("offset"),
+                 len(made_c32a.get("Metadata") or []), "Media" in excluded_c32a,
+                 excluded_c32a.get("mediaCount")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
