@@ -1539,6 +1539,24 @@ def _photo_int(value):
 # server, so they are deliberately OUT: an item-dependent answer needs the matrix.
 DIRECT_PLAY_PROFILES = frozenset(["Roku", "Xbox One"])
 
+
+class _AlreadyHeld:
+    """A `with` target for code that must run under a lock its CALLER already holds.
+
+    Cycle 32: `play_queue_container` is called both on its own (it takes the lock) and
+    from inside `create_play_queue`'s critical section (it must not, or it deadlocks on a
+    plain `threading.Lock`). A sentinel is clearer than passing the lock around.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+_NO_LOCK = _AlreadyHeld()
+
 # Cycle 28: the seven profiles `/clients/profiles?type=42` answers, in this order, on
 # kids and zen alike. 42 is `LOCAL` in the client's own enum (`{NORMAL:0, LOCAL:42,
 # CLOUD:43}`), and the list is the subset a local Optimize target can be.
@@ -10919,9 +10937,28 @@ class PlexSim:
                 "playlist": (int(playlist["ratingKey"]), playlist["title"])
                             if playlist is not None else None,
             }
+            # Cycle 32, measured on both writable copies: two concurrent
+            # `POST /playQueues` carrying the SAME `X-Plex-Client-Identifier` are two
+            # 200s on a real PMS -- 0 refusals in 110 pairs across both versions -- where
+            # plexsim answered **404 "no such play queue" to a CREATE** in 9 of 60 pairs.
+            #
+            # The retire-and-insert above runs under the lock and the response was built
+            # after releasing it, so a sibling create from the same client could retire
+            # this queue in the gap and the container was then built from a row that no
+            # longer existed. The window is under a millisecond -- 4 of 30 at a 0 ms
+            # offset and 0 of 30 at 1 ms -- which is exactly why no sequential
+            # measurement in thirty-one cycles could see it.
+            #
+            # Plex Web creates the queue before it asks for a decision, so a double-click
+            # on Play, or a retry fired while the first request is in flight, meant
+            # playback simply did not start. Building the answer inside the lock closes
+            # it, and it also fixes the sibling defect: two concurrent ADDS answered the
+            # SAME container in 11 of 67 pairs, both naming the other's
+            # `playQueueLastAddedItemID`, because that response was built the same way.
+            answer = self.play_queue_container(queue_id, query, locked=True)
         logger.info("PLAYQUEUE %s -> %d item(s) from uri=%s",
                     queue_id, len(rows), (uri or playlist_id or "")[:80])
-        return self.play_queue_container(queue_id, query)
+        return answer
 
     def get_play_queue(self, queue_id, query=None):
         if not str(queue_id).isdigit() or int(queue_id) not in self.play_queues:
@@ -10930,7 +10967,11 @@ class PlexSim:
             return ("error", 404, "plexsim: no such play queue")
         return self.play_queue_container(int(queue_id), query)
 
-    def play_queue_container(self, queue_id, query=None):
+    def play_queue_container(self, queue_id, query=None, locked=False):
+        """Cycle 32: `locked=True` when the caller already holds `self.lock` -- the create
+        path, which must build its answer inside the same critical section it inserted
+        under, or a sibling create from the same client retires the queue in between and
+        the answer is a 404 for the row this request just made."""
         """One play-queue response, used by create, fetch and add-to.
 
         Two things here decide whether the client keeps the answer at all. Its
@@ -10946,7 +10987,8 @@ class PlexSim:
         shuffle button once it is present, and it tracks PLAIN adds only.
         """
         query = query or {}
-        with self.lock:
+        held = _NO_LOCK if locked else self.lock
+        with held:
             queue = self.play_queues.get(queue_id)
             if queue is None:
                 return ("error", 404, "plexsim: no such play queue")

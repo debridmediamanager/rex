@@ -21581,6 +21581,52 @@ def main():
                  len(made_c32a.get("Metadata") or []), "Media" in excluded_c32a,
                  excluded_c32a.get("mediaCount")))
 
+
+    # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): two concurrent
+    # `POST /playQueues` carrying the SAME `X-Plex-Client-Identifier` are two 200s on a real
+    # PMS -- 0 refusals in 110 pairs across both versions -- where plexsim answered a **404
+    # to a CREATE** in 9 of 60. The retire-and-insert ran under the lock and the response was
+    # built after releasing it, so a sibling create retired the queue in the gap. Plex Web
+    # creates the queue before it asks for a decision, so a double-clicked Play did not play.
+    #
+    # The window is under a millisecond, which is why no sequential check could see it: this
+    # one fires 60 pairs from a barrier, and on the unfixed server the odds of missing the
+    # race are about six in ten thousand.
+    import threading as threading_c32b
+
+    keys_c32b = [r_c32b.get("ratingKey") for r_c32b in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                  .get("Metadata") or [])][:2]
+    if not keys_c32b:
+        skip("a concurrent play-queue create is never a 404", "no movies")
+    else:
+        uri_c32b = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(str(k_c32b) for k_c32b in keys_c32b)))
+        statuses_c32b = []
+        lock_c32b = threading_c32b.Lock()
+
+        def create_c32b(barrier_c32b):
+            barrier_c32b.wait()
+            status_c32b = request(
+                base, "POST",
+                "/playQueues?type=video&shuffle=0&repeat=0&continuous=0&own=1"
+                "&X-Plex-Client-Identifier=c32race&uri=%s" % uri_c32b)[0]
+            with lock_c32b:
+                statuses_c32b.append(status_c32b)
+
+        for _pair_c32b in range(60):
+            barrier_c32b = threading_c32b.Barrier(2)
+            threads_c32b = [threading_c32b.Thread(target=create_c32b, args=(barrier_c32b,))
+                            for _side_c32b in range(2)]
+            for thread_c32b in threads_c32b:
+                thread_c32b.start()
+            for thread_c32b in threads_c32b:
+                thread_c32b.join()
+        check("a concurrent play-queue create is never a 404",
+              statuses_c32b and set(statuses_c32b) == {200},
+              "%d create(s), statuses %s"
+              % (len(statuses_c32b), sorted(set(statuses_c32b))))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
