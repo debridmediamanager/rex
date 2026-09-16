@@ -21703,6 +21703,32 @@ def main():
           "long s %s" % (long_s_c32e, ogonek_c32e, macron_c32e, acute_c32e,
                          stored_plain_c32e, stored_case_c32e))
 
+
+    # Cycle 32, swept on kids (825 probes): the hub search matcher folds by the title
+    # TABLE. A letter only NFD reaches does not match at a word score (`Qu\u0105rrel`,
+    # the ogonek, is fuzzy on a real PMS and plexsim emulates no fuzzy band), while the
+    # long s in a title's last word does (`Tears of \u017fteel` answers 0.93). plexsim
+    # decomposed with NFD, which inverted both.
+    request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
+                         % (movie, quote("Quarrel of Steelworks")))
+
+    def hub_hit_c32f(query_c32f):
+        found_c32f = []
+        for hub_c32f in get(base, "/hubs/search?query=%s&limit=30"
+                            % quote(query_c32f))[1].get("Hub") or []:
+            found_c32f += [r_c32f.get("ratingKey")
+                           for r_c32f in hub_c32f.get("Metadata") or []]
+        return movie in found_c32f
+
+    control_c32f = hub_hit_c32f("Quarrel of Steelworks")
+    ogonek_c32f = hub_hit_c32f("Qu\u0105rrel")
+    long_s_c32f = hub_hit_c32f("Quarrel of \u017fteelworks")
+    acute_c32f = hub_hit_c32f("Qu\u00e1rrel")
+    check("the hub search matcher folds by the title table, not NFD",
+          control_c32f and not ogonek_c32f and long_s_c32f and acute_c32f,
+          "control %s | ogonek %s | long s %s | acute %s"
+          % (control_c32f, ogonek_c32f, long_s_c32f, acute_c32f))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
