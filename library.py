@@ -915,8 +915,22 @@ class Library:
                     # path -- and `slug` is accepted on the section path where plexsim
                     # answered 400.
                     if field in ARTWORK_VALUE_FIELDS:
-                        row[field] = "/library/metadata/%s/%s/%s" % (
-                            row["ratingKey"], field, row.get("updatedAt") or _now())
+                        if str(value) == "":
+                            # Cycle 31, measured on plexscratch42 (1.42.2) and plexscratch
+                            # (1.43.4), which agree exactly: an EMPTY artwork value is a 200
+                            # that REMOVES the column, and the bare `/thumb` GET becomes a
+                            # 404 -- the same shape `DELETE .../thumb` produces on 1.43.4.
+                            #
+                            # This matters beyond the grammar. On 1.42.2 that DELETE does
+                            # not exist at all (it is a 404 on all five artwork leaves), so
+                            # the empty-value edit is the ONLY way a client on the version
+                            # plexsim reports can clear a row's artwork -- which is how the
+                            # cleared-artwork state cycle 29's derivation rules are all
+                            # about is reached there.
+                            row.pop(field, None)
+                        else:
+                            row[field] = "/library/metadata/%s/%s/%s" % (
+                                row["ratingKey"], field, row.get("updatedAt") or _now())
                     changed = True
                     continue
                 if field not in EDITABLE_FIELDS:
