@@ -8277,7 +8277,8 @@ class PlexSim:
                 if method == "PUT":
                     return self.set_artwork(target_row, leaf + "s", query)
                 if method == "DELETE":
-                    return self.clear_artwork(target_row, leaf)
+                    # Cycle 31: a 404 on 1.42.2, like the item path below.
+                    return ("error", 404, "plexsim: not found")
                 return ("image-key", target_row, leaf)
             if method not in ("GET", "HEAD", "PUT"):
                 return ("error", 404, "plexsim: not found")
@@ -8940,7 +8941,22 @@ class PlexSim:
                 # Remove Poster did nothing, and since Change Poster assigns the
                 # response BODY onto the row, clearing the artwork set the tile's img
                 # src to a blob of JPEG.
-                return self.clear_artwork(row, leaf)
+                # Cycle 31, measured on plexscratch42 -- a fresh 1.42.2 install, the
+                # build plexsim reports -- against plexscratch (1.43.4), on a row that
+                # owns and serves the image on both: `DELETE /library/metadata/{id}/
+                # {poster,thumb,art,banner,theme}` is a **404 on 1.42.2, all five**, where
+                # 1.43.4 answers each with an empty 200 and clears the field. The 404 body
+                # is the unrouted-segment html, and the path IS routed for other verbs
+                # there (`PUT .../poster?url=<candidate>` is a 200 returning the new
+                # versioned path), so it is the VERB that is absent rather than a gate --
+                # and a real PMS routes before it authenticates, answering 401/403 for a
+                # gate. `DELETE` itself works on that copy: a playlist delete is a 204.
+                #
+                # So 1.43.4 ADDED the endpoint, and cycle 18 measured it on plexscratch,
+                # which is 1.43.4. The cleared-artwork state itself is still reachable on
+                # 1.42.2 -- an EMPTY `thumb.value=` removes the column on both versions
+                # (cycle 31) -- so every cycle-29 derivation rule keeps its route.
+                return ("error", 404, "plexsim: not found")
             return ("image-key", row, leaf)
         if leaf in ("posters", "arts"):
             if method == "PUT":

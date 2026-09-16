@@ -10869,26 +10869,40 @@ def main():
     # is Remove Poster doing nothing, and because Change Poster assigns the response BODY
     # onto the row (the recorded singular-path rule), a client that clears the artwork sets
     # the tile's img src to a blob of JPEG.
+    # Cycle 31 re-measured this on a 1.42.2 server for the first time -- cycle 18 had only
+    # plexscratch, which is 1.43.4 -- and all FIVE artwork DELETE leaves are **404s there**,
+    # on a row that owns and serves the image. The path is routed for other verbs on 1.42.2
+    # (`PUT .../poster?url=` is a 200) and `DELETE` itself works (a playlist delete is a
+    # 204), so 1.43.4 ADDED the endpoint. plexsim reports 1.42.2, so it answers the 404 --
+    # and the cleared state is still reachable, because an empty `thumb.value=` removes the
+    # column on both versions.
     before_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    st_c15d, body_c15d, _ = request(base, "DELETE", "/library/metadata/%s/poster" % movie)
+    deletes_c15d = {leaf_c15d: request(base, "DELETE", "/library/metadata/%s/%s"
+                                                      % (movie, leaf_c15d))[0]
+                    for leaf_c15d in ("poster", "thumb", "art", "banner", "theme")}
+    kept_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    st_c15d, body_c15d, _ = request(base, "PUT",
+                                    "/library/metadata/%s?thumb.value=" % movie)
     after_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    check("DELETE on an artwork path clears it and answers an empty 200",
-          is_empty_200(st_c15d, body_c15d)
-          and before_c15d.get("thumb") and after_c15d.get("thumb") is None
-          and after_c15d.get("art") != before_c15d.get("art")
+    check("every artwork DELETE is a 404, and the empty-value edit clears instead",
+          set(deletes_c15d.values()) == {404}
+          and kept_c15d.get("thumb") == before_c15d.get("thumb")
+          and st_c15d == 200 and before_c15d.get("thumb")
+          and after_c15d.get("thumb") is None
           and get(base, "/library/metadata/%s/thumb" % movie)[0] == 404,
-          "HTTP %s len=%d thumb %r -> %r | art %r -> %r | bare GET %s"
-          % (st_c15d, len(body_c15d), before_c15d.get("thumb"), after_c15d.get("thumb"),
-             before_c15d.get("art"), after_c15d.get("art"),
+          "DELETEs %s | thumb %r -> (kept) %r -> (empty value, HTTP %s) %r | bare GET %s"
+          % (deletes_c15d, before_c15d.get("thumb"), kept_c15d.get("thumb"), st_c15d,
+             after_c15d.get("thumb"),
              get(base, "/library/metadata/%s/thumb" % movie)[0]))
     sel_c15d = [r_c15d.get("selected") for r_c15d in
                 get(base, "/library/metadata/%s/posters" % movie)[1].get("Metadata") or []]
     check("after an artwork delete nothing in the candidate list is selected",
           not any(sel_c15d), str(sel_c15d))
-    st_c15d, body_c15d, _ = request(base, "DELETE", "/library/metadata/%s/art" % movie)
+    st_c15d, body_c15d, _ = request(base, "PUT",
+                                    "/library/metadata/%s?art.value=" % movie)
     after_c15d = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-    check("deleting the background clears art too",
-          is_empty_200(st_c15d, body_c15d) and after_c15d.get("art") is None,
+    check("clearing the background through the edit path clears art too",
+          st_c15d == 200 and after_c15d.get("art") is None,
           "HTTP %s art=%r" % (st_c15d, after_c15d.get("art")))
 
     # Cycle 15, measured on plexscratch across nine paths -- and this CORRECTS the hunt
@@ -13750,19 +13764,21 @@ def main():
 
     # Cycle 17, re-measured on plexscratch: `DELETE /library/metadata/{id}/thumb` really
     # CLEARS the poster -- the field goes and the row's other artwork is re-stamped,
-    # exactly as `/poster` and `/art` already did. Cycle 16 recorded the rule for all
-    # three names and plexsim implemented two of them, so the singular `/thumb` answered
-    # 200 and changed nothing: failure class C, where the docs agree with themselves and
-    # the code does something else.
+    # exactly as `/poster` and `/art` already did.
+    #
+    # Cycle 31: that is **1.43.4's** answer. On 1.42.2 -- the build plexsim reports -- all
+    # five artwork DELETE leaves are 404s, so this check now drives the clear through the
+    # empty-value edit, which both versions answer identically. The rule being tested is
+    # the same one: clearing a poster removes the field and 404s the bare path.
     request(base, "POST", "/library/metadata/%s/posters" % movie,
             body=b"\x89PNG\r\n\x1a\n" + b"\x00" * 24)
     before_c17b13 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
     status_c17b13, body_c17b13, _ = request(
-        base, "DELETE", "/library/metadata/%s/thumb" % movie)
+        base, "PUT", "/library/metadata/%s?thumb.value=" % movie)
     after_c17b13 = get(base, "/library/metadata/%s" % movie)[1]["Metadata"][0]
     bare_c17b13, _, _ = request(base, "GET", "/library/metadata/%s/thumb" % movie,
                                 want_json=False)
-    check("DELETE on the singular thumb clears the poster",
+    check("the empty-value edit on thumb clears the poster",
           status_c17b13 == 200 and body_c17b13 == b""
           and before_c17b13.get("thumb") and "thumb" not in after_c17b13
           and bare_c17b13 == 404,
@@ -18559,7 +18575,7 @@ def main():
           "show=%s borrowed=%d leaves=%s"
           % (show_art_c27c, len(borrowed_c27c), leaf_art_c27c[:3]))
     if owner_c27c is not None:
-        request(base, "DELETE", "/library/metadata/%s/thumb" % owner_c27c["ratingKey"])
+        request(base, "PUT", "/library/metadata/%s?thumb.value=" % owner_c27c["ratingKey"])
         cleared_c27c = detail_c27c(owner_c27c["ratingKey"])
         check("clearing a season's own poster falls back to the show's, not to nothing",
               cleared_c27c.get("thumb") == detail_c27c(show).get("thumb"),
@@ -18747,7 +18763,7 @@ def main():
     # kept an `art` naming a version of the show's backdrop the server no longer serves,
     # beside a `grandparentArt` that had been dropped -- two names for one image,
     # disagreeing.
-    request(base, "DELETE", "/library/metadata/%s/art" % show)
+    request(base, "PUT", "/library/metadata/%s?art.value=" % show)
     request(base, "PUT", "/library/metadata/%s/poster?url=%s"
             % (show, quote("https://example.invalid/c27p.jpg")))
     stale_c27p = [(r_c27p.get("ratingKey"), r_c27p.get("art"))
@@ -19887,7 +19903,7 @@ def main():
         borrowers_c29b = [key_c29b for key_c29b in
                           list(pairs_c29b) + list(pairs_c29b.values())
                           if art_c29b(key_c29b)[0] == show_before_c29b]
-        request(base, "DELETE", "/library/metadata/%s/art" % show)
+        request(base, "PUT", "/library/metadata/%s?art.value=" % show)
         cleared_c29b = [art_c29b(key_c29b)[0] for key_c29b in borrowers_c29b]
         request(base, "PUT", "/library/metadata/%s/art?url=%s"
                 % (show, quote(cands_c29b[0].get("ratingKey") or "")))
@@ -19950,7 +19966,7 @@ def main():
         skip("a clear re-versions only the artwork the row owns",
              "the season owns its art: %s" % borrowed_c29f)
     else:
-        request(base, "DELETE", "/library/metadata/%s/thumb" % target_c29f)
+        request(base, "PUT", "/library/metadata/%s?thumb.value=" % target_c29f)
         after_c29f = (get(base, "/library/metadata/%s" % target_c29f)[1]
                       .get("Metadata") or [{}])[0]
         check("a clear re-versions only the artwork the row owns",
@@ -19989,7 +20005,7 @@ def main():
         skip("a season cascade keeps its episodes' inherited art",
              "season %s, show art %s" % (target_c29d, show_art_c29d))
     else:
-        request(base, "DELETE", "/library/metadata/%s/thumb" % target_c29d)
+        request(base, "PUT", "/library/metadata/%s?thumb.value=" % target_c29d)
         season_c29d = (get(base, "/library/metadata/%s" % target_c29d)[1]
                        .get("Metadata") or [{}])[0]
         after_c29d = (get(base, "/library/metadata/%s/children" % target_c29d)[1]
@@ -20031,7 +20047,7 @@ def main():
                 body=b"\x89PNG\r\n\x1a\n" + b"c29c-own" * 3)
         owned_c29c = (get(base, "/library/metadata/%s" % season_c29c)[1]
                       .get("Metadata") or [{}])[0].get("art")
-        request(base, "DELETE", "/library/metadata/%s/art" % season_c29c)
+        request(base, "PUT", "/library/metadata/%s?art.value=" % season_c29c)
         after_c29c = (get(base, "/library/metadata/%s" % season_c29c)[1]
                       .get("Metadata") or [{}])[0]
         kids_c29c = (get(base, "/library/metadata/%s/children" % season_c29c)[1]
@@ -20964,8 +20980,8 @@ def main():
     #
     # plexsim discarded the value and left the column alone, so the Edit dialog's artwork
     # fields wrote nothing and every Save there was a silent no-op.
-    request(base, "DELETE", "/library/metadata/%s/thumb" % movie)
-    request(base, "DELETE", "/library/metadata/%s/art" % movie)
+    request(base, "PUT", "/library/metadata/%s?thumb.value=" % movie)
+    request(base, "PUT", "/library/metadata/%s?art.value=" % movie)
     for field_c31c in ("thumb", "art"):
         request(base, "PUT", "/library/metadata/%s?%s.value=%s"
                              % (movie, field_c31c, quote("http://example.com/x.jpg")))
@@ -21055,6 +21071,34 @@ def main():
           "made thumb=%r art=%r | empty PUT %s -> thumb=%r art=%r | bare GET %s"
           % (made_c31f.get("thumb"), made_c31f.get("art"), empty_c31f,
              gone_c31f.get("thumb"), gone_c31f.get("art"), bare_c31f))
+
+
+    # Cycle 31, measured on plexscratch42 -- a fresh 1.42.2 install, which is the build
+    # plexsim reports -- against plexscratch (1.43.4), on a row that owns and serves the
+    # image on both: `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` is a
+    # **404 on 1.42.2, all five**, where 1.43.4 answers each with an empty 200 and clears
+    # the field. Cycle 18 measured the endpoint on plexscratch alone and recorded it as the
+    # surface's, and plexsim then implemented three of the five, so it answered neither
+    # version consistently.
+    #
+    # The controls that make it the VERB and not a gate: the same paths take a `PUT
+    # ?url=<candidate>` with a 200 on 1.42.2, `DELETE` itself works there (a playlist
+    # delete is a 204), and a real PMS routes before it authenticates. The 404 body is the
+    # unrouted-segment html.
+    request(base, "PUT", "/library/metadata/%s?thumb.value=%s&art.value=%s"
+                         % (movie, quote("http://example.com/a.jpg"),
+                            quote("http://example.com/b.jpg")))
+    owned_c31g = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    deletes_c31g = {leaf_c31g: request(base, "DELETE", "/library/metadata/%s/%s"
+                                                      % (movie, leaf_c31g))[0]
+                    for leaf_c31g in ("poster", "thumb", "art", "banner", "theme")}
+    after_c31g = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    check("every artwork DELETE leaf is a 404 and changes nothing",
+          bool(owned_c31g.get("thumb")) and set(deletes_c31g.values()) == {404}
+          and after_c31g.get("thumb") == owned_c31g.get("thumb")
+          and after_c31g.get("art") == owned_c31g.get("art"),
+          "%s | thumb %r -> %r"
+          % (deletes_c31g, owned_c31g.get("thumb"), after_c31g.get("thumb")))
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
