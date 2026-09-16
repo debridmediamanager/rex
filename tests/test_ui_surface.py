@@ -23165,6 +23165,91 @@ def main():
           repr(immediate_c37c))
 
 
+    # Cycle 38, 20/20 on both PMS 1.43.4 and the target 1.42.2 build: query-only
+    # item edits and playlist creates ignore a stale declared body and commit at once.
+    # A subtitle upload really consumes bytes and remains the control.  plexsim read
+    # every non-GET/HEAD body before routing, so the two UI writes hung for its full
+    # 20-second socket timeout and never ran while the peer remained open.
+    parsed_c38a = urllib.parse.urlsplit(base)
+    host_c38a, port_c38a = parsed_c38a.hostname, parsed_c38a.port
+
+    def withheld_c38a(method_c38a, target_c38a, observe_c38a, timeout_c38a=1.5):
+        with socket.create_connection((host_c38a, port_c38a), timeout=3) as sock_c38a:
+            request_c38a = ("%s %s HTTP/1.1\r\nHost: %s:%s\r\n"
+                            "Accept: application/json\r\nContent-Length: 1000000\r\n"
+                            "Connection: keep-alive\r\n\r\n"
+                            % (method_c38a, target_c38a, host_c38a, port_c38a))
+            sock_c38a.sendall(request_c38a.encode("ascii"))
+            sock_c38a.settimeout(timeout_c38a)
+            try:
+                response_c38a = sock_c38a.recv(4096)
+            except socket.timeout:
+                response_c38a = b""
+            observed_c38a = observe_c38a()
+        return response_c38a.split(b"\r\n", 1)[0], observed_c38a
+
+    before_c38a = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    old_title_c38a = str(before_c38a.get("title") or "")
+    old_summary_c38a = str(before_c38a.get("summary") or "")
+    edit_target_c38a = "/library/metadata/%s?%s" % (
+        movie, urllib.parse.urlencode({"title.value": "c38 bodyless edit",
+                                       "summary.value": old_summary_c38a}))
+    put_line_c38a, put_row_c38a = withheld_c38a(
+        "PUT", edit_target_c38a,
+        lambda: (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0])
+    request(base, "PUT", "/library/metadata/%s?%s" % (
+        movie, urllib.parse.urlencode({"title.value": old_title_c38a,
+                                       "summary.value": old_summary_c38a})))
+
+    machine_c38a = get(base, "/identity")[1].get("machineIdentifier")
+    create_target_c38a = "/playlists?" + urllib.parse.urlencode({
+        "type": "video", "title": "c38 bodyless playlist", "smart": "0",
+        "uri": "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+               % (machine_c38a, movie)})
+
+    def bodyless_playlist_c38a():
+        return [row for row in get(base, "/playlists")[1].get("Metadata") or []
+                if row.get("title") == "c38 bodyless playlist"]
+
+    post_line_c38a, post_rows_c38a = withheld_c38a(
+        "POST", create_target_c38a, bodyless_playlist_c38a)
+    # Closing an unfixed connection dispatches its partial request, so discover and
+    # remove the row after close as well as the one observed during the open socket.
+    cleanup_c38a = bodyless_playlist_c38a()
+    for row_c38a in cleanup_c38a:
+        request(base, "DELETE", "/playlists/%s" % row_c38a.get("ratingKey"))
+
+    before_streams_c38a = [stream.get("id") for media_c38a in before_c38a.get("Media") or []
+                           for part_c38a in media_c38a.get("Part") or []
+                           for stream in part_c38a.get("Stream") or []
+                           if stream.get("streamType") == 3]
+
+    def subtitle_state_c38a():
+        status_c38a, item_c38a, _headers_c38a = get(
+            base, "/library/metadata/%s" % movie)
+        row_c38a = (item_c38a.get("Metadata") or [{}])[0]
+        streams_c38a = [stream.get("id") for media_c38a in row_c38a.get("Media") or []
+                        for part_c38a in media_c38a.get("Part") or []
+                        for stream in part_c38a.get("Stream") or []
+                        if stream.get("streamType") == 3]
+        return status_c38a, streams_c38a
+
+    subtitle_target_c38a = ("/library/metadata/%s/subtitles?" % movie
+                            + urllib.parse.urlencode({"language": "en", "format": "srt",
+                                                      "forced": "0",
+                                                      "title": "c38-stalled.srt"}))
+    subtitle_line_c38a, subtitle_c38a = withheld_c38a(
+        "POST", subtitle_target_c38a, subtitle_state_c38a, timeout_c38a=0.25)
+    check("query-only writes ignore a declared body while an upload consumes it",
+          put_line_c38a == b"HTTP/1.1 200 OK"
+          and put_row_c38a.get("title") == "c38 bodyless edit"
+          and post_line_c38a == b"HTTP/1.1 200 OK" and len(post_rows_c38a) == 1
+          and subtitle_line_c38a == b""
+          and subtitle_c38a == (200, before_streams_c38a),
+          repr((put_line_c38a, put_row_c38a.get("title"), post_line_c38a,
+                len(post_rows_c38a), subtitle_line_c38a, subtitle_c38a)))
+
+
     # Cycle 37 follow-through: raw query semantics apply to the response-wide helpers
     # too.  `#` is query data, so it must not make `Media#x` act like `Media` when
     # excludeElements is applied after the route handler has built the container.

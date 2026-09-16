@@ -17138,13 +17138,25 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error(500, "plexsim: server error")
             return
         length = int(declared) if declared.isdigit() else 0
+        target = (self.requestline.split(" ") + ["", ""])[1]
         # Cycle 37, raw sockets on kids and zen: GET and HEAD answer immediately
         # without consuming a declared body, with or without Expect: 100-continue.
         # Reading it here let a slow or absent request body stall every read-only
         # endpoint even though a real PMS had already sent the response.
-        body = self.rfile.read(length) if length and method not in ("GET", "HEAD") else b""
+        #
+        # Cycle 38, 20/20 on PMS 1.43.4 and 1.42.2: body disposition is also ROUTE
+        # dependent. These two query-only UI writes answer and commit immediately with
+        # Content-Length: 1000000 and no entity bytes, while a subtitle upload remains
+        # blocked waiting for its file. Keep the boundary to the two measured routes;
+        # other query-only writes have not earned the same extrapolation.
+        target_route = _target_parts(target)[0]
+        query_only_write = (
+            method == "PUT"
+            and re.fullmatch(r"/library/metadata/[0-9]+", target_route) is not None
+        ) or (method == "POST" and target_route == "/playlists")
+        consumes_body = method not in ("GET", "HEAD") and not query_only_write
+        body = self.rfile.read(length) if length and consumes_body else b""
 
-        target = (self.requestline.split(" ") + ["", ""])[1]
         if target.startswith("//"):
             # Measured: a leading empty segment is a 404 like any other. The stdlib's
             # request parser collapses a leading `//` to `/` before this handler ever
