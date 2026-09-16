@@ -15267,7 +15267,13 @@ class Handler(BaseHTTPRequestHandler):
             return "redirect"
         if "access-control-allow-methods" in names:
             return "preflight"
-        path = (self.path or "").split("?")[0].rstrip("/")
+        # A request whose LINE is malformed is refused before `parse_request` sets
+        # `self.path`, so the family cannot read it: `getattr`, not `self.path`. The
+        # first header-order patch of this cycle used the attribute directly, and every
+        # malformed-line refusal -- the six cycle 27 measured, and the 70 KB URL --
+        # raised inside `end_headers` and answered NOTHING instead of a 400. The suite's
+        # own raw-socket checks caught it; nothing that parses can see this path.
+        path = (getattr(self, "path", "") or "").split("?")[0].rstrip("/")
         if path == "/system" or path.startswith("/system/"):
             # Cycle 33, re-measured after the first patch of this cycle got it wrong: the
             # `/system` subtree is the plug-in framework's, and it writes its length
