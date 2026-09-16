@@ -22775,6 +22775,46 @@ def main():
               str(order_c36l))
 
 
+    # Cycle 36, measured on zen over three Dolby Vision PROFILE 5 rows against all 78
+    # client profiles: when the source is profile 5 and the client HAS a conversion
+    # target, the server refuses on the SOURCE -- `transcodeDecisionCode 2003`, "File is
+    # unplayable. DoVi (Profile 5) color space is not supported." -- where a client with
+    # no target at all gets the ordinary 4005. plexsim sent 4005 to both.
+    #
+    # The UI fixture holds no Dolby Vision row, so this SKIPS here; the code path was
+    # proved fail-then-pass by hand against a copy of this fixture carrying one
+    # (`Chrome` 4005 -> 2003, `Generic` 4005 either way), and `tests/test_decision.py`
+    # holds zen:1120's 78 cells, which fail 41/78 against the unfixed model.
+    dovi_c36m = None
+    for row_c36m in (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                     .get("Metadata") or []):
+        detail_c36m = (get(base, "/library/metadata/%s" % row_c36m.get("ratingKey"))[1]
+                       .get("Metadata") or [{}])[0]
+        for media_c36m in detail_c36m.get("Media") or []:
+            for part_c36m in media_c36m.get("Part") or []:
+                for stream_c36m in part_c36m.get("Stream") or []:
+                    if stream_c36m.get("DOVIProfile") == 5:
+                        dovi_c36m = dovi_c36m or row_c36m.get("ratingKey")
+    if dovi_c36m is None:
+        skip("a Dolby Vision profile 5 source is refused on the source, not the profile",
+             "the fixture holds no Dolby Vision row")
+    else:
+        codes_c36m = {}
+        for name_c36m in ("Chrome", "Generic"):
+            _s_c36m, body_c36m, _h_c36m = get(
+                base, "/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                      "&partIndex=0&protocol=http&directPlay=1&directStream=1"
+                      "&X-Plex-Client-Profile-Name=%s&X-Plex-Platform=%s"
+                      % (quote("/library/metadata/%s" % dovi_c36m), name_c36m, name_c36m))
+            codes_c36m[name_c36m] = (body_c36m.get("transcodeDecisionCode"),
+                                     body_c36m.get("transcodeDecisionText"))
+        check("a Dolby Vision profile 5 source is refused on the source, not the profile",
+              codes_c36m.get("Chrome", (None,))[0] == 2003
+              and "DoVi (Profile 5)" in (codes_c36m.get("Chrome") or (0, ""))[1]
+              and codes_c36m.get("Generic", (None,))[0] == 4005,
+              str(codes_c36m))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
