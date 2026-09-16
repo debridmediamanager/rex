@@ -62,12 +62,12 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 34 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
+| `main` | cycle 35 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
+| Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
 | Cycle 33 | **33**. Cycle 33 read the RESPONSE HEADER BLOCK -- ordered per response family, `X-Plex-Protocol` first and `Date` last, with a session cookie on the plug-in framework's `/system` paths, a connection state the preflight and the `/web` 302 never named, and a ranged container answering BOTH lengths -- refuted its one hunt finding's version framing with two controls, and came back with two large NEGATIVE results (`translations.json` reproduces the image's own gettext catalogs over 13,494 triples; cycle 32's decision model scores 312/312 on rows it never saw). Its hunts ran on a fallback model after a weekly rate limit killed both (§10). |
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
-| Cycle 30 | **30**. Cycle 30 built the instrument four §3.3 entries had been asking for -- **plexscratch42**, a writable 1.42.2 server (§4.6) -- and swept two dimensions nobody had taken: **the same request twice** (is a response a pure function of its request?) and the **notification channel at scale and over time**, which found a self-inflicted denial of service twelve cycles had walked past. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -101,6 +101,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 35 | 1541 (+1,950 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 17,342 | **6** (2 from the write-frames hunt, 2 from the search-and-decision hunt and 2 the driver found in the encoded-body territory, in **6 fix commits**; **1 recorded belief corrected** (a create over an empty folder), 1 §3.3 half CLOSED, 4 findings recorded rather than emulated, 5 negative results) |
 | 34 | 1536 (+1,872 cells in the new `test_decision`; `test_mediainfo` unchanged at 31) | 17,265 | **5** (no hunts -- both died on the weekly rate limit; 3 from a fresh client-session capture and 2 from the made language-less row, in **4 fix commits and 2 test commits**; **1 recorded belief overturned** and the §3.3 entry behind it CLOSED, 1 sidecar fixture found to be a projection rather than a capture, 1 suite check starved by this cycle's own earlier commit and repaired, 2 findings recorded rather than emulated) |
 | 33 | 1533 (`test_mediainfo` unchanged at 31) | 17,230 | **6** (5 the driver found in the header-block sweep its own territory became when the hunts were rate-limited, and 1 from the write-frames hunt -- as re-measured, which changed what it was; in **7 fix commits and 1 test commit**, one fix repairing a regression the cycle's own first patch caused and one correcting its own family table, both caught by the suite; **3 recorded beliefs overturned**, 1 hunt finding REFRAMED on its controls, 1 §3.3 entry closed and 2 narrowed, 3 findings recorded rather than emulated) |
 | 32 | 1526 (`test_mediainfo` unchanged at 31) | 16,971 | **9** (3 from the concurrency hunt, 3 from the fold-and-decision hunt, and **3 the driver found** -- the sort-title and hub-search halves of the fold, and the JSON byte form -- in **9 fix commits and 1 test commit**; **9 recorded beliefs overturned**, **4 §3.3 entries CLOSED**, 1 of the cycle's own fix comments refuted by re-running its race on its own tree, 2 of its checks refitted to the state the suite leaves them, 5 findings recorded rather than emulated) |
@@ -176,6 +177,17 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 35, run 2026-09-16 against the merged tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle |
+| `tests/test_decision.py` | **1950/1950 cells exact** | zen's row 3831 added: the corpus's first `list=` limitation and its first `has64bitOffsets` true |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1541 PASS / 0 FAIL / 10 skipped** | ~13 minutes |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded baseline cause (dead RD links) |
 
 Suite results at the head of cycle 34, run 2026-09-16 against the merged tree:
 
@@ -884,6 +896,8 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 35).** The hunters had `32587`/`32588` on a frozen `c369500` tree; the driver used `32592`/`32593` (the proof driver), `32594` (one hand proof), `32596` (the header re-check) and `32587` (the suites, after the hunters finished). `32502` and `8787` are the standing exceptions. All are free again.
 
 **Ports (cycle 34).** No hunters this cycle, so no hunter ports. The driver used `32587` (the fixture server for the suites and for the before/after comparisons), `32588` (the baseline tree's server), `32592`/`32593` (the proof driver, from the cycle's earlier capture-driven patches) and `32596` (the replay target). `32502` and `8787` are the standing exceptions. All are free again.
 
@@ -2788,6 +2802,55 @@ assumed a movie still had one Media after the suite's merge check, the other a t
 deleted -- and were refitted and re-proved by hand, the exclude check also against a server with the
 second version merged in. The final run is 1526/1526 with the baseline ten skips.
 
+### Cycle 35 -- the encoded body, the Range grammar, and two scores that were never the matcher's
+
+The hunts ran again after two cycles without them, and the shape of the cycle was three territories
+that each produced two: **six findings in six fix commits**, five negative results, four measurements
+recorded rather than built, and one §3.3 half closed.
+
+**The driver took the ENCODED body, an axis no cycle had looked at.** Cycle 27 established that a
+real PMS gzips every compressible body a client offers to take compressed; nobody had read the bytes.
+**It zeroes the gzip header's MTIME**, and with that the whole member is byte-identical to
+`gzip.compress(payload, 6, mtime=0)` on both versions and every body measured -- so a compressed
+response is a pure function of its body, where plexsim's answered the same request with different
+bytes every second. Cycle 30's same-request-twice sweep could not see it, because it compared the
+DECODED bodies; that is the lesson, and it is in §10. The same territory swept **the `Range`
+grammar** -- 43 header values against both references over a container and a `/web` asset, 172
+cells, the references and the two body kinds identical in every one -- and found plexsim wrong on
+twelve of the 43, two of them provokable by a real client: a reversed range answered a 206 with an
+EMPTY body where a real PMS answers 416, and an unparseable one answered a 200 with no
+`Content-Range` where a real PMS answers the whole body as a 206.
+
+**The write-frames hunt finally got its turn.** Cycle 33 reached one sequence and cycle 34 had no
+hunts at all; the list survived both. It came back with **a library CREATE's frames**: a create
+SCANS, and the scan's eleven-frame skeleton survives a location holding no files -- which is why
+cycle 15, which only ever created libraries over real files, concluded an empty library had nothing
+to push and left plexsim's create sending one queue frame. The client's own Add Library dialog draws
+its spinner and its completion toast off those frames. And **`ButlerTaskGenerateAdMarkers` ships
+disabled**, alone among the three marker tasks and the one disagreement in the whole 23-row enabled
+table, which `POST /butler` turns into a task a fresh real server never runs (class D).
+
+**The search hunt found that the SCORE had never been the matcher's.** Cycle 31 built the word-by-
+word, skip-tolerant rule into `Catalog.search`'s `hit()` and cited `Tears Steel` → 0.73055 in its own
+comment; both scorers, a few hundred lines away, kept comparing a title PREFIX. Measured over sixteen
+(query, row) cells on kids and zen: an exact title is 0.93 -- not the 0.95 plexsim invented -- a
+query whose terms match the title's words in order **starting at the title's first word** is 0.73,
+and everything else is the 0.33 fuzzy band. So a skipped middle word, the commonest thing a person
+leaves out when typing, scored below the threshold the client promotes a hub on, and a single word
+from the middle of a title scored above it. Class C in its canonical shape. Its other finding put
+zen's row 3831 into the decision corpus -- a 4.6 GB `high 10` mp4 -- which shows that a **`list=`
+limitation appends ` [list]`** to its refusal, is the corpus's first `has64bitOffsets` true (the
+reference's 400 there matching the model exactly, closing that half of §3.3), and takes the corpus to
+1,950 cells.
+
+**What was left.** The hub matcher's fuzzy BAND is now measured -- by word position and word length,
+over 16 zen titles -- and still not built: emulating it means emulating a continuous similarity
+score, and plexsim answers prefixes. `decision.py` reads `video.separateFields` as a constant 0 where
+every neighbouring value comes off the stream, and zen's one interlaced Stream sits on a stale Media
+that answers "File is missing" to all 78 profiles, so no check can be proven fail-then-pass; recorded
+with the citation rather than fixed blind. And zen says a dual-layer Dolby Vision file is ONE video
+stream where the existing note, measured on fun, says two -- one witness each side.
+
 ### Cycle 34 -- a fresh client capture, and the decision's audio streams made rather than found
 
 No hunts: the weekly rate limit that crippled cycle 33 killed both inside a minute, on every model
@@ -2911,7 +2974,24 @@ folds. Every status line and every header value matches except the recorded `tex
 And cycle 32's decision model was held out on four zen rows it had never seen: **312 of 312 cells
 exact**, outcome and refusal text.
 
-### Next: cycle 35
+### Next: cycle 36
+
+1. **The FRAMES of the write surface, the rest of the list.** Cycle 35's hunt reached the library
+   create and the butler table and reported the other seven items as already correct; take its
+   report at §3.1 class F and re-measure the two that matter most -- `showOrdering`'s 45-frame
+   cascade and the type-15/18 list pairs -- against both copies before believing them closed.
+2. **The hub matcher's fuzzy BAND** (§3.3), now measured by word position and word length but not
+   built. Decide whether plexsim should carry a similarity score at all; if it should, the 16-title
+   zen sweep in cycle 35's report is the fitting set.
+3. **A row that trips `video.separateFields`** (§3.3, §8). zen's only interlaced Stream is on a
+   stale Media that answers "File is missing"; `handover/tools/mklangless.sh` shows the shape of the
+   answer -- make one on plexscratch with `ffmpeg -flags +ilme+ildct`, scan it, and drive the 78
+   profiles with `ddrive.py`.
+4. **The dual-layer Dolby Vision disagreement** (§8): zen says one video Stream, the recorded note
+   (from fun) says two. One reading of a real file on each side would settle it.
+5. **A catalog with extras in it**, which would make cycle 29's clip spec buildable.
+
+### Next: cycle 35 (superseded, run)
 
 1. **The FRAMES of the write surface per version** -- cycle 33's hunt reached the refresh opening
    and cycle 34 never got a hunt to take the rest: the library create and delete counts, a
@@ -2932,7 +3012,7 @@ exact**, outcome and refusal text.
    and to find what separates Android, Popcorn Hour and the Roku family from the other 41.
 5. **A catalog with extras in it**, which would make cycle 29's clip spec buildable.
 
-### Next: cycle 34 (superseded)
+### Next: cycle 35 (superseded)
 
 1. **The FRAMES of the write surface per version, properly.** Cycle 33's hunt reached the refresh
    opening and explicitly left the rest: the library create and delete counts, a show-level refresh,
@@ -3371,6 +3451,24 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 35.**
+
+- **The hub matcher's fuzzy BAND.** A query carrying a capital macron, `İ` or `Ÿ` still
+  comes back from a real PMS, scored by word POSITION and word LENGTH: a length-2 word at the query's
+  first position drops to the 0.33 floor, the same word at the last position has no effect at all,
+  and words of three characters or more show none (16 zen titles, 2 per length). plexsim matches on
+  prefixes and returns no row at all; emulating the band means emulating a continuous similarity
+  score. §3.3 keeps the entry, now with the measurement attached.
+- **`video.separateFields` read as a constant 0** in `decision.py`, where every neighbouring value
+  comes off the stream, and `mediainfo` never derives it. zen holds exactly one interlaced h264
+  Stream carrying it, on a stale Media that answers `2012 File is missing` to all 78 profiles, so the
+  refusal cannot be witnessed and no check can be proven fail-then-pass. Recorded with the citation.
+- **A dual-layer Dolby Vision file is ONE video Stream on zen** (`DOVIELPresent: true`) where the
+  recorded note, measured on fun and out of scope, says the enhancement layer is a second stream. One
+  witness each side.
+- **`video.frameRateMode` and a multi-part Media are still unfound** on either reference, after an
+  exhaustive filename and attribute search of both libraries.
+
 **Cycle 34.**
 
 - **What the reference picks before a client has chosen an audio track.** Both states of the made
@@ -3763,6 +3861,19 @@ a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified orig
 
 ## 10. Tooling and environment gotchas
 
+**Cycle 35 added these.**
+
+- **A sweep that compares DECODED bodies cannot see the encoding.** Cycle 30 asked "is a response a
+  pure function of its request?" and answered yes; cycle 35 asked the same question of the BYTES on
+  the wire and found the gzip header carrying a clock. When an axis is about the wire, compare the
+  wire.
+- **The suite's `eventsource()` helper hands back the data line as a STRING**, not a parsed row --
+  `json.loads` it. A check that treats it as a dict silently collects nothing and reports an empty
+  sequence, which reads exactly like a server that pushes no frames.
+- **A `%` in a patch BLOCK is literal.** The blocks are written verbatim into the suite, so `%%20`
+  in a URL stays `%%20` and the request goes out malformed. The escaping rule is the opposite of the
+  one that bit cycle 32's generator, where a backslash had to be doubled.
+
 **Cycle 34 added these.**
 
 - **A rate limit can outlast a cycle.** Cycle 33 lost both hunts to an account-level WEEKLY limit
@@ -4098,6 +4209,7 @@ base from `PLEXSIM_BASE`.
 | `hdr.py` | Cycle 33: the RESPONSE HEADER prober -- twenty-six response classes off a raw socket on three servers, printing the status line and the header names in order, and flagging where kids and zen agree and plexsim differs. GET/HEAD/OPTIONS only, with the `WRITE_GET` list asserted per case |
 | `frames.py` | Cycle 33: capture the frames one write pushes, on one server -- an eventsource listener with no `filters=`, a control write first, and a one-line summary per frame |
 | `ddrive.py` | Cycle 34: drive all 78 client profiles' PLAIN-FORM decision against one row and record the four codes and their texts -- the file `tests/fixtures/decisions/cells.jsonl` is built from. GET-only, so it may be pointed at kids or zen; but the answer depends on per-user state the row does not show, so record WHICH state (`audioStreamID=<id>` sets it, `-1` clears it) |
+| `rangesweep.py` | Cycle 35: the `Range` grammar off a raw socket -- 43 header values against both references over a container and a `/web` asset, 172 cells. `urllib` will not send most of them, and a ranged container answers its length twice |
 | `sortfold.py`, `hubfold.py` | Cycle 32: the SORT-title fold swept by writing titles on both copies (writes to the copies only), and the HUB matcher's fold swept by GET on kids, word start and inside a word. `hubfold.py` reads `sortfold.py`'s output as its hypothesis |
 | `race.py` | Cycle 32: two play-queue adds released from one barrier, N pairs, against one server; counts the pairs answered with the same container |
 | `c31/D/foldsweep.py` (scratch, not tracked) | Cycle 31: the `title=` QUERY fold, swept character by character over U+0080..U+024F by substituting each codepoint for one letter of a known title on kids. Five rows, ~400 requests a letter, and it is what the §3.3 entry needs to close |

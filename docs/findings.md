@@ -8105,6 +8105,94 @@ Measured and not acted on:
   answer identically on every other measured row, and answer differently here. Both states of the
   row are in the corpus; plexsim cannot express the distinction from a catalog row either way.
 
+#### The thirty-fifth pass — the encoded body, the Range grammar, and two scores that were never the matcher's
+
+The hunts ran again after two cycles without them. **Six findings in six fix commits**, two from each
+hunt and two from the driver's own territory, plus five negative results and four measurements
+recorded rather than built.
+
+**The driver swept the ENCODED body, which no cycle had looked at.** Cycle 27 established that a real
+PMS gzips every compressible body the client offers to take compressed; nobody had read the bytes it
+sends.
+
+* **A real PMS zeroes the MTIME field of its gzip header**, and with it the whole member is
+  byte-identical to `gzip.compress(payload, 6, mtime=0)` -- header, deflate stream and trailer -- on
+  six bodies from 163 to 20,544 bytes, on kids (1.43.4) and zen (1.42.2) alike. Python stamps the
+  current time, so plexsim answered the SAME request with different BYTES every second. Cycle 30
+  swept "the same request twice" and could not see it: it compared the DECODED bodies.
+* **The `Range` grammar is not what plexsim implemented.** 43 header values against both references
+  over a container and a `/web` asset -- 172 cells, the two references and the two body kinds
+  identical in every one -- and plexsim had twelve of the 43 wrong. Two are provokable by a real
+  client: a reversed range (`bytes=5-4`) answered a 206 with an EMPTY body where a real PMS answers
+  **416**, and an unparseable one (`bytes=abc-def`) answered 200 with no `Content-Range` where a real
+  PMS answers the whole body as a 206. The rest is the parser's own shape: the UNIT is never read
+  (`items=0-10` ranges, `BYTES=0-10` ranges) but a value with no `=` is not a Range at all; a suffix
+  of zero length or one whose number does not parse answers `bytes 0-0/N` with the WHOLE body; an
+  unparseable FIRST answers the whole body as a 206, and so does anything with a second `-` after the
+  first or a comma list; an unparseable LAST becomes ZERO, so `bytes=0-abc` is one byte and
+  `bytes=5-abc` is a 416.
+
+**The write-frames hunt finally got its turn**, and the list cycle 33 left produced two.
+
+* **A library CREATE scans, and the scan's skeleton survives a location holding no files.** Eleven
+  frames on plexscratch and plexscratch42 alike, frame for frame: the `library.update.section`
+  activity from `Scanning` through a Context-carrying 99 and 100 to `ended`, the two LIBRARY_UPDATE
+  statuses around it, and the nested `provider.subscriptions.process` pair. Cycle 15 read a create's
+  frames as the per-item ones alone and concluded an empty library had nothing to push, so plexsim's
+  create pushed only the `backgroundProcessingQueue` frame -- and the client's own Add Library dialog
+  draws its spinner and its "Library scan complete" toast off exactly these.
+* **`ButlerTaskGenerateAdMarkers` ships DISABLED**, alone among the three marker tasks: Credits and
+  Intro really do default to enabled. It is the ONE disagreement in the whole 23-row enabled table
+  between plexsim and both copies, which agree with each other on every row, and `POST /butler` runs
+  what is enabled -- so a fresh plexsim generated ad markers where a fresh real server never does.
+  Class D: a default set from its siblings rather than read.
+
+**And the search hunt found the score had never been the matcher's.**
+
+* **A search hit's SCORE tier is the matcher's own rule**, not a title prefix. Measured over sixteen
+  (query, row) cells on kids and zen: an exact title is **0.93** (plexsim said 0.95), a query whose
+  terms match the title's words in order **starting at the title's FIRST word** is 0.73 -- `Tears
+  Steel`, `Big Bunny`, `Big Buck`, `Cosmos` -- and everything else is the 0.33 fuzzy band --
+  `Steel`, `Bunny`, `Buck Bunny`, `Laundromat`, `of Steel`. Both of plexsim's scorers compared a
+  title PREFIX instead, so a **skipped middle word** -- the commonest thing a person leaves out when
+  typing -- scored at the fuzzy floor, below the threshold the client promotes a hub on, while a
+  single word from the middle of a title was promoted above it. Class C in its canonical shape:
+  cycle 31 built the rule into the matcher, cited `Tears Steel` → 0.73055 in its own comment, and
+  the scoring code a few hundred lines away was never updated.
+* **A `list=` limitation names its list and then says `[list]`.** zen's row 3831 -- a 4.6 GB mp4
+  whose h264 is `high 10` -- is refused by Android as `video.profile limitation applies: high 10 !=
+  baseline|main|high **[list]**.` where a `value=` limitation carries no suffix. The row is now in
+  the decision corpus, which it takes to **1,950 cells**; it is also the corpus's first
+  `has64bitOffsets` true, and the reference's HTTP 400 for Xbox 360 there matches the model exactly,
+  which closes that half of §3.3's untripped-limitations entry.
+
+**The negative results.** The encoding negotiation matches on both references and plexsim
+(`deflate`, `br`, `*` and `compress` all get a plain body; a list containing `gzip` gets gzip;
+`gzip;q=0` still gets gzip); nothing on the surface is chunked and no response carries `Vary`; an
+HTTP/1.0 request line, an HTTP/1.0 keep-alive upgrade, two pipelined requests in one segment and a
+GET carrying a body are all answered identically by all three; a repeated query parameter takes the
+LAST occurrence on every key tried and the order of two different parameters changes nothing (ten
+cells); and the `Date` header's format and a kept-alive second response's header block match.
+
+Measured and not acted on:
+
+- **The fuzzy BAND itself.** A query carrying a capital macron, `İ` or `Ÿ` -- characters the fold
+  table deliberately does not reach -- still comes back from a real PMS, scored by word position and
+  word length (a length-2 word at the query's first position drops to the fuzzy floor, at the last
+  position not at all; 16 zen titles scored). plexsim matches on prefixes and returns no row at all,
+  and emulating the band means emulating a continuous similarity score. §3.3 keeps the entry with the
+  measurement attached.
+- **`video.separateFields` is read as a constant 0** in `decision.py` where every neighbouring value
+  is read off the stream, and `mediainfo` never derives it. zen holds exactly one interlaced h264
+  Stream carrying it, on a stale Media that answers `2012 File is missing` to all 78 profiles, so
+  there is no row on which the refusal can be witnessed -- and no check can be proven fail-then-pass.
+  Recorded with the citation rather than fixed blind.
+- **A dual-layer Dolby Vision file is ONE video stream on zen** (`DOVIELPresent: true`), where the
+  existing note -- measured on fun, out of scope -- says the enhancement layer is a second stream.
+  One witness each side.
+- **`video.frameRateMode` and a multi-part Media are still unfound**: an exhaustive filename and
+  attribute search over both libraries produced zero of each.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
