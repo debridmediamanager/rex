@@ -23095,6 +23095,34 @@ def main():
           and single_c37a[1].get("content") == "plugins",
           str((semicolon_c37a[0], fragment_c37a[0], typed_c37a[0], single_c37a)))
 
+
+    # Cycle 37, both references: a NON-TERMINAL path segment made only of two or
+    # more dots is a 400 after one layer of `%2e` decoding.  A terminal `..` is an
+    # ordinary unknown path (404), and a double-escaped dot is not decoded twice.
+    def raw_status_c37b(target_c37b):
+        parsed_c37b = urllib.parse.urlsplit(base)
+        host_c37b, port_c37b = parsed_c37b.hostname, parsed_c37b.port
+        with socket.create_connection((host_c37b, port_c37b), timeout=3) as sock_c37b:
+            sock_c37b.sendall(("GET %s HTTP/1.1\r\nHost: %s:%s\r\n"
+                               "Accept: application/json\r\nConnection: close\r\n\r\n"
+                               % (target_c37b, host_c37b, port_c37b)).encode("ascii"))
+            first_c37b = b""
+            while b"\r\n" not in first_c37b:
+                piece_c37b = sock_c37b.recv(256)
+                if not piece_c37b:
+                    break
+                first_c37b += piece_c37b
+            return int(first_c37b.split(b"\r\n", 1)[0].split()[1])
+
+    parents_c37b = [raw_status_c37b(target_c37b) for target_c37b in
+                    ("/x/../identity", "/x/%2E%2e/identity",
+                     "/x/.%2e/identity", "/x/.../identity", "/x/../")]
+    terminals_c37b = [raw_status_c37b(target_c37b) for target_c37b in
+                      ("/x/..", "/x/%2e%2e", "/x/%252e%252e/identity")]
+    check("a non-terminal all-dot parent segment is a 400",
+          parents_c37b == [400] * 5 and terminals_c37b == [404] * 3,
+          str((parents_c37b, terminals_c37b)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
