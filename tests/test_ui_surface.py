@@ -21981,6 +21981,33 @@ def main():
           all("400" in value_c33e for value_c33e in refusals_c33e.values()),
           str(refusals_c33e))
 
+
+    # Cycle 33, measured on both writable copies (1.42.2 movies 3 and 5, 1.43.4 episode
+    # 12, all `local://`): a NEVER-MATCHED row opens its refresh with `state 2
+    # metadataState=matching` and a bare `state 5` before the queued frame, where an
+    # explicitly unmatched (`tv.plex.agents.none://`) row opens with the queued frame
+    # alone. plexsim opened both with the queued frame.
+    episode_c33f = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [{}])[-1].get("ratingKey")) if show_section else None
+    if not episode_c33f:
+        skip("a never-matched row opens its refresh with the matching pair", "no episode")
+    else:
+        request(base, "PUT", "/library/metadata/%s/unmatch" % episode_c33f)
+        guid_c33f = ((get(base, "/library/metadata/%s" % episode_c33f)[1]
+                      .get("Metadata") or [{}])[0].get("guid") or "")
+        _status_c33f, raw_c33f = notifications(
+            base, lambda: request(base, "PUT", "/library/metadata/%s/refresh"
+                                  % episode_c33f), 8)
+        frames_c33f = [(entry_c33f.get("state"), entry_c33f.get("metadataState"))
+                       for frame_c33f in raw_c33f
+                       for entry_c33f in ((frame_c33f.get("NotificationContainer") or {})
+                                          .get("TimelineEntry") or [])
+                       if str(entry_c33f.get("itemID")) == str(episode_c33f)]
+        check("a never-matched row opens its refresh with the matching pair",
+              guid_c33f.startswith("local://")
+              and frames_c33f[:3] == [(2, "matching"), (5, None), (3, "queued")],
+              "guid %s | %s" % (guid_c33f, frames_c33f[:4]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -2594,7 +2594,27 @@ class PlexSim:
         Refresh Metadata did nothing on screen until a reload -- and because
         `metadataState` was never cleared, the reducer entry was never deleted and
         every `!!metadataState` gate stayed latched.
+
+        Cycle 33, measured on BOTH writable copies -- plexscratch42 (1.42.2, movies 3 and
+        5) and plexscratch (1.43.4, episode 12), which open identically: a row that has
+        never been matched, whose guid is `local://`, opens its refresh with TWO frames
+        before the queued one -- `state 2, metadataState "matching"` and a bare `state 5`
+        -- and only then the sequence above. A row that was explicitly UNMATCHED
+        (`tv.plex.agents.none://`) opens with the queued frame alone, on both versions, so
+        the pair tracks the guid rather than the refresh.
+
+        This is the chase cycle 32 deferred as "an unmatched movie's refresh on 1.42.2
+        pushing state 5 before state 3/queued -- one server, noted, not chased". It is
+        both versions, and it is the never-matched guid that decides it. What the cycle-33
+        hunt reported as a VERSION difference -- 1.42.2 stopping after these three frames
+        where 1.43.4 goes on -- does not survive the control: the 1.43.4 copy's rows have
+        local metadata bundles and the 1.42.2 copy is a fresh install with none and no
+        route to plex.tv, so whether the agent can then do any work is the copies' state
+        and not the surface's rule (HANDOVER 3.1 class E).
         """
+        if str(row.get("guid") or "").startswith("local://"):
+            self.notify_timeline(row, 2, "matching")
+            self.notify_timeline(row, self.TIMELINE_DONE, None)
         self.notify_timeline(row, self.TIMELINE_QUEUED, "queued")
         # Measured on the copy, and what the docstring above already said: the `updated`
         # frame comes SECOND, before `processing`. plexsim emitted it inside
