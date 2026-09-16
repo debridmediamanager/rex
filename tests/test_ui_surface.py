@@ -22563,6 +22563,26 @@ def main():
           "refused %s | accepted %s" % (refused_c36e, accepted_c36e))
 
 
+    # Cycle 36, measured on kids and zen: `/hubs/sections/{id}` and its Continue
+    # Watching see-all leaf 404 a section id the server does not hold, where plexsim
+    # built a full Recommended page for any id at all -- `abc` and `-1` included.
+    unknown_c36f = {
+        "hub 999": request(base, "GET", "/hubs/sections/999")[0],
+        "hub abc": request(base, "GET", "/hubs/sections/abc")[0],
+        "hub -1": request(base, "GET", "/hubs/sections/-1")[0],
+        "see-all 999": request(
+            base, "GET", "/hubs/sections/999/continueWatching/items")[0],
+    }
+    real_c36f = {
+        "hub": request(base, "GET", "/hubs/sections/%s" % movie_section)[0],
+        "see-all": request(
+            base, "GET", "/hubs/sections/%s/continueWatching/items" % movie_section)[0],
+    }
+    check("/hubs/sections/{id} 404s a section the server does not hold",
+          set(unknown_c36f.values()) == {404} and set(real_c36f.values()) == {200},
+          "unknown %s | real %s" % (unknown_c36f, real_c36f))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
