@@ -20932,6 +20932,28 @@ def main():
           "PUT locked=%s value=%s | Field %s -> %s"
           % (locked_c31a, valued_c31a, before_c31a, names_c31a))
 
+
+    # Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
+    # `absoluteIndex.value=` is a 200 that stores NOTHING -- on the item path and on the
+    # section path, on a movie, an episode, a season and a show alike -- while
+    # `absoluteIndex.locked=1` really does record the lock. Cycle 20 recorded the column as
+    # "read on both" paths, so plexsim stored the number and an edited row carried an
+    # attribute no real PMS puts there, which `sort=absoluteIndex` then ordered on.
+    for path_c31b in ("/library/metadata/%s?absoluteIndex.value=7" % movie,
+                      "/library/sections/%s/all?type=1&id=%s&absoluteIndex.value=12"
+                      % (movie_section, movie)):
+        request(base, "PUT", path_c31b)
+    row_c31b = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    lock_c31b = request(base, "PUT",
+                        "/library/metadata/%s?absoluteIndex.locked=1" % movie)[0]
+    locked_c31b = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    names_c31b = [f_c31b.get("name") for f_c31b in (locked_c31b.get("Field") or [])]
+    check("absoluteIndex stores no value on either path, and still takes a lock",
+          "absoluteIndex" not in row_c31b and lock_c31b == 200
+          and "absoluteIndex" in names_c31b,
+          "value -> %r | lock %s -> Field %s"
+          % (row_c31b.get("absoluteIndex"), lock_c31b, sorted(names_c31b)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

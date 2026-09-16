@@ -61,8 +61,15 @@ EDITABLE_FIELDS = {
     "userRating", "audienceRating", "rating", "duration",
     # Cycle 20: eleven more columns are edits too -- each a 200 on the item path with
     # its lock recorded, where an unknown name is a 400. Ten of them are discarded
-    # there (IGNORED_VALUE_FIELDS) and read on the section path; `absoluteIndex` is
-    # read on both.
+    # there (IGNORED_VALUE_FIELDS) and read on the section path.
+    #
+    # Cycle 31: `absoluteIndex` is the ELEVENTH and it is read on NEITHER. Re-measured
+    # on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree: `.value=` is a
+    # 200 that stores nothing on the item path and on the section path, on a movie, an
+    # episode, a season and a show -- twelve measurements -- while `.locked=1` really
+    # does record the lock (`Field` gains the name on both). Cycle 20 recorded it as
+    # "read on both" and plexsim stored the number, so an edited row carried an
+    # attribute no real PMS puts there and `sort=absoluteIndex` ordered on it.
     "updatedAt", "createdAt", "skipCount", "viewOffset", "ratingCount", "type",
     "viewedLeafCount", "contentRatingAge", "mediaCount", "extraType", "absoluteIndex",
 }
@@ -83,7 +90,10 @@ IGNORED_VALUE_FIELDS = {"thumb", "art", "addedAt", "guid", "lastViewedAt", "view
                         # nothing stored. The section path reads every one of them.
                         "updatedAt", "createdAt", "skipCount", "ratingCount", "type",
                         "viewedLeafCount", "contentRatingAge", "mediaCount",
-                        "extraType", "viewOffset", "duration"}
+                        "extraType", "viewOffset", "duration",
+                        # Cycle 31: the eleventh column of the same family -- see
+                        # EDITABLE_FIELDS. Its lock is recorded; its value is not.
+                        "absoluteIndex"}
 
 # A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
 # nothing visible, where plexsim 400'd it.
