@@ -21100,6 +21100,33 @@ def main():
           "%s | thumb %r -> %r"
           % (deletes_c31g, owned_c31g.get("thumb"), after_c31g.get("thumb")))
 
+
+    # Cycle 31, measured on plexscratch42 (a fresh 1.42.2 install -- the build plexsim
+    # reports) against plexscratch (1.43.4), over 20 paths and three body dispositions
+    # (no `Content-Length`, `Content-Length: 0`, and that plus a Content-Type):
+    # **`PATCH` is a 500 on every path on 1.42.2**, where 1.43.4 routes it (200 on
+    # `/identity`, `/hubs`, `/playlists` and an unknown single segment; 404 on the routed
+    # multi-segment paths; 405 under `/system`; 400 on the transcoder).
+    #
+    # The control is `FROB`, which is a 500 on BOTH versions with the identical 109-byte
+    # body: PATCH is simply not in 1.42.2's method table. The decisive path is `/identity`,
+    # the one that answers every other verb -- `GET HEAD PUT POST DELETE OPTIONS` are all
+    # 200 there on 1.42.2 and PATCH alone is a 500.
+    #
+    # plexsim implemented 1.43.4's table exactly while reporting 1.42.2. No client sends
+    # PATCH, so nothing renders differently; what this corrects is four recorded rules that
+    # were the other version's.
+    patch_c31h = {path_c31h: request(base, "PATCH", path_c31h, want_json=False)[0]
+                  for path_c31h in ("/identity", "/library/sections",
+                                    "/library/sections/%s/all" % movie_section,
+                                    "/status/sessions", "/media/providers", "/:/prefs",
+                                    "/playlists", "/hubs", "/system", "/zzznotapath")}
+    frob_c31h = request(base, "FROB", "/identity", want_json=False)[0]
+    put_c31h = request(base, "PUT", "/identity", want_json=False)[0]
+    check("PATCH is a 500 everywhere, as an unrecognised method is on 1.42.2",
+          set(patch_c31h.values()) == {500} and frob_c31h == 500 and put_c31h == 200,
+          "%s | FROB %s | PUT %s" % (patch_c31h, frob_c31h, put_c31h))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
