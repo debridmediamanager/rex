@@ -8450,17 +8450,20 @@ class PlexSim:
                                    "Directory": entries}}
 
 
-    def library_list_item(self, rating_key, segments, query, method):
+    def library_list_item(self, rating_key, segments, query, method, body=b""):
         """`/library/metadata/{key}` where the key is a COLLECTION or a PLAYLIST."""
         collection = self.library.collection(rating_key)
         playlist = self.library.playlist(rating_key)
         if collection is None and playlist is None:
             return ("error", 404, "plexsim: no such item")
         target_row = collection if collection is not None else playlist
-        if method not in ("GET", "HEAD", "PUT", "DELETE"):
+        if method not in ("GET", "HEAD", "PUT", "DELETE") and not (
+                method == "POST" and len(segments) == 4
+                and segments[3] in ("posters", "arts")):
             # Cycle 21, measured on plexscratch: `POST`, `PATCH` and a bare `OPTIONS`
             # are 404s on a collection's and a playlist's metadata path too. plexsim
-            # fell through to the GET branch and answered the row.
+            # fell through to the GET branch and answered the row. Cycle 36 carves out
+            # the one POST both copies accept: the artwork UPLOAD below.
             return ("error", 404, "plexsim: not found")
         if len(segments) == 4 and segments[3] == "prefs":
             # Measured: the per-item prefs are WRITE-only here (the GET is a 404),
@@ -8516,6 +8519,21 @@ class PlexSim:
             # artwork list lives under /library/metadata/{ratingKey} like an item's, and
             # holds one `default://` row -- the composite, at the poster size the dialog
             # draws. plexsim 404'd it, so the Poster pane of a list's Edit dialog was empty.
+            if method == "POST":
+                # Cycle 36, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2),
+                # which agree: a playlist and a collection take an artwork UPLOAD on this
+                # path exactly as an item does -- an EMPTY 200, the candidate list growing
+                # from one `default://` row to two, the uploaded image SELECTED, and ONE
+                # timeline frame carrying the LIST's own type (15 with `sectionID "-1"` for
+                # a playlist, 18 for a collection). plexsim answered 404, so Change Poster
+                # -> Upload on a list page failed outright while the same dialog's PICK
+                # beside it worked -- cycle 21 landed the pick and never sent bytes.
+                if not body:
+                    # Cycle 29's rule, and it holds here: an empty body is a 406.
+                    return ("error", 406, "plexsim: not acceptable")
+                return self.upload_artwork(
+                    collection if collection is not None else playlist,
+                    segments[3], body)
             if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
             target = collection if collection is not None else playlist
@@ -8523,6 +8541,7 @@ class PlexSim:
                    else self.library._playlist_row(target))
             composite = (row.get("composite") or row.get("thumb") or "").split("?")[0]
             entries = []
+            uploaded = target.get("_poster_url" if segments[3] == "posters" else "_art_url")
             if segments[3] == "posters":
                 # Cycle 15, measured on the copy: `/arts` is EMPTY on a collection --
                 # plexsim handed back the POSTER there, so Change Background offered
@@ -8532,6 +8551,14 @@ class PlexSim:
                             "ratingKey": "default://",
                             "thumb": "%s?width=200&height=300" % composite,
                             "selected": True}]
+            if uploaded:
+                # The uploaded candidate is the SELECTED one, and the composite row loses
+                # its flag -- measured on both copies, where the list goes from one row to
+                # two the moment the bytes land.
+                for entry in entries:
+                    entry.pop("selected", None)
+                entries.append({"key": uploaded, "ratingKey": uploaded,
+                                "thumb": uploaded, "selected": True})
             return self.tag_container(
                 size=len(entries), Metadata=entries, _xml={"Metadata": "Photo"})
         if len(segments) == 4 and segments[3] == "children" and collection is not None:
@@ -9050,7 +9077,7 @@ class PlexSim:
             # to `/library/metadata/{key}` for a playlist on a server without the
             # true-playlists feature. plexsim kept them outside the catalog, so both
             # answered 404 and neither could be renamed from its own page.
-            return self.library_list_item(rating_key, segments, query, method)
+            return self.library_list_item(rating_key, segments, query, method, body)
 
         if len(segments) == 3:
             if method == "PUT":

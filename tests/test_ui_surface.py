@@ -22815,6 +22815,50 @@ def main():
               str(codes_c36m))
 
 
+    # Cycle 36, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), which agree:
+    # a playlist and a collection take an artwork UPLOAD on their metadata path exactly
+    # as an item does -- an empty 200, the candidate list growing from one `default://`
+    # row to two, and the uploaded image SELECTED. plexsim answered 404, so Change Poster
+    # -> Upload on a list page failed outright while the PICK beside it worked.
+    import base64 as _base64_c36n
+    png_c36n = _base64_c36n.b64decode(
+        b"iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAG0lEQVQoz2NgGAWjYBSMglEwCkbBK"
+        b"BgFo4A0AAAFeAABp0i9OwAAAABJRU5ErkJggg==")
+    machine_c36n = get(base, "/identity")[1].get("machineIdentifier")
+    uri_c36n = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine_c36n, movie))
+    made_c36n = {}
+    _s_c36n, list_c36n, _h_c36n = container(
+        base, "POST", "/playlists?title=c36upload&type=video&smart=0&uri=%s" % uri_c36n)
+    made_c36n["playlist"] = (list_c36n.get("Metadata") or [{}])[0].get("ratingKey")
+    _s2_c36n, col_c36n, _h2_c36n = container(
+        base, "POST", "/library/collections?title=c36uploadc&type=1&smart=0"
+                      "&sectionId=%s&uri=%s" % (movie_section, uri_c36n))
+    made_c36n["collection"] = (col_c36n.get("Metadata") or [{}])[0].get("ratingKey")
+    uploaded_c36n = {}
+    for kind_c36n, key_c36n in made_c36n.items():
+        if not key_c36n:
+            continue
+        before_c36n = get(base, "/library/metadata/%s/posters" % key_c36n)[1].get("size")
+        status_c36n, body_c36n, _hh_c36n = request(
+            base, "POST", "/library/metadata/%s/posters" % key_c36n, body=png_c36n)
+        after_c36n = get(base, "/library/metadata/%s/posters" % key_c36n)[1]
+        selected_c36n = [row_c36n.get("ratingKey") for row_c36n in
+                         (after_c36n.get("Metadata") or []) if row_c36n.get("selected")]
+        uploaded_c36n[kind_c36n] = (status_c36n, body_c36n, before_c36n,
+                                    after_c36n.get("size"),
+                                    str(selected_c36n[0] if selected_c36n else "")[:9])
+    for kind_c36n, key_c36n in made_c36n.items():
+        if key_c36n and kind_c36n == "playlist":
+            request(base, "DELETE", "/playlists/%s" % key_c36n)
+        elif key_c36n:
+            request(base, "DELETE", "/library/collections/%s" % key_c36n)
+    check("a playlist and a collection take an artwork upload",
+          all(cell_c36n == (200, b"", 1, 2, "upload://")
+              for cell_c36n in uploaded_c36n.values()) and len(uploaded_c36n) == 2,
+          str(uploaded_c36n))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
