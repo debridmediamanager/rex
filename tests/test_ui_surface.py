@@ -22437,6 +22437,38 @@ def main():
           str([name_c36b for name_c36b, _d_c36b in events_c36b][:6]))
 
 
+    # Cycle 36, measured on kids and zen over six path families and byte-identical in
+    # every one: an id in a path SEGMENT is parsed as a number, so `01`, `001`, `+1` and
+    # `+01` name the same row as `1`, while `++1`, `1+`, `-1`, `0x1`, `1.0` and a
+    # non-ASCII digit name nothing. plexsim compared the segment as a string, so a
+    # zero-padded or plus-signed id was a 404 from a server that holds the row.
+    def body_c36c(path_c36c):
+        status_c36c, payload_c36c, _headers_c36c = request(base, "GET", path_c36c)
+        return status_c36c, payload_c36c
+
+    plain_c36c = body_c36c("/library/sections/%s/all?type=1" % movie_section)
+    padded_c36c = {
+        "01": body_c36c("/library/sections/0%s/all?type=1" % movie_section),
+        "001": body_c36c("/library/sections/00%s/all?type=1" % movie_section),
+        "+1": body_c36c("/library/sections/+%s/all?type=1" % movie_section),
+    }
+    row_c36c = body_c36c("/library/metadata/%s" % movie)
+    row_padded_c36c = {"0rk": body_c36c("/library/metadata/0%s" % movie),
+                       "+rk": body_c36c("/library/metadata/+%s" % movie)}
+    refused_c36c = {spelling_c36c: body_c36c(
+                        "/library/sections/%s/all?type=1" % spelling_c36c)[0]
+                    for spelling_c36c in ("++1", "1+", "-1", "0x1", "1.0")}
+    check("a padded or plus-signed path id names the same row",
+          plain_c36c[0] == 200
+          and all(got_c36c == plain_c36c for got_c36c in padded_c36c.values())
+          and all(got_c36c == row_c36c for got_c36c in row_padded_c36c.values())
+          and set(refused_c36c.values()) == {404},
+          "sections %s | row %s | refused %s"
+          % ({k_c36c: v_c36c[0] for k_c36c, v_c36c in padded_c36c.items()},
+             {k_c36c: v_c36c[0] for k_c36c, v_c36c in row_padded_c36c.items()},
+             refused_c36c))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
