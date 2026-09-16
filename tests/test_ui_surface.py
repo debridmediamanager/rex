@@ -23047,6 +23047,54 @@ def main():
               str(pairs_c36r[:3]))
 
 
+
+    # Cycle 37, measured from raw sockets on kids 1.43.4 and zen 1.42.2: a literal
+    # semicolon or hash in the PATH remains part of the path.  It is not stripped as
+    # urllib.parse's params/fragment syntax.  In the QUERY, a hash remains part of the
+    # value, so `type=1#x` is a malformed integer rather than `type=1`.
+    def raw_target_c37a(target_c37a):
+        parsed_c37a = urllib.parse.urlsplit(base)
+        host_c37a = parsed_c37a.hostname
+        port_c37a = parsed_c37a.port
+        with socket.create_connection((host_c37a, port_c37a), timeout=3) as sock_c37a:
+            sock_c37a.sendall(("GET %s HTTP/1.1\r\nHost: %s:%s\r\n"
+                               "Accept: application/json\r\nConnection: close\r\n\r\n"
+                               % (target_c37a, host_c37a, port_c37a)).encode("ascii"))
+            raw_c37a = b""
+            while b"\r\n\r\n" not in raw_c37a:
+                chunk_c37a = sock_c37a.recv(65536)
+                if not chunk_c37a:
+                    break
+                raw_c37a += chunk_c37a
+            head_c37a, _, body_c37a = raw_c37a.partition(b"\r\n\r\n")
+            lines_c37a = head_c37a.split(b"\r\n")
+            status_c37a = int(lines_c37a[0].split()[1])
+            length_c37a = 0
+            for line_c37a in lines_c37a[1:]:
+                if line_c37a.lower().startswith(b"content-length:"):
+                    length_c37a = int(line_c37a.split(b":", 1)[1])
+            while len(body_c37a) < length_c37a:
+                chunk_c37a = sock_c37a.recv(length_c37a - len(body_c37a))
+                if not chunk_c37a:
+                    break
+                body_c37a += chunk_c37a
+            try:
+                data_c37a = json.loads(body_c37a) if body_c37a else {}
+            except Exception:
+                data_c37a = {}
+            return status_c37a, data_c37a.get("MediaContainer", data_c37a)
+
+    semicolon_c37a = raw_target_c37a("/library/sections;ignored")
+    fragment_c37a = raw_target_c37a("/library/sections#ignored")
+    typed_c37a = raw_target_c37a("/library/all?type=1#ignored")
+    single_c37a = raw_target_c37a("/identity;ignored")
+    check("literal path params/fragments are not stripped from a request target",
+          semicolon_c37a[0] == 404 and fragment_c37a[0] == 404
+          and typed_c37a[0] == 400 and single_c37a[0] == 200
+          and "machineIdentifier" not in single_c37a[1]
+          and single_c37a[1].get("content") == "plugins",
+          str((semicolon_c37a[0], fragment_c37a[0], typed_c37a[0], single_c37a)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
