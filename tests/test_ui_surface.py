@@ -21031,6 +21031,31 @@ def main():
               "equal %s | empty %s | >> %s (subject %s, control %s)"
               % (equal_c31e, empty_c31e, above_c31e, subject_c31e, control_c31e))
 
+
+    # Cycle 31, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree
+    # exactly: an EMPTY `thumb.value=` or `art.value=` is a 200 that REMOVES the column, and
+    # the bare artwork GET becomes a 404 -- the same end state `DELETE .../thumb` reaches on
+    # 1.43.4. It is the version-independent half of the artwork column grammar, and on
+    # 1.42.2 -- the build plexsim reports, where that DELETE is a 404 on all five leaves --
+    # it is the ONLY way a client can clear a row's artwork at all.
+    request(base, "PUT", "/library/metadata/%s?thumb.value=%s&art.value=%s"
+                         % (movie, quote("http://example.com/a.jpg"),
+                            quote("http://example.com/b.jpg")))
+    made_c31f = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    empty_c31f = [request(base, "PUT", "/library/metadata/%s?%s.value=" % (movie, field_c31f))[0]
+                  for field_c31f in ("thumb", "art")]
+    gone_c31f = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    bare_c31f = request(base, "GET", "/library/metadata/%s/thumb" % movie,
+                        want_json=False)[0]
+    check("an empty artwork value clears the column and its path 404s",
+          bool(made_c31f.get("thumb")) and bool(made_c31f.get("art"))
+          and empty_c31f == [200, 200]
+          and "thumb" not in gone_c31f and "art" not in gone_c31f
+          and bare_c31f == 404,
+          "made thumb=%r art=%r | empty PUT %s -> thumb=%r art=%r | bare GET %s"
+          % (made_c31f.get("thumb"), made_c31f.get("art"), empty_c31f,
+             gone_c31f.get("thumb"), gone_c31f.get("art"), bare_c31f))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
