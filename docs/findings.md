@@ -7628,6 +7628,147 @@ state alphabet never listed `state 1`, and cycle 19's "no scan on a real server 
 activity per row" is true only of a scan that finds nothing new. plexsim cannot create a metadata
 row during a scan, so that sequence is unreachable and recorded rather than built.
 
+#### The thirty-first pass — the write surface per version, the derivations held out, and the reference's own files
+
+Two hunts and a driver round: **22 findings in 21 fix commits and three test commits**, six §3.3
+entries CLOSED, and two instrument steps — one of them the most consequential thing in the cycle.
+Three of those fix commits correct an earlier patch of the same cycle, each caught by the suite.
+
+**The instrument again: the reference's own FILES are readable.** Two §3.3 entries had waited on the
+words *"read the profile files, if a reference is ever shell-accessible"*. kids runs the lab PMS in
+Docker and `ssh ben@kids docker exec plexlab-plex …` reads the image — no PMS request, no write,
+nothing that can alter the reference. `Resources/Profiles/` holds **79 entries: 78 `.xml` and one
+stray `sugar.cmake`**, which is why the API answers 78 rows; a row's title is its
+`<Client name="…">` attribute and not the file name (77 coincide, and
+`Plex Home Theater-RaspberryPi.xml` declares `name="Raspberry PI"`); and the **23 `Player.profile`
+aliases cycle 27 measured behaviourally are 22 `redirect="…"` attributes plus that one
+name-versus-filename difference.** Scored against plexsim's table: all 22 shared pairs agree exactly,
+nothing in the files is missing from it, nothing in it is absent from the files. A table built
+entirely from black-box session sweeps reproduces the source of truth with **zero errors** — which is
+a result about the METHOD, not just about the table. The `type=42` seven carry no distinguishing
+attribute at all, so that membership is PMS's own list and the entry closes with a negative.
+
+The same read makes the decision split legible. A census of all 78 files — taken **twice**, because
+the first pass counted the wrong element name and produced a tidy, plausible story that did not
+survive re-running — says 45 declare `<DirectPlayProfiles>`, 22 are `redirect=` stubs, 51 carry
+`<CodecProfiles><Limitations>` and exactly one (`Generic`) is a bare `<Client/>`. Of the thirteen
+products cycle 26 sampled, the two that direct-play are exactly the two whose resolved profile
+declares a direct-play block covering mp4/mkv + h264 + aac; the seven that get `1001` declare
+transcode targets and no direct-play block; `Generic` declares nothing and **`Plexamp`'s only block is
+a `MusicProfile`**, so neither can touch a video item. Firefox and Edge are the open half — they
+declare video targets that ought to cover the item and still answer "neither".
+
+**And the database settles what the API could only imply.** Copied read-only out of both writable
+copies and out of the lab: **a generated title is stored as the EMPTY STRING.** Every season and
+episode of a fresh 1.42.2 install stores `title = ''` and `title_sort = ''`, and kids' agent-titled
+season 7 stores `title = ''` with `title_sort = 'Season 1'`. So the displayed `Season N` is derived
+from the index in *both* cases and what an agent supplies is the **sort** title — which is the whole
+mechanism behind cycle 18's `titleSort=` split, and it exposed a real defect: plexsim treated a stored
+sort title equal to the generated title as no sort title at all, so `titleSort=Season 1` answered
+nothing where kids answers the row, `titleSort=` wrongly kept it, and the ordering keys ignored it.
+One clause, three symptoms, invisible from the API alone.
+
+**Territory A held the WRITE surface out between the versions, and the negative result is the
+headline.** About 1,500 requests, the identical sequence on both copies and on plexsim: the 78
+edit-field names with their locks, 66 of them with values, 95 write-grammar cases, 24 numeric columns
+on the section path, the settings writers, the list writers, the action leaves, the six state writes,
+the upload ladder and 99 paths under a bare OPTIONS all came back **identical on both versions**. What
+differs is the **verb table**, and plexsim carried 1.43.4's:
+
+- **`PATCH` is not a method 1.42.2 recognises** — a 500 on all 20 paths swept and three body
+  dispositions, the same 109-byte body `FROB` and `BREW` get on both versions. The decisive case is
+  `/identity`, the one path that answers every other verb: six verbs are 200 there on 1.42.2 and
+  PATCH alone is a 500. Four recorded rules (cycle 15's routing, cycle 18's 405 under `/system`,
+  cycle 22's four 404s, cycle 28's collection 404s) were the other version's.
+- **All five `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` leaves are 404s on
+  1.42.2**, where 1.43.4 answers an empty 200 and clears the field. The controls make it the VERB:
+  the same paths take `PUT ?url=<candidate>` with a 200 there, `DELETE` itself works (a playlist
+  delete is a 204), and a real PMS routes before it authenticates. plexsim had implemented three of
+  the five, so it answered neither version consistently.
+- **1.42.2 accepts two writes 1.43.4 refuses**: `smart=1` over a comma-joined KEY LIST creates a real
+  smart playlist (`leafCount 3`, `icon playlist://image.smart`), and `PUT /playlists/{smart}/items`
+  takes an ITEM uri and **replaces the stored query with it** — `content` moving from
+  `library://x/directory/…%2F1%2C2` to `library://x/item/…%2F4`, which is also how the middle segment
+  is chosen: `item` for a single key, `directory` otherwise.
+- **`PUT /library/collections/{id}/prefs` really writes** on both versions. Cycle 15 measured the GET,
+  recorded its 404 and stopped, so plexsim advertised `collectionMode` and `collectionSort` in the
+  collection's `includePreferences` block and 404'd the save behind them.
+
+Three smaller ones from the same sweep. **`absoluteIndex.value=` stores nothing** on either path or
+version (twelve measurements across four row types) where cycle 20 recorded it as "read on both", so
+an edited row carried an attribute no real PMS puts there and `sort=absoluteIndex` ordered on it.
+**`lastRatedAt.value=` on the section path is a 500** on both, the ninth member of that set, where
+plexsim answered its unknown-field 400. And **`hdr10plus` stores neither a value nor a lock** — cycle
+21 recorded exactly that, cycle 30 confirmed the 200 on the new copy and then put the name in
+`LOCK_ONLY_FIELDS`, which records a lock: class C inside the cycle that re-measured it, because the
+status was checked and the row was never read back.
+
+**An empty artwork value is the clear route 1.42.2 has.** Measured on both copies, identically: an
+EMPTY `thumb.value=` or `art.value=` is a 200 that REMOVES the column and makes the bare path a 404 —
+the same end state 1.43.4's DELETE reaches. That matters beyond the grammar: with the DELETE gone on
+1.42.2 it is the only way a client can clear artwork, so every cycle-29 derivation rule keeps a route
+to the cleared state it is about. A NON-empty value is an artwork COLUMN write, the url discarded and
+the column becoming the row's own versioned path, exactly as `theme` and `banner` already were — the
+column has to be empty for that to be visible, which is why cycle 20 read both as discarded.
+
+**Territory B scored plexsim's own DERIVATIONS against zen's 14,433 rows, and the biggest result is
+that they are right.** The artwork derivation — two cycles old and fitted on a two-season copy — has
+**zero misses** over 507 shows, 741 seasons and 9,287 episodes: `season.parentThumb == show.thumb`
+741/741, `grandparentThumb`/`grandparentArt` 9,287/9,287, `episode.art` equal to the season's resolved
+art 9,287/9,287, `parentThumb` present exactly when the season owns its poster 9,287/9,287, and the
+stamp equal to `updatedAt` on every owned path with `addedAt` the fallback on the 268 rows that carry
+no `updatedAt` — which is `_stamp_artwork`'s own expression. The carried fields are 100% over the same
+rows, and the light projection differs from the real light row in nothing but one row's tag casing.
+Four §3.3 entries close on that population.
+
+What it found wrong is the **matchers**, and every one of them is a query a user types:
+
+- **A comma in `title=` is an ALTERNATION and a dot is LITERAL.** `title=Steel,,` and `title=Love,`
+  answer the whole library, `title=Tears, of` answers the one row, `title=Steel.` answers none.
+  plexsim stripped both characters out of the query, so a typed comma found one row where a real PMS
+  answers 3,887 and a trailing period found one where a real PMS answers none. **The mechanism is a
+  level above the matcher**, which is what the first attempt at this got wrong: the filter PARSER
+  already reads a comma list as an OR (cycle 11 measured that for tag ids) and drops empty members --
+  and on `title` the empty member is KEPT, where an empty query matches every row. So the fix is one
+  line in the parser rather than an alternation in the matcher, and a tag field's comma list is
+  untouched.
+- **The hub matcher takes a multi-word query WORD BY WORD, in order** — `Tears Steel` finds "Tears of
+  Steel" at 0.73055 and reversed it falls to the 0.33 fuzzy band — where plexsim required the joined
+  phrase and therefore answered **no hubs at all**: 230 of zen's rows scoring 0.5 or better across 119
+  of 1,237 generated queries. That is Plex Web's global search box.
+- **It tokenises the TITLE on WHITESPACE**, punctuation inside the word: `don't` finds "Don't Move",
+  `Handmaid` finds "The Handmaid's Tale", and `Delete` does not find 'Control-Alt-Delete'. plexsim
+  split on `[^0-9a-z]+`, so a query with an apostrophe could never match while `Air` found "L'air
+  Perdu".
+- **A ONE-character query matches a title equal to it** (`X` finds the movie 'X'), where plexsim had a
+  two-character floor.
+- **`title=` reads the ORIGINAL title as a consecutive run of whole words, unfolded**, where plexsim
+  ran the title's own two-pass folded matcher over it. And **the in-library search box does not read
+  `originalTitle` at all** — 102 of 1,244 queries disagreed, every one a plexsim-only hit.
+
+**Three corrections the cycle made to its own patches, all caught by its own suite.** The
+`hdr10plus` regression above was cycle 30's; these were this cycle's. `absoluteIndex` is **parsed and
+then dropped** -- `=7` is a 200 that stores nothing while `=ZZQ1` and `=1.5` are 500s on both
+versions -- and the first patch put it in the ignore set, which skipped the parse and made a word a
+200: the opposite error, caught by cycle 20's own check. The artwork clear moved from the DELETE to
+the empty-value edit and the edit path did not **cascade** to borrowers or drop the stored candidate
+marker, which four cycle-27/29 checks and the picker check caught. And the comma rule was first
+implemented as an alternation inside the title matcher, where it worked for every case except the one
+that matters: the filter PARSER splits a comma list first and drops empty members, so the fix belongs
+there. Three patches, three re-measurements, and in each case the suite named the defect before the
+docs did.
+
+**Two findings this cycle were NOT implemented, and both for stated reasons.** The `title=` query fold
+is a per-character TABLE rather than NFD (kids folds `é ï ē ī ì` and does not fold `ị ĩ ı ş ę ȉ`), and
+sweeping U+0080..U+024F for three letters gives a real but partial table — 11 characters folding to
+`i`, four to `s`, two to `l`. A partial table would break the accented rows that work today, so the
+sweep script and its output are recorded and the entry stays open with its method proven. And hunt B's
+episode-still finding did not reproduce: over **1,500 live zen episodes, 0 carry a thumb equal to
+their `parentThumb`** (1,372 own one, 128 have none), against the 21 live witnesses the hunt counted,
+so it is recorded rather than built. `/livetv` is the third: both copies answer **403 to every verb**
+today where cycle 18 recorded a three-row container from the same copy, so plexsim is left alone until
+that contradiction is settled.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

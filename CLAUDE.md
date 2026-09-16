@@ -2046,6 +2046,60 @@ precisely how the Seasons bug survived a fix attempt.
   constant is gone; it still closes at ~256 s for an unfound reason (HANDOVER 3.3). **And the 101
   upgrade carries a `Date`** -- it was the one response on the surface without one.
 
+- **`plexscratch42` answers the WRITE surface too, and the split is the VERB TABLE.** Held out write
+  by write against plexscratch (1.43.4): the edit-field tables, the section save path, the three
+  settings writers, the list writers, the state writes and the upload ladder are **identical on both
+  versions** -- that is the negative result -- while four VERBS differ. On **1.42.2**: `PATCH` is not
+  a method at all (a **500** on every path, `/identity` included, the same body `FROB` gets), all five
+  `DELETE /library/metadata/{id}/{poster,thumb,art,banner,theme}` leaves are **404s**, a smart
+  playlist accepts a comma-joined KEY LIST as its uri, and `PUT /playlists/{smart}/items?uri=` takes
+  an ITEM uri and REPLACES the stored query with it. plexsim reports 1.42.2 and carried 1.43.4's
+  answers to all four.
+- **An EMPTY `thumb.value=` or `art.value=` clears the column** (200, the field gone, the bare path a
+  404) on both versions -- and on 1.42.2 it is the **only** way to clear artwork, since that DELETE
+  does not exist there. **A non-empty one is an artwork COLUMN write**: the url is discarded and the
+  column becomes the row's own versioned path, exactly as `theme` and `banner` already did. The column
+  has to be EMPTY for that to be visible, which is why cycle 20 read `thumb`/`art` as discarded.
+- **`PUT /library/collections/{id}/prefs` really writes** (`collectionSort`, `collectionMode`; an
+  empty 200, GET/POST/DELETE 404, an unknown setting 400) on both versions. Cycle 15 measured the GET
+  alone and recorded the 404, so plexsim advertised both settings and 404'd the save behind them.
+- **`absoluteIndex.value=` stores NOTHING** on either path or version (its `.locked=1` does record the
+  lock), and **`lastRatedAt.value=` on the SECTION path is a 500** on both -- the ninth member of that
+  set. **`hdr10plus` stores neither a value nor a lock**: cycle 30 confirmed the 200 and put the name
+  in `LOCK_ONLY_FIELDS`, which records one, so the Edit dialog drew a lock on a field it cannot show.
+- **Ten read paths refuse every verb but GET and HEAD** (`/statistics`, its two series,
+  `/status/sessions`, `/clients/profiles`, `/playlists/sorts`, `/library/sections/prefs`, and
+  `/library/sections`, `/media/providers`, `/media/providers/metadata` -- whose POST is their own 400).
+  plexsim answered **200 with the whole GET body** to a bare OPTIONS on each, which is fix 4's trap
+  from the outside.
+- **A stored sort title EQUAL to a generated title is still stored.** Read off kids' own DATABASE:
+  its agent-titled season 7 stores `title = ''` and `title_sort = 'Season 1'`, so the displayed
+  `Season N` is generated in every case and what an agent supplies is the SORT title. plexsim treated
+  such a value as absent, so `titleSort=Season 1` found nothing, `titleSort=` wrongly kept the row and
+  the ordering keys ignored it -- one clause, three symptoms.
+- **`title=`: a COMMA is an alternation and a DOT is literal.** `title=Steel,,` and `title=Love,`
+  answer the WHOLE library, `title=Tears, of` answers the one row, and `title=Steel.` answers NONE.
+  plexsim stripped both characters out of the query. The comma half lives in the filter PARSER, which
+  already ORs a comma list and drops empty members -- on `title` the empty member is KEPT, and an
+  empty query matches every row.
+- **`title=` matches the ORIGINAL title as a consecutive run of whole words, unfolded** -- `Salaire
+  de` and `Le Sal` hit, `Salaire peur` and `e Salaire` do not -- where the TITLE's own matcher allows
+  gaps and folds. And **the in-library search box does not read `originalTitle` at all**; the hub
+  search is the endpoint that does.
+- **The hub matcher takes a multi-word query WORD BY WORD, in order** (`Tears Steel` finds "Tears of
+  Steel" at 0.73; reversed it drops to the 0.33 fuzzy band), **tokenises the TITLE on WHITESPACE** so
+  punctuation stays inside the word (`don't` finds "Don't Move"; `Delete` does not find
+  'Control-Alt-Delete'), and **matches a ONE-character query against a title equal to it**. plexsim
+  required the joined phrase, split the title on `[^0-9a-z]+` and had a two-character floor -- so two
+  non-adjacent words of a title, or any title with an apostrophe, found nothing at all.
+- **The reference's own files are readable, and they explain two tables.** `ssh ben@kids docker exec
+  plexlab-plex` reads the image: `Resources/Profiles/` holds 78 `.xml` plus a stray `sugar.cmake`
+  (hence 78 rows), a row's title is its `<Client name="...">` and not the file name, and the 23
+  `Player.profile` aliases are **22 `redirect="..."` attributes plus one name-versus-filename
+  difference** -- plexsim's table reproduces all 23 with zero errors. The `type=42` seven carry no
+  marker, so that list is PMS's own. The decision's inputs are visible too: `redirect=`,
+  `<DirectPlayProfiles>`, `<TranscodeTargets>`, `<CodecProfiles><Limitations>`.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
