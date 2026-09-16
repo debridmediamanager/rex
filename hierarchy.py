@@ -124,9 +124,6 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
 # combining marks only, so both rows carried no `titleSort` at all where a real PMS
 # sends one. Nothing above U+02FF folds -- Greek, Cyrillic and CJK all survive, as the
 # 51 non-ASCII rows of zen already showed.
-_FOLD = {"\u00c6": "E", "\u00d0": "D", "\u00d7": "x", "\u00d8": "0", "\u00de": "P",
-         "\u00df": "s", "\u00e6": "e", "\u00f0": "O", "\u00f7": "/", "\u00f8": "0",
-         "\u00fe": "p"}
 
 # The characters a real PMS folds in a TITLE, and it is a TABLE, not a decomposition.
 # Cycle 32, swept on both writable copies -- plexscratch42 (1.42.2) and plexscratch
@@ -208,13 +205,6 @@ def fold_case(text):
 def fold_query(text):
     """A `title=` query as the folded pass reads it: the title table, then the case fold."""
     return fold_case(fold_title(text))
-
-
-def fold_marks(text):
-    """Drop Unicode combining marks, then the eleven characters NFD cannot reach."""
-    return "".join(_FOLD.get(ch, ch)
-                   for ch in unicodedata.normalize("NFD", text)
-                   if not unicodedata.combining(ch))
 
 
 def sort_title(title):

@@ -1174,7 +1174,23 @@ class Catalog:
         # plexsim split on [^0-9a-z], which makes an accented letter a SEPARATOR:
         # "Amelie" became the two words "am" and "lie", so the quick search never
         # found the row by its own name and did find it under a fragment of one.
-        needle = hierarchy_module.fold_marks(query).lower().strip()
+        #
+        # Cycle 32, swept on kids with 825 probes -- each candidate character substituted
+        # into a title word at its start and inside it, on /hubs/search and /library/search
+        # alike -- and it is the TITLE TABLE, not a decomposition: every one of the 100
+        # characters `hierarchy._TITLE_FOLD` names matched at a word score, and none of the
+        # 400-odd letters only NFD reaches did (`Sint\u0119l`, `\u0106osmos`, `\u0218teel`
+        # all fall to the 0.33 fuzzy band, which plexsim does not emulate). plexsim folded
+        # by NFD, so it answered those as word hits.
+        #
+        # The CASE half is not modelled exactly, and is recorded as open (HANDOVER 3.3): a
+        # capital macron, `\u017f` and `\u0130` match inside a title's LAST word
+        # (`Cosmos Laundr\u014cmat`, `Sint\u0112l`, `Tears of \u017fteel` all 0.93) and fail
+        # in an earlier one (`C\u014csmos`, `T\u0112ars`, `\u017fteel` alone 0.33), which
+        # says the reference scores through two passes with different case handling. This
+        # uses the `title=` query fold -- the table, then a simple case fold -- on both
+        # sides.
+        needle = hierarchy_module.fold_query(query).strip()
         if len(needle) < 1:
             return []
         if len(needle) == 1:
@@ -1186,8 +1202,8 @@ class Catalog:
             # a two-character floor and answered nothing to any of them.
             return [row for row in self.items.values()
                     if row.get("type") in ("movie", "show", "season", "episode")
-                    and hierarchy_module.fold_marks(
-                        str(row.get("title") or "")).lower().strip() == needle]
+                    and hierarchy_module.fold_query(
+                        str(row.get("title") or "")).strip() == needle]
 
         def hit(text):
             # Cycle 31, measured on zen -- the only library with punctuated titles: the
@@ -1203,8 +1219,7 @@ class Catalog:
             # `Air` found "L'air Perdu" and `Am` found "Boss Ma'am" -- 44 rows zen does not
             # answer at all, across 24 queries. A title with an apostrophe could not be
             # found by typing it.
-            words = [w for w in hierarchy_module.fold_marks(str(text or "")).lower().split()
-                     if w]
+            words = [w for w in hierarchy_module.fold_query(str(text or "")).split() if w]
             if any(word.startswith(needle) for word in words) \
                     or " ".join(words).startswith(needle):
                 return True
