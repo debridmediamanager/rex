@@ -16684,14 +16684,30 @@ class Handler(BaseHTTPRequestHandler):
         # other response on the surface -- plexsim writes this handshake by hand rather
         # than through `_send`, so it was the one response with none. No client reads it;
         # CLAUDE.md's envelope rule says it is there.
-        upgrade = ["HTTP/1.1 101 Switching Protocols",
-                   "X-Plex-Protocol: 1.0",
-                   "Upgrade: websocket",
-                   "Connection: Upgrade",
-                   "Sec-WebSocket-Accept: %s" % accept,
-                   "Cache-Control: no-cache"]
-        for name, value in self._cors_headers():
-            upgrade.append("%s: %s" % (name, value))
+        # Cycle 34: the ORDER, read off the reference for the first time. It cannot be
+        # measured by opening a socket -- kids and zen are GET/HEAD only and a socket is a
+        # write to a shared server -- but a fresh client-session capture through the
+        # harness recorded the official client's own handshake and the reference's answer:
+        #
+        #   X-Plex-Protocol, Access-Control-Expose-Headers, Vary, Upgrade, Connection,
+        #   Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date
+        #
+        # -- so the CORS pair leads, ahead of the handshake headers, and the allowed
+        # origin follows `Cache-Control`. plexsim had the right set and put all three CORS
+        # headers at the end. The `Sec-WebSocket-Extensions` the client offers is not
+        # echoed on either side.
+        cors = dict(self._cors_headers())
+        upgrade = ["HTTP/1.1 101 Switching Protocols", "X-Plex-Protocol: 1.0"]
+        for name in ("Access-Control-Expose-Headers", "Vary"):
+            if name in cors:
+                upgrade.append("%s: %s" % (name, cors[name]))
+        upgrade += ["Upgrade: websocket",
+                    "Connection: Upgrade",
+                    "Sec-WebSocket-Accept: %s" % accept,
+                    "Cache-Control: no-cache"]
+        if "Access-Control-Allow-Origin" in cors:
+            upgrade.append("Access-Control-Allow-Origin: %s"
+                           % cors["Access-Control-Allow-Origin"])
         upgrade.append("Date: " + self.date_time_string())
         self.wfile.write(("\r\n".join(upgrade) + "\r\n\r\n").encode())
         self.wfile.flush()

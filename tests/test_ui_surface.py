@@ -22131,6 +22131,42 @@ def main():
           "bare %r | asked %r" % (bare_c34b.get("Access-Control-Allow-Headers"),
                                   asked_c34b.get("Access-Control-Allow-Headers")))
 
+
+    # Cycle 34, read off the reference through a fresh client-session capture (a socket may
+    # never be opened on kids or zen, so the harness's recording of the official client's
+    # own handshake is the only witness): the 101 answers `X-Plex-Protocol,
+    # Access-Control-Expose-Headers, Vary, Upgrade, Connection, Sec-WebSocket-Accept,
+    # Cache-Control, Access-Control-Allow-Origin, Date`. plexsim had the set right and put
+    # the three CORS headers at the end.
+    import base64 as base64_c34c
+
+    sock_c34c = socket.create_connection(
+        (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+    sock_c34c.settimeout(8)
+    sock_c34c.sendall((
+        "GET /:/websockets/notifications HTTP/1.1\r\nHost: h\r\nConnection: Upgrade\r\n"
+        "Upgrade: websocket\r\nOrigin: https://app.plex.tv\r\nSec-WebSocket-Version: 13\r\n"
+        "Sec-WebSocket-Key: %s\r\n\r\n"
+        % base64_c34c.b64encode(b"0123456789abcdef").decode()).encode())
+    blob_c34c = b""
+    try:
+        while b"\r\n\r\n" not in blob_c34c:
+            chunk_c34c = sock_c34c.recv(4096)
+            if not chunk_c34c:
+                break
+            blob_c34c += chunk_c34c
+    except Exception:
+        pass
+    sock_c34c.close()
+    head_c34c = blob_c34c.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+    names_c34c = [line_c34c.split(":", 1)[0] for line_c34c in head_c34c[1:] if line_c34c]
+    check("the websocket handshake's headers come out in the reference's order",
+          head_c34c[0].startswith("HTTP/1.1 101")
+          and names_c34c == ["X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                             "Upgrade", "Connection", "Sec-WebSocket-Accept",
+                             "Cache-Control", "Access-Control-Allow-Origin", "Date"],
+          str(names_c34c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
