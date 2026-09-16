@@ -6105,8 +6105,25 @@ class PlexSim:
                             self.library.rename_collection_tag(
                                 self.library.collection(key.strip()),
                                 edits.get("title.value", edits.get("title")))
+                            # Cycle 36, measured on plexscratch with a listener open:
+                            # a type=18 SECTION save frames the way the section path
+                            # frames an ITEM -- `state 3` with `metadataState "queued"`
+                            # carrying the row's title from BEFORE the write, then
+                            # `state 5` with the new one -- where the item and metadata
+                            # spellings of the same edit send `loading` with the new
+                            # title in both. plexsim routed the section save straight
+                            # through the item writer, so it sent the item path's pair
+                            # from the section path.
+                            stored = self.library.collection(key.strip())
+                            was = dict(self.library._collection_row(stored)) if stored else None
                             self.library_list_item(int(key), ["library", "metadata", key.strip()],
-                                                   edits, "PUT")
+                                                   edits, "PUT", frames=False)
+                            after = self.library.collection(key.strip())
+                            if after is not None:
+                                row = self.library._collection_row(after)
+                                self.notify_timeline(was or row, self.TIMELINE_QUEUED,
+                                                     "queued")
+                                self.notify_timeline(row, self.TIMELINE_DONE, None)
                     return ("empty", 200)
                 wanted = {"1": "movie", "2": "show", "3": "season",
                           "4": "episode"}.get(str(query.get("type")))
@@ -8469,7 +8486,8 @@ class PlexSim:
                                    "Directory": entries}}
 
 
-    def library_list_item(self, rating_key, segments, query, method, body=b""):
+    def library_list_item(self, rating_key, segments, query, method, body=b"",
+                          frames=True):
         """`/library/metadata/{key}` where the key is a COLLECTION or a PLAYLIST."""
         collection = self.library.collection(rating_key)
         playlist = self.library.playlist(rating_key)
@@ -8827,7 +8845,9 @@ class PlexSim:
                                               "titleSort.locked")):
                 # Measured: a list's Sort Title follows an item's rule.
                 self.library._derive_title_sort(target)
-            self.notify_list_edited(target, "collection" if collection is not None else "playlist")
+            if frames:
+                self.notify_list_edited(
+                    target, "collection" if collection is not None else "playlist")
             logger.info("EDIT list %s <- %s", rating_key,
                         ",".join(k for k in query if not k.startswith("X-Plex-")
                                  and k != "_pairs"))
