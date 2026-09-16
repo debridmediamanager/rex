@@ -20905,6 +20905,33 @@ def main():
           "slowest of 260 analyze writes with a dead consumer attached: %.2f s"
           % slowest_c30l)
 
+
+    # Cycle 31, re-measured on BOTH writable copies -- plexscratch42 (1.42.2) and plexscratch
+    # (1.43.4) -- which agree: `hdr10plus.locked=1` is a 200 that stores NOTHING. Neither
+    # reference's `Field` list gains the name (1.42.2's stays `collection, hdr, dovi`,
+    # 1.43.4's stays its seven), and `hdr10plus.value=1` stores nothing either.
+    #
+    # Cycle 21 recorded exactly that -- "a 200 that stores nothing" -- and cycle 30, having
+    # confirmed the 200 on the new 1.42.2 copy, put the name in `LOCK_ONLY_FIELDS`, which
+    # DOES record a lock. HANDOVER 3.1 class C in one hop: a rule recorded correctly and
+    # then implemented as its opposite, inside the cycle that re-measured it. The 200 was
+    # the half cycle 30 checked; the `Field` row was the half it never read back.
+    #
+    # The Edit dialog draws its lock icons from `Field`, so a row carrying an entry no real
+    # PMS emits draws a lock on a field the dialog cannot show.
+    rows_c31a = get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}]
+    before_c31a = sorted(f_c31a.get("name") for f_c31a in (rows_c31a[0].get("Field") or []))
+    locked_c31a = request(base, "PUT", "/library/metadata/%s?hdr10plus.locked=1" % movie)[0]
+    valued_c31a = request(base, "PUT", "/library/metadata/%s?hdr10plus.value=1" % movie)[0]
+    after_c31a = get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}]
+    names_c31a = sorted(f_c31a.get("name") for f_c31a in (after_c31a[0].get("Field") or []))
+    check("hdr10plus is accepted on both halves and stores nothing",
+          locked_c31a == 200 and valued_c31a == 200
+          and "hdr10plus" not in names_c31a and names_c31a == before_c31a
+          and "hdr10plus" not in after_c31a[0],
+          "PUT locked=%s value=%s | Field %s -> %s"
+          % (locked_c31a, valued_c31a, before_c31a, names_c31a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
