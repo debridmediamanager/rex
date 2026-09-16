@@ -11757,8 +11757,16 @@ class PlexSim:
         verbatim -- and re-evaluate the query on every read.
         """
         uri = query.get("uri") or ""
-        if not uri or "/library/metadata/" in uri:
+        if not uri:
             return ("error", 400, "plexsim: bad request")
+        # Cycle 31: the ITEM-uri half of that refusal is **1.43.4's**. On 1.42.2 the same
+        # PUT is a 200 that REPLACES the stored query with the item uri -- measured on a
+        # smart playlist built over a key list and again on one built over a listing, both
+        # of which accept it: `content` went from
+        # `library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2` (leafCount 2) to
+        # `library://x/item/%2Flibrary%2Fmetadata%2F4` (leafCount 1). 1.43.4 answers 400 to
+        # both. So on the version plexsim reports the items PUT is simply the Save, and it
+        # takes whatever uri it is given.
         target["uri"] = uri
         target["updatedAt"] = int(time.time())
         logger.info("%s %s query <- %s", kind.upper(), target["ratingKey"], uri[:120])
@@ -13037,9 +13045,12 @@ class PlexSim:
                 # The test is the uri's SHAPE, not whether it resolves: this cycle's
                 # first attempt refused any uri that produced rows, and a listing uri
                 # produces rows too, so every smart create became a 400.
-                if query.get("smart") == "1" \
-                        and "/library/metadata/" in (query.get("uri") or ""):
-                    return ("error", 400, "plexsim: bad request")
+                # Cycle 31: that 400 is **1.43.4's**. On plexscratch42 -- a fresh
+                # 1.42.2 install, the build plexsim reports -- the same create is a 200
+                # that makes a real smart playlist: `smart: true`,
+                # `icon: "playlist://image.smart"`, `leafCount: 3` and
+                # `content: library://x/directory/%2Flibrary%2Fmetadata%2F1%2C2`. So on
+                # 1.42.2 a key list is a legal stored query, and plexsim refused it.
                 playlist = self.library.create_playlist(
                     query.get("title") or "", query.get("type") or "video", rows,
                     smart=query.get("smart") == "1", uri=query.get("uri"))

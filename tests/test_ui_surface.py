@@ -21203,6 +21203,44 @@ def main():
               % (sort_c31j[0], mode_c31j[0], before_c31j, after_c31j, verbs_c31j,
                  unknown_c31j))
 
+
+    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build plexsim reports) against
+    # plexscratch (1.43.4). Two writes 1.42.2 accepts and 1.43.4 refuses, both of which
+    # plexsim refused:
+    #
+    #   POST /playlists?smart=1&uri=<server://.../library/metadata/1,2,3>
+    #       1.42.2 -> 200, smart true, icon playlist://image.smart, leafCount 3
+    #       1.43.4 -> 400          plexsim (before) -> 400
+    #   PUT /playlists/{smart}/items?uri=<an ITEM>
+    #       1.42.2 -> 200, and the stored query is REPLACED by that uri
+    #                (content library://x/directory/%2F...%2F1%2C2 -> library://x/item/...)
+    #       1.43.4 -> 400          plexsim (before) -> 400
+    #
+    # Both forms were driven on a key-list-backed and a listing-backed smart list, so the
+    # rule is the VERB and not the uri's shape. No client sends either, so nothing visible
+    # changes; what changes is that two recorded rules were the other version's.
+    smart_c31k = (container(base, "POST", "/playlists?title=C31SMART&type=video&smart=1&uri=%s"
+                            % quote("server://%s/com.plexapp.plugins.library"
+                                    "/library/metadata/%s,%s" % (machine, movie, spare)))[1]
+                  .get("Metadata") or [{}])[0]
+    key_c31k = smart_c31k.get("ratingKey")
+    if not key_c31k:
+        skip("1.42.2 takes a smart list over a key list", "the create was refused")
+    else:
+        saved_c31k = request(base, "PUT", "/playlists/%s/items?uri=%s"
+                             % (key_c31k, quote("server://%s/com.plexapp.plugins.library"
+                                                "/library/metadata/%s" % (machine, movie))))
+        after_c31k = (get(base, "/playlists/%s" % key_c31k)[1].get("Metadata") or [{}])[0]
+        request(base, "DELETE", "/playlists/%s" % key_c31k)
+        check("a smart list takes a key-list uri and an item uri as its Save",
+              smart_c31k.get("smart") is True
+              and smart_c31k.get("icon") == "playlist://image.smart"
+              and saved_c31k[0] == 200
+              and "library://x/item/" in str(after_c31k.get("content")),
+              "created smart=%r icon=%r leafCount=%r | save %s -> content %r"
+              % (smart_c31k.get("smart"), smart_c31k.get("icon"),
+                 smart_c31k.get("leafCount"), saved_c31k[0], after_c31k.get("content")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
