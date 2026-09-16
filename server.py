@@ -1352,10 +1352,30 @@ def _drop_private(node):
 REPEATED_JSON_KEYS = ("Language", "MediaType")
 
 
+def plex_json(value):
+    """A value as a real PMS writes JSON: compact, raw UTF-8, upper-case escapes.
+
+    Cycle 32, measured on zen and kids and on both writable copies, which agree byte for
+    byte: no space after `:` or `,`; every non-ASCII character -- an accent, U+2028, a
+    C1 control, an emoji -- written as itself in UTF-8 rather than as `\\u` escapes; `/`,
+    `<`, `>` and `&` unescaped; `\\b \\t \\n \\f \\r \\" \\\\` in their short forms; and
+    every other C0 control as `\\u00XX` with UPPER-CASE hex (`\\u001F`). The notification
+    channels write their frames the same way.
+
+    plexsim wrote Python's default -- `", "` and `": "`, and an ASCII-only body in which
+    `\u00e9` was six bytes -- so a zen detail row came out 11% larger than the reference's
+    and its `X-Plex-Content-Original-Length` named a size no real PMS sends.
+    """
+    text = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return re.sub(r"(\\+)u00([01][0-9a-f])",
+                  lambda match: match.group(0) if len(match.group(1)) % 2 == 0
+                  else match.group(1) + "u00" + match.group(2).upper(), text)
+
+
 def _repeat_keys(text):
     """Rewrite `"Language": [a, b]` into `"Language": a, "Language": b`."""
     for name in REPEATED_JSON_KEYS:
-        needle = '"%s": [' % name
+        needle = '"%s":[' % name
         while needle in text:
             start = text.index(needle)
             depth, index = 0, start + len(needle) - 1
@@ -1381,8 +1401,8 @@ def _repeat_keys(text):
                     piece += character
             if piece.strip():
                 rows.append(piece)
-            text = text[:start] + ', '.join('"%s": %s' % (name, row.strip())
-                                            for row in rows) + text[index + 1:]
+            text = text[:start] + ','.join('"%s":%s' % (name, row.strip())
+                                           for row in rows) + text[index + 1:]
     return text
 
 
@@ -1405,7 +1425,7 @@ def json_body(container, elements=None):
     # marker to choose between the two, so `_drop_private` -- which removes it -- has
     # to run AFTER the ordering and not before. Cycle 19's "a real PMS's JSON key
     # order IS its XML order" held on every path except this one.
-    text = json.dumps(_drop_private(ordered_keys(_drop_empty(container), elements)))
+    text = plex_json(_drop_private(ordered_keys(_drop_empty(container), elements)))
     return (_repeat_keys(text) if repeat else text).encode()
 
 
@@ -16418,7 +16438,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.connection.settimeout(max(deadline - time.time(), 0.05))
                 except OSError:
                     pass
-            payload = json.dumps({"NotificationContainer": {
+            payload = plex_json({"NotificationContainer": {
                 "type": kind, "size": len(rows), element: rows}}).encode()
             # One writer at a time: two notifications interleaving mid-frame
             # would corrupt the stream for the life of the connection.
@@ -16554,7 +16574,7 @@ class Handler(BaseHTTPRequestHandler):
                 except OSError:
                     pass
             frames = "".join(
-                "event: %s\ndata: %s\n\n" % (kind, json.dumps({element: row}))
+                "event: %s\ndata: %s\n\n" % (kind, plex_json({element: row}))
                 for row in rows)
             with lock:
                 self.wfile.write(frames.encode())
