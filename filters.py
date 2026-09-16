@@ -367,6 +367,25 @@ def _one_title_query(wanted, text):
     return _raw_word_prefixes(wanted, text) or _folded_word_run(wanted, text)
 
 
+def _original_phrase(wanted, text):
+    """`title=` against the row's ORIGINAL title: a consecutive run of whole words.
+
+    Cycle 31, measured on zen. Unfolded on both sides, split on whitespace: every term but
+    the last must EQUAL a title word and the last may begin one, and the run has to be
+    adjacent. See `compare`'s `title` branch for the measurements.
+    """
+    terms = [t for t in str(wanted).lower().split(" ") if t]
+    words = str(text).lower().split()
+    if not terms or not words:
+        return False
+    for start in range(len(words) - len(terms) + 1):
+        run = words[start:start + len(terms)]
+        if all(run[i] == terms[i] for i in range(len(terms) - 1)) \
+                and run[-1].startswith(terms[-1]):
+            return True
+    return False
+
+
 def _raw_word_prefixes(wanted, text):
     """The unfolded pass: each query word BEGINS a title word, in order."""
     # Cycle 31: neither character is stripped -- the comma is handled one level up as an
@@ -775,8 +794,21 @@ def compare(kind, operator, actual, wanted, field=""):
         # reproduce exactly on the title and DISAGREE once the original title is added,
         # which is what separates the two halves. Held out over 24 (operator, value)
         # pairs. A client searching a foreign film by its own-language title finds it.
+        # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
+        # instrument for it: the ORIGINAL title is matched as a CONSECUTIVE run of whole
+        # words, unfolded, and not by the title's two-pass folded matcher.
+        #
+        #   `Le Salaire`, `Salaire de`, `de la peur`, `Le Sal`, `la peur` -> 1 row
+        #   `Salaire peur`, `Le peur`, `Sal de`, `e Salaire`, `Meurtres Douai` -> 0
+        #   raw `Aşkı`, `Işığı`, `Ồn`, `tuổi` -> 1 each;  `Aski`, `Isigi` -> 0
+        #
+        # So the terms must be adjacent (the title's matcher allows gaps), each but the
+        # last must be a whole word, the last may begin one, and nothing folds. plexsim ran
+        # the title matcher over it, which matched 14 extra rows in a 1,244-query corpus --
+        # `A` finding 'The Doway Murders' through `à`, `La La` finding a row whose two
+        # `la`s are not adjacent.
         return (_word_prefixes(wanted, text)
-                or _word_prefixes(wanted, str(getattr(actual, "original", "") or "")))
+                or _original_phrase(wanted, str(getattr(actual, "original", "") or "")))
     if field in UNLISTED_STRING_FIELDS and operator in ("<=", "<<=", ">=", ">>="):
         # Cycle 14 measured that `titleSort`, `summary`, `tagline` and `originalTitle`
         # -- the string fields no Meta advertises -- take `>>`/`<<` where an advertised
