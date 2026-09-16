@@ -573,7 +573,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **`POST /butler` running only what is DUE** | The counts are measured (22 of 23 on a fresh reset, 12 on an immediate second POST) and the MECHANISM is invisible: no row of `GET /butler` carries a last-run or a next-run time, and two runs cannot separate "its interval has not elapsed" from "it found nothing to do" | Nothing the API exposes |
 | ~~**The session row's `Role` attribute order**~~ | **REFUTED and CLOSED in cycle 27.** Driven on a row carrying `Genre`, `Country`, `Collection`, `Director`, `Writer`, `Role` and `Producer`, every one of them is plainly alphabetical -- `Role` is `filter, id, role, tag, tagKey, thumb` and no `Role` carries an `actor` attribute. plexsim was already right | -- |
 | **What plexsim answers to a transcode START once a decision exists** | The 400 with no decision is measured on every protocol and every leaf. What comes next is plexsim's own 404 -- it has no encoder -- and NOT the reference's, whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200 | Nothing: plexsim cannot transcode |
-| **The `directPlay`/`general` 1000 profile LIST** | `Roku` and `Xbox One` direct play, seven products get `1001` "Conversion OK" (which plexsim cannot answer) and four get the "neither" triple. Measured across four items in both containers on kids and zen, but the list is the references' own `Resources/Profiles` directory rather than a rule | Read the profile files, if a reference is ever shell-accessible |
+| **The `directPlay`/`general` 1000 profile LIST** | `Roku` and `Xbox One` direct play, seven products get `1001` "Conversion OK" (which plexsim cannot answer) and four get the "neither" triple. Measured across four items in both containers on kids and zen. **Cycle 31 read the files and the list is no longer opaque: the decision has four inputs** -- resolve `redirect=`, then `<DirectPlayProfiles>`, then `<TranscodeTargets>`, then `<CodecProfiles><Limitations>`. Roku (via `Roku-7.x`) and Xbox One declare DirectPlayProfiles covering mp4/mkv + h264 + aac; the `1001` products declare transcode targets and no direct-play block; `Generic` and `Plexamp` declare NOTHING at all, which is 2-for-2 with the "neither" triple. Firefox and Edge are the open half -- they declare targets and still answer "neither", and the candidate is Firefox's `video.bitDepth ≤ 8` / `audio.channels ≤ 2` limitation | Build the model from those four inputs instead of plexsim's two hard-coded names. It is hunt-sized, and the files are readable now |
 
 **Cycle 25 added these.**
 
@@ -607,7 +607,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | ~~**The On Deck row's projection is per VERSION, one witness each side**~~ | **CLOSED in cycle 30, and the 1.42.2 side OVERTURNED.** A fresh 1.42.2 copy carries neither `librarySectionKey` nor `Field`, on a movie and an episode alike, which is what 1.43.4 and cycle 21's fun said -- so cycle 28's patch was built from zen's single on-deck row and put the key back wrongly. `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key on both versions. Original entry: zen (1.42.2) answers the detail row with `librarySectionKey`; plexscratch (1.43.4) drops that key, `Guid`, `Rating` and `Producer` and stamps `studio`. kids' On Deck is empty, so each side of the split rests on one instrument -- and plexsim follows zen because it reports 1.42.2 | A second 1.42.2 server with a row on deck, or kids driven into having one |
 | ~~**1.42.2's CONTINUE WATCHING row projection**~~ | **CLOSED in cycle 30** on the new copy, with a `viewOffset` written on a movie and on an episode: the row is the detail row minus `Field`, with `librarySectionKey` present on `/hubs/home/continueWatching` and absent from `/library/onDeck` and the section leaf -- the same shape as On Deck beside it. **No resume list carries `Field`** | -- |
 | **`searchTypes=otherVideos`'s metadata half, and `music`/`photos`** | No instrument holds an Other Videos, music or photo library, so only the TAG half of `otherVideos` is witnessed (it selects the movie library's tag rows and not its movies, which is what "a type-1 library too" predicts). The two other tokens are recorded from their empty answers alone | A library of each type on the copy |
-| **`/clients/profiles?type=42`'s seven names** | Byte-identical on kids and zen, and there is no principle behind the membership: it is the references' own `Resources/Profiles` subset for a LOCAL optimise target, like the 78-name list beside it | Read the profile files, if a reference is ever shell-accessible |
+| ~~**`/clients/profiles?type=42`'s seven names**~~ | **CLOSED in cycle 31 with a negative, by reading the files.** The lab PMS container is shell-accessible (§4.1), and `Resources/Profiles/` holds 79 entries -- 78 `.xml` plus a stray `sugar.cmake`, which is why the API answers 78. The seven LOCAL names carry **no distinguishing attribute**: their `<Client>` elements are as plain as any other's, so the membership is PMS's own hard-coded list and there is nothing to derive. The same read explained the row TITLE (it is the `<Client name="…">` attribute, not the file name) and all 23 aliases -- see §7 | -- |
 
 **Cycle 29 added these.**
 
@@ -680,6 +680,17 @@ Library contents, which matter when you read tests and findings:
 as real titles. It can show you a *shape* but never a rule that needs real content — no tag is
 shared by enough items, no item has two editions, no listing is deep, no search matches many
 rows. Eleven cycles of row-shape rules were measured here. See §3.3.
+
+**The lab's PMS container is SHELL-ACCESSIBLE, and that is an instrument (cycle 31).**
+`ssh ben@kids docker exec plexlab-plex sh -c '…'` reads the image's own files -- no PMS request, no
+write, nothing that can alter the reference -- and it answers what the API only implies.
+`/usr/lib/plexmediaserver/Resources/Profiles/` settled two §3.3 entries in twenty minutes: the 78
+profile rows are `<Client name="…">` attributes rather than file names, the 23 `Player.profile`
+aliases are 22 `redirect="…"` attributes plus one name-versus-filename difference, and the
+`type=42` seven carry no marker at all. `Resources/` also holds the decision model's inputs
+(`<DirectPlayProfiles>`, `<TranscodeTargets>`, `<CodecProfiles><Limitations>`). **Read, never
+write**, and remember it is the IMAGE: a `docker compose` recreate restores it, and nothing there
+should ever be edited.
 
 ### 4.2 Second witness — `zen` (the authority for VERSION, and the only real library)
 
