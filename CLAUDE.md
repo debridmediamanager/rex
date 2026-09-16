@@ -1995,6 +1995,57 @@ precisely how the Seasons bug survived a fix attempt.
   rows only, six `extraType` values, three projections, uncapped, and in NO listing or axis
   anywhere). See `docs/findings.md`; the build waits on a catalog with extras in it.
 
+
+- **`plexscratch42` is the writable 1.42.2 reference** (`harness/scratch42/`, kids `:32411`) -- a
+  fresh install of the build plexsim reports, isolated from plex.tv, so every item is UNMATCHED and
+  every SETTINGS count is short (151 prefs against zen's 173). Use it for grammar, never for a
+  count, and never for anything needing real metadata or a claimed server.
+- **An On Deck row carries no `librarySectionKey` and is the detail row MINUS `Field`** -- on a
+  movie and an episode alike, on both versions. `/hubs/home/onDeck` and
+  `/hubs/home/continueWatching` DO carry the key; `/library/onDeck` and the section leaf carry
+  `allowSync` and the librarySection triple without it. No resume list carries `Field`.
+- **`hdr10plus` takes an item LOCK on both versions**, where the five media-codec names beside it
+  (`atmos`, `audioCodec`, `audioLayout`, `subtitleCodec`, `videoCodec`) are a **400 on 1.42.2** and a
+  200 on 1.43.4 -- so plexsim, which reports 1.42.2, refuses those five and accepts `hdr10plus`.
+- **Two settings answer 403 to a PUT on 1.42.2, not four**: `PlexOnlineUrl` and
+  `allowMediaDeletionLanOnly`. `TranscoderH264Options` and `TranscoderH264OptionsOverride` take a
+  write there and really store it, where 1.43.4 refuses both.
+- **A `random="1"` shelf's sample is STABLE** -- 21 reads over seven minutes on zen answered the
+  identical rows, a different client identifier gets the same sample, and the same shelf at another
+  `count=` holds its own. What makes a real PMS redraw one is NOT measured, so plexsim mints a seed
+  per (shelf, count) once and holds it.
+- **An unauthorised refusal KEEPS the connection alive** -- the 401 with no token, the 401 with a
+  wrong one, the 403 for an unknown single segment, the 404 for a path that does not exist, all
+  `Connection: Keep-Alive` and really reusable. **The one refusal that CLOSES is the 400 for a query
+  pair with no `=`**, and seventeen other 400s keep it alive.
+- **A `collection[0].tag.tag=` write makes a TAG, not a collection.** The tag appears on the row, in
+  the `/collection` axis and in both search endpoints (a `tagType: 2` row with a `count`), and
+  `/library/all?type=18` gains NOTHING -- only `POST /library/collections` makes an item. The tell is
+  the `guid`: a tag-only collection's search row carries none.
+- **The ping timer is FREE-RUNNING: a pong must not trigger another ping.** The reference pings
+  every 10 s whether the client pongs or not; plexsim read "a frame arrived" as "the interval
+  passed" and answered a pong with a ping -- **903,480 pings in 35 seconds**. Every real client
+  pongs automatically, and a probe that never pongs sees the correct cadence, which is how twelve
+  cycles missed it.
+- **One notification consumer that stops reading must not reach the request path.** A dead socket
+  plus repeated writes took plexsim's write 105 to 20 s and timed out a second client's edit at 30 s,
+  where the reference bounds the per-socket backlog at ~415 KB and never slows a request. plexsim now
+  gives a sink a two-second budget and DROPS the channel -- it drops where the reference buffers.
+- **A library DELETE pushes NO per-row timeline frames** -- only its eight `library.delete` activity
+  frames, on a 3-row and a 200-row library alike. Cycle 18's fourteen `state 9` frames named another
+  section and none of the library's rows: they were a one-off orphan cleanup. A single item's delete
+  frame is real, with the row's own type and the POSITIVE sectionID.
+- **`state 1` belongs in the timeline alphabet** (0 created, **1 created/processing**, 3
+  queued/processing, 4 loading, 5 done, 9 deleted): a row's CREATION pushes eight frames -- `state 0`
+  with an empty title, then five `state 1`s, `state 4 loading`, `state 5` -- plus a
+  `library.update.item.metadata` activity per new row, so cycle 19's "no scan does a metadata
+  activity per row" holds only for a scan that finds nothing new. plexsim cannot create a row during
+  a scan, so the sequence is recorded and not built.
+- **The eventsource channel has no five-minute deadline** on a real PMS (still open at 430 s), and
+  neither transport sends `id:` or `retry:`, so nothing replays across a reconnect. plexsim's 300 s
+  constant is gone; it still closes at ~256 s for an unfound reason (HANDOVER 3.3). **And the 101
+  upgrade carries a `Date`** -- it was the one response on the surface without one.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
