@@ -15842,9 +15842,16 @@ class Handler(BaseHTTPRequestHandler):
         if origin:
             self.send_header("Access-Control-Allow-Methods",
                              "POST, GET, OPTIONS, DELETE, PUT, HEAD")
-            self.send_header("Access-Control-Allow-Headers",
-                             self.headers.get("Access-Control-Request-Headers")
-                             or self.CORS_FALLBACK_HEADERS)
+            # Cycle 34, measured on kids and zen and recorded from the official client's
+            # own preflight: `Access-Control-Allow-Headers` is sent ONLY when the request
+            # carried `Access-Control-Request-Headers`, and it is that value echoed back.
+            # Plex Web's preflight of `PUT /updater/check` asks for no headers at all, so
+            # the reference answers without the field -- where plexsim substituted a
+            # fallback list and answered a question the browser had not asked. Cycle 16
+            # recorded the echo and invented the fallback beside it.
+            asked = self.headers.get("Access-Control-Request-Headers")
+            if asked:
+                self.send_header("Access-Control-Allow-Headers", asked)
             self.send_header("Access-Control-Max-Age", "1209600")
         # Measured on the copy: the preflight response carries a Content-Type, and it
         # is `text/plain`. plexsim sent none.
