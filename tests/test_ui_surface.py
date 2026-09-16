@@ -21301,6 +21301,38 @@ def main():
           "originalTitle %r | by original %s | by title %s"
           % (row_c31m.get("originalTitle"), box_c31m, title_c31m))
 
+
+    # Cycle 31, measured on kids and zen: the hub matcher takes a MULTI-WORD query word by
+    # word, IN ORDER, not as one phrase. kids answers `Tears Steel` with "Tears of Steel"
+    # at 0.73055 and `Big Bunny` with "Big Buck Bunny" at 0.73000; zen answers `Fear Lake`
+    # with "Fear by the Lake" at 0.73067. Reversed, the row still comes back in the 0.33
+    # fuzzy band, so the order decides the score and not the membership.
+    #
+    # plexsim required the joined phrase as a prefix, so `Tears Steel` answered NO HUBS AT
+    # ALL -- 230 of zen's rows scoring 0.5 or better over 119 of 1,237 generated queries
+    # were missed. This is Plex Web's global search box.
+    title_c31n = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    words_c31n = [w_c31n for w_c31n in str(title_c31n.get("title") or "").split()
+                  if len(w_c31n) > 2]
+    if len(words_c31n) < 2:
+        skip("the hub matcher takes a multi-word query word by word", "title too short")
+    else:
+        gapped_c31n = "%s %s" % (words_c31n[0], words_c31n[-1])
+
+        def hub_keys_c31n(query_c31n):
+            found_c31n = []
+            for hub_c31n in get(base, "/hubs/search?query=%s" % quote(query_c31n))[1].get("Hub") or []:
+                found_c31n += [r_c31n.get("ratingKey")
+                               for r_c31n in (hub_c31n.get("Metadata") or [])]
+            return found_c31n
+
+        in_order_c31n = hub_keys_c31n(gapped_c31n)
+        phrase_c31n = hub_keys_c31n(words_c31n[0])
+        check("the hub matcher takes a multi-word query word by word, in order",
+              movie in in_order_c31n and movie in phrase_c31n,
+              "%r -> %s | %r -> %s" % (gapped_c31n, in_order_c31n, words_c31n[0],
+                                       phrase_c31n))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

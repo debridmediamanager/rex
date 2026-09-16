@@ -1181,8 +1181,32 @@ class Catalog:
         def hit(text):
             words = re.split(r"[^0-9a-z]+",
                              hierarchy_module.fold_marks(str(text or "")).lower())
-            return any(word.startswith(needle) for word in words if word) \
-                or " ".join(w for w in words if w).startswith(needle)
+            words = [w for w in words if w]
+            if any(word.startswith(needle) for word in words) \
+                    or " ".join(words).startswith(needle):
+                return True
+            # Cycle 31, measured on kids and zen: a MULTI-WORD query is matched word by
+            # word, in order, and not as one phrase. kids answers `Tears Steel` with
+            # "Tears of Steel" at 0.73055 and `Big Bunny` with "Big Buck Bunny" at 0.73;
+            # zen answers `Fear Lake` with "Fear by the Lake" at 0.73067. Reversed --
+            # `Steel Tears`, `Bunny Big`, `Lake Fear` -- the row still comes back but in
+            # the 0.33 fuzzy band, so the ORDER decides the score rather than membership.
+            #
+            # plexsim required the joined phrase as a prefix, so `Tears Steel` answered
+            # NO HUBS AT ALL and 230 of zen's rows scoring 0.5 or better across 119 of
+            # 1,237 generated queries were missed. That is Plex Web's global search box:
+            # typing two words of a title that are not adjacent found nothing.
+            terms = [t for t in needle.split(" ") if t]
+            if len(terms) < 2:
+                return False
+            position = 0
+            for term in terms:
+                while position < len(words) and not words[position].startswith(term):
+                    position += 1
+                if position == len(words):
+                    return False
+                position += 1
+            return True
 
         return [row for row in self.items.values()
                 if row.get("type") in ("movie", "show", "season", "episode")
