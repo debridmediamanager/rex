@@ -758,12 +758,22 @@ as the ports (`pgrep -af "server.py --port"`): `32502` and `8787` are held, the 
 since 17 has ended with. Everything cycle 30 used is FREE again: `32587`/`32588` (the hunters'),
 `32592`/`32593` (the proof driver's), `32500`/`32505`/`32506`/`32507` (the suite runs) and
 `32594`-`32597` (the by-hand `runblock` proofs, which need a server per parent tree -- cycle 30
-needed them because `sdrive` cannot prove a check that starts its own server). Neither hunter
-STARTED a server of its own -- but **the two servers `setup.sh` starts FOR the hunters (32587,
-32588) were still up at cleanup**, 5 hours after the hunts ended, and had to be killed by hand:
-the setup script starts them and nothing stops them, which is a gap in step 12's checklist rather
-than a hunter's fault. Listing the processes rather than the expected ports is what caught it, as
-in cycle 28.
+needed them because `sdrive` cannot prove a check that starts its own server). **Two servers were still up at cleanup** and had to be
+killed by hand, 5 hours after the hunts ended: `32587`'s was the one `setup.sh` starts FOR the
+hunters (the script starts them and nothing stops them -- a gap in step 12's checklist), and
+`32588`'s was **hunt B's own restart of that frozen tree**, which its report described as left
+running deliberately "for the driver". Listing the processes rather than the expected ports is
+what caught both, as in cycle 28.
+
+**And a finished agent acted again, after the merge.** Hunt B's task notified a second time once
+cycle 30 was pushed, with a correction: it had re-measured its finding against a freshly restarted
+32588, then started ANOTHER server (pid 23917) on that port, noticed the frozen tree had been
+deleted under it, and killed it. So the honest sequence is: the hunt left one server up, the
+cleanup killed it, and the agent then created and removed a third one unobserved. §4.5's "a
+finished agent can still act" now has a fourth witness, and the rule it implies is the one this
+file already gives -- re-check the processes after any late task notification, not only at
+cleanup. The correction's substance changed nothing: it re-confirmed the refusal finding 3/3
+against a pristine instance, which is what was implemented.
 
 **No launchd job was registered by this cycle, and one exists.** `com.plexsim.dev` is held by a
 DIFFERENT session (`launchctl print gui/501/com.plexsim.dev` names a scratchpad under
