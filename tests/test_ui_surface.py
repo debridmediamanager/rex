@@ -22073,6 +22073,38 @@ def main():
           and names_c33g.index("Content-Range") == names_c33g.index("Content-Length") + 1,
           "%s | %s" % (lengths_c33g, names_c33g))
 
+
+    # Cycle 34, measured on both writable copies over three endpoints (an edit, a
+    # `/refresh` and a 204 playlist delete) and recorded from the official client's own
+    # `PUT /updater/check` against the reference: a response with an EMPTY body orders
+    # `Content-Length` before `Content-Type`, like an error, where a container body is
+    # type-first. plexsim ordered every 200 as a container.
+    def order_c34a(method_c34a, path_c34a):
+        sock_c34a = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c34a.settimeout(8)
+        sock_c34a.sendall(("%s %s HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n"
+                           % (method_c34a, path_c34a)).encode())
+        blob_c34a = b""
+        try:
+            while b"\r\n\r\n" not in blob_c34a:
+                chunk_c34a = sock_c34a.recv(4096)
+                if not chunk_c34a:
+                    break
+                blob_c34a += chunk_c34a
+        except Exception:
+            pass
+        sock_c34a.close()
+        head_c34a = blob_c34a.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        return [line_c34a.split(":", 1)[0] for line_c34a in head_c34a[1:] if line_c34a]
+
+    edit_c34a = order_c34a("PUT", "/library/metadata/%s?summary.value=c34" % movie)
+    row_c34a = order_c34a("GET", "/library/metadata/%s" % movie)
+    check("an empty body orders its length first, a container its type",
+          edit_c34a.index("Content-Length") < edit_c34a.index("Content-Type")
+          and row_c34a.index("Content-Type") < row_c34a.index("Content-Length"),
+          "edit %s | row %s" % (edit_c34a[:4], row_c34a[:4]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

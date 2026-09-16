@@ -15327,6 +15327,18 @@ class Handler(BaseHTTPRequestHandler):
             return "gzip"
         if status >= 400:
             return "error"
+        if names.get("content-length") == "0":
+            # Cycle 34, measured on both copies over three endpoints and recorded from the
+            # official client's own `PUT /updater/check` against the reference: a response
+            # with an EMPTY body orders its length before its type, the way an error does,
+            # while the same row's GET is type-first. An edit, a `/refresh` and a 204
+            # playlist delete all do it on 1.42.2 and on 1.43.4.
+            #
+            # So the split is not "error versus success": a MediaContainer body is
+            # type-first and everything else -- an error page, the plug-in framework's
+            # `/system`, an empty-bodied write answer -- is length-first. A HEAD keeps the
+            # container order, because its length is the body's and not zero.
+            return "error"
         if "accept-ranges" in names:
             return "artwork"
         return "container"
