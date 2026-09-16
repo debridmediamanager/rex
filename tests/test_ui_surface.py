@@ -21356,6 +21356,24 @@ def main():
           "don't -> %s | Don't Move -> %s | move -> %s"
           % (apostrophe_c31o, whole_c31o, split_c31o))
 
+
+    # Cycle 31, measured on zen, which holds two one-character titles: a ONE-character hub
+    # query matches a title EQUAL to it and nothing else -- `query=X` answers the movie 'X'
+    # at 0.93076 and `A` answers 'A' at 0.91089, while `I` and `9`, which no zen title is,
+    # answer nothing. So it is equality, not the one-character prefix cycle 12 refuted.
+    # plexsim's two-character floor answered nothing to any of them.
+    request(base, "PUT", "/library/metadata/%s?title.value=X&title.locked=1" % spare)
+    def one_c31p(query_c31p):
+        found_c31p = []
+        for hub_c31p in get(base, "/hubs/search?query=%s" % quote(query_c31p))[1].get("Hub") or []:
+            found_c31p += [r_c31p.get("ratingKey") for r_c31p in (hub_c31p.get("Metadata") or [])]
+        return found_c31p
+    equal_c31p = one_c31p("X")
+    other_c31p = one_c31p("9")
+    check("a one-character hub query matches a title equal to it",
+          equal_c31p == [spare] and other_c31p == [],
+          "X -> %s | 9 -> %s" % (equal_c31p, other_c31p))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

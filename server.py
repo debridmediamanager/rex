@@ -1175,8 +1175,19 @@ class Catalog:
         # "Amelie" became the two words "am" and "lie", so the quick search never
         # found the row by its own name and did find it under a fragment of one.
         needle = hierarchy_module.fold_marks(query).lower().strip()
-        if len(needle) < 2:
+        if len(needle) < 1:
             return []
+        if len(needle) == 1:
+            # Cycle 31, measured on zen, which holds two one-character titles: a
+            # single-character query matches a title EQUAL to it and nothing else.
+            # `query=X` answers the movie 'X' at 0.93076 and `A` answers 'A' at 0.91089,
+            # while `I` and `9` -- characters no zen title is -- answer nothing at all, so
+            # it is equality and not the one-character prefix cycle 12 refuted. plexsim had
+            # a two-character floor and answered nothing to any of them.
+            return [row for row in self.items.values()
+                    if row.get("type") in ("movie", "show", "season", "episode")
+                    and hierarchy_module.fold_marks(
+                        str(row.get("title") or "")).lower().strip() == needle]
 
         def hit(text):
             # Cycle 31, measured on zen -- the only library with punctuated titles: the
