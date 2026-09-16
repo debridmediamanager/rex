@@ -22105,6 +22105,32 @@ def main():
           and row_c34a.index("Content-Type") < row_c34a.index("Content-Length"),
           "edit %s | row %s" % (edit_c34a[:4], row_c34a[:4]))
 
+
+    # Cycle 34, measured on kids and zen and recorded from the official client's own
+    # preflight of `PUT /updater/check`, which asks for no headers: the reference sends
+    # `Access-Control-Allow-Headers` ONLY when `Access-Control-Request-Headers` was sent,
+    # echoing that value. plexsim always sent a fallback list.
+    def preflight_c34b(extra_c34b):
+        request_c34b = urllib.request.Request(
+            base.rstrip("/") + "/updater/check", method="OPTIONS",
+            headers=dict({"User-Agent": UA, "Origin": "https://app.plex.tv",
+                          "Access-Control-Request-Method": "PUT"}, **extra_c34b))
+        try:
+            with urllib.request.urlopen(request_c34b, timeout=20) as answer_c34b:
+                answer_c34b.read()
+                return dict(answer_c34b.headers)
+        except urllib.error.HTTPError as error_c34b:
+            error_c34b.read()
+            return dict(error_c34b.headers)
+
+    bare_c34b = preflight_c34b({})
+    asked_c34b = preflight_c34b({"Access-Control-Request-Headers": "x-plex-token"})
+    check("the preflight echoes the requested headers and sends none when none were asked",
+          "Access-Control-Allow-Headers" not in bare_c34b
+          and asked_c34b.get("Access-Control-Allow-Headers") == "x-plex-token",
+          "bare %r | asked %r" % (bare_c34b.get("Access-Control-Allow-Headers"),
+                                  asked_c34b.get("Access-Control-Allow-Headers")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
