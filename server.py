@@ -808,8 +808,10 @@ class Catalog:
     """The library plexsim serves, loaded from a JSON file.
 
     A row is one playable item: its Plex metadata plus the restricted debrid
-    link its single Part resolves to.  `ratingKey` is assigned from the row
-    order so the key space is stable across restarts for a fixed catalog.
+    link each Part resolves to. Older catalogs may keep one row-level link;
+    Part-level links take precedence so a stacked item can resolve each file.
+    `ratingKey` is assigned from the row order so the key space is stable
+    across restarts for a fixed catalog.
     """
 
     def __init__(self, path):
@@ -11534,6 +11536,14 @@ class PlexSim:
         }
         path = query.get("path", "")
         refusal = None
+        sources = row.get("Media") or []
+        raw_media = str(query.get("mediaIndex") or "")
+        media = sources[int(raw_media) if raw_media.isdigit() else 0]
+        parts = media.get("Part") or []
+        multipart_all = len(parts) > 1 and str(query.get("partIndex") or "") == "-1"
+        raw_part = str(query.get("partIndex") or "")
+        part_index = int(raw_part) if raw_part.isdigit() and int(raw_part) < len(parts) else 0
+        selected_media = dict(media, Part=[parts[part_index]]) if parts else media
         if query.get("hasMDE") != "1":
             # Cycle 32: a decision with no `hasMDE` runs the CLIENT's own profile -- the
             # file the reference ships in `Resources/Profiles/` -- against the Media it
@@ -11548,11 +11558,8 @@ class PlexSim:
             profile_name = next((param(name) for name in
                                  ("X-Plex-Client-Profile-Name", "X-Plex-Platform",
                                   "X-Plex-Device") if param(name) in CLIENT_PROFILES), None)
-            sources = row.get("Media") or []
-            raw_index = str(query.get("mediaIndex") or "")
-            media = sources[int(raw_index) if raw_index.isdigit() else 0]
             outcome, refusal = decision_module.decide(
-                profile_name, media, query.get("protocol") or "http",
+                profile_name, selected_media, query.get("protocol") or "http",
                 direct=query.get("directPlay") != "0")
             if outcome == "refuse":
                 # Xbox 360's one video target is an asf with no protocol, and both
@@ -11574,6 +11581,9 @@ class PlexSim:
                 logger.info("DECISION direct play (no MDE, %s) for path=%s",
                             profile_name, path)
                 return self.container(Metadata=[self._decision_row(row, query)], **fields)
+        elif multipart_all:
+            refusal = ("App cannot direct play this item. Multi-part media requires "
+                       "a conversion when all parts are selected.")
         elif query.get("directPlay") == "0":
             refusal = "App cannot direct play this item. Direct play is disabled."
         if refusal is not None:
@@ -11600,11 +11610,11 @@ class PlexSim:
             # The profile is resolved again here rather than reused: the name above is
             # bound only inside the plain-form branch, and this block is reached from
             # the MDE form and from `directPlay=0` as well. The suite caught it.
-            blocked = decision_module.dolby_vision_blocked(
+            blocked = not multipart_all and decision_module.dolby_vision_blocked(
                 next((param(name) for name in
                       ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device")
                       if param(name) in CLIENT_PROFILES), None),
-                (row.get("Media") or [{}])[0], query.get("protocol") or "http")
+                selected_media, query.get("protocol") or "http")
             fields.update(
                 directPlayDecisionCode=3000,
                 directPlayDecisionText=refusal,
@@ -11690,6 +11700,17 @@ class PlexSim:
         index = query.get("mediaIndex") or ""
         if index.isdigit() and int(index) >= len(media):
             return None, ("error", 400, "plexsim: bad request")
+        chosen = media[int(index) if index.isdigit() else 0]
+        parts = chosen.get("Part") or []
+        raw_part = str(query.get("partIndex") or "")
+        # Cycle 36, measured on a made stacked `- cd1`/`- cd2` row: only a
+        # multi-Part Media gives partIndex a range. 0/1 select that Part, 2/5
+        # are 400s, and -1 deliberately selects every Part for the conversion
+        # refusal in `decision`. A single-Part Media still accepts every value
+        # and selects Part 0, which preserves cycle 26's two-reference result.
+        if len(parts) > 1 and raw_part not in ("", "-1") \
+                and raw_part.isdigit() and int(raw_part) >= len(parts):
+            return None, ("error", 400, "plexsim: bad request")
         return row, None
 
     def _decision_row(self, row, query):
@@ -11737,8 +11758,12 @@ class PlexSim:
             copy["hasVoiceActivity"] = "1" if copy.get("hasVoiceActivity") else "0"
             if position == chosen:
                 copy["selected"] = True
+            source_parts = source.get("Part") or []
+            raw_part = str(query.get("partIndex") or "")
+            part_index = int(raw_part) if raw_part.isdigit() and int(raw_part) < len(source_parts) else 0
+            selected_parts = [source_parts[part_index]] if source_parts else []
             parts = []
-            for part in source.get("Part") or []:
+            for part in selected_parts:
                 entry = {k: v for k, v in part.items()
                          if k not in ("Stream", "exists", "accessible")}
                 entry["id"] = str(entry.get("id"))
@@ -15474,7 +15499,8 @@ class PlexSim:
                         name = str(part.get("file") or "").rsplit("/", 1)[-1]
                         # The part itself comes back too, for the ETag and
                         # Last-Modified a real PMS puts on every byte response.
-                        return (row.get("_debrid"), part.get("container"), name,
+                        return (part.get("_debrid") or row.get("_debrid"),
+                                part.get("container"), name,
                                 dict(part, addedAt=row.get("addedAt")))
         return None, None, None, None
 
