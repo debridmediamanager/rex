@@ -15400,6 +15400,18 @@ class Handler(BaseHTTPRequestHandler):
     FRAMEWORK_COOKIE = ("com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcK"
                         "Y29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK")
 
+    def _connection_headers(self):
+        """`Connection` (and `Keep-Alive` when the socket is being kept), as `_send` does.
+
+        Cycle 16 measured the pair on every response of both references; cycle 33 found
+        the two handlers that write their own headers and never sent it.
+        """
+        if self.close_connection:
+            self.send_header("Connection", "close")
+        else:
+            self.send_header("Connection", "Keep-Alive")
+            self.send_header("Keep-Alive", "timeout=20")
+
     def _framework_cookie(self):
         """Whether this response carries the framework's cookie.
 
@@ -15764,6 +15776,15 @@ class Handler(BaseHTTPRequestHandler):
         # is `text/plain`. plexsim sent none.
         self.send_header("Content-Type", "text/plain")
         self.send_header("Content-Length", "0")
+        # Cycle 33, measured on kids and zen: a preflight names its connection state and
+        # its cache directive like every other response -- `Connection: Keep-Alive` plus
+        # `Keep-Alive: timeout=20` on a kept connection, `Connection: close` on a closing
+        # one, and `Cache-Control: no-cache`. This handler writes its own header set and
+        # carried neither, so the one response a browser ALWAYS sends before a
+        # cross-origin request was the only one that did not say how long the connection
+        # it just opened would live.
+        self._connection_headers()
+        self.send_header("Cache-Control", "no-cache")
         self.end_headers()
 
     # The only two paths a real PMS serves WITHOUT a token: `/identity`, so a client
@@ -16159,6 +16180,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Location", result[1])
                 self.send_header("Cache-Control", "public")
                 self.send_header("Content-Length", "0")
+                # Cycle 33: the 302 names its connection state too, like every other
+                # response on both references.
+                self._connection_headers()
                 self.end_headers()
                 return
             if kind == "static":

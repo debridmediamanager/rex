@@ -21902,6 +21902,33 @@ def main():
                       for key_c33b in ("agents", "scanners", "sections", "livetv")),
           str({k_c33b: bool(v_c33b) for k_c33b, v_c33b in cookies_c33b.items()}))
 
+
+    # Cycle 33, measured on kids and zen: the CORS preflight and the `/web` 302 name
+    # their connection state like every other response, and the preflight carries
+    # `Cache-Control: no-cache` as well. Both plexsim handlers write their own header
+    # set and sent neither.
+    # A real preflight, not a bare OPTIONS: without `Access-Control-Request-Method` a
+    # real PMS (and plexsim) route the verb like any other and answer a 404.
+    preflight_request_c33c = urllib.request.Request(
+        base.rstrip("/") + "/library/sections", method="OPTIONS",
+        headers={"User-Agent": UA, "Origin": "https://app.plex.tv",
+                 "Access-Control-Request-Method": "GET",
+                 "Access-Control-Request-Headers": "x-plex-token"})
+    try:
+        with urllib.request.urlopen(preflight_request_c33c, timeout=30) as response_c33c:
+            response_c33c.read()
+            preflight_c33c = dict(response_c33c.headers)
+    except urllib.error.HTTPError as error_c33c:
+        error_c33c.read()
+        preflight_c33c = dict(error_c33c.headers)
+    redirect_c33c = request(base, "GET", "/web")[2]
+    check("the preflight and the /web 302 name their connection state",
+          preflight_c33c.get("Connection") and preflight_c33c.get("Cache-Control") == "no-cache"
+          and redirect_c33c.get("Connection"),
+          "preflight Connection=%r Cache-Control=%r | 302 Connection=%r"
+          % (preflight_c33c.get("Connection"), preflight_c33c.get("Cache-Control"),
+             redirect_c33c.get("Connection")))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
