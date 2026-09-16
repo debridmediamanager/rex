@@ -161,7 +161,14 @@ def _limitation(limitations, values):
             if actual is None:
                 continue
             text = str(actual).lower()
+            # Cycle 35, measured on zen's row 3831 against Android: a limitation whose
+            # comparison came from `list=` rather than `value=` names the list and then
+            # appends ` [list]` -- `high 10 != baseline|main|high [list]`. The corpus's
+            # other 1,949 cells are all `value=` comparisons, which carry no suffix; no
+            # measured row trips a `substring=` one, so that form is left alone.
             wanted = limit.get("value") or limit.get("list") or limit.get("substring")
+            if limit.get("value") is None and limit.get("list") is not None:
+                wanted = "%s [list]" % wanted
             if limit.get("substring") is not None:
                 hit = limit["substring"].lower() in text
             elif limit.get("list") is not None:
