@@ -21578,16 +21578,20 @@ def main():
             base, "POST", "/playQueues?type=video&shuffle=0&repeat=0&continuous=0&own=1"
                           "&excludeElements=Media&uri=%s" % uri_c32a)[1]
             .get("Metadata") or [{}])[0]
+        # `mediaCount` is the row's own Media count, and by this point in the suite a merge
+        # check has given the first movie a second version -- so read it rather than assume 1.
+        media_c32a = len((get(base, "/library/metadata/%s" % excluded_c32a.get("ratingKey"))[1]
+                          .get("Metadata") or [{}])[0].get("Media") or [])
         check("a write's response pages and excludes, like every other container",
               made_c32a.get("size") == 1 and made_c32a.get("totalSize") == len(keys_c32a)
               and made_c32a.get("offset") == 1
               and len(made_c32a.get("Metadata") or []) == 1
-              and "Media" not in excluded_c32a
-              and excluded_c32a.get("mediaCount") == 1,
+              and "Media" not in excluded_c32a and media_c32a >= 1
+              and excluded_c32a.get("mediaCount") == media_c32a,
               "paged size=%s totalSize=%s offset=%s rows=%d | excluded Media=%s mediaCount=%r"
               % (made_c32a.get("size"), made_c32a.get("totalSize"), made_c32a.get("offset"),
                  len(made_c32a.get("Metadata") or []), "Media" in excluded_c32a,
-                 excluded_c32a.get("mediaCount")))
+                 (excluded_c32a.get("mediaCount"), media_c32a)))
 
 
     # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): two concurrent
@@ -21748,10 +21752,12 @@ def main():
 
     keys_c32g = [r_c32g.get("ratingKey") for r_c32g in
                  (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
-                  .get("Metadata") or [])][:3]
-    if len(keys_c32g) < 3:
+                  .get("Metadata") or [])][:2]
+    # Two movies are enough: the queue is made over the first and each add appends a new
+    # item -- with its own item id -- whichever row it names. The suite leaves two by here.
+    if len(keys_c32g) < 2:
         skip("two concurrent play-queue adds each answer their own container",
-             "need three movies")
+             "need two movies")
     else:
         def uri_c32g(key_c32g):
             return quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
@@ -21774,7 +21780,7 @@ def main():
                     % (queue_c32g, uri_c32g(key_c32g)))
 
             threads_c32g = [threading_c32g.Thread(target=add_c32g, args=(0, keys_c32g[1])),
-                            threading_c32g.Thread(target=add_c32g, args=(1, keys_c32g[2]))]
+                            threading_c32g.Thread(target=add_c32g, args=(1, keys_c32g[0]))]
             for thread_c32g in threads_c32g:
                 thread_c32g.start()
             for thread_c32g in threads_c32g:
