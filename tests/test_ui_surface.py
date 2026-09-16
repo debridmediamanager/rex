@@ -10910,7 +10910,11 @@ def main():
              get(base, "/library/metadata/%s/thumb" % movie)[0]))
     sel_c15d = [r_c15d.get("selected") for r_c15d in
                 get(base, "/library/metadata/%s/posters" % movie)[1].get("Metadata") or []]
-    check("after an artwork delete nothing in the candidate list is selected",
+    # Cycle 31: the clear above is now the empty-value edit, since the DELETE is a 404 on
+    # 1.42.2. The rule is the same one -- after a clear nothing in the candidate list is
+    # selected -- and the local candidates a real PMS lists are unaffected by which write
+    # cleared the field.
+    check("after an artwork clear nothing in the candidate list is selected",
           not any(sel_c15d), str(sel_c15d))
     st_c15d, body_c15d, _ = request(base, "PUT",
                                     "/library/metadata/%s?art.value=" % movie)
@@ -10920,10 +10924,13 @@ def main():
           "HTTP %s art=%r" % (st_c15d, after_c15d.get("art")))
 
     # Cycle 15, measured on plexscratch across nine paths -- and this CORRECTS the hunt
-    # that reported it. `PATCH` and `OPTIONS` are not blanket 404s: they are routed
-    # exactly like every other verb, so `/identity`, `/hubs` and `/playlists` answer
-    # 200 to both (the recorded "these answer any verb" rule) and every other path
-    # 404s them. What a real PMS does not recognise as a method AT ALL -- `FROB`,
+    # that reported it. A bare `OPTIONS` is not a blanket 404: it is routed exactly like
+    # every other verb, so `/identity`, `/hubs` and `/playlists` answer 200 to it (the
+    # recorded "these answer any verb" rule) and every other path 404s it.
+    #
+    # Cycle 31 took `PATCH` out of this check: on 1.42.2 -- the build plexsim reports -- it
+    # is not a method at all, a **500 on every path**, `/identity` included, which cycle 15
+    # could not see because plexscratch is 1.43.4. The 500 is asserted on its own below. What a real PMS does not recognise as a method AT ALL -- `FROB`,
     # `TRACE`, a wrong-case `Get` -- is a **500** with its own four-line html body, on
     # every path.
     #
@@ -10937,13 +10944,15 @@ def main():
                       "/status/sessions", "/library/sections/%s/all" % movie_section):
         routed_c15v[path_c15v] = (request(base, "PATCH", path_c15v)[0],
                                   request(base, "OPTIONS", path_c15v)[0])
+    # Cycle 31: every PATCH is a 500, whatever the path routes.
     # The paths whose VERB TABLE is wrong are a separate finding (they answer the GET
     # body to every verb); what this check pins is that PATCH and a bare OPTIONS go
     # through routing at all rather than being refused or answered as a preflight.
-    check("PATCH and OPTIONS are routed like any other verb, not blanket-404ed",
-          routed_c15v["/identity"] == (200, 200) and routed_c15v["/hubs"] == (200, 200)
-          and routed_c15v["/playlists"] == (200, 200)
-          and routed_c15v["/library/sections/%s/all" % movie_section] == (404, 404),
+    check("a bare OPTIONS is routed like any other verb, and PATCH is a 500",
+          all(status_c15v[0] == 500 for status_c15v in routed_c15v.values())
+          and routed_c15v["/identity"][1] == 200 and routed_c15v["/hubs"][1] == 200
+          and routed_c15v["/playlists"][1] == 200
+          and routed_c15v["/library/sections/%s/all" % movie_section][1] == 404,
           str(routed_c15v))
     frob_c15v, frob_body_c15v, frob_hd_c15v = request(base, "FROB", "/library/sections")
     check("a method a real PMS does not recognise is a 500, not a 501",
@@ -11882,6 +11891,11 @@ def main():
     # `?width&height`, and no `/library/sections` row carries a `composite` attribute
     # for a client to build the bare form from. plexsim answered image bytes there --
     # the same shape of invention as cycle 14's `/recentlyReleased`.
+    # Cycle 31: the composite needs a member that OWNS a poster, and by this point the
+    # artwork checks above have cleared the movie's -- the empty-value edit is 1.42.2's
+    # clear, so the state a check needs has to be made rather than assumed (section 10).
+    request(base, "PUT", "/library/metadata/%s?thumb.value=%s"
+                         % (movie, quote("http://example.com/composite.jpg")))
     bare_c16j = request(base, "GET", "/library/sections/%s/composite" % movie_section)
     versioned_c16j = request(base, "GET", "/library/sections/%s/composite/1" % movie_section)
     check("a section's bare /composite is a 404 and only the versioned form answers",
@@ -12453,9 +12467,16 @@ def main():
         % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s,%s"
                 % (machine, movie, spare or movie)))
     request(base, "DELETE", "/playlists/%s" % made_c16a6["ratingKey"])
-    check("an empty title is stored verbatim, and smart over a key list is a 400",
+    # Cycle 31: the key-list create is a **200 on 1.42.2**, the build plexsim reports --
+    # measured on plexscratch42 against plexscratch's 400 -- and it makes a real smart
+    # playlist (`smart: true`, `icon: playlist://image.smart`, leafCount 3). Cycle 16
+    # measured the refusal on the 1.43.4 copy alone. The empty-title half is unchanged.
+    if keylist_c16a6[0] == 200:
+        request(base, "DELETE", "/playlists/%s"
+                % json.loads(keylist_c16a6[1])["MediaContainer"]["Metadata"][0]["ratingKey"])
+    check("an empty title is stored verbatim, and smart over a key list is a 200",
           empty_c16a6[0] == 200 and made_c16a6.get("title") == ""
-          and keylist_c16a6[0] == 400,
+          and keylist_c16a6[0] == 200,
           "title=%r keylist=%s" % (made_c16a6.get("title"), keylist_c16a6[0]))
 
 
@@ -13567,11 +13588,13 @@ def main():
         refused_c17b4 = []
         for path_c17b4, verbs_c17b4 in (
                 ("/library/collections/%s/items" % collection_c17b4,
-                 ("POST", "DELETE", "PATCH", "OPTIONS")),
+                 # Cycle 31: PATCH is out of every verb list in the suite -- on 1.42.2 it
+                 # is not a method at all (a 500 on every path), asserted on its own.
+                 ("POST", "DELETE", "OPTIONS")),
                 ("/library/collections/%s/items/%s" % (collection_c17b4, movie),
-                 ("GET", "POST", "PATCH", "OPTIONS", "HEAD")),
+                 ("GET", "POST", "OPTIONS", "HEAD")),
                 ("/library/collections/%s/items/%s/move" % (collection_c17b4, movie),
-                 ("GET", "POST", "DELETE", "PATCH", "OPTIONS"))):
+                 ("GET", "POST", "DELETE", "OPTIONS"))):
             for verb_c17b4 in verbs_c17b4:
                 status_c17b4, _, _ = request(base, verb_c17b4, path_c17b4)
                 if status_c17b4 != 404:
@@ -13632,7 +13655,7 @@ def main():
     # is the rule for MULTI-segment routes. plexsim 404'd them.
     fell_c17b7 = {}
     for path_c17b7 in ("/butler", "/devices"):
-        for verb_c17b7 in ("PUT", "PATCH", "OPTIONS"):
+        for verb_c17b7 in ("PUT", "OPTIONS"):   # cycle 31: PATCH is a 500 on 1.42.2
             status_c17b7, body_c17b7, _ = request(base, verb_c17b7, path_c17b7)
             fell_c17b7[(path_c17b7, verb_c17b7)] = (
                 status_c17b7, b"plugins" in body_c17b7)
@@ -14274,7 +14297,9 @@ def main():
     # the identity, `DELETE /hubs` the whole hub list -- so a client that got the verb wrong
     # read a 200 with real content as acceptance. The recorded "/identity and /hubs answer
     # any verb" is that bug seen from the inside.
-    for verb, path in (("PUT", "/identity"), ("DELETE", "/hubs"), ("PATCH", "/library"),
+    # Cycle 31: `PATCH /library` is out -- 1.42.2 answers 500 to PATCH everywhere, so it
+    # cannot demonstrate a fall-through.
+    for verb, path in (("PUT", "/identity"), ("DELETE", "/hubs"), ("POST", "/library"),
                        ("OPTIONS", "/accounts"), ("DELETE", "/devices"), ("PUT", "/servers")):
         status, listing, _ = container(base, verb, path)
         check("%s %s falls through to the dispatcher" % (verb, path),
@@ -14476,9 +14501,12 @@ def main():
     # unimplemented verb is a 404 with an EMPTY body. plexsim answered its own text/plain
     # 404 to all of them.
     for path in ("/system", "/system/agents", "/system/zzz"):
+        # Cycle 31: the 405 is **1.43.4's**. On 1.42.2 -- the build plexsim reports -- PATCH
+        # is not a method at all and answers the unrecognised-method 500 here like everywhere
+        # else, so this subtree has no 405 of its own and the surface has none anywhere.
         status, body, headers = request(base, "PATCH", path, want_json=False)
-        check("PATCH %s is a 405" % path,
-              status == 405 and b"405" in body, "%s %r" % (status, body[:40]))
+        check("PATCH %s is a 500, as it is everywhere on 1.42.2" % path,
+              status == 500 and b"500" in body, "%s %r" % (status, body[:40]))
         status, body, headers = request(base, "OPTIONS", path, want_json=False)
         check("OPTIONS %s is an empty 200" % path,
               status == 200 and not body, "%s %r" % (status, body[:40]))
@@ -14503,7 +14531,7 @@ def main():
                           ("/playlists/%s/items" % created, ("GET", "HEAD", "PUT", "DELETE")),
                           ("/playlists/%s/items/%s" % (created, item_id), ("DELETE", "PUT")),
                           ("/playlists/%s/items/%s/move" % (created, item_id), ("PUT",))):
-        refused = [verb for verb in ("POST", "PATCH", "OPTIONS", "GET")
+        refused = [verb for verb in ("POST", "OPTIONS", "GET")   # cycle 31: PATCH is a 500
                    if verb not in allowed
                    and request(base, verb, path)[0] != 404]
         check("%s refuses the verbs it does not take" % path.replace(str(created), "{id}"),
@@ -14589,7 +14617,7 @@ def main():
     # Cycle 18, measured on plexscratch: `/library/metadata/{id}/subtitles` answers 404 to
     # DELETE, PATCH and OPTIONS, where plexsim answered the upload validator's 400 to all
     # three -- a 400 says "your request was wrong", a 404 says "this verb is not here".
-    for verb in ("DELETE", "PATCH", "OPTIONS"):
+    for verb in ("DELETE", "OPTIONS"):     # cycle 31: PATCH is a 500 on 1.42.2
         status, _, _ = request(base, verb, "/library/metadata/%s/subtitles" % movie)
         check("%s on /subtitles is a 404" % verb, status == 404, "%s" % status)
     for verb, want in (("GET", 400), ("PUT", 400), ("POST", 406)):
@@ -15354,6 +15382,8 @@ def main():
                                      ("GET", "related"), ("GET", "allLeaves"),
                                      ("GET", "grandchildren"),
                                      ("PUT", "poster?url=http%3A%2F%2Fexample.com%2Fc.jpg"),
+                                     # Cycle 31: the artwork DELETE is a 404 on 1.42.2 for a
+                                     # list row as for an item, so the pair below expects it.
                                      ("DELETE", "poster")):
             codes_c21n[(label_c21n, leaf_c21n.split("?")[0])] = request(
                 base, verb_c21n, "/library/metadata/%s/%s" % (key_c21n, leaf_c21n))[0]
@@ -15365,12 +15395,14 @@ def main():
                          ("collection", "extras"): 400, ("collection", "related"): 200,
                          ("collection", "allLeaves"): 200,
                          ("collection", "grandchildren"): 200,
-                         ("collection", "poster"): 200,
+                         # Cycle 31: the PUT and the DELETE share this key, so the value is
+                         # the DELETE's -- a 404 on 1.42.2, where the PUT above is a 200.
+                         ("collection", "poster"): 404,
                          ("playlist", "analyze"): 400, ("playlist", "match"): 400,
                          ("playlist", "extras"): 400, ("playlist", "related"): 200,
                          ("playlist", "allLeaves"): 404,
                          ("playlist", "grandchildren"): 404,
-                         ("playlist", "poster"): 200}
+                         ("playlist", "poster"): 404}
           and rel_coll_c21n.get("librarySectionID") is not None
           and rel_coll_c21n.get("allowSync") is True
           and rel_play_c21n.get("librarySectionID") is None
@@ -15411,7 +15443,7 @@ def main():
     _, back_c21o, _ = get(base, "/library/metadata/%s" % c21o_collection)
     sort_c21o = (back_c21o.get("Metadata") or [{}])[0].get("titleSort")
     verbs_c21o = {}
-    for verb_c21o in ("POST", "PATCH", "OPTIONS"):
+    for verb_c21o in ("POST", "OPTIONS"):  # cycle 31: PATCH is a 500 on 1.42.2
         verbs_c21o[(verb_c21o, "collection")] = request(
             base, verb_c21o, "/library/collections/%s" % c21o_collection)[0]
         verbs_c21o[(verb_c21o, "children")] = request(
@@ -15766,8 +15798,11 @@ def main():
         codes_c21l[(field_c21l, "set")] = request(
             base, "PUT", "/library/metadata/%s/%s?url=http%%3A%%2F%%2Fexample.com%%2Fc21.jpg"
             % (c21_art_row, field_c21l))[0]
+        # Cycle 31: the clear is the empty-value EDIT -- the artwork DELETE is a 404 on
+        # 1.42.2, and this check is about the WRITE after a clear, not about the clear.
         codes_c21l[(field_c21l, "clear")] = request(
-            base, "DELETE", "/library/metadata/%s/%s" % (c21_art_row, field_c21l))[0]
+            base, "PUT", "/library/metadata/%s?%s.value="
+            % (c21_art_row, "thumb" if field_c21l == "poster" else field_c21l))[0]
         codes_c21l[(field_c21l, "again")] = request(
             base, "PUT", "/library/metadata/%s/%s?url=http%%3A%%2F%%2Fexample.com%%2Fc21.jpg"
             % (c21_art_row, field_c21l))[0]
@@ -16486,13 +16521,13 @@ def main():
     # subtree that does NOT take cycle 18's envelope: it answers its own 400 to every verb,
     # GET included, rather than an empty-bodied 404.
     verbs_c22p = {}
-    for verb_c22p, path_c22p in (("PATCH", "/library/sections"), ("PATCH", "/status/sessions"),
-                                 ("PATCH", "/media/providers"), ("POST", "/accounts/1"),
-                                 ("PATCH", "/accounts/1")):
+    # Cycle 31: the four PATCH cases are out -- on 1.42.2 PATCH is a 500 on every path, so
+    # cycle 22's 404s were 1.43.4's. The POST refusal is unchanged on both versions.
+    for verb_c22p, path_c22p in (("POST", "/accounts/1"),):   # cycle 31: PATCH is a 500
         verbs_c22p[(verb_c22p, path_c22p)] = request(base, verb_c22p, path_c22p)[0]
     proxy_c22p = {verb_c22p: request(base, verb_c22p, "/system/proxy")[0]
                   for verb_c22p in ("GET", "POST", "PUT", "DELETE")}
-    check("PATCH is a 404 on four more paths, and /system/proxy answers its own 400",
+    check("POST on an account is a 404, and /system/proxy answers its own 400",
           set(verbs_c22p.values()) == {404}
           and set(proxy_c22p.values()) == {400},
           "%s | /system/proxy %s" % (verbs_c22p, proxy_c22p))
@@ -16779,7 +16814,9 @@ def main():
     # failure mode from the other side: a client reading a 200 from
     # `DELETE /hubs/sections/1` is told the write was accepted.
     codes_c23h = {}
-    for verb_c23h in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS"):
+    # Cycle 31: PATCH is out -- on 1.42.2 it answers the unrecognised-method 500 on every
+    # path, so it cannot show a route's own refusal.
+    for verb_c23h in ("POST", "PUT", "DELETE", "OPTIONS"):
         for label_c23h, path_c23h in (
                 ("home recentlyAdded", "/hubs/home/recentlyAdded"),
                 ("section hubs", "/hubs/sections/%s" % movie_section),
@@ -16890,8 +16927,10 @@ def main():
     # own "is this matchable?" probe read as an endpoint that does not exist.
     match_verbs_c25c = {verb_c25c: request(base, verb_c25c,
                                            "/library/metadata/%s/match" % movie)[0]
+                        # Cycle 31: PATCH is out of this list too -- 1.42.2 answers 500
+                        # to it everywhere, so `/match` cannot answer its 400 to it.
                         for verb_c25c in ("GET", "HEAD", "PUT", "POST", "DELETE",
-                                          "PATCH", "OPTIONS")}
+                                          "OPTIONS")}
     check("/match answers its no-parameters 400 to EVERY verb",
           set(match_verbs_c25c.values()) == {400},
           str(sorted(match_verbs_c25c.items())))
@@ -21055,6 +21094,10 @@ def main():
         equal_c31e = sorted_keys_c31e("titleSort=" + quote(generated_c31e))
         empty_c31e = sorted_keys_c31e("titleSort=")
         above_c31e = sorted_keys_c31e("titleSort%3E%3E=" + quote("Season 0"))
+        # Put the row back: these checks run immediately before cycle 18's, which count the
+        # seasons that store NO sort title, and a locked one left behind breaks all three.
+        request(base, "PUT", "/library/metadata/%s?titleSort.value=&titleSort.locked=0"
+                             % subject_c31e)
         check("a stored sort title equal to a generated title is still stored",
               subject_c31e in equal_c31e and subject_c31e not in empty_c31e
               and control_c31e in empty_c31e and subject_c31e in above_c31e,
