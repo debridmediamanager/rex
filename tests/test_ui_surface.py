@@ -20482,7 +20482,9 @@ def main():
           and all(verbs_c29s[path_c29s][verb_c29s] == 404
                   for path_c29s in ("/library/metadata/%s/extras/all" % movie,
                                     "/library/sections/%s/extras/all" % movie_section)
-                  for verb_c29s in ("PUT", "DELETE", "PATCH", "OPTIONS", "POST"))
+                  # Cycle 31: PATCH is out -- on 1.42.2 it answers the
+                  # unrecognised-method 500 on every path, asserted on its own.
+                  for verb_c29s in ("PUT", "DELETE", "OPTIONS", "POST"))
           and verbs_c29s["/library/metadata/%s/extras" % movie]["POST"] == 400,
           "%s" % verbs_c29s)
 
@@ -21114,6 +21116,15 @@ def main():
         skip("a stored sort title equal to a generated title is still stored",
              "the show has %d season(s)" % len(seasons_c31e))
     else:
+        # Put every season back to the synthesised state first: an earlier check may have
+        # left a LOCKED sort title on one, which is legitimately stored (kids' season 7 is
+        # that row) and would make the control wrong.
+        for key_c31e in seasons_c31e:
+            request(base, "PUT", "/library/metadata/%s?titleSort.locked=0" % key_c31e)
+            request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                                 % (key_c31e, quote(str(
+                                     (get(base, "/library/metadata/%s" % key_c31e)[1]
+                                      .get("Metadata") or [{}])[0].get("title") or ""))))
         subject_c31e, control_c31e = seasons_c31e[0], seasons_c31e[1]
         generated_c31e = (get(base, "/library/metadata/%s" % subject_c31e)[1]
                           .get("Metadata") or [{}])[0].get("title")
@@ -21358,6 +21369,14 @@ def main():
                            % (movie_section, quote(query_c31l)))[1]
             return doc_c31l.get("totalSize") or doc_c31l.get("size") or 0
 
+        # Give the rows distinct titles: as the fixture stands every movie shares the word
+        # this check picks, so `Steel`, `Steel,` and `Steel,,` all answer every row and the
+        # comma half cannot discriminate. The dot half does either way.
+        keys_c31l = [r_c31l.get("ratingKey") for r_c31l in (total_c31l.get("Metadata") or [])]
+        for index_c31l, key_c31l in enumerate(keys_c31l):
+            request(base, "PUT", "/library/metadata/%s?title.value=Zeta%d%s"
+                                 % (key_c31l, index_c31l, quote(" Distinct")))
+        word_c31l = "Zeta0"
         plain_c31l = titled_c31l(word_c31l)
         comma_c31l = titled_c31l(word_c31l + ",")
         double_c31l = titled_c31l(word_c31l + ",,")
