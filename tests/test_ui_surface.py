@@ -22634,6 +22634,55 @@ def main():
           bounded_c36h == want_c36h, str(bounded_c36h))
 
 
+    # Cycle 36, gridded on zen's "Riders of Justice" over forty queries and confirmed on
+    # kids' "Tears of Steel": the search ladder has FOUR tiers, not three, and its base
+    # is the ROW TYPE's. exact 0.93 / anchored 0.73 / prefix 0.53 / fuzzy 0.33 for a
+    # movie and a show; an EPISODE is 0.02 lower throughout. The exact tier reads
+    # `titleSort` and `originalTitle` as well as the title, and the anchored tier is one
+    # token comparison -- the query's first token equal to the title's first -- which
+    # refutes cycle 35's in-order model (`Riders X` is anchored on both references).
+    def tier_c36i(query_c36i, want_c36i, title_c36i):
+        found_c36i = {}
+        for hub_c36i in get(base, "/hubs/search?query=%s" % quote(query_c36i))[1].get("Hub") or []:
+            for row_c36i in hub_c36i.get("Metadata") or []:
+                found_c36i[row_c36i.get("title")] = str(row_c36i.get("score") or "")[:4]
+        return found_c36i.get(title_c36i)
+
+    movie_title_c36i = (get(base, "/library/metadata/%s" % movie)[1]
+                        .get("Metadata") or [{}])[0].get("title") or ""
+    words_c36i = movie_title_c36i.split()
+    episode_c36i = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [{}])[0]) if show_section else {}
+    episode_title_c36i = episode_c36i.get("title") or ""
+    ewords_c36i = episode_title_c36i.split()
+    if len(words_c36i) < 3 or len(ewords_c36i) < 2:
+        skip("the search ladder has four tiers and a base per row type",
+             "need a three-word movie title and a two-word episode title")
+    else:
+        ladder_c36i = {
+            "movie exact": tier_c36i(movie_title_c36i, None, movie_title_c36i),
+            # The anchored tier's own discriminator -- a query carrying a term the
+            # title does not have (`Riders X`), which both references still score
+            # anchored -- needs the FUZZY BAND to bring the row back at all, and that is
+            # the next patch. What is falsifiable here is the query the matcher already
+            # accepts: a skipped middle word, which is anchored on both models.
+            "movie anchored": tier_c36i("%s %s" % (words_c36i[0], words_c36i[-1]),
+                                        None, movie_title_c36i),
+            "movie prefix": tier_c36i(words_c36i[0][:-1], None, movie_title_c36i),
+            "movie fuzzy": tier_c36i(words_c36i[-1], None, movie_title_c36i),
+            "episode exact": tier_c36i(episode_title_c36i, None, episode_title_c36i),
+            "episode anchored": tier_c36i("%s %s" % (ewords_c36i[0], ewords_c36i[-1]),
+                                          None, episode_title_c36i),
+            "episode prefix": tier_c36i(ewords_c36i[0][:-1], None, episode_title_c36i),
+        }
+        want_ladder_c36i = {"movie exact": "0.93", "movie anchored": "0.73",
+                            "movie prefix": "0.53", "movie fuzzy": "0.33",
+                            "episode exact": "0.91", "episode anchored": "0.71",
+                            "episode prefix": "0.51"}
+        check("the search ladder has four tiers and a base per row type",
+              ladder_c36i == want_ladder_c36i, str(ladder_c36i))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
