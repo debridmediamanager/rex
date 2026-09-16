@@ -12263,6 +12263,10 @@ class PlexSim:
                 continue
             if row.get(field):
                 continue
+            # The stored candidate marker goes with the column, exactly as
+            # `clear_artwork` drops it: otherwise the picker still reports the old
+            # upload as `selected` on a row that no longer carries any artwork.
+            row.pop("_poster_url" if field == "thumb" else "_art_url", None)
             if field == "thumb" and row.get("parentThumb"):
                 row[field] = row["parentThumb"]
             elif field == "art" and row.get("type") in ("season", "episode"):
