@@ -9356,7 +9356,24 @@ class PlexSim:
             # Measured: the GET is a 404 and only the PUT exists.
             if method != "PUT":
                 return ("error", 404, "plexsim: not found")
+            # Cycle 36, measured on plexscratch42 over two `local://` shows and on
+            # plexscratch's matched Firefly as a control, both versions agreeing: the
+            # writer's setting list is the ROW's advertised one, not its TYPE's. An
+            # unmatched show's `Preferences` block carries eight settings where a matched
+            # one carries ten, and `useOriginalTitle=1` and `languageOverride=en` are
+            # each a **400** there while the matched show answers 200 to both. plexsim
+            # already dropped the pair from the READ (cycle 16) and kept accepting the
+            # WRITE, so the Advanced tab of an unmatched show saved settings it does not
+            # show and a real PMS refuses.
+            unmatched = str(row.get("guid") or "").startswith(
+                ("local://", "tv.plex.agents.none://", "none://"))
             settings = {s.get("id"): s for s in ITEM_PREFS.get(row.get("type")) or []}
+            if unmatched:
+                if row.get("type") == "movie":
+                    settings = {}
+                else:
+                    for gone in ("languageOverride", "useOriginalTitle"):
+                        settings.pop(gone, None)
             writes = [(name, value) for name, value in query.items()
                       if not name.startswith("X-Plex-") and name != "_pairs"]
             # Measured: a setting the item's TYPE does not have is a 400 and nothing
@@ -9391,6 +9408,20 @@ class PlexSim:
                 # the other way and silenced `showOrdering` too; the suite's own
                 # cycle-13 check caught it, which is what it is there for.
                 if any(name == "showOrdering" for name, _ in writes):
+                    if unmatched:
+                        # Cycle 36: on a show with no agent ordering behind it -- the two
+                        # `local://` shows of the 1.42.2 copy, and the same show after
+                        # `PUT .../unmatch` on the 1.43.4 one -- `showOrdering` answers a
+                        # plain **500** for every value (`dvd`, `aired`, an empty one and
+                        # a value the setting does not name alike) and pushes NO frames,
+                        # while the value is STORED: the row reads it back afterwards.
+                        # So it is not a validation refusal that writes nothing -- the
+                        # write lands and the cascade behind it is what fails. plexsim
+                        # answered 200 and pushed its whole cascade, telling every client
+                        # the tree had been re-read.
+                        self.catalog.apply_show_prefs(row)
+                        logger.info("ITEM PREF showOrdering on an unmatched show -- 500")
+                        return ("error", 500, "plexsim: internal error")
                     self.notify_show_cascade(row)
                 self.catalog.apply_show_prefs(row)
             return ("empty", 200)

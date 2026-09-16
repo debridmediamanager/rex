@@ -22859,6 +22859,39 @@ def main():
           str(uploaded_c36n))
 
 
+    # Cycle 36, measured on plexscratch42 over two `local://` shows with plexscratch's
+    # matched Firefly as a control, both versions agreeing: an UNMATCHED show refuses the
+    # two agent-driven prefs with a 400 (they are not in its own eight-setting
+    # `Preferences` block), and `showOrdering` there is a plain 500 for every value while
+    # the value is STORED and no frames are pushed. plexsim answered 200 to all of them
+    # and pushed its whole cascade.
+    if not show_section or not show:
+        skip("an unmatched show refuses the agent prefs and 500s showOrdering",
+             "no show library")
+    else:
+        before_c36o = {name_c36o: request(
+            base, "PUT", "/library/metadata/%s/prefs?%s" % (show, name_c36o))[0]
+            for name_c36o in ("useOriginalTitle=1", "languageOverride=en",
+                              "showOrdering=dvd", "flattenSeasons=1")}
+        request(base, "PUT", "/library/metadata/%s/unmatch" % show)
+        guid_c36o = ((get(base, "/library/metadata/%s" % show)[1]
+                      .get("Metadata") or [{}])[0].get("guid") or "")
+        after_c36o = {name_c36o: request(
+            base, "PUT", "/library/metadata/%s/prefs?%s" % (show, name_c36o))[0]
+            for name_c36o in ("useOriginalTitle=1", "languageOverride=en",
+                              "showOrdering=aired", "flattenSeasons=1")}
+        stored_c36o = ((get(base, "/library/metadata/%s?includePreferences=1" % show)[1]
+                        .get("Metadata") or [{}])[0].get("showOrdering"))
+        check("an unmatched show refuses the agent prefs and 500s showOrdering",
+              set(before_c36o.values()) == {200}
+              and guid_c36o.startswith(("local://", "tv.plex.agents.none://"))
+              and after_c36o == {"useOriginalTitle=1": 400, "languageOverride=en": 400,
+                                 "showOrdering=aired": 500, "flattenSeasons=1": 200}
+              and stored_c36o == "aired",
+              "matched %s | guid %s | unmatched %s | stored %r"
+              % (before_c36o, guid_c36o, after_c36o, stored_c36o))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
