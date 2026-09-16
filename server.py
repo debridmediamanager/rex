@@ -1244,9 +1244,28 @@ class Catalog:
                 while position < len(words) and not words[position].startswith(term):
                     position += 1
                 if position == len(words):
-                    return False
+                    break
                 position += 1
-            return True
+            else:
+                return True
+            # Cycle 36, measured on kids and zen: ORDER decides the SCORE, not membership.
+            # `Steel Tears` answers "Tears of Steel" at 0.33 on kids, `justice riders` and
+            # `Justice of` answer "Riders of Justice" at 0.33 on zen -- the row comes back
+            # whenever every term is a word-prefix of SOME title word, in any order, and
+            # the reversed query lands in the fuzzy band rather than being dropped. Cycle
+            # 31 measured that sentence and built only the in-order half, so plexsim
+            # answered NO HUBS AT ALL to a query whose words a person typed out of order.
+            #
+            # This is the part of the reference's membership rule that can be built
+            # exactly. The rest of it is SQLite's `spellfix1` -- the reference creates
+            # `spellfix_metadata_titles` and three sibling virtual tables, so a typo
+            # reaches a row through a phonetic hash and is then pruned by a top-N over a
+            # GLOBAL token frequency. That pruning is why `Tears zzz` answers the row on
+            # kids' five titles and `Riders zzz` answers nothing on zen's 3,887, and it
+            # cannot be read from outside: emulating the candidate half alone would
+            # answer most of a real catalog to a nonsense query, which is worse than
+            # answering none of it. HANDOVER section 8 carries the mechanism.
+            return all(any(word.startswith(term) for word in words) for term in terms)
 
         return [row for row in self.items.values()
                 if row.get("type") in ("movie", "show", "season", "episode")

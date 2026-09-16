@@ -22744,6 +22744,37 @@ def main():
               ladder_c36k == want_c36k, "genre %r -> %s" % (genre_c36k, ladder_c36k))
 
 
+    # Cycle 36, measured on kids and zen: ORDER decides the SCORE, not membership. A
+    # query whose words are all in the title but out of order comes back in the 0.33
+    # fuzzy band -- `Steel Tears` answers "Tears of Steel" on kids, `justice riders` and
+    # `Justice of` answer "Riders of Justice" on zen -- where plexsim's in-order walk
+    # answered no hubs at all. Cycle 31 measured the sentence and built half of it.
+    title_c36l = (get(base, "/library/metadata/%s" % movie)[1]
+                  .get("Metadata") or [{}])[0].get("title") or ""
+    words_c36l = title_c36l.split()
+    if len(words_c36l) < 3:
+        skip("a query whose words are out of order still finds the row",
+             "need a three-word title")
+    else:
+        def found_c36l(query_c36l):
+            for hub_c36l in get(base, "/hubs/search?query=%s" % quote(query_c36l))[1].get("Hub") or []:
+                for row_c36l in hub_c36l.get("Metadata") or []:
+                    if str(row_c36l.get("ratingKey")) == str(movie):
+                        return str(row_c36l.get("score") or "")[:4]
+            return None
+
+        order_c36l = {
+            "reversed": found_c36l("%s %s" % (words_c36l[-1], words_c36l[0])),
+            "last two reversed": found_c36l("%s %s" % (words_c36l[-1], words_c36l[-2])),
+            "in order": found_c36l("%s %s" % (words_c36l[0], words_c36l[-1])),
+            "a word that is not there": found_c36l("%s zzzqqq" % words_c36l[0]),
+        }
+        check("a query whose words are out of order still finds the row",
+              order_c36l == {"reversed": "0.33", "last two reversed": "0.33",
+                             "in order": "0.73", "a word that is not there": None},
+              str(order_c36l))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
