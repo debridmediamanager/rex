@@ -2011,3 +2011,116 @@ Cycle 25 measured that `removeFromContinueWatching` leaves
 `/hubs/sections/{id}/continueWatching/items` alone on a real PMS and implemented that half. The
 section's `tv.inprogress.{id}` SHELF inside `/hubs/sections/{id}` was seen to keep the row too
 and was not implemented. Confirm it, and sweep what else that shelf follows.
+
+==== Cycle 32 | Territory A | CONCURRENCY -- what a real PMS does when two things happen at once | plexsim port 32587 | WRITES to plexscratch and plexscratch42 ====
+
+## Your territory: CONCURRENCY — what a real PMS does when two things happen at once
+
+**You are the only agent writing this cycle**, so both writable copies are yours alone. The other
+hunter is read-only.
+
+Every measurement this project has ever made is of ONE request at a time against a quiet server.
+Cycle 30 swept the same request twice; **nobody has asked what happens when two requests overlap**,
+and plexsim is a `ThreadingHTTPServer` with shared mutable state, so the question is not academic.
+HANDOVER §7's brief has named this dimension for two cycles and no cycle has taken it.
+
+### The questions, in the order they are likely to pay
+
+1. **Two writers on the same row.** Two edits of the same field, issued back to back and overlapping;
+   an edit and a `/refresh`; an edit and an artwork write; a tag ADD and a tag REMOVE. Does the
+   reference serialise them? Does the second answer 200 or a refusal? Which value survives, and does
+   `updatedAt` move once or twice? **Read the row back after every pair** — the answer on the socket
+   is not the answer in the database.
+2. **A read DURING a write.** Start a slow write (a section `/refresh` over the whole library, a
+   scan, an `/analyze`) and read the rows while it runs. Does a listing block, answer stale rows, or
+   answer a partial set? Does `refreshing="1"` appear on the section, and does anything else change
+   shape while work is in flight?
+3. **Two SESSIONS on the same item.** Cycle 26 established that a decision arms a `(session,
+   ratingKey)` pair. What happens when two clients play the same row at once — two `Session` rows?
+   Two `Media@selected`? Does one client's `stopped` beat disarm the other? Does a terminate on one
+   reach the other?
+4. **The same mutation twice, concurrently.** Two identical `POST /playlists` calls; two collection
+   creates with the same title; two `PUT .../items?uri=` adds of the same row. Does the reference
+   make two rows, one row, or refuse the second? A duplicate-title collection is the interesting
+   case: plexsim's tag table is case-insensitive.
+5. **A write while a NOTIFICATION consumer is attached** (cycle 30's territory, one step on): do the
+   frames of two overlapping writes interleave, or does each write's sequence stay contiguous? The
+   client's reducer keys on `state 5` with no `metadataState`, so an interleaving that splits a pair
+   is a real defect.
+6. **Delete under read.** Delete a row while another request is listing it. Both references, both
+   copies.
+
+### How to run it
+
+- **Drive the pairs from two threads with a barrier**, not from two sequential calls: "back to back"
+  is not "at once", and the whole territory is about the overlap. Record both responses AND the row
+  as it stands afterwards.
+- **Repeat every interesting pair 10-20 times.** A race that resolves one way nine times out of ten
+  is still a race, and the count is the finding.
+- **Say which answers are the SERVER's and which are your harness's.** A timeout in your client is
+  not a refusal from the server (cycle 31 lost time to exactly that: a status of 0 read as a
+  behaviour when it meant "no response read").
+- plexsim is the third server in every comparison. Where the references agree and plexsim differs,
+  that is the finding; where the two references disagree, say so and do not pick one.
+
+==== Cycle 32 | Territory B | the title= fold table and the decision model, from the reference files | plexsim port 32588 | READ-ONLY on kids and zen ====
+
+## Your territory: two §3.3 entries with proven methods, and the files behind them
+
+**You write NOTHING, anywhere.** Every request to kids and zen is a GET or a HEAD, and the other
+hunter owns both writable copies this cycle. Your instruments are kids' five-clip library, zen's
+3,887 real rows, and — new in cycle 31 — **the reference's own files, read over ssh**:
+`ssh ben@kids docker exec plexlab-plex sh -c '…'` reads the PMS image read-only. That is not a PMS
+request and it cannot alter the reference. **Read, never write**, and never touch `docker compose`.
+
+Two HANDOVER §3.3 entries name their own method and nobody has run them. Both are yours.
+
+### 1. The `title=` query FOLD table
+
+Cycle 31 established that the fold applied to a `title=` query is a per-character TABLE and not NFD:
+kids folds `é ï ē ī ì Ǐ ǐ` and does NOT fold `ị ĩ ı ş ę ȉ`, which no decomposition rule explains.
+`scratchpad/c31/D/foldsweep.py` sweeps it by substituting each codepoint for one letter of a known
+title and asking kids whether the row still matches — five rows, ~400 requests a letter. It was run
+for three letters only:
+
+* folds to `i`: `Ì Í Î Ï ì í î ï ī Ǐ ǐ` (11)
+* folds to `s`: `ß Š š ſ` (4)
+* folds to `l`: `Ľ ľ` (2)
+
+**Sweep the rest of the alphabet** — every letter that appears in a kids or zen title you can use as
+a probe — and produce the table. Then **hold it out**: score it against zen's own accented rows
+(`Amélie`, `Bogotá`, the 21 Latin-1 rows cycle 20 counted, and the CJK/`’`/`–` rows that fold under
+no model) and say how many it reproduces and how many it misses. A model fitted on one corpus must be
+scored on the other (HANDOVER §10).
+
+Two questions the sweep should answer on the way: is the table the SAME on both references (kids is
+1.43.4, zen 1.42.2), and does it apply to the SORT title as well, or is `titleSort`'s eleven-character
+Latin-1 table (cycle 20, re-confirmed cycle 31) genuinely a different table for a different purpose?
+
+### 2. The decision model behind `DIRECT_PLAY_PROFILES`
+
+Cycle 26 recorded WHICH products direct-play, get `1001` "Conversion OK", or get the `3000/2000/4005`
+"neither" triple. Cycle 31 read the profile files and named the model's four inputs: resolve
+`redirect=`, then `<DirectPlayProfiles>`, then `<TranscodeTargets>`, then
+`<CodecProfiles><Limitations>`. Of the thirteen products cycle 26 sampled, eleven are explained
+exactly; **Firefox and Microsoft Edge are not** — both declare video transcode targets that ought to
+cover the item and both answer "neither".
+
+Build the model. Read every profile's four blocks out of the image, read the ITEM's own container,
+codecs, bit depth, channel count and resolution off the reference, and predict the decision for each
+of the 78 profiles. Then **drive the decision endpoint** on kids and zen (a decision is a GET and is
+on the guarded list — check `probes/`'s guard and use `hasMDE=1` and the plain form as cycle 26 did)
+and score the prediction. Report the miss count, the misses themselves, and what separates Firefox
+and Edge from the profiles the model gets right.
+
+plexsim hard-codes two names where **45 of the 78 declare direct play**, so a model good enough to
+implement is worth a great deal more than the two-name list.
+
+### The rules of this territory
+
+- **Score, do not spot-check.** Each deliverable is a miss count over a named population plus the
+  miss rows themselves.
+- **Distinguish the copy's state from the surface's rule.** kids is a five-clip library and zen is
+  37% trashed rows (cycle 31's hunt B counted 2,229 of 3,887 movies carrying `deletedAt`).
+- **Paging**: always send `X-Plex-Container-Start`/`-Size`, and cache what you fetch to disk so a
+  re-score costs nothing.

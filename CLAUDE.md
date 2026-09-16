@@ -35,6 +35,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
+| `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
 | `debrid.py` | Real-Debrid unrestrict |
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
@@ -48,8 +49,8 @@ searched on disk. The gate is usually one truthiness check in minified code.
 
 Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
 `section_meta.json`, `section_meta_show.json`, `item_prefs.json`, `section_prefs_new.json`,
-`section_filters.json`, `section_sorts.json`, `system_agents.json`, `languages.json`) are captured
-from a real PMS and
+`section_filters.json`, `section_sorts.json`, `system_agents.json`, `languages.json`,
+`client_profiles.json`) are captured from a real PMS -- the last read out of its image -- and
 loaded relative to `server.py`. Keep the layout flat — the code resolves them
 with `dirname(__file__)`. A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other
@@ -2099,6 +2100,34 @@ precisely how the Seasons bug survived a fix attempt.
   difference** -- plexsim's table reproduces all 23 with zero errors. The `type=42` seven carry no
   marker, so that list is PMS's own. The decision's inputs are visible too: `redirect=`,
   `<DirectPlayProfiles>`, `<TranscodeTargets>`, `<CodecProfiles><Limitations>`.
+
+- **A write's RESPONSE pages and excludes like a read's.** `POST /playQueues`, the playlist and
+  collection item writes and their moves and deletes all honour `X-Plex-Container-Start/Size` and
+  `excludeElements=` on both versions; plexsim gated both post-processors on GET and HEAD.
+- **A write must build its answer inside the lock it wrote under.** Two concurrent
+  `POST /playQueues` from one client are two 200s on a real PMS and were a 404 for the queue plexsim
+  had just made in 9 of 60 pairs; two concurrent adds each answer the queue AS THAT ADD LEFT IT and
+  plexsim answered both with the second's container. The window is under a millisecond, so no
+  sequential check can see it: fire barrier-released pairs.
+- **The title FOLD is a 100-character TABLE, not NFD, and the two sides differ.** Swept on both
+  copies over 2,076 codepoints for the sort title and on kids over 2,098 for the query: `ę ą ş ć ł`
+  and the capital macrons survive, lower-case macrons and Latin-1 fold, a combining mark is dropped.
+  The `title=` QUERY is the table plus a simple case fold (so `ſ` and the Kelvin sign match `s` and
+  `k`); the STORED sort title is case-folded only, so a locked `Éggęhead` is not found by `Egghead`.
+  The folded pass reads the stored SORT title, not the title (`Thé Train` finds nothing).
+- **The hub search folds by the same table**, and its CASE handling is two passes that plexsim does
+  not model: a capital macron or `ſ` matches in a title's LAST word and not in an earlier one.
+- **A plain-form decision runs the client's own PROFILE FILE** (`decision.py`,
+  `client_profiles.json`, read out of the lab image): selected audio not first, container and video
+  codec, the stream it would play, a sidecar subtitle, the audio codec, an embedded subtitle, then
+  the container's limitations before a named codec's before `*`. Exact on 1,864 of 1,872 measured
+  cells; 44 profiles direct play a real row where plexsim hard-coded two, and those two do not list
+  webm or eac3. A refused direct play still answers "neither", because plexsim cannot convert.
+- **JSON is COMPACT and raw UTF-8**: no space after `:` or `,`, every non-ASCII character as itself,
+  `/ < > &` unescaped, and a C0 control other than `\b \t \n \f \r` as `\u00XX` in UPPER-CASE hex. The
+  notification frames too. Python's defaults differ on all three.
+- **`/livetv`'s 403 on the copies is the UNCLAIMED server's**, not the surface's: both claimed
+  references answer the three-row container, and the copies answer it at `/livetv/`.
 
 ## Conventions
 
