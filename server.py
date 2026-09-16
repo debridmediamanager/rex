@@ -16765,6 +16765,17 @@ class Handler(BaseHTTPRequestHandler):
             # line -- `//identity` otherwise answered the identity document.
             self._send_error(404, "plexsim: not found")
             return
+        # Cycle 37, swept over literal, mixed-case and mixed escaped spellings on
+        # both references: a NON-TERMINAL segment made only of at least two dots is
+        # a 400 after one `%2e` decode.  A terminal `..` is an ordinary 404, and a
+        # double escape is not decoded twice.  This is validation, not normalisation:
+        # PMS never resolves the segment onto another route.
+        target_route = target.partition("?")[0]
+        for segment in target_route.split("/")[:-1]:
+            dot_segment = re.sub(r"(?i)%2e", ".", segment)
+            if len(dot_segment) >= 2 and not dot_segment.strip("."):
+                self._send_error(400, "plexsim: bad request")
+                return
 
         refusal = self._query_grammar_refusal(method, self.path)
         if refusal:
