@@ -15183,12 +15183,149 @@ class Handler(BaseHTTPRequestHandler):
         """
         return True
 
+    # The ORDER a real PMS writes its response headers in, and it is per response
+    # FAMILY rather than one list. Cycle 33, measured on kids (1.43.4) and zen (1.42.2)
+    # off a raw socket -- `urllib` normalises exactly what is being measured -- over
+    # twenty-six response classes, on a keep-alive connection and a closing one, with
+    # the two references identical in every case.
+    #
+    # Two invariants hold everywhere: `X-Plex-Protocol` is the FIRST header and `Date`
+    # is the LAST, and `Keep-Alive` immediately follows `Connection`. Everything else
+    # is per family, and the families genuinely contradict each other -- a 200 container
+    # puts `Content-Type` before `Content-Length` and an error the other way round, an
+    # image puts `Cache-Control` first and a container puts it last -- so no single
+    # order can be right. plexsim emitted `Date` FIRST (Python's `send_response` writes
+    # it before anything else) and `X-Plex-Protocol` after the length, which is the
+    # reverse of the reference at both ends.
+    #
+    # Nothing a client does depends on header order; this is the same fidelity as the
+    # XML attribute order of cycle 22 and the JSON byte form of cycle 32, and it is
+    # what a byte-for-byte diff of two servers reads.
+    HEADER_ORDER = {
+        "container": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                      "Content-Type", "Content-Length", "X-Plex-Container-Start",
+                      "X-Plex-Container-Total-Size", "Connection", "Keep-Alive",
+                      "Cache-Control", "Access-Control-Allow-Headers",
+                      "Access-Control-Allow-Origin", "Date"),
+        # A gzipped body moves `Connection` ahead of the encoding pair and the length
+        # to the end: `X-Plex-Protocol, Content-Type, Connection, Keep-Alive,
+        # Content-Encoding, …Original-Length, …Compressed-Length, Content-Length`.
+        "gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                 "Content-Type", "Connection", "Keep-Alive", "Content-Encoding",
+                 "X-Plex-Content-Original-Length", "X-Plex-Content-Compressed-Length",
+                 "Content-Length", "Cache-Control", "Access-Control-Allow-Headers",
+                 "Access-Control-Allow-Origin", "Date"),
+        # 400, 404 and 500 swap the type and the length.
+        "error": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                  "Content-Length", "Content-Type", "Connection", "Keep-Alive",
+                  "Cache-Control", "Access-Control-Allow-Headers",
+                  "Access-Control-Allow-Origin", "Date"),
+        # A 416 carries NO connection header at all -- on a closing request and a
+        # keep-alive one alike, which is the only response class that does not.
+        "range-error": ("X-Plex-Protocol", "Content-Length", "Content-Type",
+                        "Cache-Control", "Date"),
+        # The plug-in framework's own `/system` paths, which also carry the cookie.
+        "system": ("X-Plex-Protocol", "Content-Length", "Content-Type", "Set-Cookie",
+                   "Connection", "Keep-Alive", "Cache-Control",
+                   "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
+        "artwork": ("X-Plex-Protocol", "Content-Type", "X-Plex-Local-Asset",
+                    "Cache-Control", "Accept-Ranges", "Connection", "Keep-Alive",
+                    "Content-Length", "Access-Control-Allow-Headers",
+                    "Access-Control-Allow-Origin", "Date"),
+        "photo": ("X-Plex-Protocol", "Accept-Ranges", "Connection", "Keep-Alive",
+                  "Content-Length", "Content-Type", "Cache-Control",
+                  "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
+        "asset": ("X-Plex-Protocol", "Cache-Control", "Accept-Ranges", "Connection",
+                  "Keep-Alive", "Content-Length", "Content-Type", "Date"),
+        # A part read carries no `Cache-Control` at all -- which is the one exception to
+        # cycle 16's "no-cache goes on EVERY response", measured on both references --
+        # and `Content-Disposition` sits between `Last-Modified` and `Accept-Ranges`.
+        "part": ("X-Plex-Protocol", "ETag", "Last-Modified", "Content-Disposition",
+                 "Accept-Ranges", "Content-Range", "Connection", "Keep-Alive",
+                 "Content-Length", "Content-Type", "Date"),
+        "redirect": ("X-Plex-Protocol", "Location", "Cache-Control", "Content-Length",
+                     "Connection", "Keep-Alive", "Date"),
+        "preflight": ("X-Plex-Protocol", "Access-Control-Allow-Methods",
+                      "Access-Control-Max-Age", "Vary", "Content-Length", "Content-Type",
+                      "Connection", "Keep-Alive", "Cache-Control",
+                      "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
+                      "Date"),
+    }
+
+    def _header_family(self, names, status):
+        """Which order this response belongs to, from its own headers and path.
+
+        The families are told apart by a header only they carry, except the image pair:
+        `/photo/:/transcode` and a `/web/*` or `/:/resources/*` asset send the SAME five
+        names in two different orders, so those two are decided by the path.
+        """
+        if "etag" in names or "content-disposition" in names:
+            return "part"
+        if status == 416:
+            return "range-error"
+        if "location" in names:
+            return "redirect"
+        if "access-control-allow-methods" in names:
+            return "preflight"
+        if "set-cookie" in names:
+            return "system"
+        if "content-type" in names and names.get("content-type", "").startswith(
+                "text/event-stream"):
+            # Not measurable: a socket may never be opened on either reference, so the
+            # stream handshake keeps the order plexsim already sent, with Date last.
+            return None
+        if "x-plex-local-asset" in names:
+            return "artwork"
+        path = (self.path or "").split("?")[0]
+        if path.startswith("/photo/:/transcode"):
+            return "photo"
+        if path.startswith("/web") or path.startswith("/:/resources"):
+            return "asset"
+        if "content-encoding" in names:
+            return "gzip"
+        if status >= 400:
+            return "error"
+        if "accept-ranges" in names:
+            return "artwork"
+        return "container"
+
+    def end_headers(self):
+        """Write the buffered headers in the measured order, with `Date` last.
+
+        `BaseHTTPRequestHandler` already buffers every `send_header` and flushes here,
+        so ordering at the flush covers every path that answers -- the container writer,
+        the preflight, the redirect, the static and artwork paths and the part proxy --
+        without each of them knowing about it.
+        """
+        buffered = getattr(self, "_headers_buffer", None)
+        if buffered and self.request_version != "HTTP/0.9":
+            lines = []
+            for raw in buffered[1:]:
+                name, _, _value = raw.partition(b":")
+                lines.append((name.decode("latin-1").strip(), raw))
+            lines.append(("Date", ("Date: %s\r\n" % self.date_time_string()).encode("latin-1")))
+            values = {name.lower(): raw.partition(b":")[2].decode("latin-1").strip()
+                      for name, raw in lines}
+            status = getattr(self, "_status_sent", 200)
+            family = self._header_family(values, status)
+            order = self.HEADER_ORDER.get(family or "")
+            if order:
+                rank = {name.lower(): index for index, name in enumerate(order)}
+                # An unmeasured header goes where plexsim put it, just before `Date`.
+                unknown = rank["date"] - 0.5
+                lines.sort(key=lambda pair: rank.get(pair[0].lower(), unknown))
+            else:
+                lines.sort(key=lambda pair: 1 if pair[0].lower() == "date" else 0)
+            self._headers_buffer = [buffered[0]] + [raw for _name, raw in lines]
+        BaseHTTPRequestHandler.end_headers(self)
+
     def send_response(self, code, message=None):
         """A real PMS sends no `Server:` banner -- measured on kids and zen.
 
         Fifteen paths, JSON and XML, 200/400/404/500 alike: both references answer
         `X-Plex-Protocol, Content-Type, Content-Length, Connection, Cache-Control,
-        Date` and nothing else. BaseHTTPRequestHandler's own `send_response` adds a
+        Date` and nothing else -- in that ORDER, which cycle 33 measured per response
+        family and `end_headers` now writes. BaseHTTPRequestHandler's own `send_response` adds a
         `Server:` from `server_version`, so plexsim named itself on every response it
         has ever sent. Blanking `version_string()` does not help -- `send_header`
         still puts an empty header on the wire -- so the banner has to be dropped by
@@ -15196,7 +15333,9 @@ class Handler(BaseHTTPRequestHandler):
         """
         self.log_request(code)
         self.send_response_only(code, message)
-        self.send_header("Date", self.date_time_string())
+        # Cycle 33: `Date` is the LAST header a real PMS sends, not the first, so it is
+        # added when the buffer is flushed and ordered. See `end_headers`.
+        self._status_sent = code
 
     # -- plumbing --------------------------------------------------------
 

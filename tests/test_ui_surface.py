@@ -21858,6 +21858,30 @@ def main():
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (movie, quote("Quarrel of Steelworks")))
 
+
+    # Cycle 33, measured on kids and zen off a raw socket over twenty-six response
+    # classes, keep-alive and closing, the two references identical in every case: the
+    # response headers come out in a measured ORDER, per response family. Everywhere,
+    # `X-Plex-Protocol` is first and `Date` is last -- plexsim had exactly those two the
+    # wrong way round -- and the families contradict each other, a 200 container putting
+    # `Content-Type` before `Content-Length` where a 404 is the reverse.
+    order_c33a = {}
+    for label_c33a, path_c33a in (("container", "/library/sections"),
+                                  ("identity", "/identity"),
+                                  ("error", "/library/zzzz/zzzz"),
+                                  ("500", "/library/sections/%s/all?sort=zzzz" % movie_section)):
+        order_c33a[label_c33a] = list(request(base, "GET", path_c33a)[2])
+    check("the response headers come out in the measured order",
+          all(names_c33a and names_c33a[0] == "X-Plex-Protocol" and names_c33a[-1] == "Date"
+              for names_c33a in order_c33a.values())
+          and order_c33a["container"][:3] == ["X-Plex-Protocol", "Content-Type",
+                                              "Content-Length"]
+          and order_c33a["error"][:3] == ["X-Plex-Protocol", "Content-Length",
+                                          "Content-Type"]
+          and order_c33a["500"][:3] == ["X-Plex-Protocol", "Content-Length",
+                                        "Content-Type"],
+          "; ".join("%s=%s" % (k_c33a, v_c33a[:4]) for k_c33a, v_c33a in order_c33a.items()))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
