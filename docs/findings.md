@@ -1583,12 +1583,24 @@ MISSING token and a WRONG one alike -- there is no distinction between them, no
 GET /library/sections            (no X-Plex-Token)
 HTTP/1.1 401 Unauthorized
 X-Plex-Protocol: 1.0
+Content-Length: 91
 Content-Type: text/html
+Connection: Keep-Alive
+Keep-Alive: timeout=20
 Cache-Control: no-cache
-Connection: close
+Date: Wed, 16 Sep 2026 04:20:10 GMT
 
 <html><head><title>Unauthorized</title></head><body><h1>401 Unauthorized</h1></body></html>
 ```
+
+That block is a verbatim capture off kids, taken in cycle 30 with a raw socket. What stood here
+before was plexsim's own answer -- `Connection: close`, no `Content-Length`, no `Date`, the headers
+in plexsim's order -- pasted in and read as the reference's for eleven cycles.
+
+Cycle 30 corrected that sample: the `Connection: close` printed here for eleven cycles was
+**plexsim's own answer read back as the reference's**. Both references keep the socket alive
+after a 401, a 403 and a 404 and it really is reusable; the only handler-level refusal on the
+surface that closes it is the 400 a query pair with no `=` answers. See the thirtieth pass.
 
 `/`, `/library/sections`, every listing, every item, **artwork**, `/photo/:/transcode`,
 `/:/resources/*`, **media bytes**, both notification channels (the 101 upgrade is
@@ -7456,6 +7468,165 @@ file's four bytes; kids (1.43.4) refuses the same request with a 400. The hunt s
 request and read nothing else. plexsim 404s it either way — the references disagree, so there is no
 rule here — but zen is a production server on a build that still does it, and HANDOVER 9 records it
 so that nobody points a sweep at that path again.
+
+#### The thirtieth pass — the instrument the handover kept asking for, and the response that is not a pure function of the request
+
+Two hunts and a driver round, and the cycle's largest result is an INSTRUMENT.
+
+**The instrument, not the effort — again.** Four HANDOVER 3.3 entries across cycles 21, 25, 27 and
+28 all ended with the same sentence: *a writable 1.42.2 copy would settle this.* plexscratch is a
+copy of the lab's config and is therefore 1.43.4; zen is 1.42.2 and is production, read-only. So
+cycle 30 built the missing instrument -- **plexscratch42**, a FRESH install of
+`plexinc/pms-docker:1.42.2.10156-f737b826c`, the exact build zen runs and the one plexsim reports,
+isolated from plex.tv by construction and writable (`harness/scratch42/`, HANDOVER 4.6). It answered
+four open questions in an afternoon, and one of its answers corrected a patch from two cycles ago:
+
+- **An On Deck row carries no `librarySectionKey`, and it is the detail row MINUS `Field`.** Cycle
+  28 read the opposite off zen's single on-deck row and put the key back; the new copy says absent
+  on a movie and on an episode alike, which is what plexscratch (1.43.4) and cycle 21's fun both
+  said -- three instruments against zen's one. And the `Field` half was invisible to cycle 28
+  because zen's on-deck episode has no locked field at all. `/hubs/home/onDeck` and
+  `/hubs/home/continueWatching` keep the key, which plexsim already had right.
+- **The five media-codec edit-field names are a 400 on 1.42.2** (`atmos`, `audioCodec`,
+  `audioLayout`, `subtitleCodec`, `videoCodec`) against 1.43.4's 200, so plexsim's refusal was
+  right and cycle 21's hold-out is CLOSED by measurement rather than implemented. **`hdr10plus` is
+  the opposite**: a 200 on both versions, so it is a lockable name and plexsim's 400 was wrong.
+- **The write-protected settings are TWO on 1.42.2, not four.** `TranscoderH264Options` and
+  `TranscoderH264OptionsOverride` take a write with a 200 and really store it, where 1.43.4 answers
+  403; `PlexOnlineUrl` and `allowMediaDeletionLanOnly` are 403 on both. Cycle 19 measured that list
+  on the only writable reference it had, which was 1.43.4.
+- **`PROFILE_NAMES` is confirmed on 1.42.2**: all 78 platform names driven through a live session on
+  the new copy, 23 aliases included, **zero mismatches** against plexsim's table. Cycle 27's entry
+  said "single-witness by construction"; it is now two-version and CLOSED.
+
+Two more things it settled without a code change. The per-version `/filters` split is real and
+visible twice over -- 1.42.2 answers 21 movie filters on an empty library and 22 on zen's full one,
+1.43.4 answers 27 and 28 -- so the 1-2 row gap inside a version is CONTENT and the 6-8 row gap
+between them is the VERSION, which is what the fixtures encode. And a `Player` row driven with
+sixteen identity headers carries exactly the fifteen attributes cycle 27 modelled, in that order, on
+both versions.
+
+**And one caveat the copy taught about itself.** Its settings lists are SHORTER than a claimed
+1.42.2 server's: `/:/prefs` answers 151 rows where zen answers 173, and
+`/library/sections/prefs?type=1&agent=tv.plex.agents.movie` answers 14 where zen and kids both
+answer 19 -- the missing rows are the marker-generation settings and `ratingsSource`, which need a
+subscription the copy does not have. plexsim's own fixtures match ZEN's counts exactly (19/20/7/9
+across the four agent-and-type combinations), so they are right and the copy's numbers are its own
+limit. **Never read a settings count off plexscratch42.**
+
+**A three-season show, and what it says about cycle 25's progress model.** The copy now carries one
+(`Threefold`, nine distinct ffmpeg clips over three seasons — HANDOVER 3.3 has asked for one since
+cycle 25). Unmatching it pushed an activity whose `Analyzing Media` phase steps **per LEAF from 25
+to 50** — -1, 25, 31, 36, 39, 42, 44, 47, 50 for nine episodes — and then `Updating Metadata` at 50
+twice before `ended 100`, with the subtitle staying the SHOW's title throughout and no per-season
+pass at all. That is enough to say `100 - 5 * seasons_left` is not the mechanism and not enough to
+replace cycle 25's model: this show was already UNMATCHED (`local://`) and this server is 1.42.2,
+where cycle 25 measured a matched show on 1.43.4. A clean measurement needs a MATCHED three-season
+show, and every writable instrument is isolated from plex.tv by design, so the entry stays open with
+its reason sharpened rather than closed.
+
+**And cycle 26's session serialiser is confirmed on 1.42.2, field for field.** A live session row
+there sends `librarySectionID`, `Media.id`, `Media.aspectRatio`, `Part.id` and `Stream.id` as
+STRINGS where the same item's detail row sends `int`, `int`, `float`, `int`, `int` — which is what
+cycle 26 measured on 1.43.4 and could only measure there, because reading that path needs a live
+session and neither read-only reference can be given one. Two versions now.
+
+**A 53-path sweep against the new copy found no further version differences.** Every difference it
+did report is content or the copy's own limit: its genre axis is empty because nothing is matched,
+its `/statistics/*` are 404s because it is unclaimed and unsubscribed, its `/system` and
+`/system/scanners/{N}` lists are empty on a fresh install, and the rest is plexsim's fixture holding
+different ratingKeys. So the four findings above are the whole of what the version split had left
+to give on this surface -- which is itself worth recording, because it is the first time the
+programme has been able to ask.
+
+**Territory B swept THE SAME REQUEST TWICE** — the assumption every measurement this project has
+ever made, that a response is a pure function of the request. Cycle 29 found by accident that it is
+not (the photo transcoder's first uncached answer omits `Accept-Ranges`), so cycle 30 swept the
+dimension: ~1,600 responses across four servers, each path read three times back to back and again
+four minutes later, with every header diffed. Two findings, and both are about state rather than
+shape.
+
+**A `random="1"` shelf's sample is STABLE.** zen answered the identical 40 ratingKeys for
+`movie.topunwatched.1` on 21 reads taken 20 seconds apart over seven minutes, and the same for
+`tv.startwatching.2` and `tv.toprated.2`; a request carrying a different client identifier gets the
+same sample, so it is server-wide; and the same shelf at `count=12` answers its own stable set,
+which is not the head of the `count=40` one, so the sample is held per (shelf, count). Cycle 28
+measured the sampling itself and implemented it as a fresh `random.sample` on every request — so
+"Top Unwatched" re-ordered on every navigation back to the library tab, which is the same complaint
+cycle 28 fixed from the other side. What makes a real PMS REDRAW a sample is not measured (a TTL, a
+restart, a write to the set), so plexsim mints one seed per (shelf, count) on first use and holds
+it for the life of the process: it reproduces everything measured and invents no expiry.
+
+**And the connection state of every refusal was inverted.** Measured by sending the refusal and then
+a second request down the same socket, three times per case, on kids and zen alike:
+
+- a **401** with no token, a **401** with a wrong one, the **403** an unknown single segment answers,
+  a **404** for a path that does not exist and the **401** on `/photo/:/transcode` all carry
+  `Connection: Keep-Alive` and the socket really is reusable. plexsim forced `Connection: close` on
+  every one of them, so a token-gated server tore down one TCP connection per refused request. This
+  also corrects a sample printed in this very document: the 401 recorded there carries
+  `Connection: close`, which was plexsim's own answer read back as the reference's.
+- the **400** a query pair with no `=` answers is the opposite: both references CLOSE the socket,
+  and it is the **only** handler-level refusal on the surface that does — seventeen other reachable
+  400s (`type=abc` on six leaves, `checkFiles=2`, the transcoder's missing dimension, `limit=abc` on
+  four paths, `timespan=abc`, `accountID=abc`) keep it alive on both. plexsim kept it alive, so a
+  harness that sends a malformed pair and then reuses the socket passes here and hangs against a
+  real PMS.
+
+**A collection TAG write makes a tag, not a collection.** The write hunt found it as an aside and
+could not settle it with one witness; the new 1.42.2 copy made it two, on two versions. A
+`collection[0].tag.tag=` write on the section path is a 200 that creates the TAG — it appears on the
+row and in `/library/sections/{id}/collection`, it filters, and both search endpoints find it as a
+`tagType: 2` row with a `count` — and creates **no collection item**: `/library/all?type=18` and
+`/library/sections/{id}/collections` list nothing new, twenty minutes later and after a refresh.
+Only `POST /library/collections` makes one, and the tell is the `guid`: an item-backed collection's
+search row carries one and a tag-only collection's does not. plexsim materialised a full, browsable
+collection from the tag write, so "Add to Collection" on an item created a row in the Collections
+tab that no real PMS has — and its search read the collection ITEMS, so a tag-only collection would
+have been invisible. Both halves are now the tag table's.
+
+**Territory A swept the NOTIFICATION CHANNEL at scale and over time**, and found a self-inflicted
+denial of service that twelve cycles had walked past. Every finding here is single-witness by
+construction: the copy is the only server a socket may be opened on, since kids and zen are GET and
+HEAD only.
+
+**plexsim answered a client's PONG with another PING — 903,480 pings in 35 seconds.** The
+reference's ping timer is free-running: three pings in 35 s (10.001, 20.001, 30.019) whether the
+client pongs or not. plexsim's loop was "wait out one ping interval, then ping", and the wait was a
+`select()` that returns for ANY frame — so a pong ended it and the loop pinged again at once, about
+26,000 frames a second, for the life of the socket. Every compliant client pongs automatically:
+every browser, every Plex app, python-plexapi's `AlertListener`. Twelve cycles missed it because a
+raw probe that never pongs sees the correct ten-second cadence. The wait is now a deadline that
+keeps polling for a CLOSE until the next ping is due.
+
+**One consumer that stops reading hung every write.** A socket opened and never read from, plus
+repeated `PUT .../analyze`: writes 1-103 took a millisecond each, write 104 took 5.2 s, write 105
+took 20.0 s, and a second client's unrelated title edit timed out after 30 s while `/identity` still
+answered instantly. Closing the dead socket drained 9,462 backlogged frames and writes returned to
+a millisecond. The reference took the same shape at ten times the volume — 4.5 MB of frames at a
+dead socket — with every request between 0.019 and 0.031 s, and stopped queueing at ~415 KB: it
+BOUNDS the per-socket backlog, where plexsim fanned out synchronously in the request thread with a
+blocking write, no queue, no drop and no timeout. plexsim now gives a sink a two-second budget and
+drops the channel rather than the writers — it drops where the reference buffers, which is the half
+it can implement, and the check proves it: 20.00 s before, 2.08 s after, on the same 260 writes.
+
+**A library DELETE pushes no per-row frames.** Two libraries built for the question — 3 rows and 200
+rows — pushed the eight `library.delete` activity frames and nothing else. Cycle 18's fourteen
+`state 9` frames named a DIFFERENT section from the one deleted, none of their fourteen itemIDs was
+a row of the library, and cycle 18 recorded the same fourteen for a nine-row library: they are a
+one-off cleanup of orphaned `type: 12` rows. plexsim sent one entry per top-level row, so a
+zen-sized library would have handed every client a ~1 MB frame of 3,887 `type 12` deletes keyed on
+movie ratingKeys. A single item's delete frame is real and unchanged.
+
+**And three smaller ones.** plexsim closed the eventsource channel after 300 s where the reference
+is still open at 430 — the constant is gone, and a 320-second capture afterwards showed plexsim now
+closing at **256 s for some other reason**, which is recorded as open rather than claimed fixed. Its
+101 upgrade carried no `Date`, the one response on the surface without one. And the frames a row's
+CREATION pushes are now recorded — eight per row, `state 1` among them, plus a
+`library.update.item.metadata` activity per new row — which corrects two documents: CLAUDE.md's
+state alphabet never listed `state 1`, and cycle 19's "no scan on a real server does a metadata
+activity per row" is true only of a scan that finds nothing new. plexsim cannot create a metadata
+row during a scan, so that sequence is unreachable and recorded rather than built.
 
 ### Emulation calibrated against the account's own claimed servers
 
