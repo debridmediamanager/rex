@@ -7,6 +7,12 @@
       "type": "movie",
       "title": "Feature Movies",
       "uuid": "c37-feature-movies"
+    },
+    {
+      "key": "2",
+      "type": "show",
+      "title": "Feature Shows",
+      "uuid": "c37-feature-shows"
     }
   ],
   "items": [
@@ -27,6 +33,7 @@
       "librarySectionID": 1,
       "librarySectionTitle": "Feature Movies",
       "librarySectionKey": "/library/sections/1",
+      "Role": [{"tag": "Alan Tudyk"}],
       "Media": [
         {
           "id": 10100,
@@ -132,6 +139,80 @@
           ]
         }
       ]
+    },
+    {
+      "ratingKey": "103",
+      "key": "/library/metadata/103",
+      "guid": "plex://movie/c3700000000000000000103",
+      "type": "movie",
+      "title": "Tears of Steel",
+      "audienceRating": 5.5,
+      "librarySectionID": 1,
+      "librarySectionTitle": "Feature Movies",
+      "librarySectionKey": "/library/sections/1"
+    },
+    {
+      "ratingKey": "104",
+      "key": "/library/metadata/104",
+      "guid": "plex://movie/c3700000000000000000104",
+      "type": "movie",
+      "title": "Big Buck Bunny",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Feature Movies",
+      "librarySectionKey": "/library/sections/1"
+    },
+    {
+      "ratingKey": "105",
+      "key": "/library/metadata/105",
+      "guid": "plex://movie/c3700000000000000000105",
+      "type": "movie",
+      "title": "Elephants Dream",
+      "audienceRating": 5.4,
+      "librarySectionID": 1,
+      "librarySectionTitle": "Feature Movies",
+      "librarySectionKey": "/library/sections/1"
+    },
+    {
+      "ratingKey": "106",
+      "key": "/library/metadata/106",
+      "guid": "plex://movie/c3700000000000000000106",
+      "type": "movie",
+      "title": "Cosmos Laundromat",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Feature Movies",
+      "librarySectionKey": "/library/sections/1"
+    },
+    {
+      "ratingKey": "107",
+      "key": "/library/metadata/107",
+      "guid": "plex://movie/c3700000000000000000107",
+      "type": "movie",
+      "title": "Sintel",
+      "librarySectionID": 1,
+      "librarySectionTitle": "Feature Movies",
+      "librarySectionKey": "/library/sections/1"
+    },
+    {
+      "ratingKey": "108",
+      "key": "/library/metadata/108",
+      "guid": "plex://show/c3700000000000000000108",
+      "type": "show",
+      "title": "Firefly",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Feature Shows",
+      "librarySectionKey": "/library/sections/2"
+    },
+    {
+      "ratingKey": "109",
+      "key": "/library/metadata/109",
+      "guid": "plex://episode/c3700000000000000000109",
+      "type": "episode",
+      "title": "The Train Job",
+      "parentRatingKey": "108",
+      "grandparentRatingKey": "108",
+      "librarySectionID": 2,
+      "librarySectionTitle": "Feature Shows",
+      "librarySectionKey": "/library/sections/2"
     },
     {
       "ratingKey": "201",

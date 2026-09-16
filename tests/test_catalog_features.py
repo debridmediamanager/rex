@@ -33,6 +33,46 @@ def main():
     catalog = server.Catalog(fixture)
     sim = server.PlexSim(catalog, Resolver(), assert_claimed=True)
 
+    def matches(query, tagged=False):
+        typed, tags = sim.search_matches(query, 100, tagged_items=tagged)
+        titles = {kind: [row.get("title") for row in rows]
+                  for kind, rows in typed.items()}
+        tag_names = {kind: [entry["tag"].get("tag") for entry in rows]
+                     for kind, rows in tags.items()}
+        return titles, tag_names
+
+    # Cycle 37 reconstructed both PMS spellfix tables, including the exact
+    # editdist1/rank score, top-ten cap, <=200 cutoff and fallback gate. These
+    # titles are the tiny measured kids corpus so `zzz` has the same two words.
+    spelling = getattr(catalog, "spelling", None)
+    zzz = spelling.metadata.candidates("zzz") if spelling is not None else []
+    check("spellfix candidates use the measured cost and bounded result set",
+          [(row["word"], row["distance"], row["score"]) for row in zzz]
+          == [("job", 110, 140), ("steel", 137, 167)]
+          and len(zzz) <= 10 and all(row["score"] <= 200 for row in zzz))
+    check("misspelled title words reach the measured movie rows",
+          matches("teers")[0].get("movie") == ["Tears of Steel"]
+          and matches("steal")[0].get("movie") == ["Tears of Steel"]
+          and matches("buny")[0].get("movie") == ["Big Buck Bunny"]
+          and matches("elefants")[0].get("movie") == ["Elephants Dream"])
+    check("fallback ANDs retained tokens and discards only sub-three-byte tokens",
+          matches("Tears zzz")[0].get("movie") == ["Tears of Steel"]
+          and matches("Tears xy")[0].get("movie") == ["Tears of Steel"]
+          and "Tears of Steel" not in matches("Tears xyz")[0].get("movie", []))
+    train_titles, _ = matches("train")
+    check("an episode-only normal hit leaves the global spelling gate open",
+          train_titles.get("episode") == ["The Train Job"]
+          and train_titles.get("movie") == ["Elephants Dream"])
+    tudik_titles, tudik_tags = matches("Tudik", tagged=True)
+    tudik_hubs = sim.search({"query": "Tudik", "limit": "100"})["MediaContainer"]
+    tudik_movies = next(hub for hub in tudik_hubs["Hub"]
+                        if hub["hubIdentifier"] == "movie").get("Metadata") or []
+    check("the measured people spelling branch emits its tag and associated item",
+          tudik_tags.get("actor") == ["Alan Tudyk"]
+          and tudik_titles.get("movie") == ["Stacked Feature"]
+          and tudik_movies[0].get("reason") == "actor"
+          and tudik_movies[0].get("reasonTitle") == "Alan Tudyk")
+
     stacked = getattr(build_catalog, "stacked_name", lambda _name: None)
     check("the builder recognises only the measured - cdN stack spelling",
           stacked("Feature - cd2.mkv") == ("feature", 2, "Feature.mkv")

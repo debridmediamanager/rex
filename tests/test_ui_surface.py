@@ -4188,8 +4188,10 @@ def main():
                                              % (movie_section, key))
         check("the advertised sort %s is answered" % key, status == 200,
               "HTTP %s" % status)
-    # The in-library search box is a SUBSTRING matcher, not the word-prefix one
-    # /hubs/search uses -- and one character is enough.
+    # The in-library search box is a SUBSTRING matcher. Cycle 37 added the separate
+    # measured spelling fallback to /hubs/search, so a mid-word fragment can now
+    # return global rows too -- but only in the 0.3x fuzzy band, not as a normal
+    # word-prefix hit.
     _, sample_rows, _ = get(base, "/library/sections/%s/all" % movie_section)
     a_title = str((sample_rows.get("Metadata") or [{}])[0].get("title") or "")
     if len(a_title) > 3:
@@ -4198,12 +4200,19 @@ def main():
                                     % (movie_section, quote(fragment)))
         _, hub_search, _ = get(base, "/hubs/search?query=%s" % quote(fragment))
         hub_hits = sum(h.get("size") or 0 for h in hub_search.get("Hub") or [])
-        check("the in-library search box matches a mid-word fragment",
-              (in_library.get("size") or 0) > 0 and hub_hits == 0,
+        hub_rows = [row for hub in hub_search.get("Hub") or []
+                    for row in ((hub.get("Metadata") or [])
+                                + (hub.get("Directory") or []))]
+        fuzzy_scores = [float(row.get("score")) for row in hub_rows
+                        if row.get("score") is not None]
+        check("the in-library search box is substring while global search is fuzzy",
+              (in_library.get("size") or 0) > 0 and hub_hits > 0
+              and fuzzy_scores and max(fuzzy_scores) < 0.5,
               "%r -> %s in-library, %s in the hub search"
               % (fragment, in_library.get("size"), hub_hits))
     else:
-        skip("the in-library search box matches a mid-word fragment", "title too short")
+        skip("the in-library search box is substring while global search is fuzzy",
+             "title too short")
     # Removing a collection member: the client builds this exact DELETE and assigns
     # the response onto its model. plexsim had no DELETE branch, so the tile
     # disappeared optimistically and came back on the next fetch.
@@ -21795,28 +21804,30 @@ def main():
                          stored_plain_c32e, stored_case_c32e))
 
 
-    # Cycle 32, swept on kids (825 probes): the hub search matcher folds by the title
-    # TABLE. A letter only NFD reaches does not match at a word score (`Qu\u0105rrel`,
-    # the ogonek, is fuzzy on a real PMS and plexsim emulates no fuzzy band), while the
-    # long s in a title's last word does (`Tears of \u017fteel` answers 0.93). plexsim
-    # decomposed with NFD, which inverted both.
+    # Cycle 32 measured the normal title fold: an ogonek only reaches this title in
+    # the fuzzy 0.33 band, while a long-s or acute spelling keeps the 0.93 word tier.
+    # Cycle 37 now implements that separate fallback, so SCORE -- not membership --
+    # distinguishes the two passes.
     request(base, "PUT", "/library/metadata/%s?title.value=%s&title.locked=1"
                          % (movie, quote("Quarrel of Steelworks")))
 
-    def hub_hit_c32f(query_c32f):
-        found_c32f = []
+    def hub_score_c32f(query_c32f):
         for hub_c32f in get(base, "/hubs/search?query=%s&limit=30"
                             % quote(query_c32f))[1].get("Hub") or []:
-            found_c32f += [r_c32f.get("ratingKey")
-                           for r_c32f in hub_c32f.get("Metadata") or []]
-        return movie in found_c32f
+            for row_c32f in hub_c32f.get("Metadata") or []:
+                if row_c32f.get("ratingKey") == movie:
+                    return float(row_c32f.get("score"))
+        return None
 
-    control_c32f = hub_hit_c32f("Quarrel of Steelworks")
-    ogonek_c32f = hub_hit_c32f("Qu\u0105rrel")
-    long_s_c32f = hub_hit_c32f("Quarrel of \u017fteelworks")
-    acute_c32f = hub_hit_c32f("Qu\u00e1rrel")
-    check("the hub search matcher folds by the title table, not NFD",
-          control_c32f and not ogonek_c32f and long_s_c32f and acute_c32f,
+    control_c32f = hub_score_c32f("Quarrel of Steelworks")
+    ogonek_c32f = hub_score_c32f("Qu\u0105rrel")
+    long_s_c32f = hub_score_c32f("Quarrel of \u017fteelworks")
+    acute_c32f = hub_score_c32f("Qu\u00e1rrel")
+    check("the hub title fold is the word tier and NFD reaches only the fuzzy tier",
+          control_c32f and control_c32f > 0.5
+          and ogonek_c32f and ogonek_c32f < 0.5
+          and long_s_c32f and long_s_c32f > 0.5
+          and acute_c32f and acute_c32f > 0.5,
           "control %s | ogonek %s | long s %s | acute %s"
           % (control_c32f, ogonek_c32f, long_s_c32f, acute_c32f))
 
