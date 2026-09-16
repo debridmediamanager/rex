@@ -21929,6 +21929,30 @@ def main():
           % (preflight_c33c.get("Connection"), preflight_c33c.get("Cache-Control"),
              redirect_c33c.get("Connection")))
 
+
+    # Cycle 33, measured on kids and zen: every leaf of the plug-in framework's `/system`
+    # subtree writes `Content-Length` before `Content-Type` -- the order an ERROR uses --
+    # while `/system/agents`, which PMS implements itself, orders like a container. The
+    # first header-order patch of this cycle read the family off the cookie, so the
+    # cookie-less `/system/scanners/{N}` came out type-first.
+    system_order_c33d = {label_c33d: list(request(base, "GET", path_c33d)[2])
+                         for label_c33d, path_c33d in
+                         (("system", "/system"), ("scanners", "/system/scanners/1"),
+                          ("agents", "/system/agents"), ("unknown", "/system/zzzz"))}
+
+    def leads_c33d(label_c33d):
+        names_c33d = system_order_c33d[label_c33d]
+        if "Content-Type" not in names_c33d:
+            return "Content-Length"
+        return min(("Content-Length", "Content-Type"), key=names_c33d.index)
+
+    check("the framework's /system leaves order their length first, /system/agents last",
+          leads_c33d("system") == "Content-Length"
+          and leads_c33d("scanners") == "Content-Length"
+          and leads_c33d("unknown") == "Content-Length"
+          and leads_c33d("agents") == "Content-Type",
+          str({k_c33d: leads_c33d(k_c33d) for k_c33d in system_order_c33d}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
