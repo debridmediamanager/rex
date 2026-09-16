@@ -1253,6 +1253,57 @@ class Catalog:
                 and (hit(row.get("title")) or hit(row.get("originalTitle")))]
 
     @staticmethod
+    def search_tier(row, query):
+        """Which of the four score tiers a row's title earns -- measured, not fitted.
+
+        Cycle 36, gridded on zen's "Riders of Justice" over forty queries and confirmed
+        on kids' "Tears of Steel", both references agreeing on every cell:
+
+            exact     the query's tokens ARE the row's title, its `titleSort` or its
+                      `originalTitle`. Folded, so case, a whitespace RUN and a trailing
+                      space do not count -- and `titleSort` is why `Beautiful Mind`
+                      scores exact against "A Beautiful Mind", `originalTitle` why
+                      `Malam 3 Yasinan` scores exact against "3rd Night of Prayer".
+            anchored  the query's FIRST token EQUALS the title's first token, and
+                      nothing else matters at all: `Riders X`, `Riders XY ZW` and
+                      `Riders of Justice Riders` are each anchored.
+            prefix    the query is a token-wise PREFIX of the title -- no more tokens
+                      than the title has, each one a prefix of the title's token at the
+                      SAME index, and the first a PROPER prefix. `Ride of`, `Ride of J`,
+                      `Rid of Justice` and `Rider of Justice` are prefix; `Ride Just`,
+                      `Ride X` and `Ride of Justice X` are not.
+            fuzzy     anything else the matcher lets through.
+
+        **Cycle 35's `word_tier` is REFUTED as the tier rule** by that grid. It modelled
+        the anchored tier as the matcher's own in-order, skip-tolerant walk plus "the
+        first term matches the first word", and both references score `Riders X` and
+        `Riders of Justices` at the anchored tier where that model calls them fuzzy. It
+        was fitted on sixteen cells, none of which carried a term the title does not
+        have -- HANDOVER 3.1 class D, a model that agreed with every case it was built
+        from. The anchored tier turns out to be one token comparison.
+        """
+        terms = [term for term in
+                 hierarchy_module.fold_query(str(query or "")).split() if term]
+        if not terms:
+            return "fuzzy"
+        for field in ("title", "titleSort", "originalTitle"):
+            words = [word for word in
+                     hierarchy_module.fold_query(str(row.get(field) or "")).split() if word]
+            if words and words == terms:
+                return "exact"
+        words = [word for word in
+                 hierarchy_module.fold_query(str(row.get("title") or "")).split() if word]
+        if not words:
+            return "fuzzy"
+        if words[0] == terms[0]:
+            return "anchored"
+        if (len(terms) <= len(words) and words[0].startswith(terms[0])
+                and all(words[index].startswith(terms[index])
+                        for index in range(1, len(terms)))):
+            return "prefix"
+        return "fuzzy"
+
+    @staticmethod
     def word_tier(title, query):
         """Does `query` score at the WORD tier (0.73) against `title`, or the fuzzy one?
 
@@ -10322,6 +10373,23 @@ class PlexSim:
                          else {"movies", "otherVideos"})
         return bool(tokens & families)
 
+    # Cycle 36, read off 17 rows on kids and zen and held out over the grid: the base of
+    # the ladder is the ROW TYPE's. A movie and a show are 0.93/0.73/0.53/0.33, an
+    # EPISODE is 0.02 lower throughout -- 0.91/0.71/0.51/0.31 -- and a tag row has its
+    # own 0.92/0.52/0.32 (see `_tag_result`). plexsim scored every type at the movie's
+    # base, so its episodes tied with, and could out-rank, a movie of the same match
+    # quality; the client promotes a hub on the score, so that inverts the page a real
+    # PMS draws. And it had no prefix tier at all, which is the way search is actually
+    # used -- a user typing the start of a title got the full-word tier.
+    SEARCH_TIER_BASE = {"episode": 0.91}
+    SEARCH_TIER_DROP = {"exact": 0.0, "anchored": 0.20, "prefix": 0.40, "fuzzy": 0.60}
+
+    def search_score(self, row, needle):
+        """The score a real PMS prints for this row against this query."""
+        base = self.SEARCH_TIER_BASE.get(row.get("type"), 0.93)
+        tier = self.catalog.search_tier(row, needle)
+        return self._score(round(base - self.SEARCH_TIER_DROP[tier], 5))
+
     def _score(self, rank):
         """A relevance score in the shape the reference prints it.
 
@@ -10362,15 +10430,7 @@ class PlexSim:
         needle = (text or "").strip().lower()
 
         def rank(row):
-            title = str(row.get("title") or "").lower()
-            # An exact title is the best match, a title that starts with the query
-            # next, a later word last -- which is the ordering the reference's own
-            # scores produce even though its numbers differ.
-            if title == needle:
-                return 0.93
-            if self.catalog.word_tier(row.get("title"), needle):
-                return 0.73
-            return 0.31
+            return float(self.search_score(row, needle))
 
         typed = {}
         for row in rows:
@@ -10565,11 +10625,8 @@ class PlexSim:
                 entry["_searchhit"] = True
                 # Cycle 35: the tier is the MATCHER's rule (see `Catalog.word_tier`),
                 # and an exact title is 0.93 on both references, not 0.95.
-                matched_title = (str(row.get("title") or "").lower() == needle
-                                 or self.catalog.word_tier(row.get("title"), needle))
-                entry["score"] = self._score(
-                    0.93 if str(row.get("title") or "").lower() == needle
-                    else 0.73 if matched_title else 0.33)
+                matched_title = self.catalog.search_tier(row, needle) != "fuzzy"
+                entry["score"] = self.search_score(row, needle)
                 if not matched_title:
                     # Measured: a row that matched through a TAG rather than its
                     # own title names the tag it matched on -- the client prints
@@ -10772,10 +10829,7 @@ class PlexSim:
             for row in typed.get(kind, []):
                 if not self.search_type_selects(tokens, kind, row):
                     continue
-                score = 0.93 if str(row.get("title") or "").lower() == needle \
-                    else 0.73 if self.catalog.word_tier(row.get("title"), needle) \
-                    else 0.33
-                results.append({"score": float(self._score(score)),
+                results.append({"score": float(self.search_score(row, needle)),
                                 "Metadata": self._search_result_row(row)})
             if kind == "collection":
                 # Cycle 28, re-measured on plexscratch: a collection is found HERE too.
