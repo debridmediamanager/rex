@@ -326,6 +326,13 @@ _ATTR_ORDER = {
         "originallyAvailableAt", "addedAt", "updatedAt", "audienceRatingImage",
         "deletedAt", "chapterSource"
     ),
+    "Video[clip]": (
+        # Cycle 29, identical across 3,905 extras on kids and zen. extraType is
+        # deliberately last, after every optional timestamp and duration field.
+        "ratingKey", "key", "guid", "type", "title", "titleSort", "summary",
+        "index", "year", "thumb", "primaryGuid", "art", "subtype", "duration",
+        "originallyAvailableAt", "addedAt", "updatedAt", "extraType"
+    ),
     "Video[movie]": (
         "ratingKey", "key", "guid", "slug", "studio", "type", "title",
         "titleSort", "librarySectionTitle", "librarySectionID",

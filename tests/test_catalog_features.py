@@ -2,6 +2,7 @@
 """Focused regressions for catalog shapes absent from the ordinary UI fixture."""
 
 import os
+import re
 import sys
 import urllib.parse
 
@@ -11,6 +12,7 @@ sys.path.insert(0, ROOT)
 
 import build_catalog  # noqa: E402
 import server  # noqa: E402
+import xmlout  # noqa: E402
 
 
 class Resolver:
@@ -80,6 +82,56 @@ def main():
           dovi.get("size") == 0 and dovi.get("transcodeDecisionCode") == 2003
           and dovi.get("transcodeDecisionText")
           == "File is unplayable. DoVi (Profile 5) color space is not supported.")
+
+    def get(path):
+        try:
+            answer = sim.handle("GET", path, b"", {})
+        except Exception as error:  # Parent-proof runs should fail, not abort.
+            return ("exception", type(error).__name__)
+        return answer.get("MediaContainer") if isinstance(answer, dict) else answer
+
+    parent = get("/library/metadata/101?includeExtras=1")
+    parent_row = (parent.get("Metadata") or [{}])[0]
+    inline = (parent_row.get("Extras") or {}).get("Metadata") or []
+    check("the parent advertises its lowest-index trailer and an uncapped inline block",
+          parent_row.get("primaryExtraKey") == "/library/metadata/201"
+          and (parent_row.get("Extras") or {}).get("size") == 1
+          and [row.get("ratingKey") for row in inline] == ["201"]
+          and "art" not in inline[0])
+
+    item = get("/library/metadata/101/extras/all")
+    section = get("/library/sections/1/extras/all?extraType=1")
+    section_miss = get("/library/sections/1/extras/all?extraType=3")
+    item_row = (item.get("Metadata") or [{}])[0]
+    section_row = (section.get("Metadata") or [{}])[0]
+    forbidden = {"librarySectionID", "librarySectionTitle", "librarySectionKey"}
+    check("item and section extras expose the measured full and light projections",
+          item.get("size") == 1 and item.get("allowSync") is False
+          and not (forbidden & set(item))
+          and str(item_row.get("art") or "").startswith("/library/metadata/101/art/")
+          and section.get("size") == 1 and not (forbidden & set(section_row))
+          and all("Stream" not in part for media in section_row.get("Media") or []
+                  for part in media.get("Part") or [])
+          and section_miss.get("size") == 0)
+
+    clip = get("/library/metadata/201")
+    clip_row = ((clip.get("Metadata") or [{}])[0]
+                if isinstance(clip, dict) else {})
+    check("a faithful clip detail needs no invented section fields",
+          isinstance(clip, dict) and clip.get("size") == 1
+          and clip.get("allowSync") is False
+          and not (forbidden & set(clip)) and not (forbidden & set(clip_row))
+          and "parentRatingKey" not in clip_row and "_parentRatingKey" not in clip_row)
+    check("a clip borrows the art attribute but owns only thumb and poster reads",
+          get("/library/metadata/201/art")[:2] == ("error", 404)
+          and get("/library/metadata/201/thumb")[0] in ("image-key", "png")
+          and get("/library/metadata/201/poster")[0] in ("image-key", "png"))
+
+    xml = xmlout.to_xml({"MediaContainer": item}).decode("utf-8")
+    match = re.search(r"<Video\b[^>]*", xml)
+    attributes = re.findall(r"([A-Za-z0-9_:]+)=", match.group(0)) if match else []
+    check("clip XML keeps extraType as its final attribute",
+          attributes[-1:] == ["extraType"], str(attributes))
 
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
