@@ -20662,6 +20662,39 @@ def main():
     # then reuses the socket passes here and hangs against a real PMS.
     import socket as socket_c30f_mod
 
+    crlf_c30f = chr(13) + chr(10)
+
+    def read_one_c30f(sock_c30f, buffered_c30f):
+        """(status, what is left over, did the peer close) -- ONE response, exactly.
+
+        The reader has to be Content-Length aware. A bare `recv()` sees whatever the
+        kernel has coalesced, so a response whose headers and body land in two segments
+        leaves the body unread: the next `recv` then returns that body where the second
+        response's status line should be, and the probe reports a live socket as closed.
+        That is deterministic per body size rather than flaky, so retrying cannot paper
+        over it -- which is how this check came to fail for a reason the server had
+        nothing to do with. Drain the response instead.
+        """
+        while (crlf_c30f * 2).encode() not in buffered_c30f:
+            chunk_c30f = sock_c30f.recv(16384)
+            if not chunk_c30f:
+                return ((int(buffered_c30f.split()[1]) if buffered_c30f.split() else 0),
+                        buffered_c30f, True)
+            buffered_c30f += chunk_c30f
+        head_c30f, _, rest_c30f = buffered_c30f.partition((crlf_c30f * 2).encode())
+        status_c30f = int(head_c30f.split()[1])
+        length_c30f = 0
+        for line_c30f in head_c30f.decode("latin-1").split(crlf_c30f)[1:]:
+            name_c30f, _, value_c30f = line_c30f.partition(":")
+            if name_c30f.strip().lower() == "content-length":
+                length_c30f = int(value_c30f.strip())
+        while len(rest_c30f) < length_c30f:
+            chunk_c30f = sock_c30f.recv(16384)
+            if not chunk_c30f:
+                return status_c30f, rest_c30f, True
+            rest_c30f += chunk_c30f
+        return status_c30f, rest_c30f[length_c30f:], False
+
     def reuse_c30f(path_c30f):
         """(status, was the socket reusable) -- raw, because `http.client` RECONNECTS.
 
@@ -20670,37 +20703,27 @@ def main():
         request down the same fd and reads what comes back.
         """
         host_c30f, _, port_c30f = base.split("//")[1].partition(":")
-        head_c30f = ("GET %s HTTP/1.1" + chr(13) + chr(10) + "Host: %s" + chr(13)
-                     + chr(10) + "User-Agent: %s" + chr(13) + chr(10)
-                     + chr(13) + chr(10))
+        head_c30f = ("GET %s HTTP/1.1" + crlf_c30f + "Host: %s" + crlf_c30f
+                     + "User-Agent: %s" + crlf_c30f + crlf_c30f)
         sock_c30f = socket_c30f_mod.create_connection(
             (host_c30f, int(port_c30f or 80)), timeout=10)
-        status_c30f, reused_c30f = 0, False
         try:
             sock_c30f.sendall((head_c30f % (path_c30f, host_c30f, UA)).encode())
-            first_c30f = sock_c30f.recv(16384)
-            if first_c30f.split():
-                status_c30f = int(first_c30f.split()[1])
+            status_c30f, left_c30f, closed_c30f = read_one_c30f(sock_c30f, b"")
+            if closed_c30f:
+                return status_c30f, False
             sock_c30f.sendall((head_c30f % ("/identity", host_c30f, UA)).encode())
-            second_c30f = sock_c30f.recv(16384)
-            reused_c30f = second_c30f.split()[1:2] == [b"200"]
+            second_c30f, _l_c30f, _c_c30f = read_one_c30f(sock_c30f, left_c30f)
+            return status_c30f, second_c30f == 200
         except OSError:
-            reused_c30f = False
+            return 0, False
         finally:
             sock_c30f.close()
-        return status_c30f, reused_c30f
 
-    def reuse_thrice_c30f(path_c30f):
-        """Three attempts: a busy server can time a read out, and a false "it closed" is
-        the failure mode -- so a socket counts as reusable if ANY attempt reused it, and
-        as closed only if all three agree."""
-        results_c30f = [reuse_c30f(path_c30f) for _attempt_c30f in range(3)]
-        return (results_c30f[0][0], any(result_c30f[1] for result_c30f in results_c30f))
-
-    pair_c30f = reuse_thrice_c30f("/library/sections/%s/all?justakey" % movie_section)
-    identity_c30f = reuse_thrice_c30f("/identity?justakey")
-    other_c30f = reuse_thrice_c30f("/library/sections/%s/all?type=abc" % movie_section)
-    missing_c30f = reuse_thrice_c30f("/library/metadata/999999")
+    pair_c30f = reuse_c30f("/library/sections/%s/all?justakey" % movie_section)
+    identity_c30f = reuse_c30f("/identity?justakey")
+    other_c30f = reuse_c30f("/library/sections/%s/all?type=abc" % movie_section)
+    missing_c30f = reuse_c30f("/library/metadata/999999")
     check("the malformed-pair 400 closes the connection, and no other refusal does",
           pair_c30f == (400, False) and identity_c30f == (400, False)
           and other_c30f == (500, True) and missing_c30f == (404, True),
