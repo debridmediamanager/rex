@@ -15177,6 +15177,49 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         return self._send_error(code, "plexsim: refused by the envelope")
 
+    # Cycle 36, swept byte by byte over 0x01-0xFF on kids and zen with an identical
+    # answer from both: the request TARGET must be printable ASCII. Every raw byte
+    # outside 0x21-0x7E -- every C0 control and every byte from 0x7F up -- is a plain
+    # 400, in a path segment, in a single segment and in a query VALUE alike, while a
+    # percent-escape of the same byte is fine (`%C3%A9` and `%FF` are ordinary 404s).
+    # plexsim answered 200 or 404 to 150 of the 158 refused bytes; the eight it did
+    # refuse were an accident, being exactly Python's own unicode-whitespace set
+    # (`\x0b\x0c\x1c-\x1f\x85\xa0`), which its request-line splitter reads as a
+    # separator. So the shape was right for eight bytes and wrong for the other 150.
+    _TARGET_BYTES = re.compile(rb"[\x21-\x7e]*\Z")
+
+    @staticmethod
+    def _path_escapes_ok(path):
+        """Whether every `%` in a PATH begins an escape a real PMS accepts.
+
+        Measured on kids and zen over 42 spellings, at the end of a path and mid-path,
+        with both references agreeing on every cell. The parser reads the two characters
+        after a `%` as a hex number the way `strtol` does -- an optional `+` or `-` then
+        at least one hex digit, and it does not have to consume both -- so `%4y`, `%AB`,
+        `%+1` and `%-1` pass while `%zA`, `%y4`, `%++`, `%--` and `%+y` are 400s. Two
+        characters must be THERE: `%`, `%4`, `%+` and `%a` at the end of a path are all
+        400s where `%4y` is fine. `%%` is the exception, consumed as a literal pair
+        before that rule runs -- `%%`, `%%y` and `%%%%` pass and `%%%` does not.
+
+        The QUERY is not validated this way at all: `?a=%`, `?a=%zz` and `?a=%%` are
+        200s on both references, which is why this reads the path alone.
+        """
+        index = path.find(b"%")
+        while index >= 0:
+            following = path[index + 1:index + 3]
+            if following[:1] == b"%":
+                index = path.find(b"%", index + 2)
+                continue
+            if len(following) < 2:
+                return False
+            digits = following.lstrip(b"+-")
+            if len(following) - len(digits) > 1 or not digits[:1]:
+                return False
+            if not (digits[:1].isdigit() or digits[:1].lower() in b"abcdef"):
+                return False
+            index = path.find(b"%", index + 3)
+        return True
+
     # The version token a real PMS takes. Measured on kids (1.43.4) and zen (1.42.2):
     # `HTTP/2.0` and even `HTTP/9.9` are answered 200, so the minor and major are not
     # checked at all -- only the SHAPE is. `HTTP/1` with no minor is a 400.
@@ -15230,6 +15273,10 @@ class Handler(BaseHTTPRequestHandler):
             return False
         method, target, version = parts
         if not self._VERSION.match(version) or target == b"*":
+            self.send_error(400)
+            return False
+        if (not self._TARGET_BYTES.match(target)
+                or not self._path_escapes_ok(target.split(b"?", 1)[0])):
             self.send_error(400)
             return False
         if method != method.upper():

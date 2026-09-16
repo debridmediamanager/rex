@@ -22515,6 +22515,54 @@ def main():
           not wrong_c36d, str(wrong_c36d))
 
 
+    # Cycle 36, swept byte by byte over 0x01-0xFF on kids and zen: the request TARGET
+    # must be printable ASCII (0x21-0x7E), and in the PATH a `%` must begin an escape
+    # the reference's own parser can read -- an optional sign then a hex digit, with two
+    # characters present, or another `%`. plexsim accepted 150 of the 158 refused bytes
+    # and every malformed escape, so a client that put a raw accented character in a
+    # `title=` query got a 200 from plexsim and a 400 from a real PMS.
+    def target_c36e(target_c36e):
+        sock_c36e = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c36e.settimeout(8)
+        sock_c36e.sendall(b"GET " + target_c36e + b" HTTP/1.1\r\nHost: h\r\n"
+                          b"Connection: close\r\n\r\n")
+        got_c36e = b""
+        try:
+            while len(got_c36e) < 40:
+                chunk_c36e = sock_c36e.recv(4096)
+                if not chunk_c36e:
+                    break
+                got_c36e += chunk_c36e
+        except Exception:
+            pass
+        sock_c36e.close()
+        line_c36e = got_c36e.split(b"\r\n", 1)[0].decode("latin-1")
+        return line_c36e.split(" ")[1] if " " in line_c36e else "NONE"
+
+    refused_c36e = {
+        "raw non-ASCII in a segment": target_c36e(b"/library/sections/\xc3\xa9/all"),
+        "raw non-ASCII in a query": target_c36e(b"/identity?title=\xc3\xa9"),
+        "a C0 control": target_c36e(b"/zzz\x01yyy"),
+        "DEL": target_c36e(b"/zzz\x7fyyy"),
+        "a lone percent": target_c36e(b"/zzz%"),
+        "percent then non-hex": target_c36e(b"/zzz%zAB"),
+        "percent then one hex": target_c36e(b"/zzz%4"),
+        "percent then two signs": target_c36e(b"/zzz%++AB"),
+    }
+    accepted_c36e = {
+        "an escaped non-ASCII byte": target_c36e(b"/library/sections/%C3%A9/all"),
+        "percent hex then non-hex": target_c36e(b"/zzz%4yAB"),
+        "percent sign hex": target_c36e(b"/zzz%+1AB"),
+        "a doubled percent": target_c36e(b"/zzz%%"),
+        "a percent in the QUERY": target_c36e(b"/identity?a=%zz"),
+    }
+    check("the request target is printable ASCII with readable escapes",
+          set(refused_c36e.values()) == {"400"}
+          and "400" not in set(accepted_c36e.values()),
+          "refused %s | accepted %s" % (refused_c36e, accepted_c36e))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
