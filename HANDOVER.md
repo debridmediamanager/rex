@@ -756,10 +756,19 @@ background task (Claude Code: `run_in_background: true`). `nohup … &` dies wit
 **Ports (cycle 30).** Re-checked after both hunters had stopped, with the processes listed as well
 as the ports (`pgrep -af "server.py --port"`): `32502` and `8787` are held, the same two every cycle
 since 17 has ended with. Everything cycle 30 used is FREE again: `32587`/`32588` (the hunters'),
-`32592`/`32593` (the proof driver's), `32500`/`32505` (the suite runs) and `32594`-`32597` (the
-by-hand `runblock` proofs, which need a server per parent tree -- cycle 30 needed them because
-`sdrive` cannot prove a check that starts its own server). Neither hunter left a server running.
-No launchd job was registered. **New this cycle, on kids:** `plexscratch42` holds `32411` (its relay)
+`32592`/`32593` (the proof driver's), `32500`/`32505`/`32506`/`32507` (the suite runs) and
+`32594`-`32597` (the by-hand `runblock` proofs, which need a server per parent tree -- cycle 30
+needed them because `sdrive` cannot prove a check that starts its own server). Neither hunter
+STARTED a server of its own -- but **the two servers `setup.sh` starts FOR the hunters (32587,
+32588) were still up at cleanup**, 5 hours after the hunts ended, and had to be killed by hand:
+the setup script starts them and nothing stops them, which is a gap in step 12's checklist rather
+than a hunter's fault. Listing the processes rather than the expected ports is what caught it, as
+in cycle 28.
+
+**No launchd job was registered by this cycle, and one exists.** `com.plexsim.dev` is held by a
+DIFFERENT session (`launchctl print gui/501/com.plexsim.dev` names a scratchpad under
+`…/0c9d535b-…/`), and it is what holds `32502`. Leave it: it is not this programme's to remove,
+and a future cycle checking "no launchd job" should expect to find exactly this one. **New this cycle, on kids:** `plexscratch42` holds `32411` (its relay)
 and `32499` inside its own namespace; `plexscratch` keeps `32410`. Leave `32599` and `32598` free for
 the suite's own gated and `--web-root` servers.
 
