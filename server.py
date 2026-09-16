@@ -48,6 +48,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 import zlib
+import http  # noqa: E402  -- HTTPStatus, for the refusal documents below
 import http.client  # noqa: E402  -- for the header caps below
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -15577,12 +15578,11 @@ class Handler(BaseHTTPRequestHandler):
             # `Content-Type: text/html` and carries neither `Accept-Ranges` nor
             # `Content-Range`; plexsim answered `Content-Length: 0` with the ORIGINAL
             # media type and the whole success header set, so a client was handed an
-            # `image/jpeg` of zero bytes. The BODY stays plexsim's own sentence -- a
-            # text/plain error body is the deliberate deviation inherited from cycle 1
-            # (HANDOVER 8) -- and the type, the length and the dropped header are the
-            # measured half.
-            content_type = "text/plain"
-            payload = b"plexsim: requested range not satisfiable"
+            # `image/jpeg` of zero bytes. Cycle 36 finished it: the BODY is the same
+            # 129-byte refusal document every other status answers, not plexsim's own
+            # sentence -- cycle 1's text/plain deviation is gone from the whole surface.
+            content_type = "text/html"
+            payload = self._error_document(416)
             extra_headers = [(name, value) for name, value in extra_headers
                              if name.lower() != "accept-ranges"]
         cookie = self._framework_cookie()
@@ -16018,6 +16018,37 @@ class Handler(BaseHTTPRequestHandler):
                               "servers", "clients", "accounts", "activities",
                               "playQueues", "log")
 
+    # Cycle 36, measured on kids and zen over seven statuses -- 400, 401, 403, 404, 406,
+    # 416 and 500 -- and across every path family that answers one: a real PMS's refusal
+    # BODY is ONE fixed HTML document per status, built from HTTP's own reason phrase,
+    # with `Content-Type: text/html`. It ignores `Accept` (a client asking for JSON gets
+    # the same HTML), it is GZIPPED when the client offers to take a compressed body, and
+    # a HEAD carries its `Content-Length` with no body. The two references agree on every
+    # cell, so it is not a version shape.
+    #
+    # plexsim had THREE of them -- the 401, the 403 and the root's redirect -- each built
+    # by the cycle that happened to measure that one refusal, and answered `text/plain`
+    # with a sentence of its own for every other refusal on the surface. The sentences
+    # were the useful half for debugging plexsim, so they are kept: they move to the LOG,
+    # which is where a client never sees them.
+    #
+    # The two exceptions stay exceptions, both already measured: `GET /` answers the
+    # 193-byte redirect document rather than the plain 401, and the `/system` subtree
+    # answers an EMPTY body with no `Content-Type` at all. 502 and 503 are plexsim's own
+    # (a dead Real-Debrid link, a terminated session) and no real PMS answers them, so
+    # they take the template by the RULE rather than by a witness of their own.
+    @staticmethod
+    def _error_document(status):
+        reason = http.HTTPStatus(status).phrase
+        return ("<html><head><title>%s</title></head><body><h1>%d %s</h1></body>"
+                "</html>" % (reason, status, reason)).encode()
+
+    def _send_error(self, status, sentence, extra_headers=()):
+        """A refusal: the reference's own document on the wire, plexsim's in the log."""
+        logger.info("%s %s %s -- %s", status, self.command,
+                    (self.path or "").split("?")[0], sentence)
+        self._send(status, "text/html", self._error_document(status), extra_headers)
+
     def _unauthorised(self, method):
         """(status, body) for a request that carries no usable token -- measured.
 
@@ -16040,7 +16071,7 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 probe = None
             if isinstance(probe, tuple) and probe[:2] == ("error", 404):
-                return 404, b"plexsim: not found"
+                return 404, self._error_document(404)
         return 401, self.UNAUTHORISED_BODY
 
     def _authorised(self, path):
@@ -16269,7 +16300,7 @@ class Handler(BaseHTTPRequestHandler):
         # the peer closes. Both read to a client as a server that hung up.
         declared = (self.headers.get("Content-Length") or "").strip()
         if declared.startswith("-") and declared[1:].isdigit():
-            self._send(500, "text/plain", b"plexsim: server error")
+            self._send_error(500, "plexsim: server error")
             return
         length = int(declared) if declared.isdigit() else 0
         body = self.rfile.read(length) if length else b""
@@ -16280,17 +16311,16 @@ class Handler(BaseHTTPRequestHandler):
             # request parser collapses a leading `//` to `/` before this handler ever
             # sees `self.path` (an open-redirect guard), so it is read off the request
             # line -- `//identity` otherwise answered the identity document.
-            self._send(404, "text/plain", b"plexsim: not found")
+            self._send_error(404, "plexsim: not found")
             return
 
         refusal = self._query_grammar_refusal(method, self.path)
         if refusal:
-            self._send(refusal, "text/plain", b"plexsim: bad request")
+            self._send_error(refusal, "plexsim: bad request")
             return
 
         if self._read_only_refusal(method, self.path):
-            logger.info("404 %s %s -- read-only route", method, self.path.split("?")[0])
-            self._send(404, "text/plain", b"plexsim: not found")
+            self._send_error(404, "plexsim: not found -- read-only route")
             return
 
         if not self._authorised(self.path):
@@ -16317,7 +16347,7 @@ class Handler(BaseHTTPRequestHandler):
             # gated server tore down one TCP connection per refused request -- and
             # `docs/findings.md`'s recorded 401 sample, which shows `Connection: close`,
             # was plexsim's own answer read back as the reference's.
-            self._send(refusal, "text/plain" if refusal == 404 else "text/html", body)
+            self._send(refusal, "text/html", body)
             return
 
         try:
@@ -16325,7 +16355,7 @@ class Handler(BaseHTTPRequestHandler):
                                 self.client_address[0] if self.client_address else None)
         except Exception:
             logger.exception("handler failed for %s %s", method, self.path)
-            self._send(500, "text/plain", b"plexsim: internal error")
+            self._send_error(500, "plexsim: internal error")
             return
 
         with sim.lock:
@@ -16383,7 +16413,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._serve_eventsource()
                 return
             if kind == "error":
-                self._send(result[1], "text/plain", result[2].encode())
+                self._send_error(result[1], result[2])
                 return
             if kind == "bare":
                 # Cycle 21: an empty body with NO Content-Type, which is what the whole
@@ -16458,8 +16488,7 @@ class Handler(BaseHTTPRequestHandler):
                 result = self._exclude_container(result)
                 result = self._page_container(result)
             except filters_module.FilterError as refused:
-                self._send(refused.status, "text/plain",
-                           ("plexsim: %s" % refused.detail).encode())
+                self._send_error(refused.status, "plexsim: %s" % refused.detail)
                 return
         self._send_container(result)
 
@@ -16671,7 +16700,7 @@ class Handler(BaseHTTPRequestHandler):
                     hit = (response.read(), response.headers.get("Content-Type", "image/jpeg"))
             except Exception as error:
                 logger.debug("artwork fetch failed for %s: %s", url[:80], error)
-                self._send(404, "text/plain", b"plexsim: artwork unavailable")
+                self._send_error(404, "plexsim: artwork unavailable")
                 return
             with self._image_lock:
                 # Bounded: a catalog of any size would otherwise grow this
@@ -16702,7 +16731,7 @@ class Handler(BaseHTTPRequestHandler):
         """Serve the bundled web client from --web-root."""
         root = self.server.sim.web_root
         if not root:
-            self._send(404, "text/plain", b"plexsim: no web client bundled")
+            self._send_error(404, "plexsim: no web client bundled")
             return
 
         # Resolve and confine: a path that escapes the root is refused rather
@@ -16712,7 +16741,7 @@ class Handler(BaseHTTPRequestHandler):
         # plexsim answered 403, a status that appears nowhere else on the surface.
         target = os.path.realpath(os.path.join(root, relative))
         if not target.startswith(os.path.realpath(root) + os.sep):
-            self._send(400, "text/plain", b"plexsim: bad request")
+            self._send_error(400, "plexsim: bad request")
             return
         # Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
         # references -- `/web/js`, `/web/js/` and `/web/static/` each answer
@@ -16726,7 +16755,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 29: a trailing slash after a FILE is a 404 on both references, where
         # plexsim's `realpath` collapsed it and served the file.
         if relative.endswith("/") or not os.path.isfile(target):
-            self._send(404, "text/plain", b"plexsim: not found")
+            self._send_error(404, "plexsim: not found")
             return
 
         with open(target, "rb") as handle:
@@ -16776,7 +16805,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         key = self.headers.get("Sec-WebSocket-Key")
         if not key:
-            self._send(400, "text/plain", b"plexsim: not a websocket request")
+            self._send_error(400, "plexsim: not a websocket request")
             return
 
         import base64
@@ -17025,7 +17054,7 @@ class Handler(BaseHTTPRequestHandler):
         part_id = segments[2] if len(segments) > 2 else ""
         link, container, part_name, part_row = sim.resolve_part(part_id)
         if not link:
-            self._send(404, "text/plain", b"plexsim: no such part")
+            self._send_error(404, "plexsim: no such part")
             return
 
         # A terminated session's next part read is a 503 on a real PMS -- the
@@ -17034,7 +17063,7 @@ class Handler(BaseHTTPRequestHandler):
         session_id = query.get("X-Plex-Session-Identifier") or ""
         if session_id and sim.sessions.is_terminated(session_id):
             logger.info("PART %s refused: session %s terminated", part_id, session_id)
-            self._send(503, "text/plain", b"plexsim: session terminated")
+            self._send_error(503, "plexsim: session terminated")
             return
 
         # The Download context-menu entry is the same Part read with
@@ -17050,7 +17079,7 @@ class Handler(BaseHTTPRequestHandler):
         # `download=abc` streamed the media with no disposition.
         raw_download = query.get("download")
         if raw_download is not None and not _bool_option(raw_download):
-            self._send(400, "text/plain", b"plexsim: bad request")
+            self._send_error(400, "plexsim: bad request")
             return
         download = bool(raw_download is not None and int(str(raw_download).lstrip("+")))
 
@@ -17058,7 +17087,7 @@ class Handler(BaseHTTPRequestHandler):
             upstream_url, _size = sim.resolver.resolve(link)
         except Exception as error:
             logger.error("unrestrict failed for part %s: %s", part_id, error)
-            self._send(502, "text/plain", b"plexsim: debrid resolve failed")
+            self._send_error(502, "plexsim: debrid resolve failed")
             return
 
         if sim.part_mode == "redirect":
@@ -17085,11 +17114,11 @@ class Handler(BaseHTTPRequestHandler):
             upstream = urllib.request.urlopen(request, timeout=30)
         except urllib.error.HTTPError as error:
             logger.error("PART %s upstream %s for range %s", part_id, error.code, request_range)
-            self._send(error.code, "text/plain", b"plexsim: upstream refused")
+            self._send_error(error.code, "plexsim: upstream refused")
             return
         except Exception as error:
             logger.error("PART %s upstream failed: %s", part_id, error)
-            self._send(502, "text/plain", b"plexsim: upstream failed")
+            self._send_error(502, "plexsim: upstream failed")
             return
 
         with upstream:
