@@ -15267,6 +15267,16 @@ class Handler(BaseHTTPRequestHandler):
             return "redirect"
         if "access-control-allow-methods" in names:
             return "preflight"
+        path = (self.path or "").split("?")[0].rstrip("/")
+        if path == "/system" or path.startswith("/system/"):
+            # Cycle 33, re-measured after the first patch of this cycle got it wrong: the
+            # `/system` subtree is the plug-in framework's, and it writes its length
+            # before its type on EVERY leaf -- `/system`, `/system/search`,
+            # `/system/scanners/{N}` and an unknown one alike -- where the core API's
+            # containers write the type first. `/system/agents` is the one exception on
+            # both references: it is the core's own handler and orders like a container,
+            # which is also why it carries no cookie.
+            return "container" if path == "/system/agents" else "system"
         if "set-cookie" in names:
             return "system"
         if "content-type" in names and names.get("content-type", "").startswith(
@@ -15276,7 +15286,6 @@ class Handler(BaseHTTPRequestHandler):
             return None
         if "x-plex-local-asset" in names:
             return "artwork"
-        path = (self.path or "").split("?")[0]
         if path.startswith("/photo/:/transcode"):
             return "photo"
         if path.startswith("/web") or path.startswith("/:/resources"):
