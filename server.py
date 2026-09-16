@@ -15307,12 +15307,21 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self._dispatch("DELETE")
 
-    def do_PATCH(self):
-        # Cycle 15, measured on the copy across nine paths: `PATCH` is ROUTED, not
-        # refused -- `/identity`, `/hubs` and `/playlists` answer 200 to it (the
-        # recorded "these answer any verb" rule) and every other path 404s it. The
-        # hunt that reported this read it as a blanket 404; nine paths say otherwise.
-        self._dispatch("PATCH")
+    # Cycle 15 measured `PATCH` as ROUTED -- `/identity`, `/hubs` and `/playlists`
+    # answering 200 and every other path 404 -- on plexscratch, which is **1.43.4**.
+    #
+    # Cycle 31, on plexscratch42 (a fresh 1.42.2 install, the build plexsim reports),
+    # over 20 paths and three body dispositions: **PATCH is a 500 on every one of them**,
+    # with the same 109-byte html `FROB` and `BREW` answer on both versions. It is not in
+    # 1.42.2's method table at all. The decisive case is `/identity`, the one path that
+    # answers every other verb: `GET HEAD PUT POST DELETE OPTIONS` are all 200 there on
+    # 1.42.2 and PATCH alone is a 500.
+    #
+    # So there is no `do_PATCH` here: `__getattr__` hands it to `_unknown_method`, which
+    # is exactly what a method a real 1.42.2 PMS does not recognise gets. No Plex client
+    # sends PATCH, so nothing a user can see changes -- what changes is that four
+    # recorded rules (cycle 15's routing, cycle 18's 405 under `/system`, cycle 22's four
+    # 404s, cycle 28's collection 404s) were 1.43.4's, written down as the surface's.
 
     # Python's BaseHTTPRequestHandler answers 501 with its own error page and a
     # `Server:` banner for any method it has no `do_` for. A real PMS answers a
