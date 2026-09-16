@@ -10590,8 +10590,8 @@ class PlexSim:
     SEARCH_TIER_BASE = {"episode": 0.91}
     SEARCH_TIER_DROP = {"exact": 0.0, "anchored": 0.20, "prefix": 0.40, "fuzzy": 0.60}
 
-    def search_score(self, row, needle):
-        """The score a real PMS prints for this row against this query.
+    def search_score_value(self, row, needle):
+        """The full-precision score PMS compares before serializing a search row.
 
         Cycle 36: the five decimals are a TIER plus the row's own `audienceRating`
         divided by 10000, and a row carrying none scores the bare tier. Read off 17
@@ -10604,15 +10604,158 @@ class PlexSim:
         insertion order instead of the best-rated hit first. `rating` (the critic
         score) is not it: zen's "Riders of Justice" carries 9.6 there and 8.9 in
         `audienceRating`, and the score says 089.
+
+        Cycle 38 recovered the final sort in both binaries: this double is compared
+        before `%.5f` formatting.  The audience component is positive and capped at
+        10.  Keeping only the wire value made distinct scores into false ties.
         """
         base = self.SEARCH_TIER_BASE.get(row.get("type"), 0.93)
         tier = self.catalog.search_tier(row, needle)
         rating = row.get("audienceRating")
         try:
-            tail = float(rating) / 10000.0 if rating is not None else 0.0
+            tail = min(10.0, max(0.0, float(rating))) / 10000.0 \
+                if rating is not None else 0.0
         except (TypeError, ValueError):
             tail = 0.0
-        return self._score(round(base - self.SEARCH_TIER_DROP[tier] + tail, 5))
+        return max(0.0, min(1.0, base - self.SEARCH_TIER_DROP[tier] + tail))
+
+    def search_score(self, row, needle):
+        """The five-decimal score a real PMS writes on the wire."""
+        return self._score(self.search_score_value(row, needle))
+
+    @staticmethod
+    def _search_comparison_sort(rows, score):
+        """PMS's recovered unstable descending comparison sort, in place.
+
+        Both supported binaries use the same old libc++ introsort control flow.
+        Equality has no title/id fallback, but partition swaps can still move equal
+        records when other scores are present.  This literal control-flow port was
+        checked against 331 uncapped title-only reference hubs in cycle 38.
+        """
+        def before(left, right):
+            return score(left) > score(right)
+
+        def swap(left, right):
+            rows[left], rows[right] = rows[right], rows[left]
+
+        def small(indices):
+            changes = 0
+            for position in range(1, len(indices)):
+                cursor = position
+                while cursor and before(rows[indices[cursor]],
+                                        rows[indices[cursor - 1]]):
+                    swap(indices[cursor], indices[cursor - 1])
+                    changes += 1
+                    cursor -= 1
+            return changes
+
+        def insertion(first, last, incomplete=False):
+            if last - first <= 5:
+                small(list(range(first, last)))
+                return True
+            small([first, first + 1, first + 2])
+            changes = 0
+            for position in range(first + 3, last):
+                if before(rows[position], rows[position - 1]):
+                    value = rows[position]
+                    cursor = position
+                    while cursor > first and before(value, rows[cursor - 1]):
+                        rows[cursor] = rows[cursor - 1]
+                        cursor -= 1
+                    rows[cursor] = value
+                    changes += 1
+                    if incomplete and changes == 8:
+                        return position + 1 == last
+            return True
+
+        def run(first, last):
+            while True:
+                count = last - first
+                if count <= 6:
+                    insertion(first, last)
+                    return
+                middle = first + count // 2
+                last_index = last - 1
+                points = ([first, middle, last_index] if count < 1000 else
+                          [first, first + count // 4, middle,
+                           middle + count // 4, last_index])
+                swaps = small(points)
+                left = first
+                right = last_index
+                restart = False
+                if not before(rows[first], rows[middle]):
+                    while True:
+                        right -= 1
+                        if left == right:
+                            left += 1
+                            right = last_index
+                            if not before(rows[first], rows[right]):
+                                while True:
+                                    if left == right:
+                                        return
+                                    if before(rows[first], rows[left]):
+                                        swap(left, right)
+                                        left += 1
+                                        break
+                                    left += 1
+                            if left == right:
+                                return
+                            while True:
+                                while not before(rows[first], rows[left]):
+                                    left += 1
+                                right -= 1
+                                while before(rows[first], rows[right]):
+                                    right -= 1
+                                if left >= right:
+                                    break
+                                swap(left, right)
+                                left += 1
+                            first = left
+                            restart = True
+                            break
+                        if before(rows[right], rows[middle]):
+                            swap(first, right)
+                            swaps += 1
+                            break
+                    if restart:
+                        continue
+                left = first + 1
+                if left < right:
+                    while True:
+                        while before(rows[left], rows[middle]):
+                            left += 1
+                        right -= 1
+                        while not before(rows[right], rows[middle]):
+                            right -= 1
+                        if left > right:
+                            break
+                        swap(left, right)
+                        swaps += 1
+                        if middle == left:
+                            middle = right
+                        left += 1
+                if left != middle and before(rows[middle], rows[left]):
+                    swap(left, middle)
+                    swaps += 1
+                if not swaps:
+                    left_done = insertion(first, left, True)
+                    right_done = insertion(left + 1, last, True)
+                    if left_done and right_done:
+                        return
+                    if left_done:
+                        first = left + 1
+                        continue
+                    if right_done:
+                        last = left
+                        continue
+                if left - first < last - left:
+                    run(first, left)
+                    first = left + 1
+                else:
+                    run(left + 1, last)
+                    last = left
+
+        run(0, len(rows))
 
     # Cycle 36, measured on zen and kids, which agree on every cell: a TAG row's ladder
     # is the item ladder with the ANCHORED tier collapsed away. An exact tag name is
@@ -10700,7 +10843,7 @@ class PlexSim:
                         hierarchy_module.fold_query(str(text or "")).split() if term]
 
         def rank(row):
-            return float(self.search_score(row, needle))
+            return self.search_score_value(row, needle)
 
         playlist_rows = []
         # Cycle 25, measured on plexscratch: a PLAYLIST is found by both search
@@ -10830,8 +10973,30 @@ class PlexSim:
                 typed.setdefault(row.get("type"), []).append(reasoned)
                 seen_keys.add(key)
         for kind in typed:
-            typed[kind].sort(key=lambda row: (-rank(row), str(row.get("title") or "")))
-            typed[kind] = typed[kind][:limit]
+            candidates = typed[kind]
+            if kind in ("movie", "show", "episode"):
+                # Cycle 38, both binaries: the title candidate vector is raw UTF-8
+                # title bytes descending, then signed metadata id descending, with
+                # exact-title hits prepended.  Tag-associated rows have a different
+                # unrecovered assembly path, so retain their measured append position.
+                title_hits = [row for row in candidates if "_searchReason" not in row]
+                associated = [row for row in candidates if "_searchReason" in row]
+
+                def candidate_key(row):
+                    try:
+                        rating_key = int(row.get("ratingKey") or 0)
+                    except (TypeError, ValueError):
+                        rating_key = 0
+                    return (str(row.get("title") or "").encode("utf-8"), rating_key)
+
+                title_hits.sort(key=candidate_key, reverse=True)
+                exact = [row for row in title_hits
+                         if self.catalog.search_tier(row, needle) == "exact"]
+                title_hits = exact + [row for row in title_hits
+                                      if self.catalog.search_tier(row, needle) != "exact"]
+                candidates = title_hits + associated
+            self._search_comparison_sort(candidates, rank)
+            typed[kind] = candidates[:limit]
         return typed, tags
 
     def search_row_sections(self, kind, row):
