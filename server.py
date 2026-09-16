@@ -12817,11 +12817,25 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return ("empty", 200)
         if leaf == "prefs":
-            # Cycle 15, measured on the copy: a 404 on a smart collection and on a
-            # plain one alike. plexsim answered an empty 200, which the client reads
-            # as "this endpoint exists and is empty" -- so it never looks for the
-            # settings, which ride in the `includePreferences=1` block instead.
-            return ("error", 404, "plexsim: not found")
+            # Cycle 15 measured the GET as a 404 -- on a smart collection and a plain one
+            # alike -- and stopped there. Cycle 31 tried the other verbs on BOTH writable
+            # copies, which agree: **the leaf takes PUT and really writes.**
+            #
+            #   PUT ?collectionSort=1  -> 200, empty body
+            #   PUT ?collectionMode=2  -> 200, empty body
+            #   then includePreferences=1 reads collectionMode 2, collectionSort 1
+            #   GET / POST / DELETE    -> 404       unknown setting -> 400
+            #
+            # So it is the same one-verb-each shape as the collection's other item leaves,
+            # and plexsim advertised both settings in the `includePreferences` block while
+            # 404ing the save behind them -- CLAUDE.md's own trap, a menu entry whose write
+            # does not exist. The metadata-keyed alias `/library/metadata/{id}/prefs`
+            # answers on both references too, and plexsim already had that one.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            return self.library_metadata(
+                ["library", "metadata", str(collection["ratingKey"]), "prefs"],
+                query, method, None)
         if leaf in ("posters", "arts") and method in ("GET", "HEAD"):
             # Cycle 15, measured on the copy: both carry the container's identifying
             # triple, and `/posters` lists exactly one candidate -- the collection's
