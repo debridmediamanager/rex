@@ -22469,6 +22469,52 @@ def main():
              refused_c36c))
 
 
+    # Cycle 36, measured on kids and zen over seven envelope refusals: a request the
+    # server refuses BELOW the API answers the same 89-byte `text/html` document as
+    # every refusal above it. plexsim answered Python's own 460-byte DOCTYPE page with
+    # `text/html;charset=utf-8` -- the one document on the surface that names a library
+    # rather than a status. Read with a raw socket: a malformed request line cannot be
+    # sent through `urllib`.
+    def envelope_c36d(line_c36d, extra_c36d=b""):
+        sock_c36d = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c36d.settimeout(8)
+        sock_c36d.sendall(line_c36d + b"\r\nHost: h\r\n" + extra_c36d + b"Connection: close\r\n\r\n")
+        got_c36d = b""
+        try:
+            while True:
+                chunk_c36d = sock_c36d.recv(65536)
+                if not chunk_c36d:
+                    break
+                got_c36d += chunk_c36d
+        except Exception:
+            pass
+        sock_c36d.close()
+        head_c36d, _sep_c36d, body_c36d = got_c36d.partition(b"\r\n\r\n")
+        lines_c36d = head_c36d.split(b"\r\n")
+        types_c36d = [ln_c36d.split(b":", 1)[1].strip().decode()
+                      for ln_c36d in lines_c36d[1:]
+                      if ln_c36d.lower().startswith(b"content-type:")]
+        return (lines_c36d[0].decode("latin-1") if lines_c36d else "",
+                types_c36d[0] if types_c36d else None, body_c36d)
+
+    want_c36d = (b"<html><head><title>Bad Request</title></head><body>"
+                 b"<h1>400 Bad Request</h1></body></html>")
+    envelope_cells_c36d = {
+        "two spaces": envelope_c36d(b"GET  /identity HTTP/1.1"),
+        "tab separators": envelope_c36d(b"GET\t/identity\tHTTP/1.1"),
+        "long url": envelope_c36d(b"GET /" + b"z" * 40000 + b" HTTP/1.1"),
+        "header value too long": envelope_c36d(
+            b"GET /identity HTTP/1.1", b"X-Long: " + b"z" * 5000 + b"\r\n"),
+    }
+    wrong_c36d = {name_c36d: (got_c36d[0], got_c36d[1], len(got_c36d[2]))
+                  for name_c36d, got_c36d in envelope_cells_c36d.items()
+                  if "400" not in got_c36d[0] or got_c36d[1] != "text/html"
+                  or got_c36d[2] != want_c36d}
+    check("an envelope refusal answers the reference's own 400 document",
+          not wrong_c36d, str(wrong_c36d))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

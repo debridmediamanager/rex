@@ -15155,7 +15155,27 @@ class Handler(BaseHTTPRequestHandler):
             # before plexsim's own code runs -- at its 64 KiB request-line limit, which
             # is twice the reference's own bound below.
             code, message, explain = 400, None, None
-        return BaseHTTPRequestHandler.send_error(self, code, message, explain)
+        # Cycle 36: every refusal below the API answers the SAME document as every
+        # refusal above it -- 89 bytes of `text/html` for a 400, measured on kids and
+        # zen over a two-space request line, a tab-separated one, an LF-only ending, a
+        # 40 KB URL, a 101st header, a name over 1024 bytes and a value over 4096.
+        # `BaseHTTPRequestHandler.send_error` writes Python's own 460-byte DOCTYPE page
+        # with `text/html;charset=utf-8` and an explanation naming the library, which is
+        # a document no Plex client has ever been handed. Patch 1 of this cycle reached
+        # every refusal the ROUTER answers and none of these, because they are written
+        # before the router runs.
+        #
+        # The request state has to be faked in, and that is the reason this is not one
+        # line: a refusal written before the request LINE parses has no `self.headers`
+        # and no `self.path`, which is the trap cycle 33 fell into from the other side.
+        # An empty header set is also the honest input -- nothing was read, so nothing
+        # was offered, and the body goes out uncompressed.
+        if getattr(self, "headers", None) is None:
+            self.headers = http.client.HTTPMessage()
+        if getattr(self, "path", None) is None:
+            self.path = ""
+        self.close_connection = True
+        return self._send_error(code, "plexsim: refused by the envelope")
 
     # The version token a real PMS takes. Measured on kids (1.43.4) and zen (1.42.2):
     # `HTTP/2.0` and even `HTTP/9.9` are answered 200, so the minor and major are not
