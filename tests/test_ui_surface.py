@@ -22605,6 +22605,35 @@ def main():
           % (status_c36g, word_c36g, container_c36g, others_c36g, real_c36g[0]))
 
 
+    # Cycle 36, bisected on kids and zen: `/devices/{id}`, `/accounts/{id}`,
+    # `/playQueues/{id}` and `/system/scanners/{N}` parse their id as a SIGNED 32-BIT
+    # integer -- `2147483647` is that path's own not-found answer and `2147483648` a
+    # 400 -- and a negative value inside the range is a 404 on all four, including
+    # `/system/scanners`, whose answer for an unknown non-negative type is a 500.
+    # plexsim had the bound on two of the four, read a small negative play-queue id as
+    # malformed, and reported a malformed scanner request as a missing scanner.
+    def code_c36h(path_c36h):
+        return request(base, "GET", path_c36h)[0]
+
+    bounded_c36h = {
+        "accounts over": code_c36h("/accounts/2147483648"),
+        "accounts at": code_c36h("/accounts/2147483647"),
+        "playQueues over": code_c36h("/playQueues/2147483648"),
+        "playQueues negative": code_c36h("/playQueues/-1"),
+        "devices over": code_c36h("/devices/2147483648"),
+        "scanners over": code_c36h("/system/scanners/2147483648"),
+        "scanners negative": code_c36h("/system/scanners/-1"),
+        "scanners unknown type": code_c36h("/system/scanners/999999"),
+        "metadata over (no bound)": code_c36h("/library/metadata/2147483648"),
+    }
+    want_c36h = {"accounts over": 400, "accounts at": 404, "playQueues over": 400,
+                 "playQueues negative": 404, "devices over": 400, "scanners over": 400,
+                 "scanners negative": 404, "scanners unknown type": 500,
+                 "metadata over (no bound)": 404}
+    check("four paths bound their id segment to a signed 32-bit integer",
+          bounded_c36h == want_c36h, str(bounded_c36h))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

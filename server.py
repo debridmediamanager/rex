@@ -2123,6 +2123,34 @@ KNOWN_LANGUAGES = _known_languages()
 _PADDED_ID_SEGMENT = re.compile(r"\+?0*[0-9]+\Z")
 
 
+def int32_segment(value):
+    """How a real PMS reads an id segment on the four paths that bound it.
+
+    Cycle 36, bisected on kids and zen, which agree on every cell: `/devices/{id}`,
+    `/accounts/{id}`, `/playQueues/{id}` and `/system/scanners/{N}` parse their id as a
+    SIGNED 32-BIT integer. `2147483647` is that path's own answer for an id naming
+    nothing and `2147483648` is a **400**, and so is every larger value and every value
+    below -2147483648. A NEGATIVE value inside the range is a **404** on all four --
+    even on `/system/scanners`, where a non-negative type it has no scanner for is a
+    500 and a non-number is a 500 as well. `/library/metadata` and `/library/sections`
+    carry no such bound at all: a twenty-digit id is a plain 404 there.
+
+    Returns "ok", "range" (a 400), "negative" (a 404) or None for a segment that is not
+    a number at all, which each path answers in its own way.
+    """
+    text = str(value)
+    digits = text[1:] if text[:1] == "-" else text
+    # `isdigit` is true for the Arabic-Indic and fullwidth digits, which never reach
+    # here -- a raw non-ASCII byte in the target is a 400 above -- but an escaped one
+    # can, and `int()` would accept it where a real PMS does not.
+    if not digits or not digits.isascii() or not digits.isdigit():
+        return None
+    number = int(text)
+    if not -2147483648 <= number <= 2147483647:
+        return "range"
+    return "negative" if number < 0 else "ok"
+
+
 class PlexSim:
     # Cycle 30: one seed per (random shelf, `count=`), minted on first use and held for
     # the life of the process -- see `shelf()`.
@@ -3701,6 +3729,22 @@ class PlexSim:
                 ident = segments[len(prefix)]
                 if ident.isdigit() and int(ident) >= 2 ** 31:
                     return ("error", 400, "plexsim: bad request")
+        # Cycle 36: the four paths whose id is an int32 column, guarded in one place
+        # rather than at each handler -- see `int32_segment`. The order matters: a value
+        # that does not fit is a 400 BEFORE the path's own refusal, and a negative one
+        # inside the range is a 404 after it. plexsim had the bound on `/devices` and
+        # `/playQueues` only, and on `/playQueues` it read a small negative as malformed.
+        bounded = None
+        if segments[:1] in (["playQueues"], ["devices"], ["accounts"]) and len(segments) > 1:
+            bounded = segments[1]
+        elif segments[:2] == ["system", "scanners"] and len(segments) > 2:
+            bounded = segments[2]
+        if bounded is not None:
+            verdict = int32_segment(bounded)
+            if verdict == "range":
+                return ("error", 400, "plexsim: bad request")
+            if verdict == "negative":
+                return ("error", 404, "plexsim: not found")
         if segments[:1] == ["playQueues"] and len(segments) > 1 and not segments[1].isdigit():
             return ("error", 400, "plexsim: bad request")
 
