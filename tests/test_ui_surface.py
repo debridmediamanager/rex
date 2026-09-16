@@ -22925,6 +22925,37 @@ def main():
               str(scanned_c36p))
 
 
+    # Cycle 36, measured on plexscratch with a listener open: the three action leaves of
+    # `/library/collections/{id}` really RUN, where plexsim answered cycle 22's empty 200
+    # and did nothing. `/refresh` pushes the same three frames the metadata spelling
+    # does, and `/unmatch` gives the collection `local://{rk}`, `subtype "unknown"` and no
+    # `ratingCount` -- so the same action from the client's own context-menu path and from
+    # the metadata path had different effects on the same row.
+    machine_c36q = get(base, "/identity")[1].get("machineIdentifier")
+    uri_c36q = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine_c36q, movie))
+    _s_c36q, made_c36q, _h_c36q = container(
+        base, "POST", "/library/collections?title=c36leaf&type=1&smart=0"
+                      "&sectionId=%s&uri=%s" % (movie_section, uri_c36q))
+    key_c36q = (made_c36q.get("Metadata") or [{}])[0].get("ratingKey")
+    if not key_c36q:
+        skip("the collection path's action leaves really run the action", "no collection made")
+    else:
+        _rs_c36q, frames_c36q = eventsource(
+            base, lambda: request(base, "PUT", "/library/collections/%s/refresh" % key_c36q), 8)
+        request(base, "PUT", "/library/collections/%s/unmatch" % key_c36q)
+        row_c36q = (get(base, "/library/metadata/%s" % key_c36q)[1].get("Metadata") or [{}])[0]
+        request(base, "DELETE", "/library/collections/%s" % key_c36q)
+        check("the collection path's action leaves really run the action",
+              len([n_c36q for n_c36q, _d_c36q in frames_c36q if n_c36q == "timeline"]) >= 3
+              and str(row_c36q.get("guid") or "").startswith("local://")
+              and row_c36q.get("subtype") == "unknown"
+              and "ratingCount" not in row_c36q,
+              "refresh frames %s | guid %r subtype %r ratingCount %s"
+              % ([n_c36q for n_c36q, _d_c36q in frames_c36q][:5], row_c36q.get("guid"),
+                 row_c36q.get("subtype"), "ratingCount" in row_c36q))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

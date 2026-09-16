@@ -13388,7 +13388,21 @@ class PlexSim:
             # match took.
             if method != "PUT":
                 return ("error", 404, "plexsim: not found")
-            return ("empty", 200)
+            # Cycle 36, measured on plexscratch with a listener open: the empty body
+            # cycle 22 landed is right and was only half the answer -- these three
+            # really RUN. `/library/collections/{id}/refresh` pushes the same three
+            # frames the metadata spelling does, and `/unmatch` really unmatches: the
+            # collection's `guid` becomes `local://{rk}`, its `subtype` the literal
+            # `unknown` and its `ratingCount` goes. plexsim answered the empty 200 and
+            # did nothing, so the SAME action taken from the collection's own path and
+            # from its metadata path had different effects on the same row -- and the
+            # collections path is the one the client's context menu builds.
+            #
+            # Delegated rather than duplicated, the way `prefs` below already is: the
+            # metadata path is where cycles 26 and 27 measured the sequences.
+            return self.library_metadata(
+                ["library", "metadata", str(collection["ratingKey"]), leaf],
+                query, method, None)
         if leaf == "prefs":
             # Cycle 15 measured the GET as a 404 -- on a smart collection and a plain one
             # alike -- and stopped there. Cycle 31 tried the other verbs on BOTH writable
