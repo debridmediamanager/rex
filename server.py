@@ -74,6 +74,7 @@ import hierarchy as hierarchy_module  # noqa: E402
 import decision as decision_module  # noqa: E402
 import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
+import spellfix as spellfix_module  # noqa: E402
 from debrid import Resolver  # noqa: E402
 from xmlout import ordered as ordered_keys, to_xml  # noqa: E402
 
@@ -895,6 +896,13 @@ class Catalog:
             if aired:
                 row.setdefault("originallyAvailableAt", aired[0])
 
+        # Cycle 37 recovered PMS's spellfix1 rebuild SQL and query path.  The real
+        # tables have no per-row maintenance trigger and can be historically stale,
+        # so this snapshot is intentionally built once at catalog load rather than
+        # being silently refreshed by every edit.
+        self.spelling = spellfix_module.SearchIndex(
+            self.items.values(), self.TAG_FIELDS)
+
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the
     # tag's text. TMDB gives plexsim tag names and nothing else, so the ids are
@@ -1198,9 +1206,9 @@ class Catalog:
         whatever it is (`t` answers seventeen empty hubs). plexsim used a plain
         substring test, so `uck` matched and `t` returned the whole library.
 
-        The reference is additionally fuzzy -- `eel` finds "Firefly" and an actor
-        called "Halina Reijn" -- which is a trigram score plexsim does not try to
-        reproduce, and says so rather than approximating it badly.
+        This is the normal pass. Cycle 37 measured the separate SQLite spellfix1
+        fallback, which `PlexSim.search_matches` runs only when this pass has no
+        movie/show/list/tag hit.
         """
         # Cycle 14, on zen: the word matcher folds combining marks on BOTH sides.
         # `Amelie` finds "Amelie" and `Bogota` finds "Bogota: City of the Lost" --
@@ -1292,15 +1300,9 @@ class Catalog:
             # 31 measured that sentence and built only the in-order half, so plexsim
             # answered NO HUBS AT ALL to a query whose words a person typed out of order.
             #
-            # This is the part of the reference's membership rule that can be built
-            # exactly. The rest of it is SQLite's `spellfix1` -- the reference creates
-            # `spellfix_metadata_titles` and three sibling virtual tables, so a typo
-            # reaches a row through a phonetic hash and is then pruned by a top-N over a
-            # GLOBAL token frequency. That pruning is why `Tears zzz` answers the row on
-            # kids' five titles and `Riders zzz` answers nothing on zen's 3,887, and it
-            # cannot be read from outside: emulating the candidate half alone would
-            # answer most of a real catalog to a nonsense query, which is worse than
-            # answering none of it. HANDOVER section 8 carries the mechanism.
+            # A failed normal word-order test can still be an ordinary all-prefix hit.
+            # The distinct spellfix1 fallback measured in cycle 37 runs after this
+            # method and is deliberately not mixed into the normal pass.
             return all(any(word.startswith(term) for word in words) for term in terms)
 
         return [row for row in self.items.values()
@@ -10685,6 +10687,12 @@ class PlexSim:
         `/library/search` carries the tag rows and the title hits only. So it is
         the hubs endpoint that asks for them, not the matcher that always finds
         them.
+
+        Cycle 37 recovered the fallback gate from the PMS binary and checked it
+        against both servers: a normal movie/show, playlist, collection or tag
+        hit suppresses spelling globally; an episode-only hit does not. The
+        spelling expansion is therefore decided here, before endpoint-specific
+        section/searchTypes filtering.
         """
         rows = self.catalog.search(text)
         needle = (text or "").strip().lower()
@@ -10694,9 +10702,7 @@ class PlexSim:
         def rank(row):
             return float(self.search_score(row, needle))
 
-        typed = {}
-        for row in rows:
-            typed.setdefault(row.get("type"), []).append(row)
+        playlist_rows = []
         # Cycle 25, measured on plexscratch: a PLAYLIST is found by both search
         # endpoints, by the same word-prefix match on its title, and the hit is the
         # `/playlists` listing row. plexsim searched `catalog.items` alone, where its
@@ -10707,48 +10713,90 @@ class PlexSim:
             for row in self.library.playlists():
                 words = re.split(r"[^0-9a-z]+", str(row.get("title") or "").lower())
                 if any(word.startswith(needle.split()[0]) for word in words if word):
-                    typed.setdefault("playlist", []).append(row)
-        if tagged_items:
-            seen_keys = {str(r.get("ratingKey")) for r in rows}
-            for row in self.catalog.items.values():
-                if str(row.get("ratingKey")) in seen_keys:
-                    continue
-                for field in self.SEARCH_TAG_HUBS.values():
-                    if any(any(w.startswith(needle)
-                               for w in re.split(r"[^0-9a-z]+", str(tag.get("tag") or "").lower())
-                               if w)
-                           for tag in row.get(field) or []) and len(needle) >= 2:
-                        typed.setdefault(row.get("type"), []).append(row)
-                        seen_keys.add(str(row.get("ratingKey")))
-                        break
-        for kind in typed:
-            typed[kind].sort(key=lambda r: (-rank(r), str(r.get("title") or "")))
-            typed[kind] = typed[kind][:limit]
+                    playlist_rows.append(row)
 
-        tags = {}
+        # Build the NORMAL tag matches first, because any one of them closes the
+        # spelling gate for every result family. A later-word match has the fuzzy
+        # API score tier but is still an ordinary FTS hit and therefore still gates.
+        direct_tags = []
         for hub, field in self.SEARCH_TAG_HUBS.items():
-            seen = {}
             for row in self.catalog.items.values():
                 for tag in row.get(field) or []:
                     name = str(tag.get("tag") or "")
                     tier = self.tag_tier(name, needle_terms)
-                    if len(needle) < 2 or tier is None:
-                        continue
-                    # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a tag hit
-                    # is per LIBRARY, not per NAME. kids' `drama` answers TWO `Drama`
-                    # rows -- one for each library holding the genre, each naming its
-                    # own `librarySectionID`, `key` and `count` -- and zen's `comedy`
-                    # answers two Comedy rows carrying 590 and 179 against the SAME tag
-                    # id 667, so the id is shared and the row is not.
-                    #
-                    # plexsim keyed the hits by name alone, so a genre both libraries
-                    # hold was ONE row naming whichever library the catalog reached
-                    # first, counting both libraries' rows together, and the other
-                    # library's filter link never appeared on the search page at all.
-                    entry = seen.setdefault((name, str(row.get("librarySectionID"))),
-                                            {"tag": tag, "rows": [], "row": row,
-                                             "tier": tier})
-                    entry["rows"].append(row)
+                    if len(needle) >= 2 and tier is not None:
+                        direct_tags.append((hub, row, tag, name, tier))
+
+        # A collection is a list/tag result too. Keep this gate aligned with the
+        # existing collection matcher rather than changing that row surface here.
+        collection_hit = False
+        if len(needle) >= 2:
+            for row in self.catalog.items.values():
+                for tag in row.get("Collection") or []:
+                    words = re.split(r"[^0-9a-z]+",
+                                     str(tag.get("tag") or "").lower())
+                    if any(word.startswith(needle) for word in words if word):
+                        collection_hit = True
+                        break
+                if collection_hit:
+                    break
+
+        normal_gate = (
+            any(row.get("type") in ("movie", "show") for row in rows)
+            or bool(playlist_rows)
+            or collection_hit
+            or bool(direct_tags)
+        )
+
+        # With the gate open, every retained (>=3-byte) query token contributes an
+        # AND group of its top-ten spellfix candidates OR the original token prefix.
+        # Only movies/shows are searched by this pass; direct episodes stay beside
+        # fuzzy title hits but do not contribute to the spellfix vocabulary gate.
+        if not normal_gate:
+            seen_keys = {str(row.get("ratingKey")) for row in rows}
+            for row in self.catalog.items.values():
+                if row.get("type") not in ("movie", "show"):
+                    continue
+                if str(row.get("ratingKey")) in seen_keys:
+                    continue
+                if self.catalog.spelling.metadata_matches(row, text):
+                    rows.append(row)
+                    seen_keys.add(str(row.get("ratingKey")))
+
+        tag_matches = list(direct_tags)
+        if not normal_gate and len(needle) >= 2:
+            # The measured fuzzy tag branch is people-only. `Science Fictian`
+            # returns no genre on either server, so genre expansion is not inferred
+            # merely because genre strings live in the shared tag vocabulary.
+            direct_keys = {(hub, name, str(row.get("librarySectionID")))
+                           for hub, row, _tag, name, _tier in direct_tags}
+            for hub in ("actor", "director"):
+                field = self.SEARCH_TAG_HUBS[hub]
+                for row in self.catalog.items.values():
+                    for tag in row.get(field) or []:
+                        name = str(tag.get("tag") or "")
+                        key = (hub, name, str(row.get("librarySectionID")))
+                        if key in direct_keys:
+                            continue
+                        if self.catalog.spelling.tag_matches(name, text):
+                            tag_matches.append((hub, row, tag, name, "fuzzy"))
+
+        tags = {}
+        for hub, field in self.SEARCH_TAG_HUBS.items():
+            seen = {}
+            for matched_hub, row, tag, name, tier in tag_matches:
+                if matched_hub != hub:
+                    continue
+                # Cycle 28, measured on kids (1.43.4) and zen (1.42.2): a tag hit
+                # is per LIBRARY, not per NAME. kids' `drama` answers TWO `Drama`
+                # rows -- one for each library holding the genre, each naming its
+                # own `librarySectionID`, `key` and `count` -- and zen's `comedy`
+                # answers two Comedy rows carrying 590 and 179 against the SAME tag
+                # id 667, so the id is shared and the row is not.
+                entry = seen.setdefault((name, str(row.get("librarySectionID"))),
+                                        {"tag": tag, "rows": [], "row": row,
+                                         "tier": tier})
+                entry["rows"].append(row)
             for entry in seen.values():
                 # Cycle 28: the `count` is the size of the listing the row's own `key`
                 # names -- the library's own top-level type -- not every row carrying
@@ -10762,6 +10810,28 @@ class PlexSim:
                                       if r.get("type") == section.get("type")])
             if seen:
                 tags[hub] = [seen[key] for key in sorted(seen)][:limit]
+
+        typed = {}
+        for row in rows:
+            typed.setdefault(row.get("type"), []).append(row)
+        if playlist_rows:
+            typed["playlist"] = playlist_rows
+        if tagged_items:
+            seen_keys = {str(row.get("ratingKey")) for row in rows}
+            # Associated media is not constrained by the tag hub's own limit.
+            # Preserve that existing behavior and carry the winning reason only
+            # on the query-local copy; underscore fields never serialize.
+            for hub, row, tag, _name, _tier in tag_matches:
+                key = str(row.get("ratingKey"))
+                if key in seen_keys:
+                    continue
+                reasoned = dict(row)
+                reasoned["_searchReason"] = (hub, tag)
+                typed.setdefault(row.get("type"), []).append(reasoned)
+                seen_keys.add(key)
+        for kind in typed:
+            typed[kind].sort(key=lambda row: (-rank(row), str(row.get("title") or "")))
+            typed[kind] = typed[kind][:limit]
         return typed, tags
 
     def search_row_sections(self, kind, row):
@@ -10893,14 +10963,21 @@ class PlexSim:
                     # Measured: a row that matched through a TAG rather than its
                     # own title names the tag it matched on -- the client prints
                     # "because Ian Hubert" under the row.
-                    for hub, field in self.SEARCH_TAG_HUBS.items():
-                        for tag in row.get(field) or []:
-                            words = re.split(r"[^0-9a-z]+",
-                                             str(tag.get("tag") or "").lower())
-                            if any(w.startswith(needle) for w in words if w):
+                    private_reason = row.get("_searchReason")
+                    if private_reason:
+                        entry["reason"] = private_reason[0]
+                        entry["reasonID"] = private_reason[1].get("id")
+                        entry["reasonTitle"] = private_reason[1].get("tag")
+                    for hub, matches in tags.items():
+                        if "reason" in entry:
+                            break
+                        for match in matches:
+                            if any(str(tagged.get("ratingKey")) ==
+                                   str(row.get("ratingKey"))
+                                   for tagged in match["rows"]):
                                 entry["reason"] = hub
-                                entry["reasonID"] = tag.get("id")
-                                entry["reasonTitle"] = tag.get("tag")
+                                entry["reasonID"] = match["tag"].get("id")
+                                entry["reasonTitle"] = match["tag"].get("tag")
                                 break
                         if "reason" in entry:
                             break
