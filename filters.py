@@ -356,14 +356,6 @@ def _word_prefixes(wanted, text):
     # query, so `Steel,` found one row where a real PMS answers all of them and `Steel.`
     # found one where a real PMS answers none. It is the filter bar's own text box, so a
     # typed comma or a trailing period silently gave a different row set.
-    for alternative in str(wanted).split(","):
-        if _raw_word_prefixes(alternative, text) or _folded_word_run(alternative, text):
-            return True
-    return False
-
-
-def _one_title_query(wanted, text):
-    """One comma-free alternative of a `title=` query."""
     return _raw_word_prefixes(wanted, text) or _folded_word_run(wanted, text)
 
 
@@ -955,6 +947,15 @@ def parse(pairs, field_type, structural=STRUCTURAL, errors=None):
             # what it does -- cycle 13 measured the prefix match from the listing side.
             operator = "<="
         alternatives = [v for v in value.split(",") if v != ""] or [value]
+        if bare == "title" and operator == "=" and "," in value:
+            # Cycle 31, measured on kids and zen: on `title` an EMPTY comma member is KEPT,
+            # and since an empty `title=` matches every row a trailing comma answers the
+            # whole library -- kids' `title=Steel,,` and `title=of,` are 5 of 5, zen's
+            # `title=Love,` is 3,887 where `title=Love` is 59, and `title=Actually,Love` is
+            # the union (59, Love Actually being in it already). The empty member is dropped
+            # above because a TAG field's comma list is a set of ids where an empty member
+            # means nothing; on the title matcher it means "any row".
+            alternatives = value.split(",")
         leaves = [{"field": bare, "scope": scope, "operator": operator,
                    "value": v, "type": kind} for v in alternatives]
         joiner = "and" if operator in ("!=", "!==") else "or"
