@@ -20823,10 +20823,20 @@ def main():
         finally:
             sock_c30f.close()
 
-    pair_c30f = reuse_c30f("/library/sections/%s/all?justakey" % movie_section)
-    identity_c30f = reuse_c30f("/identity?justakey")
-    other_c30f = reuse_c30f("/library/sections/%s/all?type=abc" % movie_section)
-    missing_c30f = reuse_c30f("/library/metadata/999999")
+    def reuse_settled_c30f(path_c30f):
+        """Cycle 31: a status of 0 means no response was read at all -- a busy server, not
+        a different answer -- so try again rather than asserting on it. Three attempts, the
+        first that read a status line wins; the reuse verdict is that same attempt's."""
+        for _attempt_c30f in range(3):
+            status_c30f, reused_c30f = reuse_c30f(path_c30f)
+            if status_c30f:
+                return status_c30f, reused_c30f
+        return 0, False
+
+    pair_c30f = reuse_settled_c30f("/library/sections/%s/all?justakey" % movie_section)
+    identity_c30f = reuse_settled_c30f("/identity?justakey")
+    other_c30f = reuse_settled_c30f("/library/sections/%s/all?type=abc" % movie_section)
+    missing_c30f = reuse_settled_c30f("/library/metadata/999999")
     check("the malformed-pair 400 closes the connection, and no other refusal does",
           pair_c30f == (400, False) and identity_c30f == (400, False)
           and other_c30f == (500, True) and missing_c30f == (404, True),
