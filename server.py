@@ -15960,7 +15960,26 @@ class Handler(BaseHTTPRequestHandler):
                              "attachment; filename=\"plexsim-logs.zip\"")])
                 return
 
-        if method in ("GET", "HEAD"):
+        if True:
+            # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which
+            # agree on all twelve write endpoints: a container a WRITE answers honours the
+            # paging headers and `excludeElements=` exactly as a read's does. Driven with
+            # the client's own play-queue form over three rows and
+            # `X-Plex-Container-Start: 1`, `X-Plex-Container-Size: 1`:
+            #
+            #   1.42.2  POST /playQueues -> size 1, totalSize 3, offset 1, one row
+            #   1.43.4  the same
+            #   plexsim size 3, no totalSize, no offset, every row
+            #
+            # and with `excludeElements=Media` both references drop the Media tree and
+            # substitute `mediaCount: 1` where plexsim keeps the whole thing.
+            #
+            # plexsim gated both post-processors on the METHOD, so exactly half the
+            # surface followed cycle 21's rule that "paging is a property of the RESPONSE,
+            # not of a listing" -- the twelve playlist, collection and play-queue write
+            # responses escaped it. `excludeFields=` was never affected: it is applied in
+            # the row builder rather than in this pass, which is why the two options
+            # behaved differently on the same response.
             try:
                 result = self._exclude_container(result)
                 result = self._page_container(result)
