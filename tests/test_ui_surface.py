@@ -22256,6 +22256,48 @@ def main():
     check("the Range grammar is the reference's, byte span and status alike",
           not wrong_c35b, str(wrong_c35b)[:400])
 
+
+    # Cycle 35, the whole `GET /butler` enabled table diffed against both writable copies:
+    # 23 tasks, the two versions agreeing on every one, and plexsim disagreeing on exactly
+    # one -- Ad Markers, which ships DISABLED. `POST /butler` runs what is enabled, so the
+    # difference is a task and a progress message a fresh real server never produces.
+    # `/butler` is one of the two roots on the surface that is not a MediaContainer.
+    _, raw_c35c, _ = request(base, "GET", "/butler")
+    enabled_c35c = {task_c35c.get("name"): task_c35c.get("enabled")
+                    for task_c35c in (json.loads(raw_c35c or "{}")
+                                      .get("ButlerTasks", {}).get("ButlerTask") or [])}
+    want_c35c = {
+        "AutomaticUpdates": False,
+        "BackupDatabase": True,
+        "ButlerTaskCleanSupplementalLogFiles": False,
+        "ButlerTaskGenerateAdMarkers": False,
+        "ButlerTaskGenerateCreditsMarkers": True,
+        "ButlerTaskGenerateIntroMarkers": True,
+        "ButlerTaskGenerateVoiceActivity": False,
+        "CleanOldBundles": True,
+        "CleanOldCacheFiles": True,
+        "DeepMediaAnalysis": True,
+        "GarbageCollectBlobs": True,
+        "GarbageCollectLibraryMedia": True,
+        "GenerateChapterThumbs": True,
+        "GenerateMediaIndexFiles": False,
+        "LoudnessAnalysis": True,
+        "MusicAnalysis": True,
+        "OptimizeDatabase": True,
+        "ProcessAssets": True,
+        "RefreshEpgGuides": True,
+        "RefreshLibraries": False,
+        "RefreshLocalMedia": True,
+        "RefreshPeriodicMetadata": True,
+        "UpgradeMediaAnalysis": True,
+    }
+    wrong_c35c = {name_c35c: (want_c35c[name_c35c], enabled_c35c.get(name_c35c))
+                  for name_c35c in want_c35c
+                  if enabled_c35c.get(name_c35c) != want_c35c[name_c35c]}
+    check("the butler's enabled table is the reference's, Ad Markers included",
+          not wrong_c35c and len(enabled_c35c) == len(want_c35c),
+          "%d task(s), wrong %s" % (len(enabled_c35c), wrong_c35c))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

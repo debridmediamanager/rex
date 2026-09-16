@@ -14372,8 +14372,14 @@ class PlexSim:
                         "configured backup directory"},
         {"name": "ButlerTaskCleanSupplementalLogFiles", "interval": 1,
          "scheduleRandomized": False, "enabled": False},
+        # Cycle 35, re-measured on both writable copies: Ad Markers ships DISABLED on
+        # 1.42.2 and on 1.43.4 alike, alone among the three marker tasks -- Credits and
+        # Intro really do default to enabled, and plexsim was set from the siblings
+        # rather than from a reading (class D). It is the one disagreement in the whole
+        # 23-row enabled table, and `POST /butler` runs what is enabled, so a fresh
+        # plexsim generated ad markers where a fresh real server never does.
         {"name": "ButlerTaskGenerateAdMarkers", "interval": 1,
-         "scheduleRandomized": False, "enabled": True},
+         "scheduleRandomized": False, "enabled": False},
         {"name": "ButlerTaskGenerateCreditsMarkers", "interval": 1,
          "scheduleRandomized": True, "enabled": True},
         {"name": "ButlerTaskGenerateIntroMarkers", "interval": 1,
