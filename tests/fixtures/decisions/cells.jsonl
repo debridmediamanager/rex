@@ -2104,3 +2104,159 @@
 {"profile":"iOS-iPod-3,1","row":"zen:3831","state":"selected","status":200,"directPlayDecisionCode":3000,"text":5,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
 {"profile":"iOS-iPod-4,1","row":"zen:3831","state":"selected","status":200,"directPlayDecisionCode":3000,"text":4,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
 {"profile":"tvOS","row":"zen:3831","state":"selected","status":200,"directPlayDecisionCode":3000,"text":34,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Android","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Asus Transformer Prime TF201","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Chrome","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Chromecast","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Firefox","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Generic","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"HTML TV App","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Internet Explorer","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Konvergo","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Microsoft Edge","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 3","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 4","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 5","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Opera","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Opera TV App","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Panasonic Viera 3D TV","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"PlayStation 3","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"PlayStation 3 App","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"PlayStation 4 App","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Plex Desktop","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":1001,"transcodeDecisionCode":1001}
+{"profile":"Plex Home Theater","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Plex Home Theater-RaspberryPi","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Plexamp","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Popcorn Hour","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Roku","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Roku-3.1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Roku-5.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Roku-5000X-6.0","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Roku-6.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Roku-7.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-3.1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-4400X-7.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-5.1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-5000X-6.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-5000X-7.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-6.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"RokuDLNA-6000X-7.x","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Safari","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Samsung","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":1000,"text":1,"generalDecisionCode":1000}
+{"profile":"Samsung SmartTV","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Samsung Tizen","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Sonos","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Sony Blu-ray","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Blu-ray 2013","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Bravia 2010","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Bravia 2011","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Bravia 2012","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Bravia 2013","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Sony Streaming Player","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Universal Mobile","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Universal Recording","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Universal TV","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Unknown Browser","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Vivaldi","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Web","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Western Digital TV Live","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":2003}
+{"profile":"Wii U","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows 10 Desktop","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":1000,"text":1,"generalDecisionCode":1000}
+{"profile":"Windows 10 Mobile","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":17,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows Phone","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Xbox 360","row":"zen:1120","state":"selected","status":400}
+{"profile":"Xbox 360 App","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Xbox One","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":17,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"ZP","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPad-1,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-1,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-1,2","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-2,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,2","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,3","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-1,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-2,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-3,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-4,1","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"tvOS","row":"zen:1120","state":"selected","status":200,"directPlayDecisionCode":3000,"text":16,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Android","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Asus Transformer Prime TF201","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Chrome","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Chromecast","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Firefox","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Generic","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"HTML TV App","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Internet Explorer","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Konvergo","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Microsoft Edge","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 3","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 4","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Mystery 5","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Opera","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Opera TV App","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Panasonic Viera 3D TV","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"PlayStation 3","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"PlayStation 3 App","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"PlayStation 4 App","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Plex Desktop","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":1001,"transcodeDecisionCode":1001}
+{"profile":"Plex Home Theater","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Plex Home Theater-RaspberryPi","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Plexamp","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Popcorn Hour","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Roku","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Roku-3.1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Roku-5.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Roku-5000X-6.0","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Roku-6.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Roku-7.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-3.1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-4400X-7.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-5.1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-5000X-6.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-5000X-7.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-6.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"RokuDLNA-6000X-7.x","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Safari","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Samsung","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Samsung SmartTV","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Samsung Tizen","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Sonos","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Sony Blu-ray","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Blu-ray 2013","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Bravia 2010","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Bravia 2011","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Bravia 2012","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Bravia 2013","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Sony Streaming Player","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Universal Mobile","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Universal Recording","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Universal TV","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Unknown Browser","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Vivaldi","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Web","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Western Digital TV Live","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4002}
+{"profile":"Wii U","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows 10 Desktop","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows 10 Mobile","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Windows Phone","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Xbox 360","row":"zen:1098","state":"selected","status":400}
+{"profile":"Xbox 360 App","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"Xbox One","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"ZP","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPad-1,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-1,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-1,2","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-2,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,2","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPhone-3,3","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-1,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-2,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-3,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"iOS-iPod-4,1","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
+{"profile":"tvOS","row":"zen:1098","state":"selected","status":200,"directPlayDecisionCode":3000,"text":35,"generalDecisionCode":2000,"transcodeDecisionCode":4005}
