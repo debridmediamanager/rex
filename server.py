@@ -10971,9 +10971,9 @@ class PlexSim:
             # Plex Web creates the queue before it asks for a decision, so a double-click
             # on Play, or a retry fired while the first request is in flight, meant
             # playback simply did not start. Building the answer inside the lock closes
-            # it, and it also fixes the sibling defect: two concurrent ADDS answered the
-            # SAME container in 11 of 67 pairs, both naming the other's
-            # `playQueueLastAddedItemID`, because that response was built the same way.
+            # it. The same shape was in every mutation of an existing queue -- the add,
+            # the clear, the item delete and the move -- and each of those now builds its
+            # answer the same way; see `play_queue_route`.
             answer = self.play_queue_container(queue_id, query, locked=True)
         logger.info("PLAYQUEUE %s -> %d item(s) from uri=%s",
                     queue_id, len(rows), (uri or playlist_id or "")[:80])
@@ -10987,10 +10987,6 @@ class PlexSim:
         return self.play_queue_container(int(queue_id), query)
 
     def play_queue_container(self, queue_id, query=None, locked=False):
-        """Cycle 32: `locked=True` when the caller already holds `self.lock` -- the create
-        path, which must build its answer inside the same critical section it inserted
-        under, or a sibling create from the same client retires the queue in between and
-        the answer is a 404 for the row this request just made."""
         """One play-queue response, used by create, fetch and add-to.
 
         Two things here decide whether the client keeps the answer at all. Its
@@ -11004,6 +11000,12 @@ class PlexSim:
 
         `playQueueLastAddedItemID` is the third: the client disables the Up Next
         shuffle button once it is present, and it tracks PLAIN adds only.
+
+        Cycle 32: `locked=True` when the caller already holds `self.lock`. Every WRITE to
+        a queue passes it, so the answer is built inside the same critical section the
+        write happened in; built after releasing the lock, a concurrent write to the same
+        queue lands in between and both requests are answered with the queue as the
+        second one left it.
         """
         query = query or {}
         held = _NO_LOCK if locked else self.lock
@@ -13512,7 +13514,7 @@ class PlexSim:
             with self.lock:
                 queue["items"] = [e for e in queue["items"] if e["id"] == queue["selected"]]
                 queue["version"] += 1
-            return self.play_queue_container(queue_id, query)
+                return self.play_queue_container(queue_id, query, locked=True)
 
         if len(segments) == 4 and segments[2] == "items" and method == "DELETE":
             # Cycle 16, re-measured on plexscratch: EVERY item delete answers the queue
@@ -13524,9 +13526,9 @@ class PlexSim:
             # answered the post-mutation container for every other item -- and the
             # client DISCARDS a queue response whose version it did not expect, so a
             # delete from Up Next threw the player's own queue away.
-            was_selected = str(queue.get("selected")) == str(segments[3])
-            was_id = queue.get("selected")
             with self.lock:
+                was_selected = str(queue.get("selected")) == str(segments[3])
+                was_id = queue.get("selected")
                 items = queue["items"]
                 index = next((i for i, e in enumerate(items)
                               if str(e["id"]) == str(segments[3])), None)
@@ -13540,11 +13542,12 @@ class PlexSim:
                 if was_selected:
                     following = items[index] if index < len(items) else (items[-1] if items else None)
                     queue["selected"] = following["id"] if following else None
-            answer = self.play_queue_container(queue_id, query)
+                answer = self.play_queue_container(queue_id, query, locked=True)
+                remaining = len(items)
             if isinstance(answer, dict):
                 body = answer["MediaContainer"]
                 body["playQueueVersion"] -= 1
-                body["playQueueTotalCount"] = len(items) + 1
+                body["playQueueTotalCount"] = remaining + 1
                 if was_selected:
                     body.pop("Metadata", None)
                     body["size"] = 0
@@ -13611,9 +13614,16 @@ class PlexSim:
                     # it where it was. The client disables the Up Next shuffle
                     # button once it is present.
                     queue["last_added"] = new[-1]["id"]
+                # Cycle 32, measured on both writable copies: two concurrent adds to one
+                # queue each answer the queue AS THAT ADD LEFT IT -- versions 2 and 3, and
+                # each its own `playQueueLastAddedItemID` -- in 110 of 110 pairs. plexsim
+                # built the answer after releasing the lock and answered BOTH with the
+                # second add's container in 11 of 67, telling the first client that the
+                # item it just added was the other client's.
+                answer = self.play_queue_container(queue_id, query, locked=True)
             logger.info("PLAYQUEUE %s %s %d item(s)", queue_id,
                         "next" if query.get("next") == "1" else "append", len(rows))
-            return self.play_queue_container(queue_id, query)
+            return answer
 
         if len(segments) == 2 and method in ("POST", "DELETE"):
             # Measured: both are 404 on a real PMS. plexsim's DELETE really dropped
@@ -13679,7 +13689,7 @@ class PlexSim:
                 # does. plexsim answered 404 and left it where it was.
                 items.insert(0 if target is None else target + 1, moving)
             queue["version"] += 1
-        return self.play_queue_container(queue_id, query)
+            return self.play_queue_container(queue_id, query, locked=True)
 
     # -- server settings -------------------------------------------------
 

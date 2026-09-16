@@ -21729,6 +21729,60 @@ def main():
           "control %s | ogonek %s | long s %s | acute %s"
           % (control_c32f, ogonek_c32f, long_s_c32f, acute_c32f))
 
+
+    # Cycle 32, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): two concurrent
+    # adds to ONE play queue each answer the queue as that add left it -- versions 2 and 3,
+    # each naming its own `playQueueLastAddedItemID` -- in 110 of 110 pairs, where plexsim
+    # answered both with the SAME container in 11 of 67: the write ran under the lock and
+    # the answer was built after it, like the create cycle 32's first race fix closed.
+    # 150 barrier-released pairs; the unfixed server shows it at about one pair in twenty.
+    import threading as threading_c32g
+
+    keys_c32g = [r_c32g.get("ratingKey") for r_c32g in
+                 (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                  .get("Metadata") or [])][:3]
+    if len(keys_c32g) < 3:
+        skip("two concurrent play-queue adds each answer their own container",
+             "need three movies")
+    else:
+        def uri_c32g(key_c32g):
+            return quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, key_c32g))
+
+        answers_c32g = []
+        failures_c32g = []
+        for _pair_c32g in range(150):
+            created_c32g = container(base, "POST",
+                                   "/playQueues?type=video&own=1&X-Plex-Client-Identifier="
+                                   "c32add&uri=%s" % uri_c32g(keys_c32g[0]))
+            queue_c32g = created_c32g[1].get("playQueueID")
+            out_c32g = [None, None]
+            barrier_c32g = threading_c32g.Barrier(2)
+
+            def add_c32g(side_c32g, key_c32g):
+                barrier_c32g.wait()
+                out_c32g[side_c32g] = container(
+                    base, "PUT", "/playQueues/%s?uri=%s&X-Plex-Client-Identifier=c32add"
+                    % (queue_c32g, uri_c32g(key_c32g)))
+
+            threads_c32g = [threading_c32g.Thread(target=add_c32g, args=(0, keys_c32g[1])),
+                            threading_c32g.Thread(target=add_c32g, args=(1, keys_c32g[2]))]
+            for thread_c32g in threads_c32g:
+                thread_c32g.start()
+            for thread_c32g in threads_c32g:
+                thread_c32g.join()
+            if any(o_c32g is None or o_c32g[0] != 200 for o_c32g in out_c32g):
+                failures_c32g.append([o_c32g and o_c32g[0] for o_c32g in out_c32g])
+                continue
+            pair_c32g = [(o_c32g[1].get("playQueueVersion"),
+                          o_c32g[1].get("playQueueLastAddedItemID"))
+                         for o_c32g in out_c32g]
+            answers_c32g.append(pair_c32g[0] == pair_c32g[1])
+        check("two concurrent play-queue adds each answer their own container",
+              len(answers_c32g) == 150 and not any(answers_c32g) and not failures_c32g,
+              "%d pair(s), %d answered the same container, failures %s"
+              % (len(answers_c32g), sum(answers_c32g), failures_c32g[:3]))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
