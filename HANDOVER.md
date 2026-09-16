@@ -62,12 +62,12 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 33 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **33**. Cycle 33 read the RESPONSE HEADER BLOCK -- ordered per response family, `X-Plex-Protocol` first and `Date` last, with a session cookie on the plug-in framework's `/system` paths, a connection state the preflight and the `/web` 302 never named, and a ranged container answering BOTH lengths -- refuted its one hunt finding's version framing with two controls, and came back with two large NEGATIVE results (`translations.json` reproduces the image's own gettext catalogs over 13,494 triples; cycle 32's decision model scores 312/312 on rows it never saw). Its hunts ran on a fallback model after a weekly rate limit killed both (§10). |
+| `main` | cycle 34 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
+| Cycle 33 | **33**. Cycle 33 read the RESPONSE HEADER BLOCK -- ordered per response family, `X-Plex-Protocol` first and `Date` last, with a session cookie on the plug-in framework's `/system` paths, a connection state the preflight and the `/web` 302 never named, and a ranged container answering BOTH lengths -- refuted its one hunt finding's version framing with two controls, and came back with two large NEGATIVE results (`translations.json` reproduces the image's own gettext catalogs over 13,494 triples; cycle 32's decision model scores 312/312 on rows it never saw). Its hunts ran on a fallback model after a weekly rate limit killed both (§10). |
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Cycle 30 | **30**. Cycle 30 built the instrument four §3.3 entries had been asking for -- **plexscratch42**, a writable 1.42.2 server (§4.6) -- and swept two dimensions nobody had taken: **the same request twice** (is a response a pure function of its request?) and the **notification channel at scale and over time**, which found a self-inflicted denial of service twelve cycles had walked past. |
-| Cycle 29 | **29**. Cycle 29 swept the RESPONSE BODY below the container -- artwork bytes, the photo transcoder, `/:/resources/*`, `/web/*` and a media part -- and the EXTRAS and `clip` surface, a row type plexsim has never held; and its revalidation step finished the artwork derivation cycle 27 left open. |
 | Worktrees and stashes | none |
 | Work half-done | **none** |
 
@@ -101,6 +101,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 34 | 1536 (+1,872 cells in the new `test_decision`; `test_mediainfo` unchanged at 31) | 17,265 | **5** (no hunts -- both died on the weekly rate limit; 3 from a fresh client-session capture and 2 from the made language-less row, in **4 fix commits and 2 test commits**; **1 recorded belief overturned** and the §3.3 entry behind it CLOSED, 1 sidecar fixture found to be a projection rather than a capture, 1 suite check starved by this cycle's own earlier commit and repaired, 2 findings recorded rather than emulated) |
 | 33 | 1533 (`test_mediainfo` unchanged at 31) | 17,230 | **6** (5 the driver found in the header-block sweep its own territory became when the hunts were rate-limited, and 1 from the write-frames hunt -- as re-measured, which changed what it was; in **7 fix commits and 1 test commit**, one fix repairing a regression the cycle's own first patch caused and one correcting its own family table, both caught by the suite; **3 recorded beliefs overturned**, 1 hunt finding REFRAMED on its controls, 1 §3.3 entry closed and 2 narrowed, 3 findings recorded rather than emulated) |
 | 32 | 1526 (`test_mediainfo` unchanged at 31) | 16,971 | **9** (3 from the concurrency hunt, 3 from the fold-and-decision hunt, and **3 the driver found** -- the sort-title and hub-search halves of the fold, and the JSON byte form -- in **9 fix commits and 1 test commit**; **9 recorded beliefs overturned**, **4 §3.3 entries CLOSED**, 1 of the cycle's own fix comments refuted by re-running its race on its own tree, 2 of its checks refitted to the state the suite leaves them, 5 findings recorded rather than emulated) |
 | 31 | 1515 (`test_mediainfo` unchanged at 31) | 16,866 | **22** (9 from the write-surface hunt, 7 from the derivation hunt, 6 the driver found before either reported, of which 22 were implemented across **21 fix commits** -- three of those commits CORRECTING an earlier patch of the same cycle, each caught by the suite rather than by review; **9 recorded beliefs overturned**, **6 §3.3 entries CLOSED**, 2 hunt findings recorded rather than built (a partial fold table and an episode-still case that did not reproduce over 1,500 live rows), 1 contradiction left open, and 8 existing checks rewritten where they encoded 1.43.4's verb table) |
@@ -175,6 +176,17 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 34, run 2026-09-16 against the merged tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_mediainfo.py` | **31/31** | unchanged this cycle |
+| `tests/test_decision.py` | **1872/1872 cells exact** | NEW this cycle: `decision.py` against the recorded corpus, outcome and refusal text. The 156 cells the reference answers before a client has chosen an audio track are counted separately and never fail the suite. Against the model as it stood the same corpus scores **1826** |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1536 PASS / 0 FAIL / 10 skipped** | ~13 minutes. The run before the repair was 1535/1536: this cycle's own empty-body check left a lower-case summary on the fixture's first movie and starved cycle 20's fold check three thousand lines below |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded baseline cause (dead RD links) |
 
 Suite results at the head of cycle 33, run 2026-09-16 against the merged tree:
 
@@ -648,6 +660,12 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **What plexsim answers to a transcode START once a decision exists** | The 400 with no decision is measured on every protocol and every leaf. What comes next is plexsim's own 404 -- it has no encoder -- and NOT the reference's, whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200 | Nothing: plexsim cannot transcode |
 | ~~**The `directPlay`/`general` 1000 profile LIST**~~ | **CLOSED in cycle 32 by a model read out of the profile files and scored over 1,872 cells** (§7, `decision.py`). The list is gone; only zen 19813's eight cells stay open, below | — |
 
+**Cycle 34 overturned this.**
+
+| Belief | What it really is |
+|---|---|
+| **"A decision re-picks the widest DEFAULT audio track when the selected one carries no language"** (cycle 32, `decision.py`) | It is not a property of the row. The same bytes answer 41 of the 78 profiles "not the first audio stream" before any client has chosen a track and answer every one of them from the visible row afterwards, with `Media`, `Part` and `Stream` byte-identical in both states; `PUT /library/parts/{id}?audioStreamID=<id>` sets it and `audioStreamID=-1` clears it. The rule was fitted to one witness read in the first state. plexsim holds a chosen track, so it models the second and records the first (§8) |
+
 **Cycle 25 added these.**
 
 | Item | Why it is thin | How to settle it |
@@ -718,7 +736,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **zen 19813: a decision over audio tracks that carry no language** | The one measured row whose two tracks (a selected 2-channel mp3, a 6-channel ac3) name no language. The model gets 8 of its 78 cells wrong -- 7 refusal TEXTS and 1 outcome (Windows 10 Mobile, which the model direct plays): which stream a profile evaluates, and whether the sidecar check comes before the audio codec, vary by profile in a way one row cannot separate. Every order of the checks and a stream-by-transcode-codec hypothesis were scored and did worse | More rows of the same shape. None of kids' files has two audio tracks; zen's would need detail reads to find. Or make one: plexscratch's `long` media directory is writable -- mux two language-less audio tracks with ffmpeg, scan, and drive the 78 profiles against it |
+| ~~**zen 19813: a decision over audio tracks that carry no language**~~ | **CLOSED in cycle 34 by making the row this entry asked for.** plexscratch's row 60 -- an mp3 2.0 and an ac3 5.1, neither tagged with a language, `+faststart` so `optimizedForStreaming` matches -- answers 68 of the 78 identically to zen 19813, the other ten being its sidecar subtitle refusing earlier. Two rules came out: a decision reads EVERY audio stream (the first in index order the profile cannot play is the codec it names) unless the profile declares `StreamUnselectedIncompatibleAudioStreams`; and the eight cells were never about the row -- they are a per-user audio selection the row does not carry, flipped by `PUT /library/parts/{id}?audioStreamID=` and cleared by `-1`, with `Stream` byte-identical either way. §8 has what is recorded and not emulated | — |
 | **The hub search matcher's CASE handling** | NARROWED in cycle 33 and still open: a capital macron fails in the FIRST word of a partial query (`B\u012ag Buck` 0.33) and hits in a later one (`Big B\u016ack` 0.73), and a full-title query tolerates it anywhere except in a two-letter word (`Tears \u014cf Steel` 0.73). That is two scoring passes with different case folding, and plexsim emulates no fuzzy band at all | Sweep the capital-macron family by WORD POSITION against zen titles long enough to score above the fuzzy band |
 | **The fold table outside its swept ranges** | NARROWED in cycle 33: 534 characters with an ASCII COMPATIBILITY base -- Greek Extended, Roman numerals, circled, parenthesised and mathematical letters, the `\ufb01`/`\ufb02` ligatures, superscripts, Armenian and Cyrillic -- were substituted into a `title=` query on kids and NONE folds, which is what plexsim's table says. What is still unswept is the letters of scripts with no ASCII base (Hebrew, Arabic, the Indic scripts, CJK), where a fold has nothing to fold TO | The remaining ranges through `handover/tools/sortfold.py`, if a reason ever appears |
 | **Decision limitations no measured row trips** | 24 rows exercised width, level, channels, bitrate and `optimizedForStreaming`. `video.frameRateMode` and `video.separateFields` are read as absent/0, `part.has64bitOffsets` from the Part, and a `Match` with a `list` on `video.profile` was never tripped. A multi-part Media was never driven | A row that trips each -- zen holds interlaced, VFR and 10-bit rows -- driven against the profiles that name the limitation |
@@ -866,6 +884,8 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 34).** No hunters this cycle, so no hunter ports. The driver used `32587` (the fixture server for the suites and for the before/after comparisons), `32588` (the baseline tree's server), `32592`/`32593` (the proof driver, from the cycle's earlier capture-driven patches) and `32596` (the replay target). `32502` and `8787` are the standing exceptions. All are free again.
 
 **Ports (cycle 33).** The hunters had `32587`/`32588` on a frozen `df87253` tree; the driver used
 `32589` (its own header-sweep server), `32592`/`32593` (the proof driver) and `32500` (the suites).
@@ -1144,6 +1164,7 @@ python3 tests/test_ui_surface.py --base http://127.0.0.1:32541          # restar
 uv run --quiet --no-project --with plexapi python3 tests/conformance.py --base http://127.0.0.1:32543
 python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 --public http://127.0.0.1:32543 --skip-decode
 python3 tests/test_mediainfo.py        # no server
+python3 tests/test_decision.py         # no server
 ```
 
 | Suite | What it is |
@@ -1153,6 +1174,7 @@ python3 tests/test_mediainfo.py        # no server
 | `test_all.py` | Play queue → decision → byte reads → real decode. It decodes frames rather than trusting a 200 |
 | `conformance.py` | Drives plexsim with python-plexapi, as a third-party client |
 | `test_mediainfo.py` | `mediainfo.py` against 46 recorded probes and a real PMS's analysis of the same files. Offline |
+| `test_decision.py` | `decision.py` against `tests/fixtures/decisions/` -- 2,028 measured (profile, row) cells from kids, zen and plexscratch, each row's `Media` as the reference wrote it. Offline. The 156 cells taken before a client had chosen an audio track are counted and never fail it |
 
 Suite conventions, each learnt the hard way:
 
@@ -2766,6 +2788,72 @@ assumed a movie still had one Media after the suite's merge check, the other a t
 deleted -- and were refitted and re-proved by hand, the exclude check also against a server with the
 second version merged in. The final run is 1526/1526 with the baseline ten skips.
 
+### Cycle 34 -- a fresh client capture, and the decision's audio streams made rather than found
+
+No hunts: the weekly rate limit that crippled cycle 33 killed both inside a minute, on every model
+tried. So this is the driver's own two territories, and both were on cycle 33's list. **Five
+findings in four fix commits and two test commits**, one §3.3 entry CLOSED, one recorded belief
+overturned, one sidecar fixture found to be a projection rather than a capture, and one of the
+cycle's own earlier commits caught starving a check three thousand lines below it.
+
+**A fresh CLIENT-SESSION capture** through plexlab -- the founding instrument, last fully recorded
+in cycle 27. `session-web.py` drove the official client through the walk again and `replay.py`
+compared 26 unique requests against plexsim with the reference re-fetched live at the same moment:
+every element and attribute difference was one already recorded as a version or a library
+difference, which is the negative result. What the capture carried that no probe had sent was the
+client's own ENVELOPE, and three findings came out of it. **A response with an EMPTY body orders
+`Content-Length` before `Content-Type`**, the way an error does, where a container body is
+type-first -- read off the client's `PUT /updater/check` and then re-measured on both copies over an
+edit, a `/refresh` and a 204 playlist delete, on both versions. So cycle 33's response families do
+not split on the STATUS: they split on whether the body carries a container. **The preflight sends
+`Access-Control-Allow-Headers` only when the request carried `Access-Control-Request-Headers`**, and
+echoes exactly that; Plex Web's own preflight asks for none and the reference answers without the
+field, where plexsim substituted a fallback list cycle 16 had invented beside the echo it measured.
+And **the websocket handshake's header ORDER**, which cycle 33 recorded as unmeasurable because a
+socket may never be opened on kids or zen: the client opens one itself, so the capture holds both
+sides. The CORS pair LEADS, ahead of the handshake headers.
+
+**zen 19813's shape, made rather than found.** §3.3's oldest open entry was the one measured row
+whose audio tracks carry no language and the eight cells cycle 32's model could not fit; its own
+instruction was to make one. `ffmpeg` muxed an mp3 2.0 and an ac3 5.1, both `default` and neither
+tagged with a language, over Sintel's h264 video into an mp4 with `+faststart`, so that
+`optimizedForStreaming=1` matches 19813 and no container limitation can fire first. plexscratch's
+row 60 then reads exactly 19813's shape, and all 78 profiles answer **68 of 78 identically to zen's
+row** -- the ten that differ being the ones zen's selected sidecar subtitle refuses earlier, each
+exactly where the model puts that check.
+
+With the shape reproduced the rule was measurable, and it is two rules. **A decision reads EVERY
+audio stream, not only the selected one**: Roku plays the selected mp3 and still refuses the row,
+naming the **ac3** it does not list, while Android names the **mp3** -- the first in INDEX order it
+cannot play. **Unless the profile declares `StreamUnselectedIncompatibleAudioStreams`**, where only
+the selected stream counts; that is the whole difference between Windows Phone, which direct plays
+the row, and Universal TV, which refuses it. And that setting was one of **twenty of the reference's
+thirty `<Setting>` rows that `client_profiles.json` had dropped**: cycle 31 read the profile files
+into it and kept the one the model of the day happened to read. A sidecar fixture read out of the
+image has to be the whole thing.
+
+**The eight cells were never about the row.** The same bytes answer 41 of the 78 profiles "Selected
+audio stream is not the first audio stream" although `selected` names the FIRST audio track and no
+profile capability explains the split -- and one write, `PUT /library/parts/{id}?audioStreamID=<the
+track already selected>`, makes all 41 answer from the visible row instead; `audioStreamID=-1` puts
+every one of the 78 back, byte for byte. The item's `Media`, `Part` and `Stream` rows are identical
+throughout. So cycle 32's "the server re-picks the widest default track when the selected one has no
+language" was per-user state the row does not carry, fitted to one witness read in that state
+(§3.2). plexsim holds a chosen track, so it models the after and records the before.
+
+`tests/test_decision.py` is what keeps the model honest from now on: `tests/fixtures/decisions/`
+holds each measured row's `Media` as the reference wrote it and one line per (profile, row) cell --
+78 profiles against 24 rows on kids and zen plus 78 against the made row in both of its states.
+**1,872 of 1,872 cells exact**, outcome and refusal text; the 156 pre-selection cells are counted and
+never fail it. The same corpus scores 1,826 against the model as it stood, which is the fail-then-
+pass proof this cycle's one model commit rests on.
+
+**And the cycle caught one of its own.** The empty-body check writes `summary.value=c34` to the
+fixture's first movie and left it there, which starved cycle 20's "only titleSort folds case" check
+three thousand lines below: it counts the rows whose summary sorts under `b` against those under
+`B`, and its whole population is this fixture's three movies. The commit was proven with the driver,
+which runs one block; the full suite is what caught it, for the fifth cycle running.
+
 ### Cycle 33 -- the response header block, and a version claim that did not survive its control
 
 Two hunts and a driver round: **six findings in seven fix commits and one test commit** -- one fix
@@ -2823,7 +2911,28 @@ folds. Every status line and every header value matches except the recorded `tex
 And cycle 32's decision model was held out on four zen rows it had never seen: **312 of 312 cells
 exact**, outcome and refusal text.
 
-### Next: cycle 34
+### Next: cycle 35
+
+1. **The FRAMES of the write surface per version** -- cycle 33's hunt reached the refresh opening
+   and cycle 34 never got a hunt to take the rest: the library create and delete counts, a
+   show-level refresh, the type-15/18 list pairs beyond a collection create, the subtitle upload,
+   the stream `PUT`, the butler tasks and their wrapper, `match`, a `?path=`-scoped scan and
+   `showOrdering`'s 45-frame cascade, each on both copies. Use a `tv.plex.agents.none` library on
+   both, or say the comparison cannot be made: the 1.42.2 copy's online agent can never finish any
+   work.
+2. **The hub matcher's CASE passes** (§3.3), narrowed in cycle 33 to "a capital macron fails in
+   the FIRST word of a partial query and not in a later one" and untouched since.
+3. **Decision limitations no measured row trips** (§3.3). The corpus is now a checked-in file
+   with a driver (`handover/tools/ddrive.py`) beside it, so adding rows to it is cheap: zen holds
+   interlaced, VFR, 10-bit and multi-Media rows, and each would exercise a limitation the 25 rows
+   in the corpus do not.
+4. **What the reference picks before a client has chosen an audio track** (§8). Both states of
+   one row are recorded; what is missing is a second row of a different shape -- three tracks, or
+   two of equal width, or the wider one first -- to tell "the widest default" from "the last one"
+   and to find what separates Android, Popcorn Hour and the Roku family from the other 41.
+5. **A catalog with extras in it**, which would make cycle 29's clip spec buildable.
+
+### Next: cycle 34 (superseded)
 
 1. **The FRAMES of the write surface per version, properly.** Cycle 33's hunt reached the refresh
    opening and explicitly left the rest: the library create and delete counts, a show-level refresh,
@@ -3262,6 +3371,19 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 34.**
+
+- **What the reference picks before a client has chosen an audio track.** Both states of the made
+  row are in `tests/fixtures/decisions/cells.jsonl` and the suite counts the 156 pre-selection cells
+  without failing on them. plexsim's rows carry a `selected` stream and nothing else, so the
+  distinction cannot be expressed from a catalog row -- and the rule itself is not settled: the 41
+  profiles that refuse the row as "not the first audio stream" are every profile with a matching
+  `<VideoProfile>` except Android, Popcorn Hour and the Roku 5.x/6.x/7.x family, and nothing in those
+  files separates them. Asus Transformer Prime TF201 and Roku-7.x list the same audio codecs in mp4,
+  agree on every other measured row, and disagree here.
+- **The `Sec-WebSocket-Extensions` the client offers** (`permessage-deflate`): neither side echoes
+  it in the capture, so there is nothing to build; recorded with the handshake order.
+
 **Cycle 33.**
 
 - **`/system/search?query=`'s header order**, **the two socket handshakes' header order**, and
@@ -3641,6 +3763,30 @@ a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified orig
 
 ## 10. Tooling and environment gotchas
 
+**Cycle 34 added these.**
+
+- **A rate limit can outlast a cycle.** Cycle 33 lost both hunts to an account-level WEEKLY limit
+  and cycle 34 lost both again, on every model tried. Two cycles in a row have therefore been the
+  driver's own territories, and both delivered -- but plan for it: the driver's list should always
+  hold a territory that needs no agent, and the write-up should say a cycle had no hunts rather than
+  reading as a thin one.
+- **An answer that is a pure function of the request is an ASSUMPTION, and here it is false.** The
+  decision endpoint reads a per-user audio selection that no read of the item exposes: the same GET,
+  the same row, the same bytes back from `/library/metadata/{id}`, and 41 of 78 profiles answer
+  differently depending on whether a client has ever written `PUT /library/parts/{id}?audioStreamID=`.
+  Cycle 30 swept "the same request twice" and could not see this, because the state does not change
+  on its own. **Record which state a corpus was taken in**; `handover/tools/ddrive.py` says so in
+  its docstring for that reason.
+- **A check proven with the driver is proven for ONE BLOCK.** `sdrive.py` runs the patch's own block
+  against the parent and the fixed tree, which is the fail-then-pass proof -- and says nothing about
+  what the block leaves behind for the 1,500 checks after it. Cycle 34's first commit left a
+  lower-case summary on the fixture's first movie and starved a cycle-20 check three thousand lines
+  down. **Run the whole suite before the cycle's documentation commit**, and put back what a check
+  writes when the value itself is what a later check counts.
+- **Do not run two copies of `test_ui_surface.py` at once.** Its own gate checks bind **32599**, so a
+  second run racing the first produces failures in both that look like real findings -- three of them
+  in this cycle, all of which evaporated on a sequential re-run.
+
 **Cycle 33 added these.**
 
 - **A hunt can die on an account-level WEEKLY rate limit, not just a session one.** Both of cycle
@@ -3951,6 +4097,7 @@ base from `PLEXSIM_BASE`.
 | `territory_a.py`, `territory_b.py` | The cycle-6 notification-frame and malformed-identifier sweeps |
 | `hdr.py` | Cycle 33: the RESPONSE HEADER prober -- twenty-six response classes off a raw socket on three servers, printing the status line and the header names in order, and flagging where kids and zen agree and plexsim differs. GET/HEAD/OPTIONS only, with the `WRITE_GET` list asserted per case |
 | `frames.py` | Cycle 33: capture the frames one write pushes, on one server -- an eventsource listener with no `filters=`, a control write first, and a one-line summary per frame |
+| `ddrive.py` | Cycle 34: drive all 78 client profiles' PLAIN-FORM decision against one row and record the four codes and their texts -- the file `tests/fixtures/decisions/cells.jsonl` is built from. GET-only, so it may be pointed at kids or zen; but the answer depends on per-user state the row does not show, so record WHICH state (`audioStreamID=<id>` sets it, `-1` clears it) |
 | `sortfold.py`, `hubfold.py` | Cycle 32: the SORT-title fold swept by writing titles on both copies (writes to the copies only), and the HUB matcher's fold swept by GET on kids, word start and inside a word. `hubfold.py` reads `sortfold.py`'s output as its hypothesis |
 | `race.py` | Cycle 32: two play-queue adds released from one barrier, N pairs, against one server; counts the pairs answered with the same container |
 | `c31/D/foldsweep.py` (scratch, not tracked) | Cycle 31: the `title=` QUERY fold, swept character by character over U+0080..U+024F by substituting each codepoint for one letter of a known title on kids. Five rows, ~400 requests a letter, and it is what the §3.3 entry needs to close |

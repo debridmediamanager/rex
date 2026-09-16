@@ -8011,6 +8011,100 @@ Measured and not acted on:
   never be opened on either reference.
 - **Whether a refresh cascade runs at all on an isolated server**, above: the copies' state.
 
+#### The thirty-fourth pass — a fresh client capture, and the decision's audio streams made rather than found
+
+Both hunts died inside a minute on the weekly rate limit that killed cycle 33's (§10), so this
+cycle is the driver's own two territories: **a fresh client-session capture through plexlab**, the
+founding instrument, whose last full recording was cycle 27's; and **zen 19813's shape, made rather
+than found**, which §3.3 had been asking for since cycle 32. Five findings in four fix commits and
+two test commits, one §3.3 entry CLOSED, one recorded belief overturned, and one of the cycle's own
+earlier commits caught starving a check three thousand lines below it.
+
+**The capture.** `session-web.py` drove the official client through the walk again against kids and
+recorded 26 unique requests. Replayed against plexsim with `replay.py` (`--reference` live at the
+same moment), every element and attribute difference was one already recorded as a version or a
+library difference. What the capture DID carry was the client's own envelope, which no probe had
+sent:
+
+* **A response with an EMPTY body orders `Content-Length` before `Content-Type`**, the way an error
+  does, where a MediaContainer body is type-first. Read off the client's `PUT /updater/check` and
+  then re-measured on both copies over three endpoints -- an item edit, a `/refresh` and a 204
+  playlist delete, on 1.42.2 and on 1.43.4 alike. So cycle 33's response FAMILIES do not split on
+  "error versus success": a container body is type-first and everything else -- an error page, the
+  plug-in framework's `/system`, an empty-bodied write answer -- is length-first. A HEAD keeps the
+  container order, its length being the body's and not zero.
+* **The preflight answers `Access-Control-Allow-Headers` only when the request carried
+  `Access-Control-Request-Headers`**, and it is that value echoed. Plex Web's preflight of
+  `PUT /updater/check` asks for no headers at all and the reference answers without the field, where
+  plexsim substituted a fallback list -- cycle 16 measured the echo and invented the fallback beside
+  it.
+* **The websocket handshake's header ORDER**, which cycle 33 recorded as unmeasurable because a
+  socket may never be opened on kids or zen. The client opens one itself, so the capture holds both
+  sides: `X-Plex-Protocol, Access-Control-Expose-Headers, Vary, Upgrade, Connection,
+  Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date` -- the CORS pair LEADS,
+  ahead of the handshake headers, and the allowed origin follows `Cache-Control`. plexsim had the
+  right set and put all three CORS headers at the end. The `Sec-WebSocket-Extensions` the client
+  offers is echoed by neither side.
+
+**The made row.** §3.3's oldest open entry was zen 19813, the one measured row whose audio tracks
+carry no language, and the eight cells cycle 32's model could not fit. Its own instruction was to
+make one: `plexscratch`'s `long` media directory is writable. `ffmpeg` muxed Sintel's h264 video
+with an mp3 2.0 track and an ac3 5.1 track, both `default`, neither tagged with a language, into an
+mp4 with `+faststart` so `optimizedForStreaming=1` matches 19813 and no container limitation can
+fire first. After `analyze` and `refresh` the copy's row 60 reads exactly 19813's shape, and driving
+all 78 client profiles against it answers **68 of 78 identically to zen's row** -- the ten that
+differ being the ones zen's selected sidecar subtitle refuses earlier, each exactly where the model
+puts that check. The shape reproduces; the rule was then measurable.
+
+* **A decision reads EVERY audio stream, not only the selected one.** Roku lists `aac,mp3,flac` in
+  mp4 and refuses the row naming the **ac3** it does not list, although the mp3 it does play is the
+  selected track; Android lists `aac` alone and names the **mp3**, the first in index order that it
+  cannot play. The first stream in INDEX order that no matching `<VideoProfile>` names is the codec
+  the refusal names.
+* **Unless the profile declares `StreamUnselectedIncompatibleAudioStreams`**, in which case only the
+  selected stream counts -- the server streams the others on their own. That is the whole difference
+  between Windows Phone (`aac,mp3`, which direct plays the row) and Universal TV (`aac,ac3`, which
+  refuses it naming the mp3 it does not list), two profiles otherwise alike. Six profiles declare
+  it: Windows, Windows 10 Desktop, Windows 10 Mobile, Windows Phone, iOS and tvOS.
+* **`client_profiles.json` was a projection, not a capture.** Cycle 31 read the reference's
+  `Resources/Profiles` into it and kept **10 of the 30 `<Setting>` rows** -- exactly the
+  `DirectPlayStreamSelection` the cycle-32 model happened to read. One of the twenty it dropped is
+  the setting above. Nineteen profiles declare settings; all thirty are in the fixture now.
+* **The decision reads a per-user audio selection that the item row does not carry.** The same row
+  answers 41 of the 78 profiles "Selected audio stream is not the first audio stream" before any
+  client has chosen a track -- although `selected` names the FIRST audio track and the profile's own
+  capabilities explain none of it -- and answers every one of the 78 from the visible row once a
+  client has chosen one. **One write flips it**: `PUT /library/parts/{id}?audioStreamID=<the track
+  already selected>` makes all 41 direct play or refuse on their own profile instead, and
+  `audioStreamID=-1` puts every one of the 78 back, byte for byte. The item's `Media`, `Part` and
+  `Stream` rows are **byte-identical in both states**. So cycle 32's rule -- "the server re-picks the
+  widest default track when the selected one has no language" -- is not a property of the row at all;
+  it was that hidden state, fitted to one witness. plexsim holds a chosen track, so the model is the
+  after, and the before is recorded and not emulated (§8).
+
+`tests/test_decision.py` is the new suite that keeps it honest: `tests/fixtures/decisions/` holds
+each measured row's `Media` as the reference wrote it and one line per (profile, row) cell -- 78
+profiles against 24 rows on kids and zen plus 78 against the made row, in both of its states. The
+model is **exact on all 1,872 cells** of the state it emulates, on the outcome and on the refusal
+text; the 156 pre-selection cells are counted and never fail the suite. Against the model as it
+stood the same corpus scores 1,826.
+
+**And the cycle caught one of its own.** The empty-body check writes `summary.value=c34` to the
+fixture's first movie and left it there, which starved cycle 20's "only titleSort folds case" check
+three thousand lines below -- it counts the rows whose summary sorts under `b` against those under
+`B`, and its whole population is this fixture's three movies. The commit was proven with the driver,
+which runs one block; the full suite is what caught it. The check now puts the summary back.
+
+Measured and not acted on:
+
+- **What the reference picks before a client has chosen a track.** The 41 profiles that refuse the
+  made row as "not the first audio stream" are every profile with a matching `<VideoProfile>` except
+  Android, Popcorn Hour and the Roku 5.x/6.x/7.x family, and nothing in those files -- settings,
+  `<Identification>`, DLNA blocks, the audio codecs they list, their codec limitations -- separates
+  them from the rest. Asus Transformer Prime TF201 and Roku-7.x list the same audio codecs in mp4,
+  answer identically on every other measured row, and answer differently here. Both states of the
+  row are in the corpus; plexsim cannot express the distinction from a catalog row either way.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

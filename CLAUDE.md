@@ -41,7 +41,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
 | `claim.py`, `heartbeat.py` | plex.tv claim flow and registration upkeep |
-| `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` |
+| `tests/` | Conformance and end-to-end suites, plus `catalog_ui.json` and `fixtures/decisions/`, the measured decision corpus |
 | `tests/fixtures/` | Redacted corpora recorded from a real PMS through a real client; `media/` pairs real files' probes with a real PMS's analysis of them |
 | `harness/` | plexlab — the reference PMS and the recorder. See below. |
 | `probes/` | One-off measurement scripts that produced findings |
@@ -287,6 +287,7 @@ python3 tests/test_ui_surface.py            # context menu + every server page, 
 python3 tests/test_all.py                   # play queue → decision → byte reads → real decode
 python3 tests/conformance.py                # drives plexsim with python-plexapi
 python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
+python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
@@ -2154,6 +2155,31 @@ precisely how the Seasons bug survived a fix attempt.
   before the queued frame, on both versions; an explicitly unmatched (`tv.plex.agents.none://`) row
   opens with the queued frame alone. Whether the cascade then RUNS is the server's own state -- an
   isolated fresh install never gets past the queue -- and not a version rule.
+
+- **A response with an EMPTY body orders its LENGTH before its type**, the way an error does, where
+  a MediaContainer body is type-first -- so cycle 33's families split on "does the body carry a
+  container", not on the status. A HEAD keeps the container order, its length being the body's.
+- **The preflight sends `Access-Control-Allow-Headers` only when the request ASKED for headers**, and
+  echoes exactly what it asked for; Plex Web's own preflight asks for none. A fallback list answers a
+  question the browser did not put.
+- **The 101 handshake LEADS with the CORS pair**: `X-Plex-Protocol, Access-Control-Expose-Headers,
+  Vary, Upgrade, Connection, Sec-WebSocket-Accept, Cache-Control, Access-Control-Allow-Origin, Date`.
+  It cannot be probed -- a socket may never be opened on kids or zen -- so it was read out of a
+  client-session capture, which records both sides of the client's own handshake.
+- **A decision reads EVERY audio stream, not only the selected one**: the first in INDEX order that no
+  matching `<VideoProfile>` names is the codec the refusal names (Roku plays the selected mp3 and still
+  refuses the row, naming its ac3). **Unless the profile declares
+  `StreamUnselectedIncompatibleAudioStreams`** -- Windows, Windows 10 Desktop, Windows 10 Mobile,
+  Windows Phone, iOS, tvOS -- where only the selected stream counts.
+- **The decision reads a per-user audio selection the ITEM ROW DOES NOT CARRY.** Before any client has
+  chosen a track, 41 of the 78 profiles refuse a row whose tracks name no language as "not the first
+  audio stream" although `selected` names the first one; `PUT /library/parts/{id}?audioStreamID=<that
+  same track>` makes all 41 answer from the visible row and `audioStreamID=-1` puts them back, with
+  `Media`, `Part` and `Stream` byte-identical throughout. plexsim holds a chosen track and models that
+  state; `tests/test_decision.py` scores both against the recorded corpus.
+- **A sidecar fixture read out of the reference's image has to be the WHOLE thing.**
+  `client_profiles.json` kept 10 of the 30 `<Setting>` rows -- the one the model of the day read --
+  and the decision turned on one of the twenty it dropped.
 
 ## Conventions
 
