@@ -2181,6 +2181,28 @@ precisely how the Seasons bug survived a fix attempt.
   `client_profiles.json` kept 10 of the 30 `<Setting>` rows -- the one the model of the day read --
   and the decision turned on one of the twenty it dropped.
 
+- **A real PMS zeroes its gzip header's MTIME**, so a compressed body is a pure function of the body
+  -- `gzip.compress(payload, 6, mtime=0)` reproduces the reference's member byte for byte. Python
+  stamps the clock, which makes the same request answer different bytes every second.
+- **The `Range` grammar is lenient in a measured shape, and 416 is part of it.** The unit token is
+  never read (`items=0-10` ranges) but a value with no `=` is not a Range; an empty spec is a 200; a
+  suffix of zero or one that does not parse answers `bytes 0-0/N` with the WHOLE body; an
+  unparseable FIRST -- and any second `-`, and a comma list -- answers the whole body as a 206; an
+  unparseable LAST becomes ZERO; and a reversed range or a first at or past the end is a **416**.
+- **A library CREATE pushes the scan's skeleton even when there is nothing to scan** -- eleven
+  frames, the `library.update.section` activity through a Context-carrying 99 and 100, the two
+  LIBRARY_UPDATE statuses, and the nested `provider.subscriptions.process` pair. The Add Library
+  dialog's spinner and its "Library scan complete" toast are drawn off exactly these.
+- **`ButlerTaskGenerateAdMarkers` ships DISABLED**, alone among the three marker tasks, on both
+  versions -- the one disagreement in the 23-row enabled table, and `POST /butler` runs what is
+  enabled.
+- **A search hit's SCORE tier is the MATCHER's rule**: an exact title is 0.93, a query whose terms
+  match the title's words in order starting at the title's FIRST word is 0.73, everything else is
+  the 0.33 fuzzy band. `Tears Steel` is 0.73 and `Steel` alone is 0.33 -- a title PREFIX test gets
+  both backwards.
+- **A `list=` limitation's refusal names the list and appends ` [list]`**, where a `value=` one
+  carries no suffix.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
