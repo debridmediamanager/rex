@@ -10385,10 +10385,28 @@ class PlexSim:
     SEARCH_TIER_DROP = {"exact": 0.0, "anchored": 0.20, "prefix": 0.40, "fuzzy": 0.60}
 
     def search_score(self, row, needle):
-        """The score a real PMS prints for this row against this query."""
+        """The score a real PMS prints for this row against this query.
+
+        Cycle 36: the five decimals are a TIER plus the row's own `audienceRating`
+        divided by 10000, and a row carrying none scores the bare tier. Read off 17
+        rows on kids and zen with the rating fetched beside the score -- kids' "Tears
+        of Steel" 5.5 at `0.x3055`, zen's "Amelie" 9.5 at `0.93095`, zen's episode
+        "Riders on the Storm" 9.1 at `0.71091`, zen's "One Piece 0978" with no rating
+        at `0.33000` -- and held out by the hunt over 11,076 scored (query, row) pairs,
+        of which 11,075 decompose exactly this way. plexsim printed the bare tier
+        everywhere, so every row inside a tier TIED and the search page fell back to
+        insertion order instead of the best-rated hit first. `rating` (the critic
+        score) is not it: zen's "Riders of Justice" carries 9.6 there and 8.9 in
+        `audienceRating`, and the score says 089.
+        """
         base = self.SEARCH_TIER_BASE.get(row.get("type"), 0.93)
         tier = self.catalog.search_tier(row, needle)
-        return self._score(round(base - self.SEARCH_TIER_DROP[tier], 5))
+        rating = row.get("audienceRating")
+        try:
+            tail = float(rating) / 10000.0 if rating is not None else 0.0
+        except (TypeError, ValueError):
+            tail = 0.0
+        return self._score(round(base - self.SEARCH_TIER_DROP[tier] + tail, 5))
 
     def _score(self, rank):
         """A relevance score in the shape the reference prints it.
