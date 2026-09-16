@@ -8105,6 +8105,283 @@ Measured and not acted on:
   answer identically on every other measured row, and answer differently here. Both states of the
   row are in the corpus; plexsim cannot express the distinction from a catalog row either way.
 
+#### The thirty-sixth pass -- the refusal surface, the grammar of an id, and a score that was never one number
+
+Three territories. The driver took a dimension no cycle had swept -- **what a real PMS answers when
+it refuses** -- and both hunts came back with a recorded belief overturned: the search hunt refuted
+cycle 35's own tier model one cycle after it landed, and the write hunt held out the list cycle 35
+had reported as "already correct" and found four of its seven items open.
+
+
+* **A refusal's BODY is one fixed HTML document per status**, built from HTTP's own reason phrase:
+  `<html><head><title>{reason}</title></head><body><h1>{code} {reason}</h1></body></html>` with
+  `Content-Type: text/html`. Measured on kids (1.43.4) and zen (1.42.2), which agree on every cell, over
+  seven statuses -- 400 (89 bytes), 401 (91), 403 (85), 404 (85), 406 (95), 416 (129) and 500 (109) --
+  and across every path family that answers one. It IGNORES `Accept`: a client asking for JSON gets the
+  same HTML. It is GZIPPED when the client offers to take a compressed body (81 bytes for the 400, 78
+  for the 404), and a HEAD carries its `Content-Length` with no body. plexsim had **three** of them --
+  the 401, the 403 and the root's 193-byte redirect, each built by the cycle that happened to measure
+  that one refusal -- and answered `text/plain` with a sentence of its own to every other refusal on the
+  surface. That sentence is cycle 1's "deliberate deviation", carried in HANDOVER §8 for thirty-five
+  cycles and re-justified three times (cycles 16, 27, 29) without anyone reading what the reference
+  actually sends. It is now gone: the sentences move to the LOG, which is where they were always the
+  useful half.
+* **And the ENVELOPE's own refusals answer the same document.** Every refusal written before the router
+  runs -- a two-space request line, tab separators, an LF-only ending, a 40 KB URL, a 101st header, a
+  name over 1024 bytes, a value over 4096 -- came out of `BaseHTTPRequestHandler.send_error` as Python's
+  460-byte DOCTYPE page with `text/html;charset=utf-8` and an explanation naming the library. It is the
+  one document on the surface that names a library rather than a status. The request state has to be
+  faked in for the shared writer to run that early (no `self.headers`, no `self.path`), which is cycle
+  33's trap from the other side.
+* **A path-segment id is parsed as a NUMBER, so `01`, `001`, `0001`, `+1` and `+01` name the same row as
+  `1`.** Byte-identical responses on six path families -- a section grid, a section row, `/filters`,
+  `/library/people/{id}`, an item detail and an item's `/thumb` -- on both references. What does not
+  parse names nothing: `++1`, `1+`, `-1`, `0x1`, `1_0`, `1.0`, `1e3`, a surrounding space and every
+  non-ASCII digit are 404s on both. It is the general case of the `+?0*[01]` grammar cycle 29 measured
+  for a 0/1 option VALUE. plexsim compared the segment as a STRING, so a zero-padded or plus-signed id
+  -- what a URL built by concatenation, or a client that pads, produces -- was a 404 from a server that
+  holds the row. Normalised once at the front of the router rather than at each of the forty lookups
+  that read an id.
+* **Four paths bound that id to a SIGNED 32-BIT integer.** Bisected on both references:
+  `/devices/{id}`, `/accounts/{id}`, `/playQueues/{id}` and `/system/scanners/{N}` answer their own
+  not-found for `2147483647` and a **400** for `2147483648` and everything larger, and a NEGATIVE value
+  inside the range is a **404** on all four -- including `/system/scanners`, whose answer for an unknown
+  non-negative library type is a 500 and for a non-number is a 500 as well. `/library/metadata` and
+  `/library/sections` carry no such bound: a twenty-digit id is a plain 404 there. plexsim had the bound
+  on two of the four, read a small negative play-queue id as malformed (400 where a real PMS answers
+  404), and reported a malformed scanner request as a missing scanner (500 where it answers 400).
+* **The request TARGET must be printable ASCII, and a `%` must begin an escape the parser can read.**
+  Swept byte by byte over 0x01-0xFF: every raw byte outside 0x21-0x7E is a plain 400 on both references
+  -- in a path segment, in a single segment and in a query VALUE alike -- while a percent-escape of the
+  same byte is fine (`%C3%A9` and `%FF` are ordinary 404s). plexsim answered 200 or 404 to 150 of the
+  158 refused bytes; the eight it did refuse were an accident, being exactly Python's own
+  unicode-whitespace set (`\x0b\x0c\x1c-\x1f\x85\xa0`), which its request-line splitter reads as a
+  separator. The escape half was measured over 42 spellings at the end of a path and mid-path: the
+  parser reads the two characters after a `%` the way `strtol` does -- an optional `+` or `-` then at
+  least one hex digit, and it need not consume both -- so `%4y`, `%AB`, `%+1` and `%-1` pass while
+  `%zA`, `%y4`, `%++`, `%--` and `%+y` are 400s. Two characters must be THERE: `%`, `%4`, `%+` and `%a`
+  at the end of a path are 400s where `%4y` is fine. `%%` is the exception, consumed as a literal pair
+  before that rule runs -- `%%`, `%%y` and `%%%%` pass and `%%%` does not. The QUERY is not validated
+  this way at all: `?a=%`, `?a=%zz` and `?a=%%` are 200s on both references.
+* **`/hubs/sections/{id}` and its Continue Watching see-all leaf 404 a section the server does not
+  hold.** `999`, `0`, `-1`, `1.5`, `abc` and a twenty-digit number each answer the 85-byte Not Found
+  document on both references, while `01` and `+1` answer the real library. plexsim ignored the id and
+  built a full Recommended page for any of them -- fix 4's trap, a client asking for a library that is
+  gone reading a valid empty page as "this library exists and has nothing in it". Every other section
+  leaf has answered 404 since cycle 15; these two were missed because neither reads the section row
+  before it builds its answer.
+* **`/hubs/metadata/{id}/related` never resolves the row at all.** `999999`, `abc`, `-1` and `0` each
+  answer an empty hub container -- `{size: 0, allowSync: true, identifier}` and nothing else, the
+  librarySection triple being the only thing a real row adds -- where `/library/metadata/{id}/related`
+  on the same unknown id is a 404 and `/hubs/metadata/{id}/postplay` is a 404 too. So the two spellings
+  of "related" differ on more than the path, and the difference is which one looks the row up. plexsim
+  404'd all three. The preplay page builds this URL from a row it is already holding, so the two
+  answers look alike to a client that has one; python-plexapi and any caller walking ids sees an
+  endpoint that does not exist rather than a shelf with nothing on it.
+* **A repeated query parameter takes the LAST occurrence, in the token gate too.** A bad token then a
+  good one in the same query is a 200 and a good one then a bad one a 401, on both references. That is
+  the rule cycle 35 measured for every other key on the surface, and the rule plexsim's own `query` dict
+  already follows, being built by a dict comprehension over the pairs. Three readers had been written
+  with `parse_qs(...)[0]` instead and took the FIRST: the token gate, the client identifier the session
+  bookkeeping keys on, and the notification channels' `filters=` whitelist. A token appended to a URL
+  that already carried one -- what a client concatenating a base URL produces -- was refused by plexsim
+  and accepted by a real PMS.
+
+**The search hunt found that the SCORE was never one number, and that the ladder has four
+steps.** Cycle 35 had just corrected both scorers to the matcher's own tier rule and printed
+`0.93`, `0.73` and `0.33`; every one of those numbers is short of what a real PMS sends, and the
+ladder itself was two-thirds of the real one.
+
+* **A hit's five decimals are a TIER plus the row's own `audienceRating` divided by 10000.** Read
+  off 17 rows on kids and zen with the rating fetched beside the score -- kids' "Tears of Steel"
+  5.5 at `0.73055`, zen's "Amélie" 9.5 at `0.93095`, zen's episode "Riders on the Storm" 9.1 at
+  `0.71091`, zen's "One Piece 0978" with no rating at `0.33000` -- and held out by the hunt over
+  **11,076 scored (query, row) pairs across 619 queries**, of which 11,075 decompose exactly this
+  way. `rating`, the critic score, is not it: zen's "Riders of Justice" carries 9.6 there, 8.9 in
+  `audienceRating`, and scores `089`. plexsim printed the bare tier, so every row inside a tier
+  TIED and the search page fell back to insertion order instead of the best-rated hit first.
+* **There is a fourth tier, 0.53, and it is the way search is actually used.** Gridded on zen's
+  "Riders of Justice" over forty queries and confirmed on kids: **exact** (the query's tokens ARE
+  the title, its `titleSort` or its `originalTitle`) 0.93; **anchored** (the query's FIRST token
+  EQUALS the title's first) 0.73; **prefix** (the query is a token-wise prefix of the title -- no
+  more tokens than it has, each a prefix of the token at the same index, the first a PROPER
+  prefix) 0.53; **fuzzy** 0.33. plexsim had no prefix tier at all, so `Tear` scored where `Tears`
+  does -- a two-letter prefix outranking a genuine whole-word hit.
+* **And the anchored tier is ONE token comparison, which refutes cycle 35's own model.**
+  `word_tier` required the matcher's in-order, skip-tolerant walk; both references score
+  `Riders X`, `Riders XY ZW`, `Riders of Justices` and `Riders of Justice Riders` at 0.73, and
+  that model calls every one of them fuzzy. It was fitted on sixteen cells, none of which
+  carried a term the title does not have -- class D, a model that agreed with every case it was
+  built from, landed one cycle earlier and overturned here.
+* **The base of the ladder is the ROW TYPE's.** A movie and a show are 0.93/0.73/0.53/0.33; an
+  EPISODE is 0.02 lower throughout (0.91/0.71/0.51/0.31); a TAG has its own 0.92/0.52/0.32 with
+  no anchored step at all -- `Drake` against the tag "Drake Bell" is 0.52 where a movie whose
+  first word matched would be 0.73. plexsim scored every type at the movie's base, so its
+  episodes tied with, and could out-rank, a movie of the same match quality, which inverts the
+  page a real PMS draws. And its tag MATCHER compared the whole query against ONE word, so a
+  multi-word tag name could not be found by typing it: `Science Fiction` answered no tag row at
+  all where both references answer one per library.
+* **ORDER decides the SCORE, not membership.** `Steel Tears` answers "Tears of Steel" on kids and
+  `justice riders` and `Justice of` answer "Riders of Justice" on zen, each in the 0.33 band.
+  Cycle 31 measured that sentence and built only the in-order half, so plexsim answered NO HUBS
+  AT ALL to a query whose words a person typed out of order.
+* **The fuzzy band is SQLite's `spellfix1`, and now it has a mechanism.** Strings read out of the
+  PMS binary on kids name `spellfix_metadata_titles`, `spellfix_metadata_sort_titles`,
+  `spellfix_metadata_original_titles` and `spellfix_tag_titles` as
+  `CREATE VIRTUAL TABLE … USING spellfix1`, together with `spellfix1_phonehash`,
+  `spellfix1_editdist` and the class table `.ABCDHLRMY9 ?` verbatim. A row is a band CANDIDATE
+  when one of its title tokens has a phonetic hash beginning with the first three characters of
+  the query token's -- which explains why zen answers `azzdi` with austin, action, astin and
+  akti and NOT with `azadi`, a cell no similarity metric produces (Jaro-Winkler puts `azadi` at
+  0.89 and `action` at 0.58). The hunt transcribed `phoneticHash()` and scored it over 120
+  generated distortions: **897 of 898 reference band rows predicted**. It is still NOT built,
+  and the reason is the other half: spellfix1 then prunes to a top-N by
+  `editdist1 + 32 − ⌊log₂ rank⌋`, where `rank` is a GLOBAL token frequency over every
+  `metadata_items` row. That pruning is visible from outside and unmeasurable: `Tears zzz`
+  answers the row on kids' five titles and `Riders zzz` answers nothing on zen's 3,887.
+  Emulating the candidate half alone would answer most of a real catalog to a nonsense query,
+  which is a worse error than answering none of it. §8 carries the mechanism so the next cycle
+  starts from it rather than from "a trigram score plexsim does not try to reproduce".
+
+**The same hunt took the decision corpus into Dolby Vision, and settled a §8 disagreement.**
+
+* **A Dolby Vision PROFILE 5 source is refused by the server itself**, with a code and a sentence
+  the corpus had never seen: `transcodeDecisionCode 2003`, "File is unplayable. DoVi (Profile 5)
+  color space is not supported." Witnessed on three zen rows (967 and 1120, mkv/hevc/1080; 4813,
+  mp4/hevc/4k) and on NONE of the six profile-7/8 rows, which answer the ordinary 4002 exactly
+  like the two non-DV hevc controls already in the corpus -- so it is keyed on the DV profile,
+  not on hevc, not on the container and not on server load. It is not a blanket veto: of the 38
+  profiles that declare a matching http target, ONE still converts the row, and that one is the
+  only one whose target names the SOURCE's own video codec (`Plex Desktop`,
+  `videoCodec="h264,hevc,*"`). Every other target would re-encode to h264 and lose the colour
+  space. Built in `decision.py` and exact on all 78 cells in both directions; the corpus now
+  holds them.
+* **The dual-layer Dolby Vision disagreement is RESOLVED, and both notes were right.** Every one
+  of zen's 40 DV Media carries exactly ONE video Stream -- including all 17 at `DOVIProfile 7`
+  with `DOVIELPresent: true` -- except one m2ts, which carries two: a 4K base track with no DOVI
+  at all and a 1080p `DOVIProfile 7` track with **`DOVIBLPresent: false`**. So the discriminator
+  is `DOVIBLPresent` and not `DOVIELPresent`: a separate-track enhancement layer says false on
+  its own stream, a single-track dual layer says true beside its EL flag. fun's note was measured
+  on a file of the first kind and zen's on files of the second. **plexsim was already right** --
+  `mediainfo.py` keys its "DoVi Enhancement Layer" label on exactly that flag -- so the §8 entry
+  is a resolved non-defect rather than an open contradiction.
+* **A multi-Media row answers `mediaIndex=N` from its own order.** zen's rk 401 has fifteen;
+  `mediaIndex` 0, 1, 2 and 7 select Media 603, 3840, 4187 and 5404, `15` is an HTTP 400, and
+  `-1`, `abc` and an empty value fall back to Media 0 -- which confirms cycle 35's fallback rule
+  on a row with more than one. When the answer is `1001` the `Media`/`Part` returned describe the
+  TRANSCODE TARGET rather than the source, which plexsim has no encoder to reproduce.
+* **The corpus is 2,106 cells**, up from 1,950: zen:1120 (the profile-5 witness) and zen:1098
+  (the corpus's first two-video-Stream Media and its first `dca-ma`) at 78 profiles each. Twenty
+  of the 156 were re-driven by the driver against zen and agreed 20/20; fourteen text indices
+  were checked against the reference's own `directPlayDecisionText`.
+* **A negative result the hunt reported and the driver kept**: the hub-search fold is NOT a third
+  table. Tested on the two characters where `hierarchy._TITLE_FOLD` diverges from NFD and from
+  ICU -- zen's "Død Kalm" answers `D0d Kalm` (digit zero) at the exact tier and `Dod Kalm` only
+  in the band, and "Dæmonicus" answers `Demonicus` exact and `Daemonicus` only in the band -- so
+  cycle 32's "the hub search folds by the same table" now holds on the discriminating characters
+  rather than on the agreeing ones.
+
+**The write-frames hunt took the list cycle 35 reported as "already correct" and held it out** --
+HANDOVER §3.1 class F, a hunter's negative taken on trust -- and four of the seven items it had
+closed are not closed. It drove 93 write measurements against plexscratch (1.43.4),
+plexscratch42 (1.42.2) and a frozen plexsim side by side, with one listener per server, a control
+title edit before every phase, and the agent confound designed out (a `tv.plex.agents.none`
+library over a hardlinked copy of Firefly on BOTH copies, so a sequence that depends on an agent
+is comparable).
+
+* **An UNMATCHED show refuses the agent-driven prefs, and `showOrdering` there is a 500.** An
+  unmatched show's `Preferences` block carries eight settings where a matched one carries ten, and
+  `useOriginalTitle=1` and `languageOverride=en` are each a **400** there while the matched show
+  answers 200 to both. `showOrdering` is a plain **500** for every value -- `dvd`, `aired`, an
+  empty one and a value the setting does not name alike -- with NO frames, and the value is
+  STORED: the row reads it back afterwards, so it is not a validation refusal that writes nothing
+  but a write whose cascade fails. plexsim answered 200 to all of them and pushed its whole
+  57-frame cascade, so the Advanced tab of an unmatched show saved settings the row does not
+  show and told every client the tree had been re-read. Measured on two `local://` shows on the
+  1.42.2 copy with plexscratch's matched Firefly as a control.
+* **A playlist and a collection take an artwork UPLOAD.** `POST /library/metadata/{list}/posters`
+  with the image as the body is an empty 200 on both copies, the candidate list grows from one
+  `default://` row to two, the uploaded image is SELECTED, and one timeline frame carries the
+  LIST's own type. plexsim answered 404, so Change Poster → Upload on a list page failed outright
+  while the PICK beside it -- which cycle 21 landed -- worked.
+* **A `?path=`-scoped scan scans the section's own folder and any CHILD of it**, and cycle 19 was
+  wrong twice. The own Location scans everything, byte for byte the no-path scan; a child folder
+  scans too (17 frames against 16, the same three `progress` rows), where cycle 19 recorded that a
+  child scans nothing -- that measurement was taken on a MOVIE library, whose children are files
+  rather than folders. plexsim scanned nothing for EITHER, because the catalog's section dict
+  carries no `Location` at all (the list is synthesised when the section is published), so the
+  comparison here was always against an empty list and every `?path=` took the no-folder branch.
+* **The `/library/collections/{id}` action leaves really RUN.** Cycle 22 measured their empty
+  200 and stopped there; `refresh` pushes the same three frames the metadata spelling does, and
+  `unmatch` really unmatches -- `guid` becomes `local://{rk}`, `subtype` the literal `unknown`,
+  `ratingCount` gone. plexsim answered the empty body and did nothing, so the SAME action taken
+  from the client's own context-menu path and from the metadata path had different effects on the
+  same row.
+* **A type=18 SECTION save frames like the section path, not the item path**: `state 3` with
+  `metadataState "queued"` carrying the title from BEFORE the write, then `state 5` with the new
+  one -- where the item and metadata spellings of the same edit send `loading` with the new title
+  in both. plexsim routed the section save straight through the item writer.
+
+**And the interlaced row the cycle asked for was MADE, which closes a §3.3 entry.** A
+`-flags +ilme+ildct -x264-params interlaced=1:tff=1` encode muxed into plexscratch's writable media
+and scanned gives a Stream with `scanType: "interlaced"` and `displayTitle "1080i (H.264)"` on both
+versions -- and `mediainfo._scan_type("tt")` already derives exactly that. Driven against all 78
+profiles on both copies: 39 refuse, and the only interlace-driven refusal is **`RokuDLNA-5.1`**'s
+`video.scanType limitation applies: interlaced == interlaced`, while **iOS and tvOS -- the two
+profiles that name `video.separateFields NotMatch 1` -- direct-play it**. So an MBAFF h264 does not
+set `separateFields`, `decision.py`'s constant 0 is right for this shape, and the model reproduces
+78/78 on both copies. Producing a row that DOES set it needs field-coded (PAFF) pictures, which
+neither libx264 nor ffmpeg's mpeg2video encoder can write.
+
+Measured and not acted on:
+
+- **The fuzzy band's PRUNING.** The candidate rule is settled -- SQLite `spellfix1`'s phonetic
+  hash, transcribed and scored at 897 of 898 reference band rows -- and the top-N prune over a
+  GLOBAL token frequency (`editdist1 + 32 - ⌊log₂ rank⌋`) cannot be read from outside. `Tears zzz`
+  answers the row on kids' five titles and `Riders zzz` answers nothing on zen's 3,887, so the
+  candidate half alone would answer most of a real catalog to a nonsense query. §3.3 keeps the
+  entry with the mechanism attached, which is a much better starting point than "a trigram score".
+- **`/match` on a SHOW.** Both copies open with a bare `state 3` carrying the OLD title and then
+  run that show's refresh cascade; the DEPTH is the version's (1.43.4 cascades to every season and
+  episode, 1.42.2 stops at the show). plexsim sends the bare 3 and then its own seven-frame show
+  form, which is 1.42.2's shape and the version it reports, so what is left is a frame-count
+  difference on a version plexsim does not claim.
+- **`partIndex` on a MULTI-PART Media**, made on plexscratch from a stacked `- cd1`/`- cd2` pair:
+  the two files become ONE Media with TWO Parts (`duration` the sum), `partIndex` 0 and 1 select
+  the part and the decision reads THAT part's streams, `2` and `5` are 400s, and **`-1` is a 200
+  carrying `3000 "App cannot direct play this item. Multi-part media requires a conversion when
+  all parts are selected."` with `2000`/`4005`, `size 0` and no row**. On a single-part Media every
+  value still selects part 0, which is cycle 26's rule and where it holds. plexsim reads no
+  `partIndex` at all and its catalog builder never makes a two-part Media, so none of it is
+  reachable from its own rows; recorded with the grammar for a catalog that ever holds one.
+- **A 1.43.4 library DELETE pushes fourteen extra `state 9` frames** (`type: 12`, empty title,
+  `sectionID` the NEGATIVE id) between the 10% and 40% activity updates on a nine-row SHOW library,
+  where 1.42.2 pushes the eight `library.delete` activity frames alone. Cycle 18 saw those
+  fourteen and cycle 30 called them a one-off orphan cleanup on the evidence of two MOVIE
+  libraries; on 1.43.4 they reproduce on a show library. plexsim reports 1.42.2 and matches it.
+- **The show cascade's frame ORDER on 1.43.4** -- `activity started` after the queued frame, the
+  per-season `updated` at the season's END rather than its start, no invented `updated 49`, and
+  the media pass only on the matched season and only once. Single-witness by construction: no
+  matched show can be written on a 1.42.2 copy.
+- **The `video.frameRateMode` limitation is still untripped**, on a VFR row made for it: the
+  analysis calls a jittered `-vsync vfr` encode `cfr`, and `Sony Bravia 2010` -- the only profile
+  naming it -- direct-plays the row.
+- **A NUL in a filter VALUE is a 500 on the operators that build a substring comparison** and a
+  200 on the rest: `title=`/`title!=`, `genre=`, `contentRating=`, `id=` and every numeric column
+  refuse it, while `title==`, `title>>`, `genre!=`, `contentRating>=`, the booleans,
+  `audioLanguage` and an unknown field answer 200. Measured over 40 cells on both references. No
+  Plex client can put a NUL in a query -- every one of them builds the URL from a JS string -- and
+  the rule keys on an interaction of column KIND and OPERATOR that no model explains, so
+  implementing it means a table fitted to those 40 cells.
+
+Three surfaces swept this cycle with NO difference, recorded so they are not swept again: CORS on
+a refusal (both references and plexsim send the same `Access-Control-*`/`Vary` set on a 400, a 404
+and a 500, and none at all on an envelope refusal, which is written before the headers are read);
+the query parameter NAME grammar (a name is percent-decoded -- `%74itle` filters -- case-SENSITIVE,
+and a `+` or a leading `%20` in it makes it an unknown field, on which plexsim already agrees); and
+`/library/streams/{id}` (the 501 for a real stream id, a 404 for an unknown one and for a
+non-number, identical on all three).
+
 #### The thirty-fifth pass — the encoded body, the Range grammar, and two scores that were never the matcher's
 
 The hunts ran again after two cycles without them. **Six findings in six fix commits**, two from each

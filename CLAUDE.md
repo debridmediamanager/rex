@@ -2203,6 +2203,79 @@ precisely how the Seasons bug survived a fix attempt.
 - **A `list=` limitation's refusal names the list and appends ` [list]`**, where a `value=` one
   carries no suffix.
 
+- **A refusal's BODY is one fixed HTML document per status** -- `<html><head><title>{reason}
+  </title></head><body><h1>{code} {reason}</h1></body></html>` with `Content-Type: text/html`, from
+  HTTP's own reason phrase: 89 bytes for a 400, 91 for a 401, 85 for a 403 and a 404, 95 for a 406,
+  129 for a 416, 109 for a 500. It IGNORES `Accept`, it is GZIPPED when offered, and a HEAD carries
+  its length. The exceptions are `GET /`'s 193-byte redirect and `/system`'s empty bodies with no
+  `Content-Type` at all. Every refusal below the API answers it too -- a malformed request line, an
+  over-long URL, a 101st header -- where `BaseHTTPRequestHandler.send_error` writes Python's own
+  460-byte DOCTYPE page. Cycle 1's `text/plain` sentence was never measured; it is now the LOG's.
+- **A path-segment id is parsed as a NUMBER**: `01`, `001`, `+1` and `+01` name the same row as `1`,
+  byte for byte, while `++1`, `1+`, `-1`, `0x1`, `1.0` and every non-ASCII digit name nothing. It is
+  the general case of cycle 29's `+?0*[01]` option grammar. **Four paths bound it to a SIGNED 32-BIT
+  integer** -- `/devices`, `/accounts`, `/playQueues`, `/system/scanners`: `2147483648` is a 400 and a
+  negative value inside the range a 404, on all four. `/library/metadata` and `/library/sections` have
+  no bound.
+- **The request TARGET is printable ASCII (0x21-0x7E) and nothing else** -- every raw control byte and
+  every byte from 0x7F up is a 400, in a path segment and in a query value alike, while a
+  percent-escape of the same byte is fine. **In the PATH a `%` must begin an escape the parser can
+  read**: two characters must follow, and they parse like `strtol` in base 16 (an optional `+`/`-`
+  then at least one hex digit, not necessarily consuming both), so `%4y`, `%AB`, `%+1` and `%-1` pass
+  and `%zA`, `%y4`, `%++`, `%+y`, `%`, `%4` and `%+` are 400s; `%%` is a literal pair consumed before
+  that rule. The QUERY is not validated this way at all.
+- **`/hubs/sections/{id}` and its `continueWatching/items` leaf 404 a section the server does not
+  hold**, like every other section leaf since cycle 15, while **`/hubs/metadata/{id}/related` never
+  resolves the row**: an unknown id there is the empty hub container (`{size, allowSync, identifier}`,
+  no librarySection triple) where `/library/metadata/{id}/related` and `/hubs/metadata/{id}/postplay`
+  are 404s.
+- **A repeated query parameter takes the LAST occurrence in the TOKEN GATE too** -- a bad token then a
+  good one is a 200 and the reverse a 401 -- and in the client identifier and the notification
+  channels' `filters=`. Three readers used `parse_qs(...)[0]` where the server's own `query` dict
+  takes the last.
+- **A search hit's five decimals are a TIER plus the row's own `audienceRating`/10000**, and a
+  row with none scores the bare tier -- held out over 11,076 scored (query, row) pairs. `rating`
+  is not it. Without the tail every row inside a tier ties and the page falls back to insertion
+  order.
+- **The ladder has FOUR steps and a base per ROW TYPE.** exact (the query's tokens ARE the
+  title, its `titleSort` or its `originalTitle`) / anchored (the query's FIRST token EQUALS the
+  title's first, and nothing else matters) / prefix (the query is a token-wise prefix of the
+  title -- no more tokens, each a prefix at the SAME index, the first a PROPER prefix) / fuzzy.
+  A movie and a show are 0.93/0.73/0.53/0.33, an EPISODE is 0.02 lower throughout, and a TAG has
+  0.92/0.52/0.32 with NO anchored step. Cycle 35's `word_tier` -- the in-order skip-tolerant walk
+  -- is REFUTED as the tier rule: `Riders X` and `Riders of Justices` are anchored on both
+  references.
+- **ORDER decides the SCORE, not membership**: a query whose words are all in the title but out
+  of order comes back in the 0.33 band. The rest of the membership rule is SQLite `spellfix1` --
+  a phonetic-hash candidate then a top-N prune by a GLOBAL token frequency -- which is why
+  `Tears zzz` finds the row on kids' five titles and `Riders zzz` finds nothing on zen's 3,887.
+  The candidate half alone would answer most of a catalog to a nonsense query, so it is recorded
+  and not built.
+- **A Dolby Vision PROFILE 5 source is refused by the SERVER**: `transcodeDecisionCode 2003`,
+  "File is unplayable. DoVi (Profile 5) color space is not supported." -- where profile 7 and 8
+  rows answer the ordinary 4002. Not a blanket veto: the one profile whose transcode target names
+  the source's own codec still converts it. **`DOVIBLPresent` is the dual-layer discriminator**,
+  not `DOVIELPresent`: a separate-track enhancement layer says false on its own stream, and that
+  settles the one-witness-each-side disagreement in favour of what `mediainfo.py` already does.
+- **An UNMATCHED show refuses the agent prefs**: its `Preferences` block carries eight settings, not
+  ten, and `useOriginalTitle`/`languageOverride` are 400s there; **`showOrdering` is a 500** for
+  every value, with NO frames, while the value is STORED -- the write lands and the cascade behind
+  it fails. A matched show answers 200 to all of them.
+- **A playlist and a collection take an artwork UPLOAD** on `POST /library/metadata/{list}/posters`
+  -- an empty 200, the candidate list going from one `default://` row to two, the upload selected.
+  And **the `/library/collections/{id}` action leaves really RUN**: `refresh` pushes the metadata
+  path's three frames and `unmatch` gives the row `local://{rk}`, `subtype "unknown"` and no
+  `ratingCount`. Cycle 22 measured their empty body and stopped there.
+- **A `?path=`-scoped scan scans the section's own folder AND any child of it** -- cycle 19's "a
+  child scans nothing" was measured on a movie library, whose children are files. Only a parent, or
+  a path the library does not hold, scans nothing.
+- **A type=18 SECTION save frames `state 3 queued` with the title from BEFORE the write**, where
+  the item and metadata spellings of the same edit send `loading` with the new title.
+- **An MBAFF interlaced row sets `scanType: interlaced` and NOT `video.separateFields`**: made on
+  the copy and driven against all 78 profiles, only `RokuDLNA-5.1` refuses it (on `video.scanType`)
+  and iOS and tvOS -- the two profiles naming `separateFields` -- direct-play it. `decision.py`'s
+  constant 0 is right; a row that trips it needs field-coded PAFF pictures no encoder here writes.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
