@@ -15642,24 +15642,71 @@ class Handler(BaseHTTPRequestHandler):
         Measured cycle 16 on kids and zen. Only a 200 is ranged -- a 404 ignores the
         header -- a multi-range collapses to the whole body as one 206, an
         unrecognised unit is still read as bytes, and a start past the end is a 416.
+
+        Cycle 35 swept the GRAMMAR: 43 header values against both references and against
+        both a container and a `/web` asset, 172 cells, and the rules below reproduce
+        every one of them. plexsim had twelve of the 43 wrong, and two of those are what
+        a real client can actually provoke -- a reversed range answered a 206 with an
+        EMPTY body where a real PMS answers 416, and an unparseable one answered 200
+        with no `Content-Range` where a real PMS answers the whole body as a 206.
+
+        The parser is lenient in a specific shape, and every clause below is a measured
+        cell rather than an inference:
+
+          * the UNIT is not read at all -- `items=0-10` and `BYTES=0-10` both range --
+            but a value with no `=` in it is not a Range and answers 200;
+          * an empty spec (`bytes=`, `bytes`) answers 200;
+          * a SUFFIX (`-N`) of zero length, or one whose number does not parse, answers
+            `Content-Range: bytes 0-0/N` with the WHOLE body; a negative one is not a
+            Range at all; one at least as long as the body answers the whole body;
+          * an unparseable FIRST (`abc-10`, ` 0-10`, `,0-10`) answers the WHOLE body as a
+            206 with `bytes 0-(N-1)/N`, and so does anything with a second `-` after the
+            first (`0-10-20`, `0--10`) or a comma list (`0-10,20-30`);
+          * an unparseable LAST becomes ZERO (`0-abc`, `0-10,` and `0-10;x=1` are all one
+            byte; `5-abc` is a 416, the reversed case);
+          * a last past the end is clamped, a first at or past the end is a 416, and a
+            last below the first is a 416.
         """
         header = self.headers.get("Range")
-        if status != 200 or not header or "-" not in header:
+        if status != 200 or not header or "=" not in header:
             return payload, status, None
-        spec = header.split("=", 1)[-1].strip()
-        if "," in spec:
-            return payload, 206, "bytes 0-%d/%d" % (len(payload) - 1, len(payload))
-        first, _, last = spec.partition("-")
-        try:
-            start = int(first) if first else max(0, len(payload) - int(last))
-            stop = int(last) + 1 if (first and last) else len(payload)
-        except ValueError:
+        total = len(payload)
+        whole = (payload, 206, "bytes 0-%d/%d" % (total - 1, total))
+        spec = header.split("=", 1)[1]
+        if spec == "":
             return payload, status, None
-        if start >= len(payload):
+        if spec.startswith("-"):
+            digits = re.match(r"[+-]?[0-9]+", spec[1:])
+            length = int(digits.group()) if digits else 0
+            if length < 0:
+                return payload, status, None
+            if length == 0:
+                # `bytes=-0` and `bytes=-abc`: the header says one byte and the body is
+                # the whole thing. Measured on both references and both body kinds.
+                return payload, 206, "bytes 0-0/%d" % total
+            if length >= total:
+                return whole
+            return payload[total - length:], 206, "bytes %d-%d/%d" % (
+                total - length, total - 1, total)
+        digits = re.match(r"[+-]?[0-9]+", spec)
+        if not digits:
+            return whole
+        first = int(digits.group())
+        rest = spec[digits.end():]
+        if not rest.startswith("-"):
+            return whole
+        rest = rest[1:]
+        if rest == "":
+            last = total - 1
+        elif "-" in rest:
+            return whole
+        else:
+            tail = re.match(r"[+-]?[0-9]+", rest)
+            last = int(tail.group()) if (tail and tail.end() == len(rest)) else 0
+        if first >= total or last < first:
             return b"", 416, None
-        stop = min(stop, len(payload))
-        return (payload[start:stop], 206,
-                "bytes %d-%d/%d" % (start, stop - 1, len(payload)))
+        last = min(last, total - 1)
+        return payload[first:last + 1], 206, "bytes %d-%d/%d" % (first, last, total)
 
     # Strings that are the LIBRARY's own content rather than the server's own text.
     # Measured: an item title, a tag name and a library name stay as they are in every
