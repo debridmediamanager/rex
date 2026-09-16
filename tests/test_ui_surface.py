@@ -22098,8 +22098,16 @@ def main():
         head_c34a = blob_c34a.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
         return [line_c34a.split(":", 1)[0] for line_c34a in head_c34a[1:] if line_c34a]
 
+    # The write has to be put back: a lower-case summary left on this row starves cycle
+    # 20's "only titleSort folds case" check three thousand lines below, which counts the
+    # rows whose summary sorts under `b` against those under `B` -- and its whole
+    # population is this fixture's three movies. The commit that added this block was
+    # proven with the driver, which runs one block; the full suite is what caught it.
+    was_c34a = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+                .get("summary") or "")
     edit_c34a = order_c34a("PUT", "/library/metadata/%s?summary.value=c34" % movie)
     row_c34a = order_c34a("GET", "/library/metadata/%s" % movie)
+    request(base, "PUT", "/library/metadata/%s?summary.value=%s" % (movie, quote(was_c34a)))
     check("an empty body orders its length first, a container its type",
           edit_c34a.index("Content-Length") < edit_c34a.index("Content-Type")
           and row_c34a.index("Content-Type") < row_c34a.index("Content-Length"),
