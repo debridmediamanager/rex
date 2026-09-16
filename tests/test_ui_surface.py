@@ -17749,11 +17749,11 @@ def main():
     # plexsim answered its "neither" refusal to every client that does not send `hasMDE`
     # -- Roku, plex-for-kodi, python-plexapi and the older TV apps -- so a server whose
     # whole purpose is direct play told them the catalog was unplayable.
-    def decide_c26a(platform_c26a, extra_c26a=""):
+    def decide_c26a(platform_c26a, extra_c26a="", item_c26a=None):
         path_c26a = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
                      "&partIndex=0&protocol=http&directPlay=1&directStream=1"
                      "&session=c26a%s"
-                     % (quote("/library/metadata/%s" % movie), extra_c26a))
+                     % (quote("/library/metadata/%s" % (item_c26a or movie)), extra_c26a))
         request_c26a = urllib.request.Request(
             base.rstrip("/") + path_c26a,
             headers={"User-Agent": UA, "Accept": "application/json",
@@ -17765,9 +17765,15 @@ def main():
         except urllib.error.HTTPError as error_c26a:
             return error_c26a.code, {}
 
-    status_c26a, roku_c26a = decide_c26a("Roku")
+    # Cycle 32 refit: cycle 26 measured the SHAPE on an h264/aac item Roku direct plays.
+    # The fixture's movie is webm/vp8/vorbis, which no profile lists, so the pair is now a
+    # profile and a fixture episode (mkv, h264, eac3 5.1) the decision model direct plays:
+    # Samsung. What is asserted -- the pair, the row, the refusal -- is unchanged.
+    episode_c26a = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [{}])[0].get("ratingKey")) if show_section else None
+    status_c26a, roku_c26a = decide_c26a("Samsung", "", episode_c26a)
     _s_c26a, generic_c26a = decide_c26a("Generic")
-    _s2_c26a, mde_c26a = decide_c26a("Chrome", "&hasMDE=1")
+    _s2_c26a, mde_c26a = decide_c26a("Chrome", "&hasMDE=1", episode_c26a)
     codes_c26a = {k_c26a: v_c26a for k_c26a, v_c26a in roku_c26a.items()
                   if k_c26a.endswith("DecisionCode")}
     check("a direct-play profile without hasMDE gets the directPlay/general PAIR",
@@ -17975,8 +17981,10 @@ def main():
     # "every container that carries rows honours it"; plexsim applied it and substituted
     # `mediaCount`, leaving the client a decision with nothing to play.
     def decide_row_c26f(extra_c26f=""):
+        # Cycle 32 refit: the MDE form, which answers the row for any profile. Roku's
+        # own decision refuses the fixture's webm movie, as a real PMS does.
         url_c26f = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
-                    "&partIndex=0&protocol=http&directPlay=1&session=c26f%s"
+                    "&partIndex=0&protocol=http&directPlay=1&hasMDE=1&session=c26f%s"
                     % (quote("/library/metadata/%s" % movie), extra_c26f))
         request_c26f = urllib.request.Request(
             base.rstrip("/") + url_c26f,
@@ -21782,6 +21790,51 @@ def main():
               len(answers_c32g) == 150 and not any(answers_c32g) and not failures_c32g,
               "%d pair(s), %d answered the same container, failures %s"
               % (len(answers_c32g), sum(answers_c32g), failures_c32g[:3]))
+
+
+    # Cycle 32, read out of the reference's Resources/Profiles and scored against the
+    # decision endpoint on kids and zen (1,872 cells, the outcome exact on 1,871): a
+    # decision with no `hasMDE` runs the client's OWN profile file against the item.
+    # plexsim hard-coded Roku and Xbox One as the two that direct play, where 44 profiles
+    # direct play a real row -- and neither of those two lists webm/vp8 or eac3.
+    def decide_c32h(profile_c32h, item_c32h):
+        url_c32h = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                    "&partIndex=0&protocol=http&directPlay=1&directStream=1&session=c32h"
+                    % quote("/library/metadata/%s" % item_c32h))
+        request_c32h = urllib.request.Request(
+            base.rstrip("/") + url_c32h,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Client-Profile-Name": profile_c32h}, method="GET")
+        try:
+            with urllib.request.urlopen(request_c32h, timeout=30) as response_c32h:
+                return (response_c32h.status,
+                        json.loads(response_c32h.read() or b"{}").get("MediaContainer", {}))
+        except urllib.error.HTTPError as error_c32h:
+            return error_c32h.code, {}
+
+    episode_c32h = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or [{}])[0].get("ratingKey")) if show_section else None
+    samsung_c32h = decide_c32h("Samsung", episode_c32h)
+    roku_episode_c32h = decide_c32h("Roku", episode_c32h)
+    roku_movie_c32h = decide_c32h("Roku", movie)
+    xbox360_c32h = decide_c32h("Xbox 360", movie)
+    check("a profile that lists the item's codecs direct plays it without hasMDE",
+          samsung_c32h[0] == 200
+          and samsung_c32h[1].get("directPlayDecisionCode") == 1000
+          and len(samsung_c32h[1].get("Metadata") or []) == 1,
+          "%s %s" % (samsung_c32h[0], samsung_c32h[1].get("directPlayDecisionText")))
+    check("and one that does not is refused, naming how far its profile matched",
+          roku_episode_c32h[1].get("directPlayDecisionCode") == 3000
+          and roku_episode_c32h[1].get("directPlayDecisionText")
+          == "App cannot direct play this item. No direct play video profile exists for "
+             "protocol http, with container mkv, video codec h264, and audio codec eac3."
+          and roku_movie_c32h[1].get("directPlayDecisionText")
+          == "App cannot direct play this item. No direct play video profile exists for "
+             "protocol http, with container webm, and video codec vp8.",
+          "%r | %r" % (roku_episode_c32h[1].get("directPlayDecisionText"),
+                       roku_movie_c32h[1].get("directPlayDecisionText")))
+    check("Xbox 360, whose only video target is asf, is a 400",
+          xbox360_c32h[0] == 400, str(xbox360_c32h[0]))
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
