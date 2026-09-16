@@ -22683,6 +22683,33 @@ def main():
               ladder_c36i == want_ladder_c36i, str(ladder_c36i))
 
 
+    # Cycle 36, read off 17 rows on kids and zen with the rating fetched beside the
+    # score, and held out by the hunt over 11,076 scored (query, row) pairs of which
+    # 11,075 decompose this way: a search hit's five decimals are the TIER plus the
+    # row's own `audienceRating` / 10000, and a row with none scores the bare tier.
+    # plexsim printed the bare tier for every row, so every hit inside a tier tied and
+    # the page fell back to insertion order rather than the best-rated hit first.
+    detail_c36j = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    rating_c36j = detail_c36j.get("audienceRating")
+    title_c36j = detail_c36j.get("title") or ""
+    if rating_c36j is None or not title_c36j:
+        skip("a search hit's score carries the row's audienceRating",
+             "the fixture's first movie has no audienceRating")
+    else:
+        scored_c36j = {}
+        for hub_c36j in get(base, "/hubs/search?query=%s" % quote(title_c36j))[1].get("Hub") or []:
+            for row_c36j in hub_c36j.get("Metadata") or []:
+                if str(row_c36j.get("ratingKey")) == str(movie):
+                    scored_c36j["hubs"] = str(row_c36j.get("score"))
+        for result_c36j in get(base, "/library/search?query=%s" % quote(title_c36j))[1].get("SearchResult") or []:
+            if str((result_c36j.get("Metadata") or {}).get("ratingKey")) == str(movie):
+                scored_c36j["library"] = "%.5f" % float(result_c36j.get("score"))
+        want_c36j = "%.5f" % round(0.93 + float(rating_c36j) / 10000.0, 5)
+        check("a search hit's score carries the row's audienceRating",
+              scored_c36j.get("hubs") == want_c36j and scored_c36j.get("library") == want_c36j,
+              "rating %s want %s got %s" % (rating_c36j, want_c36j, scored_c36j))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
