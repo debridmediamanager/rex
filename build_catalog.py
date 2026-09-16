@@ -6,7 +6,7 @@ For each restricted `/d/` link: unrestrict it, ffprobe the CDN URL over HTTP
 Media/Part/Stream attributes come from that probe rather than from a guess.
 See mediainfo.py for why the numbers have to be real.
 
-    RD_TOKEN=... ./build_catalog.py --link https://real-debrid.com/d/XXXX ...
+    RD_TOKEN=... ./build_catalog.py --link RESTRICTED_LINK ...
 """
 
 import argparse
@@ -34,6 +34,35 @@ _NOISE = re.compile(
     r"ddp?5[\s._-]?1|dd5[\s._-]?1|aac2[\s._-]?0|aac|ac3|eac3|truehd|atmos|opus|dts(?:[\s._-]?hd)?|"
     r"dv|hdr10\+?|hdr|proper|repack|imax|extended|dual|multi|subsplease|nanakoraws)\b"
 )
+
+# Plex's measured stacked-file convention. Cycle 36 made `Title - cd1.ext` and
+# `Title - cd2.ext` on both writable references: they became one Media with two
+# Parts in numeric order, and the Media/item duration became the Parts' sum.
+_STACKED = re.compile(r"(?i)^(?P<base>.+?)\s*-\s*cd(?P<number>[1-9][0-9]*)"
+                      r"(?P<extension>\.[A-Za-z0-9]{2,5})$")
+
+
+def stacked_name(filename):
+    """Return `(stable group key, part number, display filename)`, or None."""
+    match = _STACKED.match(filename)
+    if not match:
+        return None
+    base = match.group("base").strip()
+    extension = match.group("extension")
+    return base.casefold(), int(match.group("number")), base + extension
+
+
+def append_stacked_part(first, later):
+    """Merge a later measured stack member into the first row."""
+    target = (first.get("Media") or [None])[0]
+    source = (later.get("Media") or [None])[0]
+    if not target or not source or not source.get("Part"):
+        return False
+    target.setdefault("Part", []).extend(source["Part"])
+    target["duration"] = sum(int(part.get("duration") or 0)
+                             for part in target["Part"])
+    first["duration"] = target["duration"]
+    return True
 
 
 def probe(url):
@@ -131,6 +160,8 @@ def main():
     sections = hierarchy_module.sections(args.name)
 
     items = []
+    entries = []
+    stacks = {}
     rating_key = 1000
     for link in links:
         print("resolving %s" % link, flush=True)
@@ -141,6 +172,8 @@ def main():
             continue
 
         filename = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+        stacked = stacked_name(filename)
+        display_filename = stacked[2] if stacked else filename
         if filename.lower().endswith(".rar"):
             # RD serves some torrents only as an archive; the bytes are a RAR
             # stream, not a media container, so a player cannot direct-play it.
@@ -161,8 +194,8 @@ def main():
 
         rating_key += 1
         part_id = rating_key * 10
-        parsed = metadata_module.parse_release(filename)
-        title = parsed["title"] or filename
+        parsed = metadata_module.parse_release(display_filename)
+        title = parsed["title"] or display_filename
         year = parsed["year"]
         if parsed["season"] and parsed["episode"]:
             title = "%s (S%02dE%02d)" % (title, parsed["season"], parsed["episode"])
@@ -179,6 +212,7 @@ def main():
             size=int(probed.get("format", {}).get("size") or size),
             container_hint=_extension(filename),
         )
+        media["Part"][0]["_debrid"] = link
 
         row = {
                 "ratingKey": str(rating_key),
@@ -200,7 +234,6 @@ def main():
                 "art": "/library/metadata/%d/art/1" % rating_key,
                 "contentRating": "NR",
                 "Media": [media],
-                "_debrid": link,
             }
 
         identified = False
@@ -209,7 +242,14 @@ def main():
                 identified = metadata_module.enrich(row, tmdb, parsed)
             except Exception as error:
                 print("  metadata lookup failed: %s" % error, flush=True)
-        items.append(row)
+        if stacked:
+            group, part_number, _display = stacked
+            if group not in stacks:
+                stacks[group] = []
+                entries.append(("stack", group))
+            stacks[group].append((part_number, row))
+        else:
+            entries.append(("row", row))
         stream_summary = "%s %s %dx%d %s" % (
             media["container"],
             media["videoCodec"],
@@ -220,6 +260,19 @@ def main():
         mark = "identified as %s" % row.get("guid") if identified else "NOT identified"
         print("  OK  %-30s [%s, %s kbps] %s"
               % (row.get("title", title)[:30], stream_summary, media["bitrate"], mark), flush=True)
+
+    # A torrent's link order is not part of the measured convention; numeric cdN
+    # order is. Pick cd1's row as the Media template and append every later Part.
+    for kind, value in entries:
+        if kind == "row":
+            items.append(value)
+            continue
+        members = sorted(stacks[value], key=lambda pair: pair[0])
+        row = members[0][1]
+        for _number, later in members[1:]:
+            if not append_stacked_part(row, later):
+                print("  SKIP invalid stack member: %s" % later.get("title"), flush=True)
+        items.append(row)
 
     # Flat leaves -> movies + show/season/episode rows.
     items = hierarchy_module.build(items)
