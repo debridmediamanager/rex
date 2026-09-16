@@ -1,5 +1,5 @@
 {
- "_provenance": "Every cell is a plain-form decision measured against a real PMS: kids (1.43.4) and zen (1.42.2) read-only over 24 rows chosen for their containers, codecs, channel counts, bit depths and subtitle kinds, and plexscratch (1.43.4) over one row MADE for the model -- two audio tracks that carry no language at all, muxed into its writable media directory with ffmpeg, scanned, and read back. `rows` holds each row's Media as the reference wrote it; `cells` holds what each of the 78 client profiles answered for it. The plexscratch row is recorded in BOTH of its states: `selected`, after a client has chosen a track with `PUT /library/parts/{id}?audioStreamID=`, and `pre-selection`, after `audioStreamID=-1` clears that -- the item's Stream rows are byte-identical in the two and 41 of the 78 answers are not. plexsim holds a chosen track, so `selected` is the state the model reproduces and `pre-selection` is recorded and not emulated. zen's row 19813 has the same shape -- two audio tracks naming no language -- and answers 68 of the 78 identically to the made row's `pre-selection` state, the other ten being its selected sidecar subtitle refusing earlier; it is recorded in that state for the same reason.",
+ "_provenance": "Every cell is a plain-form decision measured against a real PMS: kids (1.43.4) and zen (1.42.2) read-only over 24 rows chosen for their containers, codecs, channel counts, bit depths and subtitle kinds, and plexscratch (1.43.4) over one row MADE for the model -- two audio tracks that carry no language at all, muxed into its writable media directory with ffmpeg, scanned, and read back. `rows` holds each row's Media as the reference wrote it; `cells` holds what each of the 78 client profiles answered for it. The plexscratch row is recorded in BOTH of its states: `selected`, after a client has chosen a track with `PUT /library/parts/{id}?audioStreamID=`, and `pre-selection`, after `audioStreamID=-1` clears that -- the item's Stream rows are byte-identical in the two and 41 of the 78 answers are not. plexsim holds a chosen track, so `selected` is the state the model reproduces and `pre-selection` is recorded and not emulated. zen's row 19813 has the same shape -- two audio tracks naming no language -- and answers 68 of the 78 identically to the made row's `pre-selection` state, the other ten being its selected sidecar subtitle refusing earlier; it is recorded in that state for the same reason. Cycle 35 added zen's row 3831, a 4.6 GB mp4 whose h264 is `high 10` at 10 bits with 64-bit offsets: it is the corpus's only row that trips a `list=` limitation (Android's `video.profile`), its only `has64bitOffsets` true, and the witness for the ` [list]` suffix a `list=` refusal carries.",
  "texts": [
   "App cannot direct play this item. No direct play video profile exists for protocol http, with container mkv, and video codec h264.",
   "Direct play OK.",
@@ -33,7 +33,9 @@
   "This app cannot play this item. The reason is: video.width limitation applies: 3840 > 720.",
   "App cannot direct play this item. No direct play video profile exists for protocol http, with container mp4, video codec h264, and audio codec mp3.",
   "App cannot direct play this item. Selected sidecar subtitle stream cannot be direct played.",
-  "App cannot direct play this item. No direct play video profile exists for protocol http, with container mp4, video codec h264, and audio codec ac3."
+  "App cannot direct play this item. No direct play video profile exists for protocol http, with container mp4, video codec h264, and audio codec ac3.",
+  "This app cannot play this item. The reason is: video.profile limitation applies: high 10 != baseline|main|high [list].",
+  "This app cannot play this item. The reason is: video.bitDepth limitation applies: 10 > 8."
  ],
  "rows": {
   "kids:1": {
@@ -3740,6 +3742,89 @@
         "streamIdentifier": "3",
         "displayTitle": "Unknown (AC3 5.1)",
         "extendedDisplayTitle": "Unknown (AC3 5.1)"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "zen:3831": {
+   "Media": {
+    "id": 8882,
+    "duration": 9935064,
+    "bitrate": 3743,
+    "width": 1920,
+    "height": 1000,
+    "aspectRatio": 1.85,
+    "audioChannels": 2,
+    "audioCodec": "aac",
+    "videoCodec": "h264",
+    "videoResolution": "1080",
+    "container": "mp4",
+    "videoFrameRate": "NTSC",
+    "optimizedForStreaming": 1,
+    "audioProfile": "lc",
+    "has64bitOffsets": true,
+    "videoProfile": "high 10",
+    "hasVoiceActivity": false,
+    "Part": [
+     {
+      "id": 8882,
+      "key": "/library/parts/8882/1785087289/file.mp4",
+      "duration": 9935064,
+      "file": "/mnt/zurg/movies/The-Odyssey-2026-1080p-TS-V2-WEB.DL-GP-M-NLsubs {imdb-tt33764258}/The-Odyssey-2026-1080p-TS-V2-WEB.DL-GP-M-NLsubs.mp4",
+      "size": 4648849242,
+      "audioProfile": "lc",
+      "container": "mp4",
+      "failureBIFResultCode": "3",
+      "failureBIFRetryCount": "4",
+      "has64bitOffsets": true,
+      "optimizedForStreaming": true,
+      "videoProfile": "high 10",
+      "Stream": [
+       {
+        "id": 30949,
+        "streamType": 1,
+        "default": true,
+        "codec": "h264",
+        "index": 0,
+        "bitrate": 3605,
+        "bitDepth": 10,
+        "chromaLocation": "left",
+        "chromaSubsampling": "4:2:0",
+        "codedHeight": 1008,
+        "codedWidth": 1920,
+        "colorPrimaries": "bt709",
+        "colorRange": "tv",
+        "colorSpace": "bt709",
+        "colorTrc": "bt709",
+        "frameRate": 30.0,
+        "hasScalingMatrix": false,
+        "height": 1000,
+        "level": 40,
+        "profile": "high 10",
+        "refFrames": 4,
+        "scanType": "progressive",
+        "streamIdentifier": "1",
+        "width": 1920,
+        "displayTitle": "1080p",
+        "extendedDisplayTitle": "1080p (H.264 High 10)"
+       },
+       {
+        "id": 30950,
+        "streamType": 2,
+        "selected": true,
+        "default": true,
+        "codec": "aac",
+        "index": 1,
+        "channels": 2,
+        "bitrate": 128,
+        "audioChannelLayout": "stereo",
+        "profile": "lc",
+        "samplingRate": 48000,
+        "streamIdentifier": "2",
+        "displayTitle": "Unknown (AAC Stereo)",
+        "extendedDisplayTitle": "Unknown (AAC Stereo)"
        }
       ]
      }
