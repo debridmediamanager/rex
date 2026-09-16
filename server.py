@@ -11478,15 +11478,38 @@ class PlexSim:
             # general 2000, transcode 4005 naming the protocol, NO Metadata and no
             # resourceSession. A code of 2000 or more is what a client shows its own
             # message for, where a 1001 sends it on to a transcode that 404s.
+            # Cycle 36, measured on zen over three Dolby Vision PROFILE 5 rows (967 and
+            # 1120 mkv/hevc/1080, 4813 mp4/hevc/4k) against all 78 client profiles: when
+            # the source is profile 5 and the client HAS a conversion target, the server
+            # refuses on the SOURCE rather than for want of a profile --
+            # `transcodeDecisionCode 2003`, "File is unplayable. DoVi (Profile 5) color
+            # space is not supported." The 4005 sentence is the answer for a client with
+            # no target at all (`Generic`, `Sonos`), and plexsim sent it to both.
+            #
+            # The predicate lives in `decision.py` beside the veto itself, so the two
+            # cannot drift: it spares the one profile whose target names the source's own
+            # codec, which is the same test the model makes. The UI fixture holds no
+            # Dolby Vision row, so the suite check below skips there; this was proved
+            # fail-then-pass by hand against a fixture carrying one.
+            # The profile is resolved again here rather than reused: the name above is
+            # bound only inside the plain-form branch, and this block is reached from
+            # the MDE form and from `directPlay=0` as well. The suite caught it.
+            blocked = decision_module.dolby_vision_blocked(
+                next((param(name) for name in
+                      ("X-Plex-Client-Profile-Name", "X-Plex-Platform", "X-Plex-Device")
+                      if param(name) in CLIENT_PROFILES), None),
+                (row.get("Media") or [{}])[0], query.get("protocol") or "http")
             fields.update(
                 directPlayDecisionCode=3000,
                 directPlayDecisionText=refusal,
                 generalDecisionCode=2000,
                 generalDecisionText="Neither direct play nor conversion is available.",
-                transcodeDecisionCode=4005,
-                transcodeDecisionText="Cannot convert this item. No conversion profile "
-                                      "found for protocol %s."
-                                      % (query.get("protocol") or "http"),
+                transcodeDecisionCode=2003 if blocked else 4005,
+                transcodeDecisionText=(
+                    "File is unplayable. DoVi (Profile 5) color space is not supported."
+                    if blocked else
+                    "Cannot convert this item. No conversion profile "
+                    "found for protocol %s." % (query.get("protocol") or "http")),
             )
             logger.info("DECISION refused for path=%s", path)
             return self.container(size=0, **fields)

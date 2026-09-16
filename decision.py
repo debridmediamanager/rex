@@ -344,6 +344,24 @@ def conversion(profile, protocol, media=None):
     return "neither"
 
 
+def dolby_vision_blocked(name, media, protocol="http"):
+    """Whether the server would refuse to CONVERT this media on its DoVi profile.
+
+    True only when the source is Dolby Vision profile 5 and the client's profile has a
+    matching http target that does NOT name the source's own video codec -- which is the
+    case the reference answers `transcodeDecisionCode 2003` rather than 4005. A client
+    with no target at all gets the ordinary 4005, and the one profile whose target names
+    hevc converts the row.
+    """
+    profile = resolve(name)
+    if profile is None or media is None:
+        return False
+    if _number(_dolby_vision_profile(media)) != 5:
+        return False
+    return conversion(profile, protocol, None) == "convert" \
+        and conversion(profile, protocol, media) != "convert"
+
+
 def decide(name, media, protocol="http", direct=True):
     profile = resolve(name)
     if profile is None:
