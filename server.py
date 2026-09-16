@@ -2193,6 +2193,16 @@ KNOWN_LANGUAGES = _known_languages()
 _PADDED_ID_SEGMENT = re.compile(r"\+?0*[0-9]+\Z")
 
 
+def _target_parts(target):
+    """Split an HTTP request target without URL params/fragment semantics.
+
+    Cycle 37: PMS treats literal `;` and `#` as path/query data.  `urlparse` is
+    for an absolute URL and silently strips both, changing which endpoint ran.
+    """
+    route, marker, query = str(target or "").partition("?")
+    return route, query if marker else ""
+
+
 def int32_segment(value):
     """How a real PMS reads an id segment on the four paths that bound it.
 
@@ -3629,8 +3639,7 @@ class PlexSim:
             # measured) -- and it has to be caught before urlparse, which reads
             # `//identity` as a HOST named identity with an empty path.
             return ("error", 404, "plexsim: not found")
-        parsed = urllib.parse.urlparse(path)
-        route = parsed.path
+        route, raw_query = _target_parts(path)
         if not route.startswith("/web"):
             # Measured: an EMPTY interior segment (`//identity`, `/library//sections`)
             # is a 404, where plexsim dropped it and served the page; one TRAILING
@@ -3664,7 +3673,7 @@ class PlexSim:
             # Measured: a query parameter with no `=` at all -- `?includeGuids`,
             # `?foo`, even `?&` -- is a 400 on every path, `/identity` included.
             # plexsim read a bare `includeGuids` as true.
-            if parsed.query and any("=" not in piece for piece in parsed.query.split("&")):
+            if raw_query and any("=" not in piece for piece in raw_query.split("&")):
                 # Cycle 30, measured on kids and zen 3/3 on each of seven paths: this
                 # 400 CLOSES the connection, and it is the ONLY handler-level refusal on
                 # the surface that does -- seventeen other reachable 400s (`type=abc` on
@@ -3678,7 +3687,7 @@ class PlexSim:
         # filter query is ORDERED and may repeat a key -- `?genre=6&genre=23` is
         # an intersection and `push`/`pop` are positional -- so the pairs are
         # carried alongside rather than collapsed away.
-        pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        pairs = urllib.parse.parse_qsl(raw_query, keep_blank_values=True)
         query = {k: v for k, v in pairs}
         query["_pairs"] = pairs
         # The resolved language, for the handlers that need it. `_localise` reads the
@@ -16489,7 +16498,7 @@ class Handler(BaseHTTPRequestHandler):
         a single segment outside the list above is a 403, the root is a 401 carrying
         the web client's redirect, and everything else that exists is the plain 401.
         """
-        route = urllib.parse.urlsplit(self.path).path
+        route, _query = _target_parts(self.path)
         if route in ("", "/"):
             return 401, self.UNAUTHORISED_ROOT
         segments = [piece for piece in route.split("/") if piece]
@@ -16512,10 +16521,10 @@ class Handler(BaseHTTPRequestHandler):
         wanted = self.server.sim.token
         if not wanted:
             return True
-        route = urllib.parse.urlparse(path)
-        if route.path == "/identity" or route.path.startswith("/web"):
+        route, raw_query = _target_parts(path)
+        if route == "/identity" or route.startswith("/web"):
             return True
-        if route.path in ("/security", "/security/token"):
+        if route in ("/security", "/security/token"):
             # Measured: this one is NOT a 401 -- it answers its own 400 with no
             # parameters and 403 with a token that is not good enough, which is how
             # a client tells "you did not ask properly" from "you may not have one".
@@ -16531,7 +16540,7 @@ class Handler(BaseHTTPRequestHandler):
         # that already carried one -- what a client concatenating a base URL produces --
         # was therefore refused by plexsim and accepted by a real PMS.
         given = self.headers.get("X-Plex-Token") or urllib.parse.parse_qs(
-            route.query).get("X-Plex-Token", [""])[-1]
+            raw_query).get("X-Plex-Token", [""])[-1]
         return given == wanted
 
     # Cycle 15, swept by METHOD across 33 paths on the disposable copy -- the sweep
