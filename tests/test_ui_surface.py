@@ -22386,6 +22386,39 @@ def main():
         skip("a search hit's score tier is the matcher's rule, not a title prefix",
              "need a three-word title")
 
+    # Cycle 36, measured on kids and zen over seven statuses and every path family that
+    # answers one: a real PMS's refusal BODY is one fixed HTML document per status --
+    # `<html><head><title>{reason}</title></head><body><h1>{code} {reason}</h1></body>
+    # </html>` with `Content-Type: text/html` -- and it ignores `Accept`. plexsim had
+    # three of them (the 401, the 403 and the root's redirect) and answered `text/plain`
+    # with a sentence of its own everywhere else, so a client that renders the server's
+    # error document was handed a different document on five of eight refusals.
+    def refusal_c36a(method_c36a, path_c36a, want_json_c36a=True):
+        status_c36a, body_c36a, headers_c36a = request(
+            base, method_c36a, path_c36a, want_json=want_json_c36a)
+        return status_c36a, headers_c36a.get("Content-Type"), body_c36a
+
+    def document_c36a(code_c36a, reason_c36a):
+        return ("<html><head><title>%s</title></head><body><h1>%d %s</h1></body>"
+                "</html>" % (reason_c36a, code_c36a, reason_c36a)).encode()
+
+    cells_c36a = {
+        "404 unknown path": (refusal_c36a("GET", "/zzz/yyy"), 404, "Not Found"),
+        "404 unknown item": (refusal_c36a("GET", "/library/metadata/987654"), 404, "Not Found"),
+        "400 query pair": (refusal_c36a("GET", "/library/sections?abc"), 400, "Bad Request"),
+        "500 unknown sort": (refusal_c36a(
+            "GET", "/library/sections/%s/all?type=1&sort=zzzz" % movie_section),
+            500, "Internal Server Error"),
+        "404 asking for JSON": (refusal_c36a("GET", "/zzz/yyy", False), 404, "Not Found"),
+    }
+    wrong_c36a = {name_c36a: (got_c36a[0], got_c36a[1], got_c36a[2][:60])
+                  for name_c36a, (got_c36a, code_c36a, reason_c36a) in cells_c36a.items()
+                  if got_c36a[0] != code_c36a or got_c36a[1] != "text/html"
+                  or got_c36a[2] != document_c36a(code_c36a, reason_c36a)}
+    check("every refusal answers the reference's own HTML document",
+          not wrong_c36a, str(wrong_c36a))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
