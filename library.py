@@ -93,10 +93,16 @@ IGNORED_VALUE_FIELDS = {"addedAt", "guid", "lastViewedAt", "viewCount",
                         # nothing stored. The section path reads every one of them.
                         "updatedAt", "createdAt", "skipCount", "ratingCount", "type",
                         "viewedLeafCount", "contentRatingAge", "mediaCount",
-                        "extraType", "viewOffset", "duration",
-                        # Cycle 31: the eleventh column of the same family -- see
-                        # EDITABLE_FIELDS. Its lock is recorded; its value is not.
-                        "absoluteIndex"}
+                        "extraType", "viewOffset", "duration"}
+
+# Cycle 31: PARSED and then dropped, which is a third thing from "stored" and "ignored".
+# Re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
+# `absoluteIndex.value=7` is a 200 that stores NOTHING, while `=ZZQ1` and `=1.5` are 500s
+# -- so the value is read as an integer and then discarded, the way `duration` and
+# `parentIndex` are on the section path. Cycle 20 recorded it as read on both paths and
+# plexsim stored the number; putting it in IGNORED_VALUE_FIELDS skipped the parse and made
+# a word a 200, which is the opposite error.
+PARSED_NOT_STORED = {"absoluteIndex"}
 
 # A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
 # nothing visible, where plexsim 400'd it.
@@ -1118,7 +1124,10 @@ class Library:
                 # 2147483648 is a 500, -2147483648 stores and -2147483649 is a 500,
                 # while the columns the item path does not read take anything.
                 raise EditError(500, "year out of range %r" % value)
-            if number < 0 or (field == "year" and number == 0):
+            if field in PARSED_NOT_STORED:
+                # Cycle 31: parsed, refused if it is not an integer, and then dropped.
+                row.pop(field, None)
+            elif number < 0 or (field == "year" and number == 0):
                 # Measured: a negative year REMOVES the field, and so does 0 -- while
                 # `+2000` is 2000, where plexsim answered 500.
                 row.pop(field, None)
