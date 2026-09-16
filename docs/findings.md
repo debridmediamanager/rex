@@ -8470,6 +8470,110 @@ Measured and not acted on:
 - **`video.frameRateMode` and a multi-part Media are still unfound**: an exhaustive filename and
   attribute search over both libraries produced zero of each.
 
+### Cycle 37: raw request targets, real catalog-only shapes, and SQLite's spelling fallback
+
+All reference HTTP measurements in this cycle were GET/HEAD only, with both paging headers where
+applicable. kids (1.43.4) and zen (1.42.2) agreed on every request-envelope cell. Their database,
+WAL and binaries were copied read-only for the spelling work. The before/after `refcheck7.py`
+snapshots are byte-identical.
+
+**The request target is not a browser URL.** PMS keeps literal `;` and `#` bytes as path/query data.
+`/library/sections;ignored` and `/library/sections#ignored` are 404s, not the sections listing;
+`/library/all?type=1#ignored` is a 400 because `1#ignored` is the integer value; and
+`/identity;ignored` reaches the one-segment plug-in-framework answer rather than `/identity`.
+`urllib.parse.urlparse/urlsplit` silently assigned params/fragment semantics and routed another
+request, so plexsim now splits the raw target only at the first `?`. The same raw-query split is used
+by every response-wide reader -- localisation, paging, `excludeElements`, authentication and both
+notification transports -- rather than reparsing the target differently after routing it.
+
+**A non-terminal all-dot segment is a bad request, not a parent traversal.** After one case-insensitive
+`%2e` decode, any non-terminal segment consisting only of two or more dots answers 400:
+`/x/../identity`, `/x/%2E%2e/identity`, `/x/.%2e/identity`, `/x/.../identity` and `/x/../` all do.
+A terminal `/x/..` or `/x/%2e%2e` is the ordinary 404, and `/x/%252e%252e/identity` is a 404 because
+the server does not decode twice. PMS validates this shape; it never normalises it to another route.
+
+**GET and HEAD ignore a declared body.** Raw requests with `Content-Length: 999`, no body and an open
+socket receive their 200 immediately on both versions, with and without `Expect: 100-continue`.
+plexsim read the declared bytes before routing every verb, so a slow or absent body stalled every
+read-only endpoint. POST/PUT still consume their body; the rule is method-specific.
+
+**A measured stack is one Media with multiple Parts.** Plex recognises the filename spelling
+`Title - cdN.ext`; `build_catalog.py` groups only that spelling, orders by N, preserves each Part's
+own debrid link and sums the Part durations into the Media duration. A decision with `partIndex=0`
+or `1` evaluates and returns only that Part and its streams. An out-of-range index is 400.
+`partIndex=-1` selects all and answers the measured refusal: `size: 0`, no Metadata,
+`directPlayDecisionCode: 3000`, `generalDecisionCode: 2000`, `transcodeDecisionCode: 4005`, and
+`"App cannot direct play this item. Multi-part media requires a conversion when all parts are selected."`
+The old row-level `_debrid` spelling remains a compatibility fallback for existing catalogs.
+
+**The clip/extras surface becomes reachable once the catalog can carry a clip.** A parent advertises
+the lowest-index trailer as `primaryExtraKey`; `includeExtras=1` embeds an uncapped, index-ordered
+`Extras`; `/library/metadata/{parent}/extras/all` returns the full clip projection; and
+`/library/sections/{id}/extras/all` returns the light searchable/filterable projection measured in
+cycle 29. Neither the container nor clip row invents a librarySection triple. A faithful clip detail
+therefore no longer crashes on a missing `librarySectionID`. The row borrows its parent's `art`
+attribute, but ownership still governs image leaves: `/clip/art` is 404, `/clip/thumb` and
+`/clip/poster` serve. In XML, `extraType` is the clip Video's final attribute. A profile-5 Dolby
+Vision row in the same focused fixture reaches the already-correct 2003 server refusal; no DoVi code
+path was missing.
+
+**The fallback search is SQLite `spellfix1`, with two vocabularies.** Both servers have exactly
+`spellfix_metadata_titles` and `spellfix_tag_titles`; the sort/original table names found in old
+binary strings do not exist in either live schema. The FTS table separately indexes `title`,
+`title_sort` and `original_title` with ICU primary-strength, shifted collation.
+
+The 1.42.2 metadata vocabulary is rebuilt by tokenising the DISTINCT strings
+`title || ' ' || title_sort` with ICU and grouping by token. 1.43.4 uses
+`concat_ws(' ', title, title_sort)`. A repeated word inside one string counts repeatedly, duplicate
+complete strings count once, original title does not contribute to rank, and there is no filter for
+library, metadata type, deletion or media presence. The tag vocabulary likewise tokenises DISTINCT
+`tags.tag` strings; 1.42.2 includes technical tags as well as visible tags, while 1.43.4 restricts
+tag types to `(0,1,2,4,6,207,400)`. ICU word-break plus simple Unicode fold, not Python
+`.casefold()`, reproduces the tables. On zen the reconstruction is exact:
+
+| Vocabulary | Stored tokens | Rank mismatches |
+|---|---:|---:|
+| metadata | 11,755 | 0 |
+| tags | 71,124 | 0 |
+
+There are no spellfix maintenance triggers. kids' current metadata rows contain five tokens absent
+from its table, so the table can be historically stale; the complete schedule of the three rebuild
+callers remains unknown. plexsim therefore builds a snapshot at catalog load rather than inventing a
+synchronous update rule.
+
+For each retained query token the reference runs the equivalent of:
+
+```sql
+SELECT word FROM spellfix_metadata_titles
+WHERE word MATCH :raw_case_token AND top=10 AND score<=200;
+```
+
+The tag branch changes only the table. Scope and langid take their defaults (3 and 0). The exact
+cost is `editdist1(transliterated_query, k1) + 32 - bit_length(rank)`, equivalently
+`editdist1 + 31 - floor(log2(rank))` for positive rank. The prior `+32-floor(log2(rank))` note was
+off by one. Query case is preserved. The `k2` scan prefix is length 3 for hashes longer than three,
+2 for length three, and the whole hash below that. Candidates are maintained as a bounded top-ten
+set with strict replacement of the worst score; a score-only sort with an invented tie rule is not
+equivalent. `kickd` proves the top-ten cap independently of the inclusive 200 boundary;
+`defeted` versus `Defeted` proves raw case changes membership at that boundary.
+
+**Fallback is globally gated, then constructed word by word.** First run normal search. A normal
+movie/show/list/tag result suppresses spelling fallback globally; an episode-only result does not.
+Split on spaces and discard tokens shorter than three UTF-8 bytes. Each retained token becomes
+`(candidate1 OR candidate2 OR ... OR originalToken*)`; the groups are ANDed in FTS. Thus
+`Tears xy` and `Tears zzz` find “Tears of Steel”, while `Tears xyz` does not. Fuzzy metadata searches
+movie/show title, sort title and original title, not episodes. The measured fuzzy tag branch covers
+people (`Tudik` finds Alan Tudyk and the associated item); no fuzzy-genre rule was inferred.
+`searchTypes` is a later filter and does not rerun the fallback gate.
+
+Spellfix cost is membership only, not the emitted 0.93/0.73/0.53/0.33 relevance score. The existing
+type tier and `audienceRating/10000` tail still apply afterwards. The final membership model scored
+34/34 queries on kids, 125/125 uncapped diagnostic queries on zen, and a fresh held-out
+**93/93 queries and 822/822 movie/show/episode row cells**. The first pass missed two apostrophe
+cells; using the schema's actual ICU collation fixed both. Final equal-score API ordering remains
+unresolved: title, sort title and ratingKey all have hundreds of violations over 3,535 adjacent
+equal-score pairs, so none was fabricated as the rule.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

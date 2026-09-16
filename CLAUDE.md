@@ -2275,6 +2275,27 @@ precisely how the Seasons bug survived a fix attempt.
   the copy and driven against all 78 profiles, only `RokuDLNA-5.1` refuses it (on `video.scanType`)
   and iOS and tvOS -- the two profiles naming `separateFields` -- direct-play it. `decision.py`'s
   constant 0 is right; a row that trips it needs field-coded PAFF pictures no encoder here writes.
+- **The request target is RAW data, not a browser URL.** A literal `;` or `#` remains in the path or
+  query; `urlparse`/`urlsplit` silently strips it as params/fragment syntax and routes a different
+  request. Split only at the first `?`, and pass that same raw query to the token gate, localisation,
+  paging, excludes and notification filters.
+- **A non-terminal all-dot path segment is a 400 after ONE `%2e` decode**, not a traversal: `..`,
+  `.%2e` and `...` inside the path refuse, a terminal `..` is 404, and a double escape stays escaped.
+- **GET and HEAD never consume a declared request body.** Both references answer immediately with
+  `Content-Length: 999` and no bytes, with or without `Expect: 100-continue`; reading before routing
+  turns a read-only request into a trivial server stall.
+- **A measured multipart filename is `Title - cdN.ext`.** One Media owns ordered Parts, its duration
+  is their sum, and every Part owns its debrid link. `partIndex=0/1` projects that Part,
+  out-of-range is 400 and `-1` is the 4005 all-parts conversion refusal.
+- **A clip is not an ordinary library row.** It publishes no librarySection triple; the parent owns
+  `primaryExtraKey` and inline `Extras`; item and section `/extras/all` use different projections;
+  the clip borrows the parent's `art` attribute but its own `/art` route is 404.
+- **Fuzzy search is the reference's `spellfix1` pipeline, not a similarity shortcut.** The two live
+  vocabularies use ICU-token ranks, candidates are `top=10 AND score<=200`, cost is
+  `editdist1 + 32 - bit_length(rank)`, and normal movie/show/list/tag hits suppress fallback
+  globally. Per-word candidate groups are ANDed, tokens shorter than three UTF-8 bytes are dropped,
+  and the FTS comparison uses ICU primary/shifted collation. Spellfix cost chooses membership; it is
+  not the API relevance score. The external table may be stale, so do not claim a rebuild schedule.
 
 ## Conventions
 

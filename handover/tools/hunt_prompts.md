@@ -2305,3 +2305,62 @@ same table" and cycle 33 narrowed its CASE handling to two passes. Hold that out
 character sweep through `/hubs/search` that cycle 32 ran through `title=`, over the same codepoint
 range, and report the diff between the three tables as a character list.
 
+
+==== Cycle 37 (2026-09-17). Shared preamble: frozen commit `9a2d9c2`, served on 32587/32588;
+mode-600 `tokens.env`; kids and zen GET/HEAD only through the `WRITE_GET` guard; no websocket,
+eventsource, plex.tv, fun, media-byte reads or reference writes; reference database/binary access
+over ssh is read-only; run `refcheck7.py ref_cycle5_before.json` before and after and require
+byte-identical output. A = catalog shapes (32587); B = spellfix prune (32588). ====
+
+**Role substitution note.** The runtime resumed the two already-created hunter roles rather than
+offering separately selectable Fable/Opus model names. Territory A and Territory B remained
+independent, used separate frozen servers and artifacts, and neither edited the repository. Do not
+describe this as a model-equivalent substitution; it is only the available-runtime fact.
+
+
+# Cycle 37 | Territory A | make the catalog shapes that the server code cannot reach | plexsim port 32587 | reference READ-ONLY
+
+The prior cycle measured multipart decisions and Dolby Vision profile 5 on made/reference rows, and
+cycle 29 measured 3,905 clips, but plexsim's builder makes none of those shapes. Audit the complete
+path from `build_catalog.py` through `Catalog`, detail/list projections, decision and part streaming.
+
+1. Build a PRIVATE, token-free temporary catalog containing one Media with two Parts, one profile-5
+   Dolby Vision Media and one parent+clip extra. Do not edit the repo. Drive frozen plexsim and name
+   every endpoint that differs from the already measured reference rule.
+2. For multipart, prove whether each Part can own a distinct debrid link, whether Media duration is
+   summed, what `partIndex=0/1/2/-1` answers, which streams the decision evaluates and which Part(s)
+   the answer marks selected. Trace the exact builder/loader/decision/read code paths.
+3. For Dolby Vision, determine whether a real ffprobe DOVI record loses any field before
+   `decision.py`, and whether the known 2003 refusal already works once the row exists. Report a
+   negative result if there is no code-path gap.
+4. For clips, compare parent `primaryExtraKey` and inline `Extras`, item and section `/extras/all`,
+   faithful clip detail without a librarySection triple, filtering/paging/projections, XML order and
+   ownership of `art`/`thumb`/`poster`. A 500 from the temporary measured shape is a finding.
+5. End with fail-on-frozen regression targets and an implementation boundary. Separate “unreachable
+   because the catalog cannot represent it” from “route exists but answers incorrectly”.
+
+
+# Cycle 37 | Territory B | recover spellfix pruning and fallback membership from the reference's own files | plexsim port 32588 | READ-ONLY
+
+Cycle 36 established the candidate phonehash and left the global-rank top-N prune open. Do not fit
+another similarity function. Read the reference's own database/schema and binaries, then score a
+model on data it was not fitted on.
+
+1. Copy the Plex SQLite database, WAL and SHM from kids and zen without changing them; open the copy
+   read-only. Enumerate every spellfix/FTS table, trigger and shadow-table column. Read the literal
+   population and query SQL from both binaries. Establish the vocabulary input, tokenizer, rank,
+   version differences, top/cutoff/scope/langid and exact edit-cost arithmetic.
+2. Reconstruct every stored `(word,rank)` and report total mismatches for metadata and tags. Explain
+   duplicate complete strings, repeated tokens, NULLs, original titles, row types, trashed rows and
+   hidden technical tags. Do not claim a rebuild schedule unless the callers prove it.
+3. Recover the outer fallback gate and FTS query: which normal result types suppress it, whether an
+   episode-only result does, token-length units, OR/AND grouping, prefix retention, searchable row
+   types and tag kinds. Distinguish spellfix cost from the API relevance score.
+4. Produce independent live witnesses for `top=10` and `score<=200`; preserve raw query case and test
+   whether API `top/scope/langid` parameters are forwarded. Measure both search endpoints.
+5. Fit on one corpus and score on another. Keep capped result sets out of the accuracy denominator.
+   A final claim requires a fresh holdout with named query count and row-cell count, plus retained
+   original misses. If equal-score API ordering is not recovered, say so and do not invent it.
+6. End with exact regressions against shared kids content (`teers`, `steal`, `buny`, `elefants`,
+   `Tears zzz`, `Tears xy`, negative `Tears xyz`, and `Tudik` for a person) and both reference
+   snapshots.
