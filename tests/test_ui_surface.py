@@ -22956,6 +22956,43 @@ def main():
                  row_c36q.get("subtype"), "ratingCount" in row_c36q))
 
 
+    # Cycle 36, measured on plexscratch with a listener open: a type=18 SECTION save
+    # frames the way the section path frames an ITEM -- `state 3` with `metadataState
+    # "queued"` carrying the title from BEFORE the write, then `state 5` with the new one
+    # -- where the item and metadata spellings of the same edit send `loading` with the
+    # new title in both. plexsim routed the section save through the item writer.
+    machine_c36r = get(base, "/identity")[1].get("machineIdentifier")
+    uri_c36r = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine_c36r, movie))
+    _s_c36r, made_c36r, _h_c36r = container(
+        base, "POST", "/library/collections?title=c36framed&type=1&smart=0"
+                      "&sectionId=%s&uri=%s" % (movie_section, uri_c36r))
+    key_c36r = (made_c36r.get("Metadata") or [{}])[0].get("ratingKey")
+    if not key_c36r:
+        skip("a type=18 section save frames queued with the old title", "no collection made")
+    else:
+        _rs_c36r, raw_c36r = eventsource(
+            base, lambda: request(
+                base, "PUT", "/library/sections/%s/all?type=18&id=%s&title.value=c36renamed"
+                             % (movie_section, key_c36r)), 8)
+        pairs_c36r = []
+        for name_c36r, data_c36r in raw_c36r:
+            if name_c36r != "timeline":
+                continue
+            entry_c36r = json.loads(data_c36r)
+            entry_c36r = entry_c36r.get("TimelineEntry") or entry_c36r
+            if isinstance(entry_c36r, list):
+                entry_c36r = entry_c36r[0] if entry_c36r else {}
+            if str(entry_c36r.get("itemID")) == str(key_c36r):
+                pairs_c36r.append((entry_c36r.get("state"),
+                                   entry_c36r.get("metadataState"),
+                                   entry_c36r.get("title")))
+        request(base, "DELETE", "/library/collections/%s" % key_c36r)
+        check("a type=18 section save frames queued with the old title",
+              pairs_c36r[:2] == [(3, "queued", "c36framed"), (5, None, "c36renamed")],
+              str(pairs_c36r[:3]))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
