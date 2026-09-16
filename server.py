@@ -1251,6 +1251,37 @@ class Catalog:
                 if row.get("type") in ("movie", "show", "season", "episode")
                 and (hit(row.get("title")) or hit(row.get("originalTitle")))]
 
+    @staticmethod
+    def word_tier(title, query):
+        """Does `query` score at the WORD tier (0.73) against `title`, or the fuzzy one?
+
+        Cycle 35, measured on kids and zen over sixteen (query, row) cells: the tier is
+        the same in-order, skip-tolerant match `hit()` uses to decide membership, with
+        ONE extra condition -- the query's first term must match the title's FIRST word.
+        `Tears Steel` and `Big Bunny` are 0.73 and `Buck Bunny`, `Bunny`, `Steel` and
+        `of Steel` are 0.33, on rows all four queries DO come back in.
+
+        Both scorers were reading a title PREFIX instead (class C: cycle 31 built the
+        rule into the matcher and left the score behind), so a skipped middle word --
+        the commonest thing a person leaves out when typing -- scored at the fuzzy
+        floor, below the threshold the client promotes a hub on, while a single word
+        from the middle of a title was promoted above it.
+        """
+        words = [word for word in
+                 hierarchy_module.fold_query(str(title or "")).split() if word]
+        terms = [term for term in
+                 hierarchy_module.fold_query(str(query or "")).strip().split(" ") if term]
+        if not words or not terms or not words[0].startswith(terms[0]):
+            return False
+        position = 1
+        for term in terms[1:]:
+            while position < len(words) and not words[position].startswith(term):
+                position += 1
+            if position == len(words):
+                return False
+            position += 1
+        return True
+
 
 # --------------------------------------------------------------------------
 # metadata projection
@@ -10234,8 +10265,8 @@ class PlexSim:
             # next, a later word last -- which is the ordering the reference's own
             # scores produce even though its numbers differ.
             if title == needle:
-                return 0.95
-            if title.startswith(needle):
+                return 0.93
+            if self.catalog.word_tier(row.get("title"), needle):
                 return 0.73
             return 0.31
 
@@ -10430,11 +10461,12 @@ class PlexSim:
                 # Cycle 25: a `/hubs/search` hit leads with `librarySectionTitle` and then
                 # its own `score`, measured on kids and zen alike. See `_SEARCH_LEAD`.
                 entry["_searchhit"] = True
-                title_words = re.split(r"[^0-9a-z]+",
-                                       str(row.get("title") or "").lower())
-                matched_title = any(w.startswith(needle) for w in title_words if w)
+                # Cycle 35: the tier is the MATCHER's rule (see `Catalog.word_tier`),
+                # and an exact title is 0.93 on both references, not 0.95.
+                matched_title = (str(row.get("title") or "").lower() == needle
+                                 or self.catalog.word_tier(row.get("title"), needle))
                 entry["score"] = self._score(
-                    0.95 if str(row.get("title") or "").lower() == needle
+                    0.93 if str(row.get("title") or "").lower() == needle
                     else 0.73 if matched_title else 0.33)
                 if not matched_title:
                     # Measured: a row that matched through a TAG rather than its
@@ -10638,8 +10670,8 @@ class PlexSim:
             for row in typed.get(kind, []):
                 if not self.search_type_selects(tokens, kind, row):
                     continue
-                score = 0.95 if str(row.get("title") or "").lower() == needle \
-                    else 0.73 if str(row.get("title") or "").lower().startswith(needle) \
+                score = 0.93 if str(row.get("title") or "").lower() == needle \
+                    else 0.73 if self.catalog.word_tier(row.get("title"), needle) \
                     else 0.33
                 results.append({"score": float(self._score(score)),
                                 "Metadata": self._search_result_row(row)})
