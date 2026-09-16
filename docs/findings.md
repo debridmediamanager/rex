@@ -7892,6 +7892,125 @@ Measured and not acted on:
 - REFUTED: hunt B's "plexsim does not fold K" (the Kelvin sign has a canonical decomposition to `K`, so
   NFD did fold it; what plexsim missed was `ſ`), and the first race fix's claim to have covered the adds.
 
+#### The thirty-third pass — the response header block, and a version claim that did not survive its control
+
+Two hunts and a driver round: **five findings in six fix commits** (one of them repairing a
+regression this cycle's own first patch caused), four §3.3 entries closed or narrowed, and two large
+NEGATIVE results — one of which refutes the cycle's only hunt finding as it was reported.
+
+**The hunts ran on a smaller model, and it shows in the shape of the cycle.** Both territories were
+launched on the usual pair and died inside a minute on an account-level weekly rate limit for those
+models; relaunched on the model that was available, one returned "no findings" with a large negative
+result and the other returned a single finding whose framing did not survive re-measurement. The
+driver's own territory — which the rate limit made the cycle's main line rather than its side line —
+produced four.
+
+**The response HEADER BLOCK had never been compared, and it is ordered.** Cycle 27 measured header
+VALUES; cycle 32 found the JSON bytes unmeasured; this cycle read the header block off a raw socket
+(`urllib` normalises exactly what is being measured) for twenty-six response classes on kids and zen,
+on a keep-alive connection and a closing one. **The two references are identical in every case**, and
+the order is per response FAMILY, not one list:
+
+* `X-Plex-Protocol` is the FIRST header of every response and `Date` the LAST — plexsim had exactly
+  those two the wrong way round, because Python's `send_response` writes `Date` before anything else.
+* `Keep-Alive` always follows `Connection` immediately.
+* A 200 container is `…Content-Type, Content-Length, [paging pair,] Connection, Keep-Alive,
+  Cache-Control`; an ERROR (400, 404, 500) swaps the type and the length; a gzipped body moves
+  `Connection` ahead of the encoding pair and the length behind it; item artwork leads with the type
+  and `X-Plex-Local-Asset`; `/photo/:/transcode` and a `/web/*` or `/:/resources/*` asset send the
+  same five names in two different orders; a part read is `ETag, Last-Modified, [Content-Disposition,]
+  Accept-Ranges, [Content-Range,] Connection…`; the `/web` 302 is `Location, Cache-Control,
+  Content-Length, Connection`; and the preflight wraps its CORS headers around the rest —
+  `Access-Control-Allow-Methods, …Max-Age, Vary` early, `…Allow-Headers, …Allow-Origin` after
+  `Cache-Control`.
+* **A 416 carries no connection header at all**, on a closing request and a keep-alive one alike: the
+  only response class on the surface that does not name its connection state.
+* **A part read carries no `Cache-Control`**, which is the one exception to cycle 16's "no-cache goes
+  on EVERY response". plexsim already sent none there; the RULE was wrong, not the code.
+* **A 206 of a CONTAINER answers `Content-Length` twice** -- the whole body's length in its usual
+  place, `Content-Range`, then the SLICE's after the connection state -- while the body is the slice.
+  Both references, XML and JSON. A ranged artwork or asset answers the slice's length alone, which is
+  what `Accept-Ranges` on the response tells apart. It is genuinely two conflicting lengths on the
+  wire: a client that reads the first one waits for bytes that never arrive, which is what
+  `http.client` does, so the check for it reads a raw socket. No Plex client ranges a container.
+
+Two more differences fell out of the same sweep, and both are headers plexsim never sent:
+
+* **The plug-in framework's `/system` paths carry a session cookie** — `Set-Cookie:
+  com.plexapp.system=…`, a constant that decodes to the framework's serialised empty session, on the
+  200s, the empty-bodied 404s and the `/system/scanners/zzz` 500 alike. The three leaves PMS
+  implements itself — `/system/agents`, `/system/scanners/{N}` and `/system/proxy` — send none, and
+  neither does anything else on the surface: `/livetv`, `/services`, `/media`, `/status`,
+  `/statistics`, `/security`, `/library` and an unknown single segment were all checked.
+* **The CORS preflight and the `/web` 302 name their connection state** (and the preflight carries
+  `Cache-Control: no-cache`). Both plexsim handlers write their own header set and went round the
+  code that adds it — so the one response a browser always sends before a cross-origin request was
+  the only one that never said how long the connection it had just opened would live.
+
+**And the `/system` subtree orders its length first** — `/system`, `/system/search`,
+`/system/scanners/{N}` and an unknown leaf alike, the order an error uses — while `/system/agents`,
+which PMS implements itself, orders like a container. That is a correction to this cycle's own first
+patch, which read the family off the cookie and therefore got the cookie-less `/system/scanners/{N}`
+wrong.
+
+**The first header patch also broke every malformed-request-line refusal, and the suite caught it.**
+A request whose LINE is malformed is refused before `parse_request` sets `self.path`, so a family
+lookup that reads `self.path` raises inside `end_headers` and answers NOTHING — cycle 27's six
+malformed lines and the 70 KB URL all went from a 400 to no response at all. It is the fourth cycle
+running in which a patch that passed its own fail-then-pass proof was wrong in a way only the whole
+suite could see.
+
+**The one hunt finding was reported as a version difference and is not one.** The hunt measured that
+a refresh of an unmatched row under an online agent stops after three frames on 1.42.2 where 1.43.4
+runs the whole cascade, and proposed that plexsim (which reports 1.42.2) follows the wrong version.
+Re-measured with two controls it does not hold: the 1.43.4 copy shows **the same three-frame opening**
+on its own never-matched row, and the 1.42.2 copy runs a full cascade for a row in a
+`tv.plex.agents.none` library. What the hunt compared was a `local://` row on one server against
+`tv.plex.agents.none://` rows on the other — two different states, not two versions — and whether the
+cascade then runs at all is the copies' own state: the 1.43.4 copy carries local metadata bundles for
+its rows and the 1.42.2 copy is a fresh install with none and no route to plex.tv (class E).
+
+What the same measurement DOES establish, on both versions, is a real difference: **a row that has
+never been matched opens its refresh with `state 2, metadataState "matching"` and a bare `state 5`
+before the queued frame**, where a row that was explicitly unmatched opens with the queued frame
+alone. plexsim opened both with the queued frame. That is the chase cycle 32 deferred as "noted, not
+chased" from a single server, now measured on both with the guid as the discriminator.
+
+**The negative results are the other half of the cycle.**
+
+* **`translations.json` reproduces the reference image's own gettext catalogs exactly.** The image
+  ships `Resources/locale/<lang>/LC_MESSAGES/plex.mo` for 31 languages; the hunt scored every entry of
+  plexsim's table whose language has a catalog — **13,494 (attribute, English string, language)
+  triples — with zero mismatches**, and the driver's independent 400-entry sample over three languages
+  scored 337 comparable entries with zero mismatches. A table built over five cycles from black-box
+  API diffs reproduces the compiled-in source, which is the same result cycle 31 got from
+  `Resources/Profiles/` and is a result about the METHOD. (Catalan has no catalog in the image at all
+  and is outside the scored population.) The hunt also established that `languages.json`,
+  `server_prefs.json`, `system_agents.json` and `mediainfo`'s codec tables have NO source file in the
+  image: they are compiled into the binary, so the API remains their only witness.
+* **The fold table does not extend to the compatibility forms.** 534 characters with an ASCII
+  compatibility base — Greek Extended, Roman numerals, circled and parenthesised letters, the
+  mathematical alphanumerics, the `ﬁ`/`ﬂ` ligatures, superscripts, Armenian and Cyrillic — were
+  substituted into a `title=` query on kids and **none folds**, which is what plexsim's table already
+  says.
+* **Every status LINE matches** (`416 Requested Range Not Satisfiable`, `302 Moved Temporarily` and
+  the rest), and every header VALUE matches except the recorded `text/plain` error bodies.
+* **Cycle 32's decision model held out on four rows it was never fitted to.** zen holds fourteen live
+  rows whose audio tracks carry no language; four of them — across mkv/mp4/mpegts and
+  av1/hevc/vc1/h264 — were driven against all 78 profiles: **312 of 312 cells exact**, on the outcome
+  and on the refusal text. None of the fourteen has the shape that would settle 19813's eight open
+  cells (a selected track that is not the widest), so that entry stays open.
+
+Measured and not acted on:
+
+- **`/system/search?query=…`** answers with `Cache-Control` early (`X-Plex-Protocol, Cache-Control,
+  Content-Length, Content-Type, Set-Cookie, Connection, Date`) where the bare `/system/search` puts it
+  last. plexsim's `/system/search` is a static empty container with no query semantics at all, so the
+  variant has nothing to attach to.
+- **The eventsource and websocket handshakes' header order**, which cannot be measured: a socket may
+  never be opened on either reference.
+- **Whether a refresh cascade runs at all on an isolated server**, above: the copies' state.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

@@ -2129,6 +2129,32 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/livetv`'s 403 on the copies is the UNCLAIMED server's**, not the surface's: both claimed
   references answer the three-row container, and the copies answer it at `/livetv/`.
 
+- **The response HEADER BLOCK is ORDERED, per response family.** Measured off a raw socket on both
+  references, identical: `X-Plex-Protocol` FIRST and `Date` LAST on every response, `Keep-Alive`
+  always straight after `Connection`, and then per family -- a 200 container is type-then-length, an
+  ERROR length-then-type, a gzipped body puts `Connection` ahead of the encoding pair, artwork leads
+  with the type and `X-Plex-Local-Asset`, `/photo/:/transcode` and a `/web`/`/:/resources` asset send
+  the same names in two different orders, and a part read leads `ETag, Last-Modified`. plexsim wrote
+  `Date` first, which is Python's. See `HEADER_ORDER` and `end_headers`.
+- **A 416 names no connection state at all** -- the only response class that does not -- and **a part
+  read carries no `Cache-Control`**, which is the exception to "no-cache goes on EVERY response".
+- **The plug-in framework's `/system` paths carry `Set-Cookie: com.plexapp.system=<constant>`** on
+  every status, and order their length before their type; `/system/agents`, `/system/scanners/{N}`
+  and `/system/proxy` -- the leaves PMS implements itself -- carry no cookie and order like a
+  container. Nothing else on the surface sends a cookie.
+- **The CORS preflight and the `/web` 302 name their connection state too**, and the preflight
+  carries `Cache-Control: no-cache`. A handler that writes its own header set has to say so itself.
+- **A ranged CONTAINER answers `Content-Length` TWICE** -- the whole body's length, then
+  `Content-Range`, then the SLICE's after the connection state, with the slice as the body. A ranged
+  artwork, asset or part answers the slice's length alone. Read one with a RAW SOCKET: a client that
+  takes the first length waits for bytes that never come, `http.client` included.
+- **A refusal written before the request LINE parses has no `self.path`** -- every malformed-line 400
+  answered NOTHING when a header-ordering pass read the attribute directly.
+- **A NEVER-MATCHED row (`local://`) opens its refresh with `state 2 matching` and a bare `state 5`**
+  before the queued frame, on both versions; an explicitly unmatched (`tv.plex.agents.none://`) row
+  opens with the queued frame alone. Whether the cascade then RUNS is the server's own state -- an
+  isolated fresh install never gets past the queue -- and not a version rule.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
