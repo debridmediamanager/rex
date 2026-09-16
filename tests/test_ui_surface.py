@@ -6537,9 +6537,13 @@ def main():
     smart_drop_w12b, _, _ = container(base, "DELETE", "/playlists/%s/items/1" % smart_key_w12b)
     request(base, "DELETE", "/playlists/%s" % list_w12b)
     request(base, "DELETE", "/playlists/%s" % smart_key_w12b)
-    check("a playlist 404s an item it does not hold, clears on DELETE, and a smart one refuses item writes",
+    # Cycle 31, measured on plexscratch42 (1.42.2 -- the build plexsim reports) against
+    # plexscratch (1.43.4): a smart list's item ADD is a **200 on 1.42.2** and REPLACES the
+    # stored query with the uri given, where 1.43.4 answers 400. The per-item DELETE stays a
+    # 400 on both. Cycle 16 measured the pair on the 1.43.4 copy alone.
+    check("a playlist 404s an item it does not hold, clears on DELETE, and a smart add saves",
           (unknown_w12b, by_key_w12b, clear_w12b) == (404, 404, 200) and not left_w12b
-          and (smart_add_w12b, smart_drop_w12b) == (400, 400),
+          and (smart_add_w12b, smart_drop_w12b) == (200, 400),
           "unknown %s, ratingKey %s, clear %s leaving %d, smart add %s drop %s"
           % (unknown_w12b, by_key_w12b, clear_w12b, len(left_w12b), smart_add_w12b, smart_drop_w12b))
 
@@ -6699,7 +6703,10 @@ def main():
     roles_w17b = [{k: r.get(k) for k in ("tag", "role")} for r in row_w17b(movie).get("Role") or []]
     check("value-less fields, a movie's duration and index, network tags and bare tags are accepted and discarded",
           statuses_w17b == [200] * 9 and all(after_w17b.get(k) == before_w17b.get(k)
-                                             for k in ("thumb", "art", "addedAt", "guid", "duration", "index",
+                                             for k in ("addedAt", "guid", "duration", "index",
+                                                       # Cycle 31: `thumb` and `art` are artwork COLUMNS, not
+                                                       # discarded values -- the url is dropped and the
+                                                       # column becomes the row's own versioned path.
                                                        "viewCount", "Genre"))
           and extra_w17b in ([], [200, 200, True]) and role_w17b == 200
           and roles_w17b == [{"tag": "Actor W17b", "role": ""}],
@@ -6886,8 +6893,13 @@ def main():
                                                 % (smart_key_w13b, quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))))[0])
     request(base, "DELETE", "/library/collections/%s" % key_w13b)
     request(base, "DELETE", "/library/collections/%s" % smart_key_w13b)
-    check("a collection add refuses no uri, an unknown key, another type and a smart collection",
-          statuses_w13b == [400] * len(statuses_w13b) and members_w13b == [str(movie)],
+    # Cycle 31: the SMART collection's add -- the last entry -- is a **200 on 1.42.2**,
+    # measured on plexscratch42 against plexscratch's 400, exactly as a smart playlist's is.
+    # It is the same writer, so the version split covers both list types; the other three
+    # refusals are unchanged on both versions.
+    check("a collection add refuses no uri, an unknown key and another type",
+          statuses_w13b[:-1] == [400] * (len(statuses_w13b) - 1)
+          and statuses_w13b[-1] == 200 and members_w13b == [str(movie)],
           "%s, members %s" % (statuses_w13b, members_w13b))
 
     # Measured on plexscratch: a collection's children come back by RELEASE DATE unless a
@@ -7382,7 +7394,9 @@ def main():
           and row_c10g.get("ratingKey") == playlist_c10g and row_c10g.get("smart") is True
           and len(items_c10g) == 1 and detail_c10g.get("leafCount") == 1
           and "limit%3D1" in (detail_c10g.get("content") or "")
-          and (status_item_c10g, status_none_c10g, status_clear_c10g) == (400, 400, 400)
+          # Cycle 31: an ITEM uri is a 200 on 1.42.2 -- it replaces the stored query --
+          # while no uri at all and the items DELETE stay 400s on both versions.
+          and (status_item_c10g, status_none_c10g, status_clear_c10g) == (200, 400, 400)
           and status_coll_c10g == 200 and status_csave_c10g == 200
           and (csaved_c10g.get("Metadata") or [{}])[0].get("ratingKey") == key_c10g
           and len(children_c10g) == 1,
