@@ -21241,6 +21241,42 @@ def main():
               % (smart_c31k.get("smart"), smart_c31k.get("icon"),
                  smart_c31k.get("leafCount"), saved_c31k[0], after_c31k.get("content")))
 
+
+    # Cycle 31, measured on kids and zen, which agree: in `title=` a COMMA splits the query
+    # into ALTERNATIVES (a row matches if ANY matches, and an empty alternative matches
+    # every row, so a trailing comma answers the whole library) while a DOT is a LITERAL
+    # character of the word.
+    #
+    #   kids  title=Steel,, -> 5 of 5   title=of, -> 5   title=Tears, of -> 1
+    #   zen   title=Love, -> 3,887      title=Love -> 59   title=Actually,Love -> 59
+    #   kids  title=Steel. -> 0         title=Tears of Steel. -> 0    zen Actually. -> 0
+    #
+    # plexsim stripped both characters from the query, so a typed comma found one row where
+    # a real PMS answers all of them and a trailing period found one where a real PMS
+    # answers none. This is the filter bar's own Title box.
+    total_c31l = get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+    all_c31l = total_c31l.get("totalSize") or total_c31l.get("size")
+    titles_c31l = [r_c31l.get("title") for r_c31l in (total_c31l.get("Metadata") or [])]
+    word_c31l = next((t_c31l.split()[-1] for t_c31l in titles_c31l if t_c31l
+                      and len(t_c31l.split()) > 1), None)
+    if not word_c31l or not all_c31l:
+        skip("a comma in title= is an alternation and a dot is literal", "no multi-word title")
+    else:
+        def titled_c31l(query_c31l):
+            doc_c31l = get(base, "/library/sections/%s/all?type=1&title=%s"
+                           % (movie_section, quote(query_c31l)))[1]
+            return doc_c31l.get("totalSize") or doc_c31l.get("size") or 0
+
+        plain_c31l = titled_c31l(word_c31l)
+        comma_c31l = titled_c31l(word_c31l + ",")
+        double_c31l = titled_c31l(word_c31l + ",,")
+        dotted_c31l = titled_c31l(word_c31l + ".")
+        check("a comma in title= is an alternation and a dot is literal",
+              plain_c31l >= 1 and comma_c31l == all_c31l and double_c31l == all_c31l
+              and dotted_c31l == 0,
+              "%r -> %s | with a comma %s | doubled %s | with a dot %s (of %s rows)"
+              % (word_c31l, plain_c31l, comma_c31l, double_c31l, dotted_c31l, all_c31l))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

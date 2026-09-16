@@ -342,12 +342,36 @@ def _word_prefixes(wanted, text):
     `title!=Amelie` with the accent excludes exactly its one row), which is why this
     is the only place the fold goes.
     """
+    # Cycle 31, measured on kids and zen, which agree: a COMMA splits the query into
+    # ALTERNATIVES and a row matches if ANY of them does, while a DOT is a literal
+    # character of the word.
+    #
+    #   kids `title=Steel,,` -> all 5 rows, `title=of,` -> all 5, `title=Tears, of` -> 1
+    #   zen  `title=Love,` -> all 3,887, `title=Love` -> 59, `title=Actually,Love` -> 59
+    #        (Love Actually is already in the 59, so the union is 59)
+    #   kids `title=Steel.` -> 0, `title=Tears of Steel.` -> 0     zen `Actually.` -> 0
+    #
+    # An empty alternative matches every row -- which is the recorded `title=` rule -- so a
+    # trailing comma answers the whole library. plexsim STRIPPED both characters from the
+    # query, so `Steel,` found one row where a real PMS answers all of them and `Steel.`
+    # found one where a real PMS answers none. It is the filter bar's own text box, so a
+    # typed comma or a trailing period silently gave a different row set.
+    for alternative in str(wanted).split(","):
+        if _raw_word_prefixes(alternative, text) or _folded_word_run(alternative, text):
+            return True
+    return False
+
+
+def _one_title_query(wanted, text):
+    """One comma-free alternative of a `title=` query."""
     return _raw_word_prefixes(wanted, text) or _folded_word_run(wanted, text)
 
 
 def _raw_word_prefixes(wanted, text):
     """The unfolded pass: each query word BEGINS a title word, in order."""
-    words = wanted.replace(",", "").replace(".", "").lower().split(" ")
+    # Cycle 31: neither character is stripped -- the comma is handled one level up as an
+    # alternation and the dot is a literal part of the word.
+    words = wanted.lower().split(" ")
     title_words = text.lower().split()
     position = 0
     for word in words:
