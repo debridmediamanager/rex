@@ -2124,3 +2124,184 @@ implement is worth a great deal more than the two-name list.
   37% trashed rows (cycle 31's hunt B counted 2,229 of 3,887 movies carrying `deletedAt`).
 - **Paging**: always send `X-Plex-Container-Start`/`-Size`, and cache what you fetch to disk so a
   re-score costs nothing.
+
+
+==== Cycle 36 (2026-09-16). The shared preamble is the one above with the tokens.env path and the
+frozen tree updated (commit d179203, exported to `<scratch>/head36`, served on 32587/32588), the
+cycle-35 'Already fixed' list, and BOTH writable copies named. A = the write-frames list per VERSION
+plus a made interlaced row (fable, 32587, WRITES); B = the hub matcher's fuzzy band and the decision
+limitations no measured row trips (opus, 32588, READ-ONLY). ====
+
+
+# Cycle 36 | Territory A | the write-frames list per VERSION, and a row that trips `video.separateFields` | plexsim port 32587 | WRITES to plexscratch AND plexscratch42
+
+**You own both writable copies this cycle.** The other hunter is read-only on kids and zen.
+
+## 1. The write-frames list, re-measured per version — and treated as UNPROVEN
+
+Cycle 33's hunt reached the refresh OPENING. Cycle 34 had no hunts. Cycle 35's hunt reached the
+library CREATE and the butler enabled table — and **reported the other seven items as "already
+correct"**. HANDOVER §3.1 class F is "a hunter's negative taken on trust": that report is exactly
+that shape, and this cycle's job is to hold it out. **Re-measure each of these against BOTH copies
+and against plexsim, frame for frame**, and say for each whether it reproduces, differs, or cannot
+be compared:
+
+- **`showOrdering`'s 45-frame cascade.** `PUT /library/metadata/{show}/prefs?showOrdering=dvd` is
+  recorded as pushing 45 frames (it renumbers the episodes, so the server re-reads the tree) while
+  `flattenSeasons`, `episodeSort`, `useOriginalTitle` and `subtitleMode` push ZERO. Count them on
+  both copies, on a show with two seasons, and compare with plexsim's. **Count the frames and name
+  each one's `state`, `metadataState` and `type`** — a count alone has been wrong before.
+- **The type-15/18 list PAIRS.** A playlist's frames are type 15 and a collection's 18, and a list
+  edit pushes its own pair. Drive: create, rename, an item add, an item remove, a move, an artwork
+  write, `/refresh`, `/unmatch`, a `prefs` write and a delete, on BOTH a playlist and a collection,
+  on both copies. What does plexsim push for each?
+- **A SHOW-level `/refresh`** (49 frames recorded), a SEASON's (18) and an EPISODE's (7), on both.
+- **The library DELETE counts.** Cycle 30 established a library delete pushes NO per-row timeline
+  frames, only eight `library.delete` activity frames. Confirm on both copies, on a library with
+  ≥3 rows. (Do this LAST and reset afterwards; see SAFETY.)
+- **The subtitle UPLOAD** (recorded: pushes NOTHING) and the **stream `PUT`** (recorded: accepted,
+  stores nothing).
+- **`/match`** and a **`?path=`-scoped section scan**.
+
+**Design the agent confound out.** plexscratch42 is a fresh isolated install whose online agent can
+never finish work, so a sequence that depends on the agent is not comparable between the copies.
+Use a `tv.plex.agents.none` library on BOTH copies where the sequence touches metadata, or say
+explicitly that the comparison cannot be made. Cycle 33 lost a finding to exactly this.
+
+**How to listen.** Open ONE notification socket per copy with a real `filters=` whitelist (a socket
+opened with `filters=all` receives NOTHING — `all` is not an event type), send a CONTROL write
+first and confirm you see its frames, then drive. Record every frame with its full JSON. Nothing
+else may be writing to the copy while you measure (cycle 23 lost the season and show cascades to a
+contended socket).
+
+## 2. A row that trips `video.separateFields` (HANDOVER §3.3, §8)
+
+`decision.py` reads `video.separateFields` as a constant **0** where every neighbouring value comes
+off the stream, and `mediainfo` never derives it. zen's only interlaced Stream sits on a stale Media
+that answers `2012 File is missing` to all 78 profiles, so the refusal cannot be witnessed there
+and no check can be proven fail-then-pass. **Make the row instead.**
+
+`handover/tools/mklangless.sh` shows the shape of the answer: cycle 34 muxed two language-less audio
+tracks onto plexscratch's writable media, scanned it, and drove the 78 profiles. Do the same with
+an INTERLACED encode — `ffmpeg -flags +ilme+ildct -top 1` over one of the copy's clips, or
+`-vf tinterlace=interleave_top -flags +ilme+ildct` — into a NEW file in the copy's writable media
+directory, scan it, and check the row: does the Stream carry `scanType`/`fieldOrder`, and what does
+`mediainfo` derive? Then drive all 78 profiles with `handover/tools/ddrive.py` and report:
+
+- Which profiles refuse it, with the **verbatim refusal sentence and code**, and whether the
+  refusal names `video.separateFields`.
+- What `mediainfo.py` would have to derive from ffprobe to reproduce it (ffprobe names
+  `field_order` on the stream: which values map to which `separateFields` value?).
+- The cells in the shape `tests/fixtures/decisions/cells.jsonl` holds, so the corpus can absorb them.
+
+Note plexscratch42's media is mounted READ-ONLY, so this belongs on **plexscratch**. If a new file
+cannot be added there either, say so and say what you tried.
+
+## 3. If there is budget left
+
+`video.frameRateMode` and a **multi-part Media** are recorded as unfound on either reference after
+an exhaustive search. Both can be MADE the same way: a VFR encode, and a two-file "part" by putting
+two files of the same title in one folder (or a stacked `title - cd1/cd2` pair, which is how a real
+PMS builds a multi-part Media). Each would exercise a decision limitation the corpus does not have.
+
+
+
+# Cycle 36 | Territory B | the hub matcher's fuzzy BAND, and the decision limitations no measured row trips | plexsim port 32588 | READ-ONLY on kids and zen
+
+**You write NOTHING, anywhere.** Every request to kids and zen is a GET or a HEAD; the other hunter
+owns both writable copies. Your instruments are kids' five-clip library, zen's 3,887 real rows, and
+the reference's own files read over ssh.
+
+## 1. The hub matcher's fuzzy BAND — finish the measurement, then decide whether it is buildable
+
+This is HANDOVER §3.3's oldest open search entry and cycle 35 attached the first real numbers to it.
+What is established:
+
+- A hit's SCORE has three tiers: an exact title is **0.93**, a query whose terms match the title's
+  words in order starting at the title's **first** word is **0.73**, everything else is the
+  **0.33** fuzzy band. (Built this cycle; do not re-report the tiers.)
+- The MATCHER takes a multi-word query word by word, in order, tokenises the title on WHITESPACE,
+  and matches a one-character query against a title equal to it.
+- The fold is a 100-character TABLE plus a simple case fold on the query side.
+- **The band itself**: a query carrying a capital macron, `İ` or `Ÿ` — characters the fold table
+  deliberately does not reach — still comes back, scored by word POSITION and word LENGTH. A
+  length-2 word at the query's first position drops to the 0.33 floor; the same word at the last
+  position has no effect at all; words of three characters or more show none. 16 zen titles, 2 per
+  length.
+- The CASE passes: a capital macron fails in the FIRST word of a partial query (`Bīg Buck` → 0.33)
+  and hits in a later one (`Big Būck` → 0.73), and a full-title query tolerates it anywhere except
+  in a two-letter word (`Tears Ōf Steel` → 0.73).
+
+**What is missing is the FUNCTION.** Sweep it properly and report a model with a miss count:
+
+1. **Is the 0.33 a floor or a continuum?** Collect every distinct score a real PMS answers over a
+   few hundred (query, title) pairs on zen — single-character edits at each position, transpositions,
+   omitted characters, an inserted character, a wrong character, a truncated word, a query longer
+   than the title — and report the SET of distinct values. If there are only three values on the
+   whole surface, that is the finding and the band is buildable as a constant. If there is a
+   continuum, report its shape (is it edit distance? a ratio? Jaro-Winkler? Damerau?) and fit it.
+2. **What is the THRESHOLD below which no row comes back at all?** Push a query further and further
+   from a title and find where the hit disappears. That boundary is what plexsim must reproduce to
+   stop returning nothing where a real PMS returns a row.
+3. **Does the band depend on the ROW or only on the query and title?** Try the same distortion
+   against a long title and a short one, a one-word title and a five-word one.
+4. **Score your model** against a HELD-OUT set: fit on kids' five titles, score on zen's, or fit on
+   half of a zen sample and score on the other half. A model fitted on one corpus must be scored on
+   the other (HANDOVER §10). Report the miss count and the miss rows.
+5. Say plainly, at the end, **whether plexsim should carry a similarity score at all** — what it
+   would cost, and what a real client gains. The client promotes a hub on the score, so a row that
+   comes back at 0.33 is still a row the user sees.
+
+Both `/hubs/search` and `/library/search` carry a score; say whether they agree on every cell.
+
+## 2. Decision limitations no measured row trips (HANDOVER §3.3)
+
+`tests/fixtures/decisions/cells.jsonl` now holds 1,950 measured (profile, row) cells and
+`handover/tools/ddrive.py` drives them. The corpus exercises width, level, channels, bitrate,
+`optimizedForStreaming` and — as of cycle 35 — a `list=` limitation and `has64bitOffsets`. **These
+are still untripped**, and zen holds rows that would trip them:
+
+- **10-bit / `high 10` beyond the one row already in the corpus**, and HDR / Dolby Vision rows
+  (`<CodecProfiles>` names bit depth and colour primaries).
+- **A high-channel-count audio row** (7.1, Atmos/TrueHD, DTS-HD MA) against profiles that cap
+  channels.
+- **A very high bitrate row**, and a row with an unusual container (`mkv` with `pgs` subtitles,
+  `avi`, `wmv`, `ts`) against profiles whose `<DirectPlayProfiles>` do not list it.
+- **A multi-Media row** (zen's rk=401 has fifteen) — what does a decision answer for `mediaIndex`
+  1..14, and does the corpus's single-Media assumption hold?
+- Anything that trips a `<Match>` on a codec `<Limitations>` block the 25 shapes in the corpus miss.
+
+Pick rows by QUERYING zen's own columns (`videoCodec`, `audioChannels`, `bitrate`,
+`videoResolution`, `hdr`, `dovi` filters, and `/library/sections/1/all?type=1&…`), read each row's
+full `Media`/`Part`/`Stream` as the reference writes it, drive the 78 profiles against it with
+`ddrive.py`, and **report the cells in exactly the shape `cells.jsonl` holds** so the corpus can
+absorb them without a transcription step. Say, for each new row, which limitation it trips and
+whether `decision.py`'s current model predicts it — a row the model already gets right is still
+worth adding, and a row it gets WRONG is this cycle's most valuable finding.
+
+**Avoid the stale-Media trap**: zen's interlaced row answers `2012 File is missing` to all 78
+profiles. Check a candidate row answers a real decision before you drive all 78.
+
+## 3. The dual-layer Dolby Vision disagreement (HANDOVER §8)
+
+zen says a dual-layer Dolby Vision file is **ONE** video Stream (`DOVIELPresent: true`); the
+recorded note in `docs/findings.md`, measured on **fun** (now out of scope), says the enhancement
+layer is a **second** video stream. One witness each side. Settle it from what you can reach:
+
+- Find every zen row carrying `DOVIELPresent` and count its video Streams. How many rows, and is
+  the answer uniform?
+- Does kids hold anything comparable? (Probably not — say so.)
+- Is there a `profile`/`doviProfile` value that distinguishes single-layer (profile 5/8) from
+  dual-layer (profile 7) rows, and does the stream count follow it? A profile-7 row with one video
+  Stream would settle it against the recorded note; a profile-7 row with two would settle it for.
+- Report what `mediainfo.py` currently derives and whether it would be right for zen's rows.
+
+## 4. If there is budget left
+
+**The `titleSort` fold table and the `title=` query fold table are two different tables** (100
+characters each, swept in cycle 32 over 2,076 and 2,098 codepoints). What has never been swept is
+whether the **hub search** fold is a THIRD table or one of those two. Cycle 32 says it folds "by the
+same table" and cycle 33 narrowed its CASE handling to two passes. Hold that out: run the same
+character sweep through `/hubs/search` that cycle 32 ran through `title=`, over the same codepoint
+range, and report the diff between the three tables as a character list.
+
