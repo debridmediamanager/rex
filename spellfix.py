@@ -3,8 +3,8 @@
 PMS keeps one title vocabulary and one tag vocabulary.  A spelling pass asks
 each vocabulary for ten words at score <= 200, then feeds those words back into
 the ICU FTS table.  This module implements that pipeline in memory for a JSON
-catalog; it deliberately does not invent a rebuild schedule for PMS's stale
-spellfix tables.
+catalog.  Its caller owns the measured rebuild events; edits deliberately leave
+the snapshot stale until database optimization completes.
 """
 
 from collections import Counter
@@ -326,7 +326,7 @@ class Vocabulary:
 
 
 class SearchIndex:
-    """The title and visible-tag spellfix tables captured at catalog load."""
+    """One snapshot of the title and visible-tag spellfix tables."""
 
     def __init__(self, rows, tag_fields):
         rows = list(rows)

@@ -897,9 +897,14 @@ class Catalog:
                 row.setdefault("originallyAvailableAt", aired[0])
 
         # Cycle 37 recovered PMS's spellfix1 rebuild SQL and query path.  The real
-        # tables have no per-row maintenance trigger and can be historically stale,
-        # so this snapshot is intentionally built once at catalog load rather than
-        # being silently refreshed by every edit.
+        # tables have no per-row maintenance trigger and can be historically stale.
+        # Cycle 38 recovered the rebuild callers; initial catalog creation is the
+        # startup/migration equivalent and the optimization paths call this method
+        # again explicitly rather than silently refreshing it after every edit.
+        self.rebuild_spelling()
+
+    def rebuild_spelling(self):
+        """Rebuild both measured spellfix vocabularies from current catalog rows."""
         self.spelling = spellfix_module.SearchIndex(
             self.items.values(), self.TAG_FIELDS)
 
@@ -2501,15 +2506,22 @@ class PlexSim:
         self.notify("activity", "ActivityNotification",
                     [{"event": event, "uuid": activity["uuid"], "Activity": activity}])
 
-    def notify_activity_run(self, kind, title, steps):
+    def notify_activity_run(self, kind, title, steps, completion=None):
         """One activity from `started` to `ended`, with the measured `updated` steps --
-        (progress, subtitle) pairs -- between. The end keeps the last subtitle."""
+        (progress, subtitle) pairs -- between. The end keeps the last subtitle.
+
+        `completion`, when supplied, is the work that the final 100/ended frame says
+        has completed; running it there keeps a concurrent observer from seeing the
+        post-operation state while the activity still reports an earlier step.
+        """
         activity = {"uuid": str(uuid.uuid4()), "type": kind, "cancellable": False,
                     "userID": 1, "title": title, "subtitle": "", "progress": 0}
         self.notify_activity(activity, "started")
         for progress, subtitle in steps:
             activity.update(progress=progress, subtitle=subtitle)
             self.notify_activity(activity, "updated")
+        if completion is not None:
+            completion()
         activity["progress"] = 100
         self.notify_activity(activity, "ended")
 
@@ -4619,8 +4631,9 @@ class PlexSim:
             # Settings page's progress bar never moved and the Activity pane stayed blank.
             self.notify_activity_run("general.db.optimize", "Optimizing database",
                                      [(0, "Optimizing Database"), (10, "Optimizing Database"),
-                                      (40, "Optimizing Database"), (60, "Optimizing Database")])
-            logger.info("OPTIMIZE database -- plexsim has none, the activity is the answer")
+                                      (40, "Optimizing Database"), (60, "Optimizing Database")],
+                                     completion=self.catalog.rebuild_spelling)
+            logger.info("OPTIMIZE database -- rebuilt the search vocabulary")
             return ("empty", 200)
         if route == "/library/clean/bundles":
             if method != "PUT":
@@ -5825,6 +5838,8 @@ class PlexSim:
                                            (60, "Optimizing Database")):
                     activity.update(progress=progress, subtitle=subtitle)
                     self.notify_activity(activity, "updated")
+                # Database optimization is the measured spelling-index rebuild point.
+                self.catalog.rebuild_spelling()
                 activity["progress"] = 100
                 self.notify_activity(activity, "ended")
                 logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
@@ -15449,6 +15464,8 @@ class PlexSim:
                         for step in (0, 10, 40, 60):
                             activity["progress"] = step
                             self.notify_activity(activity, "updated")
+                    if name == "OptimizeDatabase":
+                        self.catalog.rebuild_spelling()
                     # ...and the `ended` frame carries 100 whatever the last update was.
                     activity["progress"] = 100
                     self.notify_activity(activity, "ended")

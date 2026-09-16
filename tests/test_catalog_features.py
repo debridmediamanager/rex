@@ -90,6 +90,35 @@ def main():
     catalog.items[101].pop("audienceRating", None)
     catalog.items[102].pop("audienceRating", None)
 
+    # The real spellfix tables are stale between rebuilds.  Both binaries call the
+    # rebuild from explicit optimization, the Butler task, and section-deletion
+    # completion; ordinary title edits do not maintain it row by row.
+    rebuild_catalog = server.Catalog(fixture)
+    rebuild_sim = server.PlexSim(rebuild_catalog, Resolver(), assert_claimed=True)
+
+    def rebuilt_movies(query):
+        typed, _tags = rebuild_sim.search_matches(query, 100)
+        return [row.get("ratingKey") for row in typed.get("movie", [])]
+
+    rebuild_catalog.items[101]["title"] = "Zebracorn"
+    stale_explicit = rebuilt_movies("zebracrn")
+    rebuild_sim.handle("PUT", "/library/optimize", b"", {})
+    fresh_explicit = rebuilt_movies("zebracrn")
+    rebuild_catalog.items[101]["title"] = "Quokkahedron"
+    stale_butler = rebuilt_movies("quokkahedrn")
+    rebuild_sim.handle("POST", "/butler/OptimizeDatabase", b"", {})
+    fresh_butler = rebuilt_movies("quokkahedrn")
+    rebuild_catalog.items[108]["title"] = "Xylophonic"
+    stale_delete = [row.get("ratingKey") for row in
+                    rebuild_sim.search_matches("xylophnic", 100)[0].get("show", [])]
+    rebuild_sim.handle("DELETE", "/library/sections/1", b"", {})
+    fresh_delete = [row.get("ratingKey") for row in
+                    rebuild_sim.search_matches("xylophnic", 100)[0].get("show", [])]
+    check("spellfix rebuilds only at the measured optimization call sites",
+          stale_explicit == [] and fresh_explicit == ["101"]
+          and stale_butler == [] and fresh_butler == ["101"]
+          and stale_delete == [] and fresh_delete == ["108"])
+
     tudik_titles, tudik_tags = matches("Tudik", tagged=True)
     tudik_hubs = sim.search({"query": "Tudik", "limit": "100"})["MediaContainer"]
     tudik_movies = next(hub for hub in tudik_hubs["Hub"]
