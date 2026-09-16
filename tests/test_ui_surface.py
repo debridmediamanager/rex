@@ -12069,14 +12069,37 @@ def main():
     # a range past the end is a `416`; an unrecognised unit (`cheese=0-9`) is served as
     # bytes; and a 206 is never gzipped even when the client offers gzip. plexsim
     # answered 200 with the whole body to all of them.
-    ranged_c16q = urllib.request.Request(
-        base + "/identity", headers={"Range": "bytes=0-9", "Accept": "application/json",
-                                     "Accept-Encoding": "gzip", "User-Agent": UA})
-    with urllib.request.urlopen(ranged_c16q, timeout=20) as answer_c16q:
-        status_c16q = answer_c16q.status
-        crange_c16q = answer_c16q.headers.get("Content-Range")
-        enc_c16q = answer_c16q.headers.get("Content-Encoding")
-        size_c16q = len(answer_c16q.read())
+    # Cycle 33: read with a RAW SOCKET. A ranged CONTAINER answers `Content-Length` twice
+    # -- the whole body's and the slice's, which is what both references send -- and
+    # `http.client` takes the FIRST and then waits for bytes that never come
+    # (`IncompleteRead`). The check is the same; only the reader changed.
+    sock_c16q = socket.create_connection(
+        (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 20)
+    sock_c16q.settimeout(20)
+    sock_c16q.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nRange: bytes=0-9\r\n"
+                      b"Accept: application/json\r\nAccept-Encoding: gzip\r\n"
+                      b"Connection: close\r\n\r\n")
+    blob_c16q = b""
+    try:
+        while True:
+            chunk_c16q = sock_c16q.recv(65536)
+            if not chunk_c16q:
+                break
+            blob_c16q += chunk_c16q
+    except Exception:
+        pass
+    sock_c16q.close()
+    head_c16q, _sep_c16q, body_c16q = blob_c16q.partition(b"\r\n\r\n")
+    lines_c16q = head_c16q.decode("latin-1").split("\r\n")
+    fields_c16q = {}
+    for line_c16q in lines_c16q[1:]:
+        if ":" in line_c16q:
+            name_c16q, _, value_c16q = line_c16q.partition(":")
+            fields_c16q.setdefault(name_c16q.strip().lower(), value_c16q.strip())
+    status_c16q = int(lines_c16q[0].split()[1])
+    crange_c16q = fields_c16q.get("content-range")
+    enc_c16q = fields_c16q.get("content-encoding")
+    size_c16q = len(body_c16q)
     past_c16q = request(base, "GET", "/identity")
     try:
         beyond_c16q = urllib.request.Request(
