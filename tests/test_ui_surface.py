@@ -21882,6 +21882,26 @@ def main():
                                         "Content-Type"],
           "; ".join("%s=%s" % (k_c33a, v_c33a[:4]) for k_c33a, v_c33a in order_c33a.items()))
 
+
+    # Cycle 33, measured on kids and zen over fifteen paths, identical on both: every
+    # response under `/system` carries the plug-in framework's session cookie -- a
+    # constant -- except `/system/agents`, `/system/scanners/{N}` and `/system/proxy`,
+    # which PMS implements itself. Nothing else on the surface sends a cookie.
+    cookies_c33b = {label_c33b: request(base, "GET", path_c33b)[2].get("Set-Cookie")
+                    for label_c33b, path_c33b in
+                    (("system", "/system"), ("unknown", "/system/zzzz"),
+                     ("search", "/system/search"), ("agents", "/system/agents"),
+                     ("scanners", "/system/scanners/1"), ("sections", "/library/sections"),
+                     ("livetv", "/livetv"))}
+    constant_c33b = ("com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcK"
+                     "Y29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK")
+    check("the framework's /system paths carry its session cookie, and nothing else does",
+          all(cookies_c33b[key_c33b] == constant_c33b
+              for key_c33b in ("system", "unknown", "search"))
+          and not any(cookies_c33b[key_c33b]
+                      for key_c33b in ("agents", "scanners", "sections", "livetv")),
+          str({k_c33b: bool(v_c33b) for k_c33b, v_c33b in cookies_c33b.items()}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

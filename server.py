@@ -15394,6 +15394,36 @@ class Handler(BaseHTTPRequestHandler):
                 ("Access-Control-Expose-Headers", "Location, Date"),
                 ("Vary", "Origin, X-Plex-Token")]
 
+    # The plug-in framework's own session cookie, and it is a CONSTANT: byte for byte
+    # the same on kids (1.43.4) and zen (1.42.2), which decodes to the framework's
+    # serialised empty session (`cereal1 … dict … cookies … session`).
+    FRAMEWORK_COOKIE = ("com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcK"
+                        "Y29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK")
+
+    def _framework_cookie(self):
+        """Whether this response carries the framework's cookie.
+
+        Cycle 33, measured on kids and zen over fifteen paths, identical on both: EVERY
+        response under `/system` carries `Set-Cookie: com.plexapp.system=…` -- the 200s,
+        the empty-bodied 404s and the `/system/scanners/zzz` 500 alike -- except the
+        three leaves PMS implements itself rather than through the plug-in framework:
+        `/system/agents`, `/system/scanners/{N}` and `/system/proxy`. Nothing else on
+        the surface sends a cookie at all: `/livetv`, `/services`, `/media`, `/status`,
+        `/statistics`, `/security`, `/library` and an unknown single segment send none.
+        plexsim sent none anywhere, so a client that keeps a cookie jar had nothing to
+        keep -- which is invisible to the Plex clients and is exactly the kind of thing
+        a byte-for-byte diff of the two servers reads.
+        """
+        path = (self.path or "").split("?")[0].rstrip("/")
+        if path != "/system" and not path.startswith("/system/"):
+            return None
+        if path in ("/system/agents", "/system/proxy"):
+            return None
+        pieces = path.split("/")
+        if len(pieces) == 4 and pieces[2] == "scanners" and pieces[3].isdigit():
+            return None
+        return self.FRAMEWORK_COOKIE
+
     def _send(self, status, content_type, payload, extra_headers=()):
         # Cycle 16, measured on kids and zen: `Range` applies to EVERY
         # response body -- `/identity`, a grid, `/:/prefs`, artwork,
@@ -15420,6 +15450,10 @@ class Handler(BaseHTTPRequestHandler):
             payload = b"plexsim: requested range not satisfiable"
             extra_headers = [(name, value) for name, value in extra_headers
                              if name.lower() != "accept-ranges"]
+        cookie = self._framework_cookie()
+        if cookie is not None and not any(name.lower() == "set-cookie"
+                                          for name, _ in extra_headers):
+            extra_headers = list(extra_headers) + [("Set-Cookie", cookie)]
         self.send_response(status)
         names = {name.lower() for name, _ in extra_headers}
         # Measured across eight endpoints on both reference servers: a real PMS
