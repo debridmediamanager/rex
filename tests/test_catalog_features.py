@@ -63,6 +63,16 @@ def main():
     check("an episode-only normal hit leaves the global spelling gate open",
           train_titles.get("episode") == ["The Train Job"]
           and train_titles.get("movie") == ["Elephants Dream"])
+    # Make the later episode bucket score above the movie.  The recovered flat
+    # comparator still preserves bucket assembly instead of globally re-sorting it.
+    catalog.items[109]["titleSort"] = "train"
+    train_flat = sim.library_search({"query": "train", "limit": "100"})["MediaContainer"]
+    catalog.items[109].pop("titleSort", None)
+    train_rows = train_flat.get("SearchResult") or []
+    check("flat search preserves its measured movie-before-episode buckets",
+          [(row.get("Metadata") or {}).get("ratingKey") for row in train_rows[:2]]
+          == ["105", "109"]
+          and train_rows[0].get("score", 0) < train_rows[1].get("score", 0))
 
     # Cycle 38 recovered the final comparator from both PMS binaries.  The score is
     # compared at full precision and only formatted to five decimals afterwards.

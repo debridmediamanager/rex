@@ -11329,21 +11329,15 @@ class PlexSim:
         typed, tags = self.search_matches(text, limit)
         needle = text.strip().lower()
         results = []
-        for kind, _title in self.SEARCH_HUBS:
+
+        def append_metadata(kind):
             for row in typed.get(kind, []):
                 if not self.search_type_selects(tokens, kind, row):
                     continue
                 results.append({"score": float(self.search_score(row, needle)),
                                 "Metadata": self._search_result_row(row)})
-            if kind == "collection":
-                # Cycle 28, re-measured on plexscratch: a collection is found HERE too.
-                # See `collection_matches` -- cycle 15's note was the copy's empty
-                # collection list, not a rule.
-                for row in self.collection_matches(needle):
-                    if not self.search_type_selects(tokens, kind, row):
-                        continue
-                    score, shown = self._flat_search_tag(row)
-                    results.append({"score": score, "Directory": shown})
+
+        def append_tags(kind):
             for entry in tags.get(kind, []):
                 if not self.search_type_selects(tokens, kind, entry["row"]):
                     continue
@@ -11351,6 +11345,33 @@ class PlexSim:
                 # score. See `_flat_search_tag`.
                 score, shown = self._flat_search_tag(self._tag_result(entry, kind))
                 results.append({"score": score, "Directory": shown})
+
+        # Cycle 38 recovered the flat builder in both binaries.  Its attempted final
+        # score sort reads an empty generic-attribute map, so every comparison is 0
+        # versus 0 and this source sequence survives.  It is deliberately different
+        # from SEARCH_HUBS: video begins movie, show, episode.  Type 18 metadata precedes
+        # photo albums; collection TAG rows remain later, after genres.
+        for kind in ("movie", "show", "episode", "artist", "album", "track",
+                     "collection", "photoalbum"):
+            append_metadata(kind)
+        append_tags("autotag")
+        append_metadata("photo")
+        for kind in ("tag", "actor", "director", "genre"):
+            append_tags(kind)
+
+        # Cycle 28, re-measured on plexscratch: a collection is found HERE too.
+        # See `collection_matches` -- cycle 15's note was the copy's empty
+        # collection list, not a rule.
+        for row in self.collection_matches(needle):
+            if not self.search_type_selects(tokens, "collection", row):
+                continue
+            score, shown = self._flat_search_tag(row)
+            results.append({"score": score, "Directory": shown})
+
+        append_metadata("playlist")
+        for kind in ("shared", "place"):
+            append_tags(kind)
+            append_metadata(kind)
         results = results[:limit]
         return self.bare_container(size=len(results), SearchResult=results)
 
