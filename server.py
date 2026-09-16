@@ -2432,7 +2432,17 @@ class PlexSim:
                             progress=int(round(number * 99.0 / len(counted))),
                             Context={"librarySectionID": str(section_id)})
             self.notify_activity(activity, "updated")
+        if not counted:
+            # Cycle 35, measured on both copies with a library whose location holds no
+            # files: the 99 frame is pushed even when there is nothing to step through,
+            # and it carries the Context the stepping frames carry. Reading the 99 as
+            # "the last item's percentage" left an empty library's scan jumping from 0
+            # to a Context-less 100, which is the one frame the Libraries page keys its
+            # progress bar on.
+            activity.update(progress=99, Context={"librarySectionID": str(section_id)})
+            self.notify_activity(activity, "updated")
         activity["progress"] = 100
+        activity["Context"] = {"librarySectionID": str(section_id)}
         self.notify_activity(activity, "updated")
         # Measured on the copy, in this exact interleaving: a scan ends inside a NESTED
         # pair of `provider.subscriptions.process` activities. The outer one starts
@@ -14945,10 +14955,18 @@ class PlexSim:
             # `prefs[...]` -- `flattenSeasons` and `episodeSort` read back as sent -- where
             # plexsim dropped them.
             self.library_section(["library", "sections", str(section["key"]), "prefs"], prefs, "PUT")
+        # Cycle 35, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), which
+        # agree frame for frame: a create SCANS, and the scan's skeleton survives a
+        # location holding no files at all -- eleven frames, the `library.update.section`
+        # activity from `Scanning` through 99 and 100 to `ended`, the two LIBRARY_UPDATE
+        # statuses around it, and the nested `provider.subscriptions.process` pair. Cycle
+        # 15 read the scan as the per-item frames alone and concluded an empty library had
+        # nothing to push, so plexsim's create pushed only the queue frame: the client's
+        # own Add Library dialog draws its spinner and its "Library scan complete" toast
+        # off exactly these, and against plexsim a new library simply appeared.
+        self.notify_section_scan(section["key"], section)
         # Cycle 15, re-measured on the copy: a create ends in ONE
-        # `backgroundProcessingQueue` `queueRegenerated` frame (+63.1 s there). The
-        # 75-frame scan that precedes it is over REAL files; a library plexsim
-        # creates is empty by construction, so those frames have nothing to name.
+        # `backgroundProcessingQueue` `queueRegenerated` frame (+63.1 s there).
         self.notify_queue_regenerated()
         # Measured: the create answers a BARE container, with none of the library
         # container's identifier, media-tag pair or allowSync.

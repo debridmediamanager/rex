@@ -22298,6 +22298,51 @@ def main():
           not wrong_c35c and len(enabled_c35c) == len(want_c35c),
           "%d task(s), wrong %s" % (len(enabled_c35c), wrong_c35c))
 
+
+    # Cycle 35, captured on plexscratch (1.43.4) and plexscratch42 (1.42.2) -- frame for
+    # frame identical -- for a `POST /library/sections` whose location holds NO files: a
+    # create scans, and the scan's skeleton survives an empty library. plexsim pushed only
+    # the `backgroundProcessingQueue` frame, so nothing a client can render as "a library
+    # was just created" ever reached the socket.
+    def create_frames_c35d():
+        def trigger_c35d():
+            request(base, "POST", "/library/sections?name=C35%20Create&type=movie"
+                                  "&agent=tv.plex.agents.movie&scanner=Plex%20Movie"
+                                  "&language=en-US&location=%2Fplexsim")
+        _, events_c35d = eventsource(base, trigger_c35d, seconds=8)
+        shape_c35d = []
+        for name_c35d, raw_c35d in events_c35d:
+            try:
+                row_c35d = json.loads(raw_c35d) if isinstance(raw_c35d, str) else raw_c35d
+            except ValueError:
+                continue
+            if not isinstance(row_c35d, dict):
+                continue
+            if name_c35d == "activity":
+                note_c35d = row_c35d.get("ActivityNotification") or {}
+                inner_c35d = note_c35d.get("Activity") or {}
+                shape_c35d.append((note_c35d.get("event"), inner_c35d.get("type"),
+                                   inner_c35d.get("progress")))
+            elif name_c35d == "status":
+                shape_c35d.append(("status", (row_c35d.get("StatusNotification") or {})
+                                   .get("notificationName"), None))
+        return shape_c35d
+
+    want_c35d = [("started", "library.update.section", 0),
+                 ("status", "LIBRARY_UPDATE", None),
+                 ("updated", "library.update.section", 0),
+                 ("updated", "library.update.section", 99),
+                 ("updated", "library.update.section", 100),
+                 ("started", "provider.subscriptions.process", 0),
+                 ("ended", "library.update.section", 100),
+                 ("status", "LIBRARY_UPDATE", None),
+                 ("started", "provider.subscriptions.process", 0),
+                 ("ended", "provider.subscriptions.process", 100),
+                 ("ended", "provider.subscriptions.process", 100)]
+    got_c35d = create_frames_c35d()
+    check("a library create pushes the scan skeleton, with nothing to scan",
+          got_c35d[:len(want_c35d)] == want_c35d, str(got_c35d)[:400])
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
