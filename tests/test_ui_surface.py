@@ -21127,6 +21127,35 @@ def main():
           set(patch_c31h.values()) == {500} and frob_c31h == 500 and put_c31h == 200,
           "%s | FROB %s | PUT %s" % (patch_c31h, frob_c31h, put_c31h))
 
+
+    # Cycle 31, swept over OPTIONS, POST, PUT and DELETE on plexscratch42 (1.42.2) and
+    # plexscratch (1.43.4), which agree on all 44 answers: every one of these paths refuses
+    # every verb but GET and HEAD with a 404, and `/library/sections`,
+    # `/media/providers` and `/media/providers/metadata` answer their own 400 to POST.
+    #
+    # plexsim answered **200 with the whole GET body** to a bare OPTIONS on each -- 3,852
+    # bytes of `/media/providers`, 1,398 of `/statistics/bandwidth`, its section list, its
+    # profile catalogue -- and to POST and PUT on most of them. That is fix 4's trap from
+    # the outside: a companion or proxy client that probes with OPTIONS reads "this
+    # endpoint exists and answers". 86 of the 99 paths swept were already right, so this is
+    # a targeted gap in the route table rather than a general one.
+    gated_c31i = {}
+    for path_c31i in ("/statistics", "/statistics/bandwidth", "/statistics/media",
+                      "/status/sessions", "/clients/profiles", "/playlists/sorts",
+                      "/library/sections/prefs", "/library/sections", "/media/providers",
+                      "/media/providers/metadata"):
+        gated_c31i[path_c31i] = tuple(
+            request(base, verb_c31i, path_c31i, want_json=False)[0]
+            for verb_c31i in ("OPTIONS", "PUT", "DELETE", "POST"))
+    posting_c31i = ("/library/sections", "/media/providers", "/media/providers/metadata")
+    check("ten read paths refuse every verb but GET and HEAD",
+          all(status_c31i[:3] == (404, 404, 404) for status_c31i in gated_c31i.values())
+          and all(gated_c31i[path_c31i][3] == 400 for path_c31i in posting_c31i)
+          and all(gated_c31i[path_c31i][3] == 404 for path_c31i in gated_c31i
+                  if path_c31i not in posting_c31i)
+          and get(base, "/media/providers")[0] == 200,
+          str(gated_c31i))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

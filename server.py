@@ -3602,6 +3602,10 @@ class PlexSim:
             }
 
         if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
+            if method == "POST":
+                # Cycle 31: both references answer their own 400 to a POST here, as
+                # `/library/sections` and `/media/providers` do -- not the listing.
+                return ("error", 400, "plexsim: bad request")
             # Cycle 27, recorded through a real client: the Settings -> Metadata Agents
             # pane reads these two immediately before `/system/agents?mediaType=`, and
             # both are populated 200s on kids (7 and 6 rows) and zen (4 and 4) where
@@ -15482,7 +15486,27 @@ class Handler(BaseHTTPRequestHandler):
         "/library/matches", "/playlists/all", "/hubs/promoted",
         "/hubs/continueWatching", "/hubs/search", "/status/sessions/history/all",
         "/:/plugins", "/channels/all", "/services/browse", "/updater/status",
+        # Cycle 31, swept over OPTIONS, POST, PUT and DELETE on plexscratch42 (1.42.2) and
+        # plexscratch (1.43.4), which agree on all 44 answers: each of these refuses every
+        # verb but GET and HEAD, with a 404. plexsim answered **200 with the whole GET
+        # body** -- 3,852 bytes of `/media/providers` to a bare OPTIONS, 1,398 of
+        # `/statistics/bandwidth`, its section list, its profile catalogue -- which is fix
+        # 4's trap from the outside: a companion or proxy client that probes with OPTIONS
+        # reads "this endpoint exists and answers".
+        #
+        # `/library/sections`, `/media/providers` and `/media/providers/metadata` keep
+        # their own POST 400 (both references answer 400 there, not 404), which is why
+        # they are listed below rather than here.
+        "/statistics", "/statistics/bandwidth", "/statistics/media",
+        "/status/sessions", "/clients/profiles", "/playlists/sorts",
+        "/library/sections/prefs",
     )
+    # Cycle 31: the three paths whose POST is a real refusal of its own (400 on both
+    # versions) while every other verb is a 404. The recorded rule "POST /library/sections
+    # and POST /media/providers are 400 and their PUT/DELETE are 404" is exactly this, and
+    # the verbs nobody had swept -- a bare OPTIONS among them -- fall on the 404 side.
+    READ_ONLY_EXCEPT_POST = ("/library/sections", "/media/providers",
+                             "/media/providers/metadata")
     # Cycle 18: `/system`, `/system/agents` and `/system/scanners/{N}` were here, and
     # the whole subtree has an envelope of its own instead -- 405 on PATCH, an empty 200
     # on OPTIONS and an empty-bodied 404 on the rest, measured on plexscratch.
@@ -15619,6 +15643,9 @@ class Handler(BaseHTTPRequestHandler):
             return False
         route = path.split("?")[0].rstrip("/") or "/"
         if route in self.READ_ONLY_ROUTES:
+            return True
+        if route in self.READ_ONLY_EXCEPT_POST and method != "POST":
+            # Cycle 31: everything but GET, HEAD and that path's own POST refusal.
             return True
         if any(route.startswith(prefix) for prefix in self.READ_ONLY_PREFIXES):
             return True
