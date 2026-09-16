@@ -20976,6 +20976,22 @@ def main():
               for field_c31c in ("thumb", "art")),
           "thumb=%r art=%r" % (row_c31c.get("thumb"), row_c31c.get("art")))
 
+
+    # Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) over five
+    # values -- `5`, `0`, `abc`, an empty one and a real epoch: `lastRatedAt.value=` on the
+    # SECTION save path is a **500 on both versions, every time**, where the ITEM path takes
+    # it with a 200. plexsim answered its unknown-field 400 there. It is the ninth member of
+    # the set cycle 20 measured one column at a time.
+    section_c31d = {value_c31d: request(
+        base, "PUT", "/library/sections/%s/all?type=1&id=%s&lastRatedAt.value=%s"
+        % (movie_section, movie, value_c31d))[0]
+        for value_c31d in ("5", "0", "abc", "", "1700000000")}
+    item_c31d = request(base, "PUT",
+                        "/library/metadata/%s?lastRatedAt.value=5" % movie)[0]
+    check("lastRatedAt is a 500 on the section path and a 200 on the item path",
+          set(section_c31d.values()) == {500} and item_c31d == 200,
+          "section %s | item %s" % (section_c31d, item_c31d))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
