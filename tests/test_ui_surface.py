@@ -2382,9 +2382,33 @@ def main():
           ",".join(sorted(subtitles)))
     # A MOVIE's own setting. `episodeSort` belongs to a show, and writing a setting
     # the item's type does not have is a 400 (measured).
+    #
+    # Cycle 36 re-measured it with a matched control on plexscratch and on
+    # plexscratch42's `local://` movies, and this check encoded half the rule: a movie's
+    # `Preferences` block is TWO settings when it is matched and NONE when it is not, and
+    # the writer follows the BLOCK. `useOriginalTitle=1` is a 200 on a matched movie and a
+    # **400** on an unmatched one; `audioLanguage` and `subtitleMode` are a show's and are
+    # 400s on both. The check ran three hundred lines after the unmatch above and asserted
+    # the 200 the row would have given before it -- plexsim answered 200 either way, which
+    # is what made it pass.
+    matched_c36s = [row_c36s.get("ratingKey") for row_c36s in
+                    (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                     .get("Metadata") or [])
+                    if not str((get(base, "/library/metadata/%s" % row_c36s.get("ratingKey"))[1]
+                                .get("Metadata") or [{}])[0].get("guid") or "")
+                    .startswith(("local://", "none://", "tv.plex.agents.none://"))]
     status, body, _ = request(base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1" % movie)
-    check("an item preference write is accepted", is_empty_200(status, body),
-          "HTTP %s" % status)
+    unmatched_c36s = (status, body)
+    accepted_c36s = request(
+        base, "PUT", "/library/metadata/%s/prefs?useOriginalTitle=1"
+                     % matched_c36s[0])[:2] if matched_c36s else None
+    other_c36s = request(base, "PUT", "/library/metadata/%s/prefs?subtitleMode=1" % movie)[0]
+    check("an item preference write follows the row's own Preferences block",
+          unmatched_c36s[0] == 400 and other_c36s == 400
+          and (accepted_c36s is None or is_empty_200(*accepted_c36s)),
+          "unmatched %s / show setting %s / matched %s"
+          % (unmatched_c36s[0], other_c36s,
+             accepted_c36s[0] if accepted_c36s else "no matched movie left"))
     status, unwatched, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
     check("the unwatched listing answers", status == 200,
           "%d row(s)" % len(unwatched.get("Metadata") or []))
