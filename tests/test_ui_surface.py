@@ -21156,6 +21156,53 @@ def main():
           and get(base, "/media/providers")[0] == 200,
           str(gated_c31i))
 
+
+    # Cycle 31, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
+    # `PUT /library/collections/{id}/prefs` really writes. `?collectionSort=1` and
+    # `?collectionMode=2` are each a 200 with an empty body, `includePreferences=1` reads
+    # the new values back, GET/POST/DELETE there are 404s and an unknown setting is a 400.
+    # Cycle 15 measured the GET alone, recorded the 404 and stopped, so plexsim advertised
+    # both settings in the collection's `includePreferences` block and 404'd the save
+    # behind them -- a menu entry whose write does not exist.
+    made_c31j = (container(base, "POST",
+                           "/library/collections?type=1&title=C31PREFS&smart=0"
+                           "&sectionId=%s&uri=%s"
+                           % (movie_section,
+                              quote("server://%s/com.plexapp.plugins.library"
+                                    "/library/metadata/%s" % (machine, movie))))[1]
+                 .get("Metadata") or [{}])[0]
+    coll_c31j = made_c31j.get("ratingKey")
+    if not coll_c31j:
+        skip("the collection prefs leaf takes PUT and writes", "no collection created")
+    else:
+        def prefs_c31j():
+            row_c31j = (get(base, "/library/metadata/%s?includePreferences=1" % coll_c31j)[1]
+                        .get("Metadata") or [{}])[0]
+            return {s_c31j.get("id"): str(s_c31j.get("value"))
+                    for s_c31j in ((row_c31j.get("Preferences") or {}).get("Setting") or [])}
+
+        before_c31j = prefs_c31j()
+        sort_c31j = request(base, "PUT",
+                            "/library/collections/%s/prefs?collectionSort=1" % coll_c31j)
+        mode_c31j = request(base, "PUT",
+                            "/library/collections/%s/prefs?collectionMode=2" % coll_c31j)
+        after_c31j = prefs_c31j()
+        verbs_c31j = {verb_c31j: request(base, verb_c31j,
+                                        "/library/collections/%s/prefs" % coll_c31j)[0]
+                      for verb_c31j in ("GET", "POST", "DELETE")}
+        unknown_c31j = request(base, "PUT",
+                               "/library/collections/%s/prefs?zzz=1" % coll_c31j)[0]
+        request(base, "DELETE", "/library/collections/%s" % coll_c31j)
+        check("the collection prefs leaf takes PUT and writes",
+              is_empty_200(sort_c31j[0], sort_c31j[1])
+              and is_empty_200(mode_c31j[0], mode_c31j[1])
+              and after_c31j.get("collectionSort") == "1"
+              and after_c31j.get("collectionMode") == "2"
+              and set(verbs_c31j.values()) == {404} and unknown_c31j == 400,
+              "PUT %s/%s | %s -> %s | other verbs %s | unknown %s"
+              % (sort_c31j[0], mode_c31j[0], before_c31j, after_c31j, verbs_c31j,
+                 unknown_c31j))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
