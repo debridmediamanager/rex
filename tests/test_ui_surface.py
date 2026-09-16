@@ -22918,6 +22918,11 @@ def main():
         skip("an unmatched show refuses the agent prefs and 500s showOrdering",
              "no show library")
     else:
+        # The MATCHED control has to be made: by this point in the suite the show has
+        # been unmatched by the checks above, and the whole point of this one is the
+        # difference between the two states.
+        request(base, "PUT", "/library/metadata/%s/match?guid=%s&name=%s"
+                % (show, quote("plex://show/5d9c086c7d06d9001ffd27aa"), quote("Rematched")))
         before_c36o = {name_c36o: request(
             base, "PUT", "/library/metadata/%s/prefs?%s" % (show, name_c36o))[0]
             for name_c36o in ("useOriginalTitle=1", "languageOverride=en",
