@@ -9736,6 +9736,21 @@ class PlexSim:
         row = self.catalog.items.get(int(rating_key)) if str(rating_key).isdigit() \
             else None
         if row is None:
+            if leaf == "related":
+                # Cycle 36, measured on kids and zen, which agree on every cell: the
+                # `related` leaf never resolves the row at all. `999999`, `abc`, `-1`
+                # and `0` each answer an empty hub container -- `{size: 0, allowSync:
+                # true, identifier}` and NOTHING else, the librarySection triple being
+                # the only thing a real row adds -- where `/library/metadata/{id}/
+                # related` on the same unknown id is a 404 and `/hubs/metadata/{id}/
+                # postplay` is a 404 too. So the two spellings of "related" differ on
+                # more than the path, and the difference is which one looks the row up.
+                #
+                # plexsim 404'd it. The preplay page builds this URL itself from a row
+                # it is already holding, so the two answers look alike to a client that
+                # has one -- but python-plexapi and any caller walking ids sees an
+                # endpoint that does not exist rather than a shelf with nothing on it.
+                return self.hub_container()
             return ("error", 404, "plexsim: no such item")
         hubs = self.related_hubs(row, query)
         if leaf == "postplay":
