@@ -22892,6 +22892,39 @@ def main():
               % (before_c36o, guid_c36o, after_c36o, stored_c36o))
 
 
+    # Cycle 36, re-measured on plexscratch and plexscratch42 with a listener open: a
+    # `?path=` naming the section's OWN Location scans everything (the full skeleton with
+    # its `progress` rows) and so does a CHILD of it, where cycle 19 recorded that a child
+    # scans nothing -- that measurement was taken on a movie library, whose children are
+    # files. plexsim scanned nothing for EITHER, because the catalog's section dict
+    # carries no `Location` and the comparison was against an empty list.
+    location_c36p = ((get(base, "/library/sections")[1].get("Directory") or [{}])[0]
+                     .get("Location") or [{}])[0].get("path")
+    if not location_c36p:
+        skip("a scoped scan scans the section's own folder and any child of it",
+             "the section carries no Location")
+    else:
+        def progress_c36p(path_c36p):
+            query_c36p = ("/library/sections/%s/refresh" % movie_section
+                          + ("?path=%s" % quote(path_c36p) if path_c36p else ""))
+            _status_c36p, frames_c36p = eventsource(
+                base, lambda q_c36p=query_c36p: request(base, "GET", q_c36p), 8)
+            return sum(1 for name_c36p, _d_c36p in frames_c36p if name_c36p == "progress")
+
+        scanned_c36p = {
+            "no path": progress_c36p(""),
+            "own location": progress_c36p(location_c36p),
+            "child folder": progress_c36p(location_c36p.rstrip("/") + "/Some Folder"),
+            "nonsense": progress_c36p("/nope"),
+        }
+        check("a scoped scan scans the section's own folder and any child of it",
+              scanned_c36p["no path"] > 0
+              and scanned_c36p["own location"] == scanned_c36p["no path"]
+              and scanned_c36p["child folder"] == scanned_c36p["no path"]
+              and scanned_c36p["nonsense"] == 0,
+              str(scanned_c36p))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -5888,10 +5888,29 @@ class PlexSim:
             # NOTHING -- 0 progress rows, 9 frames, the activity running 0 -> 100 with
             # an empty subtitle. plexsim ignored the parameter, so "Scan Library Files"
             # on one folder rescanned and re-framed the whole library.
+            # Cycle 36, re-measured on plexscratch (1.43.4) and plexscratch42 (1.42.2)
+            # with a listener open, and it CORRECTS cycle 19 twice.
+            #
+            # The section's OWN Location scans everything -- 3 `progress` rows and the
+            # full 16-frame skeleton, byte for byte the no-path scan -- and plexsim
+            # scanned NOTHING for it, because the catalog's section dict carries no
+            # `Location` at all: the list is synthesised when the section is published,
+            # so the comparison here was always against an empty list and every `?path=`
+            # took the no-folder branch. A client's "Scan" on the library's own folder
+            # therefore did nothing on plexsim and rescanned everything on a real PMS.
+            #
+            # And a CHILD of it SCANS too (17 frames, the same 3 progress rows), where
+            # cycle 19 recorded that it scans nothing. That measurement was taken on a
+            # MOVIE library, whose children are files rather than folders; here the child
+            # is a show's own directory, which the library really holds. A path that is
+            # neither -- a parent, or one the library does not hold at all -- still scans
+            # nothing, which is the half of cycle 19 that survives.
             paths = [str(location.get("path") or "")
-                     for location in section.get("Location") or []]
+                     for location in section.get("Location") or []] \
+                or ["/plexsim/%s" % section_id]
             wanted = query.get("path")
-            if wanted and wanted not in paths:
+            if wanted and not any(wanted == path or wanted.startswith(path.rstrip("/") + "/")
+                                  for path in paths):
                 self.notify_empty_section_scan(section_id, section)
                 logger.info("SECTION refresh %s path=%r -> no folder", section_id, wanted)
                 return ("empty", 200)
