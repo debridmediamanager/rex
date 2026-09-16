@@ -15489,7 +15489,7 @@ class Handler(BaseHTTPRequestHandler):
             identifier = (self.headers.get("X-Plex-Client-Identifier")
                           or urllib.parse.parse_qs(
                               urllib.parse.urlparse(self.path).query
-                          ).get("X-Plex-Client-Identifier", [""])[0])
+                          ).get("X-Plex-Client-Identifier", [""])[-1])
             address = self.client_address[0] if self.client_address else None
             params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
 
@@ -16087,8 +16087,18 @@ class Handler(BaseHTTPRequestHandler):
             # parameters and 403 with a token that is not good enough, which is how
             # a client tells "you did not ask properly" from "you may not have one".
             return True
+        # Cycle 36, measured on kids and zen with a bad token and a good one in the
+        # same query: a repeated `X-Plex-Token=` takes the LAST occurrence -- bad then
+        # good is a 200 and good then bad a 401, on both references -- which is the rule
+        # cycle 35 measured for every other key on the surface and the rule plexsim's own
+        # `query` dict already follows, being built by a dict comprehension over the
+        # pairs. Three readers had been written with `parse_qs(...)[0]` instead and took
+        # the FIRST: this gate, the client identifier the session bookkeeping keys on,
+        # and the notification channels' `filters=` whitelist. A token appended to a URL
+        # that already carried one -- what a client concatenating a base URL produces --
+        # was therefore refused by plexsim and accepted by a real PMS.
         given = self.headers.get("X-Plex-Token") or urllib.parse.parse_qs(
-            route.query).get("X-Plex-Token", [""])[0]
+            route.query).get("X-Plex-Token", [""])[-1]
         return given == wanted
 
     # Cycle 15, swept by METHOD across 33 paths on the disposable copy -- the sweep
@@ -16851,7 +16861,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(("\r\n".join(upgrade) + "\r\n\r\n").encode())
         self.wfile.flush()
         filters = [f for f in (urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
+            urllib.parse.urlparse(self.path).query).get("filters", [""])[-1]
         ).split(",") if f]
         # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
         # everything INCLUDING the log stream, which a socket with no `filters` at all
@@ -16991,7 +17001,7 @@ class Handler(BaseHTTPRequestHandler):
         sim = self.server.sim
         lock = threading.Lock()
         filters = [f for f in (urllib.parse.parse_qs(
-            urllib.parse.urlparse(self.path).query).get("filters", [""])[0]
+            urllib.parse.urlparse(self.path).query).get("filters", [""])[-1]
         ).split(",") if f]
         # Measured: `filters=` with an EMPTY value is not "no filter" -- it delivers
         # everything INCLUDING the log stream, which a socket with no `filters` at all

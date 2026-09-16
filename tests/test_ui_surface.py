@@ -22419,6 +22419,24 @@ def main():
           not wrong_c36a, str(wrong_c36a))
 
 
+    # Cycle 36, measured on kids and zen with a bad token and a good one in one query: a
+    # repeated query parameter takes the LAST occurrence -- bad then good is a 200 and
+    # good then bad a 401, on both references. That is the rule cycle 35 measured for
+    # every other key on the surface, and the rule plexsim's own `query` dict already
+    # follows. Three readers took the FIRST instead: the token gate, the client
+    # identifier the session bookkeeping keys on, and the notification channels'
+    # `filters=` whitelist. The gate's half needs a server started with `--token` and so
+    # cannot be driven from a single base; the channel's half is the same one-line rule
+    # and IS drivable, so it is what this check proves -- with `filters=` repeated, the
+    # first value naming no event type at all.
+    _status_c36b, events_c36b = eventsource(
+        base, lambda: request(base, "PUT", "/library/metadata/%s?title.value=Repeated%%20Key"
+                              % movie), 8, "?filters=zzz&filters=timeline")
+    check("a repeated filters= on a notification channel takes the LAST value",
+          any(name_c36b == "timeline" for name_c36b, _data_c36b in events_c36b),
+          str([name_c36b for name_c36b, _d_c36b in events_c36b][:6]))
+
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
