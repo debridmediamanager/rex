@@ -2392,6 +2392,15 @@ precisely how the Seasons bug survived a fix attempt.
   frozen listeners still on 32587/32588 despite a later clean-close record. List every
   `server.py --port` process, resolve cwd and command line, and kill only proved cycle-owned
   processes; checking the current cycle's expected ports cannot catch an older stray listener.
+- **A live catalog build needs both playable bytes and identity.** RD torrents whose display name
+  ends in a video extension can still unrestrict to a RAR; let `build_catalog.py` reject those.
+  Without a valid TMDB key, an SxxEyy filename remains a movie row because no measured external
+  identity exists from which to mint its show/season/episode guids. A byte test alone can therefore
+  pass while navigation correctly reports no shows.
+- **Container magic belongs to the selected Part, not to the test fixture's history.** The first
+  live MP4 made `conformance.py` select the right Plex Web direct-play row and then fail its old
+  unconditional Matroska assertion. MP4 carries `ftyp` at offset four; Matroska/WebM carries the
+  EBML marker at zero. Keep the conformance target and magic assertion container-aware.
 
 ## Conventions
 

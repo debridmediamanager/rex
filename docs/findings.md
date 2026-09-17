@@ -8885,6 +8885,25 @@ current cycle's expected ports.
 With the complete current client, historical universe and advertised-control graph all finitely
 enumerated and clean, the protocol-conformance loop stops at Cycle 43.
 
+#### Post-cycle live-media refresh
+
+The user authorized replacing the gitignored private catalog's dead Real-Debrid links. The builder
+rejected every candidate whose unrestricted payload was actually a RAR, probed the remaining video
+streams, and used a valid TMDB key to retain a real movie/show/season/episode hierarchy. The final
+private catalog has seven metadata rows and five playable parts. It includes Blender's openly
+distributed Big Buck Bunny MP4 as an MP4/H.264/AAC row that the Plex Web gate direct-plays.
+
+With those bytes reachable, the formerly bounded results close: python-plexapi is **38/38** and the
+full queue → decision → both local-proxy harness transport legs → real-frame-decode suite is **5/5**.
+Navigation is **24/24** with one explicit multiplicity skip. The checked-in UI fixture remains
+redacted and is not presented as a byte-serving corpus.
+
+The MP4 also exposed a test assumption hidden by the dead links: `tests/conformance.py` selected an
+H.264 item and then always asserted Matroska magic. On the measured MP4 it failed 37/38 with the
+correct `ftyp` bytes at offset four. The assertion now keys on the selected Part's container and the
+selection explicitly prefers MP4/H.264/AAC; the same catalog passes 38/38. This is a harness repair,
+not a server behavior change. No live `/d/` URL or credential is tracked.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

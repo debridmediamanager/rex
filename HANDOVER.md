@@ -62,7 +62,7 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 43 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 43 plus the post-cycle live-media refresh merged, equal to `origin/main`, clean tree |
 | Cycles complete | **43 — stopping gate met on every finite axis.** Cycle 43 reopened the clean Cycle-42 head and independently replayed the 332-atom historical universe and the complete 4.147.1 advertised-control graph; both reports again end exactly `no findings`. It also closed the only remaining current-client boundary by obtaining the complete public Plex Web 4.160.0 app build: 205/205 JavaScript assets, 16/16 CSS assets and 207/207 SRI checks. The 177 JavaScript assets absent from Cycle 40's app-side subset contain zero new PMS call sites, request-builder imports, controls or actions. The historical axis is 332/332 with all 24 Cycle-41 cross-fix audits passing and zero actionable/unbounded unresolved atoms. The advertised graph remains 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs, with 39 exact witnesses, six explicit bounds and zero unresolved. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every verified Cycle-43 process is stopped. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
@@ -77,6 +77,7 @@ Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| post-43 media refresh | conformance 38/38; full byte/decode 5/5; navigation 24/24 | 18,652 | **1 test-harness repair**: the newly reachable MP4 proved `conformance.py` hard-coded Matroska magic after selecting a non-Matroska Part; no server mismatch |
 | 43 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Three independent clean axes: the complete current public Plex Web 4.160.0 app build (205 JS, 16 CSS, 207/207 SRI; 177 newly obtained JS assets with zero new PMS call sites), 332/332 historical atoms with 24/24 cross-fix audits, and the 49/1,221/47/339/45/45 advertised-control graph with 39 exact witnesses and six explicit bounds; every report ends exactly `no findings` |
 | 42 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Clean replay: 332/332 historical atoms, 24/24 previous fixes, 49/1,221/47/339/45/45 advertised-control graph, both reports exactly `no findings`; the first stopping cycle, reopened at the user's request |
 | 41 | 1582 (+2,106 cells in `test_decision`; `test_mediainfo` 34; `test_catalog_features` 35; plus the focused session suite) | 18,652 | **24** in **24 fix commits** from a finite 332-atom historical census; 49 advertisement-source families, 1,221 normalized advertisements, 47 exact predicates, 339 controls and 45 action/readback pairs independently closed with **0** advertisement findings; 51 historical atoms remain explicitly bounded by capability, state or instrument and **0** are unbounded/actionable |
@@ -187,6 +188,22 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Post-Cycle-43 live-media refresh, run 2026-09-17 against the private gitignored `catalog.json`:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_navigation.py` | **24/24** | one explicit multiplicity skip; the refreshed catalog has a measured movie/show/season/episode hierarchy |
+| `tests/conformance.py` (python-plexapi) | **38/38** | prefix bytes, true size, media type and mid-file seek all pass over a fresh account-owned RD link |
+| `tests/test_all.py` with decode enabled | **5/5 served** | every playable part passed queue, decision, both harness transport legs against the fresh local proxy, and real frame decode; Big Buck Bunny is MP4/H.264/AAC and passes the Plex Web direct-play gate |
+
+The private catalog now holds seven metadata rows and five playable parts backed by freshly sourced
+account-owned links. A valid TMDB key was used while building it, so the two Mentalist leaves form
+a show and season rather than flattening into movies. The checked-in UI fixture intentionally keeps
+redacted placeholder links; it is still for protocol/write coverage, not live bytes. The first
+working MP4 exposed one harness assumption: `conformance.py` selected the browser-direct-play row
+and then hard-coded Matroska magic. Its assertion is now container-specific and the target selection
+explicitly prefers MP4/H.264/AAC before falling back to another H.264 row.
 
 Suite results at the head of cycle 42, run 2026-09-17 against frozen merged head `f8cd6c2`:
 
@@ -1351,7 +1368,7 @@ Run against a live server. Neither needs network beyond RD and TMDB.
 python3 tests/test_navigation.py --base http://127.0.0.1:32543 --catalog catalog.json
 python3 tests/test_ui_surface.py --base http://127.0.0.1:32541          # restart the server after
 uv run --quiet --no-project --with plexapi python3 tests/conformance.py --base http://127.0.0.1:32543
-python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 --public http://127.0.0.1:32543 --skip-decode
+python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 --public http://127.0.0.1:32543
 python3 tests/test_mediainfo.py        # no server
 python3 tests/test_decision.py         # no server
 ```
@@ -3492,6 +3509,21 @@ Cycle-41 frozen listeners still on 32587/32588 (pids 24850/24852) and killed onl
 scratch-tree processes before allocating Cycle-43 ports. Every Cycle-43 disposable/frozen listener
 was then stopped and rechecked. With the current client, historical behavior and advertised-control
 graph all finitely enumerated and clean, the protocol-conformance loop stops at Cycle 43.
+
+#### Post-cycle live-media refresh
+
+At the user's request, the dead private catalog was replaced with freshly sourced account-owned RD
+links. Archive-backed candidates were rejected by the existing probe rather than admitted as video.
+The final gitignored catalog contains five probed video parts in seven metadata rows, including a TMDB-identified Mentalist
+show/season hierarchy. Blender's openly distributed Big Buck Bunny MP4 was added to the RD account
+as the browser-native MP4/H.264/AAC control. The refreshed catalog passes navigation 24/24,
+python-plexapi **38/38**, and the full queue/decision/prefix/magic/seek/decode matrix **5/5**.
+
+That MP4 found one test-only defect: `tests/conformance.py` chose an H.264 item but asserted
+Matroska magic unconditionally. The old check failed 37/38 on the measured MP4 bytes; the
+container-aware check passes 38/38 and now deliberately prefers the Plex Web direct-play shape.
+No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
+credentials enter the repository.
 
 ### Next: cycle 36 (superseded, run)
 
