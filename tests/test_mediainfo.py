@@ -615,5 +615,32 @@ def measured_smalls(mediainfo):
     return rows
 
 
+@check("cycle 41: a visually impaired subtitle disposition is projected only when true",
+       once=True)
+def visual_impaired_subtitle(mediainfo):
+    """Cycle 41, measured on zen's stored stream 93535 and metadata item 13374.
+
+    The PGS subtitle's persisted `ma:visualImpaired:\"1\"` becomes
+    `visualImpaired: true` on the Stream row. As with the other dispositions, a
+    false or absent ffprobe flag is omitted rather than serialized as false.
+    """
+    base = {
+        "codec_name": "hdmv_pgs_subtitle",
+        "index": 0,
+        "tags": {"language": "eng", "title": "SDH"},
+    }
+    positive = dict(base, disposition={"visual_impaired": 1})
+    negative = dict(base, disposition={"visual_impaired": 0})
+    missing = dict(base)
+    return [
+        ("visual impaired true", True,
+         mediainfo._subtitle_stream(positive, 1).get("visualImpaired")),
+        ("visual impaired false omitted", False,
+         "visualImpaired" in mediainfo._subtitle_stream(negative, 1)),
+        ("visual impaired absent omitted", False,
+         "visualImpaired" in mediainfo._subtitle_stream(missing, 1)),
+    ]
+
+
 if __name__ == "__main__":
     sys.exit(main())
