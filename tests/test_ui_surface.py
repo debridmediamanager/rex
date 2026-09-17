@@ -24429,6 +24429,75 @@ def main():
           bool(codes_c20q) and all(got_c20q == want_c20q
                                    for got_c20q, want_c20q in codes_c20q.values()),
           "%s" % codes_c20q)
+
+    # Cycle 40, re-measured on kids 1.43.4 and zen 1.42.2 over GET/HEAD,
+    # JSON/XML Accept and identity/gzip: this legacy Framework action is a fixed
+    # 500 application/xml traceback whatever representation the caller asks for.
+    # Its GET honours gzip; HEAD carries the uncompressed 464-byte length and no
+    # encoding. plexsim advertised the absent action as an empty successful API
+    # container, so a service-url resolver read failure as supported-but-empty.
+    lookup_error_c40a = (
+        b"<?xml version='1.0' encoding='utf-8'?>\n"
+        b'<Response code="2000" status="TypeError: url_lookup() takes at least 2 arguments (1 given)">\n'
+        b"  <Traceback>Traceback (most recent call last):\n"
+        b'  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
+        b'Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 843, '
+        b'in handle_request\n'
+        b"    result = f(**d)\n"
+        b"TypeError: url_lookup() takes at least 2 arguments (1 given)\n"
+        b"</Traceback>\n"
+        b"</Response>\n"
+    )
+
+    def lookup_c40a(method_c40a, accept_c40a, encoding_c40a):
+        request_c40a = urllib.request.Request(
+            base.rstrip("/") + "/system/services/url/lookup",
+            method=method_c40a,
+            headers={"User-Agent": UA, "Accept": accept_c40a,
+                     "Accept-Encoding": encoding_c40a})
+        try:
+            answer_c40a = urllib.request.urlopen(request_c40a, timeout=30)
+        except urllib.error.HTTPError as error_c40a:
+            answer_c40a = error_c40a
+        payload_c40a = answer_c40a.read()
+        return answer_c40a.status, payload_c40a, answer_c40a.headers
+
+    plain_c40a = lookup_c40a("GET", "application/json", "identity")
+    zipped_c40a = lookup_c40a("GET", "application/xml", "gzip")
+    head_c40a = lookup_c40a("HEAD", "application/json", "gzip")
+    import gzip as gzip_c40a
+    plain_names_c40a = [name_c40a for name_c40a, _value_c40a in plain_c40a[2].items()]
+    zipped_names_c40a = [name_c40a for name_c40a, _value_c40a in zipped_c40a[2].items()]
+    head_names_c40a = [name_c40a for name_c40a, _value_c40a in head_c40a[2].items()]
+    check("the legacy service URL lookup returns its measured Framework failure",
+          len(lookup_error_c40a) == 464
+          and plain_c40a[0] == zipped_c40a[0] == head_c40a[0] == 500
+          and plain_c40a[1] == gzip_c40a.decompress(zipped_c40a[1]) == lookup_error_c40a
+          and head_c40a[1] == b""
+          and all(answer_c40a[2].get("Content-Type") == "application/xml"
+                  for answer_c40a in (plain_c40a, zipped_c40a, head_c40a))
+          and plain_c40a[2].get("Content-Length") == "464"
+          and zipped_c40a[2].get("Content-Encoding") == "gzip"
+          and zipped_c40a[2].get("X-Plex-Content-Original-Length") == "464"
+          and zipped_c40a[2].get("X-Plex-Content-Compressed-Length")
+              == str(len(zipped_c40a[1]))
+          and head_c40a[2].get("Content-Length") == "464"
+          and head_c40a[2].get("Content-Encoding") is None
+          and all(answer_c40a[2].get("Connection", "").lower() == "close"
+                  for answer_c40a in (plain_c40a, zipped_c40a, head_c40a))
+          and plain_names_c40a == head_names_c40a
+              == ["X-Plex-Protocol", "Content-Length", "Content-Type", "Set-Cookie",
+                  "Connection", "Cache-Control", "Date"]
+          and zipped_names_c40a
+              == ["X-Plex-Protocol", "Content-Type", "Set-Cookie", "Connection",
+                  "Content-Encoding", "X-Plex-Content-Original-Length",
+                  "X-Plex-Content-Compressed-Length", "Content-Length", "Cache-Control",
+                  "Date"],
+          "plain %s/%s gzip %s/%s head %s/%s"
+          % (plain_c40a[0], plain_c40a[2].get("Content-Length"),
+             zipped_c40a[0], zipped_c40a[2].get("Content-Length"),
+             head_c40a[0], head_c40a[2].get("Content-Length")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
