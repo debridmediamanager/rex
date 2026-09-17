@@ -2473,6 +2473,75 @@ precisely how the Seasons bug survived a fix attempt.
   Real-Debrid stub behind `RD_API`) and drives the real handler, so the byte path is testable with
   no credential at all. Use it rather than waiting for a live `/d/` link.
 
+
+- **`/library/sections/{id}/{name}/top` is a real leaf** -- PMS's own route table spells it
+  `/:tagType/top`, so ANY single word matches it -- and it answers the section's TAG TABLE for
+  the type the name resolves to, **ascending by tag id** rather than by usage. The `key` carries
+  the REQUESTED name (`?studio=28`) and the `filter` the tag's OWN type (`director=28`). Eleven
+  names resolve, in six pairs of a tag name and a metadata COLUMN name sharing one number:
+  `genre`/`title` 1, `director`/`studio` 4, `writer`/`rating` 5, `actor`/`tagline` 6,
+  `producer`/`summary` 7, `country` 8. Every other name the server knows as a filter field or an
+  axis is an EMPTY 200 and everything else a 404 -- including the eleven edit-path-400 names,
+  the section's own leaves, `thumb`/`art`/`theme` and `platform`. `resolution` answers the whole
+  library like any media-axis bucket. It is NOT the axis: kids' actor axis is the
+  first-three-roles union and `/actor/top` is every Role tag.
+- **`includeAlternates=1` inlines the AGENT's remote artwork on a FULL row and on nothing else** --
+  `Thumb`, `Art`, `Theme` in that order, each `{key, source}` with a `previewKey` where the
+  provider gives one. A light row never carries it, so the `_light` marker is the whole gate, and
+  a DECISION ignores the option exactly as it ignores `excludeElements=`. `Thumb`/`Art` sit
+  between the tags and `Guid`, `Theme` directly after `Rating`. **It is not 1.43.4-only**: the
+  hunt measured 1.42.2 on plexscratch42, whose unmatched rows hold no agent artwork at all --
+  "use the copy for grammar, never for a count", from the other side.
+- **`Accept-Language` ranks the WHOLE list and `X-Plex-Accept-Language` is a third input.** The
+  precedence is `X-Plex-Language` > `X-Plex-Accept-Language` > `Accept-Language`, header or
+  query. Weights rank the list, the default is 1.0, `q=0` disqualifies that member, an unknown
+  tag is SKIPPED rather than ending the search, `*` is ignored, an empty member is dropped, a tie
+  goes to the first listed -- and **any malformed member disqualifies the entire header**. That
+  is the OPPOSITE of the `Accept:` parser, where a bad `q` weighs 0 and the range still
+  qualifies: two different parsers on the same surface.
+- **`/library/metadata/{id}/theme/{v}/metadata` is a GET that MINTS A ROW.** It is how a cycle-45
+  hunt left four orphan rows on the reference lab; measure it on a disposable copy only. The row
+  is a `track` whose `guid` is `library://` + the **SHA-1 of the request path itself**, idempotent
+  per (item, version), carrying no `librarySectionID` -- so it is invisible in every listing,
+  `/library/all` included -- and readable at its own key. `theme` is the ONLY artwork leaf with
+  this sub-leaf. plexsim mints it BESIDE the catalog so a `track` row cannot leak into the tag
+  tables or the spelling index.
+- **`/library/shared` is a whole subtree**: a constant seven-row `Type` tab bar in its own
+  identifier, under which EVERY second segment answers the same list of the server's own
+  libraries and a third segment is a 404. That row projection leads with an empty `art` and
+  `thumb` and drops `allowSync`, `filters` and `refreshing`. `?type=` selects NOTHING for any
+  integer (the rows are libraries), `?sort=` really orders by title or `createdAt`, `?limit=` is
+  ignored -- and **an empty `?sort=` CRASHES a real PMS** (connection dropped on kids, SEGV on
+  zen). Never send that request to zen.
+- **`ownerFeatures` on `/` and `subscriptionFeatures` on `/myplex/account` are the SAME string**,
+  byte for byte: a sorted comma join of ~180 opaque plex.tv UUIDs and 32 NAMED features. The 32
+  names are identical on both servers where the UUID count is not, so the names are modelled and
+  the ids are not invented. Plex Web reads `ownerFeatures` in 28 places in its bundle.
+- **An axis BUCKET resolves against the server's global tag TABLE, not the leaf's own column.** A
+  genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
+  `style`, `similar`, `tag` and eleven more; only `studio` and `platform` are not bucket names at
+  all. And **`narrator` is the one axis that does NOT validate `type=`** -- 200 for `abc` where
+  every other tag axis is a 500 -- while `platform`'s `title2` is the EMPTY STRING where every
+  other axis carries a "By ..." heading.
+- **An item leaf with an EXTRA path segment is a 404**, with two exceptions only: the artwork
+  leaves read the second segment as a version, and `/extras/all` and `/users/top` are real
+  two-segment leaves. A **validated version segment refuses a leading `+`** although
+  `+?0*<digits>` normalises in every other path segment -- read the RAW segment before the
+  normalisation.
+- **A refusal keyed on the QUERY's declared type must not be decided per ROW.** `file=` is a 500
+  at `type=2` and `/library/all?file=` untyped is a 200 that really filters; plexsim raised it
+  from inside the row walk -- "this row is a show" -- so the untyped whole-library query was a
+  500. And **`extraType` is a 500 on every listing EXCEPT the section extras leaf**, which is the
+  one path that really reads it (zen's 3,580 clips are 1,264 at `extraType=1`); putting the name
+  in the global refusal table broke that leaf, and only `test_catalog_features.py` could see it.
+- **A play completes on a beat that CROSSES 90% however short it is.** The gate is
+  `position >= (total * 9) // 10`, an integer comparison; the sub-minute exemption the old rule
+  carried was never measured.
+- **The bare `/sync` is the plug-in dispatcher's 200** like every other single-segment path,
+  while `/sync/items` and its siblings really are 404s. A "we do not implement this"
+  short-circuit on a whole prefix makes one single-segment path answer differently from all the
+  others.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

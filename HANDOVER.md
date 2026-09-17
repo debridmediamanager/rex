@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 44 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **44 — the loop is OPEN again, reopened by an instrument change.** Cycle 44 was run against the refreshed private catalog: five real, playable, account-owned Real-Debrid parts, where every link had been dead for fifteen cycles. It found **20** differences and implemented all of them. The largest is that plexsim's media byte path applied **no `Range` grammar at all** and got 13 of the 20 cells both references agree on wrong, including two that break every seek a real player makes; nothing could see it before, because a dead link answers 502. Two recorded beliefs were overturned (the 416's connection state, and a `.webm` file's container being `mkv`), one suite was found to have carried the refutation of its own subject for thirty-four cycles, and the first non-Plex-Web official client (Plex Desktop 1.115.0) was read for the first time. Cycles 42 and 43 remain honest about what they swept: neither finite census could see any of this. **A clean cycle bounds the axes it swept, not the surface.** |
+| `main` | cycle 45 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **45 — the loop is OPEN. A clean cycle bounds the axes it swept, not the surface.** Cycle 45 generalised cycle 44's method: build the candidate vocabulary from the REFERENCES' OWN emitted words -- every key, attribute, element name and hub identifier the two servers write, 227 of them -- and sweep every position a path can put them in. **8,240 cells, 8 driver findings**, plus 23 from two hunts and four corrections the cycle's own re-measurement produced: **27 commits, every one proved fail-then-pass.** The largest is `/library/sections/{id}/{name}/top`, a real two-segment leaf plexsim 404'd in every form, whose eleven resolving names come in six pairs of a tag name and a metadata COLUMN name sharing one number. Four recorded beliefs were overturned, one of them (`includeAlternates` being 1.43.4-only) by its own instrument rather than by the servers; two regressions were caught by the cycle's own suites in its own patches, one of them only by `test_catalog_features.py`; a GET that MINTS ROWS was re-measured on a disposable copy after it polluted the lab; and an empty `?sort=` on `/library/shared/all` was found to CRASH a real PMS. |
 | Cycle 43 | **43 — stopping gate met on every finite axis at the time.** Cycle 43 reopened the clean Cycle-42 head and independently replayed the 332-atom historical universe and the complete 4.147.1 advertised-control graph; both reports again end exactly `no findings`. It also closed the only remaining current-client boundary by obtaining the complete public Plex Web 4.160.0 app build: 205/205 JavaScript assets, 16/16 CSS assets and 207/207 SRI checks. The 177 JavaScript assets absent from Cycle 40's app-side subset contain zero new PMS call sites, request-builder imports, controls or actions. The historical axis is 332/332 with all 24 Cycle-41 cross-fix audits passing and zero actionable/unbounded unresolved atoms. The advertised graph remains 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs, with 39 exact witnesses, six explicit bounds and zero unresolved. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every verified Cycle-43 process is stopped. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
@@ -78,6 +78,7 @@ Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 45 | UI **1,612** (+26); decisions 2,340 cells; mediainfo 35; catalog features 39; part bytes 10; heartbeat 11 | 19,780 | **31** in **27 commits**, every one proved fail-then-pass. **4 recorded beliefs overturned** (`includeAlternates`'s version framing, the minute gate on completion, the per-row `file=` refusal, the per-column axis bucket), **2 regressions the cycle's own suites caught in its own patches**, **1 GET that mints rows** re-measured on a disposable copy, **1 reference crash** found and isolated, and a name-space sweep of 8,240 cells built from the references' own vocabulary |
 | 44 | UI 1586; decisions **2,340** cells (+234); mediainfo **35** (+1); catalog features **39** (+4); **new** `test_part_bytes` 9 and `test_heartbeat` 11 | 18,782 | **20** in **16 commits**, every one proved fail-then-pass. **2 recorded beliefs overturned** (the 416's connection state, the `.webm` container), **1 suite gap closed** (`test_mediainfo` never compared the container, so the corpus held the refutation from cycle 10), **2 per-version splits found**, **1 new offline instrument** (`tests/test_part_bytes.py` stands up its own CDN and Real-Debrid stub, so the byte path needs no credential), and the server-to-plex.tv axis swept for the first time |
 | post-43 media refresh | conformance 38/38; full byte/decode 5/5; navigation 24/24 | 18,652 | **1 test-harness repair**: the newly reachable MP4 proved `conformance.py` hard-coded Matroska magic after selecting a non-Matroska Part; no server mismatch |
 | 43 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Three independent clean axes: the complete current public Plex Web 4.160.0 app build (205 JS, 16 CSS, 207/207 SRI; 177 newly obtained JS assets with zero new PMS call sites), 332/332 historical atoms with 24/24 cross-fix audits, and the 49/1,221/47/339/45/45 advertised-control graph with 39 exact witnesses and six explicit bounds; every report ends exactly `no findings` |
@@ -452,6 +453,10 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **`includeAlternates` is a 1.43.4-only option** | Refuted by the instrument, not by the servers: the hunt measured 1.42.2 on **plexscratch42**, a fresh install whose every row is unmatched and which therefore holds no agent artwork for the option to inline. zen -- a real matched 1.42.2 library -- honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both `related` paths. CLAUDE.md's "use the copy for grammar, never for a count" read from the other side: an EMPTY answer on the copy is not a negative | **E** | cycle 45 |
+| **A play completes only past a minute** -- "the timeline's minute is strict and has no `stopped` exemption" | The minute gate belongs to the RESUME POINT, not to completion. A beat that CROSSES 90% completes the play however short the item is; the gate is `position >= (total * 9) // 10`, an integer comparison, and the float `0.9` plexsim used disagreed with it on short rows | **D** | cycle 45 |
+| **`file=` is a 500 on a SHOW listing** -- decided per ROW | The refusal is a property of the QUERY's declared type. `type=2` refuses on a section listing and on `/library/all` alike, `type=3` refuses on `/library/all` and ANSWERS on a section listing, and an **untyped** `/library/all?file=` answers and really filters (kids 11 of 14 rows, zen 12,899). plexsim raised it from inside the row walk -- "this row is a show" -- so the untyped whole-library query was a 500 where a real PMS answers | **C** | cycle 45 |
+| **An axis bucket resolves against the leaf's own column** | It resolves against the server's GLOBAL tag TABLE and the name in front of it is decoration: a genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`, `style`, `similar`, `tag` and eleven more names, and a director tag id answers ITS rows under every one of them. Only `studio` and `platform` are not bucket names at all. plexsim keyed on the name, so nine names worked for their own tags and the other ten 404'd everything | **C** | cycle 45 |
 | **A 416 names no connection state at all -- the only response class that does not** | Half right: a 416 of a **MediaContainer** names it (`Connection`, `Keep-Alive: timeout=20`, after the type and before `Cache-Control`) and a 416 of a **binary** body -- artwork, `/:/resources/*`, a `/web` asset, a media part, `/photo/:/transcode` -- names none. Cycle 33 and cycle 36 both probed with `Connection: close` in the REQUEST and were reading their own header back. Every 416 is also `no-cache`, the transcoder's included | **E** | cycle 44 |
 | **A `.webm` file's container is `webm` -- "the extension can tell them apart, and it is what a real PMS reports"** | Refuted on the IDENTICAL file: zen answers `container: "mkv"` for the same 571,346,576-byte `Tears of Steel.webm`, and no row of its 4,508 movie Media carries `webm` at all. The project's own corpus recorded `mkv` for a `.webm` file in cycle 10 and nobody read it, because `test_mediainfo.py` compared every stream field and never the container. The override was kept to protect Plex Web's direct play; across all 78 profiles it changes no browser outcome and costs `Sony Bravia 2013` one | **C** | cycle 44 |
 | **An episode and a season carry no `Guid[]` -- "matching a real PMS, which leaves those arrays empty"** | False on both references: kids' season 7 answers `tmdb://3846` + `tvdb://15791` and its episode 8 three ids; 58 of 60 zen episodes surveyed carry a block. `metadata.py` fetched the ids and discarded them on that note, and §8 carried it as "no data" -- the premise was void, not the exemption | **C** | cycle 44 |
@@ -744,6 +749,11 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
+| **`/library/shared/all?sort=` crashes a real PMS** | An EMPTY sort dropped the connection on kids and SEGV'd zen's Plex (`code=killed, signal=SEGV`), reproduced on both and isolated to that one parameter. There is no answer to copy, so plexsim reads the empty value as absent -- the convention `/collections` already has for an empty sort -- which is a SURFACE CONVENTION applied, not a measurement | Nothing on a reference can settle it. A third 1.42.2 instance that may be crashed freely could confirm the crash is universal; the correct ANSWER is unobtainable |
+| **The generating rule behind `/{name}/top`'s eleven-name map** | The eleven names resolve in six pairs -- a tag name and a metadata COLUMN name sharing each number (`genre`/`title` 1, `director`/`studio` 4, `writer`/`rating` 5, `actor`/`tagline` 6, `producer`/`summary` 7) -- which says PMS looks the segment up in one integer space that both vocabularies feed. The TABLE is measured on three servers and two versions and is what plexsim implements; the rule that generates it is not identified, so a name outside the swept 91 is a guess | Read the lookup out of the binary, or sweep a wider vocabulary against a library holding tags of types 2, 3 and 9+ |
+| **The `/library/shared` verb table** | GET and HEAD are measured on kids and zen, which are read-only references; the two writable copies **404 the whole subtree** (they are unclaimed and isolated from plex.tv, the same shape as `/livetv`'s 403 there). So the non-GET half is applied from the surface's read-only rule rather than measured | A claimed writable copy, which the isolation rules currently forbid |
+| **plexsim's minted theme rows live BESIDE the catalog** | A real PMS stores the minted `track` row in its metadata table; plexsim keeps it in `self.theme_rows` so a `type: "track"` row with no `librarySectionID` cannot leak into the tag tables, the spelling index or `/library/all`. The observable difference is nil on every path swept -- the reference's own minted rows are invisible in all of them -- but "invisible in every listing I looked at" is not "invisible everywhere" | Sweep the minted key against every container that walks `catalog.items` on a copy, or accept the divergence and say so |
+| **The 32 named account features** | Identical on kids and zen, so they are account-independent across two servers of one account -- but only ONE account has ever been read. A different Plex Pass account, or a free account, would show whether the 32 are a plan's list or this account's | A second account, which the project does not have |
 | **Everything about the media BYTE path measured before 2026-09-17** | Every rule about a media body was measured on a REFERENCE and implemented on faith, because plexsim's own byte path answered 502 to everything -- `test_all.py` reported `0/11 served` for fifteen cycles. Cycle 44 ran it for the first time and 13 of 20 `Range` cells were wrong | Re-run anything about the part path through `tests/test_part_bytes.py`, which needs no credential; and re-check any rule whose only witness was a reference's own part |
 | **The `Part.accessible`/`exists` deviation** | Hard-coded true since cycles 1-6 on the note that plexsim owns no file. zen rows whose file is unreachable answer `false`/`false` AND a plain **404** to the byte read, where plexsim answers true and a **502**. Now that links can be live, the Get Info dialog says the file is there and the next request fails | Decide whether plexsim should probe its own upstream, and whether an unresolvable part should answer 404 rather than 502 |
 | **Season and episode `Guid` on a catalog built before cycle 44** | The builder now writes them; a catalog already on disk carries none, and the load-time pass cannot invent ids it never fetched | Rebuild the catalog, or accept the absence and say so |
@@ -3559,6 +3569,72 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 45 — the path name space, swept from the servers' own words
+
+Cycle 44 reopened the loop by recognising a new instrument. Cycle 45 generalised the *method*
+that had found cycle 44's `/rating`. That finding came out of a hand-written list of section
+leaves, which is the weakest kind of sweep: it can only find what someone thought to type. So the
+driver built its candidate vocabulary from the **references' own emitted words** — every key,
+attribute name, element name and hub identifier the two servers write, 227 names — and asked all
+three servers for each, in every position a path can put it.
+
+| namespace | cells | findings |
+|---|---|---|
+| item leaves `/library/metadata/{id}/{name}` | 908 | 0 |
+| section, top-level, `/library/{name}`, `/hubs/{name}` | 1,135 | **3** |
+| twelve more prefixes (`/:/`, `/system`, `/media`, `/status`, `/statistics`, `/services`, `/hubs/home`, `/library/all`, `/library/sections`, `/updater`, `/security`, `/butler`) | 2,724 | 0 |
+| two-segment leaves, item and section | 1,816 | **2** |
+| section leaf + extra segment | 185 | **1** |
+| item leaf + extra segment | 212 | (the same finding) |
+| GET and HEAD over 76 reachable paths | 152 | **1** |
+| eighteen server-side `X-Plex-*` request headers on three container paths | 108 | 0 |
+
+**8,240 cells, 8 driver findings.** Two hunts on top of that produced 23 more, and the cycle's own
+re-measurement of what the hunts reported produced four more corrections. **27 commits, every one
+proved fail-then-pass by `sdrive.py`.**
+
+What landed, largest first:
+
+- **`/library/sections/{id}/{name}/top` is a real leaf** — the fifth two-segment section leaf, and
+  plexsim 404'd every form of it. PMS's own route table (read out of the binary's string block)
+  spells it `/:tagType/top` with no constraint on the segment, which is why any single word
+  matches. It answers the section's TAG TABLE for the type the name resolves to, ascending by tag
+  id, with the `key` built from the REQUESTED name and the `filter` naming the tag's OWN type.
+  Eleven names resolve in six pairs — a tag name and a metadata COLUMN name sharing each number —
+  and the 200/404 partition over 91 swept names on four servers is exact: the filter/axis
+  vocabulary answers, the eleven edit-path-400 names and the section's own leaves do not.
+- **`includeAlternates=1` inlines the agent's remote artwork on a FULL row and nothing else** —
+  and the hunt's "1.43.4-only" framing was refuted by its own instrument (§3.2).
+- **`Accept-Language` ranked the whole list**, and **`X-Plex-Accept-Language` is a third
+  localisation input** ranked between the two plexsim knew. 39 cells, identical on both
+  references, including a `q` grammar that is the OPPOSITE of the `Accept:` parser cycle 27
+  measured: any malformed member disqualifies the entire header.
+- **`/library/metadata/{id}/theme/{v}/metadata` is a GET that MINTS A ROW**, measured on the
+  disposable copies because measuring it on the lab is what left four orphan rows there. The
+  `guid` is `library://` + the SHA-1 of the request path itself.
+- **`/library/shared` is a whole subtree** behind the one leaf plexsim answered, and an empty
+  `?sort=` under it **crashes a real PMS** (§9).
+- **`ownerFeatures` and `subscriptionFeatures` are the same string**, which plexsim answered two
+  different ways.
+- Eleven more cross-type axes, an axis bucket that resolves against the global tag table, the
+  bare `/sync`, `/library/arts`, the two Grandparents subsets, four more routed leaves, the
+  container focus key, the pipeline header, six artwork PUTs, `includeSummary`,
+  `asyncCheckFiles`, the `/security/token` value grammar, a `playbackTime` bound, an item leaf's
+  extra-segment 404, a version segment's leading `+`, `HEAD` on `/common`, a `.webm` container
+  corrected at LOAD, and a play that completes on a sub-minute crossing beat.
+
+**Two regressions the cycle's own suites caught in its own patches.** The item-leaf extra-segment
+404 broke `/users/top`, which the UI suite caught inside the same run; and the `extraType` refusal
+reached the section EXTRAS leaf — the one listing that really reads the field — which only
+`test_catalog_features.py` could see, because that is where the clip fixture lives. Both were
+fixed with follow-up commits.
+
+**And the cycle lost its own worktree.** The disk filled and the session scratchpad was removed
+between two tool calls, taking the worktree, the patch file and the sweep outputs with it. Every
+commit survived, because a git worktree keeps its objects and its branch ref in the main
+repository's `.git` — which is the whole argument for one atomic commit per finding. Twenty
+minutes of rebuilding, nothing lost but scratch.
+
 ### Cycle 44 -- the first cycle with real bytes, and the loop is open again
 
 Cycles 42 and 43 both reported `no findings` and the protocol-conformance loop was declared
@@ -3623,7 +3699,38 @@ it. The advertised census asks "does the server answer everything the client's b
 and a `Range` header is not a control in a bundle. **A clean cycle bounds the axes it swept, not
 the surface.** The loop stops when a cycle sweeps a NEW axis and still reports nothing.
 
-### Next: cycle 45
+### Next: cycle 46
+
+Cycle 45's method is the lever now: **the vocabulary a sweep is built from decides what it can
+find.** 227 names taken from the references' own output produced eight findings in a name space
+fifteen cycles had walked by hand. The same trick has obvious unswept directions.
+
+1. **The QUERY-PARAMETER name space, the way cycle 45 swept the PATH one.** Cycle 45 swept ~40
+   option names against 16 paths and got `includeSummary`, `includeAlternates`,
+   `includeBandwidths`, `asyncCheckFiles` and the focus key out of it. The vocabulary was
+   hand-assembled from `opts.txt`; build it the way the path sweep built its own -- from every
+   `include*`/`exclude*`/`async*` literal in the PMS binary's string block and in the official
+   clients' bundles -- and sweep it against every container family, not sixteen paths.
+2. **The request-HEADER name space.** Plex Desktop's `PlexMediaServer.framework` carries 48
+   `X-Plex-*` names as string literals and cycle 45 built exactly one of them
+   (`X-Plex-Container-Focus-Key`) plus `X-Plex-Http-Pipeline`. `X-Plex-Strict-Ranges`,
+   `X-Plex-Indeterminate-Ranges` and `X-Plex-Chunked` are named there and have never been sent to
+   a reference. Cycle 45's own 18-header sweep found nothing, but it swept the headers plexsim
+   already knew.
+3. **Finish the live-media axis** (carried from cycle 45's plan, still unswept): a real PLAYBACK
+   driven by an official client end to end, `checkFiles=1` against a live and a dead link, and
+   `/statistics/*` over a real session.
+4. **Drive a non-web official client.** Still never done. Plex Desktop 1.115.0 is installed on this
+   Mac and plays through mpv, so its part reads and timeline beats are its own rather than a
+   browser's.
+5. **The rest of `capture/outbound.jsonl`.** 1,665 exchanges over twenty-odd plex.tv hosts; cycle
+   44 read the device announce and nothing has read the rest. Most are writes and out of scope,
+   but the READ side shapes what a claimed server knows about itself.
+6. **Re-run the two finite censuses against the new head.** Cycles 42 and 43 were clean against
+   cycle 41's tree; fifty-one findings have landed since. Territory A's 332 atoms and Territory
+   B's 1,221 advertisements should both be replayed, widened by cycles 44 and 45's rules.
+
+### Next: cycle 45 (superseded, run)
 
 Cycle 44 reopened the loop by changing the instrument, and the same lever is still there.
 
@@ -4128,6 +4235,32 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 45.**
+
+- **`includeBandwidths=1`.** It adds `deepAnalysisVersion: 6` and a comma-joined eight-value
+  `requiredBandwidths` to a **Part**, and `requiredBandwidths` to a Stream — but only on a Part a
+  real PMS has **deep-analysed**. The proof that ignoring it is faithful rather than lazy is that
+  zen's `/library/metadata/1`, whose Part has no deep analysis, is **byte-identical with and
+  without the option**. plexsim runs no analysis, so every one of its Parts is that Part. The
+  values are the analysis's own output over the file's bitrate distribution and are not derivable
+  from anything plexsim holds; its value grammar is the `+?0*1` family and nothing refuses.
+- **The ~180 plex.tv feature UUIDs** inside `ownerFeatures`/`subscriptionFeatures`. The 32 NAMED
+  features are built (they are identical on both servers); the ids differ per server for one
+  account (212 against 209) and are plex.tv content. `owner_features.txt` beside `server.py` is
+  the local override and is gitignored for the same reason `catalog.json` is.
+- **An answer to `/library/shared/all?sort=`.** The reference CRASHES on it, so there is nothing to
+  copy. plexsim reads the empty value as absent, which is the convention `/collections` already
+  has for an empty sort, and the crash is recorded in §9 rather than emulated.
+- **A real theme's `Media` on the minted `/theme/{v}/metadata` row.** A row that really has a theme
+  at that version answers the theme's `duration` and its `Media`/`Part`/`Stream`; plexsim holds no
+  theme audio and no row names one, so it always answers the bare form. Not a deviation — the same
+  branch a themeless reference row takes.
+- **Storing the minted theme row in `catalog.items`.** A real PMS puts it in its metadata table;
+  plexsim keeps it beside the catalog so a `type: "track"` row with no `librarySectionID` cannot
+  leak into the tag tables, the spelling index or `/library/all`. The reference's own minted rows
+  are invisible in all of those, so the observable answer is the same — listed in §3.3 because
+  "invisible in every container I swept" is not "invisible everywhere".
+
 **Cycle 44.**
 
 - **`POST servers.plex.tv/servers.xml`.** A real PMS posts a `MediaContainer` naming its
@@ -4624,6 +4757,23 @@ copy; the `<CODEC> External` label's single witness.
 
 ## 9. Safety rules and incidents
 
+**`GET /library/shared/all?sort=` crashes a real PMS (cycle 45).** An EMPTY sort value on that
+path dropped the connection on kids and took zen's Plex down outright — `systemd: Main PID …
+(code=killed, signal=SEGV)`, the service stuck in `deactivating` behind a surviving plug-in child
+until systemd's stop timeout, then restarted clean. Both references went down inside one probe
+batch of ten query values; the culprit was isolated afterwards by sending the other nine to kids
+alone, one at a time with a health check between, and `?sort=` was the first and only one to
+reproduce. zen was verified healthy afterwards: three sections, 3,887 movies, 507 shows, no
+sessions, identical to before. **Never send that request to zen.** It is not a plexsim finding —
+plexsim answers the default order — but zen is production on a build that crashes on it.
+
+**A token printed to the terminal a second time (cycle 45).** Dumping `/myplex/account` from a
+reference prints its `authToken`; zen's went to the terminal once. It was not written to disk,
+a fixture or a commit, and `handover/tools/…/req.py` now redacts `authToken` and `X-Plex-Token`
+on the way OUT of the request helper so no probe can print one by accident. Cycle 45 had already
+had one leak, through `capture/outbound.jsonl`'s query pairs. **Redact in the instrument, not in
+the probe** — every probe is written fresh and every one of them will forget.
+
 **zen follows a `file://` artwork candidate (cycle 29, not acted on).** Cycle 29's body hunt sent
 `GET /library/metadata/{id}/file?url=file%3A%2F%2F%2Fetc%2Fhostname` to both references as part of
 a fifteen-shape `url=` table. kids (1.43.4) answers 400. **zen (1.42.2) answered 200 `image/jpeg`
@@ -4642,7 +4792,12 @@ The rules:
   match or unmatch; never run maintenance endpoints; never change network or auth prefs; **never
   write server, library or item settings**.
 - **Several PMS GETs WRITE.** Guard every request to a reference with `probe.py`'s `WRITE_GET`
-  regex.
+  regex. Cycle 45 adds `/library/metadata/{id}/theme/{v}/metadata`, which MINTS a metadata row:
+  measure it on a disposable copy only.
+- **Two GETs take a reference DOWN.** `GET /library/shared/all?sort=` (an empty sort) SEGVs a real
+  PMS -- never send it to zen. And an UNPAGED full-library sweep has crashed zen twice: always
+  send `X-Plex-Container-Start`/`-Size`, and put the default in the request helper rather than in
+  each probe.
 - **Never `PUT /library/metadata/{id}/merge` on the lab.** It is not reversible; the `split` that
   undoes it hands the second item back on a NEW ratingKey carrying the first one's metadata.
 - **Never write to plex.tv's device registry, and never repeat claim exchanges.** Both have
@@ -4675,6 +4830,42 @@ a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified orig
 ---
 
 ## 10. Tooling and environment gotchas
+
+**Cycle 45 added these.**
+
+- **The session scratchpad can be removed between two tool calls.** The disk filled during cycle
+  45 and the whole `scratchpad/c45/` tree went — the worktree, the patch file, the sweep outputs
+  and `tokens.env`. **Every commit survived**, because a git worktree keeps its objects and its
+  branch ref in the main repository's `.git`. After any tool failure that looks like the
+  environment (`ENOSPC`, a missing scratch path), check `git branch` and `git log <cycle-branch>`
+  in the main repo before assuming anything is lost; recover with `git worktree prune && git
+  worktree add <scratch>/wt<N> cycle<N>`, then re-link `webclient/` and `catalog.json` — both
+  gitignored, so a fresh worktree carries neither and every `/web/*` 404s without the symlink.
+  Keep nothing in the scratchpad that is not either committed or re-derivable.
+- **When the disk is full, every tool that writes fails, including `Write` and `Edit`.** They
+  write a temp file first. There is no way to free space from inside the session; say so and stop.
+- **`nohup … &` inside a backgrounded tool call does not survive it either.** CLAUDE.md records
+  this for a plain tool call; it is also true of one run with `run_in_background`, and `setsid`
+  does not save it. Start the server and run the suite **in the same command**, so the server
+  lives exactly as long as the suite does.
+- **A probe that sends a raw space in a query string measures the request LINE, not the
+  parameter.** `?type= ` becomes `GET /path?type=  HTTP/1.1` — two spaces — which is a malformed
+  request line, and the connection dies with no response. Percent-encode every probe value.
+- **An EMPTY answer on plexscratch42 is not a negative.** It is a fresh install with nothing
+  matched, so it holds no agent artwork, no real metadata and no counts. CLAUDE.md already said
+  "use it for grammar, never for a count"; cycle 45's `includeAlternates` claim shows the same
+  trap from the other side — a version difference inferred from a copy that had nothing to show.
+- **`sdrive.py` runs the UI suite and nothing else.** A patch can pass its own fail-then-pass proof
+  and the whole 1,595-check UI surface and still break `test_catalog_features.py`, which is where
+  the clip and Dolby Vision fixtures live. Run the full suite set on the cycle's head before
+  merging, not only at the end of each patch.
+- **`test_navigation.py` is written against the LIVE catalog, not `catalog_ui.json`.** Pointed at
+  the UI fixture it reports 12 failures that are the wrong show. Start its server with no
+  `--catalog`.
+- **`test_all.py`'s two `public` checks need the Cloudflare tunnel.** Without it every row reports
+  `FAIL public prefix HTTP 502` and the summary says `0/5 served correctly` while every local byte
+  read, magic check, seek and decode passes. Compare against `main` before treating it as a
+  regression.
 
 **Cycle 44 added these.**
 
