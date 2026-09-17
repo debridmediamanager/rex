@@ -24318,6 +24318,57 @@ def main():
           and all(c == "mkv" for c in webm_c45w + webm_parts_c45w),
           "media=%s parts=%s" % (webm_c45w, webm_parts_c45w))
 
+
+    # Cycle 45 REFUTES a recorded belief, on BOTH versions and with a real client as the
+    # third witness: **a crossing beat at or under 60 000 ms completes the play.** The
+    # recorded rule was "the timeline's minute is strict and has no `stopped` exemption:
+    # 60 000 ms exactly is not stored"; that is true of the RESUME POINT (a beat at or
+    # under a minute still deletes the stored offset, and plexsim already matches) and
+    # false of COMPLETION. Measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
+    # `duration=66667` beaten `30000 -> 60000`, `duration=3000` beaten `900 -> 3000` and
+    # `duration=10030` beaten `6000 -> 10000` each answer `ignore` then **`complete`**
+    # and leave `viewCount 1` with `lastViewedAt` stamped. plexsim answered `ignore`
+    # twice and wrote nothing, so nothing whose 90% point falls under ~66.7 s could ever
+    # be marked watched -- a trailer, an extra, a short, a music video, a clip.
+    #
+    # And the completion itself stamps the ROW's `lastViewedAt`, which plexsim set only
+    # when a `progress` beat happened to run first. A watched row without it sorts last
+    # under `sort=lastViewedAt`, never reaches `/recentlyViewed`, and cannot win On
+    # Deck's most-recently-viewed rule.
+    def beat_c45s(rating_key_c45s, state_c45s, at_c45s, duration_c45s, session_c45s):
+        url_c45s = (base.rstrip("/")
+                    + "/:/timeline?ratingKey=%s&key=%s&identifier=com.plexapp.plugins.library"
+                      "&state=%s&time=%d&duration=%d"
+                    % (rating_key_c45s, quote("/library/metadata/%s" % rating_key_c45s),
+                       state_c45s, at_c45s, duration_c45s))
+        request_c45s = urllib.request.Request(url_c45s, headers={
+            "Accept": "application/json", "User-Agent": UA,
+            "X-Plex-Session-Identifier": session_c45s,
+            "X-Plex-Client-Identifier": "plexsim-ui-test",
+            "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"})
+        with urllib.request.urlopen(request_c45s, timeout=20) as response_c45s:
+            return (json.loads(response_c45s.read()).get("MediaContainer") or {})
+
+    short_c45s = {}
+    for label_c45s, duration_c45s, first_c45s, last_c45s in (
+            ("66667", 66667, 30000, 60000), ("3000", 3000, 900, 3000),
+            ("10030", 10030, 6000, 10000), ("100000", 100000, 50000, 95000),
+            ("under90", 100000, 50000, 89999)):
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+        session_c45s = "c45-%s" % label_c45s
+        beat_c45s(movie, "playing", first_c45s, duration_c45s, session_c45s)
+        answer_c45s = beat_c45s(movie, "playing", last_c45s, duration_c45s, session_c45s)
+        row_c45s = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+        short_c45s[label_c45s] = (answer_c45s.get("playbackState"),
+                                  row_c45s.get("viewCount"),
+                                  bool(row_c45s.get("lastViewedAt")))
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    check("a crossing beat under a minute completes the play",
+          all(short_c45s[k] == ("complete", 1, True)
+              for k in ("66667", "3000", "10030", "100000"))
+          and short_c45s["under90"][0] == "progress",
+          str(short_c45s))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

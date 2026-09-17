@@ -508,12 +508,33 @@ class Library:
         if offset is not None and total:
             self._reported[(session or "", int(rating_key))] = position
         crossed = seen is not None and total and seen < total * 0.9
-        if completes and crossed and total and position > 60000 and position >= total * 0.9:
+        # Cycle 45 REFUTED the `position > 60000` gate that used to stand here. The
+        # minute rule is real for the RESUME POINT -- a beat at or under 60 000 ms
+        # deletes the stored offset, measured and still applied above -- and NOT for
+        # completion. Measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
+        # `duration=66667` beaten 30000 -> 60000, `duration=3000` beaten 900 -> 3000 and
+        # `duration=10030` beaten 6000 -> 10000 each COMPLETE, and a real Plex Web client
+        # completing kids' 10 030 ms row is the third witness. With the gate, nothing
+        # whose 90% point falls under ~66.7 s could ever be marked watched.
+        #
+        # And the threshold itself is INTEGER arithmetic, `(duration * 9) // 10`, not a
+        # float `* 0.9`. Bisected on plexscratch42: at `duration=66667` the boundary is
+        # exactly 60 000 (59 999 ignores, 60 000 completes) where `66667 * 0.9` is
+        # 60 000.3 and a float comparison would need 60 001. At `duration=100000` both
+        # forms agree at 90 000, which is why no earlier cycle could see the difference.
+        if completes and crossed and total and position >= (total * 9) // 10:
             if row.get("_completed") != (session or True):
                 row["_completed"] = session or True
                 row.pop("_completionStopped", None)
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 row.pop("viewOffset", None)
+                # Cycle 45: the completion stamps the ROW's own `lastViewedAt`, which
+                # plexsim set only when a `progress` beat happened to run first --
+                # measured on both copies, where a single crossing pair leaves it set. A
+                # watched row without it sorts last under `sort=lastViewedAt`, never
+                # reaches `/recentlyViewed` and cannot win On Deck's most-recently-viewed
+                # rule.
+                row["lastViewedAt"] = _now()
                 self.record_view(row, device_id=device_id)
                 # A completed play bumps the parents' own counters too.
                 for key in ("parentRatingKey", "grandparentRatingKey"):
