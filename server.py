@@ -3437,7 +3437,14 @@ class PlexSim:
             # four-value list refused the leading `+` a real PMS takes.
             if raw_check is not None and not _bool_option(raw_check):
                 raise filters_module.FilterError(400, "%s %r" % (option, raw_check))
-        if query.get("checkFiles") is not None and int(query["checkFiles"]) == 1:
+        # Cycle 45: `asyncCheckFiles=1` reports the same pair -- it is the option the
+        # official client sends on every preplay page load, and on kids it answers the
+        # pair on every read. On 1.42.2 the check is scheduled rather than blocking, so a
+        # live server answers it once the check has run (zen: 9 of 16) and a fresh
+        # isolated copy never does; plexsim has no async check and hard-codes the values,
+        # so the completed case is the faithful one.
+        if any(query.get(name) is not None and int(query[name]) == 1
+               for name in ("checkFiles", "asyncCheckFiles")):
             detail = _part_file_state(detail, checked=True)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
@@ -12848,6 +12855,17 @@ class PlexSim:
             # measured -- where plexsim sent 1 for anything past a minute.
             # The beat's own duration, as the library uses: with none, nothing is stored
             # and nothing completes, and the answer carries the item's stored offset.
+            # Cycle 45: `playbackTime=` is a VALIDATED signed 32-bit integer -- the
+            # client sends it on every beat -- and `1.5`, `abc`, an empty value, a
+            # surrounding space, `0x10`, `1e6` and anything past the int32 bound are each
+            # a 400 on both copies, while `0`, `4001`, `-1`, `+1`, `01` and `2147483647`
+            # pass. plexsim did not know the name at all.
+            raw_playback = query.get("playbackTime")
+            if raw_playback is not None:
+                text_playback = str(raw_playback)
+                if not re.fullmatch(r"[+-]?[0-9]+", text_playback) \
+                        or not -2 ** 31 <= int(text_playback) < 2 ** 31:
+                    return ("error", 400, "plexsim: bad request")
             total = total_ms or 0
             # Cycle 45: the minute gate belongs to the resume point, not to the
             # reported state -- see `library.progress` -- and the 90% threshold is

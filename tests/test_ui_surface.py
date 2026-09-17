@@ -24369,6 +24369,58 @@ def main():
           and short_c45s["under90"][0] == "progress",
           str(short_c45s))
 
+
+    # Cycle 45, two findings from the request a real client sends on EVERY preplay page
+    # load (captured through plexlab):
+    #
+    #  * `asyncCheckFiles=1` adds `Part.accessible`/`exists`, exactly as `checkFiles=1`
+    #    does. On kids (1.43.4) it is deterministic -- the pair on 17 of 17 reads. On zen
+    #    (1.42.2) the check is genuinely SCHEDULED rather than blocking, so the pair
+    #    appears on 9 of 16 reads of the same rows while `checkFiles=1` is 4 of 4; on a
+    #    fresh isolated 1.42.2 copy that has never run one it never appears. plexsim has
+    #    no async check and hard-codes the pair, so answering it like `checkFiles=1` is
+    #    the completed case -- which is what kids always answers and what zen answers
+    #    once the check has run. Cycle 22 measured this option's value GRAMMAR and added
+    #    it to the validation loop without ever measuring its EFFECT, so it was refused
+    #    correctly and then did nothing.
+    #  * `/:/timeline?playbackTime=` is a VALIDATED signed 32-bit integer -- the client
+    #    sends it on every beat -- and `1.5`, `abc`, an empty value, a surrounding space,
+    #    `0x10`, `1e6` and anything past the int32 bound are each a **400** on both
+    #    copies, while `0`, `4001`, `-1`, `+1`, `01` and `2147483647` pass. The name
+    #    appears nowhere in plexsim, so every one of those was a 200.
+    def part_of_c45a(suffix_c45a):
+        row_c45a = (get(base, "/library/metadata/%s%s" % (movie, suffix_c45a))[1]
+                    .get("Metadata") or [{}])[0]
+        media_c45a = (row_c45a.get("Media") or [{}])[0]
+        return ((media_c45a.get("Part") or [{}])[0])
+
+    async_c45a = {}
+    for suffix_c45a in ("", "?checkFiles=1", "?asyncCheckFiles=1", "?asyncCheckFiles=01",
+                        "?asyncCheckFiles=0", "?asyncAugmentMetadata=1", "?skipRefresh=1"):
+        part_c45a = part_of_c45a(suffix_c45a)
+        async_c45a[suffix_c45a or "(none)"] = ("accessible" in part_c45a,
+                                               "exists" in part_c45a)
+    time_c45a = {}
+    for value_c45a in ("0", "4001", "-1", "%2B1", "01", "2147483647",
+                       "1.5", "abc", "", "%201", "1%20", "0x10", "1e6", "2147483648"):
+        time_c45a[value_c45a] = request(
+            base, "GET",
+            "/:/timeline?ratingKey=%s&key=%s&identifier=com.plexapp.plugins.library"
+            "&state=playing&time=1000&duration=600000&playbackTime=%s"
+            % (movie, quote("/library/metadata/%s" % movie), value_c45a))[0]
+    check("asyncCheckFiles reports the pair and playbackTime is validated",
+          async_c45a["?asyncCheckFiles=1"] == (True, True)
+          and async_c45a["?asyncCheckFiles=01"] == (True, True)
+          and async_c45a["?checkFiles=1"] == (True, True)
+          and async_c45a["(none)"] == (False, False)
+          and async_c45a["?asyncCheckFiles=0"] == (False, False)
+          and async_c45a["?asyncAugmentMetadata=1"] == (False, False)
+          and [time_c45a[v] for v in ("0", "4001", "-1", "%2B1", "01", "2147483647")]
+          == [200] * 6
+          and [time_c45a[v] for v in ("1.5", "abc", "", "%201", "1%20", "0x10", "1e6",
+                                      "2147483648")] == [400] * 8,
+          "%s ; %s" % (async_c45a, time_c45a))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
