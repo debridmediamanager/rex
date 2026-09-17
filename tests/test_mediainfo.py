@@ -294,6 +294,19 @@ def _video_resolution_survey(mediainfo):
             for width, height, label, count in survey["rows"]]
 
 
+@check("cycle 41: the short-wide 480 resolution boundary", once=True)
+def _short_wide_480_boundary(mediainfo):
+    """Both disposable reference versions switch from SD to 480 at stored width 848.
+
+    The boundary sweep used a fixed 360-pixel height and observed stored widths 840,
+    842, 844 and 846 as ``sd`` and 848 as ``480``. Odd source widths were normalised
+    down by analysis, so this tests the values PMS actually stores and plexsim reads.
+    """
+    return [("%dx360" % width, expected, mediainfo._video_resolution(360, width))
+            for width, expected in ((840, "sd"), (842, "sd"), (844, "sd"),
+                                    (846, "sd"), (848, "480"))]
+
+
 @check("pixel-aspect")
 def _pixel_aspect_pair(fixture):
     """Cycle 25: `pixelAspectRatio` and `anamorphic` come as a PAIR, or not at all.
