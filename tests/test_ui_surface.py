@@ -26702,6 +26702,24 @@ def main():
                   for row_c46d in related_ondeck_c46d),
           "show=%d ondeck=%d" % (len(related_show_c46d), len(related_ondeck_c46d)))
 
+    hubs_prefs_c46e = get(base, "/hubs?includePreferences=1")[1].get("Hub") or []
+    prefs_show_c46e = [row_c46e for hub_c46e in hubs_prefs_c46e
+                       for row_c46e in hub_c46e.get("Metadata") or []
+                       if row_c46e.get("type") == "show"
+                       and (row_c46e.get("Preferences") or {}).get("Setting")]
+    shared_plain_c46e = get(base, "/library/shared/all")[1].get("Metadata") or []
+    shared_prefs_c46e = get(
+        base, "/library/shared/all?includePreferences=1")[1].get("Metadata") or []
+    check("includePreferences reaches global hubs and Shared libraries",
+          prefs_show_c46e
+          and shared_plain_c46e and not any("Preferences" in row_c46e
+                                            for row_c46e in shared_plain_c46e)
+          and len(shared_prefs_c46e) == len(shared_plain_c46e)
+          and all((row_c46e.get("Preferences") or {}).get("Setting")
+                  for row_c46e in shared_prefs_c46e),
+          "hub shows=%d shared=%d/%d"
+          % (len(prefs_show_c46e), len(shared_prefs_c46e), len(shared_plain_c46e)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
