@@ -2295,7 +2295,16 @@ precisely how the Seasons bug survived a fix attempt.
   `editdist1 + 32 - bit_length(rank)`, and normal movie/show/list/tag hits suppress fallback
   globally. Per-word candidate groups are ANDed, tokens shorter than three UTF-8 bytes are dropped,
   and the FTS comparison uses ICU primary/shifted collation. Spellfix cost chooses membership; it is
-  not the API relevance score. The external table may be stale, so do not claim a rebuild schedule.
+  not the API relevance score. The external table may be stale between database optimizations;
+  rebuild it only at the measured optimize/Butler/section-delete completion points, not on edits.
+- **Two query-only writes ignore a declared body:** item metadata `PUT` and playlist-create `POST`
+  dispatch from their query string even when a large `Content-Length` body never arrives. This is
+  path-specific; subtitle upload and other body-dependent writes still wait for their bytes.
+- **Search order is not a stable score/title sort.** A hub sorts the full-precision score with the
+  reference's unstable comparison sort and formats to five decimals afterwards; its title
+  candidates entered in raw-title/id descending order with exact hits prepended. Flat
+  `/library/search` preserves the movie/show/episode bucket sequence because its final comparator
+  accidentally reads an empty generic score attribute.
 
 ## Conventions
 
