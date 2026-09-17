@@ -12772,6 +12772,31 @@ def main():
                         "http://example.com:1234/web/index.html", "public", "1.0"),
           "%s" % (seen_c16x,))
 
+    # Cycle 46's complete request-header census found the one response family that
+    # escaped Cycle 45's pipeline rule: /web writes its redirect envelope by hand.
+    # Both PMS versions close only for the exact lower-case value disable.
+    def pipeline_web_c46(value_c46):
+        connection_c46 = http_c16x.HTTPConnection(
+            base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]), timeout=20)
+        connection_c46.request(
+            "HEAD", "/web",
+            headers={"Host": "example.com:1234", "User-Agent": UA,
+                     "X-Plex-Http-Pipeline": value_c46})
+        answer_c46 = connection_c46.getresponse()
+        answer_c46.read()
+        result_c46 = (answer_c46.status, answer_c46.headers.get("Connection"),
+                      answer_c46.headers.get("Keep-Alive"))
+        connection_c46.close()
+        return result_c46
+
+    pipeline_web_seen_c46 = {value_c46: pipeline_web_c46(value_c46)
+                             for value_c46 in ("disable", "infinite", "Disable")}
+    check("/web honours the exact pipeline disable header",
+          pipeline_web_seen_c46["disable"] == (302, "close", None)
+          and pipeline_web_seen_c46["infinite"] == (302, "Keep-Alive", "timeout=20")
+          and pipeline_web_seen_c46["Disable"] == (302, "Keep-Alive", "timeout=20"),
+          str(pipeline_web_seen_c46))
+
     # Cycle 16, measured on kids and zen over every asset the bundle serves:
     # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges: bytes`,
     # and NEVER gzipped even when the client offers gzip -- and three content types
