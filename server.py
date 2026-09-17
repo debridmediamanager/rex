@@ -6949,9 +6949,22 @@ class PlexSim:
     # deliberately absent here. `collection` and `label` are tag axes by construction
     # but neither reference holds one, so their real-key behaviour is INFERRED from the
     # six tag axes that could be measured (`network` among them, which answers rows).
+    # Cycle 45, measured on kids and zen with one leaf name after another against a
+    # real tag id: the bucket path does NOT read the leaf NAME. A GENRE tag id answers
+    # the identical 427-row container -- same rows, same `title2` -- under `genre`,
+    # `director`, `actor`, `mood`, `style`, `similar`, `tag` and eleven more, and a
+    # DIRECTOR tag id answers ITS two rows under every one of them too. The lookup is on
+    # the server's global tag TABLE and the name in front of it is decoration. Only
+    # `studio` and `platform` are not bucket names at all (404 for any id, on both).
+    # plexsim resolved the id against the NAME's own column, so nine names worked for
+    # their own tags and the other ten 404'd everything.
     AXIS_BUCKETS = {"genre": "tag", "director": "tag", "writer": "tag",
                     "producer": "tag", "actor": "tag", "country": "tag",
                     "network": "tag", "collection": "tag", "label": "tag",
+                    "mood": "tag", "style": "tag", "format": "tag",
+                    "subformat": "tag", "source": "tag", "make": "tag",
+                    "model": "tag", "place": "tag", "tag": "tag",
+                    "similar": "tag",
                     "year": "year", "decade": "decade",
                     "contentRating": "contentRating", "resolution": "resolution",
                     # Cycle 44: `/rating` is the same six-bucket axis over the CRITIC
@@ -7015,16 +7028,20 @@ class PlexSim:
         wanted = urllib.parse.unquote(key)
         rows = self.typed_rows(section_id, query)
         if kind == "tag":
-            column = SECONDARY_TAGS[leaf]
-            if leaf == "label":
-                rows = list(rows) + list(self.library.collections(section_id))
+            # Every tag column, not the leaf's own: see AXIS_BUCKETS above. The
+            # collections come in for the same reason `label` used to bring them --
+            # a collection carries tags of its own.
+            columns = Catalog.TAG_FIELDS
+            rows = list(rows) + list(self.library.collections(section_id))
             title = next((tag.get("tag") for row in rows
+                          for column in columns
                           for tag in row.get(column) or []
                           if str(tag.get("id")) == wanted), None)
             if title is None:
                 return ("error", 404, "plexsim: not found")
             rows = [r for r in rows
-                    if any(str(t.get("id")) == wanted for t in r.get(column) or [])]
+                    if any(str(t.get("id")) == wanted
+                           for column in columns for t in r.get(column) or [])]
             title2 = title
         elif kind in ("year", "decade", "userRating"):
             # `rating` shares `userRating`'s bucket KIND, so the column comes from the
