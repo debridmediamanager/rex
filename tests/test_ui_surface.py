@@ -12797,6 +12797,33 @@ def main():
           and pipeline_web_seen_c46["Disable"] == (302, "Keep-Alive", "timeout=20"),
           str(pipeline_web_seen_c46))
 
+    # The same finite census found the framework/official-client redirect opt-out.
+    # Only the literal 1 changes the status; Location and the zero length remain.
+    def neuter_web_c46(value_c46):
+        connection_c46 = http_c16x.HTTPConnection(
+            base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]), timeout=20)
+        connection_c46.request(
+            "HEAD", "/web",
+            headers={"Host": "example.com:1234", "User-Agent": UA,
+                     "X-Plex-Neuter-Redirect": value_c46})
+        answer_c46 = connection_c46.getresponse()
+        answer_c46.read()
+        result_c46 = (answer_c46.status, answer_c46.headers.get("Location"),
+                      answer_c46.headers.get("Content-Length"))
+        connection_c46.close()
+        return result_c46
+
+    neuter_web_seen_c46 = {value_c46: neuter_web_c46(value_c46)
+                           for value_c46 in ("1", "0", "true")}
+    check("/web honours the exact redirect-neutering header",
+          neuter_web_seen_c46["1"]
+          == (200, "http://example.com:1234/web/index.html", "0")
+          and neuter_web_seen_c46["0"]
+          == (302, "http://example.com:1234/web/index.html", "0")
+          and neuter_web_seen_c46["true"]
+          == (302, "http://example.com:1234/web/index.html", "0"),
+          str(neuter_web_seen_c46))
+
     # Cycle 16, measured on kids and zen over every asset the bundle serves:
     # `Cache-Control: no-cache` like the rest of the surface, `Accept-Ranges: bytes`,
     # and NEVER gzipped even when the client offers gzip -- and three content types

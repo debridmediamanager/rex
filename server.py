@@ -18645,7 +18645,13 @@ class Handler(BaseHTTPRequestHandler):
                 # response carries `X-Plex-Protocol: 1.0` and `Cache-Control:
                 # public` -- the ONE place on the whole surface that is not
                 # `no-cache`. plexsim sent neither header.
-                self.send_response(302, "Moved Temporarily")
+                # Cycle 46, measured on both PMS versions: an exact
+                # X-Plex-Neuter-Redirect: 1 keeps the redirect envelope (including
+                # Location) but changes its status to an empty 200. Other values
+                # remain a 302.
+                neutered = self.headers.get("X-Plex-Neuter-Redirect") == "1"
+                self.send_response(200 if neutered else 302,
+                                   "OK" if neutered else "Moved Temporarily")
                 self.send_header("X-Plex-Protocol", "1.0")
                 self.send_header("Location", result[1])
                 self.send_header("Cache-Control", "public")
