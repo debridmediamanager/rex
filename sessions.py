@@ -45,10 +45,13 @@ import time
 # value is a client that stops beating -- several TV apps stop while paused -- vanishing
 # from Now Playing after seventy seconds where a real PMS holds it for three minutes.
 #
-# plexsim prunes lazily on read, so its row goes exactly at the cutoff rather than at the
-# next tick; the tick is the reference's own scheduler and nothing on the surface reports
-# it. What is emulated is the cutoff.
+# Cycle 41 made a dense cohort on both disposable versions: fifteen sessions opened two
+# seconds apart and polled once a second. Rows disappeared in two global clusters 29.94 s
+# and 29.97 s apart. At a tick an age of 180.90/181.05 s was removed while the adjacent
+# 178.95/178.99 s row survived. The rule is therefore a process-wide 30-second reaper
+# applying `seen < tick - 180`, not a per-row timer. A row remains visible for 180-210 s.
 SESSION_TTL = 180
+SESSION_REAP_INTERVAL = 30
 
 # Statistics bucket sizes, decoded from a real PMS's own rows: 6 is per second,
 # then hour, day, ISO week, month, year. The client sends `timespan=6` for the
@@ -85,6 +88,10 @@ class Sessions:
     def __init__(self, owner="plexsim", ttl=SESSION_TTL):
         self.owner = owner
         self.ttl = ttl
+        # The real scheduler is process-global. Advancing this phase only when the
+        # surface is observed is equivalent for an in-memory server: skipped ticks have
+        # no externally visible effect until a client reads the session list.
+        self._last_reap = time.time()
         self._sessions = {}
         self._next_key = 1
         self._terminated = {}
@@ -216,10 +223,15 @@ class Sessions:
 
     def live(self):
         """Sessions that have not expired, oldest first."""
-        cutoff = time.time() - self.ttl
-        for key, entry in list(self._sessions.items()):
-            if entry["seen"] < cutoff:
-                del self._sessions[key]
+        now = time.time()
+        elapsed = now - self._last_reap
+        if elapsed >= SESSION_REAP_INTERVAL:
+            ticks = int(elapsed // SESSION_REAP_INTERVAL)
+            self._last_reap += ticks * SESSION_REAP_INTERVAL
+            cutoff = self._last_reap - self.ttl
+            for key, entry in list(self._sessions.items()):
+                if entry["seen"] < cutoff:
+                    del self._sessions[key]
         return sorted(self._sessions.values(), key=lambda e: int(e["sessionKey"]))
 
     def by_session_id(self, session_id):
