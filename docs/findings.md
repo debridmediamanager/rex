@@ -8830,6 +8830,61 @@ This is the first cycle eligible for the stopping rule whose two fully enumerate
 chunks remain a named external coverage limit and are not recast as a complete-current-client
 static claim.
 
+### Cycle 43: complete current client plus both clean replays, no findings
+
+Measured 2026-09-17 against frozen Cycle-42 head `5874d01`. This cycle reopened the stopping result
+to cover its one named external boundary, then independently replayed the other two finite axes.
+All three reports end exactly **`no findings`**.
+
+The anonymous public `app.plex.tv/desktop/` entrypoint still serves Plex Web **4.160.0**, build
+**`75ddd7b`**, and its inline webpack runtime supplies a complete denominator. A manifest-rooted
+walk obtained **205/205 JavaScript assets, 16/16 CSS assets and 30 same-origin static dependencies**
+with zero failures; all **207/207** declared SRI values verify. Cycle 40's 28 recovered app-build
+JavaScript bodies match this graph byte-for-byte. The other **177 JavaScript assets** contain zero
+direct PMS/player paths, zero PMS request-builder imports, zero XHR/AJAX/Backbone request sites and
+zero new controls or actions. Every one of the build's 281 direct path call sites remains in the
+same 28 files Cycle 40 recovered.
+
+This does not substitute current bytes into the historical gateway cache. The gateway variant and
+current public app share the version/build label but not every chunk hash or id; the former remains
+accurately bounded at 29/205 JavaScript bodies with 176 mapped bodies absent. That is now historical
+provenance, not a limit on the complete current app universe. Reconciliation against the complete
+4.147.1 graph finds only the already implemented metadata-provider id/group/membership lifecycle.
+The current PMS-family ledger is 207 families, and the complete-current union is 51 predicates,
+347 controls and 55 action/readback cells. Three exact provider reads pass on frozen plexsim and the
+full provider group lifecycle remains regression-covered.
+
+The historical territory independently rebuilt **332/332** stable atoms from 513 raw records and
+496 claim-source records, preserving 645 source references. All **24/24** Cycle-41 fixes pass their
+cross-fix audit. Final dispositions remain 180 built, 42 refuted/superseded, 36 deliberate
+capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds and 11
+safely unreachable states; actionable and unbounded unresolved are both zero.
+
+The advertised-control territory recollected all **49** source families on both references and
+current plexsim, rescanned the complete local 4.147.1 bundle and rebuilt **1,221 advertisements / 47
+predicates / 339 controls / 45 actions / 45 readbacks**. All stable ids are unique and every foreign
+key resolves. Thirty-nine reachable chains have fresh exact route, assertion and postcondition
+witnesses. The same six cells remain explicitly bounded: two forbidden media reads, hidden
+Optimize/Sync actions and the external/auth claim-token, claim and unclaim surface. Unresolved is
+zero. Its instrumented disposable replay passed UI **1582/1582** and recorded 7,149 requests across
+1,365 distinct method/path pairs.
+
+Root independently repeated catalog features 35/35, mediainfo **34/34**, decision **2106/2106**,
+sessions, navigation **28/28** and UI **1582/1582**. Python-plexapi remains **29/38** and byte reads
+**0/11** only because every fixture link is the recorded dead account-scoped Real-Debrid URL; all
+queues and decisions pass. All protected-reference snapshots are byte-identical at
+`64579ece7b9f77a2914bc07f5f3aef36f71bf2ddf0c57aec68b428819386e68a`; all exact-value secret scans
+are clean; neither writable reference was used. No behavior or regression needed a code change.
+
+One operational defect was closed in the procedure: Cycle-43 startup found Cycle-41 frozen-tree
+listeners still on 32587/32588 despite the prior cleanup record. Their cwd and command line proved
+ownership before they were killed. The cycle procedure now requires a global `server.py --port`
+process inventory both before allocating ports and after agents finish, not merely checks of the
+current cycle's expected ports.
+
+With the complete current client, historical universe and advertised-control graph all finitely
+enumerated and clean, the protocol-conformance loop stops at Cycle 43.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

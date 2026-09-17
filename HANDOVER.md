@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 42 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **42 — stopping gate met.** Cycle 42 freshly replayed both complete finite universes against merged Cycle-41 head `f8cd6c2`, and both independent reports end exactly `no findings`. The historical axis rebuilt 332/332 atoms and re-proved all 24 Cycle-41 fixes: actionable and unbounded unresolved are zero. The advertised-control axis rebuilt 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs: 39 have current exact route/postcondition witnesses, six have explicit media/capability/auth/external bounds, and unresolved is zero. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every disposable process is stopped. The 176 absent mapped Plex Web 4.160.0 chunks remain an explicit external coverage limit rather than a hidden claim. |
+| `main` | cycle 43 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **43 — stopping gate met on every finite axis.** Cycle 43 reopened the clean Cycle-42 head and independently replayed the 332-atom historical universe and the complete 4.147.1 advertised-control graph; both reports again end exactly `no findings`. It also closed the only remaining current-client boundary by obtaining the complete public Plex Web 4.160.0 app build: 205/205 JavaScript assets, 16/16 CSS assets and 207/207 SRI checks. The 177 JavaScript assets absent from Cycle 40's app-side subset contain zero new PMS call sites, request-builder imports, controls or actions. The historical axis is 332/332 with all 24 Cycle-41 cross-fix audits passing and zero actionable/unbounded unresolved atoms. The advertised graph remains 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs, with 39 exact witnesses, six explicit bounds and zero unresolved. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every verified Cycle-43 process is stopped. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -77,7 +77,8 @@ Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
-| 42 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Clean replay: 332/332 historical atoms, 24/24 previous fixes, 49/1,221/47/339/45/45 advertised-control graph, both reports exactly `no findings`; this is the stopping cycle |
+| 43 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Three independent clean axes: the complete current public Plex Web 4.160.0 app build (205 JS, 16 CSS, 207/207 SRI; 177 newly obtained JS assets with zero new PMS call sites), 332/332 historical atoms with 24/24 cross-fix audits, and the 49/1,221/47/339/45/45 advertised-control graph with 39 exact witnesses and six explicit bounds; every report ends exactly `no findings` |
+| 42 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Clean replay: 332/332 historical atoms, 24/24 previous fixes, 49/1,221/47/339/45/45 advertised-control graph, both reports exactly `no findings`; the first stopping cycle, reopened at the user's request |
 | 41 | 1582 (+2,106 cells in `test_decision`; `test_mediainfo` 34; `test_catalog_features` 35; plus the focused session suite) | 18,652 | **24** in **24 fix commits** from a finite 332-atom historical census; 49 advertisement-source families, 1,221 normalized advertisements, 47 exact predicates, 339 controls and 45 action/readback pairs independently closed with **0** advertisement findings; 51 historical atoms remain explicitly bounded by capability, state or instrument and **0** are unbounded/actionable |
 | pre-loop | 24 | 1,798 | — |
 | 1–4 | 442 | 6,953 | the build-out |
@@ -1020,6 +1021,14 @@ From an agent tool, start servers with `subprocess.Popen(..., start_new_session=
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
 
+**Ports (cycle 43).** Root served frozen `5874d01` on `32643`/`32644`, ran the serial live suites
+on `32645`, and Territory C used `32647`/`32648` plus suite helpers `32649`/`32650`; Territory B's
+interrupted duplicate UI run used `32654`. At startup, 32587/32588 were unexpectedly still held by
+Cycle-41 frozen trees (pids 24850/24852); cwd/command-line ownership was verified before killing
+only those two processes. At final cleanup every Cycle-43 port and both stale ports are free.
+`32502` and `8787` remain the standing foreign listeners and were left alone. No writable reference
+was used, protected snapshots are byte-identical, and no launchd job was registered.
+
 **Ports (cycle 40).** The hunters had `32587`/`32588` on frozen `bcda2f9`; the inward trace used
 `32640`, fail/pass proof used `32592`/`32593`, and the serial suites used `32589`. `32502` and
 `8787` are the standing exceptions. All cycle-owned listeners are free again, both disposable
@@ -1282,7 +1291,10 @@ One cycle, as run for cycles 8–15:
    (`PLEXLAB_TOKEN`, `ZEN_TOKEN`, `MACHINE_ID`), reset plexscratch, and export the current
    `main` into a frozen tree the hunters talk to: `git archive main | tar -x -C <scratch>/headN`,
    served on a port of its own. **The frozen tree matters**: it stops a hunt from measuring your
-   half-finished edits.
+   half-finished edits. Before choosing ports, globally list every `server.py --port` process and
+   resolve its cwd/command line; Cycle 43 found Cycle 41's supposedly stopped frozen listeners only
+   because startup repeated the process inventory. Kill only processes whose prior-cycle ownership
+   is proved.
 4. **Launch the hunters** with the Agent tool, one territory each, one on fable and one on opus.
    The prompt is assembled from `handover/tools/hunt_prompts.md`, which holds the shared preamble
    and every cycle's territories verbatim. For a new cycle update: the cycle number and the
@@ -3431,6 +3443,56 @@ not needed; all disposable and frozen listeners were stopped; repository and fro
 clean. The protocol-conformance loop therefore stops at Cycle 42. The missing 176 mapped 4.160.0
 chunks remain the same explicit external coverage limit, not an unreported finding.
 
+### Cycle 43 -- the complete current-client universe also reports no findings
+
+Cycle 43 reopened frozen Cycle-42 head `5874d01` because the stopping claim still carried one
+named external boundary: 176 webpack chunks mapped by the retained Plex Web 4.160.0 gateway
+runtime but absent from that historical cache. Three independent territories covered that boundary,
+the historical universe and the advertised-control universe. Every report ends exactly
+**`no findings`**.
+
+Territory A obtained the complete current public Plex Web **4.160.0** app build `75ddd7b` from its
+anonymous manifest-rooted static graph: **205/205 JavaScript assets, 16/16 CSS assets, 30
+same-origin static dependencies, zero missing assets and 207/207 verified SRI values**. Cycle 40's
+28 recovered app-build JavaScript bodies match the current public graph byte-for-byte; the other
+177 JavaScript assets contribute **zero direct PMS/player path call sites, zero PMS request-builder
+imports, zero XHR/AJAX/Backbone write sites and zero new controls or actions**. All 281 direct path
+call sites remain in the same 28 files Cycle 40 recovered. The three current-only PMS families are
+the already implemented metadata-provider id, group-id and membership surface. The reconciled
+current ledger is 207 PMS families; adding its four predicates, eight controls and ten
+action/readback cells to the complete 4.147.1 graph gives 51 predicates, 347 controls and 55
+action/readback cells. The old gateway variant remains an accurately bounded historical artifact at
+29/205 JavaScript bodies, but it is no longer a limit on the complete current official app build.
+
+Territory B independently rebuilt **332/332** historical atoms from 513 raw records and 496
+claim-source records, preserving 645 source references. All **24/24** Cycle-41 fixes pass their
+cross-fix/adjacent-dependency audits; actionable and unbounded unresolved are both zero. The final
+dispositions remain 180 built, 42 refuted/superseded, 36 deliberate capability absences, 23
+client-invisible fidelity choices, 40 external/instrument bounds and 11 safely unreachable state
+models. Its attempted full UI replay was stopped when the concurrent-suite rule fired; it claims
+only fresh targeted/offline evidence and hash-verified retained UI evidence, while root and
+Territory C supply the independent complete current-head UI runs.
+
+Territory C recollected all **49** advertisement-source families on kids, zen and current plexsim,
+rescanned all 207 local 4.147.1 JavaScript files and rebuilt the graph at exactly **1,221
+advertisements / 47 predicates / 339 controls / 45 actions / 45 readbacks**. All stable ids are
+unique and every foreign key resolves. Thirty-nine reachable chains have fresh exact route,
+assertion and postcondition witnesses; the two forbidden media reads, hidden Optimize/Sync actions
+and three external/auth actions remain the same six terminal bounds; unresolved is zero. Its
+instrumented disposable replay passed **1582/1582** with 14 explicit fixture skips and recorded
+7,149 requests over 1,365 distinct method/path pairs.
+
+Root independently repeated catalog features 35/35, mediainfo 34/34, decisions 2106/2106,
+sessions, navigation 28/28 and UI 1582/1582. Python-plexapi remains 29/38 and byte reads 0/11 only
+because the fixture carries dead account-scoped Real-Debrid links; every queue and decision passes.
+All three protected-reference before/after pairs are byte-identical at
+`64579ece7b9f77a2914bc07f5f3aef36f71bf2ddf0c57aec68b428819386e68a`; all exact-value secret scans
+are clean; neither writable PMS copy was needed. At cycle start, root found the supposedly stopped
+Cycle-41 frozen listeners still on 32587/32588 (pids 24850/24852) and killed only those verified
+scratch-tree processes before allocating Cycle-43 ports. Every Cycle-43 disposable/frozen listener
+was then stopped and rechecked. With the current client, historical behavior and advertised-control
+graph all finitely enumerated and clean, the protocol-conformance loop stops at Cycle 43.
+
 ### Next: cycle 36 (superseded, run)
 
 1. **The FRAMES of the write surface, the rest of the list.** Cycle 35's hunt reached the library
@@ -3907,6 +3969,22 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 43.**
+
+- **No new deliberate deviation or unresolved behavior was added.** The historical replay retains
+  the same 40 external/instrument and 11 safely unreachable atoms with their exact per-atom bounds;
+  actionable and unbounded unresolved remain zero.
+- **The current-client static boundary is closed for the app build actually served now.** The
+  anonymous manifest-rooted Plex Web 4.160.0 graph is complete at 205 JavaScript and 16 CSS assets,
+  with 207/207 SRI checks. The 177 JavaScript assets beyond Cycle 40's recovered app subset contain
+  no PMS call sites or request builders. The distinct historical gateway variant remains absent at
+  176 mapped bodies; that is provenance about an old cache, not a limit on the complete current app
+  universe and not a source for invented bytes.
+- **The advertised-control graph retains exactly six bounded actions:** two forbidden media reads,
+  hidden Optimize and Sync actions, and the external/auth claim-token, claim and unclaim surface.
+  All 39 reachable 4.147.1 chains have fresh route/assertion/postcondition witnesses. The complete
+  4.160.0 delta adds only the already implemented provider settings lifecycle.
 
 **Cycle 42.**
 
@@ -4422,6 +4500,21 @@ a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified orig
 
 ## 10. Tooling and environment gotchas
 
+**Cycle 43 added these.**
+
+- **A previous cycle's cleanup report is evidence about that instant, not the next cycle's starting
+  state.** Cycle 42 recorded every listener stopped, but Cycle 43 startup still found Cycle 41's
+  frozen-tree processes listening on 32587 and 32588. Before allocating any new port, list every
+  `server.py --port` process, resolve its cwd and command line, and kill only a process whose
+  ownership is proved. Repeat the same global inventory after the agents finish; checking only the
+  ports named by the current cycle misses exactly this failure.
+- **Two official-client builds can share the same version/build label and still have different
+  webpack bodies.** Plex Web 4.160.0 build `75ddd7b` from the historical gateway and the current
+  public app intersect on 202 mapped chunk ids but differ in hashes and one id on each side. Close a
+  static denominator from one manifest-rooted build; never fill a missing historical chunk with a
+  same-named current body. Cycle 43's complete-current claim is for the public app graph whose first
+  28 cached bodies match byte-for-byte.
+
 **Cycle 35 added these.**
 
 - **A sweep that compares DECODED bodies cannot see the encoding.** Cycle 30 asked "is a response a
@@ -4790,6 +4883,18 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 43: `/private/tmp/plexsim-c43.pvIENe/`. `A/` holds the complete manifest-rooted public Plex
+  Web 4.160.0 app graph (205 JS, 16 CSS, every asset hash and 207 verified SRI values), the
+  old/current build comparison, request-builder census, provider reconciliation and clean report.
+  `B/` holds the rebuilt 332-atom census, 24-fix cross-audit, targeted current-head replays and
+  clean report. `C/` holds the fresh 49-family advertised-control matrix, 7,149-request disposable
+  trace, complete UI transcript and clean report. `head43/` is frozen `5874d01`; tokens, public
+  bundle bodies and cache-derived artifacts are private scratch material and must never be
+  committed. All protected snapshots are byte-identical and all exact-value secret scans are clean.
+- cycles 41–42: `/private/tmp/plexsim-c41.LqHDTd/` and `/private/tmp/plexsim-c42.V8haEa/` hold the
+  authoritative 332-atom historical census, 49-family advertised-control graph, both clean replay
+  reports and their machine-readable matrices. Cycle 43 reused only their token-free builders and
+  retained-evidence hashes after auditing the inputs; it did not inherit their dispositions.
 - cycle 40: `/private/tmp/plexsim-c40.doMJSX/`. `A/` holds the complete local 4.147.1 client
   inventory, surviving 4.160.0 cache recovery, provider call-site trace, write/undo ledger and
   exact lifecycle evidence. `B/` holds the machine-readable 867-branch/308-family inward census,

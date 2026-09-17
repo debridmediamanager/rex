@@ -2617,3 +2617,77 @@ predicates, 339 controls, 45 actions and 45 readbacks; 39 have current route/pos
 six are explicitly bounded, unresolved is 0. Both protected-reference snapshots were byte-identical,
 both exact-value secret scans had zero hits, the full disposable UI suite passed 1582/1582, and all
 listeners were stopped. This satisfies the stopping gate; no Cycle-43 hunt is scheduled. ====
+
+
+==== Cycle 43 (2026-09-17). Shared preamble: reopen frozen Cycle-42 head `5874d01` only because the
+user asked for the next cycle and the prior stop retained one explicit current-client boundary. Use
+mode-700 `/private/tmp/plexsim-c43.pvIENe` and fresh local ports. kids and zen remain GET/HEAD only
+through the write-shaped-GET guard; no protected-reference websocket/EventSource,
+media/theme/part/transcode body, plex.tv account/auth/claim/device API, fun or writes. Anonymous
+public static asset GETs may carry no cookie, token or authorization header. Writes belong only on
+disposable references or local plexsim after a prewritten ledger. Run `refcheck7.py` before and
+after, require byte identity, never edit the repository, and end with exactly `no findings` only
+when the territory's finite denominator is closed. Three independent current-runtime hunters were
+used; the legacy Fable/Opus model labels were not available in this runtime. ====
+
+
+# Cycle 43 | Territory A | complete current official-client static universe
+
+Close or sharply re-bound Cycle 40–42's only external client-coverage limit: 176 mapped Plex Web
+4.160.0 chunks absent from the retained cache. First verify the exact old denominator and recovered
+set from Cycle 40. Then inspect current local browser/CDP caches and the public anonymous static
+asset graph to obtain a complete manifest-rooted official-client bundle if possible. Hash every
+asset, record build/version provenance, and distinguish a complete current build from the
+incomplete historical 4.160.0 cache. Starting from request builders/call sites, not literals,
+enumerate and normalize every PMS-bound family, predicate, control, action, exact envelope and
+readback newly present beyond the complete local 4.147.1 graph. Reconcile against Cycle 39 runtime
+envelopes, Cycle 40's inventory, Cycle 42's advertised-control matrix and current routes/tests.
+Exercise only safe exact GET/HEAD cells on the references; local disposable plexsim may take
+reversible writes. Report exact asset/chunk/module/call-site/family/control/action counts, missing
+assets, safety proof, artifact index and every same-version client-visible mismatch with a minimal
+frozen regression. If the current complete bundle cannot be obtained, prove the boundary precisely
+and do not call the axis complete. Finish with exactly `no findings` only if the complete enumerated
+current reachable universe has no mismatch; otherwise list findings or the explicit external bound.
+
+
+# Cycle 43 | Territory B | clean historical-universe replay on current head
+
+Rebuild Cycle 42's 332-atom historical universe from the source records on current head rather than
+trusting retained dispositions. Reuse the retained builders only after auditing their inputs and
+stable-id completeness. Rejoin every atom to current code and a regression that reaches the
+differentiating branch; repeat all 24 Cycle-41 cross-fix audits. Rerun every safe ambiguity whose
+request, state or current behavior changed. Report exact source/atom/disposition/evidence counts,
+bounded reasons, protected-state proof, secret scan and cleanup. Territory C does not use the
+writable copies; Territory B has exclusive access if fresh evidence genuinely requires them, with
+every write and undo predeclared. A finding must reproduce against frozen 32644, name client impact
+and provide a minimal fail-on-frozen regression target. Finish with exactly `no findings` only if
+all 332 atoms are present, actionable and unbounded unresolved are both zero, and no current
+client-visible mismatch remains.
+
+
+# Cycle 43 | Territory C | clean advertised-control replay on current head
+
+Rebuild Cycle 42's complete locally served Plex Web 4.147.1 advertised-control chain against
+current source: 49 advertisement source families, 1,221 normalized advertisements, 47 exact
+predicates, 339 controls and 45 action/readback pairs. Recollect every safe source, rejoin stable ids
+and foreign keys, and rerun the disposable current-tree action/postcondition matrix. No row inherits
+coverage from Cycle 42: verify current source, exact route witness and assertion. Do not use the
+writable PMS copies. Retain the six explicit capability/auth/external bounds only if they still
+expose no reachable control. Report exact counts, request trace, suite outcome, safety proof, secret
+scan and cleanup. A finding must reproduce on current head and include a minimal regression target.
+Finish with exactly `no findings` only if every stable id and terminal disposition is present,
+unresolved is zero and no reachable client-visible mismatch remains.
+
+
+==== Cycle 43 result (2026-09-17). All three reports ended exactly `no findings`. Territory A
+obtained the complete current public Plex Web 4.160.0 app graph: 205/205 JS, 16/16 CSS, zero missing
+assets and 207/207 verified SRI values. The 177 JS assets beyond Cycle 40's app subset contain zero
+PMS call sites or request builders, closing the complete-current-client boundary without
+substituting bytes into the distinct historical gateway build. Territory B rebuilt 332/332 atoms,
+passed 24/24 cross-fix audits and reported actionable 0 / unbounded unresolved 0. Territory C
+rebuilt 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback
+pairs; 39 have fresh exact witnesses, six remain explicitly bounded and unresolved is 0. Its
+disposable UI replay passed 1582/1582. Root independently repeated the full verification. Every
+protected snapshot was byte-identical, every exact-value secret scan was clean, all Cycle-43
+listeners were stopped, and the loop stops with the current-client, historical and advertised axes
+all covered. ====
