@@ -3860,7 +3860,12 @@ class PlexSim:
             # An unknown MODIFIER is ignored, as everywhere else on the surface.
             descending = "desc" in str(_modifiers).split(":")
             if key == "titleSort":
-                rows.sort(key=lambda row: str(row.get("title") or "").lower(),
+                # Cycle 45: a text sort on this surface compares RAW CODEPOINTS --
+                # case-sensitive, no folding -- which is the rule already measured for a
+                # listing's `sort=`. Both references' libraries are capitalised, so this
+                # path cannot witness the case half itself; it follows the surface's own
+                # rule rather than guessing a case-insensitive one.
+                rows.sort(key=lambda row: str(row.get("title") or ""),
                           reverse=descending)
             else:
                 # `taggingCreatedAt` orders on the library's own `createdAt`: zen's
@@ -3868,7 +3873,7 @@ class PlexSim:
                 # Bench TV, Zen Movies, Zen Shows.
                 rows.sort(key=lambda row: row.get("createdAt") or 0, reverse=descending)
         else:
-            rows.sort(key=lambda row: str(row.get("title") or "").lower())
+            rows.sort(key=lambda row: str(row.get("title") or ""))
         # `limit=` is ignored entirely here -- `abc` and `0` both answer every row --
         # where the same parameter is a 500 on a section listing.
         return self.bare_container(

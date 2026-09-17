@@ -470,6 +470,177 @@ def main():
     # ------------------------------------------------------------------
     # 2. Mark as Played / Mark as Unplayed / rating
     # ------------------------------------------------------------------
+    # Cycle 45: these two read checks live HERE, before the suite's first write, because
+    # both read the fixture's TAGS and its ARTWORK. Placed after the Edit and artwork
+    # sections -- where every other cycle-45 block sits -- they saw a row whose people
+    # tags the edit checks had replaced and whose poster the artwork checks had cleared,
+    # and failed on a server that was answering correctly. A read check that depends on
+    # fixture state belongs before the writes that change it.
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2). Hunt A reported
+    # `includeAlternates` as a 1.43.4-only option and it was left unbuilt on that basis;
+    # the claim is REFUTED. The hunt's 1.42.2 oracle was plexscratch42, a fresh install
+    # whose every row is unmatched and therefore holds NO agent artwork at all, so the
+    # option had nothing to add there -- CLAUDE.md's "use it for grammar, never for a
+    # count" trap, taken from the other side. zen, a real matched 1.42.2 library,
+    # honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both
+    # `related` paths.
+    #
+    # What it does: it inlines the AGENT's REMOTE artwork -- `Thumb`, `Art` and `Theme`,
+    # in that order, each `{key, source}` plus a `previewKey` where the provider gives a
+    # thumbnail URL -- and it does it on a FULL row and on nothing else. Swept over
+    # nineteen containers on both references: a section grid, `/library/all`,
+    # `/library/recentlyAdded`, a `/children` page, a section `search`, `/collections`,
+    # `/playlists`, `/hubs/search` and `/hubs/home/recentlyAdded` are byte-identical with
+    # and without it, and inside `/hubs` exactly the shelves that carry full rows gain
+    # the block (zen's `home.television.recent` shows and its `home.ondeck` episode do;
+    # its `home.movies.recent` light movie rows do not). The inline `Related`, `Extras`
+    # and `Children` blocks follow the same rule.
+    #
+    # The child order is measured too: `Thumb` and `Art` sit between the tags and `Guid`
+    # and `Theme` sits directly after `Rating` -- kids' show 6 answers `Genre, Country,
+    # Thumb, Art, Guid, Rating, Theme, Role`. The value grammar is the `+?0*1` family
+    # (`1`, `01`, `+1`, `000001` on; `2`, `-1`, `1.5`, `true`, empty off) and nothing
+    # refuses. A DECISION IGNORES it, the same exception `excludeElements=` already has
+    # -- and plexsim's decision row is a full row, so that exception has to be coded.
+    alt_c45 = {}
+    detail_c45 = "/library/metadata/%s?includeAlternates=1" % movie
+    _status_c45a, body_c45a, _ = get(base, detail_c45)
+    row_c45a = (body_c45a.get("Metadata") or [{}])[0]
+    alt_c45["thumb"] = row_c45a.get("Thumb")
+    alt_c45["art"] = row_c45a.get("Art")
+    alt_c45["order"] = [key_c45a for key_c45a in row_c45a
+                        if key_c45a in ("Genre", "Country", "Thumb", "Art", "Guid",
+                                        "Rating", "Theme", "Director")]
+    _status_c45b, plain_c45, _ = get(base, "/library/metadata/%s" % movie)
+    alt_c45["off by default"] = "Thumb" not in (plain_c45.get("Metadata") or [{}])[0]
+    # The value grammar, and the light-row rule on the section grid beside it.
+    for value_c45a in ("01", "+1", "2", ""):
+        _status_c45c, body_c45c, _ = get(
+            base, "/library/metadata/%s?includeAlternates=%s"
+            % (movie, urllib.parse.quote(value_c45a, safe="")))
+        alt_c45["value %r" % value_c45a] = "Thumb" in (body_c45c.get("Metadata") or [{}])[0]
+    _status_c45d, grid_c45, _ = get(
+        base, "/library/sections/%s/all?includeAlternates=1" % movie_section)
+    alt_c45["light row"] = any("Thumb" in row_c45d
+                               for row_c45d in (grid_c45.get("Metadata") or []))
+    # A decision is the measured exception.
+    decision_c45a = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                     "&partIndex=0&protocol=hls&hasMDE=1&session=c45alt&directPlay=1"
+                     "&directStream=1&includeAlternates=1"
+                     % urllib.parse.quote("/library/metadata/%s" % movie, safe=""))
+    # `request()` already sends `X-Plex-Platform: Chrome` and `X-Plex-Product: Plex Web`,
+    # which is what a decision needs to resolve a profile at all.
+    _status_c45e, dec_c45, _ = get(base, decision_c45a)
+    alt_c45["decision"] = "Thumb" in (dec_c45.get("Metadata") or [{}])[0]
+    check("includeAlternates inlines the remote artwork on a full row alone",
+          bool(alt_c45["thumb"]) and all(set(entry_c45) <= {"key", "previewKey", "source"}
+                                         and entry_c45.get("key")
+                                         for entry_c45 in alt_c45["thumb"])
+          and bool(alt_c45["art"])
+          and alt_c45["order"] == [name_c45a for name_c45a
+                                   in ("Genre", "Country", "Thumb", "Art", "Guid",
+                                       "Rating", "Theme", "Director")
+                                   if name_c45a in row_c45a]
+          and alt_c45["order"].index("Thumb") < alt_c45["order"].index("Guid")
+          and alt_c45["order"].index("Art") < alt_c45["order"].index("Guid")
+          and alt_c45["off by default"]
+          and alt_c45["value '01'"] and alt_c45["value '+1'"]
+          and not alt_c45["value '2'"] and not alt_c45["value ''"]
+          and not alt_c45["light row"] and not alt_c45["decision"],
+          str(alt_c45))
+
+
+    # Cycle 45, measured on kids (1.43.4), zen (1.42.2), plexscratch (1.43.4) and
+    # plexscratch42 (1.42.2) over 91 leaf names, which agree on every one:
+    # `/library/sections/{id}/{name}/top` is a REAL two-segment section leaf -- the
+    # fifth, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the versioned
+    # `composite/{v}` -- and plexsim 404'd every form of it. PMS's own route table names
+    # it `/:tagType/top`, read out of the binary's string block, which is why it matches
+    # ANY single segment rather than a fixed list.
+    #
+    # It answers the section's TAG TABLE for the type the name resolves to: `Directory`
+    # rows of `key, id, filter, tag, tagType` (plus `tagKey` and `thumb` on a person),
+    # ASCENDING BY TAG ID -- not by usage, which is what the name suggests. The `key` is
+    # built from the REQUESTED name (`/library/sections/1/all?studio=28`) while `filter`
+    # names the tag's OWN type (`director=28`), so the two disagree on the alias names.
+    # It is NOT the axis: kids' actor axis is the first-three-roles union (9) where
+    # `/actor/top` is every Role tag (12), and on a SHOW library it reads the LEAVES.
+    #
+    # ELEVEN names resolve to a type, in six pairs -- a tag name and a metadata COLUMN
+    # name sharing each number, which is the tell that PMS looks the segment up in one
+    # integer space that both vocabularies feed:
+    #
+    #     genre / title    -> 1      director / studio -> 4     writer / rating -> 5
+    #     actor / tagline  -> 6      producer / summary -> 7    country         -> 8
+    #
+    # Every other name the server knows as a FILTER FIELD or an AXIS answers an EMPTY
+    # listing container; everything else is a 404. The partition is exact: the eleven
+    # names that are a 400 on the item edit path (`album artist chapterSource childCount
+    # hasChapterVideoStream leafCount logo poster role sourceType track`) are all 404s
+    # here, the section's own leaves are 404s because the router claims them first,
+    # `thumb`/`art`/`theme` are 404s because `/:mediaType(thumb|art|theme)/:timestamp`
+    # claims them, and `platform` is a 404 although it IS an axis. `resolution` is the
+    # media-axis exception and answers the whole library, as `/resolution/zzz` does.
+    # The 1.43.4-only vocabulary splits with the version: `videoCodec`, `audioCodec`,
+    # `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and `clearLogo`
+    # are 200s on kids and 404s on zen, so plexsim -- which reports 1.42.2 -- 404s them.
+    # GET and HEAD only; every other verb is the read-only route's 404.
+    top_c45 = {}
+    for leaf_c45t in ("genre", "director", "writer", "actor", "producer", "country",
+                      "studio", "rating", "title", "tagline", "summary"):
+        _status_c45t, body_c45t, _ = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
+        rows_c45t = body_c45t.get("Directory") or []
+        top_c45[leaf_c45t] = (_status_c45t, len(rows_c45t),
+                              rows_c45t[0].get("tagType") if rows_c45t else None,
+                              rows_c45t[0].get("key") if rows_c45t else None,
+                              rows_c45t[0].get("filter") if rows_c45t else None,
+                              [row_c45t.get("id") for row_c45t in rows_c45t])
+    empty_c45t = {}
+    for leaf_c45t in ("label", "collection", "mood", "firstCharacter", "year",
+                      "contentRating", "banner", "guid", "file", "viewCount"):
+        _status_c45t, body_c45t, _ = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
+        empty_c45t[leaf_c45t] = (_status_c45t, body_c45t.get("size"),
+                                 "Directory" in body_c45t, body_c45t.get("title2"),
+                                 body_c45t.get("allowSync"), body_c45t.get("viewGroup"))
+    refused_c45t = {}
+    for leaf_c45t in ("platform", "poster", "thumb", "art", "theme", "all", "sorts",
+                      "filters", "search", "onDeck", "folder", "role", "album",
+                      "videoCodec", "hdr10plus", "clearLogo", "zzz"):
+        refused_c45t[leaf_c45t] = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))[0]
+    verbs_c45t = {verb_c45t: request(
+        base, verb_c45t, "/library/sections/%s/genre/top" % movie_section)[0]
+        for verb_c45t in ("GET", "HEAD", "POST", "PUT", "DELETE")}
+    # The fixture holds tags of types 1, 4, 5, 6 and 8 and none of 2 or 7, so
+    # `producer`/`summary` are checked for the empty 200 and the PAIRING is checked by
+    # the row sets matching -- which is the half that would break if the table were
+    # mis-keyed.
+    check("the section /top leaf answers its tag table by id",
+          top_c45["genre"][2] == 1 and top_c45["title"][2] == 1
+          and top_c45["director"][2] == 4 and top_c45["studio"][2] == 4
+          and top_c45["writer"][2] == 5 and top_c45["rating"][2] == 5
+          and top_c45["actor"][2] == 6 and top_c45["tagline"][2] == 6
+          and top_c45["producer"][:2] == (200, 0) and top_c45["summary"][:2] == (200, 0)
+          and top_c45["country"][2] == 8
+          and all(top_c45[a_c45t][5] == top_c45[b_c45t][5]
+                  for a_c45t, b_c45t in (("genre", "title"), ("director", "studio"),
+                                         ("writer", "rating"), ("actor", "tagline"),
+                                         ("producer", "summary")))
+          and top_c45["genre"][5] == sorted(top_c45["genre"][5])
+          and top_c45["studio"][3] is not None
+          and "?studio=" in top_c45["studio"][3]
+          and top_c45["studio"][4].startswith("director=")
+          and all(value_c45t == (200, 0, False, None, True, "movie")
+                  for value_c45t in empty_c45t.values())
+          and set(refused_c45t.values()) == {404}
+          and verbs_c45t == {"GET": 200, "HEAD": 200,
+                             "POST": 404, "PUT": 404, "DELETE": 404},
+          str({"tags": {k: v[:3] for k, v in top_c45.items()},
+               "empty": empty_c45t, "refused": refused_c45t, "verbs": verbs_c45t}))
+
+
     print("\n=== context menu: watch state ===")
     status, body, _ = request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
     check("scrobble answers 200 with an empty body", is_empty_200(status, body),
@@ -22444,9 +22615,15 @@ def main():
           and roku_episode_c32h[1].get("directPlayDecisionText")
           == "App cannot direct play this item. No direct play video profile exists for "
              "protocol http, with container mkv, video codec h264, and audio codec eac3."
+          # Cycle 45: this sentence said `container webm` until this cycle corrected the
+          # container at LOAD as well as at build. Cycle 44 measured that a `.webm`
+          # file's container IS `mkv` on a real PMS -- the identical 571,346,576-byte
+          # file answers `mkv` on zen -- so the row the refusal names changed with it.
+          # The check encoded the pre-fix catalog, which is why only a whole-suite run
+          # could see it: `sdrive` proves a patch's own block and nothing else.
           and roku_movie_c32h[1].get("directPlayDecisionText")
           == "App cannot direct play this item. No direct play video profile exists for "
-             "protocol http, with container webm, and video codec vp8.",
+             "protocol http, with container mkv, and video codec vp8.",
           "%r | %r" % (roku_episode_c32h[1].get("directPlayDecisionText"),
                        roku_movie_c32h[1].get("directPlayDecisionText")))
     check("Xbox 360, whose only video target is asf, is a 400",
@@ -24680,171 +24857,6 @@ def main():
     check("the language precedence and the Accept-Language q grammar",
           lang_c45 == want_c45,
           str({k: v for k, v in lang_c45.items() if want_c45.get(k) != v}) or "all 16")
-
-
-    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2). Hunt A reported
-    # `includeAlternates` as a 1.43.4-only option and it was left unbuilt on that basis;
-    # the claim is REFUTED. The hunt's 1.42.2 oracle was plexscratch42, a fresh install
-    # whose every row is unmatched and therefore holds NO agent artwork at all, so the
-    # option had nothing to add there -- CLAUDE.md's "use it for grammar, never for a
-    # count" trap, taken from the other side. zen, a real matched 1.42.2 library,
-    # honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both
-    # `related` paths.
-    #
-    # What it does: it inlines the AGENT's REMOTE artwork -- `Thumb`, `Art` and `Theme`,
-    # in that order, each `{key, source}` plus a `previewKey` where the provider gives a
-    # thumbnail URL -- and it does it on a FULL row and on nothing else. Swept over
-    # nineteen containers on both references: a section grid, `/library/all`,
-    # `/library/recentlyAdded`, a `/children` page, a section `search`, `/collections`,
-    # `/playlists`, `/hubs/search` and `/hubs/home/recentlyAdded` are byte-identical with
-    # and without it, and inside `/hubs` exactly the shelves that carry full rows gain
-    # the block (zen's `home.television.recent` shows and its `home.ondeck` episode do;
-    # its `home.movies.recent` light movie rows do not). The inline `Related`, `Extras`
-    # and `Children` blocks follow the same rule.
-    #
-    # The child order is measured too: `Thumb` and `Art` sit between the tags and `Guid`
-    # and `Theme` sits directly after `Rating` -- kids' show 6 answers `Genre, Country,
-    # Thumb, Art, Guid, Rating, Theme, Role`. The value grammar is the `+?0*1` family
-    # (`1`, `01`, `+1`, `000001` on; `2`, `-1`, `1.5`, `true`, empty off) and nothing
-    # refuses. A DECISION IGNORES it, the same exception `excludeElements=` already has
-    # -- and plexsim's decision row is a full row, so that exception has to be coded.
-    alt_c45 = {}
-    detail_c45 = "/library/metadata/%s?includeAlternates=1" % movie
-    _status_c45a, body_c45a, _ = get(base, detail_c45)
-    row_c45a = (body_c45a.get("Metadata") or [{}])[0]
-    alt_c45["thumb"] = row_c45a.get("Thumb")
-    alt_c45["art"] = row_c45a.get("Art")
-    alt_c45["order"] = [key_c45a for key_c45a in row_c45a
-                        if key_c45a in ("Genre", "Country", "Thumb", "Art", "Guid",
-                                        "Rating", "Theme", "Director")]
-    _status_c45b, plain_c45, _ = get(base, "/library/metadata/%s" % movie)
-    alt_c45["off by default"] = "Thumb" not in (plain_c45.get("Metadata") or [{}])[0]
-    # The value grammar, and the light-row rule on the section grid beside it.
-    for value_c45a in ("01", "+1", "2", ""):
-        _status_c45c, body_c45c, _ = get(
-            base, "/library/metadata/%s?includeAlternates=%s"
-            % (movie, urllib.parse.quote(value_c45a, safe="")))
-        alt_c45["value %r" % value_c45a] = "Thumb" in (body_c45c.get("Metadata") or [{}])[0]
-    _status_c45d, grid_c45, _ = get(
-        base, "/library/sections/%s/all?includeAlternates=1" % movie_section)
-    alt_c45["light row"] = any("Thumb" in row_c45d
-                               for row_c45d in (grid_c45.get("Metadata") or []))
-    # A decision is the measured exception.
-    decision_c45a = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
-                     "&partIndex=0&protocol=hls&hasMDE=1&session=c45alt&directPlay=1"
-                     "&directStream=1&includeAlternates=1"
-                     % urllib.parse.quote("/library/metadata/%s" % movie, safe=""))
-    # `request()` already sends `X-Plex-Platform: Chrome` and `X-Plex-Product: Plex Web`,
-    # which is what a decision needs to resolve a profile at all.
-    _status_c45e, dec_c45, _ = get(base, decision_c45a)
-    alt_c45["decision"] = "Thumb" in (dec_c45.get("Metadata") or [{}])[0]
-    check("includeAlternates inlines the remote artwork on a full row alone",
-          bool(alt_c45["thumb"]) and all(set(entry_c45) <= {"key", "previewKey", "source"}
-                                         and entry_c45.get("key")
-                                         for entry_c45 in alt_c45["thumb"])
-          and bool(alt_c45["art"])
-          and alt_c45["order"] == [name_c45a for name_c45a
-                                   in ("Genre", "Country", "Thumb", "Art", "Guid",
-                                       "Rating", "Theme", "Director")
-                                   if name_c45a in row_c45a]
-          and alt_c45["order"].index("Thumb") < alt_c45["order"].index("Guid")
-          and alt_c45["order"].index("Art") < alt_c45["order"].index("Guid")
-          and alt_c45["off by default"]
-          and alt_c45["value '01'"] and alt_c45["value '+1'"]
-          and not alt_c45["value '2'"] and not alt_c45["value ''"]
-          and not alt_c45["light row"] and not alt_c45["decision"],
-          str(alt_c45))
-
-
-    # Cycle 45, measured on kids (1.43.4), zen (1.42.2), plexscratch (1.43.4) and
-    # plexscratch42 (1.42.2) over 91 leaf names, which agree on every one:
-    # `/library/sections/{id}/{name}/top` is a REAL two-segment section leaf -- the
-    # fifth, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the versioned
-    # `composite/{v}` -- and plexsim 404'd every form of it. PMS's own route table names
-    # it `/:tagType/top`, read out of the binary's string block, which is why it matches
-    # ANY single segment rather than a fixed list.
-    #
-    # It answers the section's TAG TABLE for the type the name resolves to: `Directory`
-    # rows of `key, id, filter, tag, tagType` (plus `tagKey` and `thumb` on a person),
-    # ASCENDING BY TAG ID -- not by usage, which is what the name suggests. The `key` is
-    # built from the REQUESTED name (`/library/sections/1/all?studio=28`) while `filter`
-    # names the tag's OWN type (`director=28`), so the two disagree on the alias names.
-    # It is NOT the axis: kids' actor axis is the first-three-roles union (9) where
-    # `/actor/top` is every Role tag (12), and on a SHOW library it reads the LEAVES.
-    #
-    # ELEVEN names resolve to a type, in six pairs -- a tag name and a metadata COLUMN
-    # name sharing each number, which is the tell that PMS looks the segment up in one
-    # integer space that both vocabularies feed:
-    #
-    #     genre / title    -> 1      director / studio -> 4     writer / rating -> 5
-    #     actor / tagline  -> 6      producer / summary -> 7    country         -> 8
-    #
-    # Every other name the server knows as a FILTER FIELD or an AXIS answers an EMPTY
-    # listing container; everything else is a 404. The partition is exact: the eleven
-    # names that are a 400 on the item edit path (`album artist chapterSource childCount
-    # hasChapterVideoStream leafCount logo poster role sourceType track`) are all 404s
-    # here, the section's own leaves are 404s because the router claims them first,
-    # `thumb`/`art`/`theme` are 404s because `/:mediaType(thumb|art|theme)/:timestamp`
-    # claims them, and `platform` is a 404 although it IS an axis. `resolution` is the
-    # media-axis exception and answers the whole library, as `/resolution/zzz` does.
-    # The 1.43.4-only vocabulary splits with the version: `videoCodec`, `audioCodec`,
-    # `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and `clearLogo`
-    # are 200s on kids and 404s on zen, so plexsim -- which reports 1.42.2 -- 404s them.
-    # GET and HEAD only; every other verb is the read-only route's 404.
-    top_c45 = {}
-    for leaf_c45t in ("genre", "director", "writer", "actor", "producer", "country",
-                      "studio", "rating", "title", "tagline", "summary"):
-        _status_c45t, body_c45t, _ = get(
-            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
-        rows_c45t = body_c45t.get("Directory") or []
-        top_c45[leaf_c45t] = (_status_c45t, len(rows_c45t),
-                              rows_c45t[0].get("tagType") if rows_c45t else None,
-                              rows_c45t[0].get("key") if rows_c45t else None,
-                              rows_c45t[0].get("filter") if rows_c45t else None,
-                              [row_c45t.get("id") for row_c45t in rows_c45t])
-    empty_c45t = {}
-    for leaf_c45t in ("label", "collection", "mood", "firstCharacter", "year",
-                      "contentRating", "banner", "guid", "file", "viewCount"):
-        _status_c45t, body_c45t, _ = get(
-            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
-        empty_c45t[leaf_c45t] = (_status_c45t, body_c45t.get("size"),
-                                 "Directory" in body_c45t, body_c45t.get("title2"),
-                                 body_c45t.get("allowSync"), body_c45t.get("viewGroup"))
-    refused_c45t = {}
-    for leaf_c45t in ("platform", "poster", "thumb", "art", "theme", "all", "sorts",
-                      "filters", "search", "onDeck", "folder", "role", "album",
-                      "videoCodec", "hdr10plus", "clearLogo", "zzz"):
-        refused_c45t[leaf_c45t] = get(
-            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))[0]
-    verbs_c45t = {verb_c45t: request(
-        base, verb_c45t, "/library/sections/%s/genre/top" % movie_section)[0]
-        for verb_c45t in ("GET", "HEAD", "POST", "PUT", "DELETE")}
-    # The fixture holds tags of types 1, 4, 5, 6 and 8 and none of 2 or 7, so
-    # `producer`/`summary` are checked for the empty 200 and the PAIRING is checked by
-    # the row sets matching -- which is the half that would break if the table were
-    # mis-keyed.
-    check("the section /top leaf answers its tag table by id",
-          top_c45["genre"][2] == 1 and top_c45["title"][2] == 1
-          and top_c45["director"][2] == 4 and top_c45["studio"][2] == 4
-          and top_c45["writer"][2] == 5 and top_c45["rating"][2] == 5
-          and top_c45["actor"][2] == 6 and top_c45["tagline"][2] == 6
-          and top_c45["producer"][:2] == (200, 0) and top_c45["summary"][:2] == (200, 0)
-          and top_c45["country"][2] == 8
-          and all(top_c45[a_c45t][5] == top_c45[b_c45t][5]
-                  for a_c45t, b_c45t in (("genre", "title"), ("director", "studio"),
-                                         ("writer", "rating"), ("actor", "tagline"),
-                                         ("producer", "summary")))
-          and top_c45["genre"][5] == sorted(top_c45["genre"][5])
-          and top_c45["studio"][3] is not None
-          and "?studio=" in top_c45["studio"][3]
-          and top_c45["studio"][4].startswith("director=")
-          and all(value_c45t == (200, 0, False, None, True, "movie")
-                  for value_c45t in empty_c45t.values())
-          and set(refused_c45t.values()) == {404}
-          and verbs_c45t == {"GET": 200, "HEAD": 200,
-                             "POST": 404, "PUT": 404, "DELETE": 404},
-          str({"tags": {k: v[:3] for k, v in top_c45.items()},
-               "empty": empty_c45t, "refused": refused_c45t, "verbs": verbs_c45t}))
 
 
     # Cycle 45, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
