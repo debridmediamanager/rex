@@ -109,6 +109,19 @@ try:
 except (OSError, ValueError):
     SERVER_PREFS = []
 
+# Cycle 39 reconstructed PMS 1.42.2's complete tag spellfix input table from a
+# retained read-only database copy.  All library-owned strings come from catalog
+# rows; these 28 distinct optimize/show-ordering values are the only server-owned
+# remainder. Keep the captured version-specific vocabulary beside the other flat
+# PMS fixtures rather than baking one library's derived 71,124 tokens into plexsim.
+_SPELLFIX_STATIC_TAGS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "spellfix_static_tags.json")
+try:
+    with open(_SPELLFIX_STATIC_TAGS_PATH, encoding="utf-8") as _handle:
+        SPELLFIX_STATIC_TAGS = json.load(_handle)
+except (OSError, ValueError):
+    SPELLFIX_STATIC_TAGS = []
+
 # The two library settings that change ROWS rather than only the setting list.
 # Both are ALSO item settings, where `-1` means "inherit this library's value"
 # -- measured on the copy in cycle 15, in all four combinations.
@@ -907,7 +920,7 @@ class Catalog:
     def rebuild_spelling(self):
         """Rebuild both measured spellfix vocabularies from current catalog rows."""
         self.spelling = spellfix_module.SearchIndex(
-            self.items.values(), self.TAG_FIELDS)
+            self.items.values(), self.TAG_FIELDS, SPELLFIX_STATIC_TAGS)
 
     # Tag ids are how the whole filter surface is addressed: a real PMS's
     # secondary axes key their entries by tag id (`/all?genre=24`), not by the

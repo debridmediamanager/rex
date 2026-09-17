@@ -50,6 +50,82 @@ def main():
           [(row["word"], row["distance"], row["score"]) for row in zzz]
           == [("job", 110, 140), ("steel", 137, 167)]
           and len(zzz) <= 10 and all(row["score"] <= 200 for row in zzz))
+
+    # Cycle 39 reconstructed the tag vocabulary exactly. Most inputs were already
+    # on API rows but are not shaped like Catalog.TAG_FIELDS; the only remainder is
+    # this versioned 28-string server-owned fixture.
+    source_row = {
+        "title": "Vocabulary Sources",
+        "Genre": [{"tag": "Measured Genre"}],
+        "Chapter": [{"tag": "The Grey Havens"}],
+        "Review": [{"tag": "Reviewer One"}],
+        "Marker": [{"tag": "Intro Marker"}],
+        "CommonSenseMedia": [{"tag": "Age Twelve"}],
+        "Guid": [{"id": "imdb://tt1234567"}],
+        "Rating": [{"image": "rottentomatoes://image.rating.upright"}],
+        "studio": "Studio Canal",
+        "Network": [{"tag": "HBO Max"}],
+        "thumb": "/thumb/path",
+        "art": "/art/path",
+        "theme": "/theme/path",
+        "Image": [{"type": "clearLogo", "url": "/logo/path"}],
+    }
+    source_index = server.spellfix_module.SearchIndex([source_row], ("Genre",))
+    source_words = {entry["word"]: entry["rank"] for entry in source_index.tags.rows}
+    expected_source_words = {
+        "measured", "grey", "reviewer", "marker", "twelve", "imdb",
+        "rottentomatoes", "studio", "canal", "hbo", "max", "thumb",
+        "art", "theme", "clearlogo",
+    }
+    check("tag spellfix rebuild reads every measured row-backed source",
+          expected_source_words <= set(source_words)
+          and all(source_words[word] == 1 for word in expected_source_words))
+
+    expected_static_tags = [
+        "Optimized for Mobile", "Optimized for TV", "Original Quality",
+        "The Movie Database (Aired)", "TheTVDB (Absolute)",
+        "TheTVDB (Aired)", "TheTVDB (Alternate Aired)",
+        "TheTVDB (Alternate)", "TheTVDB (Amazon)", "TheTVDB (Arc)",
+        "TheTVDB (Blu-ray)", "TheTVDB (BluRay)", "TheTVDB (Combined)",
+        "TheTVDB (Disney+)", "TheTVDB (DVD)", "TheTVDB (France)",
+        "TheTVDB (International)", "TheTVDB (Legacy)",
+        "TheTVDB (Netflix)", "TheTVDB (Ocean Dub)",
+        "TheTVDB (Parts (Netflix))", "TheTVDB (Production)",
+        "TheTVDB (Sagas)", "TheTVDB (Seasons)",
+        "TheTVDB (SkyShowtime)", "TheTVDB (Story)",
+        "TheTVDB (Streaming)", "TheTVDB (Superfan)",
+    ]
+    check("tag spellfix includes the exact measured 1.42.2 static vocabulary",
+          getattr(server, "SPELLFIX_STATIC_TAGS", []) == expected_static_tags)
+    check("static tag inputs participate in the bounded candidate vectors",
+          [entry["word"] for entry in catalog.spelling.tags.candidates("optmized")]
+          == ["optimized"]
+          and "dvd" in [entry["word"]
+                        for entry in catalog.spelling.tags.candidates("tft")]
+          and "bluray" in [entry["word"]
+                           for entry in catalog.spelling.tags.candidates("flr")])
+
+    def repeated_tag(word, count):
+        return [{"tag": word + (" " * index)} for index in range(count)]
+
+    # A compact reconstruction of the live `emtz` witness. The 5,785 distinct
+    # imdb GUID strings give that token its measured rank and keep Imtiaz out of
+    # the ten-candidate vector, exactly as zen's visible people hubs do.
+    emtz_ranks = {
+        "ents": 2, "hintze": 1, "ends": 2, "entre": 1, "hunts": 2,
+        "enter": 4, "amter": 1, "ent": 3, "emde": 1, "imtiaz": 1,
+    }
+    emtz_row = {
+        "title": "Vocabulary Witness",
+        "Role": [tag for word, count in emtz_ranks.items()
+                 for tag in repeated_tag(word, count)],
+        "Guid": [{"id": "imdb://tt%07d" % index} for index in range(5785)],
+    }
+    emtz_index = server.spellfix_module.SearchIndex([emtz_row], ("Role",))
+    emtz_words = [entry["word"] for entry in emtz_index.tags.candidates("emtz")]
+    check("GUID rank keeps the measured emtz people candidate outside the cap",
+          emtz_words[-1:] == ["imdb"] and "imtiaz" not in emtz_words
+          and not emtz_index.tag_matches("Imtiaz Ali", "emtz"))
     check("misspelled title words reach the measured movie rows",
           matches("teers")[0].get("movie") == ["Tears of Steel"]
           and matches("steal")[0].get("movie") == ["Tears of Steel"]
