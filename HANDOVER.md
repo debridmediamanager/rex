@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 39 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **39**. Cycle 39's fresh Plex Web 4.160.0 walk was clean: 21 safe GETs, 20 unique exact envelopes, all a strict subset of cycle 27's corpus, with no same-version behavioral mismatch. The search residual hunt found and closed two real gaps. Hub membership normalization and score-tier normalization are separate passes: the partial tier applies the measured table to the raw query before ASCII-only folding, while whole-title exactness is a broader pass with measured long-s and two-letter-word boundaries. And the complete 1.42.2 spelling tag vocabulary comes from generic row sources plus only 28 static optimize/show-ordering strings; GUID ids and those static strings provably change client-visible people candidates. Both findings are built and regression-proved. |
+| `main` | cycle 40 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **40**. Cycle 40 mechanically enumerated both directions of the server boundary. The inward census found 867 source branches, 308 normalized families, 526 verb cells and 3,080 protocol-axis cells; its one mismatch was the legacy `/system/services/url/lookup` failure, now reproduced byte-for-byte for the reported 1.42.2 build. The outward census completely classified the locally served Plex Web 4.147.1 bundle and the surviving 4.160.0 cache subset; it found that the provider tables expose **Add Agent** while plexsim refused the group lifecycle. That lifecycle is now built and regression-proved. This is not the stopping cycle: both territories found a client-visible mismatch, and 176 mapped 4.160.0 chunks are absent from the retained cache, so no complete-current-client static claim is made. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -103,6 +103,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 40 | 1588 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,452 | **2** (one from the complete inward route/evidence census and one from the recovered official-client provider settings surface, in **2 fix commits**; 867 source branches, 308 normalized families, 526 verb cells and 3,080 protocol cells enumerated; the complete local 4.147.1 bundle and surviving 4.160.0 cache subset classified; the absent 176 mapped 4.160.0 chunks remain an explicit coverage limit) |
 | 39 | 1586 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,322 | **2** (both from the search residual hunt, in **2 fix commits**; the official-client exact replay reported no findings; **2 §3.3 entries CLOSED** -- hub score-fold case handling and faithful tag ranks -- with 659 Unicode cells and a 697,334-query bounded vocabulary comparison; 1 unsafe first client capture discarded and repeated behind a pre-navigation socket/media gate) |
 | 38 | 1581 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,270 | **4** (one request-envelope finding from the concurrency hunt and three search findings from static recovery, in **4 fix commits**; **2 §3.3 entries CLOSED** -- spelling rebuild schedule and final search ordering -- a broad concurrency matrix otherwise matched, and the storage-failure axis was measured but deliberately not emulated because plexsim owns none of those persistent backends) |
 | 37 | 1577 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,055 | **7** (4 from the raw request-envelope sweep, 2 from the catalog/reachability hunt and 1 from the spellfix hunt, in **7 fix commits**; **2 recorded beliefs overturned**, **3 §3.3 entries CLOSED** -- fuzzy membership/pruning, multipart reachability and the clip surface -- one existing UI check pair repaired because it still asserted that fuzzy search was absent, 1 fixture-only Dolby Vision limitation made reachable, 2 negative results, and 2 unresolved details retained) |
@@ -183,6 +184,24 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 40, run 2026-09-17 against the cycle tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_catalog_features.py` | **25/25** | unchanged |
+| `tests/test_mediainfo.py` | **31/31** | unchanged |
+| `tests/test_decision.py` | **2106/2106 cells exact** | unchanged |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1563 PASS / 0 FAIL / 13 skipped** | adds exact legacy URL-lookup GET/XML/HEAD/gzip coverage and the metadata-agent group lifecycle |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | all nine failures are the fixture's unusable RD links |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded dead account-scoped links; all eleven queues and decisions passed |
+
+The first navigation and conformance commands used the wrong local invocation (`--catalog` omitted;
+Xcode Python without `plexapi`); both were rerun with the fixture and the repository's mise Python.
+The first UI run reached more than 1,500 checks before exposing a literal `%20` in the new test's
+format string; that test-only error was repaired inside the provider finding's atomic commit, and
+the fresh authoritative run is the 1563/1563 result above.
 
 Suite results at the head of cycle 39, run 2026-09-17 against the cycle tree:
 
@@ -961,6 +980,11 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 40).** The hunters had `32587`/`32588` on frozen `bcda2f9`; the inward trace used
+`32640`, fail/pass proof used `32592`/`32593`, and the serial suites used `32589`. `32502` and
+`8787` are the standing exceptions. All cycle-owned listeners are free again, both disposable
+references were reset/restored, and the guarded reference snapshots are byte-identical.
 
 **Ports (cycle 39).** The hunters had `32587`/`32588` on frozen `7d98293`; the serial suites used
 `32589`. `32502` and `8787` are the standing exceptions. All cycle-owned listeners are free again,
@@ -3270,23 +3294,57 @@ The final cycle tree passes `test_catalog_features` 25/25, `test_ui_surface` 156
 `test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
 python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
 
-### Next: cycle 40
+### Cycle 40 -- complete boundary censuses found two reachable failures
 
-1. **Official-client OUTWARD inventory.** Read Plex Web 4.160.0's locally served chunks and recover
-   every PMS-bound request builder reachable from server/library/item/detail/context-menu/settings
-   UI. Reconcile method/path/query/header shapes against all retained client corpora and the route
-   suite. Exercise every safe uncovered read exactly; send any uncovered write only to the disposable
-   copies with an undo ledger. A string search alone is not coverage: trace each candidate to a
-   reachable action or prove it dead.
-2. **plexsim INWARD route census.** Mechanically enumerate every route family and verb dispatched by
-   `server.py`, map each to measured evidence and at least one regression, and hold out every family
-   whose evidence is only hand-written or single-shape. Re-measure gaps against both PMS versions
-   under the safety rules, including JSON/XML, GET/HEAD, auth and paging variants where applicable.
-   Report explicit route/family/cell counts and separate deliberate capability absences.
-3. **Stopping gate.** Cycle 40 is the requested clean cycle only if the outward client inventory and
-   inward server census cover their complete enumerated universes and both return no client-visible
-   finding. Any positive finding is implemented, regression-proved, documented, and followed by a
-   new cycle on fresh axes.
+Cycle 40 completed both axes in cycle 39's plan and produced **two fix commits**. The inward census
+mechanically enumerated 867 source branches, 308 normalized route/shared-postprocessor families,
+526 family/verb cells and a 3,080-cell protocol-axis grid (2,986 applicable). Evidence exists for
+all 308 families; branch-entry tracing plus semantic assertions reaches 304, and the only two
+intentionally unopened families are image bodies and notification channels, both already measured
+and regression-covered. Ninety two-version residual cells found one mismatch: the bare
+`GET|HEAD /system/services/url/lookup` does not return an empty negotiated container. Both PMS
+versions return a 500 legacy plug-in XML `Response`; plexsim now emits the exact 464-byte 1.42.2
+body, ignores Accept, gzips GET when offered, preserves the uncompressed length on HEAD and closes
+the connection.
+
+The outward census exhaustively classified the locally served Plex Web 4.147.1 tree: 207 chunks
+plus its OAuth helper, 3,029 module occurrences, 670 offset-verified candidates and 204 normalized
+path families. The hunt also recovered 57 version-marked 4.160.0 JavaScript bodies across two
+cache builds. That recovered subset exposed eight provider-settings writes. Successful provider
+table reads make **Add Agent** visible without another gate, but frozen plexsim returned 400 to the
+group create. Both references accept create and rename with a full JSON group, refuse the offered
+incompatible Personal Media membership with 400, return 404 for absent membership deletion, and
+delete the group with an empty 200. The full create/read/rename/refusal/delete/postcondition
+lifecycle is now in memory and regression-proved.
+
+The 4.160.0 cache is not a complete client artifact: the gw manifest names 205 JavaScript assets
+and only 29 survive, leaving 176 mapped chunks absent; the app build has no retained manifest
+denominator. All surviving call sites are classified, and the 21 exact runtime requests from cycle
+39 remain a strict subset of the old corpus, but the missing chunks forbid a complete 4.160.0
+static-universe claim. Both disposable references were restored byte-for-byte and the protected
+reference snapshots match. The final tree passes catalog 25/25, UI 1563/1563, navigation 28/28,
+mediainfo 31/31 and decision 2106/2106; conformance 29/38 and byte-read 0/11 remain the recorded
+dead-link baselines.
+
+### Next: cycle 41
+
+1. **Historical measured-but-unacted census.** Mechanically enumerate every “measured and not acted
+   on”, deliberate deviation, open limitation and unresolved entry in `docs/findings.md` and this
+   handover. Reconcile each with current code and actual regression reach; classify it as built,
+   refuted, deliberate capability absence, safely unreachable, externally blocked, or actionable.
+   Re-measure every safe actionable or ambiguous cell on both versions, and implement every
+   client-visible mismatch. Report a finite denominator and exact disposition counts.
+2. **Advertisement → action → postcondition census.** Enumerate every capability, preference,
+   provider row, section `Meta` descriptor and complete local Plex Web 4.147.1 UI control that
+   plexsim advertises. Map each advertised control to its exact consumer gate, request envelope,
+   route branch and state readback. Exercise safe reads and all writes on the disposable references
+   and disposable plexsim with prewritten undo ledgers. A 200 is not closure: verify the UI's
+   postcondition and report exact capability/control/action/readback counts.
+3. **Stopping gate.** Cycle 41 is clean only if both finite universes are completely enumerated and
+   covered and neither returns a client-visible finding. The 176 absent 4.160.0 chunks remain an
+   external coverage limit and must not be described as a complete current-client static census.
+   Any positive finding is implemented, fail-parent/pass-fixed regression-proved and followed by a
+   fresh cycle.
 
 ### Next: cycle 36 (superseded, run)
 
@@ -3765,6 +3823,19 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 40.**
+
+- ~~**The legacy `/system/services/url/lookup` traceback.**~~ **BUILT in cycle 40** as the exact
+  464-byte 1.42.2 plug-in XML failure, including GET gzip, HEAD length, Accept indifference and
+  connection close. A valid `url=` lookup remains deliberately unprobed because it is an external
+  fetch/SSRF-shaped request.
+- ~~**Metadata-agent group writes.**~~ **BUILT in cycle 40** because the recovered Plex Web 4.160.0
+  provider UI exposes Add Agent after its two table reads. Create, rename, incompatible membership
+  refusal, absent membership deletion and group deletion all have measured postconditions.
+- **The recovered Plex Web 4.160.0 static universe is incomplete.** Only 29 of the gw manifest's
+  205 JavaScript assets survive in the existing cache; 176 mapped chunks are absent. Every surviving
+  call site is classified, but no clean-cycle claim may call that a complete current-client census.
+
 **Cycle 39.**
 
 - **The official Plex Web 4.160.0 walk had no finding.** Its 20 unique safe request signatures are a
@@ -3938,7 +4009,7 @@ catalog-content differences.
 
 **Cycle 8:** fun's `newest` bound and Recently Viewed order; ICU numeric collation in
 autocomplete; All episodes at `Start>0` (kids drops it, fun keeps it; plexsim follows kids);
-`guid==`/`guid!=`; `/system/services/url/lookup`'s plug-in traceback; mixed folder levels; fun's
+`guid==`/`guid!=`; ~~`/system/services/url/lookup`'s plug-in traceback~~ (built in cycle 40); mixed folder levels; fun's
 postplay `movie.extras` and `tv.ondeck` shelves; minted studio tag ids.
 
 **Cycle 9:** `/services/ultrablur/image` and `/colors?url=`; `/file?url=`; episode `allLeaves`
@@ -4602,6 +4673,12 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 40: `/private/tmp/plexsim-c40.doMJSX/`. `A/` holds the complete local 4.147.1 client
+  inventory, surviving 4.160.0 cache recovery, provider call-site trace, write/undo ledger and
+  exact lifecycle evidence. `B/` holds the machine-readable 867-branch/308-family inward census,
+  line-trace coverage, guarded 90-cell two-version residual matrix and exact lookup response.
+  `head40/` is frozen `bcda2f9`; `wt40/` is the cycle branch. Tokens, copied cache entries and
+  provider evidence are private and must never be committed; reference snapshots are byte-identical.
 - cycle 39: `/private/tmp/plexsim-c39.bELXsP/`. `A/` holds the guarded Plex Web 4.160.0
   capture, its discarded unsafe first attempt, exact replays and the byte-identical reference
   snapshots. `B/` holds the complete 2,076-codepoint fold/case sweep, exact vocabulary rebuild,

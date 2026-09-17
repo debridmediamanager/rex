@@ -2446,3 +2446,93 @@ Search the smallest reconstructible boundary: generic row fields, server-static 
 library-specific state. Do not ship or propose a copied library vocabulary. Validate positive
 witnesses on guarded live GETs and finish with fail-on-frozen regression targets and exact coverage
 counts.
+
+
+==== Cycle 40 (2026-09-17). Shared preamble: frozen commit `bcda2f9`, served on 32587/32588;
+mode-700 scratch root `/private/tmp/plexsim-c40.doMJSX`; kids and zen GET/HEAD only through the
+write-shaped-GET guard; no reference websocket/eventsource, media/theme/part/transcode bodies,
+plex.tv, fun or writes. Writes only on plexscratch/plexscratch42 and disposable plexsim after a
+prewritten undo ledger. Run `refcheck7.py` before and after and require byte-identical output.
+Neither hunter edits the repository. ====
+
+**Prompt correction discovered during the hunt.** Territory A was told that the locally served
+chunks were Plex Web 4.160.0. The complete local set is actually 4.147.1. The hunter did not hide
+that mismatch: it exhaustively inventoried 4.147.1, retained Cycle 39's exact 4.160.0 runtime
+envelopes, and recovered the surviving 4.160.0 Simple Cache subset offline. Only 29 of the gw
+manifest's 205 JavaScript assets survived, so 176 mapped chunks remain an explicit coverage limit.
+
+
+# Cycle 40 | Territory A | complete official-client outward inventory | frozen plexsim 32587
+
+You are an independent hunter. Do not edit the repository. Work only in
+`/private/tmp/plexsim-c40.doMJSX/A`. Frozen source is commit `bcda2f9`, served at
+`http://127.0.0.1:32587`. Read `CLAUDE.md`, `HANDOVER.md` §1, §3, §4, §5, §8 and §10,
+`docs/findings.md`, and the Cycle 39 entries before acting. Read the browser-control skill before
+driving the official client; do not drive it if static reachability evidence is sufficient.
+
+Safety is absolute. kids and zen are GET/HEAD only through the write-shaped-GET guard. Never send a
+write-shaped GET, open a websocket/eventsource on a reference, read media/theme/part/transcode
+bodies, call plex.tv or fun, or touch updater/network/auth/section-delete/match/unmatch/merge/split
+leaves. Writes may go only to plexscratch/plexscratch42 and frozen plexsim, with each write and undo
+entered in a ledger before execution; reset both copies afterward. Source tokens privately from
+`/private/tmp/plexsim-c39.bELXsP/tokens.env`; never print them. Run
+`handover/tools/refcheck7.py handover/tools/ref_cycle5_before.json` before and after, redirecting
+output to mode-600 files, and require byte identity. If a proposed request cannot be made safely,
+settle it statically or report that explicit limit rather than violating the boundary.
+
+Enumerate the COMPLETE PMS-bound outward surface of the locally served Plex Web 4.160.0 chunks.
+Start from request builders/call sites, not only string literals. Trace each candidate to a
+reachable server/library/item/detail/context-menu/settings UI action or prove it dead, external,
+player-bound or plex.tv-bound. Normalize method, path template, required/optional query parameters,
+headers, body form and response consumer. Reconcile the resulting universe against every retained
+official-client corpus (especially cycles 27 and 39), `probes/ui_surface.py`, the regression suites
+and plexsim routes. For every reachable request absent from the corpora, exercise the exact safe read
+or send the exact write only to the disposable copies and frozen target, then compare status,
+format, shape, values used by the client and ordering. Do not call a family covered because one
+literal path was seen; account for parameter/method branches selected by client code.
+
+Report explicit totals: chunks/modules searched, builders/call sites, normalized request families,
+reachable actions, corpus-covered families, suite-covered families, newly exercised cells, dead or
+out-of-scope candidates, and unresolved unsafe cells. A finding must name the exact client gate or
+visible effect, reproduce against the target PMS version, and include a minimal fail-on-frozen
+regression. Finish with a self-contained `REPORT.md`, an artifact index, safety proof and exactly
+`no findings` only if the complete enumerated reachable universe has no client-visible mismatch.
+
+
+# Cycle 40 | Territory B | complete plexsim inward route/evidence census | frozen plexsim 32588
+
+You are an independent hunter. Do not edit the repository. Work only in
+`/private/tmp/plexsim-c40.doMJSX/B`. Frozen source is commit `bcda2f9`, served at
+`http://127.0.0.1:32588`. Read `CLAUDE.md`, `HANDOVER.md` §1, §3, §4, §5, §8 and §10,
+`docs/findings.md`, and the Cycle 39 entries before acting.
+
+Safety is absolute. kids and zen are GET/HEAD only through the write-shaped-GET guard. Never send a
+write-shaped GET, open a websocket/eventsource on a reference, read media/theme/part/transcode
+bodies, call plex.tv or fun, or touch updater/network/auth/section-delete/match/unmatch/merge/split
+leaves. Writes may go only to plexscratch/plexscratch42 and frozen plexsim, with each write and undo
+entered in a ledger before execution; reset both copies afterward. Source tokens privately from
+`/private/tmp/plexsim-c39.bELXsP/tokens.env`; never print them. Run
+`handover/tools/refcheck7.py handover/tools/ref_cycle5_before.json` before and after, redirecting
+output to mode-600 files, and require byte identity. If a proposed request cannot be made safely,
+settle it statically or report that explicit limit rather than violating the boundary.
+
+Mechanically enumerate the COMPLETE inward dispatch universe of `server.py`: every exact route,
+regex/prefix family, fallback, method branch and shared response postprocessor. Normalize dynamic
+segments but preserve semantically different leaves and verbs. For every family, map (a) the
+measurement source in `docs/findings.md`/fixtures/corpora, (b) at least one regression that actually
+reaches it, and (c) applicable protocol variants: JSON/XML negotiation, GET/HEAD parity, auth,
+paging, gzip/range/CORS/localization/excludes and refusal envelope. Use static instrumentation or
+coverage to prove the suite reaches the intended branch; a test mentioning a URL is not coverage if
+an earlier branch answers it. Flag every route whose only evidence is hand-written, single-version,
+single-shape, stale, or absent.
+
+Hold those flagged cells out and re-measure them against both PMS versions where safe. Use exact
+requests, preserve ordered query/header pairs, and separate deliberate fileless/no-encoder
+capability omissions. Writes belong only on disposable copies and must be undone/reset. Do not spend
+the cycle re-proving fully measured rows unless needed as controls. Produce a machine-readable route
+matrix plus `REPORT.md` with totals for source branches, normalized families, verb cells, measured
+families, regression-reached families, protocol-variant cells, held-out gaps and newly measured
+cells. A finding must reproduce and name client impact plus a minimal fail-on-frozen regression.
+Finish with the artifact index, safety proof and exactly `no findings` only if every enumerated
+family is either measured/tested, deliberately absent by capability, or explicitly impossible to
+observe without violating the safety boundary.

@@ -2316,6 +2316,16 @@ precisely how the Seasons bug survived a fix attempt.
   Thumb/Art/Theme/ClearLogo presence strings. The only server-static remainder on 1.42.2 is the
   measured 28-string optimize/show-ordering sidecar. Technical GUID tokens can change the top ten
   and therefore which people reach the wire; never substitute a library-specific token dump.
+- **`/system/services/url/lookup` is not an empty collection.** The bare request is the legacy
+  plug-in framework's fixed 500 `application/xml` failure, independent of Accept. plexsim reports
+  the exact 464-byte 1.42.2 body: GET may gzip it, HEAD carries the uncompressed length without a
+  body, and the response closes the connection. A valid `url=` request is external-fetch shaped and
+  was not probed.
+- **The metadata-provider tables expose Add Agent.** Once both tables load, Plex Web offers group
+  create with no further capability gate, then consumes the returned group id. Create and rename
+  return the full JSON group; deleting the group is an empty 200. The offered Personal Media
+  secondary membership is refused 400 and absent membership deletion is 404. Provider creation is
+  a separate external-object capability and remains absent.
 
 ## Conventions
 

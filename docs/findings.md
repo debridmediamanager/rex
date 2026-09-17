@@ -2686,7 +2686,8 @@ Measured and not acted on:
 - `/library/all` with no `type` and `show.guid=…&season.index=1` answers the
   show; the client always sends `type=3`, which already works.
 - `/system/services/url/lookup` is a 500 carrying the legacy plug-in
-  framework's Python traceback.
+  framework's Python traceback. Cycle 40 measured its complete wire form on both versions and
+  built the exact 1.42.2 response; see the cycle 40 entry below.
 - A folder level holding both subdirectories and files was not measured. No
   plexsim catalog has one, and its directory rows would render as `<Video>`.
 
@@ -8682,6 +8683,56 @@ strings. It deliberately does **not** ship zen's 71,124-token library-specific v
 The final cycle tree passes `test_catalog_features` 25/25, `test_ui_surface` 1561/1561,
 `test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
 python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
+
+### Cycle 40: complete boundary censuses, legacy lookup, and metadata-agent groups
+
+Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen plexsim
+`bcda2f9`. The inward census mechanically found 867 source branches, 308 normalized public/shared
+families, 526 family/verb cells and 3,080 protocol-axis cells, 2,986 applicable. Direct evidence
+maps all 308 families; branch-entry traces plus semantic assertions reach 304. The only two
+deliberately unopened families were image-response bodies and notification channels, both already
+measured and regression-covered. The cycle added 90 two-version reference cells across nine held-
+out route families and one of them disagreed.
+
+**The bare legacy URL lookup is a plug-in failure, independent of representation.** Authenticated
+`GET /system/services/url/lookup` with no query returns 500 `application/xml` on both versions for
+both JSON and XML Accept. Its root is `Response code="2000"`, its status is
+`TypeError: url_lookup() takes at least 2 arguments (1 given)`, and it contains one `Traceback`.
+Only the installed plug-in build and traceback line differ: 1.43.4 names `Plug-ins-e5521bd8c`
+line 847; the 1.42.2 form names `Plug-ins-f737b826c` line 843 and is exactly 464 bytes. HEAD keeps
+status, type and that length with no body. A gzip-capable GET compresses the XML; Accept never
+changes it, and the connection closes. Frozen plexsim instead returned a successful empty
+MediaContainer. Because plexsim reports 1.42.2, it now sends that exact legacy body and envelope.
+A lookup carrying `url=` was not probed: it can cause an external fetch and remains outside the
+safe surface.
+
+**Provider tables advertise Add Agent, so the complete group lifecycle is load-bearing.** The
+locally served Plex Web is 4.147.1, not 4.160.0: its 207 chunks plus OAuth helper contain 3,029
+module occurrences, 670 offset-verified request candidates and 204 normalized path families, all
+classified. An offline, exact-version-marker recovery found 57 cached 4.160.0 JavaScript bodies
+across two builds. The recovered provider-settings chunk proves that successful
+`GET /media/providers/metadata` and `/media/providers/metadata/group` make Add Agent visible with
+no further capability gate. The exact client POST carries `title` followed by
+`primaryIdentifier=tv.plex.agents.movie`, an empty body and normal identity headers. Both references
+return 200 JSON with one full `MetadataAgentProviderGroup` and its primary
+`MetadataAgentProviderGroupItem`; the client consumes the id, closes the modal and refreshes.
+Frozen plexsim returned 400 and left the modal showing “Failed to save changes”.
+
+The dependent operations also agree across versions: renaming returns 200 with the full updated
+group; the UI-offered Personal Media membership PUT with `after=-1` returns 400 because that agent
+is not secondary-compatible; deleting the absent membership returns 404; group deletion returns
+an empty 200 and restores the table. plexsim now holds custom groups in memory and reproduces this
+create/read/rename/refusal/delete/postcondition sequence. Provider create remains a separate
+external-object capability, and PUT/DELETE of built-in providers remain hidden by the client's
+built-in-title gate.
+
+The 4.160.0 static recovery is explicitly incomplete. The gw runtime maps 205 JavaScript assets,
+but only 29 survive in cache, leaving 176 mapped chunks absent; the app build has 28 bodies but no
+manifest denominator. Every recovered request call site is classified and cycle 39's 21 runtime
+requests remain covered, but this evidence cannot support a complete-current-client static claim.
+Both scratch references were restored byte-for-byte. The final tree passes catalog 25/25, UI
+1563/1563, navigation 28/28, mediainfo 31/31 and decision 2106/2106; conformance 29/38 and byte-read
+0/11 remain the known dead-link baselines.
 
 ### Emulation calibrated against the account's own claimed servers
 
