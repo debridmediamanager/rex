@@ -550,8 +550,15 @@ CROSS_TYPE_AXES = {"mood": "By Mood", "style": "By Style", "format": "By Format"
                    "make": "By Camera Make", "model": "By Camera Model",
                    "place": "By Place", "tag": "By Tag"}
 
-SECONDARY_MEDIA = ("resolution", "videoCodec", "audioCodec", "subtitleCodec",
-                   "audioLayout", "audioLanguage", "subtitleLanguage")
+# Cycle 44, measured on zen and plexscratch42 (both 1.42.2) against kids (1.43.4), on a
+# movie library and a show library alike: `videoCodec`, `audioCodec`, `subtitleCodec` and
+# `audioLayout` are secondary axes 1.43.4 ANSWERS and 1.42.2 404s. plexsim reports 1.42.2
+# and answered all four. `CLAUDE.md` already records the same six-name split for the
+# FILTER lists and the `Meta` descriptor; the AXES split with them, which nothing had
+# checked. `resolution`, `audioLanguage` and `subtitleLanguage` are 200 on both versions.
+SECONDARY_MEDIA_1_43 = ("videoCodec", "audioCodec", "subtitleCodec", "audioLayout")
+SECONDARY_MEDIA = ("resolution", "audioLanguage", "subtitleLanguage") \
+    + SECONDARY_MEDIA_1_43
 SECONDARY_TITLES = {
     "genre": "By Genre",
     "year": "By Year",
@@ -6701,6 +6708,9 @@ class PlexSim:
             refusal = 400 if leaf == "year" else 500
             self._parsed_type(query, refusal, refusal)
             return self.secondary_directory(section_id, section, leaf, query)
+        if leaf in SECONDARY_MEDIA_1_43:
+            # 1.43.4 only -- see SECONDARY_MEDIA_1_43. plexsim reports 1.42.2.
+            return ("error", 404, "plexsim: not found")
         if leaf in SECONDARY_MEDIA:
             # And the MEDIA axes ignore `type=` completely -- the same list for every
             # value including `abc`, on a movie library and a show library alike --

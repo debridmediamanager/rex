@@ -3708,8 +3708,7 @@ def main():
     # These read off the Media and its Streams. Measured: their entries carry
     # `key` and `title` and no `fastKey`, and the title is a LABEL -- `1080`
     # prints as `1080p`, a language code as the language's own name.
-    for axis in ("resolution", "videoCodec", "audioCodec", "subtitleCodec",
-                 "audioLayout", "audioLanguage", "subtitleLanguage"):
+    for axis in ("resolution", "audioLanguage", "subtitleLanguage"):
         status, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
         entries = listing.get("Directory") or []
         check("the %s axis answers with key/title entries" % axis,
@@ -3718,6 +3717,20 @@ def main():
               and all(set(e) == {"key", "title"} for e in entries),
               "%s: %d entry(ies) %s" % (listing.get("title2"), len(entries),
                                         entries[:2]))
+    # Cycle 44 RE-MEASURED the other four and this check had the wrong belief in it.
+    # `videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` are secondary axes
+    # 1.43.4 answers and **1.42.2 404s** -- confirmed on zen AND on plexscratch42, both
+    # 1.42.2, on a movie library and a show library alike, against kids' 200s. plexsim
+    # reports 1.42.2. `CLAUDE.md` already records the same six-name media-codec split
+    # for `/filters` and the `Meta` descriptor; the AXES split with them, which nothing
+    # had checked, and plexsim's own `/filters` correctly omits all four while the axis
+    # paths answered the newer version's surface.
+    for axis in ("videoCodec", "audioCodec", "subtitleCodec", "audioLayout"):
+        status, listing, _ = get(base, "/library/sections/%s/%s" % (movie_section, axis))
+        show_status, _, _ = get(base, "/library/sections/%s/%s" % (show_section, axis)) \
+            if show_section else (404, None, None)
+        check("the %s axis is 1.43.4 only and 404s here" % axis,
+              status == 404 and show_status == 404, "%s / %s" % (status, show_status))
     # By Folder Location is the one axis whose container is NOT the secondary one.
     status, location, _ = get(base, "/library/sections/%s/location" % movie_section)
     entries = location.get("Directory") or []
