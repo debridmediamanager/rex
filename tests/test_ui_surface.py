@@ -25047,6 +25047,39 @@ def main():
               features_c45["owner"].split(",")),
           str(features_c45))
 
+
+    # Cycle 45, caught by `tests/test_catalog_features.py` on the cycle's own head and
+    # re-measured on kids and zen: this cycle's `extraType` refusal reached the SECTION
+    # EXTRAS leaf, which is the one listing that really reads the field. Both references
+    # answer 200 there and constrain -- zen's 3,580 clips are 1,264 at `extraType=1` and
+    # 54 at `extraType=3`, and a value that does not parse (`abc`, an empty one) is a 200
+    # with NO rows rather than the 500 an ordinary listing gives. `/library/all` and a
+    # section grid keep the 500.
+    #
+    # The commit that added the refusal put the name in `REFUSED_FILTER_FIELDS`, which
+    # `_listing_refusals` reads on every path that runs the listing grammar -- and the
+    # extras leaf runs it. Its own `sdrive` gate gave it a fail-then-pass proof and the
+    # whole UI suite, neither of which reads this leaf with a parameter; the catalog
+    # feature suite does, because that is where the clip fixture lives.
+    extras_c45 = {}
+    for query_c45x in ("", "?extraType=1", "?extraType=3", "?extraType=abc",
+                       "?extraType="):
+        _status_c45x, body_c45x, _ = get(
+            base, "/library/sections/%s/extras/all%s" % (movie_section, query_c45x))
+        extras_c45[query_c45x or "(bare)"] = (_status_c45x, body_c45x.get("size"))
+    extras_c45["grid"] = get(
+        base, "/library/sections/%s/all?extraType=1" % movie_section)[0]
+    extras_c45["whole library"] = get(base, "/library/all?extraType=1")[0]
+    check("extraType reaches the extras leaf and is refused everywhere else",
+          all(value_c45x[0] == 200 for value_c45x in
+              (extras_c45["(bare)"], extras_c45["?extraType=1"],
+               extras_c45["?extraType=3"], extras_c45["?extraType=abc"],
+               extras_c45["?extraType="]))
+          and extras_c45["?extraType=abc"][1] == 0
+          and extras_c45["?extraType="][1] == 0
+          and extras_c45["grid"] == 500 and extras_c45["whole library"] == 500,
+          str(extras_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
