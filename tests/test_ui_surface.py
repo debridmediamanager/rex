@@ -13392,6 +13392,7 @@ def main():
              "Error" if parsed_c17d1.get("Error") else "Rule"))
     empty_codecs_c41a = {
         name_c41a: get(base, "/library/sections/%s/all?type=1&%s="
+                       "&X-Plex-Container-Start=0&X-Plex-Container-Size=0"
                        % (movie_section, name_c41a))[1].get("totalSize")
         for name_c41a in ("videoCodec", "audioCodec", "subtitleCodec")}
     check("the removed 1.43 codec fields are ignored even with empty operands",
