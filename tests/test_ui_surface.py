@@ -18857,6 +18857,24 @@ def main():
               and all(p_c27c == picked_c27c for p_c27c in regained_c27c),
               "season=%s episodes=%s" % (picked_c27c, regained_c27c))
 
+    # Cycle 41 made the missing half on a pristine writable copy: when the SHOW's
+    # own art is cleared, every episode immediately loses both borrowed fields.
+    # They are derived, not stale values retained on the child rows.
+    request(base, "PUT", "/library/metadata/%s?art.value=" % show)
+    cleared_art_c41e = [
+        (episode_c41e.get("ratingKey"), episode_c41e.get("art"),
+         episode_c41e.get("grandparentArt"))
+        for season_c41e in kids_of_c27c(show)
+        if season_c41e.get("type") == "season"
+        for episode_c41e in kids_of_c27c(season_c41e["ratingKey"])]
+    check("clearing show art removes both borrowed episode art fields",
+          bool(cleared_art_c41e)
+          and all(art_c41e is None and grandparent_c41e is None
+                  for _key_c41e, art_c41e, grandparent_c41e in cleared_art_c41e),
+          str(cleared_art_c41e[:3]))
+    request(base, "PUT", "/library/metadata/%s/art?url=%s"
+            % (show, quote("https://example.invalid/c41e-art.jpg")))
+
 
     # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2) and identical on both: the
     # header refusals are a COUNT and two byte caps, and every one of them is a plain
