@@ -80,14 +80,12 @@ _WIDTH_BUCKETS = ((2876, "4k"),    # 2560 is 2k
                   (1908, "1080"),  # 1424 is 720
                   (1276, "720"),   # 1024 is 576
                   (1024, "576"),   # 768 is below
-                  # Cycle 25. The table had no 480 entry at all, so a wide, short SD
-                  # release fell to `sd`: zen's three 856x358 Media are `480` on a real
-                  # PMS and `sd` here. Built the same way as the five above -- the
-                  # smallest width zen has in the bucket -- with the largest below it
-                  # named in the comment. The boundary is NOT bisected: zen holds no
-                  # width between 720 and 856, so asserting a rounder constant would be
-                  # a number nobody measured.
-                  (856, "480"))    # 720 is sd
+                  # Cycle 41 measured the missing boundary on disposable copies of
+                  # both reference versions: stored widths 840, 842, 844 and 846 are
+                  # `sd`, while 848 is `480`. (Odd requested widths are normalised down
+                  # by the analyser.) Cycle 25's earlier 856 lower bound was therefore
+                  # eight pixels too high and mislabeled real 848-854-wide media.
+                  (848, "480"))    # 846 is sd
 _HEIGHT_BUCKETS = ((1600, "2.7k"),  # 1376 is 1080
                    (1072, "1080"),  # 960 is 720
                    (714, "720"),    # 648 is 576
