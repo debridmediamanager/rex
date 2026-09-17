@@ -5571,8 +5571,14 @@ class PlexSim:
             # the rest of the universal/* family answers 404.
             return ("error", 400, "plexsim: bad request")
         if route in ("/video/:/transcode/universal/ping",
-                     "/video/:/transcode/universal/stop") and not query.get("session"):
-            # Measured: with no `session` these are 400s; an unknown one is a 404.
+                     "/video/:/transcode/universal/stop") and "session" not in query:
+            # Measured: with NO `session` parameter these are 400s; an unknown one is a
+            # 404. Cycle 44: an EMPTY `session=` is the unknown case, not the missing one
+            # -- 404 on plexscratch (1.43.4) and plexscratch42 (1.42.2) alike, where
+            # `session=%20`, `session=0` and `session=zzzz` already were. plexsim read a
+            # falsy value as "no session given" and answered its 400. The neighbouring
+            # `start.m3u8?session=` and `decision?session=` ARE 400s on all three, so the
+            # split is per leaf and not a general rule about an empty value.
             return ("error", 400, "plexsim: bad request")
         if route.startswith("/video/:/transcode/universal/"):
             # /ping, /stop, /session: all of it belongs to a transcode session,
