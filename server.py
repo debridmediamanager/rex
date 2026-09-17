@@ -41,6 +41,7 @@ import socket
 import struct
 import sys
 import threading
+import unicodedata
 import uuid
 import time
 import urllib.error
@@ -1315,7 +1316,46 @@ class Catalog:
                 and (hit(row.get("title")) or hit(row.get("originalTitle")))]
 
     @staticmethod
-    def search_tier(row, query):
+    def _search_tier_words(text):
+        """Token view used by the partial/first-token score pass.
+
+        Cycle 39 swept 659 non-ASCII character/target pairs on zen and held the
+        fitted half out from the evaluation half.  This pass applies the measured
+        title table to the ORIGINAL code point, drops combining marks, and only
+        then folds ASCII case.  It is deliberately narrower than ``fold_query``:
+        Unicode case folding would promote eleven unsupported capitals (and long
+        s) while lower-before-table loses the supported capital eth mapping.
+        """
+        folded = []
+        for char in str(text or ""):
+            if unicodedata.combining(char):
+                continue
+            char = hierarchy_module._TITLE_FOLD.get(char, char)
+            if "A" <= char <= "Z":
+                char = char.lower()
+            folded.append(char)
+        return [word for word in "".join(folded).split() if word]
+
+    @staticmethod
+    def _search_whole_title_equal(title, query):
+        """The broader, separate whole-title equality pass measured in cycle 39."""
+        raw_terms = [word for word in str(query or "").split() if word]
+        # Both forms of macron-o in the two-letter `of` token are anchored on both
+        # PMS versions, even though the ordinary table maps lower-case macron-o.
+        if any(word in ("ōf", "Ōf") for word in raw_terms):
+            return False
+        # Whole-title equality accepts long s at the start of a word (`ſintel`,
+        # `Tears of ſteel`) but not inside one (`Tearſ of Steel`).
+        if any("ſ" in word[1:] for word in raw_terms):
+            return False
+        left = [word for word in
+                hierarchy_module.fold_query(str(title or "").lower()).split() if word]
+        right = [word for word in
+                 hierarchy_module.fold_query(str(query or "").lower()).split() if word]
+        return bool(left) and left == right
+
+    @classmethod
+    def search_tier(cls, row, query):
         """Which of the four score tiers a row's title earns -- measured, not fitted.
 
         Cycle 36, gridded on zen's "Riders of Justice" over forty queries and confirmed
@@ -1344,17 +1384,13 @@ class Catalog:
         have -- HANDOVER 3.1 class D, a model that agreed with every case it was built
         from. The anchored tier turns out to be one token comparison.
         """
-        terms = [term for term in
-                 hierarchy_module.fold_query(str(query or "")).split() if term]
+        terms = cls._search_tier_words(query)
         if not terms:
             return "fuzzy"
         for field in ("title", "titleSort", "originalTitle"):
-            words = [word for word in
-                     hierarchy_module.fold_query(str(row.get(field) or "")).split() if word]
-            if words and words == terms:
+            if cls._search_whole_title_equal(row.get(field), query):
                 return "exact"
-        words = [word for word in
-                 hierarchy_module.fold_query(str(row.get("title") or "")).split() if word]
+        words = cls._search_tier_words(row.get("title"))
         if not words:
             return "fuzzy"
         if words[0] == terms[0]:
@@ -10853,12 +10889,13 @@ class PlexSim:
         section/searchTypes filtering.
         """
         rows = self.catalog.search(text)
-        needle = (text or "").strip().lower()
+        score_query = (text or "").strip()
+        needle = score_query.lower()
         needle_terms = [term for term in
                         hierarchy_module.fold_query(str(text or "")).split() if term]
 
         def rank(row):
-            return self.search_score_value(row, needle)
+            return self.search_score_value(row, score_query)
 
         playlist_rows = []
         # Cycle 25, measured on plexscratch: a PLAYLIST is found by both search
@@ -11006,9 +11043,9 @@ class PlexSim:
 
                 title_hits.sort(key=candidate_key, reverse=True)
                 exact = [row for row in title_hits
-                         if self.catalog.search_tier(row, needle) == "exact"]
+                         if self.catalog.search_tier(row, score_query) == "exact"]
                 title_hits = exact + [row for row in title_hits
-                                      if self.catalog.search_tier(row, needle) != "exact"]
+                                      if self.catalog.search_tier(row, score_query) != "exact"]
                 candidates = title_hits + associated
             self._search_comparison_sort(candidates, rank)
             typed[kind] = candidates[:limit]
@@ -11123,7 +11160,8 @@ class PlexSim:
             tags = {hub: [t for t in rows
                           if str(t["row"].get("librarySectionID")) == str(wanted_section)]
                     for hub, rows in tags.items()}
-        needle = text.strip().lower()
+        score_query = text.strip()
+        needle = score_query.lower()
 
         hubs = []
         for kind, title in self.SEARCH_HUBS:
@@ -11137,8 +11175,8 @@ class PlexSim:
                 entry["_searchhit"] = True
                 # Cycle 35: the tier is the MATCHER's rule (see `Catalog.word_tier`),
                 # and an exact title is 0.93 on both references, not 0.95.
-                matched_title = self.catalog.search_tier(row, needle) != "fuzzy"
-                entry["score"] = self.search_score(row, needle)
+                matched_title = self.catalog.search_tier(row, score_query) != "fuzzy"
+                entry["score"] = self.search_score(row, score_query)
                 if not matched_title:
                     # Measured: a row that matched through a TAG rather than its
                     # own title names the tag it matched on -- the client prints
@@ -11342,14 +11380,15 @@ class PlexSim:
         wanted = query.get("searchTypes")
         tokens = set(str(wanted).split(",")) if wanted else None
         typed, tags = self.search_matches(text, limit)
-        needle = text.strip().lower()
+        score_query = text.strip()
+        needle = score_query.lower()
         results = []
 
         def append_metadata(kind):
             for row in typed.get(kind, []):
                 if not self.search_type_selects(tokens, kind, row):
                     continue
-                results.append({"score": float(self.search_score(row, needle)),
+                results.append({"score": float(self.search_score(row, score_query)),
                                 "Metadata": self._search_result_row(row)})
 
         def append_tags(kind):
