@@ -5226,6 +5226,16 @@ class PlexSim:
             # dialog: PUT /library/parts/{partID}?subtitleStreamID=&allParts=1.
             # Measured on a writable copy of the reference: the same endpoint answers a
             # POST identically, where plexsim 404'd it.
+            #
+            # Cycle 44: only the TWO-segment form. The three-segment MEDIA path
+            # (`/library/parts/{id}/{version}/file.ext`) is a 404 to POST and to PUT on
+            # both writable copies, on 1.42.2 and 1.43.4 alike, while its GET and HEAD
+            # serve bytes. plexsim had no length check, so a client that built the write
+            # from the Part's own `key` -- which IS the three-segment path -- selected a
+            # track on plexsim and got a 404 from a real PMS. It was not an empty
+            # acceptance either: the selection really moved.
+            if len(segments) > 3:
+                return ("error", 404, "plexsim: not found")
             return self.select_stream(segments[2] if len(segments) > 2 else "", query)
 
         if route == "/library/search":
