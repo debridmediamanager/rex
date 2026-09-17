@@ -615,6 +615,30 @@ def measured_smalls(mediainfo):
     return rows
 
 
+@check("cycle 41: carried codec punctuation discriminator", once=True)
+def carried_codec_punctuation(mediainfo):
+    """Cycle 24's three exact discriminator families, retained together.
+
+    An AC-3 stored title carries the AC3 codec component, but VC-1 does not carry
+    VC1 and E-AC-3 does not carry EAC3. A global punctuation substitution therefore
+    cannot model the reference even though the generic carried-title model does.
+    """
+    cases = [
+        ("AC-3", {"streamType": 2, "codec": "ac3", "language": "English",
+                  "channels": 2, "title": "AC-3"}, "AC-3 (English AC3 Stereo)"),
+        ("VC-1", {"streamType": 1, "codec": "vc1", "width": 1920, "height": 1080,
+                  "title": "VC-1"}, "VC-1 (1080p VC1)"),
+        ("E-AC-3", {"streamType": 2, "codec": "eac3", "language": "English",
+                    "channels": 2, "title": "E-AC-3"},
+         "E-AC-3 (English EAC3 Stereo)"),
+    ]
+    rows = []
+    for label, stream, want in cases:
+        mediainfo.stream_titles(stream)
+        rows.append((label, want, stream.get("extendedDisplayTitle")))
+    return rows
+
+
 @check("cycle 41: a visually impaired subtitle disposition is projected only when true",
        once=True)
 def visual_impaired_subtitle(mediainfo):
