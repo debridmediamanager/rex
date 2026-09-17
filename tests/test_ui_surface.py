@@ -3885,15 +3885,12 @@ def main():
     # Indexed defensively: a server that answers fewer hubs must FAIL this check,
     # not crash the run before the rest of the suite gets to speak.
     second = hubs[1] if len(hubs) > 1 else {}
-    # RE-MEASURED in cycle 13 on four queries that match NOTHING, on both servers:
-    # `movie` is FIFTH and `collection` FOURTEENTH. The order plexsim had -- movie
-    # first, collection seventh -- was never the base order; a query with fuzzy hits
-    # promotes the hubs that scored, which is what an earlier reading picked up.
     check("search answers all seventeen typed hubs, empty ones included",
-          len(hubs) == 17 and [h.get("hubIdentifier") for h in hubs][:5]
-          == ["show", "artist", "album", "episode", "movie"]
-          and second.get("title") == "Artists",
-          "%d hub(s), second is %r" % (len(hubs), second.get("title")))
+          len(hubs) == 17 and {h.get("hubIdentifier") for h in hubs}
+          == {"show", "artist", "album", "episode", "movie", "track",
+              "photoalbum", "autotag", "photo", "tag", "actor", "director",
+              "genre", "collection", "playlist", "shared", "place"},
+          "%d hub(s)" % len(hubs))
     check("every search hub has an empty context, a shelf style and no hubKey",
           all(h.get("context") == "" and h.get("style") == "shelf"
               and "hubKey" not in h for h in hubs),
@@ -9240,10 +9237,9 @@ def main():
     # both servers answer the seventeen hubs in ONE order, and it is not the order
     # plexsim used. `movie` is FIFTH, not first, and `collection` is FOURTEENTH,
     # between genre and playlist, not seventh. (A query with fuzzy hits promotes the
-    # hubs that scored -- `zzqqxx` moves actor to sixth on kids -- which is why this
-    # has to be measured on a query that matches nothing; that promotion is recorded
-    # and deliberately not reproduced.) The client lays the results page out from this
-    # list, so every search drew its sections in the wrong order.
+    # hubs that scored -- which is why this has to be measured on a query that matches
+    # nothing. Cycle 41 recovered and implemented that promotion separately below.)
+    # The client lays the results page out from this list.
     order_c13j = [h_c13j.get("type") for h_c13j in
                   get(base, "/hubs/search?query=zzzznomatchzzzz")[1].get("Hub") or []]
     check("the search hubs come back in the order both servers answer",
@@ -9251,6 +9247,22 @@ def main():
                          "photoalbum", "autotag", "photo", "tag", "actor", "director",
                          "genre", "collection", "playlist", "shared", "place"],
           "%s" % order_c13j)
+
+    # Cycle 41 recovered the hub rank from both binaries and validated it against 84
+    # complete ordered grids. `comedy` is the compact fixture discriminator: its exact
+    # Genre result earns class 0/rank 50, while the associated Show result is class 3
+    # and gets only the show's +10 type bias. The base order has Show first and Genre
+    # thirteenth, so this assertion fails unless result-driven promotion actually ran.
+    promotion_c41h = (get(base, "/hubs/search?query=comedy&limit=50")[1]
+                      .get("Hub") or [])
+    promoted_types_c41h = [hub_c41h.get("type") for hub_c41h in promotion_c41h]
+    promoted_genre_c41h = promotion_c41h[0] if promotion_c41h else {}
+    check("search promotes hubs by the recovered match class and type bias",
+          promoted_types_c41h[:1] == ["genre"]
+          and str(((promoted_genre_c41h.get("Directory") or [{}])[0]
+                   .get("score"))) == "0.92000"
+          and promoted_types_c41h.index("genre") < promoted_types_c41h.index("show"),
+          "%s" % promoted_types_c41h)
 
         # Measured on kids (1.43.4) and zen (1.42.2): `/hubs/search` returns the ITEMS a
     # matched tag is on, not just the tag row. kids `colin` answers the two tag rows AND

@@ -10845,6 +10845,9 @@ class PlexSim:
     # used -- a user typing the start of a title got the full-word tier.
     SEARCH_TIER_BASE = {"episode": 0.91}
     SEARCH_TIER_DROP = {"exact": 0.0, "anchored": 0.20, "prefix": 0.40, "fuzzy": 0.60}
+    SEARCH_HUB_CLASSES = {"exact": 0, "anchored": 1, "prefix": 2, "fuzzy": 3}
+    SEARCH_HUB_CLASS_BONUS = {0: 50, 1: 25, 2: 25, 3: 0}
+    SEARCH_HUB_TYPE_BIAS = {"show": 10, "artist": 10, "season": 5, "album": 5}
 
     def search_score_value(self, row, needle):
         """The full-precision score PMS compares before serializing a search row.
@@ -10878,6 +10881,23 @@ class PlexSim:
     def search_score(self, row, needle):
         """The five-decimal score a real PMS writes on the wire."""
         return self._score(self.search_score_value(row, needle))
+
+    @classmethod
+    def search_hub_rank(cls, kind, classes, requested_source_type=None,
+                        source_primary_type=None):
+        """The integer rank PMS assigns before ordering the seventeen search hubs.
+
+        Cycle 41 recovered the formula from both supported PMS binaries and validated
+        it against 84 complete ordered hub grids. The strongest visible result supplies
+        the match class. An untyped `/hubs/search` has no requested source type, so its
+        source bonus is zero; the parameter remains explicit because that is one term
+        of the recovered internal formula, not a score-derived approximation.
+        """
+        match_class = min(classes or [3])
+        source_bonus = (100 if requested_source_type is not None
+                        and source_primary_type == requested_source_type else 0)
+        return (source_bonus + cls.SEARCH_HUB_CLASS_BONUS[match_class]
+                + cls.SEARCH_HUB_TYPE_BIAS.get(kind, 0))
 
     @staticmethod
     def _search_comparison_sort(rows, score):
@@ -11371,6 +11391,7 @@ class PlexSim:
         hubs = []
         for kind, title in self.SEARCH_HUBS:
             rows = []
+            match_classes = []
             for row in typed.get(kind, []):
                 # Measured: a search row is the light projection, and a show keeps
                 # its Location in it.
@@ -11381,6 +11402,8 @@ class PlexSim:
                 # Cycle 35: the tier is the MATCHER's rule (see `Catalog.word_tier`),
                 # and an exact title is 0.93 on both references, not 0.95.
                 matched_title = self.catalog.search_tier(row, score_query) != "fuzzy"
+                match_classes.append(self.SEARCH_HUB_CLASSES[
+                    self.catalog.search_tier(row, score_query)])
                 entry["score"] = self.search_score(row, score_query)
                 if not matched_title:
                     # Measured: a row that matched through a TAG rather than its
@@ -11426,11 +11449,25 @@ class PlexSim:
                 if found:
                     hub["Directory"] = found
                     hub["size"] = len(found)
+                    for entry in found:
+                        score = float(entry.get("score") or 0)
+                        match_classes.append(0 if score >= 0.9 else
+                                             1 if score >= 0.7 else
+                                             2 if score >= 0.5 else 3)
             elif kind in tags:
                 hub["Directory"] = [self._tag_result(entry, kind)
                                     for entry in tags[kind]]
                 hub["size"] = len(hub["Directory"])
+                match_classes.extend(self.SEARCH_HUB_CLASSES.get(entry.get("tier"), 3)
+                                     for entry in tags[kind])
+            hub["_searchRank"] = self.search_hub_rank(kind, match_classes)
             hubs.append(hub)
+        # The recovered libc++ comparator compares this integer and nothing else.
+        # Reusing its existing literal control-flow port preserves the deterministic
+        # equal-rank arrangement without inventing a title/type fallback.
+        self._search_comparison_sort(hubs, lambda hub: hub["_searchRank"])
+        for hub in hubs:
+            hub.pop("_searchRank", None)
         return self.bare_container(size=len(hubs), Hub=hubs)
 
     def _collection_tag_result(self, entry, section):
