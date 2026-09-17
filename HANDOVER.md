@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 41 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **41**. Cycle 41 exhausted the historical backlog and the locally advertised client-control surface. The first census normalized 513 raw notes into 332 atomic behaviors and terminally classified every one; frozen Cycle 40 had 24 client-visible mismatches, all now implemented in 24 atomic fix commits with fail-parent/pass-fixed proofs. The fixed dispositions are 180 built, 42 refuted/superseded, 36 deliberate capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds and 11 safely unreachable state models, with zero actionable and zero unbounded unresolved cells. The independent advertisement census joined 49 source families and 1,221 values to 47 predicates, 339 controls and 45 action/readback pairs; every pair is classified and it found no reachable mismatch. This is not yet the stopping cycle because Cycle 41 itself found positive findings; Cycle 42 repeats both complete axes on the fixed tree. The 176 absent mapped Plex Web 4.160.0 chunks remain an explicit external limit. |
+| `main` | cycle 42 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **42 — stopping gate met.** Cycle 42 freshly replayed both complete finite universes against merged Cycle-41 head `f8cd6c2`, and both independent reports end exactly `no findings`. The historical axis rebuilt 332/332 atoms and re-proved all 24 Cycle-41 fixes: actionable and unbounded unresolved are zero. The advertised-control axis rebuilt 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs: 39 have current exact route/postcondition witnesses, six have explicit media/capability/auth/external bounds, and unresolved is zero. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every disposable process is stopped. The 176 absent mapped Plex Web 4.160.0 chunks remain an explicit external coverage limit rather than a hidden claim. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -77,6 +77,7 @@ Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 42 | 1582 (+2,106 decision cells; mediainfo 34; catalog features 35; focused sessions) | 18,652 | **0**. Clean replay: 332/332 historical atoms, 24/24 previous fixes, 49/1,221/47/339/45/45 advertised-control graph, both reports exactly `no findings`; this is the stopping cycle |
 | 41 | 1582 (+2,106 cells in `test_decision`; `test_mediainfo` 34; `test_catalog_features` 35; plus the focused session suite) | 18,652 | **24** in **24 fix commits** from a finite 332-atom historical census; 49 advertisement-source families, 1,221 normalized advertisements, 47 exact predicates, 339 controls and 45 action/readback pairs independently closed with **0** advertisement findings; 51 historical atoms remain explicitly bounded by capability, state or instrument and **0** are unbounded/actionable |
 | pre-loop | 24 | 1,798 | — |
 | 1–4 | 442 | 6,953 | the build-out |
@@ -185,6 +186,25 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 42, run 2026-09-17 against frozen merged head `f8cd6c2`:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_catalog_features.py` | **35/35** | includes the exhaustive title-fold and all Cycle-41 focused catalog regressions |
+| `tests/test_mediainfo.py` | **34/34** | |
+| `tests/test_decision.py` | **2106/2106 cells exact** | |
+| `tests/test_sessions.py` | **all pass** | |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1582 PASS / 0 FAIL / 14 skipped** | independently passed in root and in both census verification paths |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | all nine failures are the fixture's unusable RD links |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the dead-link baseline; all eleven queues and decisions passed |
+
+Territory A rebuilt 332/332 atoms, passed 24/24 cross-fix audits, 24 current safe GET cells and its
+focused bucket discriminator. Territory B recollected every source and rebuilt the complete
+49/1,221/47/339/45/45 graph, then traced 7,090 requests / 1,363 distinct method-path pairs. Both
+reports end `no findings`; both protected snapshots are byte-identical and both exact-value secret
+scans have zero hits. This is the stopping cycle.
 
 Suite results at the head of cycle 41, run 2026-09-17 against the cycle tree:
 
@@ -3383,22 +3403,33 @@ passes catalog features 35/35, mediainfo 34/34, decisions 2106/2106, sessions, n
 UI 1582/1582 with 14 explicit fixture skips. Conformance 29/38 and byte reads 0/11 remain solely the
 known dead account-scoped link baseline.
 
-### Next: cycle 42
+### Cycle 42 -- the clean replay reports no findings
 
-1. **Clean historical-census replay.** Freeze the merged Cycle-41 head, rebuild the same 332-atom
-   universe from its source records, and rejoin every atom to current code, regression and terminal
-   disposition. Re-run every safe retained differentiator needed to prove that none of Cycle 41's
-   24 fixes opened another atom. The exact gate is 332/332 classified, zero actionable, zero
-   unbounded unresolved; bounded cells must retain their explicit capability/state reason.
-2. **Clean advertisement-chain replay.** Rebuild all 49 source families, 1,221 advertisements, 47
-   predicates, 339 controls and 45 action/readback pairs against the merged head. Re-exercise all
-   safe reads and disposable postconditions. No inherited row may count from the Cycle-41 frozen
-   report without checking its current source, exact route and assertion.
-3. **Stopping gate.** Cycle 42 is the first eligible zero-finding cycle because Cycle 41 itself found
-   positives. Stop only if both finite universes are completely enumerated, both reports say exactly
-   no client-visible findings, all fresh suites pass (apart from the named dead-link baseline), and
-   protected-reference/scratch/secret proofs are clean. Any positive result starts another full
-   implementation-and-replay cycle.
+Cycle 42 froze merged Cycle-41 head `f8cd6c2` and rebuilt both finite universes from current source,
+current tests and fresh live evidence. It is the first cycle eligible for the stopping rule after
+Cycle 41's positives, and both independent reports end exactly **`no findings`**.
+
+Territory A rebuilt **332/332** historical atoms from the same 513 raw / 496 claim-source entries,
+preserving 645 source references even where Cycle 41's closing documentation moved or rewrote the
+sentence. It rejoined every atom to current code and regression evidence, then audited all 24
+Cycle-41 fixes across their adjacent dependencies. The result is **24/24 pass, pending 0**. Current
+activity included 24 safe target GET cells, a dedicated `#`-bucket discriminator, and the complete
+suite. Final dispositions are unchanged; actionable and unbounded unresolved remain zero.
+
+Territory B recollected every one of the 49 source families on both references and frozen plexsim,
+rescanned all 207 local 4.147.1 JavaScript files and rebuilt the graph at exactly **1,221
+advertisements / 47 predicates / 339 controls / 45 actions / 45 readbacks**. Stable ids are unique,
+all foreign keys resolve, 39 chains have current exact route plus postcondition witnesses, and the
+six media/capability/auth/external bounds are explicit. Unresolved is zero. Its disposable replay
+passed 1582/1582 and traced 7,090 requests across 1,363 distinct method/path pairs.
+
+Root independently repeated catalog features 35/35, mediainfo 34/34, decisions 2106/2106,
+sessions, navigation 28/28 and UI 1582/1582. The 29/38 conformance and 0/11 byte-read results remain
+the named dead-link baseline, with all queues and decisions passing. Both audit snapshots are
+byte-identical to their befores; exact-value secret scans have zero hits; the scratch copies were
+not needed; all disposable and frozen listeners were stopped; repository and frozen export stayed
+clean. The protocol-conformance loop therefore stops at Cycle 42. The missing 176 mapped 4.160.0
+chunks remain the same explicit external coverage limit, not an unreported finding.
 
 ### Next: cycle 36 (superseded, run)
 
@@ -3876,6 +3907,17 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 42.**
+
+- **No new deliberate deviation or unresolved behavior was added.** The clean historical replay
+  retains the same 40 external/instrument and 11 safely unreachable atoms, each with its existing
+  exact bound; actionable and unbounded unresolved are zero.
+- **The advertised-control graph retains exactly six bounded actions:** two forbidden media reads,
+  hidden Optimize and Sync actions, and the external/auth claim-token, claim and unclaim surface.
+  All 39 reachable chains have current route and postcondition witnesses.
+- **The 176 absent mapped Plex Web 4.160.0 chunks remain external.** Cycle 42 completely covers the
+  locally served 4.147.1 bundle and does not broaden that claim.
 
 **Cycle 41.**
 

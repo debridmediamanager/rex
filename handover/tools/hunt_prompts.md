@@ -2608,3 +2608,12 @@ merely because Cycle 41 classified it: verify current source, exact route witnes
 Keep the six media/capability/auth/external bounds explicit and prove they expose no reachable
 control. Finish with exactly `no findings` only if every stable id is present, every pair has a
 terminal disposition, unresolved is zero and no reachable client-visible mismatch remains.
+
+
+==== Cycle 42 result (2026-09-17). Both complete replays ended exactly `no findings`. Territory A
+rebuilt 332/332 historical atoms, passed all 24/24 Cycle-41 cross-fix audits, and reported actionable
+0 / unbounded unresolved 0. Territory B rebuilt 49 source families, 1,221 advertisements, 47
+predicates, 339 controls, 45 actions and 45 readbacks; 39 have current route/postcondition witnesses,
+six are explicitly bounded, unresolved is 0. Both protected-reference snapshots were byte-identical,
+both exact-value secret scans had zero hits, the full disposable UI suite passed 1582/1582, and all
+listeners were stopped. This satisfies the stopping gate; no Cycle-43 hunt is scheduled. ====

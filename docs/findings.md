@@ -8798,6 +8798,38 @@ decision **2106/2106**, sessions, navigation **28/28** and UI **1582/1582** with
 skips. Python-plexapi remains **29/38** and the byte-read suite **0/11** solely because every fixture
 link is the recorded dead account-scoped Real-Debrid URL; every queue and decision passes.
 
+### Cycle 42: clean replay, no findings
+
+Measured 2026-09-17 against merged frozen head `f8cd6c2`. This was a fresh replay of both complete
+Cycle-41 universes, not an inference from the previous reports.
+
+The historical axis rebuilt all **332/332** stable atoms from 513 raw entries and 496 claim-source
+entries. All 24 Cycle-41 fixes passed current branch-reaching regressions and retained-evidence hash
+checks, including 24 safe current-target GET cells and a dedicated process-local discriminator for
+the ASCII-nonletter bucket. Final dispositions remain 180 built, 42 refuted/superseded, 36
+deliberate capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds
+and 11 safely unreachable state models. Actionable findings and unbounded unresolved cells are both
+**zero**.
+
+The advertisement axis recollected all **49** source families from both references and frozen
+plexsim, rescanned all 207 JavaScript files of the local Plex Web 4.147.1 bundle, and rebuilt the
+stable graph at **1,221 advertisements / 47 predicates / 339 controls / 45 actions / 45 readbacks**.
+Thirty-nine chains have a current exact route and postcondition witness. The remaining six are the
+same two forbidden media reads, hidden Optimize/Sync capability actions and external/auth claim
+surface; all are explicit terminal bounds, and unresolved is **zero**. The disposable action replay
+recorded 7,090 requests across 1,363 distinct method/path pairs and passed UI **1582/1582**.
+
+Root independently repeated the full verification: catalog features, mediainfo **34/34**, decision
+**2106/2106**, sessions, navigation **28/28** and UI **1582/1582** all pass. Python-plexapi remains
+**29/38** and byte reads **0/11** only because the fixture's Real-Debrid links are dead; all queues
+and decisions pass. Both audits produced byte-identical protected-reference snapshots, zero-hit
+exact-value secret scans and clean disposable-process shutdowns. Neither changed the repository.
+
+This is the first cycle eligible for the stopping rule whose two fully enumerated axes both report
+**no findings**. The protocol-conformance loop stops here. The 176 absent mapped Plex Web 4.160.0
+chunks remain a named external coverage limit and are not recast as a complete-current-client
+static claim.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
