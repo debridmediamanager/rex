@@ -85,6 +85,60 @@ def main():
           accountstate._aes_decrypt_block(
               vector_cipher, accountstate._aes256_round_keys(vector_key)) == vector_plain)
 
+    # Cycle 47: claimed servers refresh the owner first and the feature UUID
+    # universe about eleven seconds later, once per day. Both are one atomic
+    # last-good update.
+    with tempfile.TemporaryDirectory() as refresh_directory:
+        refresh_path = os.path.join(refresh_directory, "claim.json")
+        refreshed_owner = claim.Claim("refresh-machine", refresh_path)
+        refreshed_owner.token = "REFRESH-TOKEN"
+        refreshed_owner.account_id = 7
+        refreshed_owner.feature_uuids = ["uuid-old"]
+        refreshed_owner._save()
+        refresh_calls = []
+        refresh_bodies = [
+            b'<user id="42" username="owner"/>',
+            b'<features><feature id="second" uuid="uuid-b"/>'
+            b'<feature id="first" uuid="uuid-a"/></features>',
+        ]
+        now = [1000]
+        delays = []
+
+        def refresh_open(request, timeout=None):
+            refresh_calls.append(request)
+            return Response(refresh_bodies.pop(0))
+
+        refresher = accountstate.AccountRefresh(
+            refreshed_owner, opener=refresh_open, clock=lambda: now[0],
+            waiter=delays.append)
+        first_refresh = refresher.refresh_due()
+        early_refresh = refresher.refresh_due()
+        now[0] += 86400
+        refresh_bodies.extend([
+            b'<user id="43" username="owner"/>',
+            b'<broken',
+        ])
+        try:
+            refresher.refresh_due()
+        except Exception:
+            pass
+        refresh_reloaded = claim.Claim("refresh-machine", refresh_path)
+
+    refresh_urls = [urllib.parse.urlsplit(call.full_url) for call in refresh_calls]
+    check("daily owner refresh reads user then features with measured auth",
+          first_refresh and not early_refresh and len(refresh_calls) == 4
+          and refresh_urls[0].path == "/api/v2/user"
+          and urllib.parse.parse_qsl(refresh_urls[0].query)
+          == [("includeSubscriptions", "1"), ("includeProviders", "1")]
+          and refresh_calls[0].get_header("X-plex-token") == "REFRESH-TOKEN"
+          and refresh_urls[1].path == "/api/v2/features"
+          and urllib.parse.parse_qsl(refresh_urls[1].query)
+          == [("X-Plex-Token", "REFRESH-TOKEN")]
+          and delays == [11, 11])
+    check("account id and sorted UUIDs persist as one last-good update",
+          refresh_reloaded.account_id == 42
+          and refresh_reloaded.feature_uuids == ["uuid-a", "uuid-b"])
+
     catalog = server.Catalog(os.path.join(ROOT, "tests", "catalog_ui.json"))
     mutable = library.Library(catalog)
     rows = [row for row in catalog.items.values() if row.get("type") == "movie"][:2]
