@@ -6716,14 +6716,45 @@ def main():
     # 400. plexsim created an "Untitled" list of whatever it was sent.
     uri_w12a = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
     results_w12a = [container(base, "POST", "/playlists?" + spec)
-                    for spec in ("type=video&smart=0&uri=%s" % uri_w12a, "title=w12a&smart=0&uri=%s" % uri_w12a,
-                                 "type=video&title=w12a&smart=0", "type=bogus&title=w12a&smart=0&uri=%s" % uri_w12a,
-                                 "type=audio&title=w12a&smart=0&uri=%s" % uri_w12a)]
+                    for spec in ("type=video&smart=0&uri=%s" % uri_w12a,
+                                 "title=w12a&smart=0&uri=%s" % uri_w12a,
+                                 "type=video&title=w12a&smart=0",
+                                 "type=bogus&title=w12a&smart=0&uri=%s" % uri_w12a)]
     for _, made_w12a, _ in results_w12a:
         for row_w12a in made_w12a.get("Metadata") or []:
             request(base, "DELETE", "/playlists/%s" % row_w12a.get("ratingKey"))
-    check("a playlist create needs a title, a type and a uri, and a type that fits it",
-          [r[0] for r in results_w12a] == [400, 400, 400, 500, 400], str([r[0] for r in results_w12a]))
+    mismatch_w12a = {}
+
+    def create_mismatch_w12a():
+        mismatch_w12a["response"] = request(
+            base, "POST", "/playlists?type=audio&title=w12amismatch&smart=0&uri=%s"
+                          % uri_w12a)
+
+    _, mismatch_frames_w12a = notifications(base, create_mismatch_w12a, seconds=4)
+    mismatch_rows_w12a = [row_w12a for row_w12a in
+                          get(base, "/playlists?playlistType=audio")[1].get("Metadata") or []
+                          if row_w12a.get("title") == "w12amismatch"]
+    mismatch_key_w12a = (mismatch_rows_w12a or [{}])[0].get("ratingKey")
+    mismatch_entries_w12a = [entry_w12a for entry_w12a in timeline_entries(
+        mismatch_frames_w12a) if str(entry_w12a.get("itemID")) == str(mismatch_key_w12a)]
+    if mismatch_key_w12a:
+        request(base, "DELETE", "/playlists/%s" % mismatch_key_w12a)
+    check("a playlist create needs a title, a type and a uri",
+          [r[0] for r in results_w12a] == [400, 400, 400, 500],
+          str([r[0] for r in results_w12a]))
+    check("a mismatched playlist create commits an empty list before its 400",
+          (mismatch_w12a.get("response") or (None,))[0] == 400
+          and len(mismatch_rows_w12a) == 1
+          and mismatch_rows_w12a[0].get("playlistType") == "audio"
+          and mismatch_rows_w12a[0].get("leafCount") == 0
+          and len(mismatch_entries_w12a) == 1
+          and mismatch_entries_w12a[0].get("state") == 0
+          and mismatch_entries_w12a[0].get("metadataState") == "created"
+          and mismatch_entries_w12a[0].get("title") == ""
+          and mismatch_entries_w12a[0].get("type") == 15,
+          "HTTP %s rows=%s frames=%s"
+          % ((mismatch_w12a.get("response") or (None,))[0], mismatch_rows_w12a,
+             mismatch_entries_w12a))
 
     # Measured on plexscratch: deleting an item id a playlist does not hold is a 404 (a
     # ratingKey is not an item id), DELETE on the items clears the list, and a smart

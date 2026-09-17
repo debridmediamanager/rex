@@ -14325,8 +14325,15 @@ class PlexSim:
                 if query["type"] not in ("video", "audio", "photo"):
                     return ("error", 500, "plexsim: bad playlist type")
                 rows = self._items_for_uri(query.get("uri", ""))
-                if query["type"] != "video" and rows:
-                    return ("error", 400, "plexsim: bad request")
+                # Cycle 41, measured on both writable copies: a type/content
+                # mismatch is a peculiar committed error. `audio` over a movie
+                # returns 400, but first creates an EMPTY audio playlist and pushes
+                # its ordinary type-15 `created` frame. Refusing before the write
+                # lost a real list that the Playlists page shows after the dialog
+                # reports its error.
+                mismatched = query["type"] != "video" and bool(rows)
+                if mismatched:
+                    rows = []
                 # Cycle 16, measured on plexscratch: `smart=1` over a comma-joined KEY
                 # LIST is a 400 and creates nothing -- a smart list's uri has to name a
                 # LISTING. plexsim created one whose stored query was a key list, so
@@ -14350,6 +14357,8 @@ class PlexSim:
                 self.notify_created({"ratingKey": playlist["ratingKey"],
                                      "librarySectionID": -1, "type": "playlist",
                                      "title": ""})
+                if mismatched:
+                    return ("error", 400, "plexsim: bad request")
                 # Measured: the CREATE response omits `content` the same way the
                 # list does; only /playlists/{id} carries it. Cycle 21: it omits the
                 # per-user-state block too, although the playlist is already born
