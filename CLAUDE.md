@@ -2326,6 +2326,57 @@ precisely how the Seasons bug survived a fix attempt.
   return the full JSON group; deleting the group is an empty 200. The offered Personal Media
   secondary membership is refused 400 and absent membership deletion is 404. Provider creation is
   a separate external-object capability and remains absent.
+- **A historical “measured but not acted on” note is not a disposition.** Cycle 41 normalized 513
+  raw notes into 332 atomic behaviors and found 24 reachable mismatches hiding among entries marked
+  thin, deliberate or already built. Keep one atomic claim per independently testable behavior,
+  record the current code and a branch-reaching regression, and distinguish a bounded external cell
+  from an unresolved deduction.
+- **Title folding removes one finite block, not every combining character.** Both PMS versions drop
+  exactly U+0300..U+036F at the front and between ASCII sentinels. A generic Unicode combining-class
+  predicate over-removes 699 Mn/Mc characters from other scripts and misses U+034F. The regression
+  sweeps all 7,531 assigned punctuation/symbol/separator/mark/format scalars in the measured gaps.
+- **Playback sessions expire on a global reaper phase.** A process-wide tick advances every 30
+  seconds and removes rows with `seen < tick - 180`; adjacent rows at age 180.9 and 179.0 split at
+  the same tick. Thus a session's visible lifetime is 180-210 seconds, not a lazy per-read 180-second
+  timer.
+- **Recently Added TV is a 50-row listing, not a twelve-row shelf.** Build the full roll-up, cap at
+  50, then apply the ordinary container window. A start of 50 returns zero rows with
+  `totalSize=50, offset=50`; legacy `limit=` and `count=` do not truncate it. One new episode stays
+  an episode, while two siblings roll up to their season.
+- **A show merge is a hierarchy merge.** It deletes the absorbed show, season and episode, appends
+  the absorbed leaf Media before the target leaf Media at matching season/episode indexes, retains
+  target then absorbed Locations, and pushes three delete frames followed by the survivor's state
+  3/5 pair. An unmatched hierarchy shape remains a no-op because no reference measurement defines
+  a pairing for it.
+- **Collection leaf views are empty even when the collection has members.** `/children` exposes the
+  selected member and its collection tag, while `/allLeaves` and `/grandchildren` return empty 200
+  containers on both supported versions. Do not apply the generic parent-leaf projection there.
+- **Multi-Media selection is path-specific.** A decision over more than one Media requires one
+  explicit, in-range `mediaIndex`; absent, negative, nonnumeric and repeated selectors are refused.
+  A play queue ignores that selector and keeps every version. Playlist metadata containers carry
+  `allowSync=false`, `identifier`, `mediaTagPrefix`, `mediaTagVersion` in the measured order.
+- **Moving a queue item can re-anchor `playQueueLastAddedItemID`.** The marker names the item that
+  remains the tail of the plain-add block after the move; leaving it on the moved id changes the
+  client's Up Next shuffle state. Search hubs likewise have their own recovered ordering: strongest
+  match class plus the type bias, sorted with the same unstable comparison routine as result rows.
+- **Legacy quirks remain real side effects.** A type-mismatched playlist create returns 400 after
+  creating the empty playlist and emitting its frame. `/playlists/upload` is 400 when either `path`
+  or `sectionID` is absent and 500 when both are present, irrespective of whether the path exists.
+  A section `/search` ignores every legacy limit spelling. The plain download `filename=` maps `+`
+  to `_`, while `filename*=` keeps the percent-escaped plus.
+- **Projection flags and derived media values are exact gates.** Part `accessible`/`exists` appear
+  only under detail `checkFiles=1`; duration sort reads `Media.duration`; visually-impaired subtitle
+  disposition is projected only when true; mixed folder XML emits a `Directory` for a folder and a
+  `Video` for a file. Generated probes also pin the short-wide 480-resolution transition and the
+  strict anamorphic boundary—do not restore the earlier fitted constants.
+- **The `#` first-character bucket aliases every ASCII non-letter.** The axis aggregates punctuation
+  and digits there, while explicit `/firstCharacter/!` and `/firstCharacter/0` requests remain
+  literal buckets. Non-ASCII punctuation such as `。`, `『` and Greek letters retain their own
+  buckets; only the measured leading-strip characters disappear before bucketing.
+- **Localisation coverage is an emitted-source-pair census.** Cycle 41 walked all 124 safe-read
+  families of the local 4.147.1 client plan and found four missing 1.42.2 source pairs: one server
+  preference summary and three hub titles. Each was captured in all 28 languages. A table entry is
+  complete only when every route context that emits that English source has been joined and checked.
 
 ## Conventions
 

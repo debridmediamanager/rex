@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 40 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **40**. Cycle 40 mechanically enumerated both directions of the server boundary. The inward census found 867 source branches, 308 normalized families, 526 verb cells and 3,080 protocol-axis cells; its one mismatch was the legacy `/system/services/url/lookup` failure, now reproduced byte-for-byte for the reported 1.42.2 build. The outward census completely classified the locally served Plex Web 4.147.1 bundle and the surviving 4.160.0 cache subset; it found that the provider tables expose **Add Agent** while plexsim refused the group lifecycle. That lifecycle is now built and regression-proved. This is not the stopping cycle: both territories found a client-visible mismatch, and 176 mapped 4.160.0 chunks are absent from the retained cache, so no complete-current-client static claim is made. |
+| `main` | cycle 41 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **41**. Cycle 41 exhausted the historical backlog and the locally advertised client-control surface. The first census normalized 513 raw notes into 332 atomic behaviors and terminally classified every one; frozen Cycle 40 had 24 client-visible mismatches, all now implemented in 24 atomic fix commits with fail-parent/pass-fixed proofs. The fixed dispositions are 180 built, 42 refuted/superseded, 36 deliberate capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds and 11 safely unreachable state models, with zero actionable and zero unbounded unresolved cells. The independent advertisement census joined 49 source families and 1,221 values to 47 predicates, 339 controls and 45 action/readback pairs; every pair is classified and it found no reachable mismatch. This is not yet the stopping cycle because Cycle 41 itself found positive findings; Cycle 42 repeats both complete axes on the fixed tree. The 176 absent mapped Plex Web 4.160.0 chunks remain an explicit external limit. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -77,6 +77,7 @@ Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 41 | 1582 (+2,106 cells in `test_decision`; `test_mediainfo` 34; `test_catalog_features` 35; plus the focused session suite) | 18,652 | **24** in **24 fix commits** from a finite 332-atom historical census; 49 advertisement-source families, 1,221 normalized advertisements, 47 exact predicates, 339 controls and 45 action/readback pairs independently closed with **0** advertisement findings; 51 historical atoms remain explicitly bounded by capability, state or instrument and **0** are unbounded/actionable |
 | pre-loop | 24 | 1,798 | — |
 | 1–4 | 442 | 6,953 | the build-out |
 | 5 | 501 | 7,551 | ~20 |
@@ -184,6 +185,24 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 41, run 2026-09-17 against the cycle tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_catalog_features.py` | **35/35** | includes the exhaustive 7,531-scalar title-fold assertion, multi-Media selection, mixed folders, duration sort, show merge and Recent TV cap/roll-up |
+| `tests/test_mediainfo.py` | **34/34** | adds exact 480-width, anamorphic and visually-impaired subtitle boundaries |
+| `tests/test_decision.py` | **2106/2106 cells exact** | unchanged corpus, with the multi-Media selector independently covered in catalog features |
+| `tests/test_sessions.py` | **all pass** | focused fake-clock proof of the global 30-second reaper and 180-second cutoff |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1582 PASS / 0 FAIL / 14 skipped** | all Cycle-41 protocol, write and localization regressions; independently repeated twice on fresh processes |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | all nine failures are the fixture's unusable RD links |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded dead account-scoped links; all eleven queues and decisions passed |
+
+The historical axis retains 487 kids, 488 zen, 447 frozen and 8,674 cells on each writable copy.
+Its final protected-reference snapshot is byte-identical, both copies were restored and released,
+and a five-value secret scan found zero occurrences. The advertisement axis independently reran the
+UI postcondition suite at 1563/1563 on its frozen disposable server before the fixes landed.
 
 Suite results at the head of cycle 40, run 2026-09-17 against the cycle tree:
 
@@ -670,22 +689,22 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | ~~The `addedAt` TIE inside one `group=`~~ | **SETTLED in cycle 15.** Movies 1 and 17 on the copy share `addedAt` 1789187071; grouped together and renamed so that "lowest ratingKey" and "lowest titleSort" predict different survivors, the survivor is the lowest ratingKey under every sort. plexsim was already right | — |
 | ~~The TRAILING half of `titleSort`'s whitespace trim~~ | **SETTLED in cycle 15.** It is an `lstrip`: a trailing space survives, and a title written with one carries no `titleSort` at all | — |
 | ~~The one-word condition on the `title=` fold~~ | **SETTLED in cycle 15, and overturned.** The space was never the rule; the colon was. The model is fitted on 27 queries and held out on 25 more it reproduced exactly | — |
-| **A non-alphanumeric `firstCharacter` bucket** | The digits half is solid (29 + 13 + 13 + 185 rows across four library/type pairs). The "any other non-letter gets its own bucket" half rests on **one row** on zen. The percent-encoding is corroborated on kids' other axes | A library with several punctuation- or CJK-led titles |
+| ~~**A non-alphanumeric `firstCharacter` bucket**~~ | **CLOSED and BUILT in cycle 41.** Two writable copies were driven through digit, ASCII punctuation, non-ASCII punctuation and letter classes. The axis's `#` row aggregates every ASCII nonletter, while an explicitly requested punctuation or digit bucket stays literal; non-ASCII punctuation keeps its own bucket | — |
 | **The non-English article strip** | `La` (4 rows) and `Das` (1) are stripped while `Les`, `Die` and `O` are not, so the article list is per-item LANGUAGE and not mechanical. Deliberately NOT implemented — plexsim's catalog carries no per-item language | Nothing short of a library with real per-item languages |
 | **`banners` and `thumbs` answering EMPTY** | Both are 200 on both references; `banners` is empty on both, but `thumbs` is populated from the media BUNDLE, which plexsim has none of. The empty answer is the honest shape, not a measured value | Nothing to settle: plexsim has no bundle |
-| **A merge on a SHOW** | The season half is measured (a 200 no-op on two seasons); a show has no `Media` either and takes the same branch, but the copy holds ONE show | Put a second show on the copy and merge them |
+| ~~**A merge on a SHOW**~~ | **CLOSED and BUILT in cycle 41.** Both copies merged two shows, deleted the absorbed show/season/episode, combined corresponding leaf Media and emitted the exact delete/survivor frame sequence. The regression uses a synthetic two-hierarchy catalog | — |
 | ~~The `episodeSort`/`flattenSeasons` row effects at the SECTION level~~ | **SETTLED in cycle 15.** The library-wide write produces exactly the item path's row effects, and the item value is a tri-state where `-1` inherits — measured in all four combinations | — |
 | ~~**Whether a cascade CREATES a borrowed artwork field**~~ | **SETTLED in cycle 27: it does.** Cleared season 7's poster on the copy (its episodes lost `parentThumb`), picked one back, and all three episodes carry it again at the new stamp. A borrowed field is DERIVED from its owner: created, moved, and removed when the owner's goes | -- |
 | **`DELETE /library/metadata/{id}` on a season and a show** | The copy answers **400** to every media-item DELETE — episode, season, show and movie alike — while a collection DELETE is a clean 200, with `allowMediaDeletion` true and the media mounted read-only. So whether a real PMS cascades a season delete onto its episodes is unproven, and plexsim's own cascading delete is unverified. The merge half of the same question was settled in cycle 14 | A claimed copy with writable media |
 | **The `queueRegenerated` frame's DELAY** | Measured at +63.1 s after a library create and +7.1 s after an analyze, and by cycle 14 at +2.4 s after a season split and +1.2 s after a collection add. plexsim pushes its frames synchronously and emits it with the write | Nothing a synchronous server can reproduce; recorded rather than faked |
-| **The non-alphanumeric `firstCharacter` bucket** (again) | Re-read AGAIN in cycle 17, this time against zen's section 2 -- 507 shows, 741 seasons, 9,287 episodes, the instrument that did not exist when this was written. It contributes no non-digit non-letter-led title at all, so the "its own bucket, listed after Z" half still rests on the single `『` row in section 1. **Re-checked exhaustively in cycle 27** -- every section of both references (kids 1-2, zen 1, 2 and 4) at every type -- and that row is still the only witness anywhere | A library with several punctuation- or CJK-led titles |
+| ~~**The non-alphanumeric `firstCharacter` bucket** (duplicate)~~ | **CLOSED by cycle 41's controlled two-copy matrix.** See the canonical row above | — |
 | ~~plexsim's `Server:` banner~~ | **SETTLED in cycle 16.** Neither reference sends one, on fifteen paths and every status; it is gone, and every suite still passes | — |
-| ~~The translation table's coverage~~ | **WIDENED in cycle 17** to 451 entries over ~100 paths, and `capture_i18n.py` is now tracked in `handover/tools/`. It is still only as wide as that list: the prefs family, the search hubs, the butler and a generated `Episode N` are in, and anything plexsim emits from a path still off the list stays English | Add paths and re-capture; the diff is mechanical |
+| ~~The translation table's coverage~~ | **CLOSED for the complete safe-read Plex Web 4.147.1 plan in cycle 41.** 374 guarded paths per server covered all 124 safe-read families and every known localization-bearing variant. Four missing 1.42.2 source pairs were captured in all 28 languages (112 values) and built. Fifteen byte/private/write-shaped cells are explicitly guarded and cannot contribute a safe JSON localization pair | — |
 | ~~The XML half of the localisation~~ | **SETTLED in cycle 17.** Diffed language by language on four paths in de and fr: plexsim moves exactly the attribute KINDS zen does (`Filter.title`, `Sort.title`, `Field.title`, `Type.title`, `Directory.title`, `Hub.title`), with no kind on either side the other lacks | -- |
 | ~~A ROW's XML attribute ORDER~~ | **SETTLED in cycle 17.** 25 element buckets, each a topological sort of every PAIR both references emit and each verified as a superset of every observed sequence; 634 inverted pairs fixed and 0 remain | -- |
 | ~~**The 1024 / 4096 / ~41 KB header limits**~~ | **SETTLED in cycle 27, and the third REFUTED.** Bisected on kids and zen: a name of 1024 and a value of 4096 pass, 1025 and 4097 are 400s, so plexsim's two constants were right to the byte. The third is not a size -- it is a cap of 100 header LINES, whatever they weigh | -- |
 
-| **The `titleSort` punctuation set outside the two swept ranges** | Every character of U+0080..U+00BF and U+2000..U+2FFF strips and every block boundary was probed, but U+0300..U+1FFF and U+3000+ were sampled rather than swept. The eight ASCII members were each written individually | Sweep the gaps, if a title ever lands in one |
+| ~~**The `titleSort` punctuation set outside the two swept ranges**~~ | **CLOSED and BUILT in cycle 41.** Both versions agree over 7,531 assigned leading scalars and an 811-scalar interior discriminator: exactly U+0300..U+036F is removed in either position. The generic combining-class predicate over-removed 699 Mn/Mc scalars and missed U+034F | — |
 | **Whether an EPISODE refresh runs the SHOW's activity** | The hunt reported it and one of the driver's two captures reproduced it; the other showed the episode's own seven-frame sequence. Two runs of the same request on the same copy disagreed, so only the SUBTITLE half is implemented | Run it repeatedly on a freshly reset copy and see which is the steady state |
 | **The butler's per-task COUNTS** | The message TEMPLATES are measured verbatim on the copy; the numbers in them are that server's content, and plexsim fills in its own. A template whose count plexsim cannot derive honestly (albums, artists, cache files) is hard-coded at 0 | Nothing: plexsim has no music library and no cache |
 
@@ -699,7 +718,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **`KNOWN_LANGUAGES`** | The Add Library form's accepted set is read off the captured `languageOverride` enum, not probed exhaustively: 13 values were sent and every one agreed with that list. It is the reference's own data rather than a constant nobody measured, but the two sets have not been proved identical | Probe the whole enum, if it ever matters |
 | **The `allowSync`-on-the-ROW signal** | `/library/recentlyAdded` and `/library/onDeck` lead with `allowSync` and the librarySection triple and no other listing does. `allowSync` on the row is used as the tell because the XML writer cannot see the path; it holds on every row measured, but it is a proxy for "this endpoint", which is class C | A row carrying `allowSync` on some other path |
 | **The `_light` projection marker** | A LIGHT row's child order is chosen by a private key the builder sets, because nothing in the row itself distinguishes the two projections. `_drop_private` strips it from both formats and the suite checks that it reaches no client, but it is a proxy for the same reason | Nothing the response exposes |
-| **`sort=duration`, `duration=` and a show's media columns** | The rule is measured -- both read the MEDIA -- and only the show/season half is built: plexsim's own rows always carry a Media duration equal to the row's, so the movie half cannot differ for its catalog. The `audioLanguage` operator table is measured and unexplained | A catalog row whose Media duration differs from its own |
+| ~~**`sort=duration`, `duration=` and a show's media columns**~~ | **CLOSED and BUILT in cycle 41.** A differentiating local catalog now carries unequal/missing row and Media durations; the filter and sort both read the primary Media value, while a missing Media sorts as absent | — |
 
 | **The `Specials` and `[Unknown Season]` season labels** | Both are zen's alone -- kids holds neither, its two seasons being `Season N`. 4 and 5 rows, each corroborated by three independent probes (`titleSort=`, `title=`, `/search`) plus the `#` bucket, and the MECHANISM behind them is cycle 18's two-witness rule | A second library with a season 0 or an index-less season |
 | **`createdAt` read as `addedAt`** | The column is real on both references (every row answers `createdAt>=2000-01-01`) and tracks `addedAt` almost exactly on zen -- 2,437 rows above one epoch against `addedAt`'s 2,436 -- but the one row that differs proves they are not the same column. plexsim holds no other creation time | Nothing the API exposes |
@@ -709,7 +728,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | ~~**The five codec edit-field names held out**~~ | **CLOSED in cycle 30 by measurement, on the new 1.42.2 copy: all five are a 400 there**, so plexsim's refusal was right all along and nothing needed building. `hdr10plus` is the opposite -- a 200 on both versions -- so it became a lockable name. Original entry: `atmos`, `audioCodec`, `audioLayout`, `subtitleCodec` and `videoCodec` take an item lock on plexscratch, which is **1.43.4**. Cycle 20 established that family is 1.43.4-only on the filter and parse surface, and zen cannot be written, so 1.42.2 -- the build plexsim reports -- is unmeasurable. Held out; `hdr10plus` is a 200 that stores nothing on a single witness | A writable 1.42.2 copy. Nothing else settles it |
 | **A refresh not moving `updatedAt`** | plexscratch is isolated from plex.tv, so its agent returns nothing new. What is measured is that running the refresh SEQUENCE does not by itself stamp the row; an agent returning changed metadata might | A claimed writable copy, which needs plex.tv |
 | ~~**The collection and playlist action leaves' FRAMES**~~ | **CLOSED in cycle 26.** Driven side by side against the copy, plexsim reproduces all four sequences frame for frame -- 3 and 7 on a collection, 8 once its guid is `local://`, 4 and 2 on a playlist -- including the `state 2` / `metadataState: matching` opener. Cycle 23 built them; what was missing was the `ended` frame's 100 and the guid reaching a read, both fixed this cycle | -- |
-| **A collection's `/allLeaves` and `/grandchildren` ROWS** | Both containers are measured empty on plexscratch (its collection held one movie and the leaf view returned none), so the container is measured and the row projection is inferred from the light-grid rule | A collection whose members make those lists non-empty |
+| ~~**A collection's `/allLeaves` and `/grandchildren` ROWS**~~ | **CLOSED and BUILT in cycle 41.** On both copies a selected show appears in collection `/children` and carries the collection tag, while `/allLeaves` and `/grandchildren` each return an empty 200 container. Frozen's generic member projection was wrong | — |
 | **The `/system/scanners/{N}` 500 BODY** | All three references answer a 641-byte `application/xml` plug-in-framework traceback; plexsim answers 23 bytes of `text/plain`. The status and type are measured, the body is PMS's own Python traceback | Nothing worth settling: the body names PMS's own file paths |
 | **Which butler DELETE actually cancels** | Cycle 23 recorded a 200 inside a queue window; cycle 25 could not reproduce a queue window at all -- a task's frames arrive at +0.0 -- so there is nothing to cancel and `DELETE`, `GET`, `PUT` and `PATCH` are all 404s when idle, which is what plexsim answers. The Dashboard's Cancel button may simply have nothing to do on a copy this small | A server with a task slow enough to have a window |
 | **`AC-3` carrying `AC3` in a title** | 132 zen streams. `VC-1` does NOT carry `VC1` and `E-AC3`/`E-AC-3` do not carry `EAC3`, so no punctuation-folding rule fits, and a general one breaks 58 other streams. Cycle 24 scored it and left it | A rule that separates the three, or a decision to special-case `AC-3` |
@@ -717,9 +736,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **What is left of cycle 23's butler findings after cycle 26** | Two of the three cycle 25 could not reach are now BUILT: `CleanOldBundles`' messages interleave with its own phases, and `RefreshLibraries` reports and closes the wrapper before it scans. The wrapper's own `round(100n/(n+1))` stepping is built with them. What is left is which tasks are DUE: the copy ran 22 of 23 on a fresh reset and 12 on an immediate second POST, and no row of `GET /butler` carries a last-run or next-run time | Nothing the API exposes. plexsim runs every enabled task |
 | **The rest of cycle 23's butler findings, WHAT IS LEFT OF THEM (superseded by the row above)** | Cycle 25 re-measured the family on an uncontended socket and **two of the six did not reproduce**: `POST /butler/{Task}` pushes its first frame at +0.0 on a freshly reset copy, not after a 7-9 s queue delay, and `/activities` is EMPTY the moment the run returns. `general.db.backup`'s doubling reproduced and is BUILT, together with its `started` at -1 with the subtitle already set. Still unmeasured this cycle: `CleanOldBundles`' interleaved messages, `RefreshLibraries` reporting before it scans, and `POST /butler` running only what is DUE | Measure the three, on a freshly reset copy with nothing else writing to it |
 | ~~**The cycle-23 `mediainfo` model**~~ **SETTLED in cycle 24** | Hunt B fitted a model on 105,558 zen streams and held it out on the 46 recorded probes: misses fall from 613/105,558 and 3/642 to 174/105,558 and 0/642. It adds the language parenthesis-strip rule (which settles cycle 22's five-witness contradiction), `eia_608` -> `Closed Captions` in BOTH titles, `Signs`/`Songs` standing in for Forced, `CC`/`HI` for SDH, `1.0` for Mono, `HDR`/`Dolby` for the dynamic range, the raw ffprobe codec name for audio and the punctuation-stripped label for video, and `providerTitle or "External"` for a sidecar's suffix. The model file is in the cycle's artefacts | Implement it; it is the largest measured block now outstanding |
-| ~~**`pixelAspectRatio` and `anamorphic`**~~ | **BUILT in cycle 25** on 1,688 of zen's video Streams (358 carrying the pair, 1,330 neither, none only one). Only the CONSTANT is still inferred: see the new entry below | -- |
-| ~~**The `videoResolution` cutoff below 720**~~ | **BUILT in cycle 25** as the table's own smallest-in-bucket construction -- `(856, "480")`, the way the other five entries were built -- with 720 named as the largest below it. The boundary is still un-bisected and the comment says so | A file 721-855 wide |
-| ~~**`dub` on a video Stream**~~ **IN as of cycle 24**; `visualImpaired` (1 witness, in neither table) is not | zen carries `dub` on 88 video Streams (never `comment` or `hearingImpaired`), so the video disposition set is default/forced/original/dub; `visualImpaired` is real and in neither table | Implement both from ffprobe's `dub` / `visual_impaired` |
+| ~~**`pixelAspectRatio` and `anamorphic`**~~ | **CLOSED in cycle 41.** The broad Cycle-25 derivation remains; generated probes on both copies pin the final constant as a strict `> 5%` deviation: SAR 21:20 is false and 20:19 is true | — |
+| ~~**The `videoResolution` cutoff below 720**~~ | **CLOSED in cycle 41.** Generated even-width probes on both versions put the short-wide transition between effective width 847 and 848, replacing the fitted 856 boundary | — |
+| ~~**`dub` and `visualImpaired` dispositions**~~ | **CLOSED and BUILT in cycle 41.** `dub` remained correct; a retained positive subtitle witness plus false/absent controls proves `visualImpaired:true` is emitted only for the positive subtitle and never as a video flag | — |
 | ~~**`languages.json`: 13 codes, not 3**~~ **the 13 are IN as of cycle 24**; the regional-tag family (`en-US`, `zh-Hant`, ...) is not | `cha guj hye kat mar mdr mon mya nno pan sin yor zul`, each 1-24 streams on zen. Separately 21 streams carry a REGIONAL `languageTag` (`en-US`, `es-ES`, `pt-BR`, `es-419`, `zh-Hans`, `zh-Hant`) the one-name-one-tag table cannot express, and `zh-Hant` changes the NAME too | Add the 13; the regional family needs an ffprobe of such a file |
 | ~~**`_channel_label`'s trailing space**~~ **fixed in cycle 24**; the reference's full parenthetical form still has one witness | `8 channels (FL+FR+...)` -> plexsim writes `8 channels )` with a double space. A defect under plexsim's own model; the reference's full form has one witness | Fix the strip; the reference form needs a second witness |
 | ~~**Nine more verb-table rows**~~ | **CLOSED in cycle 25**: the last of them, `/library/metadata/{id}/match`'s HEAD/PATCH/OPTIONS, is implemented. Re-measured over all seven verbs on kids, which answers 400 to each | -- |
@@ -727,7 +746,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | ~~**`/hubs/search`'s row lead**~~ | **SETTLED in cycle 25**: `query=Sintel` hits on kids and both references agree exactly. `/library/search` leads with `librarySectionTitle` alone | -- |
 | **The mediainfo LANGUAGE-part rule** | Hunt B fitted "the whole name, not the first word" to 13 of zen's subtitle rows. Implemented, it BREAKS the recorded corpus: `Русский (Full) - Кубик в Кубе` with language `Русский` drops it on a real PMS, which only the first-word rule gets right. Five witnesses across both corpora: `Русский`, `English (Weeb)`, `dansk` dropped; `norsk bokmål`, `Tiếng Việt` kept. The narrowest model that fits all five -- "a MULTI-token name whose title is exactly that name is kept, everything else takes the first word" -- is fitted to two positive witnesses and is class D | A library with more multi-token language names. NOT implemented |
 | **`eia_608` labelled `Closed Captions`** | Real on zen (3 streams), and it appears in the PLAIN display title as well as the extended one -- a different composition path from the codec label, which is why it was not implemented alongside the language rule | Implement it on the display-title path, having measured which of the two carries it |
-| **The `videoResolution` 480 bucket** | zen's 856×358 Media is `480` where plexsim's model says `sd`; every existing cutoff is its height bucket × 16/9 and the 480 entry (853.3) is missing. zen's 720×400 and 688×384 are `sd`, so the cutoff is in (720, 856] -- **not bisected**, so asserting a constant would be class D | Bisect it on zen's own rows; 3 of 13,643 Media witness it |
+| ~~**The `videoResolution` 480 bucket**~~ | **CLOSED and BUILT in cycle 41.** Both copies agree: at height 360, effective width 847 is `sd` and 848 is `480`; scanner even-width normalization is covered | — |
 | **The dynamic-range part carried by `HDR`/`HDR10` in a title** | Two witnesses on zen, and they disagree about whether the match is a prefix or an any-word test | A third witness |
 | **`languages.json` missing `zul`, `cha`, `kat`** | Real on zen (4 of 6,581 language-carrying streams); plexsim's catalog holds no such track, so it changes nothing today | Add the three, having checked the 639-2/T and 639-1 pair for each |
 | **The collection and playlist `/refresh` and `/unmatch` FRAMES** | Measured in full this cycle -- a collection's refresh is 3 frames on an agent guid and 8 on a `local://` one, its unmatch 7, a playlist's 4 and 2 -- and they carry `state 2` with `metadataState: "matching"`, plus a `state 3 matching` on a MOVIE and SHOW unmatch, which plexsim emits nowhere. plexsim also pushes ZERO frames for a movie or show unmatch and no cascade for a season's. The STATUSES are implemented (cycle 21); the sequences are not | Implement the four sequences and the two missing `metadataState` values; the measurements are in cycle 22's findings |
@@ -738,7 +757,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **The session cutoff CONSTANT** | Measured as a BRACKET over ten runs -- gone between +184.0 and +210.4, still alive at +209.4 in one of them -- which is a cutoff at or below 184 s plus a reaper TICK of at least 26 s. 180 and 30 are the round pair inside it and neither is bisected. plexsim prunes lazily on read, so its row goes at the cutoff rather than at the next tick; the tick is recorded | Bisect it, at ~200 s a sample |
+| ~~**The session cutoff CONSTANT and reaper tick**~~ | **CLOSED and BUILT in cycle 41.** Fifteen staggered sessions on each copy split at a 180-second eligibility boundary and disappear in global clusters 29.94/29.97 seconds apart. The process-wide 30-second reaper applies `seen < tick - 180`, giving a 180-210 second visible lifetime | — |
 | **`POST /butler` running only what is DUE** | The counts are measured (22 of 23 on a fresh reset, 12 on an immediate second POST) and the MECHANISM is invisible: no row of `GET /butler` carries a last-run or a next-run time, and two runs cannot separate "its interval has not elapsed" from "it found nothing to do" | Nothing the API exposes |
 | ~~**The session row's `Role` attribute order**~~ | **REFUTED and CLOSED in cycle 27.** Driven on a row carrying `Genre`, `Country`, `Collection`, `Director`, `Writer`, `Role` and `Producer`, every one of them is plainly alphabetical -- `Role` is `filter, id, role, tag, tagKey, thumb` and no `Role` carries an `actor` attribute. plexsim was already right | -- |
 | **What plexsim answers to a transcode START once a decision exists** | The 400 with no decision is measured on every protocol and every leaf. What comes next is plexsim's own 404 -- it has no encoder -- and NOT the reference's, whose `start.mpd` is a 404 there while the same session's `start.m3u8` is a 200 | Nothing: plexsim cannot transcode |
@@ -754,7 +773,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **The `anamorphic` CONSTANT** | Both SIDES are measured on 358 real streams over 16 distinct ratios -- the largest false is 0.0406 (`333:320`, from the recorded corpus) and the smallest true 0.0667 (`16:15`) -- and 0.05 is the only round number between them. "The ratio rounded to one decimal is not 1.0" fits every witness and nothing measured sits in the gap | A file whose SAR falls between 1.0406 and 1.0667 |
+| ~~**The `anamorphic` CONSTANT**~~ | **CLOSED and BUILT in cycle 41.** Synthetic SAR 21:20 and 20:19 rows on both copies prove the threshold is strictly greater than 0.05 | — |
 | **The show-unmatch activity's PROGRESS numbers** | The PAIRS are measured -- (S01, 50), (S01, 95), (S02, 95), (S02, 100), the subtitle moving first at the old progress and the progress stepping after -- and `100 - 5 * seasons left` is fitted to the copy's two-season show, the only one it holds. **Cycle 30 built a three-season show** (`Threefold`, nine clips) on plexscratch42 and found something that fits neither model: `Analyzing Media` steps per LEAF from 25 to 50 (-1, 25, 31, 36, 39, 42, 44, 47, 50) and `Updating Metadata` sits at 50 twice, with the SHOW's subtitle throughout and no per-season pass -- enough to refute `100 - 5 * seasons_left` as the mechanism and not enough to replace it, because that show was already UNMATCHED and that server is 1.42.2 where cycle 25 measured a MATCHED show on 1.43.4 | A MATCHED three-season show, which needs a claimed writable copy -- and every writable instrument is isolated from plex.tv by design. That is the real blocker, not the season count |
 | **The `Samsung` prefs row's PURPOSE** | The row is measured verbatim on both references and both library types, and it is `hidden="1"` with an empty label and summary: no settings pane draws it, so what a Samsung client does with it cannot be shown from the server side | A Samsung client, or its bundle |
 | **The plug-in framework's non-localisation** | `/system` is the only one of the six plug-in containers that carries a translatable string at all -- the other five title their rows with their own lowercase key names -- so "the framework does not localise" has ONE witness and `noHistory` is a proxy for it | A plug-in container with a sentence in it |
@@ -777,7 +796,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **The Recently Added TV ROLL-UP threshold** | The mechanism reproduces on all 50 of zen's rows with no counterexample and is corroborated on kids, but "two or more siblings collapse" is FITTED: what is in scope as "recently added" at all is not pinned, so a library where the boundary falls differently could separate the threshold from the scope | A library with a known add history -- plexscratch, driven by adding files in batches |
+| ~~**The Recently Added TV ROLL-UP threshold and cap**~~ | **CLOSED in cycle 41.** Controlled one- then two-sibling batches on both copies prove the roll-up threshold; 55-family batches prove the independent 50-row cap and page-50 behavior. The cap mismatch was built | — |
 | **`TV_RECENT_CAP = 50`** | A bare constant with ONE witness: zen answers `size 50, totalSize 50` at a 100-row window and pages to `offset 50`, and neither `limit=` nor `count=` moves it. Nothing on the surface explains the number, and kids' library is too small to reach it | A second big library |
 | ~~**The On Deck row's projection is per VERSION, one witness each side**~~ | **CLOSED in cycle 30, and the 1.42.2 side OVERTURNED.** A fresh 1.42.2 copy carries neither `librarySectionKey` nor `Field`, on a movie and an episode alike, which is what 1.43.4 and cycle 21's fun said -- so cycle 28's patch was built from zen's single on-deck row and put the key back wrongly. `/hubs/home/onDeck` and `/hubs/home/continueWatching` DO carry the key on both versions. Original entry: zen (1.42.2) answers the detail row with `librarySectionKey`; plexscratch (1.43.4) drops that key, `Guid`, `Rating` and `Producer` and stamps `studio`. kids' On Deck is empty, so each side of the split rests on one instrument -- and plexsim follows zen because it reports 1.42.2 | A second 1.42.2 server with a row on deck, or kids driven into having one |
 | ~~**1.42.2's CONTINUE WATCHING row projection**~~ | **CLOSED in cycle 30** on the new copy, with a `viewOffset` written on a movie and on an episode: the row is the detail row minus `Field`, with `librarySectionKey` present on `/hubs/home/continueWatching` and absent from `/library/onDeck` and the section leaf -- the same shape as On Deck beside it. **No resume list carries `Field`** | -- |
@@ -790,7 +809,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 |---|---|---|
 | **A `url=` naming a PART on `/photo/:/transcode`** | The two references DISAGREE -- kids 500, zen 404 -- so there is no rule. plexsim takes kids' 500, which is also the general "a server path that is not artwork" answer; the other five shapes in that table agree on both | A third witness at either version |
 | **`TYPE_SORT_NUMBERS` beyond the four types** | Only movie 1, show 2, season 3 and episode 4 are witnessed (they are the only types either reference holds). The rest of the table is Plex's own published type numbering, which is a model rather than a measurement -- and a collection sorts among them untested | A library of another type |
-| **The plain `filename=`'s `_` for `+`** | One witness: zen's file name carries a `+` and shows `News_` in the plain form while `filename*` escapes it. kids' name has no `+`. The `filename*` half is implemented; this half is recorded | A file with a `+` in its name on a second server |
+| ~~**The plain `filename=`'s `_` for `+`**~~ | **CLOSED and BUILT in cycle 41.** A plus-named file on both writable copies proves the plain form maps `+` to `_` while `filename*` preserves it as `%2B` | — |
 | **`/photo/:/transcode`'s `Accept-Ranges` cache tell** | Measured four fresh sizes on both references: the FIRST (generated) response omits the header and every later one sends it, which is the transcode cache answering. plexsim has no transcode cache, so there is no state to key it on | Nothing worth settling |
 | ~~**The whole `clip` surface**~~ | **BUILT in cycle 37 from a measured-shape catalog.** The parent now advertises `primaryExtraKey`, inline `Extras` is uncapped and ordered, both item and section `/extras/all` projections carry the clips without inventing a librarySection triple, and a clip borrows the parent's `art` attribute while its own `/art` leaf is a 404 | — |
 | **plexscratch stamps an artwork PICK at LOCAL time** | Not a rule and not a clock: all three servers' `Date` headers agree with the host to the second, and no stored `addedAt`/`updatedAt` pair on kids or zen shows the offset -- but on the copy a PICK writes `max(stored, now) + 7200` (the container's UTC offset, which therefore COMPOUNDS across writes) while an UPLOAD writes the true epoch, and the pick's own response body names the true-epoch path. Any measurement that compares a copy stamp with `now`, or two copy stamps across write kinds, is measuring this | Nothing to settle; know it before reading a stamp off the copy |
@@ -3326,25 +3345,60 @@ reference snapshots match. The final tree passes catalog 25/25, UI 1563/1563, na
 mediainfo 31/31 and decision 2106/2106; conformance 29/38 and byte-read 0/11 remain the recorded
 dead-link baselines.
 
-### Next: cycle 41
+### Cycle 41 -- the finite historical backlog found 24 real mismatches
 
-1. **Historical measured-but-unacted census.** Mechanically enumerate every “measured and not acted
-   on”, deliberate deviation, open limitation and unresolved entry in `docs/findings.md` and this
-   handover. Reconcile each with current code and actual regression reach; classify it as built,
-   refuted, deliberate capability absence, safely unreachable, externally blocked, or actionable.
-   Re-measure every safe actionable or ambiguous cell on both versions, and implement every
-   client-visible mismatch. Report a finite denominator and exact disposition counts.
-2. **Advertisement → action → postcondition census.** Enumerate every capability, preference,
-   provider row, section `Meta` descriptor and complete local Plex Web 4.147.1 UI control that
-   plexsim advertises. Map each advertised control to its exact consumer gate, request envelope,
-   route branch and state readback. Exercise safe reads and all writes on the disposable references
-   and disposable plexsim with prewritten undo ledgers. A 200 is not closure: verify the UI's
-   postcondition and report exact capability/control/action/readback counts.
-3. **Stopping gate.** Cycle 41 is clean only if both finite universes are completely enumerated and
-   covered and neither returns a client-visible finding. The 176 absent 4.160.0 chunks remain an
-   external coverage limit and must not be described as a complete current-client static census.
-   Any positive finding is implemented, fail-parent/pass-fixed regression-proved and followed by a
-   fresh cycle.
+Cycle 41 completed both finite axes from Cycle 40's plan. Territory A mechanically extracted 513
+raw historical notes, retained 496 claim sources, normalized 287 parents and split compound rows
+into **332 atomic behaviors**. Its final current-tree dispositions are 180 built, 42 refuted or
+superseded, 36 deliberate capability absences, 23 client-invisible fidelity choices, 40
+external/instrument bounds and 11 safely unreachable state models. The last 51 are individually
+named and bounded; actionable findings and unbounded unresolved cells are both **zero**.
+
+Frozen `2c06bab` nevertheless differed on **24** of those atoms. All 24 are implemented in 24 fix
+commits and proved fail-parent/pass-fixed: child/tag order, empty collection leaf views, ASCII
+nonletter buckets, mixed folder row kinds, legacy search limits, untyped scoped conjunctions,
+multi-Media decisions, Media-duration sort, anamorphic and 480 boundaries, show merge, `checkFiles`
+Part state, plus download names, playlist identity, queue re-anchoring, global session reaping,
+search-hub promotion, two playlist edge grammars, exact title-mark folding, four localization source
+pairs, the 50-row Recent TV cap and visually-impaired subtitles. The exact claim-to-commit table is
+in the private `A/REPORT.md` and the public measurement prose is in `docs/findings.md`.
+
+The title-mark close is the cycle's largest finite matrix: 7,531 assigned scalars at the front and
+811 between ASCII sentinels on each writable version. Both remove exactly U+0300..U+036F. The old
+combining-class predicate removed 699 additional Mn/Mc characters and missed U+034F. The session
+close similarly separates two facts: 180 seconds is the cutoff, and a global 30-second process tick
+applies it, so rows live 180-210 seconds.
+
+Territory B independently joined **49 source families / 1,221 normalized advertisements / 47 exact
+consumer predicates / 339 controls / 45 actions / 45 readbacks** for the complete locally served
+Plex Web 4.147.1 bundle. Thirty-nine actions have exact route plus assertion witnesses; the other
+six are explicitly bounded media, encoder/sync or auth/external cells. It found **no client-visible
+mismatch and no unresolved cell**. The 176 mapped 4.160.0 chunks missing from the retained cache
+remain an external limit and are not presented as a complete-current-client static census.
+
+Safety remained intact: the protected reference snapshot is byte-identical, both writable copies
+were restored and released, and the final exact five-secret scan found zero occurrences. Retained
+coverage is 487 kids, 488 zen, 447 frozen and 8,674 cells on each writable copy. The final tree
+passes catalog features 35/35, mediainfo 34/34, decisions 2106/2106, sessions, navigation 28/28 and
+UI 1582/1582 with 14 explicit fixture skips. Conformance 29/38 and byte reads 0/11 remain solely the
+known dead account-scoped link baseline.
+
+### Next: cycle 42
+
+1. **Clean historical-census replay.** Freeze the merged Cycle-41 head, rebuild the same 332-atom
+   universe from its source records, and rejoin every atom to current code, regression and terminal
+   disposition. Re-run every safe retained differentiator needed to prove that none of Cycle 41's
+   24 fixes opened another atom. The exact gate is 332/332 classified, zero actionable, zero
+   unbounded unresolved; bounded cells must retain their explicit capability/state reason.
+2. **Clean advertisement-chain replay.** Rebuild all 49 source families, 1,221 advertisements, 47
+   predicates, 339 controls and 45 action/readback pairs against the merged head. Re-exercise all
+   safe reads and disposable postconditions. No inherited row may count from the Cycle-41 frozen
+   report without checking its current source, exact route and assertion.
+3. **Stopping gate.** Cycle 42 is the first eligible zero-finding cycle because Cycle 41 itself found
+   positives. Stop only if both finite universes are completely enumerated, both reports say exactly
+   no client-visible findings, all fresh suites pass (apart from the named dead-link baseline), and
+   protected-reference/scratch/secret proofs are clean. Any positive result starts another full
+   implementation-and-replay cycle.
 
 ### Next: cycle 36 (superseded, run)
 
@@ -3822,6 +3876,27 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 41.**
+
+- **The historical census has no unbounded remainder.** Its 40 external/instrument atoms and 11
+  safely unreachable atoms are individually named in the authoritative census with the capability
+  or state that prevents observation. They are not actionable mismatches on an advertised path.
+- **C139's random shelf prerequisite is not makeable with the available pair.** The 1.43.4 copy has
+  matched rated rows but omits the shelf; the target 1.42.2 copy exposes the shelf but has no matched
+  provider row. No reversible public write mints that provider metadata, so no rank was invented.
+- **The reference notification backlog's byte threshold is a host TCP-buffer property.** Dead- and
+  slow-reader tests on both copies confirm nonblocking producers and correct filters/pings; plexsim
+  keeps its measured drop behavior but does not hard-code either host's buffer size.
+- **`[Unknown Season]` scanner creation remains state-bounded.** Specials/season zero is measured
+  and built. Three isolated filename forms failed to create an index-less season, so the existing
+  database witness is retained without guessing an ingestion grammar.
+- **The advertised-control census has six bounded actions, not gaps:** two forbidden media-body
+  reads, hidden Optimize and Sync actions because plexsim advertises no encoder/sync capability,
+  and the external/auth claim-token, claim and unclaim surface. The other 39 action/readback pairs
+  have exact route and postcondition assertions.
+- **The complete-current-client static universe is still unavailable.** The local 4.147.1 bundle is
+  complete; 176 mapped 4.160.0 chunks remain absent from the retained cache.
 
 **Cycle 40.**
 

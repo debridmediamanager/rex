@@ -8734,6 +8734,70 @@ Both scratch references were restored byte-for-byte. The final tree passes catal
 1563/1563, navigation 28/28, mediainfo 31/31 and decision 2106/2106; conformance 29/38 and byte-read
 0/11 remain the known dead-link baselines.
 
+### Cycle 41: the historical backlog and every advertised control
+
+Measured 2026-09-17 against both disposable PMS versions and frozen plexsim `2c06bab`. The
+historical census extracted 513 raw entries from this file and `HANDOVER.md`, retained 496 claim
+sources, normalized 287 parent claims and split compound claims into **332 atomic behaviors**.
+Every atom has a terminal disposition: 180 built, 42 refuted or superseded, 36 deliberate
+capability absences, 23 client-invisible fidelity choices, 40 external/instrument bounds and 11
+safely unreachable state models. The last 51 are explicit bounded cells, not open deductions;
+there are **zero actionable findings and zero unbounded unresolved cells** on the fixed tree.
+
+The independent advertisement census started from the other direction. It joined 49 live source
+families and 1,221 normalized advertised values to 47 exact Plex Web consumer predicates, 339 UI
+controls and 45 action/readback pairs. Thirty-nine actions have an exact route witness plus a
+postcondition assertion; the remaining six are two forbidden media reads, three deliberately
+hidden encoder/sync capabilities and the external/auth claim surface. All 45 are classified and
+none differs in a reachable client-visible way. This is complete for the locally served Plex Web
+4.147.1 bundle. The 176 mapped 4.160.0 chunks absent from the retained cache remain an explicit
+external limit, not a silently sampled universe.
+
+The frozen historical tree had **24 client-visible mismatches**, all implemented and proved
+fail-parent/pass-fixed:
+
+- Child projection and listing fidelity: Style/Collection/Label/Similar now have the measured
+  child positions and `id, filter, tag` XML attribute order; collection `/allLeaves` and
+  `/grandchildren` stay empty even when `/children` holds a member; a mixed folder emits
+  `Directory` then `Video`; legacy section search ignores every `limit` form; an untyped scoped
+  conjunction resolves each prefix against the right hierarchy row; duration sorting reads
+  `Media.duration`; Part `accessible`/`exists` require `checkFiles=1`; playlist detail containers
+  carry their four measured identity fields; and visually-impaired subtitles project the
+  disposition.
+- Client actions and ordering: the `#` first-character bucket aggregates every ASCII non-letter
+  while literal punctuation buckets remain addressable; a multi-Media decision requires an
+  explicit in-range selector while a queue keeps all versions; a show merge absorbs the matched
+  hierarchy, combines corresponding leaf Media and emits the delete/survivor frame sequence;
+  legacy download filenames map `+` to `_`; a queue move re-anchors
+  `playQueueLastAddedItemID`; a type-mismatched playlist create retains the empty-playlist side
+  effect; playlist import validates the exact `path`/`sectionID` envelope; and search hubs are
+  promoted by the recovered match-class/type-bias rank.
+- Derived values and lifecycle: generated probes moved the short-wide `480` boundary to the
+  measured width and made the anamorphic cutoff strict; Recently Added TV pages a 50-row cap rather
+  than truncating at the twelve-row shelf limit; playback sessions are reaped by a process-global
+  30-second tick applying a 180-second cutoff; and title folding removes exactly
+  **U+0300..U+036F**. The latter came from 7,531 leading-scalar and 811 interior-sentinel cells on
+  each PMS version: the old Unicode combining predicate wrongly removed 699 Mn/Mc characters from
+  other scripts and failed to remove U+034F.
+- Localisation: the complete safe 4.147.1 read plan found four missing English source pairs
+  (`TranscoderTempDirectory`'s summary and three shelf titles). All 28 supported languages were
+  captured for each pair -- 112 exact values -- and added to the table.
+
+Several formerly thin entries closed without a behavior change: the two-or-more-sibling Recent TV
+roll-up, 180-second session cutoff, borrower artwork recreation/removal, playlist-create frame
+title, in-progress field lifecycle, empty legacy codec-axis paging, notification `filters=all`,
+title comma alternation, tag-only collection orphan, section-hub version split, Specials, and the
+local unmatched-refresh sequence. The notification backlog was exercised with dead and slow
+readers on both copies; it stayed nonblocking, but its byte threshold is a host TCP-buffer property
+and remains deliberately unmodeled. A rated matched-row random shelf cannot be created with the
+available isolated 1.42.2 instrument, and `[Unknown Season]` scanner ingestion could not be made
+through three filename forms; those limits are named in the census rather than guessed around.
+
+The final tree passes catalog features (including the 7,531-scalar fold check), mediainfo **34/34**,
+decision **2106/2106**, sessions, navigation **28/28** and UI **1582/1582** with 14 explicit fixture
+skips. Python-plexapi remains **29/38** and the byte-read suite **0/11** solely because every fixture
+link is the recorded dead account-scoped Real-Debrid URL; every queue and decision passes.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

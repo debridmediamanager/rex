@@ -2573,3 +2573,38 @@ machine-readable matrix, including hidden, dead, player-bound, plex.tv-bound and
 capabilities. A finding must reproduce on frozen 32588 and include a fail-on-frozen postcondition
 regression. End with exactly `no findings` only when every advertised control chain is classified
 and none mismatches. Full operational and safety instructions are in the private cycle prompt.
+
+
+==== Cycle 42 (2026-09-17). Shared preamble: freeze the merged Cycle-41 head; use a fresh mode-700
+scratch root and fresh local ports. kids and zen remain GET/HEAD only through the write-shaped-GET
+guard; no protected-reference websocket/eventsource, media/theme/part/transcode body, plex.tv, fun
+or writes. Writes belong only on plexscratch/plexscratch42 and disposable plexsim after a prewritten
+undo ledger. Run `refcheck7.py` before and after and require byte-identical output. Territory A has
+exclusive use of both writable copies; Territory B uses disposable local plexsim only. Neither
+hunter edits the repository. The 176 absent mapped Plex Web 4.160.0 chunks remain an explicit
+external limit. ====
+
+
+# Cycle 42 | Territory A | clean 332-atom historical replay
+
+Rebuild Cycle 41's authoritative historical universe from the source records; do not merely trust
+its final disposition column. Require the same 332 stable atomic ids, reconcile every atom against
+the merged source and a regression that reaches the differentiating branch, and explicitly audit
+all 24 Cycle-41 fixes for cross-atom regressions. Reuse retained two-version evidence only when the
+exact request/state and current behavior are unchanged; rerun every safe ambiguity on both writable
+copies, with every write and undo predeclared. Report exact disposition and evidence counts,
+bounded-cell reasons, protected-reference identity, scratch cleanup and secret scan. Finish with
+exactly `no findings` only if all 332 atoms are classified, actionable and unbounded unresolved are
+both zero, and no current client-visible behavior differs.
+
+
+# Cycle 42 | Territory B | clean advertised-control replay
+
+Rebuild the complete Cycle-41 chain against the merged source: 49 advertisement source families,
+1,221 normalized advertisements, 47 exact client predicates, 339 controls and 45 action/readback
+pairs. Recollect every safe live source, rejoin every control to its exact gate, request and
+postcondition, and rerun the disposable current-tree UI/action matrix. No row inherits coverage
+merely because Cycle 41 classified it: verify current source, exact route witness and assertion.
+Keep the six media/capability/auth/external bounds explicit and prove they expose no reachable
+control. Finish with exactly `no findings` only if every stable id is present, every pair has a
+terminal disposition, unresolved is zero and no reachable client-visible mismatch remains.
