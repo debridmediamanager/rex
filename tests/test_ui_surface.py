@@ -24754,6 +24754,97 @@ def main():
           and not alt_c45["light row"] and not alt_c45["decision"],
           str(alt_c45))
 
+
+    # Cycle 45, measured on kids (1.43.4), zen (1.42.2), plexscratch (1.43.4) and
+    # plexscratch42 (1.42.2) over 91 leaf names, which agree on every one:
+    # `/library/sections/{id}/{name}/top` is a REAL two-segment section leaf -- the
+    # fifth, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the versioned
+    # `composite/{v}` -- and plexsim 404'd every form of it. PMS's own route table names
+    # it `/:tagType/top`, read out of the binary's string block, which is why it matches
+    # ANY single segment rather than a fixed list.
+    #
+    # It answers the section's TAG TABLE for the type the name resolves to: `Directory`
+    # rows of `key, id, filter, tag, tagType` (plus `tagKey` and `thumb` on a person),
+    # ASCENDING BY TAG ID -- not by usage, which is what the name suggests. The `key` is
+    # built from the REQUESTED name (`/library/sections/1/all?studio=28`) while `filter`
+    # names the tag's OWN type (`director=28`), so the two disagree on the alias names.
+    # It is NOT the axis: kids' actor axis is the first-three-roles union (9) where
+    # `/actor/top` is every Role tag (12), and on a SHOW library it reads the LEAVES.
+    #
+    # ELEVEN names resolve to a type, in six pairs -- a tag name and a metadata COLUMN
+    # name sharing each number, which is the tell that PMS looks the segment up in one
+    # integer space that both vocabularies feed:
+    #
+    #     genre / title    -> 1      director / studio -> 4     writer / rating -> 5
+    #     actor / tagline  -> 6      producer / summary -> 7    country         -> 8
+    #
+    # Every other name the server knows as a FILTER FIELD or an AXIS answers an EMPTY
+    # listing container; everything else is a 404. The partition is exact: the eleven
+    # names that are a 400 on the item edit path (`album artist chapterSource childCount
+    # hasChapterVideoStream leafCount logo poster role sourceType track`) are all 404s
+    # here, the section's own leaves are 404s because the router claims them first,
+    # `thumb`/`art`/`theme` are 404s because `/:mediaType(thumb|art|theme)/:timestamp`
+    # claims them, and `platform` is a 404 although it IS an axis. `resolution` is the
+    # media-axis exception and answers the whole library, as `/resolution/zzz` does.
+    # The 1.43.4-only vocabulary splits with the version: `videoCodec`, `audioCodec`,
+    # `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and `clearLogo`
+    # are 200s on kids and 404s on zen, so plexsim -- which reports 1.42.2 -- 404s them.
+    # GET and HEAD only; every other verb is the read-only route's 404.
+    top_c45 = {}
+    for leaf_c45t in ("genre", "director", "writer", "actor", "producer", "country",
+                      "studio", "rating", "title", "tagline", "summary"):
+        _status_c45t, body_c45t, _ = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
+        rows_c45t = body_c45t.get("Directory") or []
+        top_c45[leaf_c45t] = (_status_c45t, len(rows_c45t),
+                              rows_c45t[0].get("tagType") if rows_c45t else None,
+                              rows_c45t[0].get("key") if rows_c45t else None,
+                              rows_c45t[0].get("filter") if rows_c45t else None,
+                              [row_c45t.get("id") for row_c45t in rows_c45t])
+    empty_c45t = {}
+    for leaf_c45t in ("label", "collection", "mood", "firstCharacter", "year",
+                      "contentRating", "banner", "guid", "file", "viewCount"):
+        _status_c45t, body_c45t, _ = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))
+        empty_c45t[leaf_c45t] = (_status_c45t, body_c45t.get("size"),
+                                 "Directory" in body_c45t, body_c45t.get("title2"),
+                                 body_c45t.get("allowSync"), body_c45t.get("viewGroup"))
+    refused_c45t = {}
+    for leaf_c45t in ("platform", "poster", "thumb", "art", "theme", "all", "sorts",
+                      "filters", "search", "onDeck", "folder", "role", "album",
+                      "videoCodec", "hdr10plus", "clearLogo", "zzz"):
+        refused_c45t[leaf_c45t] = get(
+            base, "/library/sections/%s/%s/top" % (movie_section, leaf_c45t))[0]
+    verbs_c45t = {verb_c45t: request(
+        base, verb_c45t, "/library/sections/%s/genre/top" % movie_section)[0]
+        for verb_c45t in ("GET", "HEAD", "POST", "PUT", "DELETE")}
+    # The fixture holds tags of types 1, 4, 5, 6 and 8 and none of 2 or 7, so
+    # `producer`/`summary` are checked for the empty 200 and the PAIRING is checked by
+    # the row sets matching -- which is the half that would break if the table were
+    # mis-keyed.
+    check("the section /top leaf answers its tag table by id",
+          top_c45["genre"][2] == 1 and top_c45["title"][2] == 1
+          and top_c45["director"][2] == 4 and top_c45["studio"][2] == 4
+          and top_c45["writer"][2] == 5 and top_c45["rating"][2] == 5
+          and top_c45["actor"][2] == 6 and top_c45["tagline"][2] == 6
+          and top_c45["producer"][:2] == (200, 0) and top_c45["summary"][:2] == (200, 0)
+          and top_c45["country"][2] == 8
+          and all(top_c45[a_c45t][5] == top_c45[b_c45t][5]
+                  for a_c45t, b_c45t in (("genre", "title"), ("director", "studio"),
+                                         ("writer", "rating"), ("actor", "tagline"),
+                                         ("producer", "summary")))
+          and top_c45["genre"][5] == sorted(top_c45["genre"][5])
+          and top_c45["studio"][3] is not None
+          and "?studio=" in top_c45["studio"][3]
+          and top_c45["studio"][4].startswith("director=")
+          and all(value_c45t == (200, 0, False, None, True, "movie")
+                  for value_c45t in empty_c45t.values())
+          and set(refused_c45t.values()) == {404}
+          and verbs_c45t == {"GET": 200, "HEAD": 200,
+                             "POST": 404, "PUT": 404, "DELETE": 404},
+          str({"tags": {k: v[:3] for k, v in top_c45.items()},
+               "empty": empty_c45t, "refused": refused_c45t, "verbs": verbs_c45t}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

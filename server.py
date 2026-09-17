@@ -6436,6 +6436,12 @@ class PlexSim:
         # VERSIONED `composite/{v}` are real two-segment leaves, and `firstCharacter`
         # has its own branch below; each of those 404s its own unknown second segment. A trailing slash is already
         # stripped, so `/year/` is the axis and not an empty bucket -- measured.
+        if (len(segments) == 5 and segments[4] == "top"
+                and method in ("GET", "HEAD") and leaf != "resolution"):
+            # Cycle 45: the real two-segment `/{name}/top` leaf. `resolution` is left to
+            # fall through -- it is the media-axis exception and answers the whole
+            # library to any second segment, `top` included.
+            return self.section_top(section_id, section, leaf, query)
         if leaf == "stations" and len(segments) == 5:
             # Cycle 45, measured on kids, zen and both writable copies:
             # `/library/sections/{id}/stations/{genre|mood|style|decade}` is an EMPTY
@@ -7217,6 +7223,86 @@ class PlexSim:
             if low <= float(value) < low + 2:
                 kept.append(row)
         return kept
+
+    # Cycle 45, measured on kids (1.43.4), zen (1.42.2) and both writable copies over 91
+    # leaf names: `/library/sections/{id}/{name}/top` resolves the name to a tag TYPE and
+    # answers that type's tag table. ELEVEN names resolve, in six pairs -- each tag name
+    # sharing its number with a metadata COLUMN name, which is how PMS's single integer
+    # space shows through (`title` answers the GENRE tags and `summary` the PRODUCER
+    # ones). It is a recorded table, not a derivation: the generating rule is PMS's own
+    # enum and nothing on the wire exposes it.
+    SECTION_TOP_TAGS = {"genre": 1, "title": 1,
+                        "director": 4, "studio": 4,
+                        "writer": 5, "rating": 5,
+                        "actor": 6, "tagline": 6,
+                        "producer": 7, "summary": 7,
+                        "country": 8}
+
+    # The names the router claims BEFORE `/:tagType/top` -- `thumb`, `art` and `theme`
+    # belong to `/:mediaType(thumb|art|theme)/:timestamp` -- plus `platform`, which is a
+    # real axis whose `/top` is a 404 on all four servers. Every other section leaf 404s
+    # here anyway, by not being in the filter/axis vocabulary.
+    SECTION_TOP_REFUSED = ("thumb", "art", "theme", "platform")
+
+    def section_top(self, section_id, section, leaf, query):
+        """`/library/sections/{id}/{name}/top` -- the section's tag table for one type.
+
+        The rows are ASCENDING BY TAG ID (the name suggests "most used" and it is not),
+        the `key` is built from the REQUESTED name while `filter` names the tag's own
+        type, and it reads the LEAVES on a show library. A name the server knows as a
+        filter field or an axis but which resolves to no tag type answers an EMPTY
+        listing container -- a 404 there would tell the client the endpoint does not
+        exist, which is fix 4's trap from the outside.
+        """
+        known = (leaf in FILTER_FIELD_TYPES or leaf in PARSE_ONLY_FIELD_TYPES
+                 or leaf in CROSS_TYPE_AXES or leaf in self.AXIS_BUCKETS
+                 # the one axis that is in neither vocabulary
+                 or leaf == "firstCharacter")
+        if not known or leaf in self.SECTION_TOP_REFUSED:
+            return ("error", 404, "plexsim: not found")
+        rows = []
+        number = self.SECTION_TOP_TAGS.get(leaf)
+        if number is not None:
+            element, name = self.TAG_TYPES[str(number)]
+            found = {}
+            for row in self.catalog.section_items(section_id):
+                for tag in row.get(element) or []:
+                    if isinstance(tag, dict) and tag.get("id") is not None and tag.get("tag"):
+                        found.setdefault(tag["id"], tag)
+            for tag_id in sorted(found, key=lambda value:
+                                 int(value) if str(value).isdigit() else 0):
+                tag = found[tag_id]
+                entry = {"key": "/library/sections/%s/all?%s=%s" % (section_id, leaf, tag_id),
+                         "id": tag_id,
+                         # Measured on the two alias names: the `filter` keeps the TAG's
+                         # own field (`/studio/top` rows say `director=28`) where the
+                         # `key` carries the one the client asked for.
+                         "filter": tag.get("filter") or "%s=%s" % (name, tag_id),
+                         "tag": tag["tag"], "tagType": number}
+                for extra in ("tagKey", "thumb"):
+                    if tag.get(extra):
+                        entry[extra] = tag[extra]
+                rows.append(entry)
+        is_show_top = section.get("type") == "show"
+        fields = {
+            "librarySectionID": int(section_id) if str(section_id).isdigit() else section_id,
+            "librarySectionTitle": section.get("title"),
+            "librarySectionUUID": section.get("uuid"),
+            "title1": section.get("title"),
+            "viewGroup": section.get("type"),
+            "viewMode": 65592,
+            "allowSync": True,
+            "art": "/:/resources/show-fanart.jpg" if is_show_top
+                   else "/:/resources/movie-fanart.jpg",
+            "thumb": "/:/resources/show.png" if is_show_top else "/:/resources/movie.png",
+        }
+        if is_show_top:
+            # Every container a SHOW library answers carries `nocache`; this one too.
+            fields["nocache"] = True
+        # `type=`, `limit=`, `sort=` and `includeMeta=` are each accepted and IGNORED
+        # here -- measured on both references, where the same parameters really work on
+        # the axis beside it. Paging is the generic post-pass, as everywhere else.
+        return self.container(Directory=rows, **fields)
 
     def axis_bucket(self, section_id, section, leaf, key, query):
         """`/library/sections/{id}/{axis}/{key}` -- the rows behind one axis entry.
