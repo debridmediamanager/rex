@@ -773,6 +773,20 @@ PLAYLIST_META = {"Type": [{
          "key": "mediaCount", "title": "Item Count"},
     ]}]}
 
+# Cycle 46, measured on kids and zen: `/hubs/home/onDeck` and
+# `/hubs/home/continueWatching` carry a one-row `Meta` of their own under
+# `includeMeta=1` -- the leaf's own key, `type: "mixed"`, its title and `active: true`,
+# with no `FieldType` block. Found by sweeping the option name space built from the PMS
+# binary's and the client bundle's own words; plexsim answered a `Meta` on the
+# `recentlyAdded` sibling alone.
+HOME_LEAF_META = {
+    "/hubs/home/onDeck": {"Type": [{"key": "/hubs/home/onDeck", "type": "mixed",
+                                    "title": "On Deck", "active": True}]},
+    "/hubs/home/continueWatching": {
+        "Type": [{"key": "/hubs/home/continueWatching", "type": "mixed",
+                  "title": "Continue Watching", "active": True}]},
+}
+
 # And the one-row descriptor `/hubs/home/recentlyAdded?type=N&includeMeta=1` carries.
 # `active` flips with the type and only these two types have a block at all -- 3, 4,
 # 8, a non-number and no type answer no `Meta` on either reference.
@@ -781,6 +795,16 @@ HOME_RECENT_META = {
                     "title": "Recently Added", "active": True}]},
     "2": {"Type": [{"key": "/hubs/home/recentlyAdded?type=2", "type": "mixed",
                     "title": "Recently Added", "active": False}]},
+}
+
+# Cycle 46: the single `Sort` the collections listing's own `Type` row carries. Its
+# `active`/`activeDirection` are set because the listing really is sorted by it -- that
+# pair is the cycle-28 rule "the active sort follows the request", and no other sort is
+# advertised here to be active instead.
+COLLECTION_META_SORT = {
+    "active": True, "activeDirection": "asc", "default": "asc",
+    "defaultDirection": "asc", "descKey": "titleSort:desc", "key": "titleSort",
+    "title": "Title",
 }
 
 PLAYLIST_SORTS = [
@@ -5652,7 +5676,10 @@ class PlexSim:
                 directories = self.content_directories(query)
                 rows = [_grid_row(_listing_row(r)) for r in
                         self.in_directories(self.resuming(), directories)]
-                return self.hub_container(size=len(rows), Metadata=rows)
+                answer = self.hub_container(size=len(rows), Metadata=rows)
+                if query.get("includeMeta") == "1":
+                    answer["MediaContainer"]["Meta"] = HOME_LEAF_META[route]
+                return answer
             if route == "/hubs/home/onDeck":
                 # Cycle 30: this shelf drops `Field` too -- it KEEPS
                 # `librarySectionKey`, which is what separates it from
@@ -5665,7 +5692,10 @@ class PlexSim:
                     entry = _listing_row(row)
                     entry.pop("Field", None)
                     rows.append(entry)
-                return self.hub_container(size=len(rows), Metadata=rows)
+                answer = self.hub_container(size=len(rows), Metadata=rows)
+                if query.get("includeMeta") == "1":
+                    answer["MediaContainer"]["Meta"] = HOME_LEAF_META[route]
+                return answer
             if route == "/hubs/home/recentlyAdded":
                 # Measured: this endpoint keys on `type`, NOT on `sectionID` --
                 # `?sectionID=1` alone is empty and `?type=2` alone answers for
@@ -6924,6 +6954,23 @@ class PlexSim:
             if unsupported:
                 return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             rows = self._limited(rows, query)
+            if query.get("includeMeta") == "1":
+                # Cycle 46, measured on kids and zen: this listing carries the FULL
+                # section descriptor -- one `Type` row for the collection view with a
+                # single `titleSort` Sort whose `firstCharacterKey` is scoped
+                # `?type=18`, plus the section's own eight `FieldType` rows. plexsim
+                # answered no `Meta` at all, so the Collections tab had no sort menu and
+                # no filter operators to build one from.
+                descriptor = self.section_meta(section_id, section.get("type") or "movie")
+                sort = dict(COLLECTION_META_SORT,
+                            firstCharacterKey="/library/sections/%s/firstCharacter?type=18"
+                                              % section_id)
+                extra["Meta"] = {
+                    "Type": [{"key": "/library/sections/%s/all?type=18" % section_id,
+                              "type": "collection", "title": "Collections",
+                              "active": True, "Sort": [sort]}],
+                    "FieldType": (descriptor or {}).get("FieldType") or [],
+                }
             return self.listing_container(section_id, section, rows, query=query,
                                           **extra)
         if leaf == "folder":
