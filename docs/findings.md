@@ -3916,6 +3916,13 @@ it.
   unmatch removed it from all of them. plexsim left an episode with no certificate at
   all.
 
+* **A part whose FILE is gone is a plain 404, not a 5xx.** zen part 23595 reports
+  `accessible=false`/`exists=false` under `checkFiles=1` and answers **404** to the byte read, with
+  the binary refusal header set. plexsim answered 502 to a dead link and to a network failure
+  alike, so a client that would have drawn "this file is missing" got a server error. The two are
+  now split: Real-Debrid's `unavailable_file` (error_code 24) and a 404 from its API are the 404,
+  and anything else keeps the 502 so a transport failure stays diagnosable.
+
 ##### Measured and not acted on
 
 - **Six write cascades the hunt measured and the driver did not re-measure**, so they
@@ -8903,6 +8910,190 @@ H.264 item and then always asserted Matroska magic. On the measured MP4 it faile
 correct `ftyp` bytes at offset four. The assertion now keys on the selected Part's container and the
 selection explicitly prefers MP4/H.264/AAC; the same catalog passes 38/38. This is a harness repair,
 not a server behavior change. No live `/d/` URL or credential is tracked.
+
+#### The forty-fourth pass — the first cycle with real bytes in it
+
+Cycles 42 and 43 both reported `no findings` and the protocol-conformance loop was declared
+stopped. Then, on 2026-09-17, the private `catalog.json` was refreshed with **five real,
+playable, account-owned Real-Debrid parts**. That is a new instrument, and the programme's own
+history says the instrument has been the ceiling every single time.
+
+For the whole of the project's life every Real-Debrid link in the checked-in fixture was dead:
+`tests/test_all.py` reported `0/11 served` for fifteen consecutive cycles and every rule about a
+media body was measured on a *reference* and implemented on faith. **plexsim's own byte path had
+never been run against a single real byte.** Cycle 44 ran it, and 13 of the 20 `Range` cells both
+references agree on were wrong.
+
+Two hunts and the driver produced **19 findings**, all of them implemented. Two recorded beliefs
+were overturned and one suite was found to have carried a refutation of its own subject for
+thirty-four cycles without anyone reading it.
+
+##### The media byte path
+
+* **The part read applied no `Range` grammar at all.** `_proxy` forwarded the client's header to
+  the debrid CDN and echoed whatever came back, so the answer was the CDN's grammar rather than a
+  PMS's — and differed per CDN host. Measured over twenty cells against kids (1.43.4) and zen
+  (1.42.2), which agree on every one; plexsim differed on **thirteen**. The two that break a real
+  player: `bytes=-1` returned the FIRST byte where a real PMS returns the last (which is how
+  ffmpeg, mpv and every embedder locate an MP4 `moov` or a Matroska Cues block, so every seek read
+  the wrong end of the file), and `bytes=<total+10>-` answered **`Content-Length: -10`**, which is
+  not a legal field value at all. A reversed or past-the-end range answered 206 where a real PMS
+  answers 416, a one-byte probe answered the whole 121 MB file, and a suffix longer than the body
+  over-ran it. `_range_window` now holds the grammar once and both `_ranged` and the part path ask
+  it.
+* **A bare `Range: bytes=-`, with nothing after the dash, is not a Range.** 200 on both references
+  on `/identity`, artwork, a `/web` asset and a part; plexsim answered a 206. `bytes=- `,
+  `bytes=-x`, `bytes=-abc`, `bytes=-0`, `bytes=-+` and `bytes=-.` are all the 206 — only the empty
+  one is not a Range. Cycle 35's 43 header values did not include it.
+* **A part read carries `X-Plex-Protocol: 1.0`, first, like every other response.** The part path
+  is the one writer on the surface that does not go through `_send`, so it was the one response
+  missing it — invisible until now, because a dead link answers 502 and a 502 IS written by `_send`.
+* **A part's `Content-Type` is keyed on the stored FILE's extension**, not on the Media's
+  `container` and not on the extension in the request URL. zen part 7113 is a `mp4` Media whose
+  file ends `.mkv` and answers `video/x-matroska`; asking for that same part as `file.mp4`,
+  `file.zzz`, `file.mov` or `file.webm` answers `video/x-matroska` every time. An extension the
+  table does not name answers **`application/octet-stream`** (zen's `.m2ts` parts do), where
+  plexsim fell back to `video/mp4`; `.mov` is `video/quicktime`.
+* **The bandwidth statistic counts what was WRITTEN.** Measured on kids: a client that aborted
+  after 72 452 bytes moved the counter by 309 037 and a full read of the same 6 273 654-byte part
+  moved it by 6 274 913. plexsim counted the advertised `Content-Length` however the read ended, so
+  one 1 MB read of a 121 MB part moved the Dashboard by the whole 121 MB — and every seek and every
+  stop is an abort.
+* **`POST` and `PUT` on the THREE-segment media path are 404s.** Both writable copies, on 1.42.2
+  and 1.43.4 alike: `/library/parts/{id}` takes the track-selection write and
+  `/library/parts/{id}/{version}/file.ext` does not. plexsim had no length check, so a client that
+  built the write from the Part's own `key` — which *is* the three-segment path — really moved the
+  selection where a real PMS answers 404.
+
+##### The 416 and the header block
+
+* **A 416 of a MediaContainer names its connection state and a 416 of a BINARY body does not.**
+  Re-measured on both references with a KEEP-ALIVE request, so the answer is the server's own
+  choice rather than an echo of the probe's `Connection: close`. The container 416 is
+  `X-Plex-Protocol, Content-Length, Content-Type, Connection, Keep-Alive, Cache-Control, Date`;
+  artwork, `/:/resources/*`, a `/web` asset, a media part and `/photo/:/transcode` all answer
+  `X-Plex-Protocol, Content-Length, Content-Type, Cache-Control, Date`. **This overturns the
+  recorded rule "a 416 names no connection state at all — the only response class that does not",
+  which is the binary half only.**
+* **Every 416 carries `Cache-Control: no-cache`**, the transcoder's included, where its 200 carries
+  `max-age=259200`. plexsim cached the refusal for three days. It also kept `X-Plex-Local-Asset` on
+  an artwork 416, which neither reference sends on anything but the 200.
+* **With an `Origin` on the wire the CORS pair sits directly after `X-Plex-Protocol` and
+  `Access-Control-Allow-Origin` directly before `Date`, in EVERY family** — container, artwork,
+  `/:/resources`, `/web` asset, `/photo/:/transcode`, part, `/system`, error and the `/web` 302.
+  plexsim had it right for two families and trailed the pair to the end in six; the `/web` 302,
+  which is the one response the web client follows to reach the app, carried no CORS headers at
+  all. Cycle 33 measured the families on a connection that sent no `Origin`, where the trio is
+  absent altogether, so this was structurally invisible to it.
+
+##### Two per-version splits and two advertised surfaces
+
+* **`/library/sections/{id}/{videoCodec,audioCodec,subtitleCodec,audioLayout}` are 1.43.4-only
+  axes.** 200 on kids, **404 on zen AND on plexscratch42** — two independent 1.42.2 servers — on a
+  movie library and a show library alike. plexsim reports 1.42.2 and answered all four. The same
+  six-name media-codec split is already recorded for `/filters` and the `Meta` descriptor; the AXES
+  split with them, which nothing had checked, and plexsim's own `/filters` correctly omits them.
+* **`/library/sections/{id}/rating` is a real secondary axis and plexsim 404'd it** — and it is
+  **ADVERTISED** in a movie library's own pivot `Directory`, by plexsim itself, so the Ratings
+  entry in the official client's sidebar opened nothing. The axis container is byte-identical to
+  `/userRating`'s, six fixed buckets titled "By Rating"; the BUCKETS read the CRITIC `rating`
+  column where `/userRating`'s read the per-user one (zen `/rating/8` is 221 rows, `/userRating/8`
+  is 200). A show library answers it without advertising it.
+* **A star bucket rounds its KEY down to an even star.** Measured for every key 0-12 on both
+  references and both library types: the bucket is not `int(value) == key`. Key `k` takes the rows
+  whose value is within one of `k - k % 2`, so 8 and 9 answer the same 200 rows and 10 and 11 the
+  same 3; `key=0` is the rows with NO value (zen 3,465 of 3,887 unrated). Truncation gets every
+  bucket but 0 wrong — zen's `userRating/6` is 208 rows where truncation finds 165, and kids'
+  answers BOTH its rated movies because a stored 5.0 rounds UP into the 3-star bucket.
+* **`/media/providers/metadata/{id}` and `/media/providers/metadata/group/{id}` are real.** Found
+  by sweeping the PMS path literals out of **Plex Desktop's own bundle** — the first non-Plex-Web
+  official client this programme has read. Each answers the one row the bare table carries; an id
+  the server does not hold is a 404 and a NON-NUMERIC one is a **400**. plexsim 404'd all of it,
+  and these are the two shapes the Settings → Agents pane builds once the tables have loaded.
+* **`builtIn` is the string `"1"` on 1.42.2 and the boolean `true` on 1.43.4, and `order` is the
+  float `1000.0` on both.** The XML is `builtIn="1"` / `order="1000"` on both versions, so only a
+  JSON read of BOTH references can see it — the same family as `durationTotal`/`storageTotal` being
+  JSON strings. plexsim reports 1.42.2 and sent `true` and `1000`.
+
+##### The decision, and what a `.webm` file really is
+
+* **A `.webm` file's `container` is `mkv` on a real PMS.** Measured on the SAME FILE: zen
+  ratingKey 19769 and plexsim row 1002 are both `Tears of Steel.webm`, 571 346 576 bytes,
+  vp8/vorbis 1920x800, and zen answers `container: "mkv"` on the Media and the Part while the
+  Part's key keeps `file.webm`. No row of zen's 4,508 movie Media carries `webm` as a container at
+  all. **The project's own corpus has said so since cycle 10**:
+  `tests/fixtures/media/fun-1052407-0.json` is a `.webm` file whose recorded Media — what a real
+  1.42.2 PMS wrote for it — is `mkv`. Nothing caught it because `test_mediainfo.py` compared every
+  stream field and the Media's geometry and **never the container**; it does now. The override was
+  kept on the argument that "plexsim keeps `webm`, which Plex Web's direct-play rule depends on";
+  driven across all 78 profiles against both containers, the browser profiles answer the same
+  outcome either way and the one cell that moves is `Sony Bravia 2013`, which direct-plays the row
+  as `mkv` and is refused as `webm`. The override cost a direct play rather than buying one.
+* **A direct play is refused when the SELECTED embedded subtitle is not the first embedded one**,
+  with `App cannot direct play this item. Selected embedded subtitle stream is not the first
+  embedded subtitle stream.` — the subtitle twin of the audio rule, and it was missing entirely.
+  Exactly three of the 78 profiles do it (`Samsung`, `RokuDLNA-5000X-7.x`, `RokuDLNA-6000X-7.x`),
+  gated on the same `DirectPlayStreamSelection` as the audio rule, and it runs after the
+  audio-codec pass and after the subtitle-CODEC pass. Measured on zen over 21 rows and held out
+  live: 386 (profile, row) cells over five zen rows score 9 misses against the old model and **0**
+  against the new one. The 2,106-cell corpus could not see it — in every row it held whose subtitle
+  is not first, the AUDIO is not first either, so the audio refusal fires above and masks it. Three
+  zen rows are now in the corpus (2,340 cells).
+
+##### The catalog pipeline, and the plex.tv announce
+
+* **A season gets `parentYear`, not a `year` of its own.** `metadata.py` wrote TMDB's season
+  air-date year into the season's own column. 689 of zen's 742 seasons carry `parentYear` and
+  exactly **one** carries a `year` of its own, so a Plex series agent does not produce one — and
+  carrying it takes `parentYear` away, because the year rule reads "has a year of its own" off that
+  column. Corrected at BUILD and again at LOAD, like the other pipeline-produced row errors.
+* **A season and an episode carry `Guid`.** The ids were being fetched and then discarded, on a
+  note in the code claiming "a real PMS leaves season and episode Guid arrays empty". kids' season
+  7 answers `tmdb://3846` and `tvdb://15791` and its episode 8 answers three ids; 58 of 60 zen
+  episodes surveyed carry a block. The exemption's premise was void, not the exemption.
+* **A real PMS announces with `PUT https://servers.plex.tv/devices/{machineIdentifier}`.** Read out
+  of the harness's own `capture/outbound.jsonl` — the server-to-plex.tv axis, which no cycle had
+  ever swept. All three announces a real 1.43.4 PMS made are identical: the **identifier** form, to
+  `servers.plex.tv`, token in the query, an empty body, and thirteen headers in a fixed order led
+  by `User-Agent: PlexMediaServer/<version>` and an `X-Plex-Client-Identifier` equal to the machine
+  identifier. plexsim used the **numeric** device id against `plex.tv`, sent six headers and none
+  of the identifying ones, added a `natLoopbackSupported` a real PMS does not send, derived
+  `httpsEnabled` from the uri's scheme (the reference sends `1` beside an `http://` uri) and
+  announced version `1.43.3` where its own `/identity` says `1.42.2`. `CLAUDE.md` has recorded the
+  identifier correction since 2026-09-12 and the code never followed it — and the numeric form is
+  the dangerous one, because it resolves to whatever device row already holds that id.
+* **`/myplex/claim` is routed for POST alone.** GET, HEAD, PUT, DELETE and a bare OPTIONS are each
+  a 404 there; plexsim routed the handler for every verb and answered its own "missing claim token"
+  400 to all of them, which tells a client the endpoint exists. Its neighbour
+  `/myplex/refreshReachability` already gated correctly on PUT, which is what made the difference
+  visible.
+* **`/library/parts/{id}?subtitleStreamID=` and `?audioStreamID=` have DIFFERENT value grammars.**
+  `subtitleStreamID` parses as a signed integer, anything unparseable reads as 0 and CLEARS the
+  selection, `-1` reverts to the default, and any other negative is a 400. `audioStreamID` has no
+  "0" meaning: `0` and every negative but `-1` are 400s and an unparseable value is an accepted
+  no-op. plexsim applied the audio grammar to both.
+* **`/video/:/transcode/universal/{ping,stop}?session=` with an EMPTY value is a 404**, not the
+  400 a missing parameter gets — the empty value is the unknown-session case, where `session=%20`,
+  `session=0` and `session=zzzz` already were. The neighbouring `start.m3u8?session=` and
+  `decision?session=` are 400s on all three servers, so the split is per leaf.
+
+##### Measured and not acted on
+
+* A real PMS also `POST`s `servers.plex.tv/servers.xml` with a `MediaContainer` naming its
+  `<Server>` and a `<Directory>` per library — 57 times in the recorded capture against three
+  device announces. That is how plex.tv learns a server's libraries. It is a plex.tv WRITE and
+  therefore out of scope under §8/§9; recorded with its shape and cadence, not built.
+* The `Connection: close` a part read sends instead of the reference's `Keep-Alive`/`timeout=20`
+  remains the recorded ffmpeg-seek deviation.
+* `Part.accessible`/`exists` remain hard-coded true. zen rows whose file is unreachable answer
+  `false`/`false`; plexsim answers true, and telling the truth would mean probing its own upstream
+  on every metadata read. The 404 half of that difference IS now built (above); the two booleans
+  are not, and the deviation is inherited from cycles 1–6.
+* Season and episode `Guid` are written by the builder from this cycle on; a catalog built before
+  it carries none until it is rebuilt, and the load-time pass cannot invent ids it never fetched.
+* `/clients/profiles`' `Roku` and `Roku-6.x` rows resolve through `redirect=` to `Roku-7.x`; a
+  scorer that reads `PROFILES[name]` instead of `resolve(name)` measures its own shortcut. Nine of
+  this cycle's first "misses" were exactly that.
 
 ### Emulation calibrated against the account's own claimed servers
 
