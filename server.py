@@ -3783,6 +3783,78 @@ class PlexSim:
             fields.update(offset=start, totalSize=total)
         return self.bare_container(size=len(page), **fields)
 
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2), byte for byte identical: the
+    # tab bar the Shared view draws. A CONSTANT -- neither reference varies it with
+    # `type=`, `sort=` or `includeMeta=` -- so it is written out rather than derived.
+    SHARED_SORTS = [{"default": "asc", "defaultDirection": "asc",
+                     "descKey": "titleSort:desc", "key": "titleSort", "title": "Title"},
+                    {"defaultDirection": "asc", "descKey": "taggingCreatedAt:desc",
+                     "key": "taggingCreatedAt", "title": "Date Shared"}]
+    SHARED_TYPES = (("/library/shared/all", "All Shared"),
+                    ("/library/shared/all?type=1", "Movies"),
+                    ("/library/shared/all?type=2,3,4", "TV"),
+                    ("/library/shared/all?type=8,9,10", "Music"),
+                    ("/library/shared/all?type=13,14,12", "Photos"),
+                    ("/library/shared/all?type=15", "Playlists"),
+                    ("/library/shared/libraries", "Libraries"))
+
+    def library_shared(self, segments, query):
+        """`/library/shared` and every one-segment leaf below it.
+
+        EVERY second segment answers the same list -- `/all`, `/libraries`, `/servers`,
+        `/items`, `/sections`, `/1` and `/zzz` are byte-identical on both references --
+        and a third segment is a 404. The rows are this server's own libraries in a
+        projection of their own: `art` and `thumb` empty and LEADING, and no
+        `allowSync`, `filters` or `refreshing`.
+        """
+        if len(segments) == 2:
+            rows = [{"key": key, "type": "mixed", "title": title, "active": False,
+                     "Sort": list(self.SHARED_SORTS)}
+                    for key, title in self.SHARED_TYPES]
+            return self.bare_container(
+                size=len(rows), identifier="com.plexapp.plugins.library.shared",
+                Type=rows)
+        if len(segments) > 3:
+            return ("error", 404, "plexsim: not found")
+        rows = [self.section_directory(s, shared=True) for s in self.catalog.sections]
+        wanted = query.get("type")
+        if wanted:
+            # A type that PARSES selects nothing -- these rows are libraries, not items
+            # of a metadata type -- and one that does not is a 400. `1.5`, a space and
+            # `abc` are each refused on both references; `0`, `-1`, `18` and `1,2` are
+            # each an empty 200.
+            if not all(part.strip("-").isdigit() for part in str(wanted).split(",")):
+                return ("error", 400, "plexsim: bad request")
+            rows = []
+        spec = query.get("sort")
+        # An EMPTY `sort=` is NOT "the default order" by measurement: it CRASHES a real
+        # PMS -- the connection dies on kids and zen's Plex SEGVs -- so there is no
+        # answer to copy and reading it as absent is the surface's own convention for an
+        # empty sort (`/collections`), recorded as such rather than claimed as measured.
+        if spec:
+            key, _colon, _modifiers = str(spec).split(",")[0].partition(":")
+            if key not in ("titleSort", "taggingCreatedAt"):
+                # An unknown sort KEY is a 500 here, the refusal a listing already gives.
+                return ("error", 500, "plexsim: unsupported sort key %s" % key)
+            # An unknown MODIFIER is ignored, as everywhere else on the surface.
+            descending = "desc" in str(_modifiers).split(":")
+            if key == "titleSort":
+                rows.sort(key=lambda row: str(row.get("title") or "").lower(),
+                          reverse=descending)
+            else:
+                # `taggingCreatedAt` orders on the library's own `createdAt`: zen's
+                # three answer Zen Movies, Zen Shows, Bench TV against the title order
+                # Bench TV, Zen Movies, Zen Shows.
+                rows.sort(key=lambda row: row.get("createdAt") or 0, reverse=descending)
+        else:
+            rows.sort(key=lambda row: str(row.get("title") or "").lower())
+        # `limit=` is ignored entirely here -- `abc` and `0` both answer every row --
+        # where the same parameter is a 500 on a section listing.
+        return self.bare_container(
+            size=len(rows), allowSync=False,
+            identifier="com.plexapp.plugins.library.shared",
+            Metadata=rows, _xml={"Metadata": "Directory"})
+
     def section_directory(self, section, shared=False):
         """One section as a Directory row.
 
@@ -3826,9 +3898,15 @@ class PlexSim:
         row["Location"] = [{"id": int(key) if str(key).isdigit() else 1,
                             "path": "/plexsim/%s" % key}]
         if shared:
-            # Measured: the shared view carries empty art/thumb.
+            # Measured: the shared view carries empty art/thumb -- and cycle 45, reading
+            # the JSON key order (which IS the XML order): they LEAD the row, `art`
+            # first and `thumb` directly after `key`. The same read shows the shared
+            # projection carries NO `allowSync`, `filters` or `refreshing`, which the
+            # `/library/sections` form does; plexsim sent all three.
             row["art"] = ""
             row["thumb"] = ""
+            for absent in ("allowSync", "filters", "refreshing"):
+                row.pop(absent, None)
         # And no `composite` on either view: neither real server sends one here.
         return row
 
@@ -5035,16 +5113,15 @@ class PlexSim:
                            {"key": "recentlyAdded", "title": "Recently Added Content"},
                            {"key": "onDeck", "title": "On Deck Content"}])
 
-        if route == "/library/shared/all":
-            # What the client reads to decide which libraries a share covers.
-            # Measured: its own identifier (`...library.shared`, not the library
-            # one), rows that render as <Directory>, and a `key` pointing at the
-            # section's LISTING rather than at the section.
-            rows = [self.section_directory(s, shared=True) for s in catalog.sections]
-            return self.bare_container(
-                size=len(rows), allowSync=False,
-                identifier="com.plexapp.plugins.library.shared",
-                Metadata=rows, _xml={"Metadata": "Directory"})
+        if segments[:2] == ["library", "shared"]:
+            # Cycle 45: the whole subtree, not just `/all`. GET and HEAD only, by the
+            # surface's read-only rule -- the verb table itself is UNMEASURABLE here,
+            # because the two servers that answer this path are read-only references and
+            # the two writable copies 404 it (they are unclaimed and isolated from
+            # plex.tv, the same shape as `/livetv`'s 403 there).
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.library_shared(segments, query)
 
         if route == "/library/optimize":
             # "Optimize Database". GET is a 404 on a real PMS: PUT only.
