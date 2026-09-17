@@ -86,6 +86,22 @@ logger = logging.getLogger("plexsim")
 # decisions entirely below it, so under-reporting changes client behaviour.
 SERVER_VERSION = "1.42.2.10156-plexsim"
 
+# Cycle 40 re-measured this legacy plug-in failure on kids and zen, including
+# its fixed XML body.  plexsim reports zen's 1.42.2 build, whose bundled
+# Framework path and line number are part of the 464-byte traceback.
+URL_LOOKUP_ERROR = (
+    b"<?xml version='1.0' encoding='utf-8'?>\n"
+    b'<Response code="2000" status="TypeError: url_lookup() takes at least 2 arguments (1 given)">\n'
+    b"  <Traceback>Traceback (most recent call last):\n"
+    b'  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
+    b'Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 843, '
+    b'in handle_request\n'
+    b"    result = f(**d)\n"
+    b"TypeError: url_lookup() takes at least 2 arguments (1 given)\n"
+    b"</Traceback>\n"
+    b"</Response>\n"
+)
+
 # Upstream reads are issued with a browser-ish UA; RD's CDN is fine with
 # anything, but a bare urllib default is the kind of thing a CDN rate-limits.
 UPSTREAM_UA = "plexsim/0.1"
@@ -4188,7 +4204,12 @@ class PlexSim:
             # every path under it -- the Edit Library dialog asks unconditionally.
             return ("error", 404, "plexsim: not found")
         if route == "/system/services/url/lookup":
-            return self.bare_container(size=0)
+            # This is a legacy plug-in framework action called without its two
+            # required arguments, not an empty PMS API collection.  Both target
+            # versions return the framework's XML traceback even when JSON was
+            # requested.  The body differs only in the build-specific bundle hash
+            # and runtime line; use the 1.42.2 form that plexsim advertises.
+            return ("plugin-xml", 500, URL_LOOKUP_ERROR)
 
         if segments[:1] == ["accounts"]:
             if method == "DELETE":
@@ -16189,6 +16210,16 @@ class Handler(BaseHTTPRequestHandler):
         "system": ("X-Plex-Protocol", "Content-Length", "Content-Type", "Set-Cookie",
                    "Connection", "Keep-Alive", "Cache-Control",
                    "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
+        # Cycle 40: `/system/services/url/lookup` is the one measured Framework
+        # error with a gzip body. Unlike a plain `/system` response it moves the
+        # length behind the encoding lengths; unlike a core gzip response it keeps
+        # the plug-in cookie between the type and connection state.
+        "system-gzip": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                        "Content-Type", "Set-Cookie", "Connection", "Keep-Alive",
+                        "Content-Encoding", "X-Plex-Content-Original-Length",
+                        "X-Plex-Content-Compressed-Length", "Content-Length",
+                        "Cache-Control", "Access-Control-Allow-Headers",
+                        "Access-Control-Allow-Origin", "Date"),
         "artwork": ("X-Plex-Protocol", "Content-Type", "X-Plex-Local-Asset",
                     "Cache-Control", "Accept-Ranges", "Content-Range", "Connection",
                     "Keep-Alive", "Content-Length", "Access-Control-Allow-Headers",
@@ -16243,6 +16274,8 @@ class Handler(BaseHTTPRequestHandler):
             # containers write the type first. `/system/agents` is the one exception on
             # both references: it is the core's own handler and orders like a container,
             # which is also why it carries no cookie.
+            if path == "/system/services/url/lookup" and "content-encoding" in names:
+                return "system-gzip"
             return "container" if path == "/system/agents" else "system"
         if "set-cookie" in names:
             return "system"
@@ -16519,7 +16552,8 @@ class Handler(BaseHTTPRequestHandler):
     # Compressible types. Measured: a real PMS gzips its XML and JSON (3.4x on a
     # five-row grid) and names both sizes in two Plex-specific headers, which
     # plexsim never sent -- so every container went out uncompressed.
-    GZIP_TYPES = ("text/xml", "application/json", "text/html", "text/plain")
+    GZIP_TYPES = ("text/xml", "application/xml", "application/json", "text/html",
+                  "text/plain")
 
     def _maybe_gzip(self, content_type, payload, names):
         if "content-encoding" in names:
@@ -17341,6 +17375,14 @@ class Handler(BaseHTTPRequestHandler):
                 # rate, the prefs write and the section tasks. A MediaContainer
                 # here is a different shape from the one the client parses.
                 self._send(result[1], "text/html", b"")
+                return
+            if kind == "plugin-xml":
+                # The Framework closes its error response. GET still honours a
+                # literal gzip offer, but HEAD reports the uncompressed length and
+                # omits Content-Encoding on both reference versions.
+                self.close_connection = True
+                no_head_gzip = (("Content-Encoding", None),) if method == "HEAD" else ()
+                self._send(result[1], "application/xml", result[2], no_head_gzip)
                 return
             if kind == "text":
                 # A body that IS the answer: the artwork write returns the new
