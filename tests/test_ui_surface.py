@@ -5149,6 +5149,23 @@ def main():
             if str(e.get("itemID")) == str(made.get("playlist"))]
     check("a playlist's create and delete frames are typed 15", mine == [(0, 15), (9, 15)],
           str(mine))
+    created_playlist_frames_c41 = [e for e in timeline_entries(frames)
+                                   if str(e.get("itemID")) == str(made.get("playlist"))
+                                   and e.get("state") == 0]
+    created_playlist_frame_c41 = (created_playlist_frames_c41 or [{}])[0]
+    check("a playlist create pushes the exact empty-title timeline frame",
+          len(created_playlist_frames_c41) == 1
+          and set(created_playlist_frame_c41) == {
+              "identifier", "itemID", "metadataState", "sectionID", "state",
+              "title", "type", "updatedAt"}
+          and created_playlist_frame_c41.get("identifier")
+          == "com.plexapp.plugins.library"
+          and created_playlist_frame_c41.get("sectionID") == "-1"
+          and created_playlist_frame_c41.get("metadataState") == "created"
+          and created_playlist_frame_c41.get("title") == ""
+          and created_playlist_frame_c41.get("type") == 15
+          and isinstance(created_playlist_frame_c41.get("updatedAt"), int),
+          str(created_playlist_frame_c41))
 
     def collection_lifecycle():
         _, doc, _ = container(base, "POST", "/library/collections?type=1&title=Cycle6Set"
