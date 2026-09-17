@@ -6197,6 +6197,45 @@ class PlexSim:
                             continue
                         row["Preferences"] = {
                             "Setting": self.section_preference_rows(section)}
+        if (query or {}).get("includeStorage") == "1":
+            # Cycle 46, measured on kids and zen -- and OVERTURNING cycle 44's recorded
+            # "no effect on `/media/providers`", which was a re-measurement that missed
+            # it. Each library `Directory` gains its own `durationTotal`/`storageTotal`
+            # and the `content` FEATURE gains the sum over every library. They are JSON
+            # NUMBERS here where `_with_storage` writes STRINGS on a section grid row
+            # (cycle 27): the same two names carry a different type per path, which the
+            # XML cannot express and only a JSON read shows.
+            by_key = {"/library/sections/%s" % section["key"]: section
+                      for section in self.catalog.sections}
+            for provider in container["MediaContainer"].get("MediaProvider") or []:
+                for feature in provider.get("Feature") or []:
+                    duration = storage = 0
+                    counted = False
+                    for row in feature.get("Directory") or []:
+                        section = by_key.get(row.get("key"))
+                        if section is None:
+                            continue
+                        # Every row in the library that OWNS media: a movie its own,
+                        # a show library its episodes -- the shows and seasons carry no
+                        # `Media` and contribute nothing, which is the same rule
+                        # `_with_storage` follows on a grid row.
+                        own_duration = own_storage = 0
+                        for item in self.catalog.section_items(section["key"]):
+                            if not item.get("Media"):
+                                continue
+                            own_duration += int(item.get("duration") or 0)
+                            own_storage += sum(
+                                int(part.get("size") or 0)
+                                for media in item.get("Media") or []
+                                for part in media.get("Part") or [])
+                        row["durationTotal"] = own_duration
+                        row["storageTotal"] = own_storage
+                        duration += own_duration
+                        storage += own_storage
+                        counted = True
+                    if counted:
+                        feature["durationTotal"] = duration
+                        feature["storageTotal"] = storage
         if (query or {}).get("X-Plex-Platform") == "Roku":
             for provider in container["MediaContainer"].get("MediaProvider") or []:
                 for feature in provider.get("Feature") or []:
