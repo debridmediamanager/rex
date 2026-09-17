@@ -1674,9 +1674,9 @@ class Library:
         # episode under it, leaving the show's `leafCount` stale and the episodes gone
         # from every listing. The split does not bring them back.
         #
-        # The witness is a SEASON. A show has no Media of its own either and takes the
-        # same branch here, but the copy holds ONE show, so that half is reasoned and
-        # not measured -- see HANDOVER.md 3.3.
+        # The witness is a SEASON. Cycle 41 subsequently measured SHOW merge on both
+        # disposable PMS versions; that is a different operation implemented by
+        # `merge_shows` below. A season still takes this no-op branch.
         if not row.get("Media"):
             return []
         merged = []
@@ -1690,6 +1690,83 @@ class Library:
         if merged:
             row["updatedAt"] = _now()
         return merged
+
+    def merge_shows(self, row, other_keys):
+        """Merge identical show hierarchies, combining each episode's Media.
+
+        Cycle 41 measured the one-season/one-episode case on both supported PMS
+        versions. The absorbed episode's Media precedes the survivor's, the show
+        keeps its own Location before the absorbed Location, and the absorbed
+        show/season/episode all disappear. A shape whose leaves cannot be paired
+        by season and episode index is deliberately left alone: that hierarchy
+        was not measured, and inventing how Plex reconciles it would violate the
+        server's measurement rule.
+
+        Returns ``(removed_rows, changed_episodes)``. Removed rows are in the
+        exact parent-before-child order used by the reference's delete frames.
+        """
+        if row.get("type") != "show":
+            return [], []
+
+        changed = []
+        removed_rows = []
+        target_leaves = {
+            (leaf.get("parentIndex"), leaf.get("index")): leaf
+            for leaf in self.catalog.leaves(row["ratingKey"])
+        }
+        for key in other_keys:
+            other = self.catalog.items.get(int(key)) if str(key).isdigit() else None
+            if other is None or other is row or other.get("type") != "show":
+                continue
+            source_seasons = self.catalog.children(other["ratingKey"])
+            source_leaves = self.catalog.leaves(other["ratingKey"])
+            if not source_leaves:
+                continue
+            pairs = []
+            for source in source_leaves:
+                target = target_leaves.get((source.get("parentIndex"), source.get("index")))
+                if target is None:
+                    pairs = []
+                    break
+                pairs.append((target, source))
+            if len(pairs) != len(source_leaves):
+                continue
+
+            for target, source in pairs:
+                target["Media"] = list(source.get("Media") or []) + list(target.get("Media") or [])
+                target["updatedAt"] = _now()
+                if target not in changed:
+                    changed.append(target)
+
+            locations = row.setdefault("Location", [])
+            seen_locations = {(entry.get("id"), entry.get("path"))
+                              for entry in locations if isinstance(entry, dict)}
+            for location in other.get("Location") or []:
+                marker = (location.get("id"), location.get("path")) \
+                    if isinstance(location, dict) else location
+                if marker not in seen_locations:
+                    locations.append(location)
+                    seen_locations.add(marker)
+
+            source_rows = [other]
+            for season in source_seasons:
+                source_rows.append(season)
+                source_rows.extend(self.catalog.children(season["ratingKey"]))
+            removed = self.catalog.remove(int(other["ratingKey"]))
+            removed_rows.extend(source_rows)
+            for gone in removed:
+                self._forget_item(gone)
+            for playlist in self._playlists.values():
+                playlist["items"] = [item for item in playlist["items"]
+                                     if int(item["ratingKey"]) not in removed]
+            for collection in self._collections.values():
+                collection["items"] = [item_key for item_key in collection["items"]
+                                       if int(item_key) not in removed]
+
+        if removed_rows:
+            row["updatedAt"] = _now()
+            self.recount(row)
+        return removed_rows, changed
 
     def delete(self, rating_key):
         """`DELETE /library/metadata/{id}` -- drop the row and its descendants."""

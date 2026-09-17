@@ -489,6 +489,75 @@ def main():
                           "filename*=UTF-8''C41C%20Plus%2BName%20%282202%29%2Emkv"),
           str(disposition))
 
+    # Cycle 41 measured show merge independently on both disposable PMS versions.
+    # Unlike a season merge, it is not a no-op merely because the parent has no
+    # Media: matching episodes combine versions and the absorbed hierarchy vanishes.
+    target_show = {
+        "ratingKey": "24101", "key": "/library/metadata/24101",
+        "guid": "local://24101", "type": "show", "title": "Merge Target",
+        "librarySectionID": 2, "librarySectionTitle": "Feature Shows",
+        "librarySectionKey": "/library/sections/2", "childCount": 1,
+        "leafCount": 1, "viewedLeafCount": 0,
+        "Location": [{"id": 1, "path": "/target"}],
+    }
+    source_show = dict(target_show, ratingKey="24102", key="/library/metadata/24102",
+                       guid="local://24102", title="Merge Source",
+                       Location=[{"id": 2, "path": "/source"}])
+    target_season = {
+        "ratingKey": "34101", "key": "/library/metadata/34101",
+        "type": "season", "title": "Season 1", "index": 1,
+        "parentRatingKey": "24101", "parentKey": "/library/metadata/24101",
+        "librarySectionID": 2, "leafCount": 1, "viewedLeafCount": 0,
+    }
+    source_season = dict(target_season, ratingKey="34102",
+                         key="/library/metadata/34102", parentRatingKey="24102",
+                         parentKey="/library/metadata/24102")
+    target_episode = {
+        "ratingKey": "14101", "key": "/library/metadata/14101",
+        "type": "episode", "title": "Target Episode", "index": 1,
+        "parentIndex": 1, "parentRatingKey": "34101",
+        "parentKey": "/library/metadata/34101", "grandparentRatingKey": "24101",
+        "grandparentKey": "/library/metadata/24101", "librarySectionID": 2,
+        "Media": [{"id": 141010, "Part": [{"id": 141010}]}],
+    }
+    source_episode = dict(target_episode, ratingKey="14102",
+                          key="/library/metadata/14102", title="Source Episode",
+                          parentRatingKey="34102", parentKey="/library/metadata/34102",
+                          grandparentRatingKey="24102", grandparentKey="/library/metadata/24102",
+                          Media=[{"id": 141020, "Part": [{"id": 141020}]}])
+    for synthetic in (target_show, source_show, target_season, source_season,
+                      target_episode, source_episode):
+        catalog.add(synthetic)
+    merge_frames = []
+    sim.add_socket(lambda kind, element, rows: merge_frames.extend(rows)
+                   if kind == "timeline" else None)
+    merge_answer = sim.handle("PUT", "/library/metadata/24101/merge?ids=24102", b"", {})
+    merge_media = [media.get("id") for media in target_episode.get("Media") or []]
+    deleted_frames = merge_frames[:3]
+    survivor_frames = merge_frames[3:]
+    check("show merge absorbs its hierarchy and combines matching episode Media",
+          merge_answer == ("empty", 200)
+          and not ({24102, 34102, 14102} & set(catalog.items))
+          and merge_media == [141020, 141010]
+          and target_show.get("Location") == [
+              {"id": 1, "path": "/target"}, {"id": 2, "path": "/source"}]
+          and (target_show.get("childCount"), target_show.get("leafCount")) == (1, 1),
+          "answer %r media %r locations %r" %
+          (merge_answer, merge_media, target_show.get("Location")))
+    check("show merge sends exact delete and survivor timeline sequence",
+          [(frame.get("itemID"), frame.get("type"), frame.get("state"),
+            frame.get("title"), frame.get("metadataState"))
+           for frame in deleted_frames]
+          == [("24102", 2, 9, "", "deleted"),
+              ("34102", 3, 9, "", "deleted"),
+              ("14102", 4, 9, "", "deleted")]
+          and [(frame.get("itemID"), frame.get("type"), frame.get("state"),
+                "metadataState" in frame)
+               for frame in survivor_frames]
+          == [("14101", -1, 3, False), ("14101", -1, 5, False)]
+          and all(frame.get("sectionID") == "2" for frame in merge_frames),
+          str(merge_frames))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
