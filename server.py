@@ -11469,6 +11469,18 @@ class PlexSim:
                         projected.update(self.parent_detail(
                             stored, dict(projected),
                             {"includeOnDeck": query.get("includeOnDeck")}))
+        if _include_int(query.get("includeRelated")):
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    if projected.get("_light") and hub.get("hubIdentifier") != "home.ondeck":
+                        continue
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is not None:
+                        projected.update(self.apply_detail_options(
+                            stored, dict(projected),
+                            {"includeRelated": query.get("includeRelated"),
+                             "includeRelatedCount": query.get("includeRelatedCount")}))
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
