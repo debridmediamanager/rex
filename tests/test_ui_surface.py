@@ -26663,6 +26663,20 @@ def main():
           and all(row_c46a["Children"].get("size", 0) >= 1 for row_c46a in child_show_c46a),
           "plain shows=%d expanded=%d" % (len(plain_show_c46a), len(child_show_c46a)))
 
+    hubs_extras_c46b = get(base, "/hubs?includeExtras=1")[1].get("Hub") or []
+    extras_show_c46b = [row_c46b for hub_c46b in hubs_extras_c46b
+                        for row_c46b in hub_c46b.get("Metadata") or []
+                        if row_c46b.get("type") == "show"
+                        and isinstance(row_c46b.get("Extras"), dict)]
+    ondeck_rows_c46b = [row_c46b for hub_c46b in hubs_extras_c46b
+                        if hub_c46b.get("hubIdentifier") == "home.ondeck"
+                        for row_c46b in hub_c46b.get("Metadata") or []]
+    check("/hubs honours includeExtras on full and On Deck rows",
+          extras_show_c46b
+          and all(isinstance(row_c46b.get("Extras"), dict)
+                  for row_c46b in ondeck_rows_c46b),
+          "show=%d ondeck=%d" % (len(extras_show_c46b), len(ondeck_rows_c46b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
