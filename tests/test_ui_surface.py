@@ -6759,9 +6759,9 @@ def main():
         "/playlists/upload",
         "/playlists/upload?path=%2Fdata%2Fc41-missing.m3u",
         "/playlists/upload?sectionID=%s" % movie_section,
-        "/playlists/upload?sectionID=%s&path=%2Fdata%2Fc41-existing.m3u"
+        "/playlists/upload?sectionID=%s&path=%%2Fdata%%2Fc41-existing.m3u"
         % movie_section,
-        "/playlists/upload?sectionID=%s&path=%2Fdata%2Fc41-missing.m3u"
+        "/playlists/upload?sectionID=%s&path=%%2Fdata%%2Fc41-missing.m3u"
         % movie_section)]
     check("playlist import needs sectionID and path before its importer failure",
           upload_statuses_w12a == [400, 400, 400, 500, 500],
