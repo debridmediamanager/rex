@@ -522,6 +522,13 @@ LEAF_COUNT_FILTERS = ("viewedLeafCount", "unviewedLeafCount", "viewedOrInProgres
 # it, so it is deliberately absent.
 ARTWORK_LEAVES = ("thumb", "art", "poster", "banner", "theme", "clearLogo")
 
+# The two-segment item leaves that are REAL, beside the artwork versions above. Cycle 45
+# measured `/extras/all` (200, where `/extras/1` is a 404) and, after this cycle's own UI
+# suite caught the omission, `/users/top` -- a 200 on kids and zen while `/users`,
+# `/users/all` and `/users/zzz` beside it are 404s, so it is that exact pair rather than
+# the `users` prefix. Everything else with an extra segment is a 404.
+ITEM_TWO_SEGMENT_LEAVES = (["extras", "all"], ["users", "top"])
+
 SECONDARY_TAGS = {
     "genre": "Genre",
     "collection": "Collection",
@@ -9760,7 +9767,7 @@ class PlexSim:
         # 64 of the 212 swept cells were wrong.
         if len(segments) > 4 and [part for part in segments[4:] if part] \
                 and leaf not in ARTWORK_LEAVES \
-                and not (leaf == "extras" and segments[4:] == ["all"]):
+                and segments[3:] not in ITEM_TWO_SEGMENT_LEAVES:
             return ("error", 404, "plexsim: not found")
         if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
             # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
