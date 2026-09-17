@@ -24196,6 +24196,36 @@ def main():
           status_c45x == 200 and kinds_c45x == ["Photo"],
           "%s %s" % (status_c45x, kinds_c45x))
 
+
+    # Cycle 45: `/library/arts` is a listing QUERY, not a dump -- the same shape cycle 29
+    # measured for `/library/sections/{id}/extras/all`. Measured on kids (6 rows) and zen
+    # (4,190): `title=`, `id=`, `id!=`, `year=`, `genre=`, `titleSort=`, `summary=`,
+    # `guid=` and `duplicate=` all CONSTRAIN it; a GOOD `limit=` and `type=` are accepted
+    # and IGNORED, so it parses the limit without honouring its value exactly as
+    # `/children` does, while `limit=abc` is a **500**; and it refuses the SAME FIFTEEN
+    # filter keys `/hubs` refuses -- `duration lastViewedAt lastRatedAt viewCount
+    # skipCount viewOffset userRating unwatched resolution hdr mediaSize file parentIndex
+    # slug group` -- with a 500, which is why `group=zzz` and `unwatched=1` are 500s and
+    # not the ordinary filter. plexsim answered its whole list to every one of them.
+    arts_c45q = {}
+    for suffix_c45q in ("", "?title=zzzzzz", "?id=999999", "?summary=zzzzzz",
+                        "?sort=zzz", "?limit=abc", "?group=zzz", "?unwatched=1",
+                        "?duration=1", "?slug=1", "?type=abc", "?limit=1"):
+        status_c45q, payload_c45q, _ = get(base, "/library/arts" + suffix_c45q)
+        arts_c45q[suffix_c45q or "(none)"] = (status_c45q, payload_c45q.get("size"))
+    whole_c45q = arts_c45q["(none)"][1]
+    check("/library/arts runs the listing query",
+          whole_c45q
+          and arts_c45q["?title=zzzzzz"] == (200, 0)
+          and arts_c45q["?id=999999"] == (200, 0)
+          and arts_c45q["?summary=zzzzzz"] == (200, 0)
+          and [arts_c45q[k][0] for k in ("?sort=zzz", "?limit=abc", "?group=zzz",
+                                         "?unwatched=1", "?duration=1", "?slug=1")]
+          == [500] * 6
+          and arts_c45q["?type=abc"] == (200, whole_c45q)
+          and arts_c45q["?limit=1"] == (200, whole_c45q),
+          str(arts_c45q))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
