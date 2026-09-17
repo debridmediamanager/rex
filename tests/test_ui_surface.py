@@ -25338,6 +25338,30 @@ def main():
           and search_plain_c46.index("collection") != search_plain_c46.index("track") + 1,
           "plain=%s option=%s" % (search_plain_c46, search_coll_c46))
 
+    # Shared and the ordinary section directory expose the identical complete census.
+    # In particular, a show library has show, season and episode rows; the older
+    # top-level-only implementation happened to be right for movie libraries alone.
+    sections_summary_c46 = {
+        row_c46.get("title"): row_c46.get("Summary")
+        for row_c46 in get(base, "/library/sections?includeSummary=1")[1]
+        .get("Directory") or []}
+    shared_summary_c46 = {
+        row_c46.get("title"): row_c46.get("Summary")
+        for row_c46 in get(base, "/library/shared/all?includeSummary=1")[1]
+        .get("Metadata") or []}
+    show_summary_c46 = sections_summary_c46.get(
+        next((row_c46.get("title") for row_c46 in
+              get(base, "/library/sections")[1].get("Directory") or []
+              if row_c46.get("type") == "show"), "")) or {}
+    check("includeSummary reaches Shared with the complete type census",
+          shared_summary_c46 == sections_summary_c46
+          and [row_c46.get("type") for row_c46 in show_summary_c46.get("Type") or []]
+          == ["show", "season", "episode"]
+          and all(int(row_c46.get("count") or 0) > 0
+                  for row_c46 in show_summary_c46.get("Type") or []),
+          "sections=%s shared=%s show=%s"
+          % (sections_summary_c46, shared_summary_c46, show_summary_c46))
+
 
     # Cycle 46, from the option sweep, and it OVERTURNS a cycle-44 refutation:
     # `includeStorage=1` on `/media/providers` really does something. Cycle 44's hunt
