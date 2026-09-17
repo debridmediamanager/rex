@@ -2806,14 +2806,14 @@ class PlexSim:
     TIMELINE_DELETED = 9
 
     def notify_timeline(self, row, state=3, metadata_state="queued", media_state=None,
-                        type_number=None):
+                        type_number=None, title_override=None):
         """A TimelineEntry for one row, with the field set measured off a real
         refresh: identifier, sectionID and itemID as STRINGS, the numeric type,
         the title, `state` and `metadataState`.
 
         `metadata_state=None` omits the field, which is what state 5 does.
         """
-        title = self.frame_title(row)
+        title = self.frame_title(row) if title_override is None else title_override
         # Cycle 22, measured on plexscratch over an artwork write on all six row types:
         # a COLLECTION frames as `type 18` and a PLAYLIST as `type 15` with
         # `sectionID "-1"`, on every frame and not only the ones the list writers push.
@@ -13357,13 +13357,26 @@ class PlexSim:
                 return ("error", 404, "plexsim: no such item")
             if any(other.get("type") != row.get("type") for other in others):
                 return ("error", 400, "plexsim: bad request")
-            merged = self.library.merge(row, ids)
+            changed = []
+            if row.get("type") == "show":
+                merged, changed = self.library.merge_shows(row, ids)
+            else:
+                merged = self.library.merge(row, ids)
             # Measured on a writable copy of the reference: the absorbed row is deleted
             # (state 9, untitled) and the survivor refreshed under type -1, state 3 then
             # 5. plexsim pushed nothing.
             for other in merged:
-                self.notify_timeline(dict(other, title="", year=None), self.TIMELINE_DELETED, "deleted")
-            if merged:
+                self.notify_timeline(other, self.TIMELINE_DELETED, "deleted",
+                                     title_override="")
+            if changed:
+                # A show merge refreshes the surviving EPISODE rather than the show:
+                # both frames are bare (no metadataState) and carry type -1.
+                for episode in changed:
+                    self.notify_timeline(episode, self.TIMELINE_QUEUED, None,
+                                         type_number=-1)
+                    self.notify_timeline(episode, self.TIMELINE_DONE, None,
+                                         type_number=-1)
+            elif merged:
                 self.notify_timeline(row, self.TIMELINE_QUEUED, None, type_number=-1)
                 self.notify_timeline(row, self.TIMELINE_DONE, None, type_number=-1)
             logger.info("MERGE %s <- %s (%d row(s) absorbed)",
