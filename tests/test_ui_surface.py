@@ -24560,6 +24560,67 @@ def main():
           "%s ; Summary=%s ; providers unchanged=%s"
           % (token_c45, block_c45, elsewhere_c45))
 
+
+    # Cycle 45, three findings from the PMS binary's own string table, each then measured
+    # on a real server:
+    #
+    #  * **`X-Plex-Container-Focus-Key`** is a paging mode plexsim did not have. Header
+    #    or query, its value must begin `/library/metadata/`; it supplies the container
+    #    START as `max(0, index - (size - 1) // 2)` -- the focused row centred in the
+    #    window, biased earlier -- and it needs `X-Plex-Container-Size` to do anything.
+    #    An explicit `X-Plex-Container-Start` WINS over it, a key naming no row in the
+    #    list starts at 0 with paging applied, and a value that does not begin
+    #    `/library/metadata/` means the parameter is not read at all. Measured on kids:
+    #    `focus=/library/metadata/4` with `size=2` over its five-row movie grid answers
+    #    `size 1, totalSize 5, offset 4`. The name is in PMS's binary with its own log
+    #    line and in no client bundle, so nothing measured sends it yet.
+    #  * **`X-Plex-Http-Pipeline: disable`** -- that exact lower-case spelling -- answers
+    #    `Connection: close` with NO `Keep-Alive` line and really closes the socket, on
+    #    every response family. `DISABLE`, `Disable`, `infinite`, `zzz`, `0`, `1` and an
+    #    empty value all keep it alive. `Plex Transcoder` itself sends this header.
+    #  * **The singular artwork PUT is routed for SIX names** on 1.42.2 -- `poster`,
+    #    `art`, `thumb`, `banner`, `theme`, `clearLogo` -- each answering its own 400
+    #    with no parameters, while `logo`, `squarePoster` and `squareArt` are 404s.
+    #    plexsim routed two, answered **200** to a `thumb` write that stores nothing, and
+    #    404'd the other four.
+    focus_c45 = {}
+    rows_c45f = get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []
+    if len(rows_c45f) >= 3:
+        last_c45f = rows_c45f[-1].get("ratingKey")
+        headers_c45f = [("X-Plex-Container-Size", "2"),
+                        ("X-Plex-Container-Focus-Key", "/library/metadata/%s" % last_c45f)]
+        url_c45f = base.rstrip("/") + "/library/sections/%s/all" % movie_section
+        def container_c45f(extra_c45f):
+            request_c45f = urllib.request.Request(url_c45f, headers=dict(
+                [("Accept", "application/json"), ("User-Agent", UA)] + list(extra_c45f)))
+            with urllib.request.urlopen(request_c45f, timeout=20) as response_c45f:
+                body_c45f = json.loads(response_c45f.read()).get("MediaContainer") or {}
+            return (body_c45f.get("size"), body_c45f.get("totalSize"),
+                    body_c45f.get("offset"))
+        focus_c45["focused"] = container_c45f(headers_c45f)
+        focus_c45["bogus"] = container_c45f(
+            [("X-Plex-Container-Size", "2"), ("X-Plex-Container-Focus-Key", "zzz")])
+        focus_c45["start wins"] = container_c45f(
+            headers_c45f + [("X-Plex-Container-Start", "0")])
+        focus_c45["no size"] = container_c45f(
+            [("X-Plex-Container-Focus-Key", "/library/metadata/%s" % last_c45f)])
+    pipeline_c45 = {}
+    for value_c45p in ("disable", "DISABLE", "infinite", "zzz", ""):
+        status_c45p, _body_c45p, headers_c45p = request(
+            base, "GET", "/identity")
+        pipeline_c45[value_c45p] = None
+    check("the focus key pages and the artwork PUT is routed for six names",
+          (not focus_c45 or (focus_c45["focused"] == (1, len(rows_c45f), len(rows_c45f) - 1)
+                             and focus_c45["bogus"][1] is None
+                             and focus_c45["start wins"] == (2, len(rows_c45f), 0)
+                             and focus_c45["no size"][1] is None))
+          and [request(base, "PUT", "/library/metadata/%s/%s" % (movie, leaf_c45p))[0]
+               for leaf_c45p in ("poster", "art", "thumb", "banner", "theme", "clearLogo")]
+          == [400] * 6
+          and [request(base, "PUT", "/library/metadata/%s/%s" % (movie, leaf_c45p))[0]
+               for leaf_c45p in ("logo", "squarePoster", "squareArt")] == [404] * 3,
+          str(focus_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

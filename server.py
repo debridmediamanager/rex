@@ -9938,6 +9938,16 @@ class PlexSim:
                 and leaf not in ARTWORK_LEAVES \
                 and segments[3:] not in ITEM_TWO_SEGMENT_LEAVES:
             return ("error", 404, "plexsim: not found")
+        # Cycle 45, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
+        # SINGULAR artwork leaf is routed for six names and answers its own 400 with no
+        # parameters -- `poster`, `art`, `thumb`, `banner`, `theme`, `clearLogo` -- while
+        # `logo`, `squarePoster` and `squareArt` are 404s (`squareArt` is a 400 on 1.43.4
+        # alone, the version split already recorded). plexsim routed two, answered 200 to
+        # a `thumb` write that stores nothing, and 404'd the other four.
+        if method == "PUT" and len(segments) == 4 \
+                and leaf in ("poster", "art", "thumb", "banner", "theme", "clearLogo") \
+                and not query.get("url"):
+            return ("error", 400, "plexsim: bad request")
         if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
             # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
             # after the version is a 404 -- `/thumb/{v}/x` and `/thumb/{v}/1/2` both, on
@@ -17364,7 +17374,16 @@ class Handler(BaseHTTPRequestHandler):
         # client reading the advertised timeout to schedule reuse got nothing.
         if "connection" not in names and not (
                 status == 416 and not getattr(self, "_range_error_container", False)):
-            if self.close_connection:
+            # Cycle 45, measured on kids and zen over every response family:
+            # `X-Plex-Http-Pipeline: disable` -- that exact lower-case spelling --
+            # answers `Connection: close` with NO `Keep-Alive` line and really closes
+            # the socket. `DISABLE`, `Disable`, `infinite`, `zzz`, `0`, `1` and an
+            # empty value all keep it alive. `Plex Transcoder` sends this header on its
+            # own calls back to PMS.
+            if self.headers.get("X-Plex-Http-Pipeline") == "disable":
+                self.close_connection = True
+                self.send_header("Connection", "close")
+            elif self.close_connection:
                 self.send_header("Connection", "close")
             else:
                 self.send_header("Connection", "Keep-Alive")
@@ -18364,6 +18383,32 @@ class Handler(BaseHTTPRequestHandler):
             # had not named, so a client sending both got the query's page.
             if self.headers.get(name) is not None:
                 query[name] = self.headers.get(name)
+        # Cycle 45, read out of the PMS binary's own string table (its log line is
+        # `Setting container serialization range with focusKey to [%s, %d]`) and then
+        # measured on kids: `X-Plex-Container-Focus-Key` supplies the container START,
+        # header or query, as `max(0, index - (size - 1) // 2)` -- the focused row
+        # centred in the window, biased earlier. Its value must begin
+        # `/library/metadata/`; anything else means the parameter is not read at all. An
+        # explicit `X-Plex-Container-Start` wins over it, a key naming no row in the list
+        # starts at 0 with paging applied, and it needs a `Size` to do anything. No
+        # measured client sends it today -- it is in no Plex Web or Plex Desktop bundle
+        # -- but it is PMS's own paging mode and plexsim answered the whole library.
+        focus = (self.headers.get("X-Plex-Container-Focus-Key")
+                 or query.get("X-Plex-Container-Focus-Key"))
+        if (focus and str(focus).startswith("/library/metadata/")
+                and query.get("X-Plex-Container-Size")
+                and query.get("X-Plex-Container-Start") is None):
+            wanted = str(focus).rstrip("/").rsplit("/", 1)[-1]
+            longest = max((value for value in body.values()
+                           if isinstance(value, list)), key=len, default=[])
+            index = next((position for position, row in enumerate(longest)
+                          if isinstance(row, dict)
+                          and str(row.get("ratingKey")) == wanted), 0)
+            try:
+                size = int(query["X-Plex-Container-Size"])
+            except (TypeError, ValueError):
+                size = 0
+            query["X-Plex-Container-Start"] = str(max(0, index - (size - 1) // 2))
         flat = body.get("_pageflat")
         if flat:
             # Cycle 27: `?includeDetails=1` pages its `Directory`, `Type` and
