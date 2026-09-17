@@ -26645,6 +26645,24 @@ def main():
           % (name_1024_c41c, name_1025_c41c, value_4096_c41c,
              value_4097_c41c, lines_100_c41c, lines_101_c41c))
 
+    # Cycle 46's 116-name option census widened from nineteen high-yield paths to
+    # every safe container family. /hubs applies the same includeChildren expansion
+    # as a detail read, but only to its full show rows.
+    hubs_plain_c46a = get(base, "/hubs")[1].get("Hub") or []
+    hubs_children_c46a = get(base, "/hubs?includeChildren=1")[1].get("Hub") or []
+    plain_show_c46a = [row_c46a for hub_c46a in hubs_plain_c46a
+                       for row_c46a in hub_c46a.get("Metadata") or []
+                       if row_c46a.get("type") == "show"]
+    child_show_c46a = [row_c46a for hub_c46a in hubs_children_c46a
+                       for row_c46a in hub_c46a.get("Metadata") or []
+                       if row_c46a.get("type") == "show"
+                       and isinstance(row_c46a.get("Children"), dict)]
+    check("/hubs honours includeChildren on its full show rows",
+          plain_show_c46a and not any("Children" in row_c46a for row_c46a in plain_show_c46a)
+          and child_show_c46a
+          and all(row_c46a["Children"].get("size", 0) >= 1 for row_c46a in child_show_c46a),
+          "plain shows=%d expanded=%d" % (len(plain_show_c46a), len(child_show_c46a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

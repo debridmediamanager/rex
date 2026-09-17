@@ -11425,6 +11425,20 @@ class PlexSim:
                 and not (identifier in ("home.continue", "home.ondeck")
                          and self.exclude_continue_watching(query))
                 and not (identifier == "home.playlists" and directories is not None)]
+        # Cycle 46's full option-namespace sweep found that the global hubs response
+        # applies detail expansions to its FULL show rows too. The mixed Recently
+        # Added TV shelf is the full projection; light grid rows remain light.
+        if _include_int(query.get("includeChildren")):
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    if projected.get("type") != "show" or projected.get("_light"):
+                        continue
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is not None:
+                        projected.update(self.apply_detail_options(
+                            stored, dict(projected),
+                            {"includeChildren": query.get("includeChildren")}))
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
