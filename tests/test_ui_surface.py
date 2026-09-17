@@ -338,6 +338,36 @@ def main():
     spare = movies[-1]["ratingKey"] if len(movies) > 1 else None
     show = shows[0]["ratingKey"] if shows else None
 
+    # Cycle 46's option regressions need the pristine hierarchy. This suite later
+    # unmatches, merges and deletes rows before their assertions run, so capture
+    # the read-only discriminator requests here rather than accidentally testing
+    # the state created by unrelated write checks.
+    c46_pristine = {}
+    c46_season = None
+    if show:
+        c46_seasons = (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                       .get("Metadata") or [])
+        c46_season = c46_seasons[0].get("ratingKey") if c46_seasons else None
+    c46_guid_paths = [
+        "/hubs",
+        "/hubs/home/recentlyAdded?type=1",
+        "/library/sections/%s/newest" % show_section,
+        "/library/sections/%s/recentlyAdded?type=4" % show_section,
+        "/library/sections/%s/search?query=e&type=4" % show_section,
+    ]
+    if c46_season:
+        c46_guid_paths.insert(2, "/library/metadata/%s/children" % c46_season)
+    for c46_path in c46_guid_paths:
+        c46_join = "&" if "?" in c46_path else "?"
+        c46_pristine[c46_path] = get(base, c46_path)[1]
+        c46_pristine[c46_path + c46_join + "includeGuids=1"] = get(
+            base, c46_path + c46_join + "includeGuids=1")[1]
+    for c46_path in ("/hubs?includeChildren=1", "/hubs?includeExtras=1",
+                     "/hubs?includeOnDeck=1", "/hubs?includeRelated=1",
+                     "/hubs?includePreferences=1", "/library/shared/all",
+                     "/library/shared/all?includePreferences=1"):
+        c46_pristine[c46_path] = get(base, c46_path)[1]
+
     part_id = None
     for media in movies[0].get("Media") or []:
         for part in media.get("Part") or []:
@@ -25198,11 +25228,7 @@ def main():
     # The same sweep found seven more consumers. Seasons and episodes generally carry
     # only their primary `guid` in the catalog, so this also proves the response mints a
     # one-row Guid element rather than merely preserving external-id lists.
-    show_c46g = (get(base, "/library/sections/%s/all?type=2" % show_section)[1]
-                 .get("Metadata") or [{}])[0]
-    seasons_c46g = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
-                       % show_c46g.get("ratingKey"))[1].get("Metadata") or []
-    season_c46g = seasons_c46g[0] if seasons_c46g else {}
+    season_c46g = {"ratingKey": c46_season} if c46_season else {}
     paths_c46g = [
         "/hubs",
         "/hubs/home/recentlyAdded?type=1",
@@ -25214,8 +25240,8 @@ def main():
 
     def guid_rows_c46g(path_c46g, enabled_c46g):
         join_c46g = "&" if "?" in path_c46g else "?"
-        body_c46g = get(base, path_c46g + (join_c46g + "includeGuids=1"
-                                          if enabled_c46g else ""))[1]
+        body_c46g = c46_pristine[path_c46g + (join_c46g + "includeGuids=1"
+                                              if enabled_c46g else "")]
         rows_c46g = list(body_c46g.get("Metadata") or [])
         rows_c46g.extend(row_c46g for hub_c46g in body_c46g.get("Hub") or []
                          for row_c46g in hub_c46g.get("Metadata") or [])
@@ -26758,8 +26784,8 @@ def main():
     # Cycle 46's 116-name option census widened from nineteen high-yield paths to
     # every safe container family. /hubs applies the same includeChildren expansion
     # as a detail read, but only to its full show rows.
-    hubs_plain_c46a = get(base, "/hubs")[1].get("Hub") or []
-    hubs_children_c46a = get(base, "/hubs?includeChildren=1")[1].get("Hub") or []
+    hubs_plain_c46a = c46_pristine["/hubs"].get("Hub") or []
+    hubs_children_c46a = c46_pristine["/hubs?includeChildren=1"].get("Hub") or []
     plain_show_c46a = [row_c46a for hub_c46a in hubs_plain_c46a
                        for row_c46a in hub_c46a.get("Metadata") or []
                        if row_c46a.get("type") == "show"]
@@ -26773,7 +26799,7 @@ def main():
           and all(row_c46a["Children"].get("size", 0) >= 1 for row_c46a in child_show_c46a),
           "plain shows=%d expanded=%d" % (len(plain_show_c46a), len(child_show_c46a)))
 
-    hubs_extras_c46b = get(base, "/hubs?includeExtras=1")[1].get("Hub") or []
+    hubs_extras_c46b = c46_pristine["/hubs?includeExtras=1"].get("Hub") or []
     extras_show_c46b = [row_c46b for hub_c46b in hubs_extras_c46b
                         for row_c46b in hub_c46b.get("Metadata") or []
                         if row_c46b.get("type") == "show"
@@ -26787,7 +26813,7 @@ def main():
                   for row_c46b in ondeck_rows_c46b),
           "show=%d ondeck=%d" % (len(extras_show_c46b), len(ondeck_rows_c46b)))
 
-    hubs_ondeck_c46c = get(base, "/hubs?includeOnDeck=1")[1].get("Hub") or []
+    hubs_ondeck_c46c = c46_pristine["/hubs?includeOnDeck=1"].get("Hub") or []
     ondeck_show_c46c = [row_c46c for hub_c46c in hubs_ondeck_c46c
                         for row_c46c in hub_c46c.get("Metadata") or []
                         if row_c46c.get("type") == "show"
@@ -26798,7 +26824,7 @@ def main():
                   for row_c46c in ondeck_show_c46c),
           "expanded=%d" % len(ondeck_show_c46c))
 
-    hubs_related_c46d = get(base, "/hubs?includeRelated=1")[1].get("Hub") or []
+    hubs_related_c46d = c46_pristine["/hubs?includeRelated=1"].get("Hub") or []
     related_show_c46d = [row_c46d for hub_c46d in hubs_related_c46d
                          for row_c46d in hub_c46d.get("Metadata") or []
                          if row_c46d.get("type") == "show"
@@ -26812,14 +26838,14 @@ def main():
                   for row_c46d in related_ondeck_c46d),
           "show=%d ondeck=%d" % (len(related_show_c46d), len(related_ondeck_c46d)))
 
-    hubs_prefs_c46e = get(base, "/hubs?includePreferences=1")[1].get("Hub") or []
+    hubs_prefs_c46e = c46_pristine["/hubs?includePreferences=1"].get("Hub") or []
     prefs_show_c46e = [row_c46e for hub_c46e in hubs_prefs_c46e
                        for row_c46e in hub_c46e.get("Metadata") or []
                        if row_c46e.get("type") == "show"
                        and (row_c46e.get("Preferences") or {}).get("Setting")]
-    shared_plain_c46e = get(base, "/library/shared/all")[1].get("Metadata") or []
-    shared_prefs_c46e = get(
-        base, "/library/shared/all?includePreferences=1")[1].get("Metadata") or []
+    shared_plain_c46e = c46_pristine["/library/shared/all"].get("Metadata") or []
+    shared_prefs_c46e = c46_pristine[
+        "/library/shared/all?includePreferences=1"].get("Metadata") or []
     check("includePreferences reaches global hubs and Shared libraries",
           prefs_show_c46e
           and shared_plain_c46e and not any("Preferences" in row_c46e
