@@ -11458,6 +11458,17 @@ class PlexSim:
                         projected["Extras"] = {"size": len(extras)}
                         if extras:
                             projected["Extras"]["Metadata"] = extras
+        if _include_int(query.get("includeOnDeck")):
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    if projected.get("type") != "show" or projected.get("_light"):
+                        continue
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is not None:
+                        projected.update(self.parent_detail(
+                            stored, dict(projected),
+                            {"includeOnDeck": query.get("includeOnDeck")}))
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):

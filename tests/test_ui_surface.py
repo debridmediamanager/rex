@@ -26677,6 +26677,17 @@ def main():
                   for row_c46b in ondeck_rows_c46b),
           "show=%d ondeck=%d" % (len(extras_show_c46b), len(ondeck_rows_c46b)))
 
+    hubs_ondeck_c46c = get(base, "/hubs?includeOnDeck=1")[1].get("Hub") or []
+    ondeck_show_c46c = [row_c46c for hub_c46c in hubs_ondeck_c46c
+                        for row_c46c in hub_c46c.get("Metadata") or []
+                        if row_c46c.get("type") == "show"
+                        and isinstance(row_c46c.get("OnDeck"), dict)]
+    check("/hubs honours includeOnDeck on its full show rows",
+          ondeck_show_c46c
+          and all((row_c46c["OnDeck"].get("Metadata") or {}).get("type") == "episode"
+                  for row_c46c in ondeck_show_c46c),
+          "expanded=%d" % len(ondeck_show_c46c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
