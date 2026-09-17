@@ -10196,34 +10196,50 @@ def main():
               % (plain_c14l, grouped_c14l, grid_c14l, item_plain_c14l, item_c14l))
 
 
-    # Cycle 14: `#` is the DIGITS bucket only -- any other non-letter gets a bucket of
-    # its own -- and every bucket key is percent-encoded. Reconstructed from zen's 3887
-    # rows against its own axis (29 digit-led rows = the `#` bucket's 29; one
-    # bracket-led row in a bucket of its own, key `%E3%80%8E`, listed after Z), with
-    # the encoding corroborated on kids' other axes (`contentRating` key `Not%20Rated`).
-    # plexsim folded every non-letter into `#` and emitted the key raw, so `#` was a URL
-    # fragment the client's request threw away.
-    orig_c14m = ((get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-                 .get("title") or "Movie")
-    request(base, "PUT", "/library/metadata/%s?title.value=%s"
-            % (movie, urllib.parse.quote("300 Spartans")))
-    buckets_c14m = [(d.get("title"), d.get("key")) for d in
-                    get(base, "/library/sections/%s/firstCharacter" % movie_section)[1]
-                    .get("Directory") or []]
-    request(base, "PUT", "/library/metadata/%s?title.value=%s"
-            % (movie, urllib.parse.quote("『Bracket』 Movie")))
-    odd_c14m = [(d.get("title"), d.get("key")) for d in
-                get(base, "/library/sections/%s/firstCharacter" % movie_section)[1]
-                .get("Directory") or []]
-    request(base, "PUT", "/library/metadata/%s?title.value=%s"
-            % (movie, urllib.parse.quote(orig_c14m)))
-    check("# is the digits bucket, any other non-letter gets its own, keys encoded",
-          ("#", "%23") in buckets_c14m
-          and ("『", "%E3%80%8F") not in odd_c14m
-          and ("『", urllib.parse.quote("『")) in odd_c14m
-          and not any(t_c14m == "#" for t_c14m, _k in odd_c14m)
-          and odd_c14m[-1][0] == "『",
-          "digits %s | bracket %s" % (buckets_c14m, odd_c14m))
+    # Cycle 41 replaced cycle 14's digit-only inference with temporary rows on both
+    # writable PMS versions. The AXIS collapses every surviving ASCII non-letter
+    # into `#`, while the LISTING accepts both that aggregate key and the exact raw
+    # character. Non-ASCII punctuation keeps its own percent-encoded axis key.
+    rows_c14m = (get(base, "/library/sections/%s/all?type=1" % movie_section)[1]
+                 .get("Metadata") or [])[:3]
+    if len(rows_c14m) == 3:
+        originals_c14m = [(row_c14m.get("ratingKey"), row_c14m.get("title") or "")
+                          for row_c14m in rows_c14m]
+        probes_c14m = ("!C41P Exclamation", "0C41P Digit", "。C41P Stop")
+        for (key_c14m, _title_c14m), probe_c14m in zip(originals_c14m, probes_c14m):
+            request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                    % (key_c14m, quote(probe_c14m)))
+        axis_c14m = {row_c14m.get("title"): (row_c14m.get("size"), row_c14m.get("key"))
+                     for row_c14m in get(
+                         base, "/library/sections/%s/firstCharacter" % movie_section)[1]
+                     .get("Directory") or []}
+
+        def bucket_keys_c14m(bucket_c14m):
+            return {str(row_c14m.get("ratingKey")) for row_c14m in get(
+                base, "/library/sections/%s/firstCharacter/%s"
+                      % (movie_section, quote(bucket_c14m)))[1]
+                .get("Metadata") or []}
+
+        hash_c14m = bucket_keys_c14m("#")
+        bang_c14m = bucket_keys_c14m("!")
+        digit_c14m = bucket_keys_c14m("0")
+        stop_c14m = bucket_keys_c14m("。")
+        for key_c14m, title_c14m in originals_c14m:
+            request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                    % (key_c14m, quote(title_c14m)))
+        wanted_keys_c14m = [str(key_c14m) for key_c14m, _title_c14m in originals_c14m]
+        check("the # axis aggregates ASCII non-letters but exact buckets remain",
+              axis_c14m.get("#") == (2, "%23")
+              and axis_c14m.get("。") == (1, quote("。"))
+              and hash_c14m == set(wanted_keys_c14m[:2])
+              and bang_c14m == {wanted_keys_c14m[0]}
+              and digit_c14m == {wanted_keys_c14m[1]}
+              and stop_c14m == {wanted_keys_c14m[2]},
+              "axis=%s #=%s !=%s 0=%s stop=%s"
+              % (axis_c14m, hash_c14m, bang_c14m, digit_c14m, stop_c14m))
+    else:
+        skip("the # axis aggregates ASCII non-letters but exact buckets remain",
+             "need three movie rows")
 
 
     # Cycle 14: `/userRating` is a real axis with a FIXED six-bucket scale -- kids and

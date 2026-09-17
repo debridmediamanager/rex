@@ -6566,7 +6566,10 @@ class PlexSim:
             wanted = urllib.parse.unquote(segments[4])
             self._parsed_type(query, 500)
             rows = [r for r in self.typed_rows(section_id, query)
-                    if self._first_character_bucket(r) == wanted]
+                    if (self._first_character_bucket(r) == wanted
+                        or (wanted == "#"
+                            and self._first_character_bucket(r).isascii()
+                            and not self._first_character_bucket(r).isalpha()))]
             rows, _ = self.apply_filters(rows, query, section)
             rows, unsupported = self._sorted(rows, query.get("sort") or "titleSort")
             if unsupported:
@@ -6602,13 +6605,12 @@ class PlexSim:
                 title = str(self._first_character_basis(row).get("titleSort")
                             or self._first_character_basis(row).get("title") or "")
                 first = (title[:1] or "#").upper()
-                # Cycle 14, reconstructed from zen's 3887 rows against its own axis:
-                # `#` is the DIGITS bucket, not the everything-else one. The 29 rows
-                # in `#` are exactly the 29 whose sort title starts with 0-9, and the
-                # one row starting with a bracket gets a bucket of its OWN, listed
-                # after Z. plexsim folded every non-letter into `#`, so a library of
-                # CJK or punctuation-led titles collapsed to one bucket.
-                if first.isdigit():
+                # Cycle 41 corrected the old digit-only inference with direct
+                # temporary rows on both writable versions: every surviving ASCII
+                # non-letter (punctuation as well as 0-9) is counted under `#`.
+                # Non-ASCII punctuation and letters keep their own key after the
+                # ordinary sort-title folding (`。`, `『`, `Ω` were the witnesses).
+                if first.isascii() and not first.isalpha():
                     first = "#"
                 counts[first] = counts.get(first, 0) + 1
             # ...and the bucket KEY is percent-encoded, which `#` needs most of all --
@@ -6916,17 +6918,19 @@ class PlexSim:
     def _first_character_bucket(self, row):
         """The bucket a row falls in when the LISTING filters on it.
 
-        The row's OWN sort title, first character upper-cased, with every digit
-        sharing `#` -- measured on kids, where "The Train Job" (titleSort "Train Job")
-        answers to `T` and not to `M`, so it really is the sort title. The axis above
-        it counts on a different basis; see `_first_character_basis`.
+        The row's OWN sort title, first character upper-cased and otherwise raw --
+        measured on kids, where "The Train Job" (titleSort "Train Job") answers to
+        `T` and not to `M`, so it really is the sort title. Cycle 41 measured the
+        deliberate asymmetry: the axis COLLAPSES ASCII non-letters into `#`, while
+        `/firstCharacter/!` and `/firstCharacter/0` still select their exact rows.
+        The axis also counts on a different row basis; see `_first_character_basis`.
         """
         # Cycle 18: the STORED sort title, which is empty for a generated title --
         # so zen's 740 synthesised seasons all answer in `#` and every letter bucket
         # of a season list answers none.
         title = str(hierarchy_module.stored_sort_title(row) or "")
         first = (title[:1] or "#").upper()
-        return "#" if first.isdigit() else first
+        return first
 
     def _first_character_basis(self, row):
         """The row whose sort title the `firstCharacter` AXIS counts this row under.
