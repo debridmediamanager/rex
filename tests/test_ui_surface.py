@@ -24421,6 +24421,36 @@ def main():
                                       "2147483648")] == [400] * 8,
           "%s ; %s" % (async_c45a, time_c45a))
 
+
+    # Cycle 45: TEN more cross-type secondary axes, each with its own `title2`, measured
+    # on kids, zen and both writable copies. `CROSS_TYPE_AXES` held nine; the music and
+    # photo families it covers are not the whole list, and these are the sport, podcast
+    # and photo-EXIF ones. Two quirks, both on kids AND zen: `platform` (cycle 45's
+    # earlier finding) carries `title2: ""`, and **`narrator` is the only axis on the
+    # surface that does not validate `type=`** -- `type=abc` there is a 200 where every
+    # other tag axis, `/genre` and the ten beside it included, is a 500.
+    axes_c45x = {}
+    for name_c45x in ("autotag", "aperture", "exposure", "iso", "lens", "sport", "team",
+                      "channel", "publisher", "narrator"):
+        status_c45x, payload_c45x, _ = get(base, "/library/sections/%s/%s"
+                                           % (movie_section, name_c45x))
+        axes_c45x[name_c45x] = (status_c45x, payload_c45x.get("size"),
+                                payload_c45x.get("title2"))
+    typed_c45x = {
+        "narrator": get(base, "/library/sections/%s/narrator?type=abc" % movie_section)[0],
+        "autotag": get(base, "/library/sections/%s/autotag?type=abc" % movie_section)[0],
+        "genre": get(base, "/library/sections/%s/genre?type=abc" % movie_section)[0],
+    }
+    want_c45x = {"autotag": "By Autotag", "aperture": "By Aperture",
+                 "exposure": "By Shutter Speed", "iso": "By ISO", "lens": "By Lens",
+                 "sport": "By Sport", "team": "By Team", "channel": "By Channel",
+                 "publisher": "By Publisher", "narrator": "By Narrator"}
+    check("ten more cross-type axes, and narrator ignores type=",
+          all(axes_c45x[k] == (200, 0, want_c45x[k]) for k in want_c45x)
+          and typed_c45x == {"narrator": 200, "autotag": 500, "genre": 500},
+          "%s ; %s" % ({k: v for k, v in axes_c45x.items()
+                        if v != (200, 0, want_c45x[k])} or "all ten", typed_c45x))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
