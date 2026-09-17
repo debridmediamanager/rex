@@ -18172,17 +18172,27 @@ def main():
                if k_c26a.endswith("DecisionCode")}))
 
 
-    # Cycle 26, re-measured on kids and zen: the decision's index validation is much
-    # narrower than plexsim had it. Only an OUT-OF-RANGE `mediaIndex` refuses. A missing,
-    # non-numeric, negative or empty one is a 200 that falls back to media 0; `partIndex`
-    # is never refused at any value; and a `path` carrying a query string is a 200. That
-    # matters because python-plexapi's `getStreamURL` and several TV apps omit
-    # `mediaIndex`, and against plexsim their decision was a hard 400 before any profile
-    # question was asked. It also CORRECTS a CLAUDE.md sentence that claimed all three.
+    # Cycle 26, re-measured on kids and zen over SINGLE-Media rows: only an
+    # OUT-OF-RANGE `mediaIndex` refuses. A missing, non-numeric, negative or empty one
+    # falls back to media 0; `partIndex` is never refused at any value; and a `path`
+    # carrying a query string is accepted. Cycle 41 measured the distinct multi-Media
+    # branch, so this older assertion deliberately finds a one-version row instead of
+    # accidentally depending on whether an earlier merge has added a second Media.
+    single_media_c26b = None
+    for candidate_c26b in (get(base, "/library/sections/%s/all?type=1"
+                                % movie_section)[1].get("Metadata") or []):
+        detail_c26b = (get(base, "/library/metadata/%s"
+                                % candidate_c26b.get("ratingKey"))[1]
+                         .get("Metadata") or [{}])[0]
+        if len(detail_c26b.get("Media") or []) == 1:
+            single_media_c26b = candidate_c26b.get("ratingKey")
+            break
+
     def decide_status_c26b(spec_c26b, path_c26b=None):
         url_c26b = ("/video/:/transcode/universal/decision?path=%s&protocol=http"
                     "&directPlay=1&directStream=1&session=c26b%s"
-                    % (quote(path_c26b or ("/library/metadata/%s" % movie)), spec_c26b))
+                    % (quote(path_c26b or ("/library/metadata/%s" % single_media_c26b)),
+                       spec_c26b))
         request_c26b = urllib.request.Request(
             base.rstrip("/") + url_c26b,
             headers={"User-Agent": UA, "Accept": "application/json",
@@ -18194,20 +18204,29 @@ def main():
         except urllib.error.HTTPError as error_c26b:
             return error_c26b.code
 
-    accepted_c26b = {spec_c26b: decide_status_c26b(spec_c26b) for spec_c26b in (
+    accepted_c26b = ({spec_c26b: decide_status_c26b(spec_c26b) for spec_c26b in (
         "&partIndex=0", "&mediaIndex=abc&partIndex=0", "&mediaIndex=-1&partIndex=0",
         "&mediaIndex=&partIndex=0", "&mediaIndex=0&partIndex=9",
         "&mediaIndex=0&partIndex=abc", "&mediaIndex=0&partIndex=-1",
-        "&mediaIndex=0&partIndex=")}
-    refused_c26b = decide_status_c26b("&mediaIndex=9&partIndex=0")
-    query_path_c26b = decide_status_c26b(
-        "&mediaIndex=0", "/library/metadata/%s?x=1" % movie)
+        "&mediaIndex=0&partIndex=")} if single_media_c26b else {})
+    refused_c26b = (decide_status_c26b("&mediaIndex=9&partIndex=0")
+                    if single_media_c26b else None)
+    query_path_c26b = (decide_status_c26b(
+        "&mediaIndex=0", "/library/metadata/%s?x=1" % single_media_c26b)
+        if single_media_c26b else None)
     unknown_c26b = decide_status_c26b("&mediaIndex=0", "/library/metadata/99999999")
-    check("only an OUT-OF-RANGE mediaIndex refuses a decision",
-          set(accepted_c26b.values()) == {200} and refused_c26b == 400,
-          "%s | out-of-range=%s" % (sorted(set(accepted_c26b.values())), refused_c26b))
-    check("a path carrying a query string is accepted",
-          query_path_c26b == 200, str(query_path_c26b))
+    if single_media_c26b:
+        check("only an OUT-OF-RANGE mediaIndex refuses a single-Media decision",
+              set(accepted_c26b.values()) == {200} and refused_c26b == 400,
+              "%s | out-of-range=%s"
+              % (sorted(set(accepted_c26b.values())), refused_c26b))
+        check("a path carrying a query string is accepted",
+              query_path_c26b == 200, str(query_path_c26b))
+    else:
+        skip("only an OUT-OF-RANGE mediaIndex refuses a single-Media decision",
+             "no single-Media movie remains")
+        skip("a path carrying a query string is accepted",
+             "no single-Media movie remains")
     check("and an unknown id is still a 400",
           unknown_c26b == 400, str(unknown_c26b))
 
