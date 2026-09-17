@@ -5750,7 +5750,10 @@ class PlexSim:
                 # ignored but make the same paging fields explicit. plexsim applied
                 # HUB_COUNT before the generic pager, permanently hiding rows 13-50.
                 projected = [_listing_row(r) if r.get("type") == "show"
-                             else _grid_row(_listing_row(r)) for r in rows]
+                             else _grid_row(
+                                 self._guid_gate([_listing_row(r)], query)[0],
+                                 keep_guid=True)
+                             for r in rows]
                 if str(query.get("type")) == "2":
                     page, paged, start, total = self.page_window(projected, query)
                     fields = {"size": len(page), "Metadata": page}
@@ -7338,7 +7341,9 @@ class PlexSim:
                 # Cycle 20: and a grid row carries no librarySection fields -- they
                 # are the container's. Neither reference sends one here, on either
                 # library type; plexsim kept the triple on this path alone.
-                Metadata=[_grid_row(_listing_row(r), keep_section=False) for r in rows],
+                Metadata=[_grid_row(guided, keep_section=False, keep_guid=True)
+                          for guided in self._guid_gate(
+                              [_listing_row(r) for r in rows], query)],
                 viewGroup=typed or section.get("type"), **extra)
             # Measured: this one is NOT a secondary view -- it carries no
             # `content`, and its viewGroup is the library's type.
@@ -9347,7 +9352,12 @@ class PlexSim:
         and the grid payload is the one place the difference is measurable.
         """
         if (query or {}).get("includeGuids") == "1":
-            return rows
+            # Some rows (notably seasons and episodes) have only their primary
+            # `guid`, with no external-id `Guid` list. Both references still emit a
+            # one-entry Guid element for those rows when the listing asks for it.
+            return [dict(row, Guid=[{"id": row["guid"]}])
+                    if row.get("guid") and not row.get("Guid") else row
+                    for row in rows]
         return [{k: v for k, v in row.items() if k != "Guid"} for row in rows]
 
     def listing_container(self, section_id, section, rows, view_group=None,
@@ -11498,6 +11508,18 @@ class PlexSim:
                     if stored is not None:
                         projected.update(self.apply_detail_options(
                             stored, dict(projected), {"includePreferences": "1"}))
+        if query.get("includeGuids") == "1":
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is None or projected.get("Guid"):
+                        continue
+                    guids = stored.get("Guid")
+                    if guids:
+                        projected["Guid"] = guids
+                    elif stored.get("guid"):
+                        projected["Guid"] = [{"id": stored["guid"]}]
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
@@ -12347,7 +12369,9 @@ class PlexSim:
             for row in typed.get(kind, []):
                 # Measured: a search row is the light projection, and a show keeps
                 # its Location in it.
-                entry = _grid_row(_listing_row(row), keep_location=row.get("type") == "show")
+                entry = _grid_row(
+                    self._guid_gate([_listing_row(row)], query)[0],
+                    keep_guid=True, keep_location=row.get("type") == "show")
                 # Cycle 25: a `/hubs/search` hit leads with `librarySectionTitle` and then
                 # its own `score`, measured on kids and zen alike. See `_SEARCH_LEAD`.
                 entry["_searchhit"] = True
