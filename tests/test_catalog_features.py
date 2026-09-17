@@ -558,6 +558,56 @@ def main():
           and all(frame.get("sectionID") == "2" for frame in merge_frames),
           str(merge_frames))
 
+    # Cycle 41 supplied the second large-library witness for Cycle 28's fitted
+    # 50-row TV cap. Both PMS versions answer all 50 before paging, including when
+    # legacy limit/count parameters are present; the shared 12-row shelf cap does
+    # not apply to this See All endpoint.
+    cap_catalog = server.Catalog(fixture)
+    cap_sim = server.PlexSim(cap_catalog, Resolver(), assert_claimed=True)
+    for number in range(55):
+        show_key = str(25000 + number)
+        season_key = str(35000 + number)
+        episode_key = str(15000 + number)
+        cap_catalog.add({
+            "ratingKey": show_key, "key": "/library/metadata/" + show_key,
+            "guid": "local://" + show_key, "type": "show",
+            "title": "Cap Show %02d" % number, "librarySectionID": 99,
+            "childCount": 1, "leafCount": 1, "viewedLeafCount": 0,
+        })
+        cap_catalog.add({
+            "ratingKey": season_key, "key": "/library/metadata/" + season_key,
+            "type": "season", "title": "Season 1", "index": 1,
+            "parentRatingKey": show_key, "librarySectionID": 99,
+            "leafCount": 1, "viewedLeafCount": 0,
+        })
+        cap_catalog.add({
+            "ratingKey": episode_key, "key": "/library/metadata/" + episode_key,
+            "type": "episode", "title": "Cap Episode %02d" % number,
+            "index": 1, "parentIndex": 1, "parentRatingKey": season_key,
+            "grandparentRatingKey": show_key, "librarySectionID": 99,
+            "addedAt": 1789700000 + number,
+        })
+
+    def recent_cap(path, headers=None):
+        return cap_sim.handle("GET", path, b"", headers or {})["MediaContainer"]
+
+    cap_first = recent_cap("/hubs/home/recentlyAdded?type=2&sectionID=99",
+                           {"X-Plex-Container-Start": "0",
+                            "X-Plex-Container-Size": "100"})
+    cap_after = recent_cap("/hubs/home/recentlyAdded?type=2&sectionID=99",
+                           {"X-Plex-Container-Start": "50",
+                            "X-Plex-Container-Size": "100"})
+    cap_limit = recent_cap("/hubs/home/recentlyAdded?type=2&sectionID=99&limit=100")
+    cap_count = recent_cap("/hubs/home/recentlyAdded?type=2&sectionID=99&count=100")
+    check("Recently Added TV exposes and pages its measured 50-row cap",
+          [(body.get("size"), body.get("totalSize"), body.get("offset"),
+            len(body.get("Metadata") or []))
+           for body in (cap_first, cap_after, cap_limit, cap_count)]
+          == [(50, 50, 0, 50), (0, 50, 50, 0),
+              (50, 50, 0, 50), (50, 50, 0, 50)],
+          str([(body.get("size"), body.get("totalSize"), body.get("offset"))
+               for body in (cap_first, cap_after, cap_limit, cap_count)]))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1

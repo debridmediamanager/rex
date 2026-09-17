@@ -5317,9 +5317,24 @@ class PlexSim:
                     return answer
                 # Measured: a movie or episode row here is the light projection
                 # (no Guid, text-only tags); a show row is the full one.
-                page = [_listing_row(r) if r.get("type") == "show"
-                        else _grid_row(_listing_row(r)) for r in rows[:self.HUB_COUNT]]
-                answer = self.hub_container(size=len(page), Metadata=page)
+                #
+                # Cycle 41 populated more than 50 independent recent TV rows on both
+                # disposable PMS versions. This TYPE is a listing capped at 50, not a
+                # twelve-row shelf: a 100-row container window answers size/totalSize
+                # 50, offset 0 and offset 50 answers size 0. `limit=` and `count=` are
+                # ignored but make the same paging fields explicit. plexsim applied
+                # HUB_COUNT before the generic pager, permanently hiding rows 13-50.
+                projected = [_listing_row(r) if r.get("type") == "show"
+                             else _grid_row(_listing_row(r)) for r in rows]
+                if str(query.get("type")) == "2":
+                    page, paged, start, total = self.page_window(projected, query)
+                    fields = {"size": len(page), "Metadata": page}
+                    if paged or "limit" in query or "count" in query:
+                        fields.update(totalSize=total, offset=start)
+                    answer = self.hub_container(**fields)
+                else:
+                    page = projected[:self.HUB_COUNT]
+                    answer = self.hub_container(size=len(page), Metadata=page)
                 if meta:
                     # Cycle 15, measured on both references: one `Type` row whose
                     # `active` flips with the type -- true for `movie` at type=1,
