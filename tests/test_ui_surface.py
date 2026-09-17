@@ -1400,8 +1400,35 @@ def main():
         skip("a playlist queue names the playlist and omits the source uri",
              "could not create a playlist")
     # A queue of our own for the refusals below: the checks above built newer ones, and a
-    # client's new queue retires its older ones.
-    qid = container(base, "POST", "/playQueues?type=video&uri=%s" % quote(add_uri))[1].get("playQueueID")
+    # client's new queue retires its older ones. Cycle 41 measured this exact
+    # one-item create -> plain add -> move sequence on both writable PMS versions.
+    # Moving the added tail to the head re-anchors lastAdded to the NEW tail; frozen
+    # plexsim retained the moved item's id.
+    _, move_built_c41f, _ = container(
+        base, "POST", "/playQueues?type=video&uri=%s" % quote(add_uri))
+    qid = move_built_c41f.get("playQueueID")
+    _, move_added_c41f, _ = container(
+        base, "PUT", "/playQueues/%s?uri=%s" % (qid, quote(add_uri)))
+    move_ids_c41f = [m.get("playQueueItemID")
+                     for m in move_added_c41f.get("Metadata") or []]
+    if len(move_ids_c41f) == 2:
+        status_c41f, move_done_c41f, _ = container(
+            base, "PUT", "/playQueues/%s/items/%s/move?after=-1"
+            % (qid, move_ids_c41f[-1]))
+        move_after_ids_c41f = [m.get("playQueueItemID")
+                               for m in move_done_c41f.get("Metadata") or []]
+        check("a queue move re-anchors lastAdded to the new tail",
+              status_c41f == 200
+              and move_after_ids_c41f == list(reversed(move_ids_c41f))
+              and move_added_c41f.get("playQueueLastAddedItemID") == move_ids_c41f[-1]
+              and move_done_c41f.get("playQueueLastAddedItemID") == move_ids_c41f[0],
+              "before=%s/%s after=%s/%s"
+              % (move_ids_c41f, move_added_c41f.get("playQueueLastAddedItemID"),
+                 move_after_ids_c41f,
+                 move_done_c41f.get("playQueueLastAddedItemID")))
+    else:
+        skip("a queue move re-anchors lastAdded to the new tail",
+             "expected two rows, got %s" % move_ids_c41f)
     # Every refusal measured on the reference, each of which plexsim answered 200 to.
     for method, path_, want, why in (
             ("POST", "/playQueues?type=video", 400, "a create with no uri"),
