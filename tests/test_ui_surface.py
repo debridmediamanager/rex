@@ -3925,6 +3925,24 @@ def main():
           "size=%s rows=%d providers=%d" % (legacy.get("size"),
                                             len(legacy.get("Metadata") or []),
                                             len(providers)))
+    # Cycle 41, measured on kids (1.43.4) and zen (1.42.2), identically within
+    # each server: legacy `/search` ignores `limit`, including malformed and
+    # non-positive values.  This differs deliberately from `/hubs/search` and
+    # `/library/search`, whose measured grammars validate and apply the value.
+    legacy_limits = {}
+    for value_c41a in ("1", "50", "0", "-1", "abc", ""):
+        status_c41a, body_c41a, _ = get(
+            base, "/search?query=%s&limit=%s"
+            % (quote(first.lower()), quote(value_c41a)))
+        legacy_limits[value_c41a] = (status_c41a, body_c41a)
+    check("legacy search ignores every limit value",
+          all(status_c41a == 200 and body_c41a == legacy
+              for status_c41a, body_c41a in legacy_limits.values()),
+          ", ".join("%r:%s/%d" %
+                    (value_c41a, status_c41a,
+                     len(body_c41a.get("Metadata") or []))
+                    for value_c41a, (status_c41a, body_c41a)
+                    in legacy_limits.items()))
     # Measured: no `query` parameter is a 400 and an EMPTY one is a 404 -- two
     # different refusals on the same endpoint.
     status_missing, _, _ = container(base, "GET", "/search")

@@ -11573,8 +11573,13 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         if not query.get("query"):
             return ("error", 404, "plexsim: not found")
-        limit = int(query.get("limit", 30) or 30)
-        typed, _tags = self.search_matches(query["query"], limit)
+        # Cycle 41, measured on kids (1.43.4) and zen (1.42.2): unlike the two
+        # modern search endpoints, legacy `/search` ignores `limit` completely.
+        # `1`, `50`, `0`, `-1`, `abc` and an empty value all return the same
+        # status and ordered rows as the bare request.  Parsing and slicing it
+        # here truncated plug-in clients' results and even turned `abc` into a
+        # 500 that a real PMS never sends.
+        typed, _tags = self.search_matches(query["query"], None)
         rows = []
         for kind, _title in self.SEARCH_HUBS:
             for row in typed.get(kind, []):
