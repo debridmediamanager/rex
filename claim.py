@@ -31,6 +31,7 @@ logger = logging.getLogger("plexsim.claim")
 EXCHANGE_URL = "https://plex.tv/api/claim/exchange"
 CONNECTIVITY_URL = "https://plex.tv/api/servers/%s/connectivity"
 FEATURES_URL = "https://servers.plex.tv/api/v2/features"
+ACCOUNT_URL = "https://servers.plex.tv/api/v2/user"
 
 
 class Claim:
@@ -47,6 +48,11 @@ class Claim:
         # A real PMS reports the owner's email in /myplex/account.
         self.email = None
         self.feature_uuids = []
+        # Numeric account id used by the measured watch-state sync endpoints.
+        self.account_id = None
+        # Opaque scrobble cursor. Its contents are owned by plex.tv; only exact
+        # round-tripping matters.
+        self.view_state_cursor = None
         self._load()
 
     # -- persistence -----------------------------------------------------
@@ -62,6 +68,8 @@ class Claim:
                 self.owner = state.get("owner")
                 self.email = state.get("email")
                 self.feature_uuids = sorted(set(state.get("feature_uuids") or []))
+                self.account_id = state.get("account_id")
+                self.view_state_cursor = state.get("view_state_cursor")
                 logger.info("loaded claim for %s (owner %s)", self.machine, self.owner)
             else:
                 # A different machineIdentifier is a different server; its claim
@@ -76,7 +84,9 @@ class Claim:
                 json.dump(
                     {"machine": self.machine, "token": self.token,
                      "owner": self.owner, "email": self.email,
-                     "feature_uuids": self.feature_uuids},
+                     "feature_uuids": self.feature_uuids,
+                     "account_id": self.account_id,
+                     "view_state_cursor": self.view_state_cursor},
                     handle,
                 )
             os.chmod(self._path, 0o600)
@@ -126,6 +136,14 @@ class Claim:
                 # apparent claim failure; the named, measured defaults remain valid.
                 self.feature_uuids = []
                 logger.warning("could not read plex.tv feature table: %s", error)
+            try:
+                self.account_id = self.fetch_account_id(token)
+            except Exception as error:
+                # The claim itself and the feature table remain useful if the
+                # account profile is temporarily unavailable. Watch-state sync
+                # will retry this read before its first page.
+                self.account_id = None
+                logger.warning("could not read plex.tv account id: %s", error)
             self._save()
 
         logger.info("CLAIMED by %s; server token stored", self.owner)
@@ -158,6 +176,41 @@ class Claim:
         values = set(filter(None, str(named_defaults or "").split(",")))
         values.update(self.feature_uuids)
         return ",".join(sorted(values))
+
+    def fetch_account_id(self, token=None):
+        """Read the numeric owner id used by both cloud state endpoints."""
+        token = token or self.token
+        if not token:
+            return None
+        query = urllib.parse.urlencode([
+            ("includeSubscriptions", 1),
+            ("includeProviders", 1),
+        ])
+        request = urllib.request.Request(
+            ACCOUNT_URL + "?" + query,
+            headers=dict(self._headers(), **{"X-Plex-Token": token}),
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:
+            root = ET.fromstring(response.read())
+        value = root.attrib.get("id")
+        if value is None or not str(value).isdigit():
+            raise RuntimeError("account response returned no numeric id")
+        return int(value)
+
+    def ensure_account_id(self):
+        """Acquire and persist the owner id when loading an older claim file."""
+        if self.account_id is None and self.token:
+            with self._lock:
+                if self.account_id is None:
+                    self.account_id = self.fetch_account_id()
+                    self._save()
+        return self.account_id
+
+    def save_view_state_cursor(self, cursor):
+        """Atomically advance the opaque cloud cursor after rows were imported."""
+        with self._lock:
+            self.view_state_cursor = cursor
+            self._save()
 
     def announce_connectivity(self):
         """`PUT /api/servers/{id}/connectivity` -- what a real PMS calls to be
