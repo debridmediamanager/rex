@@ -3895,6 +3895,9 @@ class PlexSim:
             for section, row in zip(self.catalog.sections, rows):
                 row["Preferences"] = {
                     "Setting": self.section_preference_rows(section)}
+        if query.get("includeSummary") == "1":
+            for section, row in zip(self.catalog.sections, rows):
+                row["Summary"] = self.section_summary(section)
         wanted = query.get("type")
         if wanted:
             # A type that PARSES selects nothing -- these rows are libraries, not items
@@ -4004,6 +4007,22 @@ class PlexSim:
                 row.pop(absent, None)
         # And no `composite` on either view: neither real server sends one here.
         return row
+
+    def section_summary(self, section):
+        """The measured section census used by both library directory views."""
+        # `section_items` is intentionally the top-level library view. A Summary is a
+        # census of every metadata row in the section, including seasons and episodes.
+        members = [item for item in self.catalog.items.values()
+                   if str(item.get("librarySectionID")) == str(section["key"])]
+        counts = {}
+        for item in members:
+            kind = item.get("type")
+            if kind:
+                counts[kind] = counts.get(kind, 0) + 1
+        types = [{"type": kind, "count": counts[kind]}
+                 for kind in sorted(counts, key=lambda name: TYPE_NUMBERS.get(name, 999))]
+        return {"duration": sum(int(item.get("duration") or 0) for item in members),
+                "Type": types}
 
     # The `Meta/Type` row each metadata type number describes, for the `active` flag.
     META_TYPE_NAMES = {1: "movie", 2: "show", 3: "season", 4: "episode"}
@@ -5170,17 +5189,11 @@ class PlexSim:
             if query.get("includeSummary") == "1":
                 # Cycle 45, measured on kids and zen: each library `Directory` gains a
                 # `Summary` block -- the library's total duration and one `Type` row per
-                # top-level type with its row count. It is honoured HERE and nowhere
-                # else: `/media/providers?includeSummary=1` and a section listing are
-                # byte-identical with and without it on both references.
+                # metadata type it contains. A show library therefore carries show,
+                # season and episode counts. `/library/shared/all` uses the identical
+                # block; ordinary section listings and `/media/providers` do not.
                 for section, row in zip(catalog.sections, rows):
-                    members = [item for item in catalog.section_items(section["key"])
-                               if item.get("type") == section.get("type")]
-                    row["Summary"] = {
-                        "duration": sum(int(item.get("duration") or 0)
-                                        for item in catalog.section_items(section["key"])),
-                        "Type": [{"type": section.get("type"), "count": len(members)}],
-                    }
+                    row["Summary"] = self.section_summary(section)
             # Measured on fun and on the 1.43.4 reference: this container carries
             # `title1` and allowSync only -- no identifier and no media-tag pair,
             # which the generic library container was adding.
