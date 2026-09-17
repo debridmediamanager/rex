@@ -19229,6 +19229,68 @@ def main():
           % (len(rows_c27r), [r_c27r.get("identifier") for r_c27r in rows_c27r][:3],
              len(groups_c27r)))
 
+    # Cycle 40, recovered from Plex Web 4.160's retained cache and then measured on
+    # disposable PMS 1.43.4 and 1.42.2 copies: after those two table reads succeed,
+    # Add Agent is unconditional. Its query-only POST creates an in-table group,
+    # rename returns the same full row, an incompatible Personal Media secondary is
+    # a 400 followed by a 404 delete, and deleting the group is an empty 200. Frozen
+    # plexsim answered the create with Cycle 31's broad 400, so every dependent
+    # branch was unreachable and the visible Add Agent action did nothing.
+    before_groups_c40b = request(base, "GET", "/media/providers/metadata/group")[1]
+    primary_c40b = next((row_c40b for row_c40b in rows_c27r
+                         if row_c40b.get("identifier") == "tv.plex.agents.movie"), {})
+    secondary_c40b = next((row_c40b for row_c40b in rows_c27r
+                           if row_c40b.get("identifier") == "tv.plex.agents.none"), {})
+    created_c40b = container(
+        base, "POST", "/media/providers/metadata/group"
+        "?title=Cycle40%20Provider%20Probe&primaryIdentifier=tv.plex.agents.movie")
+    created_rows_c40b = created_c40b[1].get("MetadataAgentProviderGroup") or []
+    created_row_c40b = created_rows_c40b[0] if created_rows_c40b else {}
+    group_id_c40b = created_row_c40b.get("id")
+    renamed_c40b = (None, {}, {})
+    membership_c40b = absent_c40b = (None, b"", {})
+    removed_c40b = (None, b"", {})
+    listed_c40b = []
+    if group_id_c40b is not None:
+        renamed_c40b = container(
+            base, "PUT", "/media/providers/metadata/group/%s?title=%s"
+            % (group_id_c40b, quote("Cycle40 Provider Probe Edited")))
+        listed_c40b = (get(base, "/media/providers/metadata/group")[1]
+                       .get("MetadataAgentProviderGroup") or [])
+        membership_c40b = request(
+            base, "PUT", "/media/providers/metadata/group/%s/items/%s?after=-1"
+            % (group_id_c40b, secondary_c40b.get("id")))
+        absent_c40b = request(
+            base, "DELETE", "/media/providers/metadata/group/%s/items/%s"
+            % (group_id_c40b, secondary_c40b.get("id")))
+        removed_c40b = request(
+            base, "DELETE", "/media/providers/metadata/group/%s" % group_id_c40b)
+    after_groups_c40b = request(base, "GET", "/media/providers/metadata/group")[1]
+    renamed_rows_c40b = renamed_c40b[1].get("MetadataAgentProviderGroup") or []
+    renamed_row_c40b = renamed_rows_c40b[0] if renamed_rows_c40b else {}
+    primary_items_c40b = created_row_c40b.get("MetadataAgentProviderGroupItem") or []
+    check("the 4.160 Add Agent lifecycle round-trips the measured provider group",
+          bool(primary_c40b) and bool(secondary_c40b)
+          and created_c40b[0] == renamed_c40b[0] == 200
+          and created_c40b[1].get("size") == renamed_c40b[1].get("size") == 1
+          and created_row_c40b.get("title") == "Cycle40 Provider Probe"
+          and created_row_c40b.get("primaryIdentifier") == primary_c40b.get("identifier")
+          and len(primary_items_c40b) == 1
+          and primary_items_c40b[0].get("metadataAgentProviderGroupId") == group_id_c40b
+          and primary_items_c40b[0].get("metadataAgentProviderId") == primary_c40b.get("id")
+          and primary_items_c40b[0].get("order") == 1000.0
+          and renamed_row_c40b.get("id") == group_id_c40b
+          and renamed_row_c40b.get("title") == "Cycle40 Provider Probe Edited"
+          and any(row_c40b.get("id") == group_id_c40b
+                  and row_c40b.get("title") == "Cycle40 Provider Probe Edited"
+                  for row_c40b in listed_c40b)
+          and membership_c40b[0] == 400 and absent_c40b[0] == 404
+          and is_empty_200(*removed_c40b[:2])
+          and after_groups_c40b == before_groups_c40b,
+          "create %s id=%r rename %s member %s/%s delete %s restored=%s"
+          % (created_c40b[0], group_id_c40b, renamed_c40b[0], membership_c40b[0],
+             absent_c40b[0], removed_c40b[0], after_groups_c40b == before_groups_c40b))
+
 
     # Cycle 27, measured on kids (1.43.4) and zen (1.42.2) and recorded through a real
     # client: every PERSON tag carries a 24-hex `tagKey` -- on a detail row's `Director`,

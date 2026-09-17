@@ -2381,6 +2381,13 @@ class PlexSim:
         self.play_queues = {}
         self.next_play_queue = 1
         self.next_play_queue_item = 1
+        # Cycle 40, recovered from Plex Web 4.160 and measured on both disposable
+        # PMS versions: Settings -> Agents can add, rename and remove a custom
+        # metadata-provider GROUP made from one of the built-in providers.  Keep
+        # those groups for the life of this process, just like every other UI edit.
+        # The primary item id follows the new group id in both measured creates.
+        self.metadata_provider_groups = {}
+        self.next_metadata_provider_group = len(SYSTEM_AGENTS) + 1
         # Sidecar subtitles the Upload modal has sent, by stream id: the bytes are kept
         # so a DELETE of one can tell an uploaded stream from an embedded track.
         self.uploaded_subtitles = {}
@@ -3995,6 +4002,38 @@ class PlexSim:
             logger.warning("REFUSED %s: %s", route, refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
 
+    @staticmethod
+    def metadata_agent_provider_group(group):
+        """Detach one mutable custom provider-group row for a response."""
+        return {
+            "id": group["id"],
+            "title": group["title"],
+            "primaryIdentifier": group["primaryIdentifier"],
+            "MetadataAgentProviderGroupItem": [dict(item) for item in
+                                                group["MetadataAgentProviderGroupItem"]],
+        }
+
+    @staticmethod
+    def metadata_agent_providers():
+        """The modern built-in agent-provider table captured from PMS 1.42.2."""
+        providers = []
+        for index, agent in enumerate(SYSTEM_AGENTS, start=1):
+            serves = sorted(int(number) for number, names in AGENT_MEDIA_TYPES.items()
+                            if agent["identifier"] in names)
+            providers.append({
+                "id": index,
+                "identifier": agent["identifier"],
+                "title": agent.get("name") or agent["identifier"],
+                # Measured: every modern provider but Personal Media names the
+                # metadata provider; `tv.plex.agents.none` carries an EMPTY uri.
+                "uri": "" if agent["identifier"].endswith(".none")
+                       else "provider://tv.plex.provider.metadata",
+                "agentType": "primary",
+                "online": True,
+                "MetadataType": [{"type": number} for number in serves],
+            })
+        return providers
+
     def _route(self, method, route, segments, query, body, headers, address=None):
         catalog = self.catalog
 
@@ -4019,10 +4058,71 @@ class PlexSim:
                 }
             }
 
+        if route == "/media/providers/metadata/group" and method == "POST":
+            # Cycle 40: Plex Web 4.160 exposes Add Agent as soon as both metadata
+            # provider tables load.  Both disposable PMS versions accept this exact
+            # query-only POST and answer the newly created group; plexsim inherited
+            # Cycle 31's broad 400, which was measured only on the provider listing.
+            title = query.get("title")
+            primary = query.get("primaryIdentifier")
+            providers = self.metadata_agent_providers()
+            provider = next((row for row in providers
+                             if row["identifier"] == primary), None)
+            if title is None or provider is None:
+                return ("error", 400, "plexsim: bad request")
+            with self.lock:
+                group_id = self.next_metadata_provider_group
+                self.next_metadata_provider_group += 1
+                group = {
+                    "id": group_id,
+                    "title": title,
+                    "primaryIdentifier": primary,
+                    "MetadataAgentProviderGroupItem": [{
+                        "id": group_id,
+                        "metadataAgentProviderGroupId": group_id,
+                        "metadataAgentProviderId": provider["id"],
+                        "order": 1000.0,
+                    }],
+                }
+                self.metadata_provider_groups[group_id] = group
+                answer = self.metadata_agent_provider_group(group)
+            return self.bare_container(size=1,
+                                       MetadataAgentProviderGroup=[answer])
+
+        if (len(segments) >= 5 and segments[:4] == ["media", "providers", "metadata", "group"]
+                and segments[4].isdigit()):
+            group_id = int(segments[4])
+            with self.lock:
+                group = self.metadata_provider_groups.get(group_id)
+                if group is None:
+                    return ("error", 404, "plexsim: not found")
+                if len(segments) == 5 and method == "PUT":
+                    title = query.get("title")
+                    if title is None:
+                        return ("error", 400, "plexsim: bad request")
+                    group["title"] = title
+                    answer = self.metadata_agent_provider_group(group)
+                    return self.bare_container(size=1,
+                                               MetadataAgentProviderGroup=[answer])
+                if len(segments) == 5 and method == "DELETE":
+                    del self.metadata_provider_groups[group_id]
+                    return ("empty", 200)
+                if (len(segments) == 7 and segments[5] == "items"
+                        and segments[6].isdigit()):
+                    # The only additional built-in provider Plex Web offers for the
+                    # measured movie-primary group is Personal Media. Both versions
+                    # refuse it as an incompatible secondary and, since no membership
+                    # was created, answer 404 to the paired DELETE.
+                    if method == "PUT":
+                        return ("error", 400, "plexsim: bad request")
+                    if method == "DELETE":
+                        return ("error", 404, "plexsim: not found")
+            return ("error", 404, "plexsim: not found")
+
         if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
             if method == "POST":
-                # Cycle 31: both references answer their own 400 to a POST here, as
-                # `/library/sections` and `/media/providers` do -- not the listing.
+                # Cycle 31 measured this on the PROVIDER listing. Creating one needs
+                # an external provider object, a capability plexsim does not host.
                 return ("error", 400, "plexsim: bad request")
             # Cycle 27, recorded through a real client: the Settings -> Metadata Agents
             # pane reads these two immediately before `/system/agents?mediaType=`, and
@@ -4033,22 +4133,7 @@ class PlexSim:
             # rows are the four modern agents plexsim already holds, in zen's shape:
             # one `MetadataType` child per media type the provider serves, and a group
             # row per provider naming it by `primaryIdentifier`.
-            providers = []
-            for index, agent in enumerate(SYSTEM_AGENTS, start=1):
-                serves = sorted(int(number) for number, names in AGENT_MEDIA_TYPES.items()
-                                if agent["identifier"] in names)
-                providers.append({
-                    "id": index,
-                    "identifier": agent["identifier"],
-                    "title": agent.get("name") or agent["identifier"],
-                    # Measured: every modern provider but Personal Media names the
-                    # metadata provider; `tv.plex.agents.none` carries an EMPTY uri.
-                    "uri": "" if agent["identifier"].endswith(".none")
-                           else "provider://tv.plex.provider.metadata",
-                    "agentType": "primary",
-                    "online": True,
-                    "MetadataType": [{"type": number} for number in serves],
-                })
+            providers = self.metadata_agent_providers()
             if route.endswith("/group"):
                 groups = [{
                     "id": row["id"],
@@ -4062,6 +4147,9 @@ class PlexSim:
                         "order": 1000,
                     }],
                 } for row in providers]
+                with self.lock:
+                    groups.extend(self.metadata_agent_provider_group(group)
+                                  for group in self.metadata_provider_groups.values())
                 return self.bare_container(size=len(groups),
                                            MetadataAgentProviderGroup=groups)
             return self.bare_container(size=len(providers),
