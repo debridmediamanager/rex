@@ -23996,6 +23996,42 @@ def main():
           and bool(plat_c45) and refusals_c45 == [500, 500, 404],
           str((plat_c45, refusals_c45)))
 
+
+    # Cycle 45: `/library/arts` is a real listing that plexsim 404'd -- every row on the
+    # server that OWNS an `art`, measured on kids (6 rows) and zen (4,190). The row is a
+    # fixed ELEVEN attributes in which six are the EMPTY STRING and four are `-1`; they
+    # are not omitted, which is what makes the shape worth copying rather than inferring.
+    # A row that BORROWS its parent's art carries the owner's path and is not listed.
+    # `/library/posters`, `/library/thumbs` and `/library/banners` are 404s on both
+    # references -- `arts` is the only one of that family.
+    status_c45a, arts_c45, _ = get(base, "/library/arts")
+    rows_c45a = arts_c45.get("Metadata") or []
+    shape_c45 = ["title", "type", "key", "thumb", "label", "mediaType", "summary",
+                 "rating", "addDate", "modDate", "metaModDate"]
+    owned_c45 = []
+    for section_c45 in (movie_section, show_section):
+        if section_c45 is None:
+            continue
+        for row_c45 in get(base, "/library/sections/%s/all?type=1&type=2"
+                           % section_c45)[1].get("Metadata") or []:
+            art_c45 = str(row_c45.get("art") or "")
+            if art_c45.startswith("/library/metadata/%s/" % row_c45.get("ratingKey")):
+                owned_c45.append(art_c45)
+    neighbours_c45 = [get(base, "/library/%s" % name)[0]
+                      for name in ("posters", "thumbs", "banners")]
+    check("/library/arts lists every art-owning row",
+          status_c45a == 200 and bool(rows_c45a)
+          and all(list(row_c45) == shape_c45 for row_c45 in rows_c45a)
+          and all(row_c45["type"] == "image" and row_c45["rating"] == -1
+                  and row_c45["thumb"] == "" and row_c45["summary"] == ""
+                  for row_c45 in rows_c45a)
+          and arts_c45.get("allowSync") is False
+          and set(owned_c45) <= {row_c45["key"] for row_c45 in rows_c45a}
+          and neighbours_c45 == [404, 404, 404],
+          "%s rows=%d shape=%s neighbours=%s" % (status_c45a, len(rows_c45a),
+                                                 list(rows_c45a[0]) if rows_c45a else [],
+                                                 neighbours_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
