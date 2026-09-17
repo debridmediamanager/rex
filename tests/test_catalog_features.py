@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import urllib.parse
+import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.environ.get("PLEXSIM_TEST_ROOT", os.path.dirname(HERE))
@@ -344,6 +345,34 @@ def main():
     attributes = re.findall(r"([A-Za-z0-9_:]+)=", match.group(0)) if match else []
     check("clip XML keeps extraType as its final attribute",
           attributes[-1:] == ["extraType"], str(attributes))
+
+    # Cycle 41, measured on a level containing both a direct file and a subfolder:
+    # JSON carries an untyped directory row followed by the movie row, while XML
+    # names those same rows `<Directory>` then `<Video>`. A container-wide Metadata
+    # override handled folder-only levels but mislabeled both rows as Video here.
+    mixed_a = catalog.items[103]
+    mixed_b = catalog.items[104]
+    original_a = mixed_a.get("Media")
+    original_b = mixed_b.get("Media")
+    mixed_a["Media"] = [{"id": 4103, "Part": [{"id": 4103,
+                                                "file": "/plexsim/1/A/direct.mkv"}]}]
+    mixed_b["Media"] = [{"id": 4104, "Part": [{"id": 4104,
+                                                "file": "/plexsim/1/A/B/deep.mkv"}]}]
+    mixed_folder = sim.folder_view("1", catalog.section("1"), {"parent": "1"})
+    mixed_body = mixed_folder["MediaContainer"]
+    mixed_elements = mixed_body.pop("_xml", None)
+    mixed_xml = ET.fromstring(xmlout.to_xml(mixed_folder, mixed_elements))
+    mixed_tags = [child.tag for child in mixed_xml]
+    if original_a is None:
+        mixed_a.pop("Media", None)
+    else:
+        mixed_a["Media"] = original_a
+    if original_b is None:
+        mixed_b.pop("Media", None)
+    else:
+        mixed_b["Media"] = original_b
+    check("a mixed folder level renders Directory then Video",
+          mixed_tags == ["Directory", "Video"], str(mixed_tags))
 
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))

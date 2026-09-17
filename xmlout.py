@@ -464,6 +464,12 @@ def _element_name(key, row, overrides=None):
     `<Directory>`, both measured against a real PMS. Those pass an override,
     because guessing from the row would make both `<Video>`.
     """
+    # Cycle 41: a mixed folder level carries Directory and Video rows under the
+    # same `Metadata` key. A container-wide override cannot name both, while a
+    # public `type` would leak into JSON. The private marker selects only that
+    # row's XML element and is stripped with the other private projection state.
+    if row.get("_element"):
+        return row["_element"]
     if overrides and key in overrides:
         return overrides[key]
     if key == "Metadata":
