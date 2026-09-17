@@ -23907,6 +23907,27 @@ def main():
               str((axis_c44r[0], keys_c44r[:2], axis_c44r[1].get("title2"),
                    bucket_c44r(8)[0], bucket_c44r("-1")[0], seven_c44r, cleared_c44r)))
 
+
+    # Cycle 44, measured on plexscratch42 (1.42.2, the build plexsim reports) and
+    # confirmed for GET and HEAD on kids and zen: `/myplex/claim` is routed for POST
+    # ALONE. GET, HEAD, PUT, DELETE and a bare OPTIONS are each a 404 there, and PATCH
+    # and an unknown method are the version-wide 500. plexsim routed every verb and
+    # answered its own "missing claim token" 400 to all of them -- which tells a client
+    # the endpoint exists and its request was malformed, where a real PMS says the
+    # endpoint is not there at all. Its neighbour `/myplex/refreshReachability` already
+    # gated correctly on PUT, on both servers, which is what made the difference visible.
+    verbs_c44c = {}
+    for method_c44c in ("GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"):
+        verbs_c44c[method_c44c] = request(base, method_c44c, "/myplex/claim")[0]
+    near_c44c = {}
+    for method_c44c in ("GET", "POST", "PUT", "DELETE", "OPTIONS"):
+        near_c44c[method_c44c] = request(base, method_c44c, "/myplex/refreshReachability")[0]
+    check("/myplex/claim is routed for POST alone",
+          [verbs_c44c[m] for m in ("GET", "HEAD", "PUT", "DELETE", "OPTIONS")] == [404] * 5
+          and verbs_c44c["POST"] != 404 and verbs_c44c["PATCH"] == 500
+          and near_c44c == {"GET": 404, "POST": 404, "PUT": 200, "DELETE": 404, "OPTIONS": 404},
+          str((verbs_c44c, near_c44c)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

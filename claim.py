@@ -4,7 +4,7 @@ When a client sees an unclaimed server it offers "Claim this server". That butto
 does NOT talk to plex.tv on the server's behalf -- it fetches a short-lived
 `claim-…` token and hands it to the SERVER, which performs the exchange itself:
 
-    PUT http://<server>/myplex/claim?token=claim-XXXX
+    POST http://<server>/myplex/claim?token=claim-XXXX
 
 The server then POSTs that token to plex.tv, receives its own server token, and
 becomes a claimed server.  This matters beyond cosmetics: doing the exchange
