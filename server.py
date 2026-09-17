@@ -12313,7 +12313,7 @@ class PlexSim:
         Cycle 26, re-measured on kids and zen and CORRECTING the sentence this
         docstring used to carry ("a missing, non-numeric or out-of-range
         `mediaIndex`; an out-of-range `partIndex`"). Only the out-of-range
-        `mediaIndex` half survives:
+        `mediaIndex` half survives on their single-Media rows:
 
           * a MISSING, non-numeric, negative or empty `mediaIndex` is a 200 on both
             references -- it falls back to media 0 -- where plexsim refused it. That
@@ -12326,6 +12326,11 @@ class PlexSim:
             no `partIndex` refuses.
           * a `path` carrying a QUERY STRING (`/library/metadata/1?x=1`) is a 200 on
             both and was a 400 here.
+
+        Cycle 41 supplied the missing multiplicity discriminator on writable copies
+        of both versions. A row with TWO Media requires an explicit in-range numeric
+        selection: missing, empty, non-numeric, negative and out-of-range values are
+        all 400. Only an unambiguous single-Media row falls back to index 0.
         """
         def param(name):
             return query.get(name) or (headers or {}).get(name)
@@ -12338,7 +12343,9 @@ class PlexSim:
         media = (row or {}).get("Media") or []
         if not media:
             return None, ("error", 400, "plexsim: bad request")
-        index = query.get("mediaIndex") or ""
+        index = str(query.get("mediaIndex") or "")
+        if len(media) > 1 and not index.isdigit():
+            return None, ("error", 400, "plexsim: bad request")
         if index.isdigit() and int(index) >= len(media):
             return None, ("error", 400, "plexsim: bad request")
         chosen = media[int(index) if index.isdigit() else 0]
