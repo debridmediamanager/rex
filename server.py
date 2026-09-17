@@ -3535,9 +3535,13 @@ class PlexSim:
         # `asyncRefreshAnalysis`. plexsim validated `checkFiles` alone and took
         # anything for the other five. A 60-name sweep of the detail read found these
         # six and no others: every `include*` name is a 200 for any value.
+        # Cycle 46 adds `checkFileAvailability`, found by sweeping the option name
+        # space built from the PMS binary's and the client bundle's own words. Cycle
+        # 22's 60-name sweep could not find it: that vocabulary came from the detail
+        # path's own responses, and this name appears in neither.
         for option in ("checkFiles", "skipRefresh", "asyncCheckFiles",
                        "asyncAugmentMetadata", "asyncRefreshLocalMediaAgent",
-                       "asyncRefreshAnalysis"):
+                       "asyncRefreshAnalysis", "checkFileAvailability"):
             raw_check = query.get(option)
             # Cycle 29: the value is `+?0*[01]` -- see `_bool_option`. Cycle 23's
             # four-value list refused the leading `+` a real PMS takes.
@@ -3550,7 +3554,7 @@ class PlexSim:
         # isolated copy never does; plexsim has no async check and hard-codes the values,
         # so the completed case is the faithful one.
         if any(query.get(name) is not None and int(query[name]) == 1
-               for name in ("checkFiles", "asyncCheckFiles")):
+               for name in ("checkFiles", "asyncCheckFiles", "checkFileAvailability")):
             detail = _part_file_state(detail, checked=True)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a

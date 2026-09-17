@@ -25092,6 +25092,41 @@ def main():
           and extras_c45["grid"] == 500 and extras_c45["whole library"] == 500,
           str(extras_c45))
 
+
+    # Cycle 46, found by sweeping the OPTION name space the way cycle 45 swept the path
+    # one -- 116 option-shaped names taken from the PMS binary's own string block and the
+    # official web client's bundle, against 19 container paths on kids, zen and plexsim.
+    # `checkFileAvailability` is a full SIBLING of `checkFiles`: the same
+    # `accessible`/`exists` pair on the Part, the same `+?0*[01]` value grammar (`0`,
+    # `1`, `01`, `+1` pass and everything else -- an empty value, `2`, `-1`, `1.5`,
+    # `true`, `abc` -- is a 400), and the same reach (a DETAIL read only; a section grid,
+    # `/library/all` and `/children` are byte-identical with and without it, exactly as
+    # they are for `checkFiles`). Measured on kids and zen, which agree on all 20 cells.
+    # plexsim knew the six options cycle 22's 60-name sweep found and not this one --
+    # that sweep read the detail path's own vocabulary, where this name does not appear.
+    avail_c46 = {}
+    for value_c46a in ("", "0", "1", "01", "+1", "2", "-1", "1.5", "true", "abc"):
+        status_c46a, body_c46a, _ = get(
+            base, "/library/metadata/%s?checkFileAvailability=%s"
+            % (movie, urllib.parse.quote(value_c46a, safe="")))
+        part_c46a = (((body_c46a.get("Metadata") or [{}])[0].get("Media") or [{}])[0]
+                     .get("Part") or [{}])[0]
+        avail_c46[value_c46a] = (status_c46a, "accessible" in part_c46a)
+    _status_c46a, grid_c46a, _ = get(
+        base, "/library/sections/%s/all?checkFileAvailability=1" % movie_section)
+    avail_c46["listing"] = any(
+        "accessible" in part_c46a
+        for row_c46a in grid_c46a.get("Metadata") or []
+        for media_c46a in row_c46a.get("Media") or []
+        for part_c46a in media_c46a.get("Part") or [])
+    check("checkFileAvailability is checkFiles' sibling, grammar and all",
+          [avail_c46[v_c46a] for v_c46a in ("0", "1", "01", "+1")]
+          == [(200, False), (200, True), (200, True), (200, True)]
+          and [avail_c46[v_c46a][0] for v_c46a in ("", "2", "-1", "1.5", "true", "abc")]
+          == [400] * 6
+          and not avail_c46["listing"],
+          str(avail_c46))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
