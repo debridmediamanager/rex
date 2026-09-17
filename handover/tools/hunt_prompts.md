@@ -2364,3 +2364,49 @@ model on data it was not fitted on.
 6. End with exact regressions against shared kids content (`teers`, `steal`, `buny`, `elefants`,
    `Tears zzz`, `Tears xy`, negative `Tears xyz`, and `Tudik` for a person) and both reference
    snapshots.
+
+
+==== Cycle 38 (2026-09-17). Shared preamble: frozen commit `9403d3d`, served on 32587/32588;
+mode-700 scratch root `/private/tmp/plexsim-c38.Z8VaTR`; kids and zen GET/HEAD only through the
+write-shaped-GET guard; no media reads, plex.tv, fun or reference notification connection. Every
+write belongs on plexscratch/plexscratch42, must be entered with its undo in the ledger, and both
+copies must finish restored. Run the guarded reference snapshot before and after and require
+byte-identical output. Neither hunter edits the repository. ====
+
+
+# Cycle 38 | Territory A | slow response consumers and three-client concurrency | frozen plexsim 32587 | writes only to disposable copies
+
+Sweep combinations that the two-client cycle-32 race and cycle-30 dead notification consumer did
+not cover: one deliberately slow multi-megabyte HTTP response reader, two ordinary clients and a
+writer; a live notification reader plus a dead one under a long write burst; and three simultaneous
+item, rating/progress and list-membership mutations. Require a control frame before notification
+stress. Record response epochs and every reachable final state rather than fitting one lucky race.
+Cover partial request abort, response abort, EOF, pipelining/keepalive interaction and a withheld
+declared request body on representative query-only and body-dependent writes. A semantic difference
+must reproduce on both PMS 1.43.4 and the target 1.42.2 build before it is called a finding. Restore
+all edited fields/state and delete every temporary list; finish with a copy reset and integrity proof.
+
+
+# Cycle 38 | Territory B | backing-storage refusal and recovery | disposable reference copies only
+
+Inventory the exact SQLite, Preferences.xml, metadata-bundle, cache/temp and transcode targets used
+by the UI write surface. Fault one target at a time with EACCES, EROFS or a private ENOSPC mount as
+the target permits; never alter kids or zen. For item/list/state/server/library preference writes,
+artwork/subtitle uploads and a transcode start, record status, content type, body, frames, whether
+runtime and durable state changed, and what survives restart. Restore the mount/permission before
+the next cell. Prove final SQLite integrity/foreign keys, catalog identity, absence of probe residue
+and plex.tv isolation. Separate an implementable protocol rule from behavior belonging to a storage
+subsystem plexsim does not own.
+
+
+# Cycle 38 | Territory C | spelling rebuild callers/schedule and final search order | offline static/read-only
+
+Do not re-fit fallback membership. Using the copied 1.42.2 and 1.43.4 databases and executables,
+enumerate every direct, tail and data-pointer caller of the known spelling rebuild, name migration
+versus runtime contexts, and recover Butler eligibility/window/interval plus the rebuild's own gate
+and transaction boundary. Then trace the last ordering step separately for `/hubs/search` and
+`/library/search`: candidate-vector order, deduplication, full-precision versus serialized score,
+sort stability and every actual secondary comparison. Validate the recovered control flow on the
+existing live corpus, with explicit eligible-group, row and equal-wire-score counts. Exclude groups
+whose complete pre-sort input vector is not reconstructible instead of claiming a universal tie
+rule. End with a precise patch boundary and fail-on-parent regression witnesses.

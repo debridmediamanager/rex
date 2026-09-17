@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 37 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **37**. Cycle 37 closed the three oldest reachable catalog gaps and swept a new request-envelope corner. Four raw-socket findings were uniform on kids and zen: literal `;`/`#` stay in the request target, a non-terminal all-dot segment is a 400 after one `%2e` decode, GET/HEAD never wait for a declared body, and raw query bytes must reach the response-wide helpers too. The catalog now carries measured stacked `- cdN` multipart media and per-Part links, the complete clip/extras surface, and a profile-5 Dolby Vision fixture. The search hunt then read both reference databases and binaries and recovered the whole SQLite `spellfix1` fallback: two vocabularies, exact rank SQL, `top=10`, inclusive score 200, the edit-cost arithmetic, the global normal-result gate and the per-word FTS construction. Its 93-query held-out set finished **822/822 exact** after using the FTS table's actual ICU collation. **Two recorded beliefs were overturned:** the score constant was off by one, and the four supposed spellfix vocabularies are two. The complete rebuild schedule and final equal-score API order remain explicitly unresolved. |
+| `main` | cycle 38 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **38**. Cycle 38 closed both search items cycle 37 left open: the complete spelling-index rebuild caller/schedule and the final hub/flat-result ordering. Hub rows use raw-title/id candidate order followed by the reference's unstable comparison sort over the unrounded score; flat search keeps movie/show/episode bucket order because its final comparator reads an empty generic score attribute. Spelling remains stale until database optimization, reached by the explicit optimize leaf, Butler OptimizeDatabase and section deletion. The concurrency hunt's only positive difference was path-specific request parsing: query-only item edits and playlist creates answer without consuming a declared body, confirmed 20/20 on both PMS versions; body-dependent uploads still block. Slow consumers, dead notification readers and three-client races otherwise matched. The storage-failure axis was fully measured on disposable copies and deliberately not mapped onto plexsim, which owns none of the reference's SQLite/preferences/bundle/cache/encoder backends. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -103,6 +103,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 38 | 1581 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,270 | **4** (one request-envelope finding from the concurrency hunt and three search findings from static recovery, in **4 fix commits**; **2 §3.3 entries CLOSED** -- spelling rebuild schedule and final search ordering -- a broad concurrency matrix otherwise matched, and the storage-failure axis was measured but deliberately not emulated because plexsim owns none of those persistent backends) |
 | 37 | 1577 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,055 | **7** (4 from the raw request-envelope sweep, 2 from the catalog/reachability hunt and 1 from the spellfix hunt, in **7 fix commits**; **2 recorded beliefs overturned**, **3 §3.3 entries CLOSED** -- fuzzy membership/pruning, multipart reachability and the clip surface -- one existing UI check pair repaired because it still asserted that fuzzy search was absent, 1 fixture-only Dolby Vision limitation made reachable, 2 negative results, and 2 unresolved details retained) |
 | 36 | 1565 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 17,700 | **19** (8 the driver found in the refusal surface, 6 from the search hunt and 5 from the write hunt, in **20 commits**; **4 recorded beliefs overturned** -- cycle 35's `word_tier`, cycle 19's scoped scan, cycle 1's text/plain refusal and cycle 22's empty collection leaves -- **2 §3.3 entries CLOSED** (`video.separateFields` and the DoVi dual-layer disagreement, both by MAKING the row), 1 suite check found to encode half a rule and repaired, 1 regression the suite caught in the cycle's own patch, 8 findings recorded rather than emulated, 3 negative results) |
 | 35 | 1541 (+1,950 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 17,342 | **6** (2 from the write-frames hunt, 2 from the search-and-decision hunt and 2 the driver found in the encoded-body territory, in **6 fix commits**; **1 recorded belief corrected** (a create over an empty folder), 1 §3.3 half CLOSED, 4 findings recorded rather than emulated, 5 negative results) |
@@ -182,14 +183,14 @@ findings are the same shape — a decision's validation refusing what a real PMS
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
 
-Suite results at the head of cycle 37, run 2026-09-17 against the cycle tree:
+Suite results at the head of cycle 38, run 2026-09-17 against the cycle tree:
 
 | Suite | Result | Notes |
 |---|---|---|
-| `tests/test_catalog_features.py` | **17/17** | new focused suite: multipart build/decision/streaming, profile-5 Dolby Vision reachability, clip/extras projections and spellfix fallback |
+| `tests/test_catalog_features.py` | **20/20** | adds hidden-precision hub ordering, flat-search bucket order and spelling rebuild trigger coverage |
 | `tests/test_mediainfo.py` | **31/31** | unchanged |
 | `tests/test_decision.py` | **2106/2106 cells exact** | unchanged |
-| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1560 PASS / 0 FAIL / 13 skipped** | ~16 minutes; two old Unicode/mid-word assertions were updated because they explicitly asserted that fuzzy membership was absent |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1561 PASS / 0 FAIL / 13 skipped** | includes the raw-socket query-only-write/body-dependent-upload discriminator |
 | `tests/test_navigation.py` | **28/28** on the UI fixture | |
 | `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline; all nine are the fixture's unusable RD link |
 | `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded baseline cause (account-scoped/dead RD links); play queues and all eleven decisions passed |
@@ -810,9 +811,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | ~~**The search fuzzy BAND's PRUNING**~~ | **BUILT in cycle 37 after reading the table and both binaries.** The prune is `top=10 AND score<=200`, with `score = editdist1 + 32 - bit_length(rank)` over the live two-vocabulary schema; the fallback gate, short-token rule and AND-of-OR FTS construction are implemented too. A fresh 93-query holdout scored **822/822** after using the FTS table's ICU primary/shifted collation | — |
 | **The Dolby Vision profile-5 veto's discriminator** | Of the 38 client profiles with a matching http target, exactly ONE converts a profile-5 source, and it is the only one whose target names the source's own codec (`Plex Desktop`, `videoCodec="h264,hevc,*"`). "The target names the source codec" and "the target declares `*`" fit the same 78 cells, because those are the only two profiles on the surface that declare either. The narrower is built | A reference profile that names `hevc` without `*`, or a second positive witness of any kind |
 | ~~**`partIndex` on a multi-part Media**~~ | **BUILT in cycle 37.** The catalog builder groups only the measured `Title - cdN.ext` spelling, each Part owns its own debrid link, Media duration is the sum, `partIndex=0/1` projects and evaluates that Part, out-of-range is a 400 and `-1` returns the measured all-parts conversion refusal | — |
-| **The spellfix vocabulary rebuild schedule** | The executable's rebuild SQL is exact and plexsim rebuilds its own snapshot at catalog load, but neither reference maintains the spellfix tables with row triggers. kids' live metadata table has five tokens absent from its older vocabulary, proving the index can be stale. Three executable callers exist and their complete schedule/conditions were not recovered | Trace the callers in a disposable reference while creating, scanning and editing titles; compare the shadow-table rows after each operation |
+| ~~**The spellfix vocabulary rebuild schedule**~~ | **CLOSED and BUILT in cycle 38.** The complete caller set is two historical migrations (plus a third on 1.43.4) and database optimization. Optimization is reached by Butler OptimizeDatabase, `PUT /library/optimize` and section deletion. Automatic Butler eligibility is a roughly five-minute transition into its local window with the task enabled and `floor(time/86400) % 7 == 0`, not elapsed time since the last run. Edits do not rebuild | — |
 | **Faithful spellfix tag ranks from a catalog** | The title vocabulary is reconstructible from plexsim's own rows. A 1.42.2 tag vocabulary includes every `tags.tag`, including invisible technical GUID tokens (`/`, `tmdb`, `tvdb`, `imdb`); visible catalog Genre/Role/Director values cannot reproduce their ranks. The implemented tag branch is exact for the tag strings plexsim actually holds, not for a hidden table it cannot own | Carry the complete reference tag table as a measured sidecar, or establish that its missing technical ranks cannot change any client-visible candidate set |
-| **Final equal-score search ordering** | Candidate membership and emitted score are settled. Among 3,535 adjacent equal-score title-hit pairs, descending title, sort title and ratingKey all have hundreds of violations; none is the API tie-break. The implementation preserves the existing stable bucket order rather than inventing one | Read the final query/order clause from the executable or build a corpus that distinguishes the remaining columns |
+| ~~**Final equal-score search ordering**~~ | **CLOSED and BUILT in cycle 38.** Title candidates begin exact-first, then raw-title bytes/signed-id descending and unique. The final hub sort compares the unrounded double score only, through the reference build's unstable libc++ comparison sort; formatting to five decimals is later. The reconstruction is exact on 331 eligible hubs, 2,306 rows and 1,578 equal-wire-score pairs. Flat search's comparator reads an empty generic attribute, so it preserves movie/show/episode bucket order | Capped/tag-associated groups lack their full pre-sort vectors; that is an exact-permutation validation limit, not an unknown comparator |
 | **A NUL in a filter value** | 40 cells on both references, and the refusal keys on an interaction of column KIND and OPERATOR that no model explains (`title=` and `title!=` refuse, `title==` and `title>>` do not; `genre=` refuses, `genre!=` does not). No Plex client can send one | Nothing worth settling; recorded with the cells |
 
 ### 3.4 The revalidation protocol for each new cycle
@@ -947,6 +948,11 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 38).** The hunters had `32587`/`32588` on frozen `9403d3d`; the proof and serial
+suites used `32589`. `32502` and `8787` are the standing exceptions. All cycle-owned listeners are
+free again; both disposable copies were reset/restored and the guarded reference snapshot is
+byte-identical.
 
 **Ports (cycle 37).** The hunters had `32587`/`32588` on frozen `9a2d9c2`; the proof driver used
 `32592`/`32593`; temporary catalog-shape probes used `32637`/`32638`; and the serial suites used
@@ -3160,22 +3166,68 @@ The final cycle tree passes `test_catalog_features` 17/17, `test_ui_surface` 156
 python-plexapi and 0/11 byte-read results are their recorded dead-link baselines. The reference
 snapshot before and after both hunts is byte-identical.
 
-### Next: cycle 38
+### Cycle 38 -- slow consumers, failed storage, and the last two spelling-index questions
 
-1. **Slow responses and third-client concurrency.** Cycle 32 used two simultaneous requests and
-   cycle 30 used one stalled notification consumer. No cycle has combined a deliberately slow HTTP
-   reader, two ordinary readers and a writer, or checked whether a third client observes a response
-   built before/after a concurrent mutation. Sweep the scheduling and isolation, not another pair.
-2. **The server when its own storage refuses.** The reference copies make this safe: make their
-   database/bundle/temp targets read-only or full one failure at a time, drive the exact UI write,
-   record status/body/frames and restore before the next cell. Never do this on kids or zen.
-3. **The spellfix rebuild schedule and final tie order** are now narrow reverse-engineering tasks,
-   not black-box membership hunts. Trace the three rebuild callers and the final API order clause;
-   do not re-sweep the recovered candidate rule.
-4. **Coverage audit before hunting.** Build a matrix of every still-open §3.3/§8 item against its
-   required instrument and client impact. A cycle counts as the requested clean cycle only if both
-   assigned axes are fully covered and both hunters say exactly `no findings` for client-noticeable
-   differences.
+Cycle 38 completed all four entries in cycle 37's plan. It produced **four fix commits**, each
+proved against its immediate parent, and two broad negative matrices. The agents used independent
+artifacts and frozen servers; every reference write was confined to plexscratch, every temporary
+list and item value was undone, both disposable copies were restored, and the kids/zen snapshots
+before and after are byte-identical.
+
+**The concurrency hunt found one route-level request-envelope rule.** Both PMS 1.42.2 and 1.43.4
+answer and commit a query-only item metadata `PUT` and playlist-create `POST` immediately even when
+the request declares one million body bytes, sends none and keeps the socket open. Twenty concurrent
+trials per route and version all completed in 0.012--0.194 seconds. Frozen plexsim timed out after
+20 seconds, emitted no response and committed none. A subtitle upload remained blocked everywhere,
+so the implementation bypasses body reading only for those two measured method/path pairs. The
+rest of the matrix matched: a stalled multi-megabyte response, a dead websocket reader, 1,200 writes
+and 2,402 live frames did not block ordinary clients, while three-client item/rating/progress/list
+races, request abort, response abort and EOF exposed no torn or lost completed write.
+
+**The search follow-up recovered the rebuild and both final comparators statically.** The spelling
+rebuild has no item trigger. It belongs to two old search migrations (and one new 1.43.4 migration)
+and database optimization. The optimizer is reached by explicit library optimize, Butler
+OptimizeDatabase and section-deletion completion. Automatic Butler eligibility is a roughly
+five-minute transition into the configured maintenance window, enabled preference and
+`floor(time/86400) % 7 == 0`; the rebuild itself requires the ICU FTS table, transactionally
+rebuilds FTS and both spellfix tables, then optimization runs `ANALYZE` and `VACUUM`. plexsim now
+rebuilds at all three optimization paths it owns and keeps ordinary edits stale.
+
+For hub ordering, exact-title candidates precede unique FTS candidates sorted by raw title bytes
+and signed id descending. The final sort compares only the unrounded double score through the old
+libc++ unstable comparison sort, with no secondary key, and serializes five decimals afterward.
+The source-level reconstruction matches 331 eligible reference hubs, 2,306 rows and 1,578 adjacent
+equal-wire-score pairs with zero misses. For flat `/library/search`, PMS accidentally reads an empty
+generic `score` attribute in its final comparator; the no-op retains its movie/show/episode bucket
+assembly and permits four observed global score inversions. plexsim now does the same explicitly.
+
+**The storage axis was fully exercised and has no plexsim analogue.** Isolated reference-copy
+faults covered SQLite, preferences, metadata bundles, transcode/cache targets, recovery and
+atomicity. The answers vary by backing subsystem: database ENOSPC can be a 500 or a silent 200 whose
+write never lands, preferences can change in memory then revert, and bundle leaves fail separately.
+plexsim has no SQLite database, `Preferences.xml`, bundle tree, cache or encoder. Introducing those
+faults into its in-memory catalog would invent a storage backend rather than emulate PMS, so the
+measurements are retained and no response path was changed.
+
+The final cycle tree passes `test_catalog_features` 20/20, `test_ui_surface` 1561/1561,
+`test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
+python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
+
+### Next: cycle 39
+
+1. **Fresh official-client session and exact replay.** The founding instrument's last full browser
+   capture was cycle 27. Run the complete home → sections → grids → movie → show → season → episode
+   walk through plexlab, retain every ordered query/header, and replay it against the frozen cycle-38
+   tree. This axis is clean only if structural, value and load-bearing-field diffs contain no new
+   client-visible mismatch.
+2. **Close the remaining search residuals.** Compare hub search's complete Unicode fold/case table
+   against the measured title-query and sort-title tables, then determine whether 1.42.2's hidden
+   technical-tag ranks can change any client-visible candidate set. Use read-only database/binary
+   copies and guarded GET/HEAD only. Report explicit coverage counts and do not call it clean if a
+   reachable candidate or score remains unexplained.
+3. **Stopping gate.** Cycle 39 is the requested clean cycle only if both assigned axes are fully
+   covered and both return no client-noticeable finding. Any positive finding is implemented,
+   regression-proved, documented, and followed by another two-axis cycle.
 
 ### Next: cycle 36 (superseded, run)
 
@@ -3654,19 +3706,30 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 38.**
+
+- ~~**Spellfix rebuild timing**~~ -- **BUILT in cycle 38** at the three database-optimization
+  entry points plexsim owns. The reference's separate automatic Butler timer is documented rather
+  than invented as a new in-memory scheduler.
+- ~~**Final equal-score API ordering**~~ -- **BUILT in cycle 38** from both binaries and 331
+  reconstructed hub inputs; the exact unstable sort has zero misses in that scope. Full permutation
+  validation of capped/tag-associated responses still needs the pre-cap input vector the wire omits.
+- **Persistent-storage failures.** SQLite, `Preferences.xml`, metadata bundles, cache and encoder
+  failures were measured on isolated reference copies. plexsim has none of those backends, so no
+  synthetic disk-failure switch or guessed cross-backend status mapping was added.
+- **Reference-only technical tag ranks remain.** Cycle 38 did not manufacture hidden reference tags
+  in a fileless catalog; cycle 39 is assigned the narrower client-visible-candidate question.
+
 **Cycle 37.**
 
-- **Spellfix rebuild timing.** The exact rebuild SQL and three binary callers are known, and there
-  are no per-row spellfix triggers. kids proves the table may lag the live rows by at least five
-  tokens. plexsim builds the measured vocabulary once at catalog load; it does not fake an unknown
-  maintenance schedule.
+- ~~**Spellfix rebuild timing.**~~ **BUILT in cycle 38** after the callers, optimization triggers
+  and automatic Butler eligibility were recovered from both binaries.
 - **Reference-only technical tag ranks.** 1.42.2 ranks every string in `tags`, including invisible
   GUID components whose occurrence counts dominate the vocabulary. A fileless catalog has no such
   tag table. The people branch is implemented from the tags plexsim actually owns; exact parity for
   hidden strings would require a measured sidecar, not guessed synthetic rows.
-- **Final equal-score API ordering.** Membership and score are exact, but title, sort title and
-  ratingKey each fail as the final tie-break over 3,535 adjacent equal-score pairs. Existing stable
-  bucket order is retained until the reference's final order clause is recovered.
+- ~~**Final equal-score API ordering.**~~ **BUILT in cycle 38** as the reference's unrounded-score
+  unstable hub sort and no-op flat wrapper sort.
 - **Historically stale external spellfix state.** The current reference table cannot always be
   reconstructed from current rows. plexsim reproduces the algorithm for its own catalog; it does
   not attempt to reproduce a reference server's old snapshot.
@@ -4434,8 +4497,8 @@ base from `PLEXSIM_BASE`.
 | File | What it does |
 |---|---|
 | `hunt_prompts.md` | The shared preamble and every cycle's territories, verbatim, newest last. **This is the template**: copy the preamble, refresh the lists named in §5 step 4, write the whole prompt to a file for the agent to read |
-| `spellfix.py` (repository root) | Cycle 37's stdlib port of the measured SQLite `spellfix1` phonehash/edit-distance/top-ten candidate path plus the catalog-local title/tag vocabulary. It intentionally snapshots at catalog load because the reference rebuild schedule is unresolved |
-| `tests/catalog_features.json` + `tests/test_catalog_features.py` | Cycle 37's token-free focused fixture and 17 offline regressions for multipart build/decision/streaming, profile-5 Dolby Vision reachability, clip/extras projections and spellfix fallback |
+| `spellfix.py` (repository root) | Cycle 37's stdlib port of the measured SQLite `spellfix1` phonehash/edit-distance/top-ten candidate path plus the catalog-local title/tag vocabulary. Cycle 38 keeps that snapshot stale across edits and rebuilds it at the measured database-optimization entry points |
+| `tests/catalog_features.json` + `tests/test_catalog_features.py` | Cycle 37's token-free focused fixture, now 20 regressions after cycle 38 added hidden-precision hub ordering, flat-search bucket order and spelling rebuild triggers |
 | `refcheck7.py` + `ref_cycle5_before.json` | Read-only comparison of kids' library state against the baseline |
 | `capture_agent_languages.py` | Cycle 25: `/system/agents`' per-language `Language` list, read from the XML (the JSON writes the rows as repeated KEYS and a parser keeps one) in each of the 28 languages plus English plus the no-header default. Writes `agent_languages.json`, which `server.py` loads beside itself. Re-run it if the reference's language list ever changes |
 | `envelope.py` | Cycle 27: the HTTP ENVELOPE prober -- 30 raw-socket cases `urllib` will not send (a 200 KB header block, a 32769-byte URL, `GET  /identity` with two spaces, an HTTP/0.9 request line, `Content-Length: abc`), three servers at a time, flagging only where kids and zen AGREE and plexsim differs. Read-only by construction: every case is a GET or HEAD of `/identity`, and its one POST targets the plug-in dispatcher |
@@ -4470,6 +4533,13 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 38: `/private/tmp/plexsim-c38.Z8VaTR/`. `A/` holds the slow-reader, notification,
+  three-client race and withheld-body matrices plus the complete write/undo ledger; `B/` holds the
+  disposable-copy storage inventory, database/preferences/bundle/cache fault cells and recovery
+  proofs; `C/` holds both binaries' caller/comparator disassemblies, migration/schedule evidence and
+  the 331-hub plus 51-flat-response validation tools. `head38/` is frozen `9403d3d`; `wt38/` is the
+  cycle branch. Private copied databases/binaries and tokens must never be committed. Both
+  `ref-before.txt`/agent snapshots and their after copies compare byte-identical.
 - cycle 37: `/private/tmp/plexsim-c37.tYGOau/`. `A/` holds the temporary measured-shape catalogs and
   frozen-server results; `B/` holds the complete spellfix report, 376 guarded HTTP captures, copied
   private databases/binaries, literal schema/disassembly evidence, candidate/rank/holdout tools and

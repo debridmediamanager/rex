@@ -8574,6 +8574,66 @@ cells; using the schema's actual ICU collation fixed both. Final equal-score API
 unresolved: title, sort title and ratingKey all have hundreds of violations over 3,535 adjacent
 equal-score pairs, so none was fabricated as the rule.
 
+### Cycle 38: bodyless query writes, search ordering, and storage failure boundaries
+
+All writes in this cycle went only to the disposable plexscratch copies. kids and zen received only
+the guarded before/after GET snapshots, which are byte-identical. The frozen comparison tree was
+cycle 37's `9403d3d`.
+
+**Two query-only write routes do not consume a declared body.** A raw
+`PUT /library/metadata/{id}?title.value=...&summary.value=...` and a raw
+`POST /playlists?...` carrying `Content-Length: 1000000`, no body bytes and an open socket answer
+and commit immediately on both PMS 1.42.2 and 1.43.4. Each route completed 20/20 concurrent trials
+on each version; the answers arrived in 0.012--0.194 seconds. Frozen plexsim instead waited for its
+20-second socket timeout, returned no status line and committed none of 40 writes. This is not a
+verb-wide exception: a subtitle upload with the same withheld bytes remained blocked on both PMS
+and plexsim. The handler now skips body consumption only for those two measured path/method pairs.
+
+**Slow consumers do not serialize unrelated clients.** A client that stopped after the headers of
+a 3.7--4.1 MB response, a notification websocket that never read, and 1,200 writes producing 2,402
+frames did not block ordinary reads or writes. Three-client edit, rating/progress and list-member
+races exposed only serializable final states; partial request aborts, response aborts and connection
+EOF lost no completed write. Those cells were negative findings: plexsim already agreed.
+
+**Spelling vocabularies rebuild with database optimization, not with row edits.** The complete
+static caller set in both binaries is the database optimizer and two historical search migrations;
+1.43.4 adds a third `RebuildSearchWithoutExternalContent` migration. The optimizer is reached by
+the `OptimizeDatabase` Butler task, `PUT /library/optimize`, and section-deletion completion. Its
+automatic Butler eligibility is calendar-aligned: at the approximately five-minute check that
+enters the configured local maintenance window, an enabled task with interval seven is eligible
+when `floor(time/86400) % 7 == 0`; it is not “seven days since the last rebuild.” The rebuild first
+requires the ICU FTS table, rebuilds FTS plus both spellfix vocabularies transactionally, then the
+optimizer runs `ANALYZE` and `VACUUM`. plexsim now keeps edits stale until its three existing
+optimization entry points -- explicit optimize, Butler OptimizeDatabase and section deletion --
+finish; catalog construction remains the migration/startup equivalent. A background Butler daemon
+was not invented for an in-memory server that has none.
+
+**Hub ordering uses hidden precision and an unstable comparison sort.** Ordinary video candidates
+are first sorted by raw title bytes descending and then signed metadata id descending, uniqued, and
+preceded by the exact-title vector. Scored records are then sorted by the full, unrounded double
+score descending with the reference build's libc++ comparison sort and no secondary comparator;
+only after that is the score formatted with `%.5f`. Audience rating contributes positively, capped
+at 10 and divided by 10,000. This model reproduced 331 eligible captured hubs, 2,306 rows and 1,578
+adjacent equal-wire-score pairs with zero position or pair-order misses. Capped or tag-associated
+groups whose complete pre-sort vectors were not captured remain a validation limit, not evidence
+for a hidden title tie-break.
+
+**`/library/search` preserves its bucket assembly order.** PMS's final wrapper comparator asks an
+empty generic attribute map for `score`, so every comparison is zero against zero even though the
+serializer later writes a dedicated numeric score. The resulting order is the builder sequence,
+beginning movie, show, episode, rather than a global score sort or `/hubs/search`'s display order.
+Across 51 captures and 291 rows the recovered bucket model had no precedence or within-bucket
+misses; four real responses contain a later, higher-scored bucket. plexsim now uses that measured
+flat-search sequence explicitly.
+
+**Storage failures were measured but have no emulation backend.** On isolated reference copies,
+SQLite `ENOSPC` produced a mixture of explicit 500s and writes that answered 200 without landing;
+preference-file failures could update runtime state and later revert; bundle failures varied by
+leaf; and recovery preserved database integrity and atomicity. plexsim owns no SQLite database,
+`Preferences.xml`, metadata bundle tree, cache or encoder process to fault. Mapping those host
+failures onto its in-memory catalog would manufacture a subsystem and failure semantics rather than
+emulate one, so this axis is recorded and deliberately not implemented.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
