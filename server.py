@@ -17735,6 +17735,11 @@ class Handler(BaseHTTPRequestHandler):
         Cycle 16 measured the pair on every response of both references; cycle 33 found
         the two handlers that write their own headers and never sent it.
         """
+        # Cycle 46: the hand-written /web redirect calls this helper directly
+        # rather than going through _send. Honour the same exact pipeline opt-out
+        # here so that response also closes and omits Keep-Alive.
+        if self.headers.get("X-Plex-Http-Pipeline") == "disable":
+            self.close_connection = True
         if self.close_connection:
             self.send_header("Connection", "close")
         else:
