@@ -24269,6 +24269,24 @@ def main():
           == [200] * 6,
           str(cols_c45))
 
+
+    # Cycle 45, caught while verifying this cycle's own `file=` patch: a SECTION listing
+    # with no explicit `type=` uses the LIBRARY's own top-level type, so a SHOW library's
+    # bare `?file=mkv` is the `type=2` case and a **500** on kids and zen alike, while
+    # `type=3` and `type=4` there answer. The patch read the absent type as "no refusal"
+    # and answered 200.
+    file_c45d = {}
+    if show_section:
+        for suffix_c45d in ("", "&type=2", "&type=3", "&type=4"):
+            file_c45d[suffix_c45d or "(bare)"] = get(
+                base, "/library/sections/%s/all?file=mkv%s" % (show_section, suffix_c45d))[0]
+    movie_c45d = get(base, "/library/sections/%s/all?file=mkv" % movie_section)[0]
+    check("a show library's bare file= is the type=2 refusal",
+          (not file_c45d or (file_c45d["(bare)"] == 500 and file_c45d["&type=2"] == 500
+                             and file_c45d["&type=3"] == 200 and file_c45d["&type=4"] == 200))
+          and movie_c45d == 200,
+          "show=%s movie=%s" % (file_c45d, movie_c45d))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
