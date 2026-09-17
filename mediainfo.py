@@ -795,14 +795,6 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
         "container": container,
         "videoProfile": video_profile,
         "audioProfile": main_profile,
-        # A real PMS reports these only under `?checkFiles=1` -- measured: a plain
-        # detail read carries neither. plexsim sends them ALWAYS on purpose,
-        # because plezy re-fetches metadata in a loop until every part carries all
-        # three of Stream / exists / accessible and never passes checkFiles. Two
-        # extra attributes cost a client nothing; a client that loops forever is
-        # the worse failure. The deviation is recorded in docs/findings.md.
-        "exists": True,
-        "accessible": True,
         "Stream": rows,
     }
 

@@ -2228,11 +2228,40 @@ def _listing_row(row):
     A real PMS does NOT strip `Media` here -- verified against a live movie
     section -- so this is the same projection as the detail row.
     """
-    return _public_row(row)
+    return _part_file_state(_public_row(row), checked=False)
 
 
 def _full(row):
-    return _public_row(row)
+    return _part_file_state(_public_row(row), checked=False)
+
+
+def _part_file_state(row, checked):
+    """Project `Part.accessible`/`exists` for a metadata response.
+
+    Both reference versions omit the pair from listings and ordinary detail
+    reads. A detail read with `checkFiles=1` adds both. Catalog rows retain
+    their internal values; every response gets fresh Media/Part dictionaries so
+    one checked request cannot leak the pair into a later unchecked request.
+    """
+    out = dict(row)
+    if not isinstance(out.get("Media"), list):
+        return out
+    media_rows = []
+    for media in out["Media"]:
+        projected_media = dict(media)
+        if isinstance(media.get("Part"), list):
+            parts = []
+            for part in media["Part"]:
+                projected_part = {key: value for key, value in part.items()
+                                  if key not in ("accessible", "exists")}
+                if checked:
+                    projected_part["accessible"] = True
+                    projected_part["exists"] = True
+                parts.append(projected_part)
+            projected_media["Part"] = parts
+        media_rows.append(projected_media)
+    out["Media"] = media_rows
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -3328,11 +3357,12 @@ class PlexSim:
             # grid needs to decide whether to draw the version picker at all.
             detail["mediaCount"] = len(row.get("Media") or [])
             detail["mediaCountOptimized"] = 0
-        # `checkFiles=1` adds `accessible` and `exists` to every Part, and plexsim
-        # already sends both on every Part unconditionally -- deliberately, because
-        # plezy re-fetches metadata in a loop until it sees them. See mediainfo.py.
+        # `checkFiles=1` adds `accessible` and `exists` to every Part on a detail
+        # read; an absent option, `checkFiles=0`, and a section listing omit both.
+        # Cycle 41 re-measured that shape on kids and zen and removed plexsim's old
+        # third-party-client waiver, which exposed the fields unconditionally.
         #
-        # Cycle 19: the option is still VALIDATED, and plexsim accepted anything.
+        # Cycle 19: the option is VALIDATED, and plexsim accepted anything.
         # Measured on kids (1.43.4) and zen (1.42.2), identically: `0` and `1` are 200
         # and so is `01`, while `abc`, an empty value, `2`, `true`, `-1`, `1.5`, ` 1`
         # and `1 ` are all 400. So the value must parse as a bare decimal whole number
@@ -3353,6 +3383,8 @@ class PlexSim:
             # four-value list refused the leading `+` a real PMS takes.
             if raw_check is not None and not _bool_option(raw_check):
                 raise filters_module.FilterError(400, "%s %r" % (option, raw_check))
+        if query.get("checkFiles") is not None and int(query["checkFiles"]) == 1:
+            detail = _part_file_state(detail, checked=True)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
             # season three, all captured -- and the list is per TYPE, so serving
