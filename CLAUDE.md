@@ -2382,6 +2382,16 @@ precisely how the Seasons bug survived a fix attempt.
   source, current tests and fresh live responses, then replayed all 24 preceding fixes. Both reports
   ended `no findings`; this is the stopping gate. Retained evidence may be reused only when the
   exact request/state is unchanged and the relevant source/test blobs are byte-identical and hashed.
+- **A Plex Web version/build label does not identify one webpack graph.** The historical gateway
+  and current public app both say 4.160.0 / `75ddd7b`, but corresponding chunk hashes differ and
+  each has one mapped id the other lacks. Complete one manifest-rooted graph and keep its provenance;
+  never fill an absent historical body with a same-named current asset. The complete current app is
+  205 JS plus 16 CSS, and the 177 JS assets beyond Cycle 40's recovered subset contain no PMS
+  request builders or call sites.
+- **Inventory server processes at both ends of every cycle.** Cycle 43 startup found Cycle 41's
+  frozen listeners still on 32587/32588 despite a later clean-close record. List every
+  `server.py --port` process, resolve cwd and command line, and kill only proved cycle-owned
+  processes; checking the current cycle's expected ports cannot catch an older stray listener.
 
 ## Conventions
 
