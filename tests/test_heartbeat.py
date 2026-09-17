@@ -17,11 +17,13 @@ import inspect
 import json
 import os
 import sys
+import tempfile
 import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import heartbeat  # noqa: E402
+import claim  # noqa: E402
 
 FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "fixtures", "outbound-announce.json")
@@ -144,6 +146,54 @@ def main():
     default = getattr(heartbeat, "DEFAULT_VERSION", None)
     check("the default version is the one plexsim reports",
           isinstance(default, str) and default.startswith("1.42.2"), repr(default))
+
+    # Cycle 46: the reference's public ownerFeatures is exactly the union of its
+    # named defaults and the UUID attributes returned by this post-claim read.
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return self.body
+
+    calls = []
+    bodies = [
+        b'<MyPlex authToken="SERVER-TOKEN" username="owner" email="o@example.test"/>',
+        b'<features><feature id="second" uuid="uuid-b"/>'
+        b'<feature id="first" uuid="uuid-a"/></features>',
+    ]
+
+    def claim_stub(request, timeout=None):
+        calls.append(request)
+        return Response(bodies.pop(0))
+
+    real = urllib.request.urlopen
+    urllib.request.urlopen = claim_stub
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            state = os.path.join(directory, "claim.json")
+            claimed = claim.Claim("machine", state)
+            claimed.exchange("claim-token")
+            combined = claimed.owner_features("zeta,alpha")
+            reloaded = claim.Claim("machine", state)
+            persisted = reloaded.owner_features("zeta,alpha")
+    finally:
+        urllib.request.urlopen = real
+    check("claim reads the finite feature table after the exchange",
+          len(calls) == 2
+          and urllib.parse.urlsplit(calls[1].full_url).netloc == "servers.plex.tv"
+          and urllib.parse.parse_qsl(urllib.parse.urlsplit(calls[1].full_url).query)
+          == [("X-Plex-Token", "SERVER-TOKEN")])
+    check("feature UUIDs union with named defaults in sorted order",
+          combined == "alpha,uuid-a,uuid-b,zeta", combined)
+    check("the acquired feature universe survives restart",
+          persisted == combined, persisted)
     return summary()
 
 

@@ -30,6 +30,7 @@ logger = logging.getLogger("plexsim.claim")
 
 EXCHANGE_URL = "https://plex.tv/api/claim/exchange"
 CONNECTIVITY_URL = "https://plex.tv/api/servers/%s/connectivity"
+FEATURES_URL = "https://servers.plex.tv/api/v2/features"
 
 
 class Claim:
@@ -45,6 +46,7 @@ class Claim:
         self.owner = None
         # A real PMS reports the owner's email in /myplex/account.
         self.email = None
+        self.feature_uuids = []
         self._load()
 
     # -- persistence -----------------------------------------------------
@@ -59,6 +61,7 @@ class Claim:
                 self.token = state.get("token")
                 self.owner = state.get("owner")
                 self.email = state.get("email")
+                self.feature_uuids = sorted(set(state.get("feature_uuids") or []))
                 logger.info("loaded claim for %s (owner %s)", self.machine, self.owner)
             else:
                 # A different machineIdentifier is a different server; its claim
@@ -72,7 +75,8 @@ class Claim:
             with open(self._path, "w") as handle:
                 json.dump(
                     {"machine": self.machine, "token": self.token,
-                     "owner": self.owner, "email": self.email},
+                     "owner": self.owner, "email": self.email,
+                     "feature_uuids": self.feature_uuids},
                     handle,
                 )
             os.chmod(self._path, 0o600)
@@ -114,10 +118,46 @@ class Claim:
             self.token = token
             self.owner = attrs.get("username")
             self.email = attrs.get("email")
+            try:
+                self.feature_uuids = self.fetch_features(token)
+            except Exception as error:
+                # Claiming is the irreversible/user-visible operation. A transient
+                # feature-table failure must not turn a successful exchange into an
+                # apparent claim failure; the named, measured defaults remain valid.
+                self.feature_uuids = []
+                logger.warning("could not read plex.tv feature table: %s", error)
             self._save()
 
         logger.info("CLAIMED by %s; server token stored", self.owner)
         return attrs
+
+    def fetch_features(self, token=None):
+        """Read the account-scoped feature UUID universe from plex.tv.
+
+        Cycle 46's complete outbound-read census found the exact source a real PMS
+        uses: GET servers.plex.tv/api/v2/features?X-Plex-Token=... answers a flat
+        XML features document whose feature rows carry id and uuid. The UUID
+        attributes, unioned with the server's named defaults, equal the reference's
+        public ownerFeatures set exactly.
+        """
+        token = token or self.token
+        if not token:
+            return []
+        query = urllib.parse.urlencode({"X-Plex-Token": token})
+        request = urllib.request.Request(
+            FEATURES_URL + "?" + query,
+            headers=dict(self._headers(), Accept="application/xml"),
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:
+            root = ET.fromstring(response.read())
+        return sorted({node.attrib["uuid"] for node in root.iter("feature")
+                       if node.attrib.get("uuid")})
+
+    def owner_features(self, named_defaults):
+        """Return the sorted public feature string for this claimed account."""
+        values = set(filter(None, str(named_defaults or "").split(",")))
+        values.update(self.feature_uuids)
+        return ",".join(sorted(values))
 
     def announce_connectivity(self):
         """`PUT /api/servers/{id}/connectivity` -- what a real PMS calls to be

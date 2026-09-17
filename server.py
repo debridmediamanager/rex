@@ -3355,6 +3355,12 @@ class PlexSim:
             return self.claim.email or self.claim.owner or self.owner_email
         return self.owner_email
 
+    def owner_features(self):
+        """The named defaults plus plex.tv's measured account feature UUIDs."""
+        if self.claim is not None:
+            return self.claim.owner_features(OWNER_FEATURES)
+        return OWNER_FEATURES
+
     def show_detail(self, row, detail, query):
         """Augment a show row for its detail page.
 
@@ -6151,7 +6157,7 @@ class PlexSim:
                 # Cycle 45: this is the SAME STRING as `/`'s `ownerFeatures`,
                 # byte for byte on both references. plexsim sent the bare `pass` here
                 # and a three-name list there, so its own two answers disagreed.
-                "subscriptionFeatures": OWNER_FEATURES,
+                "subscriptionFeatures": self.owner_features(),
                 "subscriptionActive": claimed,
                 "subscriptionState": "Active" if claimed else "Unknown",
             }
@@ -6351,7 +6357,7 @@ class PlexSim:
             diagnostics="logs,streaminglogs",
             countryCode="deu",
             updatedAt=1789127123,
-            ownerFeatures=OWNER_FEATURES,
+            ownerFeatures=self.owner_features(),
             transcoderActiveVideoSessions=0,
             transcoderVideo=False,
             transcoderAudio=False,
