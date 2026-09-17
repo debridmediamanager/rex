@@ -18573,7 +18573,7 @@ def main():
     parser.add_argument(
         "--device-id",
         default=None,
-        help="plex.tv NUMERIC device id to announce on (not a machineIdentifier)",
+        help="machineIdentifier to announce on; defaults to the catalog's own",
     )
     parser.add_argument("--heartbeat-interval", type=int, default=heartbeat_module.DEFAULT_INTERVAL)
     args = parser.parse_args()
@@ -18680,15 +18680,14 @@ def main():
         plex_token = os.environ.get("PLEX_TOKEN")
         if not plex_token:
             parser.error("--announce-url needs PLEX_TOKEN in the environment")
-        if not args.device_id:
-            parser.error(
-                "--announce-url needs --device-id (plex.tv's numeric id). "
-                "Look it up with heartbeat.resolve_device_id(); a machineIdentifier "
-                "in that position silently overwrites a DIFFERENT device."
-            )
+        # Cycle 44: a real PMS announces on its own machineIdentifier
+        # (`PUT servers.plex.tv/devices/{machineIdentifier}`), so the server's own is
+        # the right default and there is nothing to look up. The numeric form this
+        # used to demand resolves to whatever device row already holds that id and
+        # silently overwrites it -- see heartbeat.py.
         beat = heartbeat_module.Heartbeat(
             plex_token,
-            args.device_id,
+            args.device_id or catalog.machine,
             args.announce_url,
             name=catalog.friendly,
             interval=args.heartbeat_interval,
