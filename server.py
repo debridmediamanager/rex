@@ -76,7 +76,7 @@ import decision as decision_module  # noqa: E402
 import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 import spellfix as spellfix_module  # noqa: E402
-from debrid import Resolver  # noqa: E402
+from debrid import Resolver, Unavailable as DebridUnavailable  # noqa: E402
 from xmlout import ordered as ordered_keys, to_xml  # noqa: E402
 
 logger = logging.getLogger("plexsim")
@@ -18535,6 +18535,14 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             upstream_url, _size = sim.resolver.resolve(link)
+        except DebridUnavailable as error:
+            # Cycle 44: the FILE is not there, which a real PMS answers with a plain
+            # 404 -- zen's part 23595 does, and its row reports `accessible=false`.
+            # plexsim answered 502 to this and to a network failure alike, so a client
+            # that would have drawn "this file is missing" got a server error instead.
+            logger.error("part %s is unavailable upstream: %s", part_id, error)
+            self._send_error(404, "plexsim: not found")
+            return
         except Exception as error:
             logger.error("unrestrict failed for part %s: %s", part_id, error)
             self._send_error(502, "plexsim: debrid resolve failed")
