@@ -13245,13 +13245,50 @@ class PlexSim:
         repackages, so the choice only changes which Stream carries `selected` --
         which is what the client reads back.
         """
+        # Cycle 44, measured cell by cell on plexscratch42 (1.42.2) and plexscratch
+        # (1.43.4), which agree: the two parameters have DIFFERENT value grammars, and
+        # plexsim treated them the same.
+        #
+        #   `subtitleStreamID` parses as a signed integer. A value that does not parse
+        #   -- `abc`, ``, `1.5`, `0x1`, `+141`, `141.0` -- reads as **0**, which is the
+        #   "no subtitle" pseudo-stream, so it CLEARS the selection with a 200; `00` and
+        #   `000` parse to 0 and clear too (plexsim answered 400); `-0` clears; `-1`
+        #   reverts to the server's own default; and any other negative is a **400**
+        #   (plexsim answered 200 and did nothing).
+        #
+        #   `audioStreamID` has no "0" meaning: `0` and every negative but `-1` are
+        #   **400**s, `-1` reverts to the default, and a value that does not parse is an
+        #   accepted no-op -- which is the behaviour plexsim applied to both.
+        #
+        # Getting this wrong is a blank track picker either way round: plexsim left a
+        # subtitle selected where a real PMS clears it, and accepted a negative id a
+        # real PMS refuses.
         wanted = {}
         for name, stream_type in (("audioStreamID", 2), ("subtitleStreamID", 3)):
-            # Measured: a value that is not a number -- empty, or `abc` -- is
-            # IGNORED with a 200 and the selection left alone. Only a numeric id of
-            # the wrong type is refused. plexsim 400'd the malformed ones.
-            if name in query and str(query[name]).isdigit():
-                wanted[stream_type] = query[name]
+            if name not in query:
+                continue
+            raw = str(query[name])
+            try:
+                number = int(raw)
+            except ValueError:
+                number = None
+            if stream_type == 3:
+                if number is None:
+                    number = 0
+                if number < -1:
+                    return ("error", 400, "plexsim: bad request")
+                wanted[stream_type] = str(0 if number == -1 else number)
+            else:
+                if number is None:
+                    continue
+                if number == 0 or number < -1:
+                    return ("error", 400, "plexsim: bad request")
+                if number == -1:
+                    # Revert to the default: plexsim's default is the first audio
+                    # stream, which is what `_default_audio` already chooses.
+                    wanted[stream_type] = "-1"
+                else:
+                    wanted[stream_type] = str(number)
         # Cycle 18, measured on plexscratch: the PART is resolved before anything else.
         # `PUT /library/parts/999999`, `/abc` and `999999?subtitleStreamID=abc` are all
         # 404s there, where plexsim answered 200 to each because it returned early
@@ -13283,6 +13320,19 @@ class PlexSim:
                                   for s in part.get("Stream", [])
                                   if s.get("streamType") == stream_type}
                      for stream_type in (2, 3)}
+        # `audioStreamID=-1` reverts to the server's own default rather than naming a
+        # stream, so it resolves here (cycle 34 measured the revert; cycle 44 the
+        # grammar around it).
+        if wanted.get(2) == "-1":
+            first_audio = next((str(stream.get("id"))
+                                for media in owner.get("Media", [])
+                                for part in media.get("Part", [])
+                                for stream in part.get("Stream", [])
+                                if stream.get("streamType") == 2), None)
+            if first_audio is None:
+                wanted.pop(2)
+            else:
+                wanted[2] = first_audio
         for stream_type, chosen in wanted.items():
             if str(chosen) == "0" and stream_type == 3:
                 continue
