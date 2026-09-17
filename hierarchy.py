@@ -425,6 +425,10 @@ def normalize_rows(rows):
     # its show's picture. Rewrite it to the show's path, then hand it down: an
     # episode's `art` is its season's resolved value, which is the show's when the
     # season borrows.
+    # Cycle 44: whether a season STORED a sort title of its own has to be read before
+    # any pass below rewrites it -- the derived-equals rule strips a `titleSort` equal to
+    # the title, and by the season branch there is nothing left to read.
+    stored_sort_titles = {id(row): bool(row.get("titleSort")) for row in rows}
     for row in rows:
         if row.get("type") != "season":
             continue
@@ -529,6 +533,27 @@ def normalize_rows(rows):
         if kind == "season":
             if not row.get("skipCount"):
                 row.pop("skipCount", None)
+            # Cycle 44, corrected at LOAD like the other pipeline-produced row errors
+            # here: a season built by `metadata.py` before this cycle carries TMDB's
+            # season air-date year in its own `year` column. That is the shape 1 of
+            # zen's 742 seasons has and 689 do not, and carrying it takes `parentYear`
+            # away, because the rule below reads "has a year of its own" off that
+            # column. A real Plex series agent gives a season the SHOW's year as
+            # `parentYear`. A season's own year stays legal -- it is simply not what
+            # this builder produces, and this builder wrote every season plexsim holds.
+            if row.get("year") is not None and not stored_sort_titles.get(id(row)):
+                # The discriminator is the STORED SORT TITLE, and it is measured on both
+                # references: every season that carries a year of its own also stores
+                # one. kids' season 7 is `Season 1` with `titleSort: "Season 1"` and
+                # `year: 2002`; zen's single year-carrying season of 742 stores
+                # `Egghead`, its agent's arc name. A season with a year and NO stored
+                # sort title is a shape neither reference has -- and it is exactly what
+                # `metadata.py` wrote before this cycle, so this corrects the builder's
+                # own rows without touching a season an agent really identified.
+                show_row = by_key.get(str(row.get("parentRatingKey")))
+                row.pop("year", None)
+                if show_row is not None and show_row.get("year") is not None:
+                    row["parentYear"] = show_row["year"]
             if row.get("year"):
                 # Cycle 20, held out against zen's 741 real seasons: the `year` does NOT
                 # bring a `titleSort` with it. 740 carry none, and the only one that does
@@ -731,7 +756,15 @@ def build(leaves):
                 # borrowed. An older note tied the season list rendering to `year`;
                 # that was the paging bug.
                 "parentIndex": 1,
+                # Cycle 44: the pipeline no longer supplies `_season_year` -- see
+                # `metadata.py`. A season's own year stays possible (zen has exactly one
+                # such row of 742) and `normalize_rows` still applies the year /
+                # parentYear rule below; what changed is that a Plex series agent does
+                # not give a season one, so plexsim's never should either.
                 "year": leaf.get("_season_year"),
+                # The season's EXTERNAL ids. Both references carry them on a season
+                # detail row; this pipeline fetched and discarded them until cycle 44.
+                "Guid": leaf.get("_season_guids"),
                 "summary": leaf.get("_season_summary") or "",
                 "parentRatingKey": show["ratingKey"],
                 "parentKey": "/library/metadata/%s" % show["ratingKey"],
@@ -807,7 +840,8 @@ def build(leaves):
     for row in rows:
         for key in ("_kind", "_tmdb_id", "_show_title", "_show_summary",
                     "_show_year", "_show_poster", "_show_art", "_show_guid",
-                    "_season", "_episode", "_season_guid", "_season_poster",
+                    "_season", "_episode", "_season_guid", "_season_guids",
+                    "_season_poster",
                     "_show_external_guids",
                     "_season_year", "_season_air", "_season_summary"):
             row.pop(key, None)

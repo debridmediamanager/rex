@@ -303,6 +303,7 @@ def enrich(row, tmdb, parsed, chosen=None):
 
     episode_imdb = None
     episode_tmdb = None
+    episode_tvdb = None
     # An episode overrides title/summary/art with its own, the way Plex does,
     # and keeps the show's identity in the grandparent fields.
     if kind == "tv" and parsed["season"] and parsed["episode"]:
@@ -321,6 +322,7 @@ def enrich(row, tmdb, parsed, chosen=None):
                 backdrop = ep["still_path"]
             episode_tmdb = ep.get("id")
             episode_imdb = (ep.get("external_ids") or {}).get("imdb_id")
+            episode_tvdb = (ep.get("external_ids") or {}).get("tvdb_id")
 
     # Identity. Plex's own agent mints plex:// guids; an external guid is what a
     # server without that agent supplies, and clients resolve it the same way.
@@ -331,10 +333,24 @@ def enrich(row, tmdb, parsed, chosen=None):
     externals.append({"id": "tmdb://%s" % tmdb_id})
 
     if episode_imdb or episode_tmdb:
-        # An episode identifies as itself, and carries no Guid[] -- matching a
-        # real PMS, which leaves season and episode Guid arrays empty.
+        # An episode identifies as itself. Cycle 44 REFUTED the second half of the note
+        # that used to stand here -- "carries no Guid[], matching a real PMS, which
+        # leaves season and episode Guid arrays empty". Both references carry them:
+        # kids' episode 8 is `imdb://tt0579539`, `tmdb://1048594`, `tvdb://297989`, and
+        # 58 of 60 zen episodes surveyed carry a `Guid` block. The ids were already
+        # being fetched here and then thrown away.
         row["guid"] = plex_guid("episode", episode_imdb or "tmdb:%s" % episode_tmdb)
-        row.pop("Guid", None)
+        episode_externals = []
+        if episode_imdb:
+            episode_externals.append({"id": "imdb://" + episode_imdb})
+        if episode_tmdb:
+            episode_externals.append({"id": "tmdb://%s" % episode_tmdb})
+        if episode_tvdb:
+            episode_externals.append({"id": "tvdb://%s" % episode_tvdb})
+        if episode_externals:
+            row["Guid"] = episode_externals
+        else:
+            row.pop("Guid", None)
     else:
         row["guid"] = plex_guid("movie", imdb_id or "tmdb:%s" % tmdb_id)
         row["Guid"] = externals
@@ -366,11 +382,27 @@ def enrich(row, tmdb, parsed, chosen=None):
             season_details = tmdb.season(tmdb_id, parsed["season"]) or {}
             if season_details.get("id"):
                 row["_season_guid"] = plex_guid("season", season_details["id"])
+                # Cycle 44: and the season's EXTERNAL ids, which a real PMS carries and
+                # this pipeline fetched and discarded -- kids' season 7 answers
+                # `tmdb://3846` and `tvdb://15791`.
+                season_externals = [{"id": "tmdb://%s" % season_details["id"]}]
+                season_tvdb = (season_details.get("external_ids") or {}).get("tvdb_id")
+                if season_tvdb:
+                    season_externals.append({"id": "tvdb://%s" % season_tvdb})
+                row["_season_guids"] = season_externals
             if season_details.get("poster_path"):
                 row["_season_poster"] = IMAGE_BASE + "w342" + season_details["poster_path"]
+            # Cycle 44: the season's own air-date YEAR is deliberately NOT stored as
+            # the season's `year`. Measured over zen's whole show library: 689 of its
+            # 742 seasons carry `parentYear` and exactly ONE carries a `year` of its
+            # own (and that one's sort title is its agent's arc name, not `Season N`).
+            # A real Plex series agent gives a season the SHOW's year as `parentYear`;
+            # writing TMDB's season air-date year into the season's own column put
+            # every plexsim season into the 1-in-742 shape and took its `parentYear`
+            # away, because `hierarchy` reads "has a year of its own" off that column.
+            # The air date itself is kept: it is what `originallyAvailableAt` uses.
             air = season_details.get("air_date") or ""
             if air[:4].isdigit():
-                row["_season_year"] = int(air[:4])
                 row["_season_air"] = air
             if season_details.get("overview"):
                 row["_season_summary"] = season_details["overview"]
