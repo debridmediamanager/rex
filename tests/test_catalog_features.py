@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import unicodedata
 import urllib.parse
 import xml.etree.ElementTree as ET
 
@@ -41,6 +42,30 @@ def main():
         tag_names = {kind: [entry["tag"].get("tag") for entry in rows]
                      for kind, rows in tags.items()}
         return titles, tag_names
+
+    # Cycle 41 completed the title-mark gap left by Cycle 32. Across every
+    # assigned punctuation, symbol, separator, mark and format scalar in the
+    # previously unswept ranges, both PMS versions remove exactly U+0300..U+036F
+    # between ASCII sentinels. A generic combining-class test wrongly removed
+    # another 699 Mn/Mc scalars and preserved U+034F.
+    mark_domain = [
+        codepoint
+        for start, end in ((0x0300, 0x1fff), (0x3000, 0x10ffff))
+        for codepoint in range(start, end + 1)
+        if unicodedata.category(chr(codepoint)).startswith(("P", "S", "Z", "M"))
+        or unicodedata.category(chr(codepoint)) == "Cf"
+    ]
+    removed_marks = [
+        codepoint for codepoint in mark_domain
+        if server.hierarchy_module.fold_title("A" + chr(codepoint) + "B") == "AB"
+    ]
+    check("title folding removes exactly the measured combining-diacritics block",
+          len(mark_domain) == 7531
+          and removed_marks == list(range(0x0300, 0x0370)),
+          "%d-domain %d-removed first=%s last=%s"
+          % (len(mark_domain), len(removed_marks),
+             "U+%04X" % removed_marks[0] if removed_marks else "none",
+             "U+%04X" % removed_marks[-1] if removed_marks else "none"))
 
     # Cycle 37 reconstructed both PMS spellfix tables, including the exact
     # editdist1/rank score, top-ten cap, <=200 cutoff and fallback gate. These
