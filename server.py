@@ -9203,7 +9203,17 @@ class PlexSim:
                 mediaTagPrefix="/system/bundle/media/flags/", mediaTagVersion=1655122614,
                 Metadata=[self.collection_detail(collection, query)])
         row = self.library._playlist_row(playlist, content=True)
-        return self.bare_container(size=1, Metadata=[row])
+        # Cycle 41, measured on fresh video/audio/photo playlists on writable
+        # copies of both PMS versions: only the LIBRARY-METADATA alias carries
+        # these four root fields. `/playlists/{id}` beside it remains the bare
+        # `{size, Metadata}` container. The Edit/preplay consumers resolve flag
+        # artwork through this identifier and media-tag pair.
+        return self.bare_container(
+            size=1, allowSync=False,
+            identifier="com.plexapp.plugins.library",
+            mediaTagPrefix="/system/bundle/media/flags/",
+            mediaTagVersion=1655122614,
+            Metadata=[row])
 
     def collection_detail(self, collection, query):
         """A collection's detail row, with its Preferences when asked for. Cycle 15."""
