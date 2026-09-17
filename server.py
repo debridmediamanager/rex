@@ -2413,7 +2413,7 @@ def _full(row):
     return _part_file_state(_public_row(row), checked=False)
 
 
-def _part_file_state(row, checked):
+def _part_file_state(row, checked, resolver=None):
     """Project `Part.accessible`/`exists` for a metadata response.
 
     Both reference versions omit the pair from listings and ordinary detail
@@ -2433,8 +2433,24 @@ def _part_file_state(row, checked):
                 projected_part = {key: value for key, value in part.items()
                                   if key not in ("accessible", "exists")}
                 if checked:
-                    projected_part["accessible"] = True
-                    projected_part["exists"] = True
+                    # Cycle 46 finally drove this option against plexsim's own live
+                    # byte path. All five stale catalog links answered a measured
+                    # `unavailable_file`/404 while the metadata still claimed both
+                    # booleans were true. A successful unrestrict is the fileless
+                    # server's existence check; the provider's explicit unavailable
+                    # answer is the same false/false pair zen exposes for a missing
+                    # local file. Other provider/transport failures are not collapsed
+                    # into "missing": they remain request failures instead of a
+                    # fabricated state.
+                    available = True
+                    link = part.get("_debrid")
+                    if resolver is not None and link:
+                        try:
+                            resolver.resolve(link)
+                        except DebridUnavailable:
+                            available = False
+                    projected_part["accessible"] = available
+                    projected_part["exists"] = available
                 parts.append(projected_part)
             projected_media["Part"] = parts
         media_rows.append(projected_media)
@@ -3579,7 +3595,7 @@ class PlexSim:
         # so the completed case is the faithful one.
         if any(query.get(name) is not None and int(query[name]) == 1
                for name in ("checkFiles", "asyncCheckFiles", "checkFileAvailability")):
-            detail = _part_file_state(detail, checked=True)
+            detail = _part_file_state(detail, checked=True, resolver=self.resolver)
         if query.get("includePreferences") == "1":
             # The item's own settings tab. A movie has three, a show eleven and a
             # season three, all captured -- and the list is per TYPE, so serving
