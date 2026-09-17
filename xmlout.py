@@ -42,10 +42,10 @@ _LIGHT_CHILD_ORDER = {name: index for index, name in enumerate((
     "Writer", "Role", "Collection", "Label", "Location"))}
 
 _CHILD_ORDER = {name: index for index, name in enumerate((
-    "Media", "Image", "UltraBlurColors", "Genre", "Country", "Guid", "Rating",
-    "Collection", "Director", "Writer", "Role", "Producer", "Label", "CommonSenseMedia",
-    "Chapter", "Marker", "Review", "Field", "Location", "Preferences", "OnDeck",
-    "Extras", "Related", "Children"))}
+    "Media", "Image", "UltraBlurColors", "Style", "Genre", "Country", "Guid", "Rating",
+    "Collection", "Director", "Writer", "Role", "Producer", "Label", "Similar",
+    "CommonSenseMedia", "Chapter", "Marker", "Review", "Field", "Location", "Preferences",
+    "OnDeck", "Extras", "Related", "Children"))}
 
 # Cycle 16, measured on kids and zen: inside a `Meta/Type` the order is
 # `Filter, Sort, Field` -- which is NOT the item order above, where `Field` comes
