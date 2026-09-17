@@ -24159,6 +24159,29 @@ def main():
           and common_c45["GET?type=1"] == common_c45["HEAD?type=1"] == 200,
           str(common_c45))
 
+
+    # Cycle 45, caught by this cycle's own UI suite against this cycle's own earlier
+    # patch: the "an item leaf 404s an extra path segment" rule has THREE kinds of
+    # exception, not two. `/extras/all` and the artwork versions were measured; the third
+    # is `/library/metadata/{id}/users/top`, which is a 200 on kids and zen -- while
+    # `/users`, `/users/all` and `/users/zzz` beside it are 404s, so it is that exact
+    # pair and not the `users` prefix. The 53-name sweep that found the rule did not have
+    # `users` in its vocabulary, and the suite did: two checks that had passed for
+    # fourteen cycles went red.
+    allow_c45u = {}
+    for path_c45u in ("users/top", "extras/all", "poster/1"):
+        allow_c45u[path_c45u] = request(
+            base, "GET", "/library/metadata/%s/%s" % (movie, path_c45u))[0]
+    deny_c45u = {}
+    for path_c45u in ("users", "users/all", "users/zzz", "extras/1", "media/1",
+                      "related/1"):
+        deny_c45u[path_c45u] = request(
+            base, "GET", "/library/metadata/%s/%s" % (movie, path_c45u))[0]
+    check("users/top is the third two-segment item leaf",
+          allow_c45u["users/top"] == 200 and allow_c45u["extras/all"] == 200
+          and allow_c45u["poster/1"] == 200 and set(deny_c45u.values()) == {404},
+          "allow=%s deny=%s" % (allow_c45u, deny_c45u))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
