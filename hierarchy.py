@@ -16,7 +16,6 @@ honest answer for a file nothing could be matched to.
 
 import hashlib
 import re
-import unicodedata
 
 # ratingKey ranges, kept disjoint so a key identifies its own row type on sight.
 SHOW_BASE = 20000
@@ -139,8 +138,10 @@ _MEDIA_EXTENSIONS = (".mkv", ".mp4", ".m4v", ".mov", ".avi", ".webm", ".ts", ".m
 # sorted and bucketed on a letter it does not start with. And cycle 18's eleven are the
 # ones it cannot reach at all. The targets are not a transliteration anyone would write:
 # `\u00f8` becomes the digit zero, `\u00f0` a capital `O`, `\u00d7` an `x`, `\u00f7` a
-# slash. A COMBINING mark is still dropped -- a decomposed `Cafe\u0301` sorts as `Cafe`
-# on both copies -- which is the one thing the old NFD pass got right on its own.
+# slash. Cycle 41 completed the mark boundary over 7,531 assigned punctuation, symbol,
+# separator, mark and format characters, then repeated every disagreement between ASCII
+# sentinels: exactly U+0300..U+036F is removed. The two PMS versions agree. A Unicode
+# combining-class predicate over-removes 699 marks from other scripts and misses U+034F.
 _TITLE_FOLD = {source: target for target, sources in (
     ("/", "\u00f7"),
     ("0", "\u00d8\u00f8"),
@@ -184,8 +185,9 @@ _TITLE_FOLD = {source: target for target, sources in (
 
 
 def fold_title(text):
-    """The title with combining marks dropped and the measured table applied."""
-    return "".join(_TITLE_FOLD.get(ch, ch) for ch in text if not unicodedata.combining(ch))
+    """The title with the measured mark block removed and fold table applied."""
+    return "".join(_TITLE_FOLD.get(ch, ch) for ch in text
+                   if not 0x0300 <= ord(ch) <= 0x036f)
 
 
 def fold_case(text):
