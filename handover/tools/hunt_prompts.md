@@ -2536,3 +2536,40 @@ cells. A finding must reproduce and name client impact plus a minimal fail-on-fr
 Finish with the artifact index, safety proof and exactly `no findings` only if every enumerated
 family is either measured/tested, deliberately absent by capability, or explicitly impossible to
 observe without violating the safety boundary.
+
+
+==== Cycle 41 (2026-09-17). Shared preamble: frozen commit `2c06bab`, served on 32587/32588;
+mode-700 scratch root `/private/tmp/plexsim-c41.LqHDTd`; kids and zen GET/HEAD only through the
+write-shaped-GET guard; no reference websocket/eventsource, media/theme/part/transcode bodies,
+plex.tv, fun or writes. Writes only on plexscratch/plexscratch42 and disposable plexsim after a
+prewritten undo ledger. Run `refcheck7.py` before and after and require byte-identical output.
+Neither hunter edits the repository. The 176 absent mapped Plex Web 4.160.0 chunks remain an
+explicit external limit; this cycle audits the complete locally served 4.147.1 bundle and does not
+claim a complete current-client static universe. ====
+
+
+# Cycle 41 | Territory A | historical measured-but-unacted census | frozen plexsim 32587
+
+Mechanically extract every historical “measured and not acted on”, deliberate deviation, open,
+unresolved, held-out or instrument-limited claim from `docs/findings.md` and `HANDOVER.md`; normalize
+duplicates without losing source references. For every claim, inspect current code, prove actual
+regression reach, assign exactly one supported disposition, and re-measure every safe ambiguous or
+actionable cell against both versions. Writes and postconditions belong only on the disposable
+copies. Report exact raw, normalized and per-disposition counts in a machine-readable matrix. A
+finding must reproduce on frozen 32587, name client impact and supply a minimum fail-on-frozen
+regression. End with exactly `no findings` only when every normalized claim is resolved and none is
+a client-visible mismatch. Full operational and safety instructions are in the private cycle prompt.
+
+
+# Cycle 41 | Territory B | advertisement to action to postcondition census | frozen plexsim 32588
+
+Mechanically enumerate every value frozen plexsim advertises that the complete local Plex Web
+4.147.1 bundle consumes to expose, enable, disable or parameterize a UI control. Join each exact
+advertisement to the client predicate, visible action, method/path/ordered query/body, consumed
+response and required readback. Exercise safe reads on both references; exercise writes only on the
+two disposable copies and disposable plexsim with a prewritten ledger, checking postconditions
+rather than status alone. Report finite source/field/predicate/control/action/readback counts in a
+machine-readable matrix, including hidden, dead, player-bound, plex.tv-bound and deliberately absent
+capabilities. A finding must reproduce on frozen 32588 and include a fail-on-frozen postcondition
+regression. End with exactly `no findings` only when every advertised control chain is classified
+and none mismatches. Full operational and safety instructions are in the private cycle prompt.
