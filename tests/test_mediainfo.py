@@ -321,20 +321,21 @@ def _pixel_aspect_pair(fixture):
 
 @check("pixel-aspect-threshold", once=True)
 def _pixel_aspect_threshold(mediainfo):
-    """The sixteen ratios zen witnesses, and the two in the corpus.
+    """The sixteen ratios zen witnesses, the two in the corpus, and the exact boundary.
 
     Measured on 1,688 of zen's video Streams (358 carrying the pair, 1,330 carrying
-    neither, none carrying one). The boundary is bracketed by `333:320` false and
-    `16:15` true; 0.05 is the only round number inside it.
+    neither, none carrying one). Cycle 41 then measured both disposable reference
+    versions at the boundary: `21:20` is false and `20:19` is true.
     """
     rows = []
     for ratio, expected in (("1:1", None), ("0:1", None),
                             ("99:100", False), ("172:173", False), ("799:800", False),
                             ("816:817", False), ("872:873", False), ("959:960", False),
                             ("10439:10440", False), ("481:480", False), ("255:254", False),
-                            ("643:640", False), ("333:320", False),
+                            ("643:640", False), ("333:320", False), ("21:20", False),
                             ("1:2", True), ("10:11", True), ("16:15", True),
-                            ("495:464", True), ("721:640", True), ("32:27", True),
+                            ("20:19", True), ("495:464", True), ("721:640", True),
+                            ("32:27", True),
                             ("2:1", True)):
         built = mediainfo._video_stream(
             {"codec_name": "h264", "index": 0, "width": 1920, "height": 1080,
