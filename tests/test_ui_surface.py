@@ -24490,6 +24490,36 @@ def main():
                or added_c45["show/recentlyAddedGrandparents"][2] == "episode"),
           str(grand_c45))
 
+
+    # Cycle 45: three more routed endpoints plexsim 404'd, all 200/400 on kids, zen and
+    # both writable copies. A 404 tells a client the endpoint does not exist.
+    #
+    #  * `/library/sections/{id}/stations/{genre|mood|style|decade}` -- an empty
+    #    secondary-ish container carrying `art`, `thumb`, `title1` and NOTHING else (no
+    #    `allowSync`, no `title2`, no `content`). Any other value, an empty one and a
+    #    number are 404s, so it is that four-name set.
+    #  * `/hubs/sections/{id}/newReleases` -- `{size: 0, allowSync: false, identifier}`
+    #    and nothing more.
+    #  * `/:/viewChange` -- a routed state-write leaf that answers its own **400** to
+    #    EVERY verb with any parameters, the way `/match` does.
+    stations_c45 = {name_c45: get(base, "/library/sections/%s/stations/%s"
+                                  % (movie_section, name_c45))[0]
+                    for name_c45 in ("genre", "mood", "style", "decade", "year", "zzz", "1")}
+    status_c45s, station_c45, _ = get(base, "/library/sections/%s/stations/genre" % movie_section)
+    new_status_c45, new_c45, _ = get(base, "/hubs/sections/%s/newReleases" % movie_section)
+    view_c45 = {method_c45: request(base, method_c45, "/:/viewChange")[0]
+                for method_c45 in ("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS")}
+    check("stations, newReleases and viewChange are routed",
+          [stations_c45[k] for k in ("genre", "mood", "style", "decade")] == [200] * 4
+          and [stations_c45[k] for k in ("year", "zzz", "1")] == [404] * 3
+          and station_c45.get("size") == 0 and "allowSync" not in station_c45
+          and "title2" not in station_c45 and station_c45.get("title1")
+          and new_status_c45 == 200 and new_c45.get("size") == 0
+          and new_c45.get("allowSync") is False
+          and set(view_c45.values()) == {400},
+          "%s ; station keys %s ; newReleases %s ; viewChange %s"
+          % (stations_c45, sorted(station_c45), new_c45, view_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

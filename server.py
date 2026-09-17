@@ -5357,6 +5357,22 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.select_stream(segments[2] if len(segments) > 2 else "", query)
 
+        if segments[:2] == ["hubs", "sections"] and len(segments) == 4 \
+                and segments[3] == "newReleases":
+            # Cycle 45: `{size: 0, allowSync: false, identifier}` and nothing more, on
+            # kids, zen and both writable copies. plexsim 404'd it.
+            return self.bare_container(size=0, allowSync=False,
+                                       identifier="com.plexapp.plugins.library")
+        if route == "/:/viewChange":
+            # Cycle 45: a routed state-write leaf that answers its own 400 to EVERY verb,
+            # with any parameters, the way `/match` does. plexsim 404'd it, which tells a
+            # client the endpoint is not there.
+            return ("error", 400, "plexsim: bad request")
+        if route == "/services/codecs":
+            # Cycle 45: a **403** on kids and zen -- not a 404 and not the plug-in
+            # dispatcher's listing. Both unclaimed copies 404 it, so it tracks claimed
+            # state, and plexsim reports `claimed="1"`.
+            return ("error", 403, "plexsim: forbidden")
         if route == "/library/search":
             # `universalsearch`, which plexsim advertised in /media/providers and
             # answered with an empty container -- on the note that "a real PMS
@@ -6325,8 +6341,27 @@ class PlexSim:
         # VERSIONED `composite/{v}` are real two-segment leaves, and `firstCharacter`
         # has its own branch below; each of those 404s its own unknown second segment. A trailing slash is already
         # stripped, so `/year/` is the axis and not an empty bucket -- measured.
+        if leaf == "stations" and len(segments) == 5:
+            # Cycle 45, measured on kids, zen and both writable copies:
+            # `/library/sections/{id}/stations/{genre|mood|style|decade}` is an EMPTY
+            # container carrying `art`, `thumb` and `title1` and NOTHING else -- no
+            # `allowSync`, no `title2`, no `content`, no `viewGroup`. Any other value, an
+            # empty one and a number are 404s, so it is that four-name set exactly.
+            if segments[4] not in ("genre", "mood", "style", "decade"):
+                return ("error", 404, "plexsim: not found")
+            is_show_stations = section.get("type") == "show"
+            return self.bare_container(
+                size=0,
+                art="/:/resources/show-fanart.jpg" if is_show_stations
+                else "/:/resources/movie-fanart.jpg",
+                identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
+                thumb="/:/resources/show.png" if is_show_stations
+                else "/:/resources/movie.png",
+                title1=section.get("title"))
         if len(segments) > 4 and leaf not in ("query", "indexes", "firstCharacter",
-                                             "extras", "composite"):
+                                             "extras", "composite", "stations"):
             if len(segments) > 5:
                 return ("error", 404, "plexsim: not found")
             return self.axis_bucket(section_id, section, leaf, segments[4], query)
