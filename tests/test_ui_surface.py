@@ -24032,6 +24032,47 @@ def main():
                                                  list(rows_c45a[0]) if rows_c45a else [],
                                                  neighbours_c45))
 
+
+    # Cycle 45, measured on kids and zen one leaf name after another against a real tag
+    # id: the bucket path does NOT read the leaf NAME. zen's GENRE tag 239 ("Action")
+    # answers the identical 427-row container -- same rows, same `title2` -- under
+    # `genre`, `director`, `actor`, `mood`, `style`, `similar`, `tag`, `format`,
+    # `subformat`, `source`, `make`, `model`, `place`, `label`, `collection`, `network`,
+    # `writer`, `producer` and `country`, and zen's DIRECTOR tag 8544 answers ITS two
+    # rows under every one of them too. The lookup is the server's global tag TABLE and
+    # the name in front of it is decoration; only `studio` and `platform` are not bucket
+    # names at all, and an id no tag holds is a 404 under every name. plexsim resolved
+    # the id against the NAME's own column, so nine names worked for their own tags and
+    # ten more 404'd everything.
+    axis_c45t = get(base, "/library/sections/%s/genre" % movie_section)[1]
+    entry_c45t = (axis_c45t.get("Directory") or [{}])[0]
+    if not entry_c45t.get("key"):
+        skip("a tag bucket reads the tag table, not the leaf name", "no genre tags")
+    else:
+        want_c45t = get(base, "/library/sections/%s/genre/%s"
+                        % (movie_section, entry_c45t["key"]))[1]
+        rows_c45t = [r.get("ratingKey") for r in want_c45t.get("Metadata") or []]
+        same_c45t = {}
+        for name_c45t in ("director", "actor", "mood", "style", "similar", "tag",
+                          "format", "subformat", "source", "make", "model", "place",
+                          "label", "collection", "network", "writer", "producer",
+                          "country"):
+            status_c45t, got_c45t, _ = get(base, "/library/sections/%s/%s/%s"
+                                           % (movie_section, name_c45t, entry_c45t["key"]))
+            same_c45t[name_c45t] = (
+                status_c45t, got_c45t.get("title2"),
+                [r.get("ratingKey") for r in got_c45t.get("Metadata") or []])
+        closed_c45t = [get(base, "/library/sections/%s/%s/%s"
+                           % (movie_section, name_c45t, entry_c45t["key"]))[0]
+                       for name_c45t in ("studio", "platform")]
+        unknown_c45t = get(base, "/library/sections/%s/genre/999999999" % movie_section)[0]
+        check("a tag bucket reads the tag table, not the leaf name",
+              all(cell == (200, entry_c45t.get("title"), rows_c45t)
+                  for cell in same_c45t.values())
+              and closed_c45t == [404, 404] and unknown_c45t == 404,
+              "%s ; studio/platform %s ; unknown %s"
+              % ({k: v[0] for k, v in same_c45t.items()}, closed_c45t, unknown_c45t))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
