@@ -414,8 +414,10 @@ def client_display_title(row, product):
 # probed track on fun: each flag is written only when TRUE, on audio, subtitles and video
 # alike, and a real PMS never sends `default: false` or `selected: false`.
 _DISPOSITIONS = {"default": "default", "forced": "forced", "hearingImpaired": "hearing_impaired",
-                 "original": "original", "dub": "dub", "comment": "comment"}
-TRACK_FLAGS = ("default", "forced", "hearingImpaired", "original", "dub", "comment")
+                 "visualImpaired": "visual_impaired", "original": "original", "dub": "dub",
+                 "comment": "comment"}
+TRACK_FLAGS = ("default", "forced", "hearingImpaired", "visualImpaired", "original", "dub",
+               "comment")
 
 
 def _disposition(stream, fields):
