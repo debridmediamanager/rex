@@ -1967,6 +1967,60 @@ def _with_client_titles(node, product):
 _REQUEST = threading.local()
 
 
+# Cycle 45: which languages the table actually HOLDS -- the 28 the capture covers.
+# `Accept-Language` ranks a whole LIST and a tag the server does not hold is SKIPPED
+# rather than ending the search (`zzz, de` answers German on both references), so the
+# reader needs the set and not just the first tag. `en` is not in it: the table maps the
+# English string to the other 28, so an English request is the absence of a translation.
+TRANSLATED_LANGUAGES = frozenset(
+    _code for _attribute in TRANSLATIONS.values() for _entry in _attribute.values()
+    for _code in _entry)
+
+
+def _accept_language_order(value):
+    """An `Accept-Language` list, best first, or None if the header is malformed.
+
+    Cycle 45, measured on kids and zen over 28 header values, identical on both. plexsim
+    read the FIRST member and threw the rest away, so `de;q=0.1, fr;q=0.9` answered
+    German where a real PMS answers French and `de;q=0` answered German where a real PMS
+    falls back to English.
+
+    The grammar: a member is `<tag>` or `<tag>;q=<weight>`, whitespace around `;` and `=`
+    is fine, the default weight is 1.0, `q=0` disqualifies that member, `*` is ignored,
+    an EMPTY member is dropped (`,de` is `de`), a tie goes to the FIRST listed, and a
+    regional form works like its primary subtag. **Any malformed member disqualifies the
+    WHOLE header** -- `q=abc`, `q=.5`, `q=00.5`, `q=+0.5`, `q=-1`, `q=1.5`, `q=`,
+    `Q=0.9`, `x=1`, a second parameter and a member that begins with `;` all fall back to
+    English even when a perfectly good member sits beside them. That is the OPPOSITE of
+    the `Accept:` parser cycle 27 measured, where a bad `q` weighs 0 and the range still
+    qualifies: two different parsers on the same surface.
+    """
+    ranked = []
+    for index, member in enumerate(str(value or "").split(",")):
+        member = member.strip()
+        if not member:
+            continue
+        tag, semicolon, parameters = member.partition(";")
+        tag = tag.strip()
+        if not tag:
+            return None
+        weight = 1.0
+        if semicolon:
+            name, equals, raw = parameters.partition("=")
+            if name.strip() != "q" or not equals:
+                return None
+            raw = raw.strip()
+            # `0`, `1` and `0.d+` only: a sign, a bare `.5`, `00.5` and anything over 1
+            # are each a malformed member, and one of those kills the header.
+            if not re.fullmatch(r"(?:0(?:\.[0-9]+)?|1(?:\.0+)?)", raw):
+                return None
+            weight = float(raw)
+        if tag == "*" or weight == 0:
+            continue
+        ranked.append((-weight, index, tag))
+    return [tag for _weight, _index, tag in sorted(ranked)]
+
+
 def request_language(query, headers):
     """The language a request asks for, by the measured precedence.
 
@@ -1977,10 +2031,29 @@ def request_language(query, headers):
     `PlexSim.handle`, which holds the headers but is not the HTTP handler.
     """
     headers = headers or {}
-    wanted = (query or {}).get("X-Plex-Language") or headers.get("X-Plex-Language")
+    query = query or {}
+    wanted = query.get("X-Plex-Language") or headers.get("X-Plex-Language")
     if not wanted:
-        accept = headers.get("Accept-Language") or ""
-        wanted = accept.split(",")[0].split(";")[0].strip()
+        # Cycle 45: `X-Plex-Accept-Language` is a THIRD input, header AND query, ranked
+        # BETWEEN the two -- `X-Plex-Language` > `X-Plex-Accept-Language` >
+        # `Accept-Language`, measured on both references. plexsim ignored it entirely, so
+        # a client that sends only that header was answered in English.
+        for source in (headers.get("X-Plex-Accept-Language"),
+                       query.get("X-Plex-Accept-Language"),
+                       headers.get("Accept-Language")):
+            order = _accept_language_order(source)
+            if order:
+                # Every tag in weight order: the first the server HAS wins, and one it
+                # does not have is skipped rather than ending the search.
+                for tag in order:
+                    primary = tag.replace("_", "-").split("-")[0].lower()
+                    if primary in TRANSLATED_LANGUAGES:
+                        return primary
+                return None
+            if source is not None and str(source).strip():
+                # A malformed header falls back to English rather than to the next
+                # source: `de;q=abc` is not "no Accept-Language".
+                return None
     primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
     return primary or None
 
