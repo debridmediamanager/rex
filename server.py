@@ -6681,7 +6681,7 @@ class PlexSim:
             return self.media_axis(section_id, section, leaf)
         if leaf == "location":
             return self.location_axis(section_id, section)
-        if leaf == "userRating":
+        if leaf in ("userRating", "rating"):
             # Cycle 14: `/userRating` is a real axis and a FIXED one. kids and zen
             # answer the same six rows, on a movie library and a show library alike,
             # whatever ratings the library actually holds -- so it is a scale and not
@@ -6853,7 +6853,11 @@ class PlexSim:
                     "network": "tag", "collection": "tag", "label": "tag",
                     "year": "year", "decade": "decade",
                     "contentRating": "contentRating", "resolution": "resolution",
-                    "userRating": "userRating"}
+                    # Cycle 44: `/rating` is the same six-bucket axis over the CRITIC
+                    # rating -- a 200 on both references and both library types, and
+                    # the one of the pair a MOVIE library ADVERTISES in its own pivot
+                    # list. plexsim advertised it and 404'd it.
+                    "userRating": "userRating", "rating": "userRating"}
 
     # Which column each star axis buckets on. Measured cycle 44: `/rating` reads the
     # CRITIC rating and `/userRating` the per-user one, and on a SHOW library both read
@@ -6922,6 +6926,8 @@ class PlexSim:
                     if any(str(t.get("id")) == wanted for t in r.get(column) or [])]
             title2 = title
         elif kind in ("year", "decade", "userRating"):
+            # `rating` shares `userRating`'s bucket KIND, so the column comes from the
+            # leaf rather than from the kind.
             if not wanted.isdigit():
                 return ("error", 404, "plexsim: not found")
             number = int(wanted)
@@ -6936,7 +6942,7 @@ class PlexSim:
                         and number <= int(r["year"]) < number + 10]
                 title2 = wanted
             else:
-                rows = self.star_bucket(rows, self.AXIS_COLUMNS[kind], number)
+                rows = self.star_bucket(rows, self.AXIS_COLUMNS[leaf], number)
                 title2 = "%s Star" % wanted
         elif kind == "contentRating":
             if wanted == "None":

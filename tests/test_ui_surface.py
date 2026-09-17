@@ -23864,6 +23864,49 @@ def main():
               and cleared_c44s == (True, False),
               str((five_c44s, seven_c44s, cleared_c44s)))
 
+
+    # Cycle 44: `/library/sections/{id}/rating` is a real secondary axis on BOTH
+    # references and BOTH versions -- the same six-bucket "By Rating" container
+    # `/userRating` answers, byte for byte -- and it is ADVERTISED in a movie library's
+    # own pivot `Directory` list, which `/userRating` is not. plexsim advertised the
+    # pivot and 404'd the leaf, so the Ratings entry in the official client's sidebar
+    # opened nothing. The buckets read the CRITIC rating: zen's `/rating/8` is 221 rows
+    # and its `/userRating/8` is 200.
+    axis_c44r = get(base, "/library/sections/%s/rating" % movie_section)
+    keys_c44r = [(d.get("key"), d.get("title")) for d in (axis_c44r[1].get("Directory") or [])]
+    user_c44r = get(base, "/library/sections/%s/userRating" % movie_section)
+    pivots_c44r = [d.get("key") for d in
+                   (get(base, "/library/sections/%s" % movie_section)[1].get("Directory") or [])]
+    rows_c44r = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    if not rows_c44r:
+        skip("the /rating axis answers and buckets on the critic rating", "no movie rows")
+    else:
+        subject_c44r = rows_c44r[0]["ratingKey"]
+        was_c44r = rows_c44r[0].get("rating")
+
+        def bucket_c44r(key):
+            status_c44r, payload_c44r, _ = get(base, "/library/sections/%s/rating/%s"
+                                               % (movie_section, key))
+            return status_c44r, [r.get("ratingKey") for r in payload_c44r.get("Metadata") or []]
+
+        request(base, "PUT", "/library/metadata/%s?rating.value=7" % subject_c44r)
+        seven_c44r = (subject_c44r in bucket_c44r(8)[1], subject_c44r in bucket_c44r(6)[1],
+                      subject_c44r in bucket_c44r(0)[1])
+        request(base, "PUT", "/library/metadata/%s?rating.value=-1" % subject_c44r)
+        cleared_c44r = subject_c44r in bucket_c44r(0)[1]
+        if was_c44r is not None:
+            request(base, "PUT", "/library/metadata/%s?rating.value=%s" % (subject_c44r, was_c44r))
+        check("the /rating axis answers and buckets on the critic rating",
+              axis_c44r[0] == 200
+              and keys_c44r == [("10", "5 stars"), ("8", "4 stars"), ("6", "3 stars"),
+                                ("4", "2 stars"), ("2", "1 star"), ("-1", "Not rated")]
+              and axis_c44r[1].get("title2") == user_c44r[1].get("title2") == "By Rating"
+              and "rating" in pivots_c44r
+              and bucket_c44r(8)[0] == 200 and bucket_c44r("-1")[0] == 404
+              and seven_c44r == (True, False, False) and cleared_c44r,
+              str((axis_c44r[0], keys_c44r[:2], axis_c44r[1].get("title2"),
+                   bucket_c44r(8)[0], bucket_c44r("-1")[0], seven_c44r, cleared_c44r)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
