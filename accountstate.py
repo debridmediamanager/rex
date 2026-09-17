@@ -21,10 +21,82 @@ import xml.etree.ElementTree as ET
 logger = logging.getLogger("plexsim.accountstate")
 
 DEFAULT_INTERVAL = 1800
+ACCOUNT_REFRESH_INTERVAL = 86400
+ACCOUNT_FEATURE_DELAY = 11
 CONSENT_URL = "https://servers.plex.tv/api/v2/server/users/%s/view_state_sync"
 STATE_URL = "https://scrobbles.plex.tv/state/%s"
 SERVICES_URL = "https://servers.plex.tv/api/v2/server/users/services"
 DECRYPT_SECRET_ENV = "PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64"
+
+
+class AccountRefresh:
+    """Refresh the claimed owner profile and feature UUIDs once per day.
+
+    Across the complete outbound capture every owner-profile read is followed by
+    a feature-table read; the daily pairs are 10.8--11.45 seconds apart. Both
+    values are committed together so a failure leaves the last-good identity and
+    feature universe intact.
+    """
+
+    def __init__(self, claim, *, interval=ACCOUNT_REFRESH_INTERVAL,
+                 feature_delay=ACCOUNT_FEATURE_DELAY,
+                 opener=urllib.request.urlopen, clock=time.time, waiter=None):
+        self.claim = claim
+        self._interval = interval
+        self._feature_delay = feature_delay
+        self._open = opener
+        self._clock = clock
+        self._stop = threading.Event()
+        self._waiter = waiter or self._stop.wait
+        self._thread = None
+        self._next = 0
+        self.last_ok = None
+        self.failures = 0
+
+    def refresh(self):
+        if not self.claim.claimed:
+            return False
+        account_id = self.claim.fetch_account_id(opener=self._open)
+        if self._feature_delay:
+            self._waiter(self._feature_delay)
+        feature_uuids = self.claim.fetch_features(opener=self._open)
+        with self.claim._lock:
+            self.claim.account_id = account_id
+            self.claim.feature_uuids = sorted(set(feature_uuids))
+            self.claim._save()
+        self.last_ok = self._clock()
+        self.failures = 0
+        return True
+
+    def refresh_due(self):
+        """Run at startup and then no more often than the measured daily cadence."""
+        now = self._clock()
+        if now < self._next:
+            return False
+        try:
+            return self.refresh()
+        finally:
+            self._next = now + self._interval
+
+    def start(self):
+        if self._thread is not None:
+            return
+        self._thread = threading.Thread(target=self._run,
+                                        name="plexsim-account-refresh", daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+
+    def _run(self):
+        while not self._stop.is_set():
+            try:
+                self.refresh_due()
+            except Exception as error:
+                self.failures += 1
+                logger.error("claimed-account refresh failed (%d in a row): %s",
+                             self.failures, error)
+            self._stop.wait(max(0, self._next - self._clock()))
 
 
 # AES is deliberately local and small: Python's standard library has no block

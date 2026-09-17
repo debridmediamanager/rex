@@ -2585,6 +2585,7 @@ class PlexSim:
         # Optional claimed-account watch/rating importer. main() attaches it
         # only when the measured scrobbling transport secret is configured.
         self.account_state = None
+        self.account_refresh = None
         # Directory holding the extracted Plex Web client, served at /web.
         self.web_root = web_root
         self.assert_claimed = assert_claimed
@@ -6172,6 +6173,8 @@ class PlexSim:
         # connectivity -- which is the call that needs a SERVER registry record.
         status, body = self.claim.announce_connectivity()
         logger.info("post-claim connectivity PUT -> %s %s", status, body)
+        if self.account_refresh is not None:
+            self.account_refresh.start()
         if self.account_state is not None:
             self.account_state.start()
 
@@ -20058,6 +20061,10 @@ def main():
         beat.start()
 
     account_sync = None
+    account_refresh = accountstate_module.AccountRefresh(claim)
+    sim.account_refresh = account_refresh
+    if claim.claimed:
+        account_refresh.start()
     if os.environ.get(accountstate_module.DECRYPT_SECRET_ENV):
         provider = accountstate_module.ScrobblingBearerProvider(claim)
         account_sync = accountstate_module.WatchStateSync(
@@ -20080,6 +20087,7 @@ def main():
             beat.stop()
         if account_sync is not None:
             account_sync.stop()
+        account_refresh.stop()
 
 
 if __name__ == "__main__":

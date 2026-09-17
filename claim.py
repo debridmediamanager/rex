@@ -128,28 +128,12 @@ class Claim:
             self.token = token
             self.owner = attrs.get("username")
             self.email = attrs.get("email")
-            try:
-                self.feature_uuids = self.fetch_features(token)
-            except Exception as error:
-                # Claiming is the irreversible/user-visible operation. A transient
-                # feature-table failure must not turn a successful exchange into an
-                # apparent claim failure; the named, measured defaults remain valid.
-                self.feature_uuids = []
-                logger.warning("could not read plex.tv feature table: %s", error)
-            try:
-                self.account_id = self.fetch_account_id(token)
-            except Exception as error:
-                # The claim itself and the feature table remain useful if the
-                # account profile is temporarily unavailable. Watch-state sync
-                # will retry this read before its first page.
-                self.account_id = None
-                logger.warning("could not read plex.tv account id: %s", error)
             self._save()
 
         logger.info("CLAIMED by %s; server token stored", self.owner)
         return attrs
 
-    def fetch_features(self, token=None):
+    def fetch_features(self, token=None, opener=urllib.request.urlopen):
         """Read the account-scoped feature UUID universe from plex.tv.
 
         Cycle 46's complete outbound-read census found the exact source a real PMS
@@ -166,7 +150,7 @@ class Claim:
             FEATURES_URL + "?" + query,
             headers=dict(self._headers(), Accept="application/xml"),
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with opener(request, timeout=30) as response:
             root = ET.fromstring(response.read())
         return sorted({node.attrib["uuid"] for node in root.iter("feature")
                        if node.attrib.get("uuid")})
@@ -177,7 +161,7 @@ class Claim:
         values.update(self.feature_uuids)
         return ",".join(sorted(values))
 
-    def fetch_account_id(self, token=None):
+    def fetch_account_id(self, token=None, opener=urllib.request.urlopen):
         """Read the numeric owner id used by both cloud state endpoints."""
         token = token or self.token
         if not token:
@@ -190,7 +174,7 @@ class Claim:
             ACCOUNT_URL + "?" + query,
             headers=dict(self._headers(), **{"X-Plex-Token": token}),
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with opener(request, timeout=30) as response:
             root = ET.fromstring(response.read())
         value = root.attrib.get("id")
         if value is None or not str(value).isdigit():
