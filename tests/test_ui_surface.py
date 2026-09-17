@@ -25219,7 +25219,12 @@ def main():
         rows_c46g = list(body_c46g.get("Metadata") or [])
         rows_c46g.extend(row_c46g for hub_c46g in body_c46g.get("Hub") or []
                          for row_c46g in hub_c46g.get("Metadata") or [])
-        return [row_c46g for row_c46g in rows_c46g if row_c46g.get("type") != "show"]
+        # Earlier suite checks have already created playlists and collections.
+        # Those rows deliberately have no primary guid, so includeGuids cannot
+        # mint an identifier for them. Restrict the assertion to the catalog
+        # metadata rows whose primary guid makes the measured gate applicable.
+        return [row_c46g for row_c46g in rows_c46g
+                if row_c46g.get("type") != "show" and row_c46g.get("guid")]
 
     guid_surface_c46g = [(path_c46g,
                           guid_rows_c46g(path_c46g, False),
@@ -25432,35 +25437,6 @@ def main():
           and feature_c46p[0][2] == sum(r_c46p[2] for r_c46p in libs_c46p)
           and feature_c46p[0][3] == sum(r_c46p[3] for r_c46p in libs_c46p),
           str(rows_c46p))
-
-    # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
-    # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
-    # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
-    # NEGATIVE section id -- between the 10% and 40% activity updates. plexsim pushed the
-    # eight activity frames and none of the fourteen timeline ones, so a client holding a
-    # row from the deleted library never heard that it had gone.
-    doomed = [r.get("ratingKey") for r in
-              get(base, "/library/sections/%s/all" % show_section)[1].get("Metadata") or []]
-    _status, frames = notifications(
-        base, lambda: request(base, "DELETE", "/library/sections/%s" % show_section))
-    deleted = [entry for frame in frames
-               for entry in ((frame.get("NotificationContainer") or {}).get("TimelineEntry") or [])
-               if entry.get("state") == 9 and entry.get("metadataState") == "deleted"]
-    # Cycle 30, measured on the copy on a 3-row and a 200-row library, both built for the
-    # question: a library DELETE pushes NO timeline frames at all -- only the eight
-    # `library.delete` activity frames, which plexsim already sends. Cycle 18's fourteen
-    # `state 9` frames named a different section from the one deleted, none of their ids
-    # was a row of the library, and the same fourteen appeared for a nine-row library: they
-    # are a one-off cleanup of orphaned `type: 12` rows. plexsim sent one entry per
-    # top-level row, so a zen-sized library would have handed every client a 1 MB frame.
-    activities_c30k = [entry_c30k for frame_c30k in frames
-                       for entry_c30k in ((frame_c30k.get("NotificationContainer") or {})
-                                          .get("ActivityNotification") or [])
-                       if (entry_c30k.get("Activity") or {}).get("type") == "library.delete"]
-    check("a library delete frames no rows, only its activity",
-          bool(doomed) and not deleted and len(activities_c30k) >= 6,
-          "%s timeline frame(s) for %s rows, %s activity frame(s)"
-          % (len(deleted), len(doomed), len(activities_c30k)))
 
     # Cycle 19: a boolean filter field's whole operator grammar, measured on kids and zen
     # over `unwatched` and `duplicate`, seven values and all eight operators. Exactly two
@@ -26887,6 +26863,29 @@ def main():
                       get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []),
                   "childCount=%s leafCount=%s"
                   % (row.get("childCount"), row.get("leafCount")))
+
+    # Destructive library deletion is intentionally last. Cycle 46 added several
+    # read-only show option checks near the suite tail; deleting their source section
+    # earlier made five valid regressions fail solely from test order.
+    #
+    # Cycle 18 measured one `state 9` timeline frame per row, but cycle 30's controlled
+    # 3-row and 200-row copies proved those were unrelated orphan cleanup. A library
+    # DELETE pushes no timeline rows, only its activity sequence.
+    doomed = [r.get("ratingKey") for r in
+              get(base, "/library/sections/%s/all" % show_section)[1].get("Metadata") or []]
+    _status, frames = notifications(
+        base, lambda: request(base, "DELETE", "/library/sections/%s" % show_section))
+    deleted = [entry for frame in frames
+               for entry in ((frame.get("NotificationContainer") or {}).get("TimelineEntry") or [])
+               if entry.get("state") == 9 and entry.get("metadataState") == "deleted"]
+    activities_c30k = [entry_c30k for frame_c30k in frames
+                       for entry_c30k in ((frame_c30k.get("NotificationContainer") or {})
+                                          .get("ActivityNotification") or [])
+                       if (entry_c30k.get("Activity") or {}).get("type") == "library.delete"]
+    check("a library delete frames no rows, only its activity",
+          bool(doomed) and not deleted and len(activities_c30k) >= 6,
+          "%s timeline frame(s) for %s rows, %s activity frame(s)"
+          % (len(deleted), len(doomed), len(activities_c30k)))
 
     # ------------------------------------------------------------------
     total = len(results)
