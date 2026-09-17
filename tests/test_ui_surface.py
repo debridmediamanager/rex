@@ -23948,6 +23948,26 @@ def main():
           and near_c44c == {"GET": 404, "POST": 404, "PUT": 200, "DELETE": 404, "OPTIONS": 404},
           str((verbs_c44c, near_c44c)))
 
+
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): the BARE `/sync` -- and
+    # `/sync/` -- is the legacy plug-in dispatcher's `{size: 0, content: "plugins"}`
+    # 200, like every other single-segment path on the surface, while the deeper sync
+    # paths (`/sync/items`, `/sync/transcodeQueue`, `/sync/zzz`) really are 404s.
+    # plexsim short-circuited the whole prefix to a 404 on the note that it has no sync,
+    # so it answered ONE single-segment path differently from all the others.
+    sync_c45 = {}
+    for path_c45 in ("/sync", "/sync/", "/sync/items", "/sync/transcodeQueue",
+                     "/sync/zzz"):
+        status_c45, payload_c45, _ = get(base, path_c45)
+        sync_c45[path_c45] = (status_c45, payload_c45.get("content"),
+                              payload_c45.get("size"))
+    check("the bare /sync is the plug-in dispatcher's 200",
+          sync_c45["/sync"] == (200, "plugins", 0)
+          and sync_c45["/sync/"] == (200, "plugins", 0)
+          and [sync_c45[p][0] for p in ("/sync/items", "/sync/transcodeQueue",
+                                        "/sync/zzz")] == [404, 404, 404],
+          str(sync_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
