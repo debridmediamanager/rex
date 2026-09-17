@@ -13303,6 +13303,32 @@ def main():
           % ("Sammlungen" in prefs_c17d3, "Schauspieler" in hubs_c17d3,
              "Datenbank sichern" in butler_c17d3))
 
+    # Cycle 41 swept every safe read family from the complete retained client and
+    # found four 1.42.2 source strings that the earlier path list never reached.
+    # All 28 translations were captured from zen; these stable German witnesses
+    # exercise the setting and both per-library hub families through the API.
+    prefs_de_c41r3 = get(base, "/:/prefs?X-Plex-Language=de")[1]
+    prefs_by_id_c41r3 = {row_c41r3.get("id"): row_c41r3
+                         for row_c41r3 in prefs_de_c41r3.get("Setting") or []}
+    movie_hubs_de_c41r3 = get(
+        base, "/hubs/sections/%s?X-Plex-Container-Size=20&X-Plex-Language=de"
+              % movie_section)[1]
+    show_hubs_de_c41r3 = get(
+        base, "/hubs/sections/%s?X-Plex-Container-Size=20&X-Plex-Language=de"
+              % show_section)[1] if show_section else {}
+    movie_titles_c41r3 = {hub_c41r3.get("title")
+                          for hub_c41r3 in movie_hubs_de_c41r3.get("Hub") or []}
+    show_titles_c41r3 = {hub_c41r3.get("title")
+                         for hub_c41r3 in show_hubs_de_c41r3.get("Hub") or []}
+    check("the cycle 41 prefs and per-library hub strings are localised",
+          (prefs_by_id_c41r3.get("TranscoderTempDirectory") or {}).get("summary")
+          == "Verzeichnis das während des Transkodierens für temporäre Dateien genutzt wird"
+          and "Top-Auswahl ungesehener Filme" in movie_titles_c41r3
+          and {"Serie starten", "Bestbewertete Serien"} <= show_titles_c41r3,
+          "prefs=%r movie=%s show=%s"
+          % ((prefs_by_id_c41r3.get("TranscoderTempDirectory") or {}).get("summary"),
+             sorted(movie_titles_c41r3), sorted(show_titles_c41r3)))
+
 
     # Cycle 17, mapped path by path on kids by diffing a whole item document against
     # itself in German: inside a `Metadata` row the reference translates exactly three
