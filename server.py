@@ -5732,7 +5732,13 @@ class PlexSim:
         # -- live TV / DVR / sync: plexsim has no tuner and no encoder ----
         if segments[:1] == ["media"] and segments[1:2] in (["subscriptions"], ["grabbers"]):
             return self.bare_container(size=0)
-        if segments[:1] == ["sync"]:
+        if segments[:1] == ["sync"] and len(segments) > 1:
+            # Cycle 45, measured on both references: the DEEPER sync paths are 404s
+            # (`/sync/items`, `/sync/transcodeQueue`, `/sync/zzz`), but the BARE `/sync`
+            # -- and `/sync/` -- is the legacy plug-in dispatcher's `{size: 0,
+            # content: "plugins"}` 200, like every other single-segment path. plexsim
+            # short-circuited the whole prefix to a 404 and so answered a single-segment
+            # path differently from every other one on the surface.
             return ("error", 404, "plexsim: no sync")
 
         if len(segments) == 1:
