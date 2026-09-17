@@ -608,6 +608,47 @@ def main():
           str([(body.get("size"), body.get("totalSize"), body.get("offset"))
                for body in (cap_first, cap_after, cap_limit, cap_count)]))
 
+    # Cycle 41 turned Cycle 28's fitted roll-up threshold into a controlled
+    # add-history measurement on both writable copies: one new episode remains an
+    # episode; adding a sibling under the same season replaces it with that season.
+    roll_catalog = server.Catalog(fixture)
+    roll_sim = server.PlexSim(roll_catalog, Resolver(), assert_claimed=True)
+    roll_show = {
+        "ratingKey": "24901", "key": "/library/metadata/24901",
+        "guid": "local://24901", "type": "show", "title": "Rollup Show",
+        "librarySectionID": 98, "childCount": 1, "leafCount": 1,
+    }
+    roll_season = {
+        "ratingKey": "34901", "key": "/library/metadata/34901",
+        "type": "season", "title": "Season 1", "index": 1,
+        "parentTitle": "Rollup Show", "parentRatingKey": "24901",
+        "librarySectionID": 98, "leafCount": 1,
+    }
+    roll_first_episode = {
+        "ratingKey": "14901", "key": "/library/metadata/14901",
+        "type": "episode", "title": "Episode 1", "index": 1,
+        "parentIndex": 1, "parentTitle": "Season 1",
+        "grandparentTitle": "Rollup Show", "parentRatingKey": "34901",
+        "grandparentRatingKey": "24901", "librarySectionID": 98,
+        "addedAt": 1789800001,
+    }
+    for synthetic in (roll_show, roll_season, roll_first_episode):
+        roll_catalog.add(synthetic)
+    one_sibling = roll_sim.recently_added_tv("98")
+    roll_catalog.add(dict(roll_first_episode, ratingKey="14902",
+                          key="/library/metadata/14902", title="Episode 2",
+                          index=2, addedAt=1789800002))
+    two_siblings = roll_sim.recently_added_tv("98")
+    check("recent TV rolls one new episode to itself and two siblings to the season",
+          [(row.get("type"), row.get("title"), row.get("parentTitle"),
+            row.get("grandparentTitle"), row.get("addedAt"))
+           for row in one_sibling]
+          == [("episode", "Episode 1", "Season 1", "Rollup Show", 1789800001)]
+          and [(row.get("type"), row.get("title"), row.get("parentTitle"),
+                row.get("addedAt")) for row in two_siblings]
+          == [("season", "Season 1", "Rollup Show", 1789800002)],
+          "one %r two %r" % (one_sibling, two_siblings))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
