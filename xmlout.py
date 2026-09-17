@@ -46,8 +46,14 @@ _LIGHT_CHILD_ORDER = {name: index for index, name in enumerate((
     "Media", "Image", "UltraBlurColors", "Guid", "Genre", "Country", "Director",
     "Writer", "Role", "Collection", "Label", "Location"))}
 
+# Cycle 45: `includeAlternates=1` inlines `Thumb` and `Art` between the tags and
+# `Guid`, and `Theme` directly after `Rating` -- kids' show 6 answers `Genre, Country,
+# Thumb, Art, Guid, Rating, Theme, Role` and zen's movie 380 `Genre, Country, Thumb,
+# Art, Guid, Rating, Director`. Without the entries they would fall to the END, which
+# is this table's documented failure mode for a pair no reference emitted.
 _CHILD_ORDER = {name: index for index, name in enumerate((
-    "Media", "Image", "UltraBlurColors", "Style", "Genre", "Country", "Guid", "Rating",
+    "Media", "Image", "UltraBlurColors", "Style", "Genre", "Country",
+    "Thumb", "Art", "Guid", "Rating", "Theme",
     "Collection", "Director", "Writer", "Role", "Producer", "Label", "Similar",
     "CommonSenseMedia", "Chapter", "Marker", "Review", "Field", "Location", "Preferences",
     "OnDeck", "Extras", "Related", "Children"))}
@@ -159,6 +165,17 @@ _ATTR_ORDER = {
     ),
     "Country": (
         "id", "filter", "tag"
+    ),
+    # Cycle 45: an `includeAlternates=1` artwork row. Measured on kids and zen --
+    # `key`, then `previewKey` where the provider gives one, then `source`.
+    "Thumb": (
+        "key", "previewKey", "source"
+    ),
+    "Art": (
+        "key", "previewKey", "source"
+    ),
+    "Theme": (
+        "key", "previewKey", "source"
     ),
     # Cycle 41 measured these four writable tag children on disposable copies of
     # both supported PMS versions. Like Genre/Country they are exactly

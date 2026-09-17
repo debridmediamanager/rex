@@ -18363,11 +18363,88 @@ class Handler(BaseHTTPRequestHandler):
             # behaved differently on the same response.
             try:
                 result = self._exclude_container(result)
+                result = self._alternates_container(result)
                 result = self._page_container(result)
             except filters_module.FilterError as refused:
                 self._send_error(refused.status, "plexsim: %s" % refused.detail)
                 return
         self._send_container(result)
+
+    def _alternates_container(self, result):
+        """Apply `includeAlternates=` to any MediaContainer that carries FULL rows.
+
+        Cycle 45, measured on kids (1.43.4) and zen (1.42.2). The option inlines the
+        AGENT's REMOTE artwork on the row -- `Thumb`, `Art` and `Theme`, each a
+        `{key, source}` naming the provider's own URL, with a `previewKey` where the
+        provider gives a thumbnail. It is a property of the RESPONSE the way
+        `excludeElements=` and paging are, which is why it lives here rather than in a
+        handler: a section grid, `/library/all`, `/library/recentlyAdded`, `/children`,
+        a section search, `/collections`, `/playlists`, `/hubs/search` and
+        `/hubs/home/recentlyAdded` are all byte-identical with and without it, while
+        `/library/metadata/{id}`, `/library/onDeck`, both `related` paths, `postplay`
+        and the full-row shelves inside `/hubs` all carry it -- and the discriminator in
+        every one of those cases is whether the row is the FULL projection or the LIGHT
+        one. A light row NEVER carries it, so the `_light` marker the builders already
+        set is the whole gate.
+
+        Hunt A reported this option as 1.43.4-only, measured against plexscratch42 --
+        a fresh install with nothing matched and therefore no agent artwork to inline.
+        zen, a real 1.42.2 library, answers it; the version rule was the instrument.
+
+        plexsim's remote candidate is the single TMDB image `metadata.py` minted, held
+        beside the row as `_poster_url`/`_art_url` (the same pair `/posters` and `/arts`
+        answer their remote candidate from), so the inlined list is that one entry.
+        There is no `Theme`: plexsim holds no theme audio and no row names one.
+        """
+        if not isinstance(result, dict) or list(result) != ["MediaContainer"]:
+            return result
+        body = result["MediaContainer"]
+        if not isinstance(body, dict):
+            return result
+        route, raw_query = _target_parts(self.path)
+        if route.startswith("/video/:/transcode/universal/decision"):
+            # Measured on kids: a decision ignores the option, exactly as it ignores
+            # `excludeElements=`. plexsim's decision row is the FULL projection, so
+            # without this the generic rule would inline artwork a real PMS does not.
+            return result
+        query = dict(urllib.parse.parse_qsl(raw_query, keep_blank_values=True))
+        if not _include_int(query.get("includeAlternates")):
+            return result
+        items = self.server.sim.catalog.items
+
+        def alternates(row):
+            if not isinstance(row, dict) or row.get("_light"):
+                return row
+            key = str(row.get("ratingKey") or "")
+            stored = items.get(int(key)) if key.isdigit() else None
+            if not stored:
+                return row
+            out = dict(row)
+            for name, private in (("Thumb", "_poster_url"), ("Art", "_art_url")):
+                url = stored.get(private)
+                if url:
+                    out[name] = [{"key": url, "source": "tmdb"}]
+            return out
+
+        def walk(node):
+            if isinstance(node, dict):
+                out = {}
+                for name, value in node.items():
+                    if name == "Metadata" and isinstance(value, list):
+                        out[name] = [alternates(walk(entry)) for entry in value]
+                    elif name == "Metadata" and isinstance(value, dict):
+                        # `OnDeck` holds ONE row rather than a list.
+                        out[name] = alternates(walk(value))
+                    elif name in ("Hub", "Related", "Extras", "Children", "OnDeck"):
+                        out[name] = walk(value)
+                    else:
+                        out[name] = value
+                return out
+            if isinstance(node, list):
+                return [walk(entry) for entry in node]
+            return node
+
+        return {"MediaContainer": walk(body)}
 
     def _exclude_container(self, result):
         """Apply `excludeElements=` to any MediaContainer that carries rows.
