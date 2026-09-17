@@ -24451,6 +24451,45 @@ def main():
           "%s ; %s" % ({k: v for k, v in axes_c45x.items()
                         if v != (200, 0, want_c45x[k])} or "all ten", typed_c45x))
 
+
+    # Cycle 45: two more section leaves, 200 on kids, zen and both writable copies and
+    # 404 on plexsim.
+    #
+    #  * `/recentlyViewedGrandparents` is byte-identical to `/recentlyViewedShows` on
+    #    both library types -- same `title2` ("Recently Viewed Shows"), same rows, same
+    #    `allowSync: false`.
+    #  * `/recentlyAddedGrandparents` is byte-identical to `/recentlyAdded` on a MOVIE
+    #    library; on a SHOW library it rolls the recently-added leaves up to their SHOW,
+    #    drops `mixedParents` and KEEPS `viewGroup: "episode"` (kids: 6 episode rows
+    #    become 1 show row).
+    grand_c45 = {}
+    for label_c45, section_c45 in (("movie", movie_section), ("show", show_section)):
+        if section_c45 is None:
+            continue
+        for leaf_c45, twin_c45 in (("recentlyViewedGrandparents", "recentlyViewedShows"),
+                                   ("recentlyAddedGrandparents", "recentlyAdded")):
+            status_c45, got_c45, _ = get(base, "/library/sections/%s/%s"
+                                         % (section_c45, leaf_c45))
+            twin_payload_c45 = get(base, "/library/sections/%s/%s"
+                                   % (section_c45, twin_c45))[1]
+            grand_c45["%s/%s" % (label_c45, leaf_c45)] = (
+                status_c45, got_c45.get("title2"), got_c45.get("viewGroup"),
+                got_c45.get("allowSync"),
+                [r.get("ratingKey") for r in got_c45.get("Metadata") or []]
+                == [r.get("ratingKey") for r in twin_payload_c45.get("Metadata") or []],
+                [str(r.get("type")) for r in got_c45.get("Metadata") or []][:1])
+    viewed_c45 = [v for k, v in grand_c45.items() if "Viewed" in k]
+    added_c45 = {k: v for k, v in grand_c45.items() if "Added" in k}
+    check("the two Grandparents leaves answer",
+          bool(grand_c45)
+          and all(v[0] == 200 and v[1] == "Recently Viewed Shows" and v[3] is False
+                  and v[4] for v in viewed_c45)
+          and all(v[0] == 200 and v[1] == "Recently Added" for v in added_c45.values())
+          and added_c45.get("movie/recentlyAddedGrandparents", (0, 0, 0, 0, True))[4]
+          and (show_section is None
+               or added_c45["show/recentlyAddedGrandparents"][2] == "episode"),
+          str(grand_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
