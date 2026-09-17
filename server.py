@@ -578,7 +578,19 @@ CROSS_TYPE_AXES = {"platform": "", "mood": "By Mood", "style": "By Style",
                    "format": "By Format",
                    "subformat": "By Type", "source": "By Source",
                    "make": "By Camera Make", "model": "By Camera Model",
-                   "place": "By Place", "tag": "By Tag"}
+                   "place": "By Place", "tag": "By Tag",
+                   # Cycle 45: ten MORE, measured on kids, zen and both writable copies.
+                   # The nine above are the music and photo families; these are the
+                   # sport, podcast and photo-EXIF ones. `narrator` is the only axis on
+                   # the surface that does NOT validate `type=` -- see the branch below.
+                   "autotag": "By Autotag", "aperture": "By Aperture",
+                   "exposure": "By Shutter Speed", "iso": "By ISO", "lens": "By Lens",
+                   "sport": "By Sport", "team": "By Team", "channel": "By Channel",
+                   "publisher": "By Publisher", "narrator": "By Narrator"}
+
+# Cycle 45: the one axis that answers 200 to a `type=` it cannot parse, where every other
+# tag axis is a 500. Measured on kids and zen.
+TYPE_BLIND_AXES = ("narrator",)
 
 # Cycle 44, measured on zen and plexscratch42 (both 1.42.2) against kids (1.43.4), on a
 # movie library and a show library alike: `videoCodec`, `audioCodec`, `subtitleCodec` and
@@ -6858,7 +6870,12 @@ class PlexSim:
             # references, exactly as `/genre` is, while `?type=2` is a 200. The two
             # axes added beside them split the other way -- see `userRating` above,
             # which ignores `type=` completely the way `/resolution` does.
-            self._parsed_type(query, 500, 500)
+            # Cycle 45: all but ONE. `narrator` answers 200 to a `type=` it cannot
+            # parse -- `abc`, `zzz`, `1.5` and an empty value alike -- where every other
+            # axis on the surface, `/genre` and the nineteen beside it included, is a
+            # 500. Measured on kids and zen.
+            if leaf not in TYPE_BLIND_AXES:
+                self._parsed_type(query, 500, 500)
             return self.secondary_container(section_id, section,
                                             CROSS_TYPE_AXES[leaf], Directory=[])
 
