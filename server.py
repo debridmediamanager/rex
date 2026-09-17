@@ -12849,9 +12849,15 @@ class PlexSim:
             # The beat's own duration, as the library uses: with none, nothing is stored
             # and nothing completes, and the answer carries the item's stored offset.
             total = total_ms or 0
-            if offset_ms > 60000 and total:
-                playback_state = "progress"
-                if offset_ms >= total * 0.9:
+            # Cycle 45: the minute gate belongs to the resume point, not to the
+            # reported state -- see `library.progress` -- and the 90% threshold is
+            # INTEGER arithmetic, `(duration * 9) // 10`. Bisected on plexscratch42: at
+            # `duration=66667` the boundary is exactly 60 000, where `* 0.9` is 60 000.3
+            # and would need 60 001; at `duration=100000` the two forms agree, which is
+            # why no earlier cycle could see the difference.
+            if total:
+                playback_state = "progress" if offset_ms > 60000 else "ignore"
+                if offset_ms >= (total * 9) // 10:
                     # Past 90% the answer is never `progress`: it is `complete` for the beat
                     # that completed the play and every one after it until a `stopped` closes
                     # it, and `ignore` for a beat that completed nothing -- one that did not
