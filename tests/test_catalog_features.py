@@ -401,6 +401,16 @@ def main():
           and duration_order == ["105", "103", "104"],
           "values %s order %s" % (duration_values, duration_order))
 
+    # Cycle 41 measured this exact plus-named download on disposable copies of both
+    # supported PMS versions. The legacy filename substitutes an underscore, while
+    # filename* preserves the name and percent-encodes the plus and final dot.
+    disposition = getattr(server, "_download_disposition", lambda _name: None)(
+        "C41C Plus+Name (2202).mkv")
+    check("download disposition maps plus only in the legacy filename",
+          disposition == ('attachment; filename="C41C Plus_Name (2202).mkv"; '
+                          "filename*=UTF-8''C41C%20Plus%2BName%20%282202%29%2Emkv"),
+          str(disposition))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
