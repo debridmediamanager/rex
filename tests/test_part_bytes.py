@@ -90,11 +90,24 @@ class CDN(_Quiet):
         self.wfile.write(chunk)
 
 
+UNAVAILABLE = {"on": False}
+
+
 def make_rd(cdn_url):
     class RD(_Quiet):
         def do_POST(self):
             length = int(self.headers.get("Content-Length") or 0)
             self.rfile.read(length)
+            if UNAVAILABLE["on"]:
+                # What Real-Debrid answers for a link whose file is gone.
+                body = json.dumps({"error": "unavailable_file",
+                                   "error_code": 24}).encode()
+                self.send_response(404)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             payload = json.dumps({"download": cdn_url, "filesize": SIZE}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -138,6 +151,30 @@ CATALOG = {
                                  {"id": 1001, "streamType": 1, "codec": "h264",
                                   "index": 0, "width": 1280, "height": 720},
                                  {"id": 1002, "streamType": 2, "codec": "aac",
+                                  "index": 1, "channels": 2, "selected": True},
+                             ]}]}],
+    }, {
+        # A second row, so the unavailable-file check resolves a link the cache has
+        # never seen: `Resolver` memoises per link with a TTL the suite cannot reach.
+        "ratingKey": "2", "key": "/library/metadata/2",
+        "librarySectionID": 1, "librarySectionTitle": "Bytes",
+        "librarySectionKey": "/library/sections/1",
+        "type": "movie", "title": "Gone Movie", "year": 2026,
+        "guid": "plex://movie/000000000000000000000002", "duration": 60000,
+        "addedAt": 1700000000, "updatedAt": 1700000000,
+        "Media": [{"id": 200, "container": "mp4", "videoCodec": "h264",
+                   "audioCodec": "aac", "width": 1280, "height": 720,
+                   "duration": 60000, "videoResolution": "720", "bitrate": 1000,
+                   "aspectRatio": 1.78, "audioChannels": 2,
+                   "Part": [{"id": 20, "container": "mp4", "size": SIZE,
+                             "duration": 60000,
+                             "key": "/library/parts/20/1700000000/file.mp4",
+                             "file": "/plexsim/1/gone movie.mp4",
+                             "_debrid": "https://real-debrid.com/d/PARTBYTESGONE",
+                             "Stream": [
+                                 {"id": 2001, "streamType": 1, "codec": "h264",
+                                  "index": 0, "width": 1280, "height": 720},
+                                 {"id": 2002, "streamType": 2, "codec": "aac",
                                   "index": 1, "channels": 2, "selected": True},
                              ]}]}],
     }],
@@ -307,6 +344,21 @@ def main():
         after = bandwidth()
         check("a ranged read counts its own bytes, not the whole file",
               0 < after - before <= 2000, "delta=%d (a 1000-byte read)" % (after - before))
+
+        # -- an UNAVAILABLE file is a 404, not a 502 -------------------------------
+        # Measured on zen part 23595, whose `checkFiles=1` reports
+        # `accessible=false`/`exists=false`: the byte read is a plain 404 with the
+        # binary refusal header set. plexsim answered 502 to a dead link and to a
+        # network failure alike.
+        UNAVAILABLE["on"] = True
+        try:
+            status, names, values, _body = raw(
+                port, "/library/parts/20/1700000000/file.mp4", [("Accept", "*/*")])
+        finally:
+            UNAVAILABLE["on"] = False
+        check("an unavailable file answers 404, not 502",
+              status == 404 and values.get("content-type") == "text/html",
+              "%s %s" % (status, values.get("content-type")))
     finally:
         process.terminate()
         try:

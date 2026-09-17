@@ -11,6 +11,7 @@ import json
 import os
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -24,6 +25,15 @@ API = os.environ.get("RD_API") or "https://api.real-debrid.com/rest/1.0"
 # Measured: an unrestricted RD CDN URL keeps serving well past an hour, but the
 # cost of re-resolving is one small POST, so the cache is deliberately short.
 TTL_SECONDS = 1800
+
+
+class Unavailable(Exception):
+    """The debrid provider says the file itself is not there.
+
+    Distinct from a transport failure: a real PMS answers a byte read of a part whose
+    file it cannot open with a plain **404**, not a 5xx (measured cycle 44 on zen part
+    23595, whose `checkFiles=1` reports `accessible=false`/`exists=false`).
+    """
 
 
 class Resolver:
@@ -54,8 +64,27 @@ class Resolver:
             data=body,
             headers={"Authorization": "Bearer " + self._token},
         )
-        with urllib.request.urlopen(req, timeout=30) as response:
-            payload = json.load(response)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                payload = json.load(response)
+        except urllib.error.HTTPError as error:
+            # Cycle 44: tell "this file is not there" apart from "the transport
+            # failed". A real PMS answers a plain 404 to a byte read of a part whose
+            # file it cannot open -- zen part 23595, whose `checkFiles=1` reports
+            # `accessible=false`/`exists=false`, answers `404` with the binary refusal
+            # header set -- where plexsim answered 502 to everything. Real-Debrid's
+            # `unavailable_file` (error_code 24) and a 404 from its API are that case;
+            # anything else stays a transport failure and keeps the 502, so a network
+            # blip is still distinguishable from a dead link.
+            detail = {}
+            try:
+                detail = json.loads(error.read() or b"{}")
+            except Exception:
+                detail = {}
+            code = detail.get("error_code")
+            if error.code == 404 or code == 24 or detail.get("error") == "unavailable_file":
+                raise Unavailable(detail.get("error") or "unavailable_file")
+            raise
         return payload["download"], int(payload.get("filesize") or 0)
 
     def invalidate(self, link):
