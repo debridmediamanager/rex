@@ -4950,7 +4950,7 @@ class PlexSim:
         if route == "/library/tags":
             return self.library_tags(query)
         if route == "/library/arts" and method in ("GET", "HEAD"):
-            return self.library_arts()
+            return self.library_arts(query)
         if route == "/library/randomArtwork" and method in ("GET", "HEAD"):
             return self.random_artwork(query)
         if route == "/library/matches":
@@ -15468,7 +15468,7 @@ class PlexSim:
             shown.append(dict([("score", 100)] + list(row.items())) if scored else row)
         return self.bare_container(size=len(shown), Metadata=shown)
 
-    def library_arts(self):
+    def library_arts(self, query=None):
         """`/library/arts` -- every row on the server that OWNS an `art`.
 
         Cycle 45, found by sweeping the library-level name space against both references
@@ -15489,9 +15489,30 @@ class PlexSim:
         `/library/posters`, `/library/thumbs` and `/library/banners` are 404s on both
         references -- `arts` is the only one of the family.
         """
+        # Cycle 45: it is a listing QUERY, not a dump -- the same shape cycle 29
+        # measured for `/library/sections/{id}/extras/all`. `title=`, `id=`, `year=`,
+        # `genre=`, `titleSort=`, `summary=`, `guid=` and `duplicate=` all constrain it;
+        # `sort=zzz` is a 500; `type=` and a GOOD `limit=` are accepted and ignored (it
+        # PARSES the limit without honouring its value, as `/children` does, so
+        # `limit=abc` is a 500 -- see `PARSES_LIMIT`); and it refuses the SAME FIFTEEN
+        # keys `/hubs` refuses, which is why `group=` and `unwatched=` are 500s here and
+        # ordinary filters on a grid. plexsim answered its whole list to every one.
+        query = query or {}
+        refused = hub_refusal(query)
+        if refused:
+            return refused
+        refusal = self._listing_refusals(query)
+        if refusal:
+            return refusal
         rows = []
         for section in self.catalog.sections:
             members = self.catalog.section_items(str(section.get("key")))
+            members, _ = self.apply_filters(members, query,
+                                            self.catalog.section(section.get("key")) or {})
+            _ordered, unsupported = self._sorted(list(members), query.get("sort")
+                                                 or "titleSort")
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             for row in sorted(members, key=lambda item: int(item["ratingKey"])
                               if str(item.get("ratingKey", "")).isdigit() else 0):
                 art = str(row.get("art") or "")
@@ -17713,6 +17734,8 @@ class Handler(BaseHTTPRequestHandler):
     # as not parsing the string. `/newest`, `/recentlyAdded`, `/library/onDeck`, the hub
     # paths, `/sorts`, `/filters` and `/library/sections` ignore both entirely and are
     # deliberately absent.
+    # Cycle 45 adds `/library/arts` to the routes below, which is the other half
+    # of the same rule: a GOOD `limit=` does nothing there and `limit=abc` is a 500.
     PARSES_LIMIT = ("all", "allLeaves", "search", "common", "genre", "year", "decade",
                     "contentRating", "studio", "director", "writer", "producer",
                     "country", "actor", "label", "collection", "resolution",
@@ -17739,7 +17762,7 @@ class Handler(BaseHTTPRequestHandler):
         if parts[:2] == ["library", "sections"] and len(parts) == 4 \
                 and parts[3] in self.PARSES_LIMIT:
             return 500
-        if route == "/library/all" or route == "/playlists":
+        if route in ("/library/all", "/playlists", "/library/arts"):
             return 500
         if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
                 and parts[3] in ("children", "grandchildren", "allLeaves"):
