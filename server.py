@@ -7782,6 +7782,17 @@ class PlexSim:
             return lambda r: (True, max(
                 [p.get("size") or 0 for m in r.get("Media") or []
                  for p in m.get("Part") or []] or [0]))
+        if key == "duration":
+            # Cycle 41 closes cycle 19's differentiating-fixture gap: sort and
+            # filter both read Media.duration, not the metadata row's duration.
+            # A Media with no duration sorts below every populated value. The
+            # references' ordering witness exercises a row's primary Media;
+            # which version wins on a multi-Media row remains a separate axis.
+            def media_duration(row):
+                media = row.get("Media") or []
+                value = media[0].get("duration") if media else None
+                return (value is not None, value or 0)
+            return media_duration
         if key == "createdAt":
             # Measured on zen: `sort=createdAt` comes back in addedAt order.
             return lambda r: (r.get("addedAt") is not None, r.get("addedAt") or 0)
