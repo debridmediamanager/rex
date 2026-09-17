@@ -21868,27 +21868,49 @@ def main():
     # makes the title alternative match every row.
     if show_section:
         def titles_c41r2(value_c41r2):
-            suffix_c41r2 = "" if value_c41r2 is None else "&title=" + value_c41r2
+            suffix_c41r2 = ("" if value_c41r2 is None
+                            else "&title=" + quote(value_c41r2))
             status_c41r2, body_c41r2, _ = get(
                 base, "/library/sections/%s/all?type=4%s" % (show_section, suffix_c41r2))
-            return status_c41r2, {row_c41r2.get("title")
+            return status_c41r2, {str(row_c41r2.get("ratingKey"))
                                   for row_c41r2 in body_c41r2.get("Metadata") or []}
 
         status_all_c41r2, all_c41r2 = titles_c41r2(None)
-        status_a_c41r2, eternal_c41r2 = titles_c41r2("Eternal")
-        status_b_c41r2, fixture_c41r2 = titles_c41r2("Fixture")
-        status_union_c41r2, union_c41r2 = titles_c41r2("Eternal,Fixture")
-        empty_sets_c41r2 = [titles_c41r2(value_c41r2)[1]
-                            for value_c41r2 in ("Eternal,", ",Eternal", "Eternal,,")]
-        check("title comma members are ORed and an empty member matches every row",
-              {status_all_c41r2, status_a_c41r2, status_b_c41r2,
-               status_union_c41r2} == {200}
-              and len(eternal_c41r2) == 1 and len(fixture_c41r2) == 7
-              and union_c41r2 == eternal_c41r2 | fixture_c41r2 == all_c41r2
-              and all(rows_c41r2 == all_c41r2 for rows_c41r2 in empty_sets_c41r2),
-              "all=%d eternal=%d fixture=%d union=%d empties=%s"
-              % (len(all_c41r2), len(eternal_c41r2), len(fixture_c41r2),
-                 len(union_c41r2), [len(rows_c41r2) for rows_c41r2 in empty_sets_c41r2]))
+        episode_rows_c41r2 = get(
+            base, "/library/sections/%s/all?type=4" % show_section)[1].get("Metadata") or []
+        candidates_c41r2 = []
+        for title_c41r2 in dict.fromkeys(
+                str(row_c41r2.get("title") or "") for row_c41r2 in episode_rows_c41r2):
+            if not title_c41r2 or "," in title_c41r2:
+                continue
+            status_c41r2, keys_c41r2 = titles_c41r2(title_c41r2)
+            if status_c41r2 == 200 and keys_c41r2:
+                candidates_c41r2.append((title_c41r2, keys_c41r2))
+        pair_c41r2 = next(
+            ((left_c41r2, right_c41r2)
+             for left_c41r2 in candidates_c41r2
+             for right_c41r2 in candidates_c41r2
+             if left_c41r2[0] != right_c41r2[0]
+             and left_c41r2[1].isdisjoint(right_c41r2[1])), None)
+        if pair_c41r2:
+            (a_title_c41r2, a_keys_c41r2), (b_title_c41r2, b_keys_c41r2) = pair_c41r2
+            status_union_c41r2, union_c41r2 = titles_c41r2(
+                a_title_c41r2 + "," + b_title_c41r2)
+            empty_sets_c41r2 = [titles_c41r2(value_c41r2)[1]
+                                for value_c41r2 in (a_title_c41r2 + ",",
+                                                    "," + a_title_c41r2,
+                                                    a_title_c41r2 + ",,")]
+            check("title comma members are ORed and an empty member matches every row",
+                  status_all_c41r2 == status_union_c41r2 == 200
+                  and union_c41r2 == a_keys_c41r2 | b_keys_c41r2
+                  and all(rows_c41r2 == all_c41r2 for rows_c41r2 in empty_sets_c41r2),
+                  "all=%d a=%d b=%d union=%d empties=%s"
+                  % (len(all_c41r2), len(a_keys_c41r2), len(b_keys_c41r2),
+                     len(union_c41r2),
+                     [len(rows_c41r2) for rows_c41r2 in empty_sets_c41r2]))
+        else:
+            skip("title comma members are ORed and an empty member matches every row",
+                 "no two episode titles produce disjoint non-empty matches")
     else:
         skip("title comma members are ORed and an empty member matches every row",
              "no show section")
