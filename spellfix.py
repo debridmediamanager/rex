@@ -326,12 +326,43 @@ class Vocabulary:
 
 
 class SearchIndex:
-    """One snapshot of the title and visible-tag spellfix tables."""
+    """One snapshot of the title and complete measured tag spellfix tables."""
 
-    def __init__(self, rows, tag_fields):
+    _TAG_CHILDREN = ("Chapter", "Review", "Marker", "CommonSenseMedia", "Network")
+    _PRESENCE_TAGS = (("thumb", "Thumb"), ("art", "Art"), ("theme", "Theme"))
+
+    @classmethod
+    def _row_tag_inputs(cls, row, tag_fields):
+        """Yield every library-owned string feeding PMS's tag vocabulary.
+
+        Cycle 39 compared 94,343 distinct database inputs with row fields and
+        reconstructed 71,109 of 71,124 final tokens exactly.  The field shapes
+        matter: GUIDs use ``id``, ratings use ``image``, studio is scalar, and
+        artwork contributes a constant naming the populated column.
+        """
+        for field in tag_fields:
+            for child in row.get(field) or []:
+                yield child.get("tag")
+        for field in cls._TAG_CHILDREN:
+            for child in row.get(field) or []:
+                yield child.get("tag")
+        for child in row.get("Guid") or []:
+            yield child.get("id")
+        for child in row.get("Rating") or []:
+            yield child.get("image")
+        yield row.get("studio")
+        for field, label in cls._PRESENCE_TAGS:
+            if row.get(field):
+                yield label
+        if (row.get("clearLogo")
+                or any(child.get("type") == "clearLogo"
+                       for child in row.get("Image") or [])):
+            yield "ClearLogo"
+
+    def __init__(self, rows, tag_fields, static_tag_inputs=()):
         rows = list(rows)
         title_inputs = []
-        tag_inputs = []
+        tag_inputs = list(static_tag_inputs or [])
         for row in rows:
             title = row.get("title")
             if title is not None:
@@ -339,8 +370,7 @@ class SearchIndex:
                 # titleSort attribute, so the title appears twice in this input.
                 title_inputs.append("%s %s" %
                                     (title, row.get("titleSort") or title))
-            for field in tag_fields:
-                tag_inputs.extend(tag.get("tag") for tag in row.get(field) or [])
+            tag_inputs.extend(self._row_tag_inputs(row, tag_fields))
         self.metadata = Vocabulary(title_inputs)
         self.tags = Vocabulary(tag_inputs)
 
