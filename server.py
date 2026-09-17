@@ -7160,8 +7160,10 @@ class PlexSim:
             # section whatever the type said, so a show library's letter bar reported
             # show counts on an episode grid.
             self._parsed_type(query, 500)
+            source, _ = self.apply_filters(
+                self.typed_rows(section_id, query), query, section)
             counts = {}
-            for row in self.typed_rows(section_id, query):
+            for row in source:
                 # Cycle 16, measured on zen's real show library (507 shows, 741
                 # seasons, 9287 episodes) and confirmed on kids: the AXIS counts a
                 # row below the library's own top-level type by its SHOW's sort
@@ -7340,6 +7342,7 @@ class PlexSim:
                 # endpoint that reads the original title.
                 rows = [r for r in rows
                         if text in hierarchy_module.stored_title(r).lower()]
+            rows, _ = self.apply_filters(rows, query, section)
             # Cycle 15, measured on kids and zen: this row is the LIGHT grid
             # projection, like every other listing's -- no `Guid`, no `Rating`, no
             # tag ids and no `Stream`. Both references answer a search row that is
@@ -9539,6 +9542,7 @@ class PlexSim:
         the reference's own; it is reproduced so the replay diff stays clean.
         """
         rows = self.typed_rows(section_id, query or {})
+        rows, _ = self.apply_filters(rows, query or {}, section)
         if leaf == "label":
             # Cycle 15, measured on the copy: a label written onto a COLLECTION is in
             # this axis too, under a bare call and under every `type=`. plexsim built
@@ -10507,6 +10511,12 @@ class PlexSim:
                 rows = []
             else:
                 rows = self.catalog.leaves(rating_key)
+            if leaf == "children" and row.get("type") == "season":
+                # A season's children consume the ordinary row-filter grammar. A
+                # show's season list does not: both references leave it unchanged by
+                # `skipCount=`, so this gate deliberately stays on the episode list.
+                section = self.catalog.section(row.get("librarySectionID")) or {}
+                rows, _ = self.apply_filters(rows, query, section)
             extra = {}
             page, paged, start, _ = self.page_window(rows, query)
             # Re-measured on zen against a 24-season show, which is the first show this
