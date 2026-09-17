@@ -32,6 +32,7 @@ playlists 40000+, collections 50000+.
 """
 
 import datetime
+import logging
 import re
 import time
 import urllib.parse
@@ -40,6 +41,8 @@ import zlib
 
 from hierarchy import (_GENERATED_TITLE as GENERATED_SEASON_TITLE,
                        PERSON_TAG_ELEMENTS, person_tag_key, sort_title)
+
+logger = logging.getLogger("plexsim.library")
 
 # Fields a row carries as a number. The client sends every edit as a string.
 # The columns whose VALUE the ITEM edit path really reads. Cycle 20, measured one at a
@@ -324,6 +327,53 @@ class Library:
         self._activities = []
 
     # -- watch state -----------------------------------------------------
+
+    def import_account_state(self, state):
+        """Apply one measured scrobbles.plex.tv state row by its Plex GUID.
+
+        This is an import, not a local scrobble: it must not mint a history row,
+        increment an already-complete item, or replace the cloud timestamps with
+        the current wall clock.
+        """
+        guid = state.get("guid")
+        row = next((item for item in self.catalog.items.values()
+                    if item.get("guid") == guid), None)
+        if row is None:
+            return False
+        viewed_at = state.get("viewedAt")
+        if not isinstance(viewed_at, int):
+            return False
+        view_state = state.get("viewState")
+        if view_state == "complete":
+            row["viewCount"] = max(1, int(row.get("viewCount") or 0))
+            row["lastViewedAt"] = viewed_at // 1000
+            row.pop("viewOffset", None)
+        elif view_state == "unplayed":
+            row.pop("viewCount", None)
+            row.pop("lastViewedAt", None)
+            row.pop("viewOffset", None)
+        else:
+            logger.warning("unknown cloud viewState %r for %s", view_state, guid)
+            return False
+
+        # In all 39 measured item observations rating and ratedAt were paired.
+        # Twenty explicit `rating: -1` rows are the clear operation; the ten rows
+        # with neither field are view-only changes and must not erase local stars.
+        if "rating" in state and "ratedAt" in state:
+            rating = state["rating"]
+            rated_at = state["ratedAt"]
+            if not isinstance(rating, int) or not isinstance(rated_at, int):
+                return False
+            if rating < 0:
+                row.pop("userRating", None)
+                row.pop("lastRatedAt", None)
+            else:
+                row["userRating"] = float(rating)
+                row["lastRatedAt"] = rated_at // 1000
+        elif "rating" in state or "ratedAt" in state:
+            return False
+        self.recount(row)
+        return True
 
     def scrobble(self, rating_key, watched, account_id=1, device_id=1):
         """Mark played/unplayed. A show or season marks every episode beneath it.

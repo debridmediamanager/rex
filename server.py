@@ -67,6 +67,7 @@ http.client._MAXHEADERS = 101
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import claim as claim_module  # noqa: E402
+import accountstate as accountstate_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
 import library as library_module  # noqa: E402
 import filters as filters_module  # noqa: E402
@@ -2581,6 +2582,9 @@ class PlexSim:
         self.owner_username = owner_username
         # Holds the server's own plex.tv token once a client claims it.
         self.claim = claim
+        # Optional claimed-account watch/rating importer. main() attaches it
+        # only when the measured scrobbling transport secret is configured.
+        self.account_state = None
         # Directory holding the extracted Plex Web client, served at /web.
         self.web_root = web_root
         self.assert_claimed = assert_claimed
@@ -6168,6 +6172,8 @@ class PlexSim:
         # connectivity -- which is the call that needs a SERVER registry record.
         status, body = self.claim.announce_connectivity()
         logger.info("post-claim connectivity PUT -> %s %s", status, body)
+        if self.account_state is not None:
+            self.account_state.start()
 
         return self.myplex_account()
 
@@ -19930,6 +19936,9 @@ def main():
         help="machineIdentifier to announce on; defaults to the catalog's own",
     )
     parser.add_argument("--heartbeat-interval", type=int, default=heartbeat_module.DEFAULT_INTERVAL)
+    parser.add_argument("--account-state-interval", type=int,
+                        default=accountstate_module.DEFAULT_INTERVAL,
+                        help="seconds between claimed-account watch/rating imports")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -20048,6 +20057,20 @@ def main():
         )
         beat.start()
 
+    account_sync = None
+    if os.environ.get(accountstate_module.DECRYPT_SECRET_ENV):
+        provider = accountstate_module.ScrobblingBearerProvider(claim)
+        account_sync = accountstate_module.WatchStateSync(
+            claim, sim.library, provider, interval=args.account_state_interval)
+        sim.account_state = account_sync
+        if claim.claimed:
+            account_sync.start()
+    elif claim.claimed:
+        logger.warning(
+            "claimed-account watch/rating sync is OFF: %s is not configured",
+            accountstate_module.DECRYPT_SECRET_ENV,
+        )
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -20055,6 +20078,8 @@ def main():
     finally:
         if beat is not None:
             beat.stop()
+        if account_sync is not None:
+            account_sync.stop()
 
 
 if __name__ == "__main__":

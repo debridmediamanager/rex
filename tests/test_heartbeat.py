@@ -167,6 +167,7 @@ def main():
         b'<MyPlex authToken="SERVER-TOKEN" username="owner" email="o@example.test"/>',
         b'<features><feature id="second" uuid="uuid-b"/>'
         b'<feature id="first" uuid="uuid-a"/></features>',
+        b'<user id="42" username="owner"/>',
     ]
 
     def claim_stub(request, timeout=None):
@@ -186,10 +187,15 @@ def main():
     finally:
         urllib.request.urlopen = real
     check("claim reads the finite feature table after the exchange",
-          len(calls) == 2
+          len(calls) == 3
           and urllib.parse.urlsplit(calls[1].full_url).netloc == "servers.plex.tv"
           and urllib.parse.parse_qsl(urllib.parse.urlsplit(calls[1].full_url).query)
           == [("X-Plex-Token", "SERVER-TOKEN")])
+    check("claim persists the numeric owner id used by cloud state",
+          claimed.account_id == 42 and reloaded.account_id == 42
+          and urllib.parse.urlsplit(calls[2].full_url).netloc == "servers.plex.tv"
+          and urllib.parse.parse_qsl(urllib.parse.urlsplit(calls[2].full_url).query)
+          == [("includeSubscriptions", "1"), ("includeProviders", "1")])
     check("feature UUIDs union with named defaults in sorted order",
           combined == "alpha,uuid-a,uuid-b,zeta", combined)
     check("the acquired feature universe survives restart",
