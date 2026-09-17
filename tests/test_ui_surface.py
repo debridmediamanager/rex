@@ -6755,6 +6755,17 @@ def main():
           "HTTP %s rows=%s frames=%s"
           % ((mismatch_w12a.get("response") or (None,))[0], mismatch_rows_w12a,
              mismatch_entries_w12a))
+    upload_statuses_w12a = [request(base, "POST", path_w12a)[0] for path_w12a in (
+        "/playlists/upload",
+        "/playlists/upload?path=%2Fdata%2Fc41-missing.m3u",
+        "/playlists/upload?sectionID=%s" % movie_section,
+        "/playlists/upload?sectionID=%s&path=%2Fdata%2Fc41-existing.m3u"
+        % movie_section,
+        "/playlists/upload?sectionID=%s&path=%2Fdata%2Fc41-missing.m3u"
+        % movie_section)]
+    check("playlist import needs sectionID and path before its importer failure",
+          upload_statuses_w12a == [400, 400, 400, 500, 500],
+          str(upload_statuses_w12a))
 
     # Measured on plexscratch: deleting an item id a playlist does not hold is a 404 (a
     # ratingKey is not an item id), DELETE on the items clears the list, and a smart
