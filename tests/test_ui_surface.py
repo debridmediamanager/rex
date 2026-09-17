@@ -15520,6 +15520,7 @@ def main():
                 base, verb_c21n, "/library/metadata/%s/%s" % (key_c21n, leaf_c21n))[0]
     _, rel_coll_c21n, _ = get(base, "/library/metadata/%s/related" % c21n_collection)
     _, rel_play_c21n, _ = get(base, "/library/metadata/%s/related" % c21n_playlist)
+    _, leaves_c21n, _ = get(base, "/library/metadata/%s/allLeaves" % c21n_collection)
     _, grand_c21n, _ = get(base, "/library/metadata/%s/grandchildren" % c21n_collection)
     check("a collection and a playlist answer the item action leaves",
           codes_c21n == {("collection", "analyze"): 200, ("collection", "match"): 400,
@@ -15538,11 +15539,14 @@ def main():
           and rel_coll_c21n.get("allowSync") is True
           and rel_play_c21n.get("librarySectionID") is None
           and "allowSync" not in rel_play_c21n
+          and leaves_c21n.get("size") == 0 and not leaves_c21n.get("Metadata")
+          and grand_c21n.get("size") == 0 and not grand_c21n.get("Metadata")
           and grand_c21n.get("viewGroup") == "movie"
           and grand_c21n.get("viewMode") == 65592,
-          "%s | related %r/%r | grandchildren %r"
+          "%s | related %r/%r | leaves/grandchildren %r/%r"
           % (codes_c21n, rel_coll_c21n.get("librarySectionID"),
-             rel_play_c21n.get("librarySectionID"), grand_c21n.get("viewGroup")))
+             rel_play_c21n.get("librarySectionID"), leaves_c21n.get("size"),
+             grand_c21n.get("size")))
 
     _, c21o_made, _ = request(base, "POST", "/library/collections?type=1&title=C21%%20edit"
                                             "&sectionId=%s&uri=server%%3A%%2F%%2F%s%%2Fcom."
