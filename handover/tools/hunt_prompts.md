@@ -2410,3 +2410,39 @@ sort stability and every actual secondary comparison. Validate the recovered con
 existing live corpus, with explicit eligible-group, row and equal-wire-score counts. Exclude groups
 whose complete pre-sort input vector is not reconstructible instead of claiming a universal tie
 rule. End with a precise patch boundary and fail-on-parent regression witnesses.
+
+
+==== Cycle 39 (2026-09-17). Shared preamble: frozen commit `7d98293`, served on 32587/32588;
+mode-700 scratch root `/private/tmp/plexsim-c39.bELXsP`; kids and zen GET/HEAD only through the
+write-shaped-GET guard; no reference websocket/eventsource, media reads, plex.tv, fun or writes.
+Reference database/binary access is read-only. Run `refcheck7.py ref_cycle5_before.json` before and
+after and require byte-identical output. Neither hunter edits the repository. ====
+
+
+# Cycle 39 | Territory A | fresh official-client session and exact replay | frozen plexsim 32587 | reference READ-ONLY
+
+Capture the current official Plex Web client's complete home → movie section → movie grid → show
+section → show grid → movie → show → season → episode walk through plexlab. Install the safety gate
+before the first navigation: block websocket/EventSource, theme/media/part/transcode URLs, updater
+and every non-GET/HEAD or write-shaped GET. Preserve ordered query pairs and all semantic headers.
+Replay every accepted envelope against the live reference and frozen target, remapping only content
+ids, and compare structure, attribute presence/value/order and child order. Separate catalog/state,
+version descriptors and deliberate capability omissions from same-version behavior. Compare the
+normalized signature set with cycle 27's full client corpus and name every new request. Discard and
+repeat any capture that violates the gate; retain the incident privately. End with explicit request
+and unique-signature counts and exactly `no findings` only if no behavioral difference remains.
+
+
+# Cycle 39 | Territory B | complete hub fold/case and technical-tag rank residuals | frozen plexsim 32588 | READ-ONLY
+
+Close the two remaining search entries rather than sampling them. Reuse cycle 32's complete
+2,076-codepoint domain and compare hub membership and all four score tiers with the measured
+title-query and sort-title tables, by word position and full-title/partial shape. Fit on one half,
+hold out the other and report exact cell counts; do not replace a pass-specific rule with generic
+Unicode normalization. Then rebuild the 1.42.2 spelling tag vocabulary exactly from a copied
+database, enumerate every source and rank, and prove whether fields omitted by plexsim can change a
+candidate set that survives the normal-result gate, type filter, tag association and wire cap.
+Search the smallest reconstructible boundary: generic row fields, server-static strings and truly
+library-specific state. Do not ship or propose a copied library vocabulary. Validate positive
+witnesses on guarded live GETs and finish with fail-on-frozen regression targets and exact coverage
+counts.

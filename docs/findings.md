@@ -7820,10 +7820,11 @@ nothing, because the article is not in the string the folded pass reads.
 
 **The hub search matcher uses the same table**, swept by the driver with 825 probes on kids: all 100
 table characters match at a word score at the start and inside a word, and none of the 400-odd letters
-only NFD reaches does. Its CASE handling is not the `title=` one and is not modelled: a capital macron,
-`ſ` and `İ` match inside a title's LAST word (`Cosmos LaundrŌmat`, `SintĒl`, `Tears of ſteel` all 0.93)
-and fail in an earlier word (`CŌsmos`, `TĒars`, `ſteel` alone 0.33), which says the scorer runs two
-passes with different case folding. plexsim uses the query fold on both sides and says so.
+only NFD reaches does. Its CASE handling is not the `title=` one: a capital macron, `ſ` and `İ` match
+inside a title's LAST word (`Cosmos LaundrŌmat`, `SintĒl`, `Tears of ſteel` all 0.93) and fail in an
+earlier partial word (`CŌsmos`, `TĒars`, `ſteel` alone 0.33), which says the scorer runs two passes
+with different case folding. Cycle 39 completed that sweep and built the separate raw-query partial
+and broader whole-title passes; its section below records the exceptions and held-out proof.
 
 **The decision model, from the files.** Cycle 31 named the four inputs; hunt B scored a model over 78
 profiles × 24 rows and the driver fitted the ORDER of its checks against the reference's own refusal
@@ -8537,9 +8538,9 @@ tag types to `(0,1,2,4,6,207,400)`. ICU word-break plus simple Unicode fold, not
 | tags | 71,124 | 0 |
 
 There are no spellfix maintenance triggers. kids' current metadata rows contain five tokens absent
-from its table, so the table can be historically stale; the complete schedule of the three rebuild
-callers remains unknown. plexsim therefore builds a snapshot at catalog load rather than inventing a
-synchronous update rule.
+from its table, so the table can be historically stale. Cycle 38 later recovered the complete caller
+set and built the measured optimize/Butler/section-delete rebuild points; ordinary edits remain
+stale rather than inventing a synchronous update rule.
 
 For each retained query token the reference runs the equivalent of:
 
@@ -8633,6 +8634,54 @@ leaf; and recovery preserved database integrity and atomicity. plexsim owns no S
 `Preferences.xml`, metadata bundle tree, cache or encoder process to fault. Mapping those host
 failures onto its in-memory catalog would manufacture a subsystem and failure semantics rather than
 emulate one, so this axis is recorded and deliberately not implemented.
+
+### Cycle 39: client replay, score-fold passes, and complete tag vocabulary
+
+Measured 2026-09-17 against kids PMS 1.43.4, zen PMS 1.42.2 and frozen plexsim
+`7d98293`. The accepted official Plex Web 4.160.0 walk contained 21 safe GETs and 20 unique exact
+request envelopes across home, both sections and the movie/show/season/episode preplay path. Every
+status and response format agreed, common attribute and child order had zero mismatches, and the
+remaining differences were catalog state, measured version descriptors or deliberately absent
+file/encoder capabilities. Its 20 signatures are a strict subset of cycle 27's 95 safe signatures,
+with no new route. The first capture was discarded rather than counted because the safety gate let
+two notification websocket upgrades and one theme read through; the replacement blocked sockets,
+media and write-shaped GETs before navigation. Guarded reference snapshots before and after are
+byte-identical.
+
+**Hub membership folding and score-tier folding are different passes.** The complete cycle-32
+2,076-codepoint domain produced 659 compatible character/target cells on zen. Exactly 97 ASCII-letter
+cells reach the ordinary word/prefix tier -- precisely the letter entries in the measured
+`_TITLE_FOLD` table -- with 333 fitting cells and 326 held out at zero misses. The partial-title
+score pass applies that table to the RAW query before ASCII-only case folding. Lowercasing first
+wrongly promotes eleven unsupported capitals and loses the supported `Ð` mapping. Whole-title
+exactness is a separate, broader comparison: `TĒars of Steel`, `Tears of StĒel` and
+`Tears of ſteel` are exact, although `TĒars`, `TĒar` and `Tearſ of Steel` are fuzzy. A two-letter
+word is a measured boundary: both `Tears Ōf Steel` and `Tears ōf Steel` are anchored, not exact.
+The exact observed scores, including the audience-rating tail, are `.33055`, `.73055` and `.93055`.
+plexsim now preserves the raw query for tier classification and keeps the partial and whole-title
+passes separate; the lowercase form remains for collection, playlist and tag membership.
+
+**The complete 1.42.2 spelling tag vocabulary is reconstructible without copying a library.** A
+read-only rebuild from 94,343 distinct non-null tag inputs exactly reproduces the reference's
+71,124 stored tokens and ranks. The old catalog-only extractor produced 45,039. Generic sources
+already carried by rows -- the ordinary tag fields plus Chapter, Review, Marker,
+CommonSenseMedia and Network tags, Guid ids, Rating images, studio, and the presence constants
+Thumb/Art/Theme/ClearLogo -- reconstruct 71,109 tokens. The entire versioned static remainder is
+only 28 distinct strings: three optimize labels and 25 show-ordering labels, now held in the
+measured `spellfix_static_tags.json` sidecar.
+
+This is client-visible rather than an internal rank curiosity. Across the complete bounded
+zero/one-deletion-or-transposition universe, 697,334 queries produced 526,777 different top-ten
+candidate vectors and 187,616 post-gate people-membership differences, 154,237 of them lowercase
+ASCII. GUID ranks alone keep `imdb` in slot ten for `emtz`, preventing Imtiaz Ali from entering;
+the static strings similarly discriminate `arcewell` and `tft`, while the pooled remainder's
+`flr` retains Alain Floret. Live zen agrees through default and limit-1000 hubs and flat people
+search. The implementation therefore indexes the generic row sources plus the exact 28 server
+strings. It deliberately does **not** ship zen's 71,124-token library-specific vocabulary.
+
+The final cycle tree passes `test_catalog_features` 25/25, `test_ui_surface` 1561/1561,
+`test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
+python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
 
 ### Emulation calibrated against the account's own claimed servers
 

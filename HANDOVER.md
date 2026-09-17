@@ -62,8 +62,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 38 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **38**. Cycle 38 closed both search items cycle 37 left open: the complete spelling-index rebuild caller/schedule and the final hub/flat-result ordering. Hub rows use raw-title/id candidate order followed by the reference's unstable comparison sort over the unrounded score; flat search keeps movie/show/episode bucket order because its final comparator reads an empty generic score attribute. Spelling remains stale until database optimization, reached by the explicit optimize leaf, Butler OptimizeDatabase and section deletion. The concurrency hunt's only positive difference was path-specific request parsing: query-only item edits and playlist creates answer without consuming a declared body, confirmed 20/20 on both PMS versions; body-dependent uploads still block. Slow consumers, dead notification readers and three-client races otherwise matched. The storage-failure axis was fully measured on disposable copies and deliberately not mapped onto plexsim, which owns none of the reference's SQLite/preferences/bundle/cache/encoder backends. |
+| `main` | cycle 39 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **39**. Cycle 39's fresh Plex Web 4.160.0 walk was clean: 21 safe GETs, 20 unique exact envelopes, all a strict subset of cycle 27's corpus, with no same-version behavioral mismatch. The search residual hunt found and closed two real gaps. Hub membership normalization and score-tier normalization are separate passes: the partial tier applies the measured table to the raw query before ASCII-only folding, while whole-title exactness is a broader pass with measured long-s and two-letter-word boundaries. And the complete 1.42.2 spelling tag vocabulary comes from generic row sources plus only 28 static optimize/show-ordering strings; GUID ids and those static strings provably change client-visible people candidates. Both findings are built and regression-proved. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
 | Cycle 34 | **34**. Cycle 34 ran with NO hunts -- the same weekly rate limit that crippled cycle 33 killed both inside a minute (§10) -- so it is the driver's two territories. A fresh CLIENT-SESSION capture through plexlab, the founding instrument, gave three envelope findings no probe had sent (an EMPTY body orders its length first; the preflight echoes only the headers the client asked for; the 101 handshake's order, which cycle 33 had recorded as unmeasurable). And §3.3's oldest entry was settled by MAKING the row it asked for: two language-less audio tracks muxed onto plexscratch reproduce zen 19813 exactly, and they show that a decision reads EVERY audio stream and that cycle 32's language-less re-pick was per-user state the item row does not carry. `tests/test_decision.py` and a 2,028-cell corpus now keep the model honest. |
@@ -103,6 +103,7 @@ Coverage, measured from the repository rather than asserted:
 | 26 | 1421 (`test_mediainfo` unchanged at 31) | 15,259 | **21** (of 19 reported across two hunts plus 2 the driver found while re-measuring them; **8 recorded beliefs overturned**, 2 hunter claims corrected on re-measurement, 3 suite checks found to assert a shape no real PMS answers, 1 §3.3 entry CLOSED by revalidation, 4 findings recorded rather than emulated) |
 | 27 | 1451 (`test_mediainfo` unchanged at 31) | 15,701 | **22** (10 from the write hunt, 3 from the read hunt and 9 the driver found in the revalidation and the envelope sweep; **6 recorded beliefs overturned**, 4 §3.3 entries CLOSED, 3 suite checks updated to what was re-measured, 2 regressions the cycle's own suite caught in its own patches, 7 findings recorded rather than emulated) |
 | 28 | 1472 (`test_mediainfo` unchanged at 31) | 16,155 | **19** (12 from the two hunts' reports as re-measured and 7 the driver found while re-measuring them; **8 recorded beliefs overturned**, 1 of them a per-VERSION split only plexscratch could show, 2 suite-check repairs -- one belief re-measured and four checks refitted to make the state they need -- 5 findings recorded rather than emulated) |
+| 39 | 1586 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,322 | **2** (both from the search residual hunt, in **2 fix commits**; the official-client exact replay reported no findings; **2 §3.3 entries CLOSED** -- hub score-fold case handling and faithful tag ranks -- with 659 Unicode cells and a 697,334-query bounded vocabulary comparison; 1 unsafe first client capture discarded and repeated behind a pre-navigation socket/media gate) |
 | 38 | 1581 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,270 | **4** (one request-envelope finding from the concurrency hunt and three search findings from static recovery, in **4 fix commits**; **2 §3.3 entries CLOSED** -- spelling rebuild schedule and final search ordering -- a broad concurrency matrix otherwise matched, and the storage-failure axis was measured but deliberately not emulated because plexsim owns none of those persistent backends) |
 | 37 | 1577 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 18,055 | **7** (4 from the raw request-envelope sweep, 2 from the catalog/reachability hunt and 1 from the spellfix hunt, in **7 fix commits**; **2 recorded beliefs overturned**, **3 §3.3 entries CLOSED** -- fuzzy membership/pruning, multipart reachability and the clip surface -- one existing UI check pair repaired because it still asserted that fuzzy search was absent, 1 fixture-only Dolby Vision limitation made reachable, 2 negative results, and 2 unresolved details retained) |
 | 36 | 1565 (+2,106 cells in `test_decision`; `test_mediainfo` unchanged at 31) | 17,700 | **19** (8 the driver found in the refusal surface, 6 from the search hunt and 5 from the write hunt, in **20 commits**; **4 recorded beliefs overturned** -- cycle 35's `word_tier`, cycle 19's scoped scan, cycle 1's text/plain refusal and cycle 22's empty collection leaves -- **2 §3.3 entries CLOSED** (`video.separateFields` and the DoVi dual-layer disagreement, both by MAKING the row), 1 suite check found to encode half a rule and repaired, 1 regression the suite caught in the cycle's own patch, 8 findings recorded rather than emulated, 3 negative results) |
@@ -182,6 +183,18 @@ the playback path had never been walked as a client walks it. Three more of the 
 findings are the same shape — a decision's validation refusing what a real PMS accepts, the
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
+
+Suite results at the head of cycle 39, run 2026-09-17 against the cycle tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_catalog_features.py` | **25/25** | adds pass-specific Unicode score tiers, full row-source vocabulary extraction, exact static vocabulary and GUID-rank protection |
+| `tests/test_mediainfo.py` | **31/31** | unchanged |
+| `tests/test_decision.py` | **2106/2106 cells exact** | unchanged |
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1561 PASS / 0 FAIL / 13 skipped** | unchanged count; the new search checks are in the focused suite |
+| `tests/test_navigation.py` | **28/28** on the UI fixture | |
+| `tests/conformance.py` (python-plexapi) | **29/38** | the recorded baseline; all nine are the fixture's unusable RD link |
+| `tests/test_all.py --skip-decode` | **0/11 served** on the UI fixture | the recorded baseline cause; play queues and all eleven decisions passed |
 
 Suite results at the head of cycle 38, run 2026-09-17 against the cycle tree:
 
@@ -595,7 +608,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 |---|---|---|---|
 | A title folds its combining marks away (cycle 14) plus eleven characters NFD cannot reach (cycle 18) | A TABLE of exactly 100 characters, identical on both versions over 2,076 codepoints. NFD over-folds `ę ą ş ć` and the capital macrons, which a real PMS keeps. Cycle 14 fitted it to zen's 21 accented rows, all of them Latin-1, and cycle 18 swept only the characters NFD leaves alone -- so neither sample could contain a character NFD folds and PMS does not | B | cycle 32 |
 | The `title=` folded pass reads the TITLE (cycle 15) | It reads the stored SORT title: `Tráin Job` finds "The Train Job" and `Thé Train` finds nothing. Rows without an article match either way, which is every row the fit used | B | cycle 32 |
-| The hub search "folds combining marks on BOTH sides" (cycle 14) | It folds by the title TABLE (825 probes); its case handling is two passes plexsim does not model | B | cycle 32 |
+| The hub search "folds combining marks on BOTH sides" (cycle 14) | It folds by the title TABLE (825 probes); its two score-case passes were completed and built in cycle 39 from the full 659-cell domain | B | cycle 32, completed cycle 39 |
 | `Roku` and `Xbox One` are the profiles that direct play (cycle 26) | Direct play is decided PER ITEM by the profile file: 44 of 78 profiles direct play a real row, and neither Roku nor Xbox One lists webm or eac3. Cycle 26's four items were all h264/aac, which cannot show the item dependence, and the list was implemented as if it were the rule | B, C | cycle 32 |
 | Firefox and Edge "declare video targets that ought to cover the item" (cycle 31) | They declare only `dash` and `hls` targets, and the request asked for `http`; with `protocol=dash` both answer "Conversion OK" | A | cycle 32 |
 | `/livetv` is a 403 on the copies, so plexsim's container is in doubt (cycle 31) | Both CLAIMED references answer the container. The 403 is an unclaimed server's, and the copies answer the container at `/livetv/` | E | cycle 32 |
@@ -789,7 +802,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | Item | Why it is thin | How to settle it |
 |---|---|---|
 | ~~**zen 19813: a decision over audio tracks that carry no language**~~ | **CLOSED in cycle 34 by making the row this entry asked for.** plexscratch's row 60 -- an mp3 2.0 and an ac3 5.1, neither tagged with a language, `+faststart` so `optimizedForStreaming` matches -- answers 68 of the 78 identically to zen 19813, the other ten being its sidecar subtitle refusing earlier. Two rules came out: a decision reads EVERY audio stream (the first in index order the profile cannot play is the codec it names) unless the profile declares `StreamUnselectedIncompatibleAudioStreams`; and the eight cells were never about the row -- they are a per-user audio selection the row does not carry, flipped by `PUT /library/parts/{id}?audioStreamID=` and cleared by `-1`, with `Stream` byte-identical either way. §8 has what is recorded and not emulated | — |
-| **The hub search matcher's CASE handling** | NARROWED in cycle 33 and still open: a capital macron fails in the FIRST word of a partial query (`B\u012ag Buck` 0.33) and hits in a later one (`Big B\u016ack` 0.73), and a full-title query tolerates it anywhere except in a two-letter word (`Tears \u014cf Steel` 0.73). That is two scoring passes with different case folding, and plexsim emulates no fuzzy band at all | Sweep the capital-macron family by WORD POSITION against zen titles long enough to score above the fuzzy band |
+| ~~**The hub search matcher's CASE handling**~~ | **CLOSED and BUILT in cycle 39.** The complete cycle-32 2,076-codepoint domain yielded 659 compatible cells and 97 supported ASCII-letter mappings, exactly the letter entries of `_TITLE_FOLD`; a 333/326 fit/holdout split had zero misses. The partial score pass applies the table to the RAW query before ASCII-only case folding, while whole-title exactness is a separate broader pass with measured long-s and two-letter macron-`o` exceptions. The prior lowercase-first implementation promoted eleven unsupported capitals and lost `Ð` | — |
 | **The fold table outside its swept ranges** | NARROWED in cycle 33: 534 characters with an ASCII COMPATIBILITY base -- Greek Extended, Roman numerals, circled, parenthesised and mathematical letters, the `\ufb01`/`\ufb02` ligatures, superscripts, Armenian and Cyrillic -- were substituted into a `title=` query on kids and NONE folds, which is what plexsim's table says. What is still unswept is the letters of scripts with no ASCII base (Hebrew, Arabic, the Indic scripts, CJK), where a fold has nothing to fold TO | The remaining ranges through `handover/tools/sortfold.py`, if a reason ever appears |
 | ~~**Decision limitations no measured row trips**~~ | 24 rows exercised width, level, channels, bitrate and `optimizedForStreaming`. `video.frameRateMode` and `video.separateFields` are read as absent/0, `part.has64bitOffsets` from the Part, and a `Match` with a `list` on `video.profile` was never tripped. A multi-part Media was never driven | A row that trips each -- zen holds interlaced, VFR and 10-bit rows -- driven against the profiles that name the limitation |
 | **Concurrent refreshes of one row** | The references DISAGREE: 1.43.4 coalesces the second refresh (one activity, 8 frames), 1.42.2 runs both. But every 1.42.2 row is unmatched on the only 1.42.2 copy, so its refresh is three frames long and the comparison is confounded. plexsim runs both | A matched row on a 1.42.2 server that can be written to -- which needs a claimed 1.42.2 copy |
@@ -812,7 +825,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | **The Dolby Vision profile-5 veto's discriminator** | Of the 38 client profiles with a matching http target, exactly ONE converts a profile-5 source, and it is the only one whose target names the source's own codec (`Plex Desktop`, `videoCodec="h264,hevc,*"`). "The target names the source codec" and "the target declares `*`" fit the same 78 cells, because those are the only two profiles on the surface that declare either. The narrower is built | A reference profile that names `hevc` without `*`, or a second positive witness of any kind |
 | ~~**`partIndex` on a multi-part Media**~~ | **BUILT in cycle 37.** The catalog builder groups only the measured `Title - cdN.ext` spelling, each Part owns its own debrid link, Media duration is the sum, `partIndex=0/1` projects and evaluates that Part, out-of-range is a 400 and `-1` returns the measured all-parts conversion refusal | — |
 | ~~**The spellfix vocabulary rebuild schedule**~~ | **CLOSED and BUILT in cycle 38.** The complete caller set is two historical migrations (plus a third on 1.43.4) and database optimization. Optimization is reached by Butler OptimizeDatabase, `PUT /library/optimize` and section deletion. Automatic Butler eligibility is a roughly five-minute transition into its local window with the task enabled and `floor(time/86400) % 7 == 0`, not elapsed time since the last run. Edits do not rebuild | — |
-| **Faithful spellfix tag ranks from a catalog** | The title vocabulary is reconstructible from plexsim's own rows. A 1.42.2 tag vocabulary includes every `tags.tag`, including invisible technical GUID tokens (`/`, `tmdb`, `tvdb`, `imdb`); visible catalog Genre/Role/Director values cannot reproduce their ranks. The implemented tag branch is exact for the tag strings plexsim actually holds, not for a hidden table it cannot own | Carry the complete reference tag table as a measured sidecar, or establish that its missing technical ranks cannot change any client-visible candidate set |
+| ~~**Faithful spellfix tag ranks from a catalog**~~ | **CLOSED and BUILT in cycle 39.** The 1.42.2 table has 71,124 exact tokens. Generic row sources -- ordinary tags plus Chapter/Review/Marker/CommonSenseMedia/Network tags, Guid ids, Rating images, studio and four presence constants -- reconstruct 71,109; the complete server-static remainder is 28 measured optimize/show-ordering strings. A 697,334-query bounded comparison found 187,616 post-gate people-membership differences from the old extractor, including GUID and static-string live witnesses. plexsim now indexes those sources and the 28-string sidecar, not a library-specific 71k-token dump | — |
 | ~~**Final equal-score search ordering**~~ | **CLOSED and BUILT in cycle 38.** Title candidates begin exact-first, then raw-title bytes/signed-id descending and unique. The final hub sort compares the unrounded double score only, through the reference build's unstable libc++ comparison sort; formatting to five decimals is later. The reconstruction is exact on 331 eligible hubs, 2,306 rows and 1,578 equal-wire-score pairs. Flat search's comparator reads an empty generic attribute, so it preserves movie/show/episode bucket order | Capped/tag-associated groups lack their full pre-sort vectors; that is an exact-permutation validation limit, not an unknown comparator |
 | **A NUL in a filter value** | 40 cells on both references, and the refusal keys on an interaction of column KIND and OPERATOR that no model explains (`title=` and `title!=` refuse, `title==` and `title>>` do not; `genre=` refuses, `genre!=` does not). No Plex client can send one | Nothing worth settling; recorded with the cells |
 
@@ -948,6 +961,12 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 39).** The hunters had `32587`/`32588` on frozen `7d98293`; the serial suites used
+`32589`. `32502` and `8787` are the standing exceptions. All cycle-owned listeners are free again,
+and the guarded reference snapshots are byte-identical. The first official-client capture was
+discarded after its gate admitted two websocket upgrades and a theme read; the accepted replacement
+was installed before navigation and contained only the 21 declared safe GETs.
 
 **Ports (cycle 38).** The hunters had `32587`/`32588` on frozen `9403d3d`; the proof and serial
 suites used `32589`. `32502` and `8787` are the standing exceptions. All cycle-owned listeners are
@@ -3152,14 +3171,12 @@ have live discriminators (`kickd`, `defeted`/`Defeted`). The fresh held-out resu
 queries, 822/822 row cells**, after the two initial misses forced the implementation to use the
 table's real ICU collation rather than ordinary string equality.
 
-**The negative results and limits matter.** The decision model already carried profile-5 Dolby
-Vision correctly once a row existed. The spellfix vocabulary is not synchronously maintained:
-kids' current rows contain five tokens absent from its table, and the complete schedule of the three
-rebuild callers remains unknown, so plexsim deliberately snapshots its own vocabulary at catalog
-load instead of claiming a made-up interval. A faithful 1.42.2 tag rank includes hidden technical
-tags the catalog cannot reconstruct. And final equal-score API ordering is still unsolved -- three
-obvious orderings all fail hundreds of adjacent pairs -- so membership was fixed without inventing
-a tie-break.
+**The negative results and limits at the end of cycle 37 mattered.** The decision model already
+carried profile-5 Dolby Vision correctly once a row existed. The spellfix vocabulary was known not
+to update synchronously, its rebuild callers were not yet recovered, technical tag ranks were not
+yet reconstructible, and final equal-score API ordering was unsolved. Cycles 38 and 39 subsequently
+closed and built all four questions; the only retained limit is deliberately reproducing plexsim's
+own stale-until-optimization state rather than another server's historical snapshot.
 
 The final cycle tree passes `test_catalog_features` 17/17, `test_ui_surface` 1560/1560,
 `test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
@@ -3213,21 +3230,63 @@ The final cycle tree passes `test_catalog_features` 20/20, `test_ui_surface` 156
 `test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
 python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
 
-### Next: cycle 39
+### Cycle 39 -- a clean client replay and the last two search residuals
 
-1. **Fresh official-client session and exact replay.** The founding instrument's last full browser
-   capture was cycle 27. Run the complete home → sections → grids → movie → show → season → episode
-   walk through plexlab, retain every ordered query/header, and replay it against the frozen cycle-38
-   tree. This axis is clean only if structural, value and load-bearing-field diffs contain no new
-   client-visible mismatch.
-2. **Close the remaining search residuals.** Compare hub search's complete Unicode fold/case table
-   against the measured title-query and sort-title tables, then determine whether 1.42.2's hidden
-   technical-tag ranks can change any client-visible candidate set. Use read-only database/binary
-   copies and guarded GET/HEAD only. Report explicit coverage counts and do not call it clean if a
-   reachable candidate or score remains unexplained.
-3. **Stopping gate.** Cycle 39 is the requested clean cycle only if both assigned axes are fully
-   covered and both return no client-noticeable finding. Any positive finding is implemented,
-   regression-proved, documented, and followed by another two-axis cycle.
+Cycle 39 completed all three entries in cycle 38's plan. It produced **two fix commits**, each
+proved against its immediate parent. The official-client axis returned exactly `no findings`; the
+search residual axis found two client-visible differences, so the cycle is not the stopping cycle.
+Both hunters used frozen servers and private artifacts, reference access stayed GET/HEAD or
+read-only static copies, and the guarded kids snapshots before and after are byte-identical.
+
+**The current official client introduced no new navigation request.** Plex Web 4.160.0 completed
+the eight-step home → sections → grids → movie → show → season → episode walk with 21 safe GETs and
+20 unique exact envelopes. All statuses and formats agreed, common attribute/child order had zero
+mismatches, and every remaining structural/value difference was catalog state, a measured
+1.43.4-versus-1.42.2 descriptor, or a deliberately unadvertised file/encoder capability. The 20
+signatures are a strict subset of cycle 27's 95. The first attempted capture was discarded -- not
+counted -- because its gate admitted two notification websocket upgrades and a theme read; the
+replacement blocked sockets and media before navigation. A diagnostic also printed the sourced lab
+token to the private tool transcript, but no tracked or derived artifact contains it; rotate that
+token after the programme finishes.
+
+**Hub score-tier normalization is not membership normalization.** Over the complete 2,076-codepoint
+domain, 659 character/target cells yielded exactly the 97 letter entries of `_TITLE_FOLD`; the
+333-cell fit and 326-cell holdout had zero misses. The partial-title score pass applies that table
+to the raw query before ASCII-only case folding. Lowercasing first wrongly promoted eleven capitals
+and lost `Ð`. A second whole-title pass is broader: capital macrons and long-s can be exact there,
+while a two-letter macron-`o` word remains anchored. The regression set preserves the exact
+`.33055`/`.73055`/`.93055` witnesses rather than replacing the two passes with Unicode normalization.
+
+**The hidden tag-rank problem collapsed to generic row extraction plus 28 static strings.** The
+reference's 94,343 distinct inputs rebuild exactly to 71,124 tokens. Current row fields reconstruct
+71,109 when Chapter/Review/Marker/CommonSenseMedia/Network tags, Guid ids, Rating images, studio and
+Thumb/Art/Theme/ClearLogo presence are included. The full server-static remainder is three optimize
+labels and 25 distinct show-ordering labels. A 697,334-query bounded comparison produced 526,777
+candidate-vector and 187,616 post-gate people-membership differences with the old extractor;
+`emtz`, `arcewell`, `tft` and `flr` are retained wire-level witnesses. plexsim now uses the generic
+extractor and exact 28-string sidecar. It does not carry zen's library-specific token table.
+
+The final cycle tree passes `test_catalog_features` 25/25, `test_ui_surface` 1561/1561,
+`test_navigation` 28/28, `test_mediainfo` 31/31 and `test_decision` 2106/2106. The 29/38
+python-plexapi and 0/11 byte-read results remain the recorded dead-link baselines.
+
+### Next: cycle 40
+
+1. **Official-client OUTWARD inventory.** Read Plex Web 4.160.0's locally served chunks and recover
+   every PMS-bound request builder reachable from server/library/item/detail/context-menu/settings
+   UI. Reconcile method/path/query/header shapes against all retained client corpora and the route
+   suite. Exercise every safe uncovered read exactly; send any uncovered write only to the disposable
+   copies with an undo ledger. A string search alone is not coverage: trace each candidate to a
+   reachable action or prove it dead.
+2. **plexsim INWARD route census.** Mechanically enumerate every route family and verb dispatched by
+   `server.py`, map each to measured evidence and at least one regression, and hold out every family
+   whose evidence is only hand-written or single-shape. Re-measure gaps against both PMS versions
+   under the safety rules, including JSON/XML, GET/HEAD, auth and paging variants where applicable.
+   Report explicit route/family/cell counts and separate deliberate capability absences.
+3. **Stopping gate.** Cycle 40 is the requested clean cycle only if the outward client inventory and
+   inward server census cover their complete enumerated universes and both return no client-visible
+   finding. Any positive finding is implemented, regression-proved, documented, and followed by a
+   new cycle on fresh axes.
 
 ### Next: cycle 36 (superseded, run)
 
@@ -3706,6 +3765,18 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 39.**
+
+- **The official Plex Web 4.160.0 walk had no finding.** Its 20 unique safe request signatures are a
+  strict subset of cycle 27's 95, and exact replay found no same-version behavioral difference.
+- ~~**Hub matcher case handling.**~~ **BUILT in cycle 39** as separate raw-query partial-tier and
+  broader whole-title passes, from a complete 659-cell sweep with a zero-miss holdout.
+- ~~**Reference-only technical tag ranks.**~~ **BUILT in cycle 39** from every generic row source
+  plus the complete measured 28-string static remainder. No reference library token dump is needed.
+- **Historically stale external spellfix state remains deliberately external.** A reference can
+  retain old tokens until database optimization. plexsim reproduces that schedule for its own
+  catalog; it does not copy another server's historical database state.
+
 **Cycle 38.**
 
 - ~~**Spellfix rebuild timing**~~ -- **BUILT in cycle 38** at the three database-optimization
@@ -3717,17 +3788,15 @@ same title stem, so release, alphabetical and insertion order coincided.
 - **Persistent-storage failures.** SQLite, `Preferences.xml`, metadata bundles, cache and encoder
   failures were measured on isolated reference copies. plexsim has none of those backends, so no
   synthetic disk-failure switch or guessed cross-backend status mapping was added.
-- **Reference-only technical tag ranks remain.** Cycle 38 did not manufacture hidden reference tags
-  in a fileless catalog; cycle 39 is assigned the narrower client-visible-candidate question.
+- ~~**Reference-only technical tag ranks.**~~ **BUILT in cycle 39** from the full generic row-source
+  inventory and the measured 28-string static remainder.
 
 **Cycle 37.**
 
 - ~~**Spellfix rebuild timing.**~~ **BUILT in cycle 38** after the callers, optimization triggers
   and automatic Butler eligibility were recovered from both binaries.
-- **Reference-only technical tag ranks.** 1.42.2 ranks every string in `tags`, including invisible
-  GUID components whose occurrence counts dominate the vocabulary. A fileless catalog has no such
-  tag table. The people branch is implemented from the tags plexsim actually owns; exact parity for
-  hidden strings would require a measured sidecar, not guessed synthetic rows.
+- ~~**Reference-only technical tag ranks.**~~ **BUILT in cycle 39** without a library-specific
+  sidecar: the technical strings live on generic row shapes, and only 28 server-static strings do not.
 - ~~**Final equal-score API ordering.**~~ **BUILT in cycle 38** as the reference's unrounded-score
   unstable hub sort and no-op flat wrapper sort.
 - **Historically stale external spellfix state.** The current reference table cannot always be
@@ -4497,8 +4566,8 @@ base from `PLEXSIM_BASE`.
 | File | What it does |
 |---|---|
 | `hunt_prompts.md` | The shared preamble and every cycle's territories, verbatim, newest last. **This is the template**: copy the preamble, refresh the lists named in §5 step 4, write the whole prompt to a file for the agent to read |
-| `spellfix.py` (repository root) | Cycle 37's stdlib port of the measured SQLite `spellfix1` phonehash/edit-distance/top-ten candidate path plus the catalog-local title/tag vocabulary. Cycle 38 keeps that snapshot stale across edits and rebuilds it at the measured database-optimization entry points |
-| `tests/catalog_features.json` + `tests/test_catalog_features.py` | Cycle 37's token-free focused fixture, now 20 regressions after cycle 38 added hidden-precision hub ordering, flat-search bucket order and spelling rebuild triggers |
+| `spellfix.py` + `spellfix_static_tags.json` (repository root) | Cycle 37's stdlib port of the measured SQLite `spellfix1` path; cycle 38 supplies the measured rebuild points; cycle 39 expands the rebuild over every generic row source and the exact 28 server-static optimize/show-ordering strings |
+| `tests/catalog_features.json` + `tests/test_catalog_features.py` | Cycle 37's token-free focused fixture, now 25 regressions after cycle 39 added pass-specific score folding, generic vocabulary sources, the exact static sidecar and GUID-rank candidate protection |
 | `refcheck7.py` + `ref_cycle5_before.json` | Read-only comparison of kids' library state against the baseline |
 | `capture_agent_languages.py` | Cycle 25: `/system/agents`' per-language `Language` list, read from the XML (the JSON writes the rows as repeated KEYS and a parser keeps one) in each of the 28 languages plus English plus the no-header default. Writes `agent_languages.json`, which `server.py` loads beside itself. Re-run it if the reference's language list ever changes |
 | `envelope.py` | Cycle 27: the HTTP ENVELOPE prober -- 30 raw-socket cases `urllib` will not send (a 200 KB header block, a 32769-byte URL, `GET  /identity` with two spaces, an HTTP/0.9 request line, `Content-Length: abc`), three servers at a time, flagging only where kids and zen AGREE and plexsim differs. Read-only by construction: every case is a GET or HEAD of `/identity`, and its one POST targets the plug-in dispatcher |
@@ -4533,6 +4602,12 @@ authoritative record of a hunt's reasoning:
 - cycle 13: `…/75a28f3e-2e35-4b90-b25b-8aba31a8d0cd.jsonl`
 - cycle 14: `…/03c44878-09cf-46fb-b529-806106f49f09.jsonl` plus its `subagents/agent-*.jsonl`
 - cycle 15: `…/744f97c4-4f4c-41ea-a881-f16ca8d3e4c2.jsonl` plus its `subagents/agent-*.jsonl`
+- cycle 39: `/private/tmp/plexsim-c39.bELXsP/`. `A/` holds the guarded Plex Web 4.160.0
+  capture, its discarded unsafe first attempt, exact replays and the byte-identical reference
+  snapshots. `B/` holds the complete 2,076-codepoint fold/case sweep, exact vocabulary rebuild,
+  697,334-query candidate comparison, live propagation witnesses and report. `head39/` is frozen
+  `7d98293`; `parent-tag/` is finding 2's immediate parent; `wt39/` is the cycle branch. The raw
+  corpora, copied database material and tokens are private and must never be committed.
 - cycle 38: `/private/tmp/plexsim-c38.Z8VaTR/`. `A/` holds the slow-reader, notification,
   three-client race and withheld-body matrices plus the complete write/undo ledger; `B/` holds the
   disposable-copy storage inventory, database/preferences/bundle/cache fault cells and recovery
