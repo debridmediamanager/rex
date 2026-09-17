@@ -8046,7 +8046,7 @@ class PlexSim:
             # all and answered `200 size 0` to every malformed request. A client whose
             # Extras view sends a bad parameter reads that as "this library has no
             # extras", which is fix 4's trap from the other side.
-            refusal = self._listing_refusals(query)
+            refusal = self._listing_refusals(query, allow=("extraType",))
             if refusal:
                 return refusal
             raw_limit = query.get("limit")
@@ -8997,7 +8997,7 @@ class PlexSim:
             return ("error", 500, "plexsim: cannot filter the whole library on unmatched")
         return None
 
-    def _listing_refusals(self, query):
+    def _listing_refusals(self, query, allow=()):
         """The refusals a listing answers wherever it consumes a query.
 
         Cycle 18, measured on kids (1.43.4) and zen (1.42.2): `parentIndex=` is a 500
@@ -9007,8 +9007,14 @@ class PlexSim:
         wired into the section listing alone, which is the class-C shape: the docs were
         right and two of the three paths that consume the grammar did not run it.
         """
+        # Cycle 45: `allow` is the section EXTRAS leaf's exemption. `extraType` is a
+        # 500 on every other listing and a real filter there -- zen's 3,580 clips are
+        # 1,264 at `extraType=1` -- so the refusal is a property of the PATH and not of
+        # the field. Adding the name to `REFUSED_FILTER_FIELDS` alone made the one leaf
+        # that reads it answer 500, which the catalog feature suite caught.
         refused = next((key for key in query
-                        if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS), None)
+                        if key.rstrip("<>=!") in REFUSED_FILTER_FIELDS
+                        and key.rstrip("<>=!") not in allow), None)
         if refused:
             return ("error", 500, "plexsim: cannot filter on %s" % refused)
         for key, value in query.items():
