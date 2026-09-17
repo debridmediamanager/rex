@@ -25195,6 +25195,46 @@ def main():
           % (sum(1 for r_c46g in plain_c46g.get("Metadata") or [] if "Guid" in r_c46g),
              sum(1 for r_c46g in guided_c46g.get("Metadata") or [] if "Guid" in r_c46g)))
 
+    # The same sweep found seven more consumers. Seasons and episodes generally carry
+    # only their primary `guid` in the catalog, so this also proves the response mints a
+    # one-row Guid element rather than merely preserving external-id lists.
+    show_c46g = (get(base, "/library/sections/%s/all?type=2" % show_section)[1]
+                 .get("Metadata") or [{}])[0]
+    seasons_c46g = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                       % show_c46g.get("ratingKey"))[1].get("Metadata") or []
+    season_c46g = seasons_c46g[0] if seasons_c46g else {}
+    paths_c46g = [
+        "/hubs",
+        "/hubs/home/recentlyAdded?type=1",
+        "/library/metadata/%s/children" % season_c46g.get("ratingKey"),
+        "/library/sections/%s/newest" % show_section,
+        "/library/sections/%s/recentlyAdded?type=4" % show_section,
+        "/library/sections/%s/search?query=e&type=4" % show_section,
+    ]
+
+    def guid_rows_c46g(path_c46g, enabled_c46g):
+        join_c46g = "&" if "?" in path_c46g else "?"
+        body_c46g = get(base, path_c46g + (join_c46g + "includeGuids=1"
+                                          if enabled_c46g else ""))[1]
+        rows_c46g = list(body_c46g.get("Metadata") or [])
+        rows_c46g.extend(row_c46g for hub_c46g in body_c46g.get("Hub") or []
+                         for row_c46g in hub_c46g.get("Metadata") or [])
+        return [row_c46g for row_c46g in rows_c46g if row_c46g.get("type") != "show"]
+
+    guid_surface_c46g = [(path_c46g,
+                          guid_rows_c46g(path_c46g, False),
+                          guid_rows_c46g(path_c46g, True))
+                         for path_c46g in paths_c46g]
+    check("includeGuids reaches hubs, children and section subset listings",
+          bool(season_c46g)
+          and all(plain_c46g and guided_c46g
+                  and not any("Guid" in row_c46g for row_c46g in plain_c46g)
+                  and all(row_c46g.get("Guid") for row_c46g in guided_c46g)
+                  for _path_c46g, plain_c46g, guided_c46g in guid_surface_c46g),
+          str([(path_c46g, len(plain_c46g),
+                sum(1 for row_c46g in guided_c46g if row_c46g.get("Guid")))
+               for path_c46g, plain_c46g, guided_c46g in guid_surface_c46g]))
+
 
     # Cycle 46, from the option sweep: `includeMeta=1` carries a `Meta` on three more
     # containers than plexsim answered -- measured on kids and zen, which agree.
