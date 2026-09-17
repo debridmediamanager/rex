@@ -400,6 +400,10 @@ FILTER_FIELD_TYPES.setdefault("file", "string")
 # one column of this family that refuses rather than filters.
 REFUSED_FILTER_FIELDS = {"parentIndex"}
 
+# A library's own top-level type number, for the rules that read the listing's
+# type when the request names none (cycle 45: `file=`).
+SECTION_TYPE_NUMBERS = {"movie": "1", "show": "2", "artist": "8", "photo": "13"}
+
 # Cycle 15, measured on kids (1.43.4) and zen (1.42.2): `/query/parse` knows fields a
 # LISTING does not filter on. All eight of these come back as a `Rule` with an EMPTY
 # `fieldTitle` -- the shape cycle 11 recorded for `id` -- where plexsim answered an
@@ -7403,7 +7407,9 @@ class PlexSim:
         # filter, whatever operator key follows it. The operator lives in the KEY, so
         # the field is what is left once the operator characters come off the end.
         refusal = (self._listing_refusals(query)
-                   or self.file_filter_refusal(query, whole_library=False))
+                   or self.file_filter_refusal(
+                       query, whole_library=False,
+                       default_type=SECTION_TYPE_NUMBERS.get(section.get("type"))))
         if refusal:
             return refusal
         # Cycle 16, measured on kids and on zen's 507-show library: a show library's
@@ -8531,7 +8537,7 @@ class PlexSim:
         return row.get(field)
 
     @staticmethod
-    def file_filter_refusal(query, whole_library):
+    def file_filter_refusal(query, whole_library, default_type=None):
         """The 500 `file=` gets, decided by the QUERY's type rather than by a row.
 
         Cycle 45, measured on kids and zen over fourteen cells and library-independent:
@@ -8547,12 +8553,14 @@ class PlexSim:
         if not any(key.rstrip("<>=!") == "file" for key in query):
             return None
         kind = str(query.get("type") or "").strip()
+        if not kind and not whole_library:
+            # A section listing with no `type=` is the LIBRARY's own top-level type, so a
+            # SHOW library's bare `?file=` is the type=2 case and a 500 -- measured on
+            # kids and zen, where `type=3` and `type=4` on the same library answer.
+            kind = str(default_type or "").strip()
         refused = {"2", "3"} if whole_library else {"2"}
         if kind in refused:
             return ("error", 500, "plexsim: cannot filter on file at type=%s" % kind)
-        if not kind and not whole_library:
-            # A show library's grid defaults to type 2.
-            return None
         return None
 
     @staticmethod
