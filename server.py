@@ -14310,6 +14310,19 @@ class PlexSim:
         advertises the `playlist` feature, so leaving these unimplemented shows
         the user a menu entry, a modal, and nothing happening.
         """
+        if len(segments) == 2 and segments[1] == "upload":
+            # Cycle 41 recovered the client's exact import envelope from the old
+            # corpus and replayed it on both writable PMS versions. The endpoint
+            # requires BOTH query parameters; with either missing it is a 400.
+            # With both present it reaches Plex's importer and fails 500 on these
+            # servers whether the absolute server path exists or not. plexsim has
+            # no M3U importer, so reproducing that closed surface is more faithful
+            # than the generic 404 it previously returned.
+            if method != "POST":
+                return ("error", 404, "plexsim: not found")
+            if query.get("sectionID") is None or query.get("path") is None:
+                return ("error", 400, "plexsim: bad request")
+            return ("error", 500, "plexsim: playlist import failed")
         if len(segments) == 1 or segments[1] in ("all", "sorts", "generators"):
             if len(segments) > 1 and segments[1] == "sorts":
                 return self.bare_container(size=len(PLAYLIST_SORTS),
