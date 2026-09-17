@@ -3888,6 +3888,13 @@ class PlexSim:
         if len(segments) > 3:
             return ("error", 404, "plexsim: not found")
         rows = [self.section_directory(s, shared=True) for s in self.catalog.sections]
+        if query.get("includePreferences") == "1":
+            # The Shared libraries view exposes the same per-section settings as
+            # /library/sections. Attach before sorting so each block stays with its
+            # own library.
+            for section, row in zip(self.catalog.sections, rows):
+                row["Preferences"] = {
+                    "Setting": self.section_preference_rows(section)}
         wanted = query.get("type")
         if wanted:
             # A type that PARSES selects nothing -- these rows are libraries, not items
@@ -11481,6 +11488,16 @@ class PlexSim:
                             stored, dict(projected),
                             {"includeRelated": query.get("includeRelated"),
                              "includeRelatedCount": query.get("includeRelatedCount")}))
+        if query.get("includePreferences") == "1":
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    if projected.get("type") != "show" or projected.get("_light"):
+                        continue
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is not None:
+                        projected.update(self.apply_detail_options(
+                            stored, dict(projected), {"includePreferences": "1"}))
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
