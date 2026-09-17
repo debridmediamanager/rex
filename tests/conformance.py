@@ -19,6 +19,12 @@ from plexapi.server import PlexServer
 PASS = "\033[32mPASS\033[0m"
 FAIL = "\033[31mFAIL\033[0m"
 
+CONTAINER_MAGIC = {
+    "mp4": (b"ftyp", 4),
+    "mkv": (b"\x1a\x45\xdf\xa3", 0),
+    "webm": (b"\x1a\x45\xdf\xa3", 0),
+}
+
 results = []
 
 
@@ -54,16 +60,27 @@ def main():
         print("        - %-34s %s" % (item.title[:34], item.ratingKey))
 
     print("\n=== 4. item detail + Media/Part/Stream ===")
-    # Pick the best direct-play candidate: h264 is what every client decodes.
+    # Prefer the exact browser-direct-play shape. A merely-H.264 Matroska row
+    # still makes Plex Web ask for a transcode, which plexsim intentionally
+    # does not provide.
     target = None
+    h264_fallback = None
     for item in items:
         full = server.fetchItem(int(item.ratingKey))
         media = full.media[0] if full.media else None
-        if media and media.videoCodec == "h264":
+        if not media:
+            continue
+        if (
+            media.container == "mp4"
+            and media.videoCodec == "h264"
+            and media.audioCodec in ("aac", "mp3")
+        ):
             target = full
             break
+        if media.videoCodec == "h264" and h264_fallback is None:
+            h264_fallback = full
     if target is None:
-        target = server.fetchItem(int(items[0].ratingKey))
+        target = h264_fallback or server.fetchItem(int(items[0].ratingKey))
 
     check("reloaded item", bool(target.title), target.title)
     media = target.media[0]
@@ -182,10 +199,14 @@ def main():
         (response.headers.get("Content-Type") or "").startswith("video/"),
         str(response.headers.get("Content-Type")),
     )
+    expected_magic, magic_offset = CONTAINER_MAGIC.get(
+        (part.container or "").lower(), (None, 0)
+    )
+    actual_magic = response.content[magic_offset:magic_offset + len(expected_magic or b"")]
     check(
-        "matroska magic at offset 0",
-        response.content[:4] == b"\x1a\x45\xdf\xa3",
-        response.content[:4].hex(),
+        "%s container magic" % (part.container or "unknown"),
+        bool(expected_magic) and actual_magic == expected_magic,
+        actual_magic.hex() or "unknown container",
     )
 
     # A seek is just another Range, and it is the read a debrid backend is most
