@@ -25294,6 +25294,35 @@ def main():
           and meta_c46["no-op leaves"] == [],
           str(meta_c46))
 
+    # The folder view carries the section's complete descriptor with only its folder
+    # Type active. The Shared listing has its own seven-tab descriptor, no FieldType,
+    # and marks Title ascending only on All Shared.
+    folder_meta_c46 = (get(
+        base, "/library/sections/%s/folder?includeMeta=1" % movie_section)[1]
+                       .get("Meta") or {})
+    folder_types_c46 = folder_meta_c46.get("Type") or []
+    shared_meta_c46 = get(base, "/library/shared/all?includeMeta=1")[1].get("Meta") or {}
+    shared_types_c46 = shared_meta_c46.get("Type") or []
+    check("includeMeta reaches folder and the Shared libraries listing",
+          len(folder_meta_c46.get("FieldType") or []) == 8
+          and [row_c46m.get("type") for row_c46m in folder_types_c46
+               if row_c46m.get("active")] == ["folder"]
+          and [row_c46m.get("title") for row_c46m in shared_types_c46]
+          == ["All Shared", "Movies", "TV", "Music", "Photos", "Playlists",
+              "Libraries"]
+          and [row_c46m.get("title") for row_c46m in shared_types_c46
+               if row_c46m.get("active")] == ["All Shared"]
+          and "FieldType" not in shared_meta_c46
+          and (shared_types_c46[0].get("Sort") or [{}])[0].get("activeDirection") == "asc"
+          and not any(sort_c46m.get("active")
+                      for row_c46m in shared_types_c46[1:]
+                      for sort_c46m in row_c46m.get("Sort") or []),
+          "folder active=%s fields=%d | shared=%s"
+          % ([row_c46m.get("type") for row_c46m in folder_types_c46
+              if row_c46m.get("active")], len(folder_meta_c46.get("FieldType") or []),
+             [(row_c46m.get("title"), row_c46m.get("active"))
+              for row_c46m in shared_types_c46]))
+
 
     # Cycle 46, from the option sweep, and it OVERTURNS a cycle-44 refutation:
     # `includeStorage=1` on `/media/providers` really does something. Cycle 44's hunt
