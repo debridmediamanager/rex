@@ -5312,7 +5312,10 @@ class PlexSim:
             dated = dated[:cap] if cap is not None else dated
             rows = []
             for added, row in dated:
-                entry = _grid_row(_listing_row(row))
+                # Cycle 46: `keep_guid` so the gate below can honour `includeGuids=1`,
+                # which both references do here. `_grid_row`'s default strips the list
+                # unconditionally, so this listing could never answer an id.
+                entry = _grid_row(_listing_row(row), keep_guid=True)
                 if row.get("type") == "season":
                     # Measured on both servers: a SEASON row here -- and nowhere else on
                     # the surface -- carries `parentSummary`, the show's own summary. An
@@ -5329,6 +5332,9 @@ class PlexSim:
                 entry["allowSync"] = False
                 entry["addedAt"] = added
                 rows.append(entry)
+            # Cycle 46: the `includeGuids` gate both references apply here, which
+            # plexsim ran on every other listing and not on this one.
+            rows = self._guid_gate(rows, query)
             page, paged, start, total = self.page_window(rows, query)
             fields = {"offset": start, "totalSize": total} if paged else {}
             return self.container(Metadata=page, mixedParents=True, **fields)
