@@ -484,6 +484,40 @@ def main():
           is_empty_200(status, body) and not row.get("viewCount"),
           "viewCount=%s" % row.get("viewCount"))
 
+    # Cycle 41, measured on both writable copies from a pristine movie: the
+    # inProgress FIELD is driven by a stored offset, even though the similarly
+    # named `/inProgress` AXIS 404s below. `/:/progress` alone is enough to put the
+    # numeric key in the listing, and the public scrobble/unscrobble pair restores
+    # the row to having none of viewOffset/viewCount/lastViewedAt.
+    if spare:
+        _, pristine_c41s, _ = get(base, "/library/metadata/%s" % spare)
+        pristine_row_c41s = (pristine_c41s.get("Metadata") or [{}])[0]
+        progress_status_c41s, progress_body_c41s, _ = request(
+            base, "GET", "/:/progress?key=%s&time=65000"
+                         "&identifier=com.plexapp.plugins.library" % spare)
+        _, in_progress_c41s, _ = get(
+            base, "/library/sections/%s/all?type=1&inProgress=1" % movie_section)
+        in_progress_keys_c41s = {str(row_c41s.get("ratingKey"))
+                                 for row_c41s in in_progress_c41s.get("Metadata") or []}
+        request(base, "GET", "/:/scrobble?key=%s"
+                             "&identifier=com.plexapp.plugins.library" % spare)
+        request(base, "GET", "/:/unscrobble?key=%s"
+                             "&identifier=com.plexapp.plugins.library" % spare)
+        _, restored_c41s, _ = get(base, "/library/metadata/%s" % spare)
+        restored_row_c41s = (restored_c41s.get("Metadata") or [{}])[0]
+        check("inProgress=1 follows an offset written by /:/progress",
+              not {"viewOffset", "viewCount", "lastViewedAt"} & set(pristine_row_c41s)
+              and is_empty_200(progress_status_c41s, progress_body_c41s)
+              and str(spare) in in_progress_keys_c41s
+              and not {"viewOffset", "viewCount", "lastViewedAt"} & set(restored_row_c41s),
+              "listed=%s restored=%s"
+              % (str(spare) in in_progress_keys_c41s,
+                 sorted({"viewOffset", "viewCount", "lastViewedAt"}
+                        & set(restored_row_c41s))))
+    else:
+        skip("inProgress=1 follows an offset written by /:/progress",
+             "no pristine second movie")
+
     if show:
         _, before, _ = get(base, "/library/metadata/%s" % show)
         leaf_count = (before.get("Metadata") or [{}])[0].get("leafCount") or 0
