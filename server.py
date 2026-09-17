@@ -7492,7 +7492,20 @@ class PlexSim:
     # The subsets a library's pivot bar opens, and the title2 each one carries.
     SUBSET_TITLES = {"onDeck": "On Deck", "recentlyAdded": "Recently Added",
                      "newest": "Recently Released", "recentlyViewed": "Recently Viewed",
-                     "recentlyViewedShows": "Recently Viewed Shows"}
+                     "recentlyViewedShows": "Recently Viewed Shows",
+                     # Cycle 45: two more, 200 on kids, zen and both writable copies.
+                     # `recentlyViewedGrandparents` is byte-identical to
+                     # `recentlyViewedShows` on both library types;
+                     # `recentlyAddedGrandparents` is byte-identical to `recentlyAdded`
+                     # on a MOVIE library and rolls the leaves up to their SHOW on a show
+                     # one, dropping `mixedParents` and KEEPING `viewGroup: "episode"`.
+                     "recentlyViewedGrandparents": "Recently Viewed Shows",
+                     "recentlyAddedGrandparents": "Recently Added"}
+
+    # The two leaves above are aliases of the two beside them, for everything but the
+    # show-library roll-up.
+    SUBSET_ALIASES = {"recentlyViewedGrandparents": "recentlyViewedShows",
+                      "recentlyAddedGrandparents": "recentlyAdded"}
 
     def section_subset(self, section_id, section, leaf, query):
         """`/library/sections/{id}/{onDeck,recentlyAdded,newest,recentlyViewed,...}`.
@@ -7517,6 +7530,10 @@ class PlexSim:
         # and an empty `?type=` are 500s on both references, on `/onDeck` as on `/all`.
         self._parsed_type(query or {})
         is_show = section.get("type") == "show"
+        # Cycle 45: the Grandparents pair runs its twin's body. `recentlyAdded`'s show
+        # form then rolls its leaves up, below.
+        rolls_up = is_show and leaf == "recentlyAddedGrandparents"
+        leaf = self.SUBSET_ALIASES.get(leaf, leaf)
         extra = {"title2": self.SUBSET_TITLES[leaf], "allowSync": True}
         if is_show:
             extra["mixedParents"] = True
@@ -7565,6 +7582,24 @@ class PlexSim:
             else:
                 rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
                               reverse=True)
+        if rolls_up:
+            # Cycle 45, measured on kids: a SHOW library's `recentlyAddedGrandparents`
+            # answers the SHOW of each recently-added leaf, once, newest first, with no
+            # `mixedParents` and `viewGroup` still "episode" -- six episode rows become
+            # one show row. A MOVIE library's is `recentlyAdded` unchanged.
+            owners, seen = [], set()
+            for row in rows:
+                owner = row
+                while owner is not None and owner.get("type") not in ("show", "movie"):
+                    parent = owner.get("parentRatingKey")
+                    owner = self.catalog.items.get(int(parent)) \
+                        if str(parent or "").isdigit() else None
+                if owner is None or str(owner.get("ratingKey")) in seen:
+                    continue
+                seen.add(str(owner.get("ratingKey")))
+                owners.append(owner)
+            rows = owners
+            extra.pop("mixedParents", None)
         if leaf == "recentlyViewedShows" and not self.page_window(rows, query)[1]:
             extra["offset"] = 0
             extra["totalSize"] = len(rows)
