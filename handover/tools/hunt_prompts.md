@@ -2691,3 +2691,133 @@ disposable UI replay passed 1582/1582. Root independently repeated the full veri
 protected snapshot was byte-identical, every exact-value secret scan was clean, all Cycle-43
 listeners were stopped, and the loop stops with the current-client, historical and advertised axes
 all covered. ====
+
+
+==== Cycle 46 (2026-09-18). Shared preamble: frozen commit `d4a4b14`; mode-700 session scratch
+`6646e767-4912-4dac-bbe0-eea51f838555/scratchpad/c46`; kids PMS 1.43.4 and zen production PMS
+1.42.2 are GET/HEAD only through the guarded helper, zen always finitely paged. Never send a
+write-shaped GET, `/library/shared/all?sort=`, reference websocket/eventsource, media/theme/part/
+transcode body, file artwork URL, auth/network/updater/section-delete/match/unmatch/merge/split
+request, or any write to a protected server. Do not drive the user's signed-in Desktop profile or
+change plex.tv/account/device state. Writes, if required, belong only to a disposable local target
+or plexscratch with a prewritten undo. Never print/store tokens or copied credential material.
+Every finding must reproduce on frozen source, name client impact, and supply a fail-on-parent
+regression. A clean report must close its whole finite denominator and end exactly `no findings`.
+====
+
+
+# Cycle 46 | Territory A | complete query-option namespace and live availability
+
+Mechanically derive every `include*`, `exclude*`, `async*`, `check*`, `skip*`, `only*` and `with*`
+name from PMS/client literals. Cross the complete vocabulary with every distinct safe container
+family on kids, zen and frozen plexsim, duplicate baselines, isolate moving paths, and distinguish
+version/content splits from same-version mismatches. Re-measure each mismatch on the exact path and
+projection before implementation. Explicitly drive `checkFiles`, `asyncCheckFiles` and
+`checkFileAvailability` through a live and an unavailable provider outcome, and reconcile metadata
+attributes with the byte-path status. Keep deeply analysed Part data as a named bound unless the
+target actually owns its measured inputs. Report exact vocabulary/path/host/cell and final
+partition counts.
+
+
+# Cycle 46 | Territory B | complete request-header namespace
+
+Build one finite header vocabulary from the installed Plex Desktop framework, complete official
+web bundles, PMS strings and every plexlab corpus, preserving exact spellings and source
+membership. Sweep every normalized name with a source-shaped value over a broad safe envelope/path
+catalog on both references and frozen plexsim; duplicate baselines. Add uniform-zero and targeted
+grammar controls for every movement, especially Strict-Ranges, Indeterminate-Ranges, Chunked,
+Pipeline, Neuter-Redirect, language, paging, Product and authentication. Report logical/physical
+cells, stability, complete partition, artifacts and safety proof.
+
+
+# Cycle 46 | Territory C | installed Desktop boundary and complete outbound READ census
+
+Inventory every installed Plex Desktop web asset and runtime-declared native network/IPC class;
+trace ownership across bundled Web, native mpv, artwork, subtitle, NanoServer, DRM/updater/codec
+traffic and reconcile every PMS path with the complete current-client graph. Drive no live signed-in
+profile unless it can be proved isolated from plex.tv/account/device state; otherwise name the
+exact runtime cells as safety bounds. Separately classify every READ among the first 1,665
+`capture/outbound.jsonl` exchanges, retaining only token-safe structure and never replaying the 193
+writes. For each client-state read, prove exact credential source, cursor/cadence, response grammar
+and local consequence; provide a minimal implementation/regression target for each actionable gap.
+
+
+# Cycle 46 | Territory D | replay both finite historical/control censuses
+
+Rebuild the Cycle-41–43 historical atom universe and advertised-control graph against the Cycle-46
+head. Require stable row joins to current code and branch-reaching regression evidence, rerun all
+24 Cycle-41 cross-fix audits, and widen both universes with Cycles 44–46. If retained inputs are
+missing, report that as an evidence-process finding rather than manufacturing rows from published
+aggregates. Run the complete disposable UI surface and focused suites serially; report exact
+materialized, bounded, unavailable and unresolved counts.
+
+
+==== Cycle 46 result. Territory A measured 116 names × 76 paths × 3 hosts = 26,448 cells and
+produced 14 option-propagation findings plus the provider-availability correction; its final
+adjudicated matrix is 19 common moving options, four version/content splits, 92 no-ops, one
+deep-analysis bound and zero actionable mismatch. Territory B found two `/web` header mismatches in
+8,052 broad cells plus controls. Territory C found exact feature UUID acquisition and cloud
+watch/rating import in the 1,665-exchange outbound prefix; Desktop added no static PMS family and
+three native runtime cells remain safety-bounded. Territory D passed every materializable product
+row but reported one process finding: the retained Cycle-41–43 row inputs had been deleted. All 19
+product findings were implemented with regressions. ====
+
+
+==== Cycle 47 (2026-09-18). Repeat Cycle 46's complete header and outbound denominators against
+the repaired head; reconstruct the missing finite censuses from durable first-party sources rather
+than deleted scratch. Preserve Cycle 46's safety rules and exact bounds. A repeat finding must fail
+the current head, not merely cite the prior report. ====
+
+
+# Cycle 47 | Territory B | exact header re-audit
+
+Replay all 61 normalized names / 88 spellings, 44 safe families, three hosts and absent/primary/zero
+states. Compare every movement row mechanically with Cycle 46, rerun all 474 targeted controls and
+prove the Pipeline/Neuter fixes exactly. End `no findings` only with stable baselines and zero
+reference-agreement mismatch.
+
+
+# Cycle 47 | Territory C | frozen outbound suffix re-audit
+
+Freeze the complete append-only corpus, prove its first 1,665 records match Cycle 46 at raw-safe,
+family and response-structure levels, classify every suffix read, and re-prove watch credential/
+cursor/rating behavior against target code. Audit account/user/features cadence across the full
+capture rather than treating claim-time reads as the whole lifecycle. Never replay an external
+write or retain raw credentials.
+
+
+# Cycle 47 | Territory D | durable historical and advertised-control universes
+
+Replace, do not pretend to recover, the deleted scratch-only denominators. Build stable historical
+rows from behavior-bearing git ancestry joined to same-commit or explicitly maintained regression
+evidence. Re-fetch/hash the complete anonymous current public client graph and build advertisement,
+control, normalized-family, predicate, action and readback rows from checked-in measured sidecars
+and client call sites. Verify every foreign key and run the full suite serially. Treat failures
+caused by earlier suite mutation as a harness finding only after a fresh discriminator proves the
+product behavior.
+
+
+==== Cycle 47 result. Header replay: 24,156 logical cells / 16,842 physical requests, no findings.
+Outbound replay: 1,829 exchanges; Cycle-46 watch import exact, one finding — real PMS renews user
+then features daily. Durable reconstruction: 743 historical rows including all 24 Cycle-41 fixes,
+205 current-client assets, 24,452 advertisement leaves and 49 controls/39 normalized families; no
+product mismatch, one harness-order finding. Daily renewal landed at `3cff10e`; the pristine-state
+UI snapshot repair landed at `768377a`. ====
+
+
+==== Cycle 48 (2026-09-18). Freeze final head `768377a` and perform the stopping repeat. Use the
+exact Cycle-47 denominators; do not infer a new vocabulary from target output. Territory A repeats
+the full query matrix, B the full header matrix, C the frozen 1,829-exchange outbound audit, and D
+the durable historical/current-client/advertised-control universes. Root independently repeats all
+suites and protected-state/secret/cleanup gates. End a territory exactly `no findings` only if
+every row is terminally clean or explicitly bounded and no actionable mismatch remains. ====
+
+
+==== Cycle 48 result. Query: 26,448 cells, 19 common movers, four version/content splits, 92
+no-ops, one deep-analysis bound, zero actionable mismatch. Header: 24,156 logical cells / 16,842
+physical requests, zero mismatch. Outbound: 1,829 exchanges / 1,620 reads, 140/140 credential
+decryptions and 309/309 latest-Bearer matches, zero unclassified read. Finite source/control:
+745 historical rows with 24/24 Cycle-41 fixes, the identical complete 205-asset client graph,
+24,452 advertisements and 49 controls/39 normalized families, zero unjoined or actionable row.
+Independent UI is 1,629/1,629. Every territory report ends exactly `no findings`; the loop stops
+until a new instrument or external universe exists. ====

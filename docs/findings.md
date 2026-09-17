@@ -9095,6 +9095,148 @@ thirty-four cycles without anyone reading it.
   scorer that reads `PROFILES[name]` instead of `resolve(name)` measures its own shortcut. Nine of
   this cycle's first "misses" were exactly that.
 
+#### The forty-sixth through forty-eighth passes — every Cycle-46 axis closed, then repeated clean
+
+Cycle 46 took every open direction named at the end of Cycle 45: the query-option name space,
+the request-header name space, live/dead file availability, the installed Plex Desktop boundary,
+the whole recorded outbound-read corpus, and both finite source/control censuses. Cycle 47
+repeated the moving external axes and repaired the two things that repetition found. Cycle 48
+then replayed the same finite denominators against the repaired head. Nothing in these passes was
+inferred from a plausible response shape: every positive was measured on both reference versions,
+and every negative has a finite denominator or an explicit safety/capability bound.
+
+##### Query options: 116 names, 76 safe container families, 26,448 cells
+
+The vocabulary is every `include*`, `exclude*`, `async*`, `check*`, `skip*`, `only*` and `with*`
+literal recovered from PMS and the official-client bundles: **116 names**. It was crossed with
+**76** distinct safe top-level, library, section, hub, item, hierarchy, secondary-axis, session
+and system families on kids 1.43.4, zen 1.42.2 and plexsim: **26,448 cells**, with duplicate
+baselines and the three moving statistics/updater leaves excluded per host.
+
+The first broad run exposed eleven apparent mismatches. Ten were real and one was the already
+measured `includeBandwidths` capability bound. Together with four findings from the narrower
+opening pass, the query axis produced **14 fixes**:
+
+* **`checkFileAvailability` is a full sibling of `checkFiles`**, including the exact `+?0*[01]`
+  value grammar and detail-row-only `Part.accessible`/`exists` projection.
+* **`includeGuids` propagates through every full/light listing projection that the references
+  move**, including `/library/recentlyAdded`, global hubs, Home Recently Added, children, section
+  newest/recently-added/search and hub search. The option changes projection, not route identity.
+* **`includeMeta` reaches the two Home resume leaves, collection listings, folder rows and Shared
+  libraries.** A collection Meta uses the collection view; a folder activates the folder Type;
+  Shared carries its constant seven-Type block.
+* **`includeStorage` reaches `/media/providers`** as numeric `durationTotal`/`storageTotal` fields,
+  including the provider root and each library row. This is distinct from section-grid storage,
+  whose totals are strings.
+* Global **`/hubs` honours `includeChildren`, `includeExtras`, `includeOnDeck`, `includeRelated`
+  and `includePreferences`** on its full rows. Light rows still do not acquire blocks they never
+  own. `includePreferences` also reaches Shared libraries.
+* **`includeCollections=1` changes hub-search shelf order**: Collections moves immediately after
+  Tracks; it does not create or suppress the always-present typed collection hub.
+* **`includeSummary=1` reaches Shared**, and its per-library `duration` plus complete `Type`
+  census uses every hierarchy level the library owns, not only the top-level type.
+* **`skipCount` filters the SOURCE rows** used by children, section search and secondary axes.
+  Applying it after buckets were made left empty or stale counts behind.
+
+The final partition is **19 common moving options, four version/content splits, 92 no-ops, one
+explicit bound and zero actionable mismatches**. `includeBandwidths=1` is the bound: it exposes
+`deepAnalysisVersion` and bitrate-distribution output only on a Part PMS has deeply analysed.
+An unanalysed zen Part is byte-identical with and without the option, and every plexsim Part is
+unanalysed, so emitting nothing is the measured branch rather than a missing implementation.
+
+##### Request headers: 61 normalized names, 88 spellings, 24,156 logical cells
+
+The header vocabulary exhausts Plex Desktop's framework binary, the complete local and current
+official web bundles, PMS strings and every plexlab corpus: **61 normalized field names and 88
+source spellings**. Forty-four safe path/envelope families on three hosts were measured absent,
+with their source-shaped value and with literal `0`: **24,156 logical cells**, **16,842 physical
+requests** including repeated baselines and 474 targeted controls.
+
+Two differences were real, both in `/web`'s hand-written redirect writer:
+
+* exact **`X-Plex-Http-Pipeline: disable`** must keep the 302 but answer `Connection: close` and
+  omit `Keep-Alive`; `Disable`, `infinite` and `0` retain the normal keep-alive pair;
+* exact **`X-Plex-Neuter-Redirect: 1`** changes the answer to an empty **200** while retaining the
+  absolute `Location`; `0` and `true` remain 302.
+
+The transport-looking trio `X-Plex-Strict-Ranges`, `X-Plex-Indeterminate-Ranges` and
+`X-Plex-Chunked` was controlled on ranged containers and ranged static files under five values
+and is inert on this bounded surface. The final header partition is 52 inert, seven aligned
+common effects, `X-Plex-Product` as an aligned content/version partition, and `X-Plex-Token` as
+the authentication control. Cycle 47 and Cycle 48 repeated every cell; both reports contain
+zero reference-agreement mismatches and end `no findings`.
+
+##### File availability now follows the provider result
+
+The live/dead comparison overturned the inherited constant `accessible=true, exists=true`.
+`checkFiles`, `asyncCheckFiles` and `checkFileAvailability` now ask the same Real-Debrid resolver:
+a live link projects `true/true`, an `unavailable_file` projects `false/false`, and a request with
+none of the three options omits both attributes. The byte path agrees: provider
+`unavailable_file` is a plain **404**, while transport or resolver failure remains a 502. The
+offline part harness supplies both outcomes and proves **11/11** byte/envelope checks without an
+account credential.
+
+##### Claimed-account state is read from the same cloud sources PMS uses
+
+The first outbound census classified every one of the first **1,665** captured exchanges; the
+repeat denominator is the complete frozen prefix plus its append-only suffix, **1,829 exchanges**
+(1,620 reads and 209 writes). Writes were counted and never replayed. The two client-state reads
+that matter are now implemented.
+
+**Feature UUIDs are acquired, not invented.** `/api/v2/features` supplies the account-scoped UUID
+half of `ownerFeatures`/`subscriptionFeatures`; it is unioned with the 32 named defaults, sorted,
+persisted, and exposed identically on both local endpoints. An already claimed server refreshes
+`/api/v2/user?includeSubscriptions=1&includeProviders=1`, waits the measured eleven seconds, then
+refreshes `/api/v2/features?X-Plex-Token=...`; the pair runs at claimed startup, immediately after
+claim, and no more often than **86,400 seconds**. Both documents commit atomically, so a failed
+second read preserves the complete last-good identity and feature set. This daily renewal is the
+one product finding Cycle 47 found after Cycle 46's claim-time implementation.
+
+**Watch and rating state is imported from the scrobbling service.** The complete corpus contains
+310 consent reads and 309 state pages. Consent is read with the server token; the state endpoint
+uses a short-lived RS256 Bearer obtained from the owner's `identifier=scrobbling` service. PMS's
+measured credential transform is base64 then AES-256-CBC with the MD5 expansion
+`D1=MD5(secret)`, `D2=MD5(D1||secret)`, `D3=MD5(D2||secret)`, followed by its permissive final-byte
+strip. The static 32-byte transport secret is deliberately not in the repository; deployment must
+supply its base64 form in `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64`. Without it, sync fails closed.
+
+The proof is whole-corpus, not sampled: **140/140** captured service ciphertexts decrypt, and the
+latest preceding plaintext equals the Bearer actually used on **309/309** state requests. The
+cursor is opaque and is persisted only after rows apply. `complete` stores at least one view,
+`unplayed` clears view state, timestamps convert milliseconds to seconds, an absent rating pair
+preserves local stars, `rating=-1` clears them and a nonnegative rating sets them. No cloud import
+manufactures a local history row.
+
+##### The installed Desktop, finite source universes, and the stopping repeat
+
+The installed Plex Desktop 1.115.0 boundary was completely inventoried: its bundled Plex Web
+4.160.0 runtime has 202/202 JavaScript bodies and every runtime-declared SRI verifies; the native
+side contributes seven network/IPC classes. Bundled Web still owns all PMS request building.
+Native mpv consumes the chosen media/subtitle URL, the Now Playing layer consumes existing artwork
+URLs, and NanoServer/Widevine/updater traffic is not a PMS path. This adds no PMS path family to
+the complete 205-asset public Plex Web graph. Driving the already signed-in Desktop profile could
+not be isolated from plex.tv/account/device state without changing the user's live profile, so its
+ordered mpv Range cadence, timeline cadence and actual native decode remain an explicit safety
+bound rather than a false clean claim.
+
+Cycle 46 also discovered that the old Cycle-41–43 scratch-only census inputs had been deleted.
+Cycle 47 repaired that evidence process by rebuilding durable first-party denominators: **743
+behavior-bearing commits** in current ancestry (all 24 Cycle-41 fixes present), the complete
+**205-asset / 9,314,084-byte** current public client graph, **24,452 scalar advertisements** from
+14 measured sidecars, **49 direct PMS controls / 39 normalized families**, and explicit method,
+action and readback joins. It also found one test-only defect: six new option regressions ran after
+the UI suite had mutated or deleted their discriminator rows. Capturing those read-only responses
+while the fixture is pristine makes the complete suite pass **1,629/1,629**.
+
+Cycle 48 replayed the query, header, outbound, historical and advertised-control denominators on
+the repaired final head. The durable historical repeat is **745 rows: 743 pass, two terminal
+credential-bound media rows, zero not-run/actionable**; all 24 Cycle-41 fixes pass. Each report ends
+exactly **`no findings`**. Remaining entries are named
+bounds, not omitted cells: deeply analysed bandwidth data, Desktop runtime isolation, pagination
+and initial-empty-cursor forms absent from the cloud corpus, shared-user state absent from the
+single-owner corpus, proprietary metadata/provider architecture, and expired account-scoped media
+links in the checked-in fixture.
+
 #### The forty-fifth pass — the name space, swept from the servers' own words
 
 Cycle 44 reopened the loop by recognising a new instrument. Cycle 45 generalised the *method*
@@ -9298,9 +9440,10 @@ plex.tv content and are deliberately not invented.
   real PMS has **deep-analysed**. zen's `/library/metadata/1` is byte-identical with and without
   the option, which is the proof: plexsim's Parts are all un-analysed, so ignoring the option is
   the faithful answer. Its value grammar is the `+?0*1` family and nothing refuses.
-* **The ~180 plex.tv feature UUIDs** behind `ownerFeatures`. Account-and-server-scoped; the 32
-  named features are built and the ids are not invented. `owner_features.txt` beside `server.py`
-  stays the local override.
+* ~~**The ~180 plex.tv feature UUIDs** behind `ownerFeatures`.~~ **BUILT in Cycle 46 and renewed
+  daily in Cycle 47.** The outbound corpus identified `/api/v2/features` as their exact
+  authenticated source, so the server acquires and persists them instead of inventing them.
+  `owner_features.txt` remains an optional local addition, not the primary source.
 * **`/library/shared/all?sort=`** — the empty sort that crashes a real PMS. Unmeasurable.
 * **`title`→genre and `summary`→producer on `/top`** are built, because they cost nothing beyond
   the six real names and are identical on three servers; the *generating rule* behind PMS's
