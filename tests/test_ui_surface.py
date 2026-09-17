@@ -23580,6 +23580,40 @@ def main():
           % (status_c19q, body_c19q.get("size"), status_c19r, bare_c19q.get("size"),
              status_c19s))
 
+    # Cycle 41, re-measured on kids (1.43.4) and zen (1.42.2): file-state fields
+    # are a DETAIL option. Bare and `checkFiles=0` detail reads omit them;
+    # `checkFiles=1` adds both; a section listing omits both even when it receives
+    # the option. plexsim's old plezy compatibility waiver sent both everywhere.
+    def first_part_c41b(document):
+        metadata_c41b = (document.get("Metadata") or [{}])[0]
+        media_c41b = (metadata_c41b.get("Media") or [{}])[0]
+        return (media_c41b.get("Part") or [{}])[0]
+
+    _, detail_bare_c41b, _ = get(base, "/library/metadata/%s" % movie)
+    _, detail_zero_c41b, _ = get(base, "/library/metadata/%s?checkFiles=0" % movie)
+    _, detail_one_c41b, _ = get(base, "/library/metadata/%s?checkFiles=1" % movie)
+    _, listing_one_c41b, _ = get(
+        base, "/library/sections/%s/all?type=1&checkFiles=1" % movie_section)
+    bare_part_c41b = first_part_c41b(detail_bare_c41b)
+    zero_part_c41b = first_part_c41b(detail_zero_c41b)
+    one_part_c41b = first_part_c41b(detail_one_c41b)
+    listing_part_c41b = first_part_c41b(listing_one_c41b)
+    check("checkFiles alone exposes Part accessible and exists",
+          all(key_c41b not in bare_part_c41b and key_c41b not in zero_part_c41b
+              and key_c41b not in listing_part_c41b
+              for key_c41b in ("accessible", "exists"))
+          and one_part_c41b.get("accessible") is True
+          and one_part_c41b.get("exists") is True,
+          "bare %s zero %s one %s listing %s"
+          % ({key_c41b: bare_part_c41b.get(key_c41b)
+              for key_c41b in ("accessible", "exists") if key_c41b in bare_part_c41b},
+             {key_c41b: zero_part_c41b.get(key_c41b)
+              for key_c41b in ("accessible", "exists") if key_c41b in zero_part_c41b},
+             {key_c41b: one_part_c41b.get(key_c41b)
+              for key_c41b in ("accessible", "exists") if key_c41b in one_part_c41b},
+             {key_c41b: listing_part_c41b.get(key_c41b)
+              for key_c41b in ("accessible", "exists") if key_c41b in listing_part_c41b}))
+
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: `checkFiles=` takes
     # a bare decimal whole number that is 0 or 1 -- `0`, `1` and `01` are 200 while `abc`,
     # an empty value, `2`, `true`, `-1`, `1.5`, a leading space and a trailing one are all
