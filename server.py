@@ -4058,6 +4058,38 @@ class PlexSim:
             logger.warning("REFUSED %s: %s", route, refused.detail)
             return ("error", refused.status, "plexsim: %s" % refused.detail)
 
+    def metadata_provider_rows(self, *, group):
+        """The rows of `/media/providers/metadata` or of its `/group` form.
+
+        Cycle 44 lifted these out of the listing handler so the per-id GETs answer the
+        same rows, and corrected two JSON types that only a JSON read of BOTH references
+        could show -- the XML is `builtIn="1"` and `order="1000"` on both, so it cannot:
+
+        * `builtIn` is the **string `"1"`** on 1.42.2 and the boolean `true` on 1.43.4.
+          plexsim reports 1.42.2 and sent `true`. The seventh per-version shape.
+        * `order` is the **float `1000.0`** on BOTH versions; plexsim sent the integer
+          `1000`. Same family as `durationTotal`/`storageTotal` being JSON strings.
+        """
+        providers = self.metadata_agent_providers()
+        if not group:
+            return providers
+        groups = [{
+            "id": row["id"],
+            "title": row["title"],
+            "primaryIdentifier": row["identifier"],
+            "builtIn": "1",
+            "MetadataAgentProviderGroupItem": [{
+                "id": row["id"],
+                "metadataAgentProviderGroupId": row["id"],
+                "metadataAgentProviderId": row["id"],
+                "order": 1000.0,
+            }],
+        } for row in providers]
+        with self.lock:
+            groups.extend(self.metadata_agent_provider_group(entry)
+                          for entry in self.metadata_provider_groups.values())
+        return groups
+
     @staticmethod
     def metadata_agent_provider_group(group):
         """Detach one mutable custom provider-group row for a response."""
@@ -4146,7 +4178,11 @@ class PlexSim:
                                        MetadataAgentProviderGroup=[answer])
 
         if (len(segments) >= 5 and segments[:4] == ["media", "providers", "metadata", "group"]
-                and segments[4].isdigit()):
+                and segments[4].isdigit()
+                # Cycle 44: the GET of a group id is a READ of the table below, not part
+                # of the custom-group lifecycle -- a BUILT-IN group answers it too, and
+                # this branch only knows about groups the client created.
+                and not (len(segments) == 5 and method in ("GET", "HEAD"))):
             group_id = int(segments[4])
             with self.lock:
                 group = self.metadata_provider_groups.get(group_id)
@@ -4175,6 +4211,30 @@ class PlexSim:
                         return ("error", 404, "plexsim: not found")
             return ("error", 404, "plexsim: not found")
 
+        # Cycle 44, found by sweeping the PMS path literals out of Plex Desktop's own
+        # bundle: the per-id GETs are real. `/media/providers/metadata/{id}` and
+        # `/media/providers/metadata/group/{id}` answer the same row the bare table
+        # carries, as a one-row container; an id the server does not hold is a 404 and a
+        # NON-NUMERIC one is a **400** on both references. plexsim 404'd all of it, and
+        # these are exactly the two shapes the Settings -> Agents pane's own bundle
+        # builds (`/media/providers/metadata/${e.id}`, `/media/providers/metadata/group/
+        # ${l}`) once the tables have loaded.
+        if (segments[:3] == ["media", "providers", "metadata"]
+                and len(segments) in (4, 5)
+                and not (len(segments) == 4 and segments[3] == "group")):
+            if len(segments) == 5 and segments[3] != "group":
+                return ("error", 404, "plexsim: not found")
+            wanted = segments[4] if len(segments) == 5 else segments[3]
+            if not wanted.isdigit():
+                return ("error", 400, "plexsim: bad request")
+            rows = self.metadata_provider_rows(group=len(segments) == 5)
+            key = ("MetadataAgentProviderGroup" if len(segments) == 5
+                   else "MetadataAgentProvider")
+            picked = [row for row in rows if str(row.get("id")) == wanted]
+            if not picked:
+                return ("error", 404, "plexsim: not found")
+            return self.bare_container(size=1, **{key: picked})
+
         if route in ("/media/providers/metadata", "/media/providers/metadata/group"):
             if method == "POST":
                 # Cycle 31 measured this on the PROVIDER listing. Creating one needs
@@ -4189,27 +4249,11 @@ class PlexSim:
             # rows are the four modern agents plexsim already holds, in zen's shape:
             # one `MetadataType` child per media type the provider serves, and a group
             # row per provider naming it by `primaryIdentifier`.
-            providers = self.metadata_agent_providers()
+            rows = self.metadata_provider_rows(group=route.endswith("/group"))
             if route.endswith("/group"):
-                groups = [{
-                    "id": row["id"],
-                    "title": row["title"],
-                    "primaryIdentifier": row["identifier"],
-                    "builtIn": True,
-                    "MetadataAgentProviderGroupItem": [{
-                        "id": row["id"],
-                        "metadataAgentProviderGroupId": row["id"],
-                        "metadataAgentProviderId": row["id"],
-                        "order": 1000,
-                    }],
-                } for row in providers]
-                with self.lock:
-                    groups.extend(self.metadata_agent_provider_group(group)
-                                  for group in self.metadata_provider_groups.values())
-                return self.bare_container(size=len(groups),
-                                           MetadataAgentProviderGroup=groups)
-            return self.bare_container(size=len(providers),
-                                       MetadataAgentProvider=providers)
+                return self.bare_container(size=len(rows),
+                                           MetadataAgentProviderGroup=rows)
+            return self.bare_container(size=len(rows), MetadataAgentProvider=rows)
 
         if route == "/media/providers":
             # Measured: a real PMS routes per (method, path) and NOT uniformly --
