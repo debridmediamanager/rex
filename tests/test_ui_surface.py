@@ -25127,6 +25127,22 @@ def main():
           and not avail_c46["listing"],
           str(avail_c46))
 
+
+    # Cycle 46, from the same option sweep: `includeGuids=1` carries the `Guid` list on
+    # `/library/recentlyAdded` as it does on `/library/all`, a section grid and a
+    # section's `recentlyAdded` -- measured on kids and zen, which agree. plexsim built
+    # this one listing with `_grid_row`'s default, which strips `Guid` unconditionally,
+    # so the one path the client uses to ask "do you already have this?" across the
+    # whole server could never answer with an id.
+    _status_c46g, plain_c46g, _ = get(base, "/library/recentlyAdded")
+    _status_c46g2, guided_c46g, _ = get(base, "/library/recentlyAdded?includeGuids=1")
+    check("includeGuids reaches /library/recentlyAdded",
+          not any("Guid" in row_c46g for row_c46g in plain_c46g.get("Metadata") or [])
+          and any("Guid" in row_c46g for row_c46g in guided_c46g.get("Metadata") or []),
+          "plain %d rows with Guid, guided %d"
+          % (sum(1 for r_c46g in plain_c46g.get("Metadata") or [] if "Guid" in r_c46g),
+             sum(1 for r_c46g in guided_c46g.get("Metadata") or [] if "Guid" in r_c46g)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
