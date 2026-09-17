@@ -14807,6 +14807,14 @@ class PlexSim:
                 # not hold -- `0`, an unknown id -- moves the item to the FRONT, as `-1`
                 # does. plexsim answered 404 and left it where it was.
                 items.insert(0 if target is None else target + 1, moving)
+            # Cycle 41, measured on both writable PMS copies with the exact
+            # create-one -> plain-add-one -> move-the-added-tail-to-front sequence:
+            # the add answers ids [A, B] with lastAdded=B, while the move answers
+            # [B, A] with lastAdded=A.  A move therefore re-anchors an existing
+            # plain-add marker to the queue's new tail; it does not create the marker
+            # on a queue that has never had a plain add.
+            if queue.get("last_added") is not None:
+                queue["last_added"] = items[-1]["id"] if items else None
             queue["version"] += 1
             return self.play_queue_container(queue_id, query, locked=True)
 
