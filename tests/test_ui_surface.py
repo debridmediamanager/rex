@@ -23858,22 +23858,28 @@ def main():
               for key_c41b in ("accessible", "exists") if key_c41b in listing_part_c41b}))
 
     # Cycle 41, measured by writing the same five tag families on disposable copies of
-    # kids (1.43.4) and zen (1.42.2): both store Style and Similar on a movie. In JSON
-    # and XML alike, Style is immediately after UltraBlurColors and Similar is after
-    # Label; each carries the ordinary `id, filter, tag` tag-row shape. Mood is not
-    # stored on a movie. `_CHILD_ORDER` knew none of these names, so Style and Similar
-    # fell after the entire known child list.
+    # kids (1.43.4) and zen (1.42.2): both store Style, Collection, Label and Similar
+    # on a movie. In JSON and XML alike, Style is immediately after UltraBlurColors,
+    # Collection precedes Label, and Similar follows Label; each carries exactly the
+    # ordinary `id, filter, tag` tag-row shape. Mood is not stored on a movie.
+    # `_CHILD_ORDER` knew neither Style nor Similar, so those two fell after the entire
+    # known child list; Cycle 41's retained write also closes the previously unwitnessed
+    # Collection/Label children and their exact shape.
     request(base, "PUT", "/library/metadata/%s?style%%5B0%%5D.tag.tag=C41STYLE"
+                         "&collection%%5B0%%5D.tag.tag=C41COLLECTION"
+                         "&label%%5B0%%5D.tag.tag=C41LABEL"
                          "&similar%%5B0%%5D.tag.tag=C41SIMILAR" % movie)
     _, tagged_c41c, _ = get(base, "/library/metadata/%s" % movie)
     tagged_row_c41c = (tagged_c41c.get("Metadata") or [{}])[0]
     _, tagged_xml_c41c = fetch_as("/library/metadata/%s" % movie, {}, want_json=False)
     try:
+        xml_row_c41c = list(ET.fromstring(tagged_xml_c41c))[0]
         xml_children_c41c = []
-        for child_c41c in list(ET.fromstring(tagged_xml_c41c))[0]:
+        for child_c41c in xml_row_c41c:
             if child_c41c.tag not in xml_children_c41c:
                 xml_children_c41c.append(child_c41c.tag)
     except (ET.ParseError, IndexError):
+        xml_row_c41c = []
         xml_children_c41c = []
     json_children_c41c = [key_c41c for key_c41c, value_c41c in tagged_row_c41c.items()
                           if isinstance(value_c41c, (dict, list))]
@@ -23884,16 +23890,36 @@ def main():
     xml_order_c41c = [key_c41c for key_c41c in xml_children_c41c
                       if key_c41c in relevant_c41c]
     style_c41c = (tagged_row_c41c.get("Style") or [{}])[0]
+    collection_c41c = (tagged_row_c41c.get("Collection") or [{}])[0]
+    label_c41c = (tagged_row_c41c.get("Label") or [{}])[0]
     similar_c41c = (tagged_row_c41c.get("Similar") or [{}])[0]
-    check("Style and Similar occupy their measured child positions",
+
+    def exact_tag_c41c(name_c41c, value_c41c, tag_c41c):
+        xml_c41c = next((child_c41c for child_c41c in xml_row_c41c
+                         if child_c41c.tag == name_c41c
+                         and child_c41c.get("tag") == tag_c41c), None)
+        return (list(value_c41c) == ["id", "filter", "tag"]
+                and value_c41c.get("tag") == tag_c41c
+                and value_c41c.get("filter")
+                == "%s=%s" % (name_c41c.lower(), value_c41c.get("id"))
+                and xml_c41c is not None
+                and list(xml_c41c.attrib) == ["id", "filter", "tag"]
+                and xml_c41c.attrib == {key_c41c: str(value_c41c[key_c41c])
+                                        for key_c41c in ("id", "filter", "tag")})
+
+    check("Style, Collection, Label and Similar occupy their measured child positions",
           json_order_c41c == xml_order_c41c
           and json_order_c41c == sorted(json_order_c41c, key=relevant_c41c.index)
-          and all(style_c41c.get(key_c41c) is not None
-                  and similar_c41c.get(key_c41c) is not None
-                  for key_c41c in ("id", "filter", "tag")),
-          "JSON %s XML %s Style %s Similar %s"
-          % (json_order_c41c, xml_order_c41c, style_c41c, similar_c41c))
+          and exact_tag_c41c("Style", style_c41c, "C41STYLE")
+          and exact_tag_c41c("Collection", collection_c41c, "C41COLLECTION")
+          and exact_tag_c41c("Label", label_c41c, "C41LABEL")
+          and exact_tag_c41c("Similar", similar_c41c, "C41SIMILAR"),
+          "JSON %s XML %s Style %s Collection %s Label %s Similar %s"
+          % (json_order_c41c, xml_order_c41c, style_c41c, collection_c41c,
+             label_c41c, similar_c41c))
     request(base, "PUT", "/library/metadata/%s?style%%5B%%5D.tag.tag-=C41STYLE"
+                         "&collection%%5B%%5D.tag.tag-=C41COLLECTION"
+                         "&label%%5B%%5D.tag.tag-=C41LABEL"
                          "&similar%%5B%%5D.tag.tag-=C41SIMILAR" % movie)
 
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2), identically: `checkFiles=` takes

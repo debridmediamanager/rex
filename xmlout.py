@@ -155,6 +155,22 @@ _ATTR_ORDER = {
     "Country": (
         "id", "filter", "tag"
     ),
+    # Cycle 41 measured these four writable tag children on disposable copies of
+    # both supported PMS versions. Like Genre/Country they are exactly
+    # `id, filter, tag` in JSON and XML; without their own buckets plexsim kept the
+    # catalog dict's `id, tag, filter` construction order.
+    "Collection": (
+        "id", "filter", "tag"
+    ),
+    "Label": (
+        "id", "filter", "tag"
+    ),
+    "Similar": (
+        "id", "filter", "tag"
+    ),
+    "Style": (
+        "id", "filter", "tag"
+    ),
     "Director": (
         "id", "filter", "tag", "tagKey", "thumb"
     ),
