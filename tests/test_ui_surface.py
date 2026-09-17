@@ -24182,6 +24182,20 @@ def main():
           and allow_c45u["poster/1"] == 200 and set(deny_c45u.values()) == {404},
           "allow=%s deny=%s" % (allow_c45u, deny_c45u))
 
+
+    # Cycle 45: a `/library/arts` row renders as **`<Photo>`** in XML, not `<Video>`.
+    # `xmlout` names a `Metadata` row's element from the row's own `type`, and
+    # `type: "image"` was not in the map, so it fell through to the `Video` default --
+    # the same trap CLAUDE.md records for the three endpoints cycle 8 found rendering
+    # `<Video>` where a real PMS renders `<Photo>` or `<Directory>`. XML is the DEFAULT
+    # format, so this is what a TV or mobile client reads.
+    status_c45x, body_c45x, _ = request(base, "GET", "/library/arts", want_json=False)
+    root_c45x = ET.fromstring(body_c45x) if status_c45x == 200 and body_c45x else None
+    kinds_c45x = sorted({child.tag for child in root_c45x}) if root_c45x is not None else []
+    check("a /library/arts row is a Photo element",
+          status_c45x == 200 and kinds_c45x == ["Photo"],
+          "%s %s" % (status_c45x, kinds_c45x))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

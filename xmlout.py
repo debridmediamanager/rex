@@ -25,6 +25,11 @@ _METADATA_ELEMENT = {
     "collection": "Directory",
     "playlist": "Playlist",
     "track": "Track",
+    # Cycle 45: a `type: "image"` row -- what `/library/arts` answers -- is a `<Photo>`,
+    # measured on kids. Without it the row fell through to the `Video` default, which is
+    # the trap this project already records for three other endpoints: `xmlout` names a
+    # `Metadata` row's element from the row's `type`, and XML is the DEFAULT format.
+    "image": "Photo",
 }
 
 
