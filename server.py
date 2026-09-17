@@ -16616,7 +16616,8 @@ class Handler(BaseHTTPRequestHandler):
         if "etag" in names or "content-disposition" in names:
             return "part"
         if status == 416:
-            return "range-error"
+            return ("range-error-container"
+                    if getattr(self, "_range_error_container", False) else "range-error")
         if "location" in names:
             return "redirect"
         if "access-control-allow-methods" in names:
@@ -16841,6 +16842,10 @@ class Handler(BaseHTTPRequestHandler):
         # alone and answered the whole body with a 200 everywhere else. It runs
         # before the status line goes out, which is the whole point.
         payload, status, content_range = self._ranged(status, payload)
+        # Per REQUEST, not per connection: a handler instance serves every request on a
+        # kept-alive socket, so a 416 earlier on the same connection must not decide
+        # this response's family.
+        self._range_error_container = False
         if status == 416:
             # Cycle 29, measured on kids and zen over eight body paths (row artwork, the
             # `/file?url=` candidate, `/:/resources/*`, the transcoder, a section
@@ -16853,10 +16858,26 @@ class Handler(BaseHTTPRequestHandler):
             # `image/jpeg` of zero bytes. Cycle 36 finished it: the BODY is the same
             # 129-byte refusal document every other status answers, not plexsim's own
             # sentence -- cycle 1's text/plain deviation is gone from the whole surface.
+            # Cycle 44, re-measured on both references with a KEEP-ALIVE request, so the
+            # answer is the server's own choice rather than an echo of the probe's
+            # `Connection: close`: a 416 of a MediaContainer names its connection state
+            # (`Connection: Keep-Alive`, `Keep-Alive: timeout=20`, after the type and
+            # before `Cache-Control`) and a 416 of a BINARY body -- artwork,
+            # `/:/resources/*`, a `/web` asset, a media part, `/photo/:/transcode` --
+            # names none at all. `CLAUDE.md` recorded "a 416 names no connection state at
+            # all, the only response class that does not"; that is the binary half only.
+            #
+            # And EVERY 416 carries `Cache-Control: no-cache`, the transcoder's included,
+            # where its 200 carries `max-age=259200`. plexsim cached the refusal for three
+            # days. It also kept `X-Plex-Local-Asset` on an artwork 416, which neither
+            # reference sends on anything but the 200.
+            self._range_error_container = bool(
+                content_type and ("xml" in content_type or "json" in content_type))
             content_type = "text/html"
             payload = self._error_document(416)
             extra_headers = [(name, value) for name, value in extra_headers
-                             if name.lower() != "accept-ranges"]
+                             if name.lower() not in ("accept-ranges", "cache-control",
+                                                     "x-plex-local-asset")]
         cookie = self._framework_cookie()
         if cookie is not None and not any(name.lower() == "set-cookie"
                                           for name, _ in extra_headers):
@@ -16874,7 +16895,8 @@ class Handler(BaseHTTPRequestHandler):
         # Keep-Alive` plus `Keep-Alive: timeout=20` when the connection is being
         # kept, `Connection: close` when it is not. plexsim sent neither, so a
         # client reading the advertised timeout to schedule reuse got nothing.
-        if "connection" not in names:
+        if "connection" not in names and not (
+                status == 416 and not getattr(self, "_range_error_container", False)):
             if self.close_connection:
                 self.send_header("Connection", "close")
             else:
@@ -17683,6 +17705,13 @@ class Handler(BaseHTTPRequestHandler):
                 # Cycle 33: the 302 names its connection state too, like every other
                 # response on both references.
                 self._connection_headers()
+                # Cycle 44: and it carries the CORS trio like every other response --
+                # `Access-Control-Expose-Headers`/`Vary` after `X-Plex-Protocol`,
+                # `Access-Control-Allow-Origin` before `Date`. This handler wrote its own
+                # header set and called nothing, so the ONE response the web client
+                # follows to reach the app carried no CORS headers at all.
+                for key, value in self._cors_headers():
+                    self.send_header(key, value)
                 self.end_headers()
                 return
             if kind == "static":
