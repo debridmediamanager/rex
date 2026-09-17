@@ -24099,6 +24099,47 @@ def main():
           set(closed_c45l.values()) == {404} and set(open_c45l.values()) == {200},
           "closed=%s open=%s" % (sorted(set(closed_c45l.values())), open_c45l))
 
+
+    # Cycle 45, bisected on kids and zen: a VALIDATED version segment takes DIGITS with
+    # optional leading zeros and NOT a leading `+`. `/library/parts/{id}/1/file.mkv` and
+    # `/library/sections/{id}/composite/1` answer 200 for `1` and `01` and **404** for
+    # `+1`, `-1`, `1.5`, `zzz`, `1a` and `%20`; the section composite additionally
+    # answers **400** past the signed 32-bit bound, which is the int32 guard cycle 36
+    # measured on four paths and this is a fifth. (An ITEM's artwork version is the
+    # unvalidated kind and really does take anything -- `/thumb/zzz` is a 200 on both.)
+    #
+    # plexsim normalises `+?0*<digits>` in EVERY path segment, which cycle 36 measured
+    # for an ID and is over-broad here: `+1` named row 1 and so served the bytes where a
+    # real PMS 404s. And its section composite served the image for any second segment at
+    # all -- fix 4's trap in image form, since a 200 tile gets cached where a 404 lets
+    # the client draw its own placeholder.
+    comp_c45 = {}
+    for version_c45 in ("1", "0", "01", "+1", "-1", "1.5", "zzz", "1a", "%20",
+                        "99999999999"):
+        comp_c45[version_c45] = request(
+            base, "GET", "/library/sections/%s/composite/%s" % (movie_section, version_c45),
+            want_json=False)[0]
+    part_c45 = {}
+    row_c45 = (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
+    part_id_c45 = ((row_c45.get("Media") or [{}])[0].get("Part") or [{}])[0].get("id")
+    if part_id_c45:
+        for version_c45 in ("1", "01", "+1", "zzz"):
+            part_c45[version_c45] = request(
+                base, "HEAD", "/library/parts/%s/%s/file.mkv" % (part_id_c45, version_c45),
+                want_json=False)[0]
+    art_c45 = {version_c45: request(base, "GET",
+                                    "/library/metadata/%s/thumb/%s" % (movie, version_c45),
+                                    want_json=False)[0]
+               for version_c45 in ("1", "01", "+1", "zzz")}
+    check("a validated version segment refuses a leading plus",
+          [comp_c45[v] for v in ("1", "0", "01")] == [200, 200, 200]
+          and [comp_c45[v] for v in ("+1", "-1", "1.5", "zzz", "1a", "%20")] == [404] * 6
+          and comp_c45["99999999999"] == 400
+          and (not part_c45 or (part_c45["+1"] == part_c45["zzz"] == 404
+                                and part_c45["1"] == part_c45["01"] != 404))
+          and set(art_c45.values()) == {200},
+          "composite=%s part=%s artwork=%s" % (comp_c45, part_c45, art_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

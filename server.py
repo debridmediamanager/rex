@@ -3863,6 +3863,21 @@ class PlexSim:
             # `\d` is deliberately `[0-9]`: Python's `\d` matches the Arabic-Indic and
             # fullwidth digits that both references refuse.
             pieces = route.split("/")
+            # Cycle 45: the `+` form names a row in an ID position and is a **404** in a
+            # VALIDATED VERSION position. Bisected on kids and zen:
+            # `/library/parts/{id}/01/file.mkv` and
+            # `/library/sections/{id}/composite/01` are 200s and their `+1` forms are
+            # 404s, where an ITEM's artwork version takes anything (`/thumb/zzz` is a
+            # 200). Normalising every segment made `+1` name version 1 and serve the
+            # bytes a real PMS refuses, so the two validated positions are checked on the
+            # RAW segment, before the normalisation below.
+            if len(pieces) > 4 and pieces[1:3] == ["library", "parts"] \
+                    and not pieces[4].isdigit():
+                return ("error", 404, "plexsim: not found")
+            if len(pieces) > 5 and pieces[1:2] == ["library"] \
+                    and pieces[2] == "sections" and pieces[4] == "composite" \
+                    and not pieces[5].isdigit():
+                return ("error", 404, "plexsim: not found")
             if any(_PADDED_ID_SEGMENT.match(piece) for piece in pieces):
                 route = "/".join(
                     str(int(piece)) if _PADDED_ID_SEGMENT.match(piece) else piece
@@ -6923,6 +6938,14 @@ class PlexSim:
             # `/recentlyReleased` was invented.
             if len(segments) < 5:
                 return ("error", 404, "plexsim: not found")
+            # The all-digits half of the version rule is enforced on the RAW segment in
+            # the handler, before the padded-id normalisation; what is left here is the
+            # int32 bound, which the references answer with a 400 rather than a 404 --
+            # the same guard cycle 36 measured on `/devices`, `/accounts`, `/playQueues`
+            # and `/system/scanners`, and this is its fifth path.
+            version = segments[4]
+            if version.isdigit() and int(version) >= 2 ** 31:
+                return ("error", 400, "plexsim: bad request")
             art = self.composite_for("section", section_id)
             if art:
                 return ("image", self._at_width(art, query.get("width")))
