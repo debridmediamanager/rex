@@ -24287,6 +24287,37 @@ def main():
           and movie_c45d == 200,
           "show=%s movie=%s" % (file_c45d, movie_c45d))
 
+
+    # Cycle 45, and it is cycle 44's own fix finished. Cycle 44 measured that a `.webm`
+    # file's container is `mkv` on a real PMS -- on the IDENTICAL 571,346,576-byte file,
+    # zen answers `mkv` where plexsim answered `webm` -- and corrected `build_media`.
+    # `normalize_media`, the load-time corrector that exists precisely so a catalog built
+    # before a rule was measured is fixed on load, was not touched, so every catalog
+    # already on disk went on serving `webm`.
+    #
+    # And this one is PROVED at the client, which cycle 44's could not be: driving the
+    # official Plex Web bundle plexsim itself serves, through a real browser, the row
+    # with `container="webm"` gets `POST /playQueues` then a `state=stopped&time=0`
+    # timeline and NO decision and NO part read -- the player refuses it outright --
+    # while the same row with `container="mkv"` reaches the decision, a 206 on the part
+    # and 13 seconds of playback. Chrome's own `canPlayType('video/x-matroska;
+    # codecs="vp8, vorbis")` is `probably`. The refusal was the metadata, not the media.
+    rows_c45w = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    media_c45w = [m for row_c45w in rows_c45w for m in row_c45w.get("Media") or []]
+    parts_c45w = [p for m in media_c45w for p in m.get("Part") or []]
+    webm_c45w = [m.get("container") for m in media_c45w
+                 if any(str(p.get("file") or "").lower().endswith(".webm")
+                        or str(p.get("key") or "").lower().endswith(".webm")
+                        for p in m.get("Part") or [])]
+    webm_parts_c45w = [p.get("container") for p in parts_c45w
+                       if str(p.get("file") or "").lower().endswith(".webm")
+                       or str(p.get("key") or "").lower().endswith(".webm")]
+    check("a .webm row loads with container mkv",
+          "webm" not in [str(m.get("container") or "") for m in media_c45w]
+          and "webm" not in [str(p.get("container") or "") for p in parts_c45w]
+          and all(c == "mkv" for c in webm_c45w + webm_parts_c45w),
+          "media=%s parts=%s" % (webm_c45w, webm_parts_c45w))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

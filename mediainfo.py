@@ -859,6 +859,19 @@ def normalize_media(media):
     sits), so it stays 0. `has64bitOffsets` can be: an mp4 larger than 4 GiB cannot
     address its data with 32-bit chunk offsets, so it uses co64.
     """
+    # Cycle 45: correct the CONTAINER here too. Cycle 44 measured that a `.webm`
+    # file's container is `mkv` on a real PMS and fixed `build_media`; this is the
+    # load-time corrector that exists so a catalog written before a rule was measured
+    # is fixed on load, and it was not touched -- so every catalog already on disk went
+    # on serving `webm`. Proved at the CLIENT: the official Plex Web bundle refuses a
+    # `webm` row outright (a play queue, then `state=stopped&time=0`, no decision and no
+    # byte read) and plays the same row as `mkv` to a 206 and real frames, because
+    # Chrome answers `probably` to `video/x-matroska; codecs="vp8, vorbis"`.
+    for _part in media.get("Part") or []:
+        _name = str(_part.get("file") or _part.get("key") or "")
+        if _name.lower().rsplit(".", 1)[-1] == "webm":
+            media["container"] = "mkv"
+            _part["container"] = "mkv"
     container = str(media.get("container") or "").lower()
     parts = media.get("Part") or []
     media.pop("optimizedForStreaming", None)
