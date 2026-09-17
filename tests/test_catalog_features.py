@@ -290,6 +290,84 @@ def main():
           and all_parts.get("directPlayDecisionText")
           == "App cannot direct play this item. Multi-part media requires a conversion when all parts are selected.")
 
+    # Cycle 41 created the same two-Media movie on writable copies of both PMS
+    # versions. Unlike a single-Media row, its decision has no unambiguous fallback:
+    # missing, empty, nonnumeric, negative and out-of-range mediaIndex values are 400.
+    # Explicit 0/1 each return exactly the selected Media. A play queue deliberately
+    # ignores the selector and carries both Media, in detail order, with neither marked
+    # selected.
+    two_media_row_c41g = catalog.items[101]
+    original_media_c41g = two_media_row_c41g.get("Media")
+    two_media_c41g = [catalog.items[101]["Media"][0],
+                      catalog.items[102]["Media"][0]]
+    two_media_row_c41g["Media"] = two_media_c41g
+    media_ids_c41g = [str(media_c41g.get("id")) for media_c41g in two_media_c41g]
+
+    def multi_decision_c41g(value_c41g=None, present_c41g=True):
+        query_c41g = {
+            "hasMDE": "1",
+            "path": "/library/metadata/101",
+            "partIndex": "0",
+            "X-Plex-Platform": "Chrome",
+        }
+        if present_c41g:
+            query_c41g["mediaIndex"] = value_c41g
+        return sim.handle(
+            "GET", "/video/:/transcode/universal/decision?"
+            + urllib.parse.urlencode(query_c41g), b"", {})
+
+    valid_media_c41g = {}
+    for index_c41g in ("0", "1"):
+        answer_c41g = multi_decision_c41g(index_c41g)
+        body_c41g = answer_c41g.get("MediaContainer", {})
+        valid_media_c41g[index_c41g] = [
+            media_c41g for row_c41g in body_c41g.get("Metadata") or []
+            for media_c41g in row_c41g.get("Media") or []]
+    invalid_media_c41g = [multi_decision_c41g(None, False),
+                          multi_decision_c41g(""),
+                          multi_decision_c41g("abc"),
+                          multi_decision_c41g("-1"),
+                          multi_decision_c41g("2")]
+    check("a multi-Media decision requires one explicit in-range mediaIndex",
+          all(isinstance(answer_c41g, tuple)
+              and answer_c41g[:2] == ("error", 400)
+              for answer_c41g in invalid_media_c41g)
+          and all(len(valid_media_c41g[index_c41g]) == 1
+                  and str(valid_media_c41g[index_c41g][0].get("id"))
+                      == media_ids_c41g[int(index_c41g)]
+                  and valid_media_c41g[index_c41g][0].get("selected") is True
+                  for index_c41g in ("0", "1")),
+          "valid=%s invalid=%s"
+          % ({key_c41g: [row_c41g.get("id") for row_c41g in rows_c41g]
+              for key_c41g, rows_c41g in valid_media_c41g.items()},
+             [answer_c41g[:2] if isinstance(answer_c41g, tuple) else "200"
+              for answer_c41g in invalid_media_c41g]))
+
+    queue_media_c41g = []
+    queue_uri_c41g = ("server://%s/com.plexapp.plugins.library/library/metadata/101"
+                      % catalog.machine)
+    for value_c41g, present_c41g in ((None, False), ("0", True), ("1", True),
+                                     ("abc", True), ("-1", True), ("2", True)):
+        params_c41g = {"type": "video", "uri": queue_uri_c41g}
+        if present_c41g:
+            params_c41g["mediaIndex"] = value_c41g
+        answer_c41g = sim.handle(
+            "POST", "/playQueues?" + urllib.parse.urlencode(params_c41g), b"", {})
+        body_c41g = answer_c41g.get("MediaContainer", {})
+        rows_c41g = body_c41g.get("Metadata") or []
+        queue_media_c41g.append([
+            (str(media_c41g.get("id")), media_c41g.get("selected"))
+            for row_c41g in rows_c41g for media_c41g in row_c41g.get("Media") or []])
+    if original_media_c41g is None:
+        two_media_row_c41g.pop("Media", None)
+    else:
+        two_media_row_c41g["Media"] = original_media_c41g
+    check("a multi-Media queue ignores mediaIndex and keeps every version",
+          all(rows_c41g == [(media_ids_c41g[0], None),
+                            (media_ids_c41g[1], None)]
+              for rows_c41g in queue_media_c41g),
+          str(queue_media_c41g))
+
     dovi = decision(0, 102, {"directPlay": "0"})["MediaContainer"]
     check("the catalog can carry a profile-5 Dolby Vision row to its measured refusal",
           dovi.get("size") == 0 and dovi.get("transcodeDecisionCode") == 2003
