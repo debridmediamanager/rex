@@ -24621,6 +24621,65 @@ def main():
                for leaf_c45p in ("logo", "squarePoster", "squareArt")] == [404] * 3,
           str(focus_c45))
 
+
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2) over 39 cells, identical on
+    # both. TWO findings in one place, and both are reachable from every browser.
+    #
+    #  * `X-Plex-Accept-Language` is a THIRD localisation input, header AND query, and it
+    #    ranks BETWEEN the two plexsim knew: `X-Plex-Language` > `X-Plex-Accept-Language`
+    #    > `Accept-Language`. plexsim ignored it, so a client that sends only that header
+    #    got English.
+    #  * `Accept-Language`'s `q` grammar ranks the WHOLE list. plexsim read the first
+    #    member and dropped the rest (`accept.split(",")[0].split(";")[0]`), so
+    #    `de;q=0.1, fr;q=0.9` answered German where a real PMS answers French, and
+    #    `de;q=0` answered German where a real PMS falls back to English. Measured:
+    #    weights rank the list, the default is 1.0, `q=0` disqualifies that member,
+    #    unknown tags are skipped, `*` is ignored, empty members are dropped, a tie goes
+    #    to the FIRST listed, whitespace around `;` and `=` is fine -- and **any
+    #    malformed member disqualifies the entire header** (`q=abc`, `q=.5`, `q=00.5`,
+    #    `q=+0.5`, `q=-1`, `q=1.5`, `q=`, `Q=0.9`, `x=1`, a second parameter, a leading
+    #    `;`). That last rule is the opposite of the `Accept:` parser cycle 27 measured,
+    #    where a bad `q` weighs 0 and still qualifies -- two different parsers.
+    def sorted_title_c45(headers_c45=(), suffix_c45=""):
+        url_c45 = base.rstrip("/") + "/library/sections/%s/sorts%s" % (movie_section, suffix_c45)
+        request_c45 = urllib.request.Request(url_c45, headers=dict(
+            [("Accept", "application/json"), ("User-Agent", UA)] + list(headers_c45)))
+        with urllib.request.urlopen(request_c45, timeout=20) as response_c45:
+            payload_c45 = json.loads(response_c45.read())
+        rows_c45 = (payload_c45.get("MediaContainer") or {}).get("Directory") or []
+        return (rows_c45[0] if rows_c45 else {}).get("title")
+
+    lang_c45 = {
+        "XPAL": sorted_title_c45([("X-Plex-Accept-Language", "de")]),
+        "XPAL query": sorted_title_c45(suffix_c45="?X-Plex-Accept-Language=de"),
+        "XPAL loses to XPL": sorted_title_c45([("X-Plex-Accept-Language", "de"),
+                                               ("X-Plex-Language", "fr")]),
+        "XPAL beats AL": sorted_title_c45([("X-Plex-Accept-Language", "de"),
+                                           ("Accept-Language", "fr")]),
+        "q ranks": sorted_title_c45([("Accept-Language", "de;q=0.1, fr;q=0.9")]),
+        "unknown skipped": sorted_title_c45([("Accept-Language", "zzz, de")]),
+        "weights beat order": sorted_title_c45([("Accept-Language", "en;q=0.1, de;q=0.8")]),
+        "q=0 disqualifies": sorted_title_c45([("Accept-Language", "de;q=0")]),
+        "q=0 then fr": sorted_title_c45([("Accept-Language", "de;q=0, fr;q=0.1")]),
+        "malformed kills all": sorted_title_c45([("Accept-Language", "de;q=abc, fr")]),
+        "tie to first": sorted_title_c45([("Accept-Language", "fr;q=0.5, de;q=0.5")]),
+        "star ignored": sorted_title_c45([("Accept-Language", "*, de")]),
+        "spaces fine": sorted_title_c45([("Accept-Language", "de ; q=0.5")]),
+        "empty member dropped": sorted_title_c45([("Accept-Language", ",de")]),
+        "leading semicolon": sorted_title_c45([("Accept-Language", ";de")]),
+        "control de": sorted_title_c45([("Accept-Language", "de")]),
+    }
+    want_c45 = {"XPAL": "Titel", "XPAL query": "Titel", "XPAL loses to XPL": "Titre",
+                "XPAL beats AL": "Titel", "q ranks": "Titre", "unknown skipped": "Titel",
+                "weights beat order": "Titel", "q=0 disqualifies": "Title",
+                "q=0 then fr": "Titre", "malformed kills all": "Title",
+                "tie to first": "Titre", "star ignored": "Titel", "spaces fine": "Titel",
+                "empty member dropped": "Titel", "leading semicolon": "Title",
+                "control de": "Titel"}
+    check("the language precedence and the Accept-Language q grammar",
+          lang_c45 == want_c45,
+          str({k: v for k, v in lang_c45.items() if want_c45.get(k) != v}) or "all 16")
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
