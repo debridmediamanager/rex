@@ -18954,6 +18954,19 @@ def main():
           str(cleared_art_c41e[:3]))
     request(base, "PUT", "/library/metadata/%s/art?url=%s"
             % (show, quote("https://example.invalid/c41e-art.jpg")))
+    restored_show_art_c41e = detail_c27c(show).get("art")
+    restored_art_c41e = [
+        (episode_c41e.get("ratingKey"), episode_c41e.get("art"),
+         episode_c41e.get("grandparentArt"))
+        for season_c41e in kids_of_c27c(show)
+        if season_c41e.get("type") == "season"
+        for episode_c41e in kids_of_c27c(season_c41e["ratingKey"])]
+    check("restoring show art creates both borrowed episode art fields",
+          bool(restored_show_art_c41e) and bool(restored_art_c41e)
+          and all(art_c41e == restored_show_art_c41e
+                  and grandparent_c41e == restored_show_art_c41e
+                  for _key_c41e, art_c41e, grandparent_c41e in restored_art_c41e),
+          "show=%s leaves=%s" % (restored_show_art_c41e, restored_art_c41e[:3]))
 
 
     # Cycle 27, bisected on kids (1.43.4) and zen (1.42.2) and identical on both: the
