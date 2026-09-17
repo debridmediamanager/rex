@@ -24520,6 +24520,46 @@ def main():
           "%s ; station keys %s ; newReleases %s ; viewChange %s"
           % (stations_c45, sorted(station_c45), new_c45, view_c45))
 
+
+    # Cycle 45, two exact-value findings measured on kids and zen:
+    #
+    #  * `/security/token` validates its parameter VALUES. Both references accept
+    #    exactly `type=delegation` and `scope=all`, case-SENSITIVE, and answer **400**
+    #    to `Delegation`, `All`, `transient`, `zzz`, `scope=server` and a repeated
+    #    parameter whose last occurrence is wrong. plexsim checked only that both names
+    #    were present and minted a token for any value. It is reachable: a real PMS
+    #    probing plexsim as a shared source asks this exact question -- it is one of the
+    #    three requests the lab's own PMS sent, with `X-Plex-Internal-Request: 1`.
+    #  * `includeSummary=1` on `/library/sections` adds a `Summary` block to each
+    #    library `Directory` -- `{"duration": <ms over the library>, "Type": [{"type":
+    #    <top-level type>, "count": <rows>}]}`. It is honoured THERE and nowhere else:
+    #    `/media/providers?includeSummary=1` and a section listing are byte-identical
+    #    with and without it on both references.
+    token_c45 = {}
+    for query_c45 in ("?type=delegation&scope=all", "?type=Delegation&scope=all",
+                      "?type=delegation&scope=All", "?type=transient&scope=all",
+                      "?type=zzz&scope=zzz", "?type=delegation&scope=server",
+                      "?type=delegation&scope=all&scope=zzz", "?scope=all",
+                      "?type=delegation"):
+        token_c45[query_c45] = get(base, "/security/token" + query_c45)[0]
+    summary_c45, sections_c45, _ = get(base, "/library/sections?includeSummary=1")
+    plain_c45 = get(base, "/library/sections")[1]
+    first_c45 = (sections_c45.get("Directory") or [{}])[0]
+    block_c45 = first_c45.get("Summary") or {}
+    elsewhere_c45 = (get(base, "/media/providers?includeSummary=1")[1]
+                     == get(base, "/media/providers")[1])
+    check("/security/token validates its values and includeSummary is honoured",
+          token_c45["?type=delegation&scope=all"] == 200
+          and [v for k, v in token_c45.items() if k != "?type=delegation&scope=all"]
+          == [400] * 8
+          and summary_c45 == 200
+          and "Summary" not in ((plain_c45.get("Directory") or [{}])[0])
+          and isinstance(block_c45.get("duration"), int)
+          and [(t.get("type"), t.get("count")) for t in block_c45.get("Type") or []]
+          and elsewhere_c45,
+          "%s ; Summary=%s ; providers unchanged=%s"
+          % (token_c45, block_c45, elsewhere_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

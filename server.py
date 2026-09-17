@@ -4668,7 +4668,15 @@ class PlexSim:
             # shape is what the caller reads. Measured: a request with no `type`
             # and no `scope` is a 400, and each call answers a DIFFERENT token --
             # plexsim answered a constant, so two devices shared one credential.
-            if not query.get("type") or not query.get("scope"):
+            # Cycle 45, measured on kids and zen: the VALUES are validated too, and
+            # case-SENSITIVELY. Exactly `type=delegation` and `scope=all` answer a
+            # token; `Delegation`, `All`, `transient`, `sync`, `zzz` and
+            # `scope=server` are each a 400, as is a repeated parameter whose LAST
+            # occurrence is wrong (the last one wins, as everywhere else on the
+            # surface). plexsim checked only that the names were present and minted a
+            # token for anything -- and a real PMS asks this exact question when it
+            # probes plexsim as a shared source.
+            if query.get("type") != "delegation" or query.get("scope") != "all":
                 return ("error", 400, "plexsim: bad request")
             if self.token:
                 given = (headers or {}).get("X-Plex-Token") or query.get("X-Plex-Token")
@@ -4913,6 +4921,20 @@ class PlexSim:
                 for section, row in zip(catalog.sections, rows):
                     row["Preferences"] = {
                         "Setting": self.section_preference_rows(section)}
+            if query.get("includeSummary") == "1":
+                # Cycle 45, measured on kids and zen: each library `Directory` gains a
+                # `Summary` block -- the library's total duration and one `Type` row per
+                # top-level type with its row count. It is honoured HERE and nowhere
+                # else: `/media/providers?includeSummary=1` and a section listing are
+                # byte-identical with and without it on both references.
+                for section, row in zip(catalog.sections, rows):
+                    members = [item for item in catalog.section_items(section["key"])
+                               if item.get("type") == section.get("type")]
+                    row["Summary"] = {
+                        "duration": sum(int(item.get("duration") or 0)
+                                        for item in catalog.section_items(section["key"])),
+                        "Type": [{"type": section.get("type"), "count": len(members)}],
+                    }
             # Measured on fun and on the 1.43.4 reference: this container carries
             # `title1` and allowSync only -- no identifier and no media-tag pair,
             # which the generic library container was adding.
