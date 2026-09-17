@@ -25202,6 +25202,51 @@ def main():
           and meta_c46["no-op leaves"] == [],
           str(meta_c46))
 
+
+    # Cycle 46, from the option sweep, and it OVERTURNS a cycle-44 refutation:
+    # `includeStorage=1` on `/media/providers` really does something. Cycle 44's hunt
+    # reported it and the re-measurement recorded "no effect"; both references add
+    # `durationTotal` and `storageTotal` -- on the `content` FEATURE element (the sum
+    # over every library) and on each library `Directory` (its own). Measured on kids
+    # (110,340 ms / 69,051,341 bytes over two libraries) and zen (33,140,975,506 ms /
+    # 45,597,604,284,267 bytes over three), each equal to the sum of its own rows.
+    #
+    # And they are JSON **NUMBERS** here where the same two fields on a section GRID row
+    # are JSON **STRINGS** (cycle 27) -- same names, different type per path, which XML
+    # cannot tell apart and only a JSON read on both references shows.
+    _status_c46p, plain_c46p, _ = request(base, "GET", "/media/providers")
+    _status_c46p2, stored_c46p, _ = request(base, "GET", "/media/providers?includeStorage=1")
+    plain_c46p = json.loads(plain_c46p).get("MediaContainer") or {}
+    stored_c46p = json.loads(stored_c46p).get("MediaContainer") or {}
+
+    def totals_c46p(document_c46p):
+        found_c46p = []
+        def walk_c46p(node_c46p):
+            if isinstance(node_c46p, dict):
+                if "durationTotal" in node_c46p:
+                    found_c46p.append((node_c46p.get("type"), node_c46p.get("title"),
+                                       node_c46p["durationTotal"],
+                                       node_c46p.get("storageTotal")))
+                for value_c46p in node_c46p.values():
+                    walk_c46p(value_c46p)
+            elif isinstance(node_c46p, list):
+                for value_c46p in node_c46p:
+                    walk_c46p(value_c46p)
+        walk_c46p(document_c46p)
+        return found_c46p
+
+    rows_c46p = totals_c46p(stored_c46p)
+    feature_c46p = [r_c46p for r_c46p in rows_c46p if r_c46p[0] == "content"]
+    libs_c46p = [r_c46p for r_c46p in rows_c46p if r_c46p[0] != "content"]
+    check("includeStorage reaches /media/providers, as numbers",
+          not totals_c46p(plain_c46p)
+          and len(feature_c46p) == 1 and len(libs_c46p) >= 1
+          and all(isinstance(r_c46p[2], int) and isinstance(r_c46p[3], int)
+                  for r_c46p in rows_c46p)
+          and feature_c46p[0][2] == sum(r_c46p[2] for r_c46p in libs_c46p)
+          and feature_c46p[0][3] == sum(r_c46p[3] for r_c46p in libs_c46p),
+          str(rows_c46p))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
