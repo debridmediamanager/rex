@@ -24845,6 +24845,101 @@ def main():
           str({"tags": {k: v[:3] for k, v in top_c45.items()},
                "empty": empty_c45t, "refused": refused_c45t, "verbs": verbs_c45t}))
 
+
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2), which agree on every cell:
+    # `/library/shared` is a real endpoint -- the tab bar the Shared view draws -- and
+    # plexsim 404'd it while answering only the `/all` leaf below it. It is a CONSTANT
+    # seven-row `Type` container in an identifier of its own
+    # (`com.plexapp.plugins.library.shared`), each row `type: "mixed"`, `active: false`
+    # and carrying the same two `Sort` rows (`titleSort` "Title", default asc; and
+    # `taggingCreatedAt` "Date Shared"). Nothing moves it: `?type=1`, `?sort=` and
+    # `?includeMeta=1` all answer the identical body.
+    #
+    # Below it, EVERY second segment answers the same list -- `/all`, `/libraries`
+    # (which the tab bar names), `/servers`, `/items`, `/sections`, `/1` and `/zzz` are
+    # byte-identical -- and a THIRD segment is a 404. plexsim answered `/all` alone.
+    #
+    # The list is this server's OWN libraries in a projection of their own: `art` and
+    # `thumb` are the EMPTY STRING and lead the row, the `key` names the section's
+    # listing, and `allowSync`, `filters` and `refreshing` -- which `/library/sections`
+    # carries -- are all absent. plexsim sent the section row with the three extra
+    # fields and no leading art.
+    #
+    # The query grammar: `?type=` takes an integer or a comma list of them and selects
+    # NOTHING (the rows are libraries, not items of a metadata type), an empty value is
+    # every row, and `1.5`, a space and `abc` are 400s; `?sort=` really orders --
+    # `titleSort` by title and `taggingCreatedAt` by the library's `createdAt`, `:desc`
+    # reversing and an unknown modifier ignored -- while an unknown KEY is a 500;
+    # `?limit=` is ignored entirely.
+    #
+    # NOT measured, and deliberately: **an EMPTY `?sort=` CRASHES a real PMS.** It
+    # closed the connection on kids and SEGV'd zen's Plex outright (systemd:
+    # `code=killed, signal=SEGV`), reproduced on both. There is no answer to copy, so
+    # plexsim reads the empty value as absent -- the convention `/collections` already
+    # has for it -- and the crash is recorded rather than emulated. Do not send that
+    # request to zen.
+    shared_c45 = {}
+    _status_c45s, tabs_c45, _ = get(base, "/library/shared")
+    types_c45 = tabs_c45.get("Type") or []
+    shared_c45["tabs"] = (_status_c45s, tabs_c45.get("identifier"),
+                          [(t_c45.get("key"), t_c45.get("title"), t_c45.get("type"),
+                            t_c45.get("active"),
+                            [s_c45.get("key") for s_c45 in t_c45.get("Sort") or []])
+                           for t_c45 in types_c45])
+    bodies_c45 = {}
+    for leaf_c45s in ("all", "libraries", "servers", "zzz", "1"):
+        _status_c45s, body_c45s, _ = get(base, "/library/shared/%s" % leaf_c45s)
+        bodies_c45[leaf_c45s] = (_status_c45s, json.dumps(body_c45s, sort_keys=True))
+    # Read the row again UNSORTED: `bodies_c45` is key-sorted so the bodies can be
+    # compared, which destroys the very order this line is checking.
+    _status_c45s, list_c45s, _ = get(base, "/library/shared/all")
+    row_c45s = ((list_c45s.get("Metadata") or [{}])[0])
+    shared_c45["row keys"] = [k_c45 for k_c45 in row_c45s]
+    shared_c45["deep"] = get(base, "/library/shared/all/zzz")[0]
+    grammar_c45 = {}
+    for query_c45s in ("?type=1", "?type=1,2", "?type=0", "?type=", "?type=1.5",
+                       "?type=abc", "?limit=abc", "?limit=0", "?sort=zzz"):
+        _status_c45s, body_c45s, _ = get(base, "/library/shared/all" + query_c45s)
+        grammar_c45[query_c45s] = (_status_c45s, body_c45s.get("size"))
+    orders_c45 = {}
+    for query_c45s in ("", "?sort=titleSort", "?sort=titleSort:desc",
+                       "?sort=titleSort:zzz", "?sort=taggingCreatedAt",
+                       "?sort=taggingCreatedAt:desc"):
+        _status_c45s, body_c45s, _ = get(base, "/library/shared/all" + query_c45s)
+        orders_c45[query_c45s] = [r_c45.get("title") for r_c45 in body_c45s.get("Metadata") or []]
+    check("the /library/shared subtree answers its tab bar and its library list",
+          shared_c45["tabs"][0] == 200
+          and shared_c45["tabs"][1] == "com.plexapp.plugins.library.shared"
+          and [t_c45[:4] for t_c45 in shared_c45["tabs"][2]] == [
+              ("/library/shared/all", "All Shared", "mixed", False),
+              ("/library/shared/all?type=1", "Movies", "mixed", False),
+              ("/library/shared/all?type=2,3,4", "TV", "mixed", False),
+              ("/library/shared/all?type=8,9,10", "Music", "mixed", False),
+              ("/library/shared/all?type=13,14,12", "Photos", "mixed", False),
+              ("/library/shared/all?type=15", "Playlists", "mixed", False),
+              ("/library/shared/libraries", "Libraries", "mixed", False)]
+          and all(t_c45[4] == ["titleSort", "taggingCreatedAt"]
+                  for t_c45 in shared_c45["tabs"][2])
+          and len({body_c45s for _status_c45s, body_c45s in bodies_c45.values()}) == 1
+          and shared_c45["deep"] == 404
+          and shared_c45["row keys"][:5] == ["art", "key", "thumb", "type", "title"]
+          and not {"allowSync", "filters", "refreshing"} & set(shared_c45["row keys"])
+          and grammar_c45["?type=1"][1] == 0 and grammar_c45["?type=1,2"][1] == 0
+          and grammar_c45["?type=0"][1] == 0
+          and grammar_c45["?type="][1] == grammar_c45["?limit=abc"][1]
+          and grammar_c45["?type=1.5"][0] == 400 and grammar_c45["?type=abc"][0] == 400
+          and grammar_c45["?limit=0"][1] == grammar_c45["?type="][1]
+          and grammar_c45["?sort=zzz"][0] == 500
+          and orders_c45[""] == sorted(orders_c45[""])
+          and orders_c45["?sort=titleSort"] == orders_c45[""]
+          and orders_c45["?sort=titleSort:zzz"] == orders_c45[""]
+          and orders_c45["?sort=titleSort:desc"] == list(reversed(orders_c45[""]))
+          and orders_c45["?sort=taggingCreatedAt:desc"] == list(
+              reversed(orders_c45["?sort=taggingCreatedAt"])),
+          str({"tabs": shared_c45["tabs"][:2], "row": shared_c45["row keys"][:6],
+               "deep": shared_c45["deep"], "grammar": grammar_c45, "orders": orders_c45,
+               "same body": len({b_c45 for _s_c45, b_c45 in bodies_c45.values()})}))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

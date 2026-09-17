@@ -197,7 +197,11 @@ _ATTR_ORDER = {
         "id", "filter", "tag", "tagKey", "thumb"
     ),
     "Directory[SECTION]": (
-        "allowSync", "filters", "refreshing", "key", "type", "title", "agent",
+        # Cycle 45: the `/library/shared` projection of the same row leads with `art`
+        # and puts `thumb` directly after `key`, and carries none of the first three.
+        # One bucket serves both forms, because a name a row does not carry is skipped.
+        "art",
+        "allowSync", "filters", "refreshing", "key", "thumb", "type", "title", "agent",
         "scanner", "language", "metadataAgentProviderGroupId", "uuid",
         "updatedAt", "createdAt", "scannedAt", "content", "directory",
         "contentChangedAt", "hidden"
