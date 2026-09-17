@@ -23826,6 +23826,44 @@ def main():
           status_c37d == 200 and bool(rows_c37d) and "Media" in rows_c37d[0],
           str((status_c37d, bool(rows_c37d), bool(rows_c37d and "Media" in rows_c37d[0]))))
 
+
+    # Cycle 44, measured on zen (3,887 real movies, 1.42.2) and kids (1.43.4) over every
+    # key 0-12 on both library types: a star bucket rounds its KEY down to an even star
+    # and takes the values within one of it, so a stored 5.0 is in `/userRating/6` and in
+    # neither `/4` nor `/5`. plexsim truncated -- `int(value) == key` -- which puts a 5.0
+    # in `/5` alone and answers 165 rows where zen answers 208.
+    rows_c44s = get(base, "/library/sections/%s/all?type=1" % movie_section)[1].get("Metadata") or []
+    if not rows_c44s:
+        skip("star bucket rounds its key down to an even star", "no movie rows")
+    else:
+        subject_c44s = rows_c44s[0]["ratingKey"]
+        was_c44s = rows_c44s[0].get("userRating")
+
+        def rate_c44s(value):
+            request(base, "GET", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=%s"
+                    % (subject_c44s, value))
+
+        def bucket_c44s(key):
+            return [r.get("ratingKey") for r in
+                    get(base, "/library/sections/%s/userRating/%s" % (movie_section, key))[1]
+                    .get("Metadata") or []]
+
+        rate_c44s(5)
+        five_c44s = (subject_c44s in bucket_c44s(6), subject_c44s in bucket_c44s(7),
+                     subject_c44s in bucket_c44s(4), subject_c44s in bucket_c44s(5))
+        rate_c44s(7)
+        seven_c44s = (subject_c44s in bucket_c44s(8), subject_c44s in bucket_c44s(9),
+                      subject_c44s in bucket_c44s(6), subject_c44s in bucket_c44s(7))
+        rate_c44s(-1)
+        cleared_c44s = (subject_c44s in bucket_c44s(0), subject_c44s in bucket_c44s(1))
+        if was_c44s is not None:
+            rate_c44s(was_c44s)
+        check("star bucket rounds its key down to an even star",
+              five_c44s == (True, True, False, False)
+              and seven_c44s == (True, True, False, False)
+              and cleared_c44s == (True, False),
+              str((five_c44s, seven_c44s, cleared_c44s)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -6855,6 +6855,44 @@ class PlexSim:
                     "contentRating": "contentRating", "resolution": "resolution",
                     "userRating": "userRating"}
 
+    # Which column each star axis buckets on. Measured cycle 44: `/rating` reads the
+    # CRITIC rating and `/userRating` the per-user one, and on a SHOW library both read
+    # the row's OWN column rather than its leaves' -- zen's one show carries no `rating`
+    # and a `userRating` of 8.0, and answers `rating/0` one row and `userRating/8` one.
+    AXIS_COLUMNS = {"userRating": "userRating", "rating": "rating"}
+
+    @staticmethod
+    def star_bucket(rows, column, number):
+        """The rows behind one star bucket of `/userRating` (cycle 44: and `/rating`).
+
+        Measured on zen (3,887 real movies, 1.42.2) and kids (1.43.4) for every key
+        0-12 on both library types: the bucket is NOT `int(value) == key`. A key rounds
+        DOWN to an even star and the bucket takes the values within one of it --
+        `[b - 1, b + 1)` for `b = key - key % 2` -- so 8 and 9 answer the same 200 rows
+        and 10 and 11 the same 3. Truncation gets every bucket but 0 wrong: zen's
+        `userRating/6` is 208 rows where truncation finds 165, its `/8` is 200 where
+        truncation finds 54, its `/10` is 3 where truncation finds none, and kids'
+        `/6` answers BOTH its rated movies because a stored 5.0 rounds UP into the
+        3-star bucket.
+
+        `key=0` is the rows with NO value at all -- zen 3,465 of 3,887 unrated,
+        kids 3 of 5, zen's `rating/0` its 3,144 -- and not the ordinary `[-1, 1)`
+        bucket, which is what `key=1` selects (0 rows on both references). Neither
+        library holds a value in [0, 1), so which of the two such a row would join is
+        not measurable here.
+        """
+        if number == 0:
+            return [row for row in rows if row.get(column) is None]
+        low = (number - number % 2) - 1
+        kept = []
+        for row in rows:
+            value = row.get(column)
+            if value is None:
+                continue
+            if low <= float(value) < low + 2:
+                kept.append(row)
+        return kept
+
     def axis_bucket(self, section_id, section, leaf, key, query):
         """`/library/sections/{id}/{axis}/{key}` -- the rows behind one axis entry.
 
@@ -6898,8 +6936,7 @@ class PlexSim:
                         and number <= int(r["year"]) < number + 10]
                 title2 = wanted
             else:
-                rows = [r for r in rows
-                        if int(float(r.get("userRating") or 0)) == number]
+                rows = self.star_bucket(rows, self.AXIS_COLUMNS[kind], number)
                 title2 = "%s Star" % wanted
         elif kind == "contentRating":
             if wanted == "None":
