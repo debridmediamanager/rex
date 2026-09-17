@@ -9095,6 +9095,217 @@ thirty-four cycles without anyone reading it.
   scorer that reads `PROFILES[name]` instead of `resolve(name)` measures its own shortcut. Nine of
   this cycle's first "misses" were exactly that.
 
+#### The forty-fifth pass — the name space, swept from the servers' own words
+
+Cycle 44 reopened the loop by recognising a new instrument. Cycle 45 generalised the *method*
+that found cycle 44's `/rating`: instead of hand-writing a list of paths to try, build the
+candidate vocabulary from the **references' own emitted words** — every key, attribute name,
+element name and hub identifier the two servers write — and sweep every position a path or a
+query can put them in. 227 names, **8,240 cells**, 8 driver findings; two hunts on top of that
+produced 23 more. Twenty-seven commits, every one proved fail-then-pass.
+
+##### The largest finding: `/library/sections/{id}/{name}/top`
+
+PMS's own route table — read out of the binary's string block on kids — spells it `/:tagType/top`,
+with no constraint on the segment, which is why *any* single word matches it. It is the **fifth**
+real two-segment section leaf, beside `extras/all`, `query/parse`, `indexes/thumbnails` and the
+versioned `composite/{v}`, and plexsim 404'd every form of it.
+
+It answers the section's **tag table** for the type the name resolves to: `Directory` rows of
+`key, id, filter, tag, tagType` (plus `tagKey` and `thumb` on a person), **ascending by tag id** —
+not by usage, which is what the name suggests. The `key` is built from the **requested** name
+(`/library/sections/1/all?studio=28`) while `filter` names the tag's **own** type (`director=28`),
+so on the alias names the two disagree. It is not the axis: kids' `actor` axis is the
+first-three-roles union (9) where `/actor/top` is every Role tag (12), and on a show library it
+reads the leaves.
+
+Eleven names resolve to a type, in six pairs — a tag name and a metadata **column** name sharing
+each number, which is the tell that PMS looks the segment up in one integer space that both
+vocabularies feed:
+
+| number | tag name | column name |
+|---|---|---|
+| 1 | `genre` | `title` |
+| 4 | `director` | `studio` |
+| 5 | `writer` | `rating` |
+| 6 | `actor` | `tagline` |
+| 7 | `producer` | `summary` |
+| 8 | `country` | — |
+
+Every other name the server knows as a **filter field or an axis** answers an empty listing
+container; everything else is a 404. The partition is exact over 91 swept names on four servers
+and two versions: the eleven names that are a 400 on the item edit path (`album artist
+chapterSource childCount hasChapterVideoStream leafCount logo poster role sourceType track`) are
+all 404s here, the section's own leaves are 404s because the router claims them first,
+`thumb`/`art`/`theme` are 404s because `/:mediaType(thumb|art|theme)/:timestamp` claims them, and
+`platform` is a 404 although it *is* an axis. `resolution` is the media-axis exception and answers
+the whole library, as `/resolution/zzz` does. The 1.43.4-only vocabulary splits with the version:
+`videoCodec`, `audioCodec`, `subtitleCodec`, `audioLayout`, `atmos`, `hdr10plus`, `squareArt` and
+`clearLogo` are 200s on kids and 404s on zen. GET and HEAD only.
+
+##### `includeAlternates` — and a version claim refuted by its own instrument
+
+The hunt reported `includeAlternates` as 1.43.4-only and it was left unbuilt on that basis. **The
+claim is refuted.** The hunt's 1.42.2 oracle was plexscratch42, a fresh install whose every row is
+unmatched and which therefore holds no agent artwork at all — CLAUDE.md's "use it for grammar,
+never for a count" trap, taken from the other side. zen, a real matched 1.42.2 library, honours it.
+
+The option inlines the **agent's remote artwork** — `Thumb`, `Art` and `Theme`, in that order,
+each `{key, source}` plus a `previewKey` where the provider gives a thumbnail URL — and it does it
+on a **full row and on nothing else**. Swept over nineteen containers on both references: a
+section grid, `/library/all`, `/library/recentlyAdded`, a `/children` page, a section search,
+`/collections`, `/playlists`, `/hubs/search` and `/hubs/home/recentlyAdded` are byte-identical
+with and without it, while `/library/metadata/{id}`, `/library/onDeck`, both `related` paths,
+`postplay` and the full-row shelves inside `/hubs` all carry it — and the discriminator in every
+case is the projection, not the path. Inside `/hubs`, zen's `home.television.recent` shows and its
+`home.ondeck` episode gain the block and its `home.movies.recent` light movie rows do not. A
+**decision ignores it**, the same exception `excludeElements=` already has. The child order is
+measured too: `Thumb` and `Art` sit between the tags and `Guid`, and `Theme` directly after
+`Rating`.
+
+##### `Accept-Language` ranked the whole list, and a third input nobody had read
+
+Two findings in one function, both reachable from every browser:
+
+* **`X-Plex-Accept-Language` is a third localisation input**, header *and* query, ranked between
+  the two plexsim knew: `X-Plex-Language` > `X-Plex-Accept-Language` > `Accept-Language`. plexsim
+  ignored it, so a client that sends only that header got English.
+* **The `q` grammar ranks the whole list.** plexsim read the first member and threw the rest away
+  (`accept.split(",")[0].split(";")[0]`), so `de;q=0.1, fr;q=0.9` answered German where a real PMS
+  answers French and `de;q=0` answered German where a real PMS falls back to English. Measured
+  over 39 cells on kids and zen, identical on both: weights rank the list, the default is 1.0,
+  `q=0` disqualifies that member, an unknown tag is **skipped** rather than ending the search
+  (`zzz, de` is German), `*` is ignored, an empty member is dropped, a tie goes to the first
+  listed — and **any malformed member disqualifies the entire header** (`q=abc`, `q=.5`, `q=00.5`,
+  `q=+0.5`, `q=-1`, `q=1.5`, `q=`, `Q=0.9`, `x=1`, a second parameter, a leading `;`). That last
+  rule is the **opposite** of the `Accept:` parser cycle 27 measured, where a bad `q` weighs 0 and
+  the range still qualifies. Two different parsers on the same surface.
+
+##### A GET that mints a row, measured on a copy because it writes
+
+`/library/metadata/{id}/theme/{v}/metadata` **creates a metadata row on a real PMS**. It is how
+this cycle's own hunt left four orphan rows on the reference lab, and it is why the measurement
+was moved to the disposable copies.
+
+It answers one `track` row: `ratingKey` a fresh server id, `key` its own path, `guid`
+**`library://` + the SHA-1 of the request path itself** — identical on two servers of two versions
+for every (item, version) pair tried, including a row whose theme really exists — `type: "track"`,
+an empty `title` and `summary`, `index: 1`, `addedAt` the mint time and `genuineMediaAnalysis:
+"1"`. A row that really has a theme at that version adds the theme's `duration` and its
+`Media`/`Part`/`Stream`. The minted row is idempotent per (item, version) and readable at
+`/library/metadata/{mintedKey}`, and it carries **no `librarySectionID`**, which is why it is
+invisible in every listing including `/library/all`. `theme` is the only artwork leaf with this
+sub-leaf; `thumb`, `art`, `poster`, `banner`, `clearLogo`, `squareArt` and `squarePoster` all 404
+it. plexsim mints the same row and keeps it **beside** the catalog rather than in it, so a `track`
+row cannot leak into the tag tables, the spelling index or `/library/all` — the pollution this
+endpoint is infamous for, reproduced rather than inflicted.
+
+##### `/library/shared` — a whole subtree behind one leaf
+
+plexsim answered `/library/shared/all` and 404'd everything else. On both references
+`/library/shared` is the Shared view's **tab bar**: a constant seven-row `Type` container in an
+identifier of its own (`com.plexapp.plugins.library.shared`), each row `type: "mixed"`,
+`active: false` and carrying the same two `Sort` rows (`titleSort` "Title" default asc, and
+`taggingCreatedAt` "Date Shared"). Nothing moves it — `?type=1`, `?sort=` and `?includeMeta=1` all
+answer the identical body. Below it **every** second segment answers the same list (`/all`,
+`/libraries`, `/servers`, `/items`, `/sections`, `/1` and `/zzz` are byte-identical) and a third
+segment is a 404.
+
+The list is the server's own libraries in a projection of their own: `art` and `thumb` are the
+empty string and **lead** the row, and `allowSync`, `filters` and `refreshing` — which
+`/library/sections` carries — are all absent. `?type=` takes an integer or a comma list of them
+and selects **nothing** (the rows are libraries, not items of a metadata type), an empty value is
+every row, and `1.5`, a space and `abc` are 400s; `?sort=` really orders, by title or by the
+library's `createdAt`, with an unknown key a 500 and an unknown modifier ignored; `?limit=` is
+ignored entirely.
+
+**And an empty `?sort=` crashes a real PMS.** It closed the connection on kids and SEGV'd zen's
+Plex outright (`systemd: code=killed, signal=SEGV`), reproduced on both, isolated to that one
+parameter by probing the other nine on kids alone afterwards. There is no answer to copy, so
+plexsim reads the empty value as absent — the convention `/collections` already has for it — and
+the crash is recorded rather than emulated. **Do not send that request to zen.**
+
+##### The account's feature list, answered two different ways by plexsim
+
+`ownerFeatures` on `GET /` and `subscriptionFeatures` on `/myplex/account` are the **same string**,
+byte for byte — 7,078 characters on kids and 6,967 on zen, identical within each server. plexsim
+answered `pass,sync,hwtranscode` for one and the bare `pass` for the other, so its own two paths
+contradicted each other and Plex Web — which reads `ownerFeatures` in 28 places in its bundle —
+was told the account had three features on one path and one on the other.
+
+The value is a sorted comma join of the account's plex.tv entitlements: ~180 opaque UUIDs plus
+**32 named features**, and the 32 names are byte-identical on both servers while the UUID count is
+not (212 against 209). The names are the modellable half; the ids are account-and-server-scoped
+plex.tv content and are deliberately not invented.
+
+##### The rest of the driver's name-space sweep
+
+* **The bare `/sync` is the plug-in dispatcher's `{size: 0, content: "plugins"}` 200**, like every
+  other single-segment path, while `/sync/items`, `/sync/transcodeQueue` and `/sync/zzz` really
+  are 404s. plexsim short-circuited the whole prefix on the note that it has no sync, so it
+  answered one single-segment path differently from all the others.
+* **Eleven more cross-type axes** answer the empty secondary container the nine already-known ones
+  do — `autotag`, `aperture`, `exposure`, `iso`, `lens`, `sport`, `team`, `channel`, `publisher`,
+  `narrator` and `platform` — and `platform`'s `title2` is the **empty string** where every other
+  axis carries a "By …" heading. `narrator` is the one axis on the surface that does **not**
+  validate `type=`: it answers 200 to `abc`, `zzz`, `1.5` and an empty value where every other
+  tag axis is a 500.
+* **An axis bucket resolves against the server's global tag TABLE, not the leaf's own column.** A
+  genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
+  `style`, `similar`, `tag` and eleven more names; only `studio` and `platform` are not bucket
+  names at all. plexsim resolved the id against the name's own column, so nine names worked for
+  their own tags and the other ten 404'd everything.
+* **`/library/arts` is a real listing query**, and an image row renders as `<Photo>`.
+* **Two more section subsets exist**, `recentlyViewedGrandparents` and `recentlyAddedGrandparents`,
+  each an alias of the subset beside it.
+* **`stations/{genre|mood|style|decade}`**, `/library/newReleases`, `/:/viewChange` and
+  `/services/codecs` are real routes; every other value under `stations` is a 404.
+* **`X-Plex-Container-Focus-Key` supplies the container START** as `max(0, index - (size - 1) //
+  2)` — the focused row centred in the window, biased earlier — header or query, its value must
+  begin `/library/metadata/`, an explicit `X-Plex-Container-Start` wins, and it needs a `Size`.
+  Read out of the binary's own log string, `Setting container serialization range with focusKey to
+  [%s, %d]`, then measured.
+* **`X-Plex-Http-Pipeline: disable`** (that exact lowercase value) answers `Connection: close`
+  with no `Keep-Alive` line.
+* **The singular artwork PUT is routed for six names** — `poster`, `art`, `thumb`, `banner`,
+  `theme`, `clearLogo` — each answering its own 400 with no parameters, while `logo`,
+  `squarePoster` and `squareArt` are 404s.
+* **An item leaf with an extra path segment is a 404** (64 of 212 swept cells were wrong), with
+  exactly two exceptions: the artwork leaves read the second segment as a version, and
+  `/extras/all` and `/users/top` are real two-segment leaves of their own.
+* **A validated version segment refuses a leading `+`** although `+?0*<digits>` normalises in
+  every other path segment — the raw segment has to be read before the normalisation.
+* **`HEAD` on a section `/common` is a 200**, and **`includeSummary=1`** adds a per-library
+  duration and type count to `/library/sections`.
+* **`/security/token` validates its parameter values**, and **`playbackTime` is bounded to signed
+  32-bit**.
+* **`asyncCheckFiles`** projects `Part.accessible`/`exists` like `checkFiles` does.
+* **`file=` reads the section listing's default type**, and **`extraType`, `unmatched` and `file`
+  refuse where a real PMS refuses them** — the refusal is a property of the query's declared type,
+  not of a row, so deciding it per row made an untyped `/library/all?file=` a 500 where both
+  references answer and really filter.
+* **A play completes on a beat that crosses 90% even under a minute.** The gate is
+  `position >= (total * 9) // 10` — an integer comparison, and the sub-minute exemption the old
+  rule carried was never a rule.
+* **A `.webm` container is corrected at LOAD as well as at build.** Cycle 44 fixed the builder;
+  a catalog built before that fix still carried `container="webm"`, and a real Plex Web client
+  refuses to play such a row.
+
+##### Measured and not acted on this cycle
+
+* **`includeBandwidths=1`** adds `deepAnalysisVersion: 6` and a comma-joined eight-value
+  `requiredBandwidths` to a **Part**, and `requiredBandwidths` to a Stream — but only on a Part a
+  real PMS has **deep-analysed**. zen's `/library/metadata/1` is byte-identical with and without
+  the option, which is the proof: plexsim's Parts are all un-analysed, so ignoring the option is
+  the faithful answer. Its value grammar is the `+?0*1` family and nothing refuses.
+* **The ~180 plex.tv feature UUIDs** behind `ownerFeatures`. Account-and-server-scoped; the 32
+  named features are built and the ids are not invented. `owner_features.txt` beside `server.py`
+  stays the local override.
+* **`/library/shared/all?sort=`** — the empty sort that crashes a real PMS. Unmeasurable.
+* **`title`→genre and `summary`→producer on `/top`** are built, because they cost nothing beyond
+  the six real names and are identical on three servers; the *generating rule* behind PMS's
+  shared integer space is not identified and is recorded as such.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
