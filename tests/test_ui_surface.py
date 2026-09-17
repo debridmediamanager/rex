@@ -5694,6 +5694,47 @@ def main():
           guid8 and by_guid and by_guid == same_guid and not no_guid and not wrong_type,
           "%s: %d found, %d expected" % (guid8, len(by_guid), len(same_guid)))
 
+    if c5_show and c5_season:
+        show_guid8 = detail_of(c5_show).get("guid")
+        season_index8 = detail_of(c5_season).get("index")
+        scoped8 = "show.guid=%s&season.index=%s" % (quote(show_guid8), season_index8)
+        reversed_scoped8 = "season.index=%s&show.guid=%s" % (season_index8,
+                                                               quote(show_guid8))
+
+        def scoped_rows8(type_number=None):
+            prefix8 = ("type=%s&" % type_number) if type_number is not None else ""
+            status8, body8, _headers8 = get(base, "/library/all?" + prefix8 + scoped8)
+            return status8, [str(r.get("ratingKey")) for r in body8.get("Metadata") or []]
+
+        untyped8 = scoped_rows8()
+        show_guid_only8 = get(base, "/library/all?show.guid=%s" % quote(show_guid8))
+        reversed8 = get(base, "/library/all?" + reversed_scoped8)
+        season_on_show8 = get(base, "/library/all?type=2&season.index=%s" % season_index8)
+        shows8 = scoped_rows8(2)
+        seasons8 = scoped_rows8(3)
+        episodes8 = scoped_rows8(4)
+        expected_episodes8 = [str(r.get("ratingKey")) for r in
+                              get(base, "/library/metadata/%s/children" % c5_season)[1]
+                              .get("Metadata") or []]
+        check("/library/all resolves show.guid and season.index as the measured conjunction",
+              show_guid8 and season_index8 is not None
+              and untyped8 == (200, [str(c5_show)])
+              and [str(r.get("ratingKey")) for r in show_guid_only8[1].get("Metadata") or []]
+              == [str(c5_show)]
+              and [str(r.get("ratingKey")) for r in reversed8[1].get("Metadata") or []]
+              == [str(c5_show)]
+              and season_on_show8[0] == 500
+              and shows8 == (500, [])
+              and seasons8 == (200, [str(c5_season)])
+              and episodes8 == (200, expected_episodes8),
+              "untyped %s | guid %s | reversed %s | season-on-show %s | show %s | "
+              "season %s | episode %s want %s"
+              % (untyped8, show_guid_only8[0], reversed8[0], season_on_show8[0],
+                 shows8, seasons8, episodes8, expected_episodes8))
+    else:
+        skip("/library/all resolves show.guid and season.index as the measured conjunction",
+             "no show and season in this catalog")
+
     status_pref, one_pref, _ = get(base, "/:/prefs/get?id=FriendlyName")
     pref8 = (one_pref.get("Setting") or [{}])[0]
     check("/:/prefs/get reads one setting, unlabelled, and refuses what it cannot find",

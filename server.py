@@ -5021,6 +5021,25 @@ class PlexSim:
                 return self.container(Metadata=[_listing_row(r) for r in page], **fields)
             source = list(catalog.items.values())
             kinds = {value for name, value in query.get("_pairs") or [] if name == "type"}
+            scoped_guid = any(
+                filters_module.split_scope(filters_module.split_key(name)[0]) == ("show", "guid")
+                for name, _value in query.get("_pairs") or [])
+            scoped_season_index = any(
+                filters_module.split_scope(filters_module.split_key(name)[0])
+                == ("season", "index")
+                for name, _value in query.get("_pairs") or [])
+            # Cycle 41, measured with this exact client conjunction on both PMS
+            # versions. A scoped show guid supplies the row type when `/library/all`
+            # is untyped, so `show.guid=...&season.index=1` returns the SHOW alone.
+            # With an explicit type, the plan is asymmetric: type 3 returns its season,
+            # type 4 its episodes, and `type=2&season.index=1` refuses with 500 even
+            # without the guid clause. The latter is a PMS query-planner edge, but it
+            # is client-visible -- changing the selected type in Advanced Filters
+            # otherwise turns an error into an empty grid here.
+            if not kinds and scoped_guid:
+                source = [r for r in source if r.get("type") == "show"]
+            if kinds == {"2"} and scoped_season_index:
+                return ("error", 500, "plexsim: invalid scoped conjunction")
             if not kinds:
                 # Cycle 25, measured on plexscratch: the UNTYPED query lists collections
                 # as well, byte for byte the row `?type=18` answers, sorted into the rest
@@ -5036,7 +5055,8 @@ class PlexSim:
                 wanted = ({"1": "movie", "2": "show", "3": "season", "4": "episode"}
                           .get(next(iter(kinds))) if len(kinds) == 1 else None)
                 source = [r for r in source if wanted and r.get("type") == wanted]
-            source, _ = self.apply_filters(source, query)
+            source, _ = self.apply_filters(source, query,
+                                           parse_only={"guid"} if scoped_guid else ())
             source = self._guid_prefix(source, query)
             if "group" in query:
                 # Cycle 29, measured on kids (14 rows -> 4 by type, 7 by year, 10 by
@@ -8295,7 +8315,7 @@ class PlexSim:
                 return ("error", error.status, "plexsim: %s" % error.detail)
         return None
 
-    def apply_filters(self, rows, query, section=None):
+    def apply_filters(self, rows, query, section=None, parse_only=()):
         """Filter rows by the query, or raise the status a real PMS answers with.
 
         The advertised field map is global rather than per-section: measured, a
@@ -8304,8 +8324,11 @@ class PlexSim:
         which plexsim looked up after stripping the prefix, in a map keyed by the
         prefixed names, so no filter on a show grid ever constrained anything.
         """
-        tree = filters_module.parse(query.get("_pairs") or [],
-                                    FILTER_FIELD_TYPES.get)
+        def field_type(name):
+            return (FILTER_FIELD_TYPES.get(name)
+                    or (PARSE_ONLY_FIELD_TYPES.get(name) if name in parse_only else None))
+
+        tree = filters_module.parse(query.get("_pairs") or [], field_type)
         if tree is None:
             return rows, None
         kept = [r for r in rows
