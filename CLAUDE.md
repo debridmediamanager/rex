@@ -2116,8 +2116,9 @@ precisely how the Seasons bug survived a fix attempt.
   The `title=` QUERY is the table plus a simple case fold (so `ſ` and the Kelvin sign match `s` and
   `k`); the STORED sort title is case-folded only, so a locked `Éggęhead` is not found by `Egghead`.
   The folded pass reads the stored SORT title, not the title (`Thé Train` finds nothing).
-- **The hub search folds by the same table**, and its CASE handling is two passes that plexsim does
-  not model: a capital macron or `ſ` matches in a title's LAST word and not in an earlier one.
+- **The hub search folds by the same table**, but its score CASE handling is two distinct passes:
+  the raw-query partial pass and a broader whole-title pass. Cycle 39 completed and built the table,
+  including the long-s and two-letter macron-`o` boundaries.
 - **A plain-form decision runs the client's own PROFILE FILE** (`decision.py`,
   `client_profiles.json`, read out of the lab image): selected audio not first, container and video
   codec, the stream it would play, a sidecar subtitle, the audio codec, an embedded subtitle, then
@@ -2305,6 +2306,16 @@ precisely how the Seasons bug survived a fix attempt.
   candidates entered in raw-title/id descending order with exact hits prepended. Flat
   `/library/search` preserves the movie/show/episode bucket sequence because its final comparator
   accidentally reads an empty generic score attribute.
+- **Hub-search membership folding and score-tier folding are separate passes.** Partial-title
+  tiering applies the measured `_TITLE_FOLD` table to the RAW query before ASCII-only case folding;
+  lowercasing first promotes eleven unsupported capitals and loses `Ð`. Whole-title exactness is a
+  separate, broader comparison, with measured long-s and two-letter macron-`o` boundaries. Do not
+  replace either pass with one global Unicode normalizer.
+- **The spellfix tag vocabulary is larger than `Catalog.TAG_FIELDS`.** Rebuilds also index the row's
+  Chapter/Review/Marker/CommonSenseMedia/Network tags, Guid ids, Rating images, studio and the
+  Thumb/Art/Theme/ClearLogo presence strings. The only server-static remainder on 1.42.2 is the
+  measured 28-string optimize/show-ordering sidecar. Technical GUID tokens can change the top ten
+  and therefore which people reach the wire; never substitute a library-specific token dump.
 
 ## Conventions
 
