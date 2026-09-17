@@ -32,7 +32,8 @@ import threading
 import time
 import urllib.request
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.environ.get("PLEXSIM_TEST_ROOT",
+                      os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SIZE = 100000
 BODY = bytes(((i * 7 + 13) % 251) for i in range(SIZE))
 
@@ -359,6 +360,42 @@ def main():
         check("an unavailable file answers 404, not 502",
               status == 404 and values.get("content-type") == "text/html",
               "%s %s" % (status, values.get("content-type")))
+
+        # -- checkFiles reflects the same provider result -------------------------
+        # Cycle 46's first real comparison of this metadata claim with plexsim's own
+        # byte path found five false positives: every stale private-catalog link said
+        # accessible=true/exists=true and immediately answered unavailable_file/404.
+        # Both references expose false/false for a missing file, and the live/dead
+        # pair below drives the actual Resolver rather than a catalog flag.
+        def part_state(rating_key, option):
+            with urllib.request.urlopen(urllib.request.Request(
+                    "http://127.0.0.1:%d/library/metadata/%s?%s=1"
+                    % (port, rating_key, option),
+                    headers={"Accept": "application/json"}), timeout=30) as response:
+                item = json.load(response)["MediaContainer"]["Metadata"][0]
+            item_part = item["Media"][0]["Part"][0]
+            return item_part.get("accessible"), item_part.get("exists")
+
+        live_states = {option: part_state("1", option) for option in
+                       ("checkFiles", "asyncCheckFiles", "checkFileAvailability")}
+        UNAVAILABLE["on"] = True
+        try:
+            dead_states = {option: part_state("2", option) for option in
+                           ("checkFiles", "asyncCheckFiles", "checkFileAvailability")}
+        finally:
+            UNAVAILABLE["on"] = False
+        with urllib.request.urlopen(urllib.request.Request(
+                "http://127.0.0.1:%d/library/metadata/2" % port,
+                headers={"Accept": "application/json"}), timeout=30) as response:
+            unchecked = json.load(response)["MediaContainer"]["Metadata"][0]
+        unchecked_part = unchecked["Media"][0]["Part"][0]
+        check("file-check options report a live and an unavailable provider link",
+              set(live_states.values()) == {(True, True)}
+              and set(dead_states.values()) == {(False, False)}
+              and "accessible" not in unchecked_part and "exists" not in unchecked_part,
+              "live=%r dead=%r unchecked=%r"
+              % (live_states, dead_states,
+                 (unchecked_part.get("accessible"), unchecked_part.get("exists"))))
     finally:
         process.terminate()
         try:
