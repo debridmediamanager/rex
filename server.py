@@ -11439,6 +11439,25 @@ class PlexSim:
                         projected.update(self.apply_detail_options(
                             stored, dict(projected),
                             {"includeChildren": query.get("includeChildren")}))
+        # Extras follow the same full-row rule, plus the On Deck episode shelf:
+        # both references add an Extras object there even though that shelf's base
+        # projection is otherwise light.
+        if _include_int(query.get("includeExtras")):
+            for hub in hubs:
+                for projected in hub.get("Metadata") or []:
+                    if projected.get("_light") and hub.get("hubIdentifier") != "home.ondeck":
+                        continue
+                    key = str(projected.get("ratingKey") or "")
+                    stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                    if stored is not None:
+                        extras = []
+                        for extra in self.catalog.extras(stored["ratingKey"]):
+                            expanded = _full(extra)
+                            expanded.pop("art", None)
+                            extras.append(expanded)
+                        projected["Extras"] = {"size": len(extras)}
+                        if extras:
+                            projected["Extras"]["Metadata"] = extras
         return self.hub_container(Hub=hubs)
 
     def section_hubs(self, section_id, count=None, library_playlists=False):
