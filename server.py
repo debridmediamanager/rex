@@ -7653,7 +7653,8 @@ class PlexSim:
         if level is not None:
             for folders in sorted((f for f in directories if f[:-1] == level),
                                   key=lambda f: f[-1].lower()):
-                rows.append({"key": "/library/sections/%s/folder?parent=%d"
+                rows.append({"_element": "Directory",
+                             "key": "/library/sections/%s/folder?parent=%d"
                                     % (section_id, ids[folders]),
                              "title": folders[-1]})
             for _, _, row in sorted((p for p in placed if p[0] == level),
