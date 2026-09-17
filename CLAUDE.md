@@ -2515,8 +2515,12 @@ precisely how the Seasons bug survived a fix attempt.
   zen). Never send that request to zen.
 - **`ownerFeatures` on `/` and `subscriptionFeatures` on `/myplex/account` are the SAME string**,
   byte for byte: a sorted comma join of ~180 opaque plex.tv UUIDs and 32 NAMED features. The 32
-  names are identical on both servers where the UUID count is not, so the names are modelled and
-  the ids are not invented. Plex Web reads `ownerFeatures` in 28 places in its bundle.
+  names are identical on both servers where the UUID count is not. The UUIDs are NOT invented:
+  fetch them from authenticated `/api/v2/features`, persist them with the owner id, and union them
+  with the named defaults. A claimed server refreshes user then features at startup/after claim
+  and every 86,400 seconds, with the feature read about 11 seconds after the user read; commit the
+  pair atomically and retain the whole last-good pair on failure. Plex Web reads `ownerFeatures`
+  in 28 places in its bundle.
 - **An axis BUCKET resolves against the server's global tag TABLE, not the leaf's own column.** A
   genre tag id answers the identical container under `genre`, `director`, `actor`, `mood`,
   `style`, `similar`, `tag` and eleven more; only `studio` and `platform` are not bucket names at
@@ -2541,6 +2545,32 @@ precisely how the Seasons bug survived a fix attempt.
   while `/sync/items` and its siblings really are 404s. A "we do not implement this"
   short-circuit on a whole prefix makes one single-segment path answer differently from all the
   others.
+- **File-check options report what the PROVIDER says, not a catalog constant.** `checkFiles`,
+  `asyncCheckFiles` and `checkFileAvailability` share the same `+?0*[01]` grammar and resolver
+  result: a live part projects `accessible=true, exists=true`, `unavailable_file` projects both
+  false, and an unchecked row omits them. The byte path answers the same unavailable file 404;
+  a resolver/network failure remains 502.
+- **The broad option vocabulary was exhaustively swept: 116 names × 76 safe container families ×
+  three servers.** The load-bearing propagation rules are that global `/hubs` passes
+  `includeChildren`, `includeExtras`, `includeOnDeck`, `includeRelated` and
+  `includePreferences` into FULL rows; `includeGuids` reaches hubs, Home Recently Added, children
+  and section subsets; `includeMeta` reaches Home resume leaves, collections, folders and Shared;
+  `includeCollections` moves the search collection shelf after Tracks; `includeSummary` reaches
+  Shared; and `skipCount` filters the source rows before children/search/axis aggregation.
+  `includeStorage` on `/media/providers` is NUMERIC, unlike a section grid's string totals.
+- **Two request headers have special `/web` redirect semantics.** Exact
+  `X-Plex-Http-Pipeline: disable` keeps the 302 but sends `Connection: close` without
+  `Keep-Alive`; exact `X-Plex-Neuter-Redirect: 1` sends an empty 200 while retaining the absolute
+  `Location`. Case-mismatched `Disable`, `infinite`, `0` and `true` are controls, not truthy
+  synonyms.
+- **Cloud watch/rating sync is a consent read plus an opaque-cursor state read.** Consent uses the
+  server token; state uses the latest short-lived RS256 Bearer from the owner's `scrobbling`
+  service. The encrypted service token is AES-256-CBC under PMS's measured MD5 expansion and
+  permissive final-byte strip. The static 32-byte transport secret is NEVER checked in: inject
+  base64 through `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64`, or sync stays off. `complete` stores
+  view time, `unplayed` clears it, an absent rating pair PRESERVES stars, `-1` clears them and a
+  nonnegative rating sets them. Persist an `endCursor` only after applying the page; import writes
+  no local history row.
 
 ## Conventions
 
