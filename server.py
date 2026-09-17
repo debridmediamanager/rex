@@ -4921,6 +4921,8 @@ class PlexSim:
 
         if route == "/library/tags":
             return self.library_tags(query)
+        if route == "/library/arts" and method in ("GET", "HEAD"):
+            return self.library_arts()
         if route == "/library/randomArtwork" and method in ("GET", "HEAD"):
             return self.random_artwork(query)
         if route == "/library/matches":
@@ -15393,6 +15395,50 @@ class PlexSim:
             row = _grid_row(_listing_row(r), keep_section=False)
             shown.append(dict([("score", 100)] + list(row.items())) if scored else row)
         return self.bare_container(size=len(shown), Metadata=shown)
+
+    def library_arts(self):
+        """`/library/arts` -- every row on the server that OWNS an `art`.
+
+        Cycle 45, found by sweeping the library-level name space against both references
+        and measured on kids (6 rows) and zen (4,190). It is a real listing that plexsim
+        404'd: `type: "image"` rows carrying the row's own versioned art path, with a
+        fixed ELEVEN-attribute shape in which six attributes are the EMPTY STRING and
+        four are `-1` -- they are not omitted, which is what makes this shape worth
+        copying rather than inferring.
+
+        Membership is the rows that own their art: a row that borrows its parent's
+        carries the owner's path and is not listed. Order is by SECTION, in the order
+        `/library/sections` lists them, each section's rows ascending by ratingKey --
+        which is kids exactly (1, 3, 4, 17, 18 then the show 6). zen's three runs come
+        out 4, 1, 2 where its sections list 1, 4, 2, and nothing on either server
+        explains that; the per-section grouping and the ascending order within a run
+        hold on both, so the section ORDER is recorded rather than modelled.
+
+        `/library/posters`, `/library/thumbs` and `/library/banners` are 404s on both
+        references -- `arts` is the only one of the family.
+        """
+        rows = []
+        for section in self.catalog.sections:
+            members = self.catalog.section_items(str(section.get("key")))
+            for row in sorted(members, key=lambda item: int(item["ratingKey"])
+                              if str(item.get("ratingKey", "")).isdigit() else 0):
+                art = str(row.get("art") or "")
+                if not art.startswith("/library/metadata/%s/" % row.get("ratingKey")):
+                    continue
+                rows.append({
+                    "title": row.get("title") or "",
+                    "type": "image",
+                    "key": art,
+                    "thumb": "",
+                    "label": "",
+                    "mediaType": "",
+                    "summary": "",
+                    "rating": -1,
+                    "addDate": -1,
+                    "modDate": -1,
+                    "metaModDate": -1,
+                })
+        return self.tag_container(size=len(rows), allowSync=False, Metadata=rows)
 
     def library_tags(self, query):
         """Every tag of one type the server knows, ordered by id.
