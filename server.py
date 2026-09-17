@@ -1748,6 +1748,19 @@ def _bool_option(value):
     return bool(text) and text.isdigit() and int(text) in (0, 1)
 
 
+def _download_disposition(filename):
+    """The two filename forms PMS writes on a download response.
+
+    Cycle 41 measured a plus-named file on disposable copies of both PMS versions.
+    The legacy quoted form substitutes ``_`` for ``+`` while the RFC 5987 form keeps
+    the source name and percent-encodes the plus as ``%2B``. The latter also uses the
+    cycle-29 escaper whose safe set is the URI unreserved set minus the dot.
+    """
+    plain = str(filename).replace('"', "").replace("+", "_")
+    extended = urllib.parse.quote(str(filename), safe="").replace(".", "%2E")
+    return 'attachment; filename="%s"; filename*=UTF-8\'\'%s' % (plain, extended)
+
+
 def _photo_int(value):
     """Whether `/photo/:/transcode` reads this parameter as a whole number.
 
@@ -18292,11 +18305,7 @@ class Handler(BaseHTTPRequestHandler):
                 # media file` for the same reason). It was proved against kids' own
                 # `Content-Disposition` by escaping that server's filename with both
                 # forms and diffing the result.
-                self.send_header(
-                    "Content-Disposition",
-                    'attachment; filename="%s"; filename*=UTF-8\'\'%s'
-                    % (download.replace('"', ""),
-                       urllib.parse.quote(download, safe="").replace(".", "%2E")))
+                self.send_header("Content-Disposition", _download_disposition(download))
             if content_length:
                 self.send_header("Content-Length", content_length)
             if content_range:
