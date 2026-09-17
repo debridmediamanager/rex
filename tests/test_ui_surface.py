@@ -24680,6 +24680,80 @@ def main():
           lang_c45 == want_c45,
           str({k: v for k, v in lang_c45.items() if want_c45.get(k) != v}) or "all 16")
 
+
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2). Hunt A reported
+    # `includeAlternates` as a 1.43.4-only option and it was left unbuilt on that basis;
+    # the claim is REFUTED. The hunt's 1.42.2 oracle was plexscratch42, a fresh install
+    # whose every row is unmatched and therefore holds NO agent artwork at all, so the
+    # option had nothing to add there -- CLAUDE.md's "use it for grammar, never for a
+    # count" trap, taken from the other side. zen, a real matched 1.42.2 library,
+    # honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both
+    # `related` paths.
+    #
+    # What it does: it inlines the AGENT's REMOTE artwork -- `Thumb`, `Art` and `Theme`,
+    # in that order, each `{key, source}` plus a `previewKey` where the provider gives a
+    # thumbnail URL -- and it does it on a FULL row and on nothing else. Swept over
+    # nineteen containers on both references: a section grid, `/library/all`,
+    # `/library/recentlyAdded`, a `/children` page, a section `search`, `/collections`,
+    # `/playlists`, `/hubs/search` and `/hubs/home/recentlyAdded` are byte-identical with
+    # and without it, and inside `/hubs` exactly the shelves that carry full rows gain
+    # the block (zen's `home.television.recent` shows and its `home.ondeck` episode do;
+    # its `home.movies.recent` light movie rows do not). The inline `Related`, `Extras`
+    # and `Children` blocks follow the same rule.
+    #
+    # The child order is measured too: `Thumb` and `Art` sit between the tags and `Guid`
+    # and `Theme` sits directly after `Rating` -- kids' show 6 answers `Genre, Country,
+    # Thumb, Art, Guid, Rating, Theme, Role`. The value grammar is the `+?0*1` family
+    # (`1`, `01`, `+1`, `000001` on; `2`, `-1`, `1.5`, `true`, empty off) and nothing
+    # refuses. A DECISION IGNORES it, the same exception `excludeElements=` already has
+    # -- and plexsim's decision row is a full row, so that exception has to be coded.
+    alt_c45 = {}
+    detail_c45 = "/library/metadata/%s?includeAlternates=1" % movie
+    _status_c45a, body_c45a, _ = get(base, detail_c45)
+    row_c45a = (body_c45a.get("Metadata") or [{}])[0]
+    alt_c45["thumb"] = row_c45a.get("Thumb")
+    alt_c45["art"] = row_c45a.get("Art")
+    alt_c45["order"] = [key_c45a for key_c45a in row_c45a
+                        if key_c45a in ("Genre", "Country", "Thumb", "Art", "Guid",
+                                        "Rating", "Theme", "Director")]
+    _status_c45b, plain_c45, _ = get(base, "/library/metadata/%s" % movie)
+    alt_c45["off by default"] = "Thumb" not in (plain_c45.get("Metadata") or [{}])[0]
+    # The value grammar, and the light-row rule on the section grid beside it.
+    for value_c45a in ("01", "+1", "2", ""):
+        _status_c45c, body_c45c, _ = get(
+            base, "/library/metadata/%s?includeAlternates=%s"
+            % (movie, urllib.parse.quote(value_c45a, safe="")))
+        alt_c45["value %r" % value_c45a] = "Thumb" in (body_c45c.get("Metadata") or [{}])[0]
+    _status_c45d, grid_c45, _ = get(
+        base, "/library/sections/%s/all?includeAlternates=1" % movie_section)
+    alt_c45["light row"] = any("Thumb" in row_c45d
+                               for row_c45d in (grid_c45.get("Metadata") or []))
+    # A decision is the measured exception.
+    decision_c45a = ("/video/:/transcode/universal/decision?path=%s&mediaIndex=0"
+                     "&partIndex=0&protocol=hls&hasMDE=1&session=c45alt&directPlay=1"
+                     "&directStream=1&includeAlternates=1"
+                     % urllib.parse.quote("/library/metadata/%s" % movie, safe=""))
+    # `request()` already sends `X-Plex-Platform: Chrome` and `X-Plex-Product: Plex Web`,
+    # which is what a decision needs to resolve a profile at all.
+    _status_c45e, dec_c45, _ = get(base, decision_c45a)
+    alt_c45["decision"] = "Thumb" in (dec_c45.get("Metadata") or [{}])[0]
+    check("includeAlternates inlines the remote artwork on a full row alone",
+          bool(alt_c45["thumb"]) and all(set(entry_c45) <= {"key", "previewKey", "source"}
+                                         and entry_c45.get("key")
+                                         for entry_c45 in alt_c45["thumb"])
+          and bool(alt_c45["art"])
+          and alt_c45["order"] == [name_c45a for name_c45a
+                                   in ("Genre", "Country", "Thumb", "Art", "Guid",
+                                       "Rating", "Theme", "Director")
+                                   if name_c45a in row_c45a]
+          and alt_c45["order"].index("Thumb") < alt_c45["order"].index("Guid")
+          and alt_c45["order"].index("Art") < alt_c45["order"].index("Guid")
+          and alt_c45["off by default"]
+          and alt_c45["value '01'"] and alt_c45["value '+1'"]
+          and not alt_c45["value '2'"] and not alt_c45["value ''"]
+          and not alt_c45["light row"] and not alt_c45["decision"],
+          str(alt_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
