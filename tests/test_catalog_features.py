@@ -90,6 +90,46 @@ def main():
     catalog.items[101].pop("audienceRating", None)
     catalog.items[102].pop("audienceRating", None)
 
+    # Cycle 39's complete 659-cell score-fold sweep found that membership and
+    # score tiers are separate passes. Partial tiering applies the measured title
+    # table before ASCII case folding; whole-title equality is broader, with the
+    # measured long-s position and two-letter macron-o exceptions.
+    tears = next(row for row in catalog.items.values()
+                 if row.get("title") == "Tears of Steel")
+    tier_cases = {
+        "TĒars": "fuzzy",
+        "TĒar": "fuzzy",
+        "Tears Ōf Steel": "anchored",
+        "Tears ōf Steel": "anchored",
+        "Tearſ of Steel": "fuzzy",
+        "TĒars of Steel": "exact",
+        "Tears of StĒel": "exact",
+        "Tears of ſteel": "exact",
+    }
+    tier_scores = {
+        "TĒars": "0.33055",
+        "TĒar": "0.33055",
+        "Tears Ōf Steel": "0.73055",
+        "Tears ōf Steel": "0.73055",
+        "Tearſ of Steel": "0.33055",
+        "TĒars of Steel": "0.93055",
+        "Tears of StĒel": "0.93055",
+        "Tears of ſteel": "0.93055",
+    }
+
+    def tears_hub_score(query):
+        document = sim.search({"query": query, "limit": "100"})["MediaContainer"]
+        return next((row.get("score") for hub in document.get("Hub") or []
+                     for row in hub.get("Metadata") or []
+                     if row.get("ratingKey") == str(tears.get("ratingKey"))), None)
+
+    check("hub score folding keeps its measured partial and whole-title passes",
+          {query: catalog.search_tier(tears, query) for query in tier_cases}
+          == tier_cases
+          and {query: tears_hub_score(query) for query in tier_scores}
+          == tier_scores
+          and catalog.search_tier({"title": "Dream"}, "Ðre") == "prefix")
+
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.
