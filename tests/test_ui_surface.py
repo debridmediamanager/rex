@@ -903,6 +903,32 @@ def main():
                                                  "/library/metadata/%s" % (machine, movie))))
     pkey = (made.get("Metadata") or [{}])[0].get("ratingKey")
     if pkey:
+        status_meta_c41h, meta_c41h, _ = get(
+            base, "/library/metadata/%s" % pkey)
+        status_control_c41h, control_c41h, _ = get(base, "/playlists/%s" % pkey)
+        status_xml_c41h, raw_xml_c41h, _ = request(
+            base, "GET", "/library/metadata/%s" % pkey, want_json=False)
+        root_xml_c41h = re.search(br"<MediaContainer\b[^>]*>", raw_xml_c41h)
+        expected_xml_c41h = (
+            b'<MediaContainer size="1" allowSync="0" '
+            b'identifier="com.plexapp.plugins.library" '
+            b'mediaTagPrefix="/system/bundle/media/flags/" '
+            b'mediaTagVersion="1655122614">')
+        check("a playlist's metadata alias carries the library root fields",
+              status_meta_c41h == status_control_c41h == status_xml_c41h == 200
+              and list(meta_c41h)[:6]
+              == ["size", "allowSync", "identifier", "mediaTagPrefix",
+                  "mediaTagVersion", "Metadata"]
+              and meta_c41h.get("allowSync") is False
+              and meta_c41h.get("identifier") == "com.plexapp.plugins.library"
+              and meta_c41h.get("mediaTagPrefix") == "/system/bundle/media/flags/"
+              and meta_c41h.get("mediaTagVersion") == 1655122614
+              and list(control_c41h) == ["size", "Metadata"]
+              and root_xml_c41h is not None
+              and root_xml_c41h.group(0) == expected_xml_c41h,
+              "metadata=%s control=%s xml=%r"
+              % (list(meta_c41h), list(control_c41h),
+                 root_xml_c41h.group(0) if root_xml_c41h else None))
         status, body, _ = request(base, "PUT", "/library/metadata/%s?title.value=%s"
                                               % (pkey, quote("playlist renamed")))
         _, one, _ = get(base, "/playlists/%s" % pkey)
