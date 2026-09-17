@@ -8,12 +8,18 @@ Range reads against the resolved URL.
 """
 
 import json
+import os
 import threading
 import time
 import urllib.parse
 import urllib.request
 
-API = "https://api.real-debrid.com/rest/1.0"
+# Overridable so the part path can be exercised without a credential. plexsim's byte
+# path -- the Range grammar, the envelope, the byte counters -- was unmeasurable for the
+# whole programme because every check needed a live account-scoped `/d/` link; cycle 44
+# added `tests/test_part_bytes.py`, which stands a local stub here and a local CDN behind
+# it and drives the REAL handler. Nothing but the base URL changes.
+API = os.environ.get("RD_API") or "https://api.real-debrid.com/rest/1.0"
 
 # Measured: an unrestricted RD CDN URL keeps serving well past an hour, but the
 # cost of re-resolving is one small POST, so the cache is deliberately short.

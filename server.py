@@ -496,11 +496,15 @@ MEDIA_GRABBERS = [
      "protocol": "livetv"},
 ]
 
+# Keyed by the stored FILE's extension (cycle 44). Every value below is what zen
+# answers for a part whose file carries that extension; `.m2ts` is deliberately absent,
+# because a real PMS answers `application/octet-stream` for it.
 CONTENT_TYPES = {
     "mkv": "video/x-matroska",
     "mp4": "video/mp4",
     "webm": "video/webm",
     "avi": "video/x-msvideo",
+    "mov": "video/quicktime",
     "mpegts": "video/mp2t",
 }
 
@@ -16982,46 +16986,15 @@ class Handler(BaseHTTPRequestHandler):
           * a last past the end is clamped, a first at or past the end is a 416, and a
             last below the first is a 416.
         """
-        header = self.headers.get("Range")
-        if status != 200 or not header or "=" not in header:
+        if status != 200:
             return payload, status, None
-        total = len(payload)
-        whole = (payload, 206, "bytes 0-%d/%d" % (total - 1, total))
-        spec = header.split("=", 1)[1]
-        if spec == "":
+        window = _range_window(len(payload), self.headers.get("Range"))
+        if window is None:
             return payload, status, None
-        if spec.startswith("-"):
-            digits = re.match(r"[+-]?[0-9]+", spec[1:])
-            length = int(digits.group()) if digits else 0
-            if length < 0:
-                return payload, status, None
-            if length == 0:
-                # `bytes=-0` and `bytes=-abc`: the header says one byte and the body is
-                # the whole thing. Measured on both references and both body kinds.
-                return payload, 206, "bytes 0-0/%d" % total
-            if length >= total:
-                return whole
-            return payload[total - length:], 206, "bytes %d-%d/%d" % (
-                total - length, total - 1, total)
-        digits = re.match(r"[+-]?[0-9]+", spec)
-        if not digits:
-            return whole
-        first = int(digits.group())
-        rest = spec[digits.end():]
-        if not rest.startswith("-"):
-            return whole
-        rest = rest[1:]
-        if rest == "":
-            last = total - 1
-        elif "-" in rest:
-            return whole
-        else:
-            tail = re.match(r"[+-]?[0-9]+", rest)
-            last = int(tail.group()) if (tail and tail.end() == len(rest)) else 0
-        if first >= total or last < first:
+        code, content_range, first, last = window
+        if code == 416:
             return b"", 416, None
-        last = min(last, total - 1)
-        return payload[first:last + 1], 206, "bytes %d-%d/%d" % (first, last, total)
+        return payload[first:last + 1], code, content_range
 
     # Strings that are the LIBRARY's own content rather than the server's own text.
     # Measured: an item title, a tag name and a library name stay as they are in every
@@ -18413,9 +18386,30 @@ class Handler(BaseHTTPRequestHandler):
                part=None):
         import hashlib
         request_range = self.headers.get("Range")
+        # Cycle 44: apply the MEASURED grammar here rather than forwarding the client's
+        # header and echoing whatever the CDN answered. `_range_window` is the same
+        # function `_ranged` uses for every other body, so a media read now answers the
+        # thirteen cells it used to get wrong -- and the answer stops depending on the
+        # CDN's own leniency, which differs per host and was never part of the rule.
+        total = int((part or {}).get("size") or 0)
+        window = _range_window(total, request_range) if total else None
+        if window is not None and window[0] == 416:
+            self._send_error(416, "plexsim: range not satisfiable")
+            return
         headers = {"User-Agent": UPSTREAM_UA}
-        if request_range:
-            headers["Range"] = request_range
+        content_range = None
+        if window is not None:
+            _code, content_range, first, last = window
+            headers["Range"] = "bytes=%d-%d" % (first, last)
+            want = last - first + 1
+        elif total:
+            want = total
+        else:
+            # No size in the catalog: nothing to compute a window from, so the old
+            # pass-through is the only honest answer.
+            want = None
+            if request_range:
+                headers["Range"] = request_range
 
         request = urllib.request.Request(upstream_url, headers=headers, method="GET")
         try:
@@ -18430,9 +18424,13 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         with upstream:
-            status = upstream.status
-            content_length = upstream.headers.get("Content-Length")
-            content_range = upstream.headers.get("Content-Range")
+            if want is None:
+                status = upstream.status
+                content_length = upstream.headers.get("Content-Length")
+                content_range = upstream.headers.get("Content-Range")
+            else:
+                status = 206 if window is not None else 200
+                content_length = str(want)
             logger.info(
                 "PART %s range=%s -> %s len=%s",
                 part_id,
@@ -18442,10 +18440,22 @@ class Handler(BaseHTTPRequestHandler):
             )
 
             self.send_response(status)
-            # RD's CDN answers `application/force-download`, which is not a
-            # media type; a client that sniffs it may refuse the stream, so the
-            # container's real type is substituted here.
-            self.send_header("Content-Type", CONTENT_TYPES.get(container, "video/mp4"))
+            # Measured cycle 33 on both references: `X-Plex-Protocol` is the FIRST
+            # header of every response a real PMS writes, a part read included. This is
+            # the one writer on the surface that does not go through `_send`, so it was
+            # the one response missing it -- invisible for the whole programme, because
+            # the fixture's dead links meant every byte read was a 502 and a 502 IS
+            # written by `_send`.
+            self.send_header("X-Plex-Protocol", "1.0")
+            # RD's CDN answers `application/force-download`, which is not a media type;
+            # a client that sniffs it may refuse the stream, so the real type is
+            # substituted. Cycle 44, measured on zen: the key is the stored FILE's
+            # extension and NOT the Media's `container` -- zen part 7113 is a `mp4`
+            # Media whose file is `.mkv` and it answers `video/x-matroska` -- the URL's
+            # own extension is ignored (six spellings of the same part all answer the
+            # file's type), and an extension with no entry answers
+            # `application/octet-stream` (a `.m2ts` does), not `video/mp4`.
+            self.send_header("Content-Type", _part_content_type(part, container))
             self.send_header("Accept-Ranges", "bytes")
             # Measured: every byte response from a real PMS carries BOTH validators,
             # on the 200 and on every 206 -- its `ETag` is the part's own file hash
@@ -18501,18 +18511,111 @@ class Handler(BaseHTTPRequestHandler):
             if method == "HEAD":
                 return
 
+            written = 0
             try:
-                while True:
+                while want is None or written < want:
                     chunk = upstream.read(256 * 1024)
                     if not chunk:
                         break
+                    if want is not None and written + len(chunk) > want:
+                        chunk = chunk[:want - written]
                     self.wfile.write(chunk)
+                    written += len(chunk)
             except (BrokenPipeError, ConnectionResetError):
                 # A seek or a stop closes the socket mid-body. Normal.
                 logger.debug("PART %s client closed", part_id)
             finally:
-                if content_length:
-                    self._count_bytes(int(content_length))
+                # Cycle 44, measured on kids: a real PMS's bandwidth statistic counts
+                # what it actually WROTE. plexsim counted the advertised length however
+                # the read ended, and every seek and every stop is an abort -- so one
+                # 1 MB read of a 121 MB part moved the Dashboard by the whole 121 MB.
+                if written:
+                    self._count_bytes(written)
+
+
+
+def _range_window(total, header):
+    """`Range` -> (status, Content-Range, first, last) over a body of `total` bytes.
+
+    The grammar is cycle 16's and cycle 35's, unchanged; cycle 44 lifted it out of
+    `_ranged` so the MEDIA path can use the same one. plexsim's part handler copied the
+    client's header to the debrid CDN and echoed whatever came back, so thirteen of the
+    twenty cells both references agree on were wrong on a media body -- `bytes=-1` read
+    the FIRST byte where a real PMS reads the last (which is how every player locates an
+    MP4 `moov` or a Matroska Cues block, so every seek read the wrong end of the file),
+    a reversed or past-the-end range answered 206 instead of 416, and
+    `bytes=<total+10>-` answered `Content-Length: -10`, which is not a legal field value
+    at all. Nothing could see it before 2026-09-17: every link in the fixture was dead,
+    so every byte read was a 502.
+
+    `None` means the header is not a Range and the body is answered whole as a 200. A
+    `(206, "bytes 0-0/N", 0, N-1)` return is a real measured cell, not a slip: for
+    `bytes=-0` and `bytes=-abc` a real PMS says one byte in the header and sends the
+    whole body.
+
+    Cycle 44 also corrected one cell of the container grammar: a BARE `bytes=-`, with
+    nothing after the dash, is not a Range at all -- 200 on both references, on
+    `/identity`, on artwork, on a `/web` asset and on a part -- where plexsim read it as
+    the zero-length suffix and answered a 206. `bytes=- `, `bytes=-x` and `bytes=-abc`
+    are the 206; only the empty one is not.
+    """
+    if not header or "=" not in header:
+        return None
+    spec = header.split("=", 1)[1]
+    if spec == "" or spec == "-":
+        return None
+    whole = (206, "bytes 0-%d/%d" % (total - 1, total), 0, total - 1)
+    if spec.startswith("-"):
+        digits = re.match(r"[+-]?[0-9]+", spec[1:])
+        length = int(digits.group()) if digits else 0
+        if length < 0:
+            return None
+        if length == 0:
+            return (206, "bytes 0-0/%d" % total, 0, total - 1)
+        if length >= total:
+            return whole
+        return (206, "bytes %d-%d/%d" % (total - length, total - 1, total),
+                total - length, total - 1)
+    digits = re.match(r"[+-]?[0-9]+", spec)
+    if not digits:
+        return whole
+    first = int(digits.group())
+    rest = spec[digits.end():]
+    if not rest.startswith("-"):
+        return whole
+    rest = rest[1:]
+    if rest == "":
+        last = total - 1
+    elif "-" in rest:
+        return whole
+    else:
+        tail = re.match(r"[+-]?[0-9]+", rest)
+        last = int(tail.group()) if (tail and tail.end() == len(rest)) else 0
+    if first >= total or last < first:
+        return (416, None, None, None)
+    return (206, "bytes %d-%d/%d" % (first, min(last, total - 1), total),
+            first, min(last, total - 1))
+
+
+
+def _part_content_type(part, container):
+    """The media type a real PMS puts on a part read.
+
+    Cycle 44, measured on zen over every (container, extension) pair its 3,887 movies
+    hold: the key is the stored FILE's extension, not the Media's `container` and not
+    the extension in the request URL. zen part 7113 is a `mp4` Media whose file ends
+    `.mkv` and answers `video/x-matroska`; asking for that part as `file.mp4`,
+    `file.zzz`, `file.mov` or `file.webm` answers `video/x-matroska` every time. An
+    extension the table does not name answers `application/octet-stream` -- zen's
+    `.m2ts` parts do -- where plexsim fell back to `video/mp4`.
+    """
+    name = (part or {}).get("file") or ""
+    extension = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if extension in CONTENT_TYPES:
+        return CONTENT_TYPES[extension]
+    if not extension and container in CONTENT_TYPES:
+        return CONTENT_TYPES[container]
+    return "application/octet-stream"
 
 
 class Server(ThreadingHTTPServer):
