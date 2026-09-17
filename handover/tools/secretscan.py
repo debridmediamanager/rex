@@ -11,7 +11,14 @@ import subprocess
 import sys
 
 WT = sys.argv[1]
-KNOWN = {"X-Plex-Token=suite-gate-token"}
+KNOWN = {
+    "X-Plex-Token=suite-gate-token",
+    # Cycle 44's local Real-Debrid stub accepts these explicit fixture sentinels
+    # without authentication. They are deliberately shaped like durable links so
+    # the production handler is exercised, but they are not account-owned links.
+    "real-debrid.com/d/PARTBYTESTEST",
+    "real-debrid.com/d/PARTBYTESGONE",
+}
 PATTERNS = ((r"X-Plex-Token=[A-Za-z0-9_-]{15,}", "token in a URL"),
             (r"real-debrid\.com/d/[A-Za-z0-9]+", "real-debrid link"),
             (r"plex_token:\s*[A-Za-z0-9_-]{15,}", "plex token"))
