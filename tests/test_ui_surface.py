@@ -23968,6 +23968,34 @@ def main():
                                         "/sync/zzz")] == [404, 404, 404],
           str(sync_c45))
 
+
+    # Cycle 45, found by sweeping the section-leaf name space against both references
+    # with a vocabulary built from their OWN words: `/library/sections/{id}/platform` is
+    # a TENTH cross-type axis. It answers the same EMPTY secondary container the nine
+    # recorded ones do, on a movie library and a show library alike, and validates
+    # `type=` the same way -- 500 for `abc` and for an empty value, 404 for a bucket
+    # sub-path. The one thing that makes it worth measuring rather than inferring: its
+    # `title2` is the EMPTY STRING, where every other axis carries a "By ..." heading.
+    # plexsim 404'd it.
+    plat_c45 = {}
+    for label_c45, section_c45 in (("movie", movie_section), ("show", show_section)):
+        if section_c45 is None:
+            continue
+        status_c45, payload_c45, _ = get(base, "/library/sections/%s/platform" % section_c45)
+        mood_c45 = get(base, "/library/sections/%s/mood" % section_c45)[1]
+        plat_c45[label_c45] = (
+            status_c45, payload_c45.get("size"), payload_c45.get("title2"),
+            payload_c45.get("viewGroup"), payload_c45.get("viewMode"),
+            payload_c45.get("art") == mood_c45.get("art"),
+            payload_c45.get("nocache") == mood_c45.get("nocache"))
+    refusals_c45 = [get(base, "/library/sections/%s/platform%s" % (movie_section, suffix))[0]
+                    for suffix in ("?type=abc", "?type=", "/zzz")]
+    check("the platform axis is the tenth cross-type axis",
+          all(cell == (200, 0, "", "secondary", 65592, True, True)
+              for cell in plat_c45.values())
+          and bool(plat_c45) and refusals_c45 == [500, 500, 404],
+          str((plat_c45, refusals_c45)))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

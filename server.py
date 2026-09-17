@@ -545,7 +545,13 @@ USER_RATINGS = (("10", "5 stars"), ("8", "4 stars"), ("6", "3 stars"),
 
 # The axes of OTHER library types. A movie library answers each an EMPTY secondary
 # container with its own title2, not a 404 -- measured on both references.
-CROSS_TYPE_AXES = {"mood": "By Mood", "style": "By Style", "format": "By Format",
+# Cycle 45 adds `platform`, found by sweeping the section-leaf name space against both
+# references: it answers the same EMPTY secondary container the nine below do, and
+# validates `type=` the same way (500 for `abc` and for an empty value, 404 for a bucket
+# sub-path) -- with one difference, which is why it is written out separately here: its
+# `title2` is the EMPTY STRING where every other axis carries a "By ..." heading.
+CROSS_TYPE_AXES = {"platform": "", "mood": "By Mood", "style": "By Style",
+                   "format": "By Format",
                    "subformat": "By Type", "source": "By Source",
                    "make": "By Camera Make", "model": "By Camera Model",
                    "place": "By Place", "tag": "By Tag"}
