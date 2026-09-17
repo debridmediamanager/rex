@@ -4214,6 +4214,15 @@ class PlexSim:
         # and the SERVER redeems it. This is what the "Claim this server"
         # button calls.
         if route == "/myplex/claim":
+            # Cycle 44, measured on plexscratch42 (1.42.2) across the whole verb table
+            # and confirmed for GET and HEAD on kids and zen: only POST is routed here.
+            # Every other verb is a 404 -- PATCH and an unknown method reaching the
+            # version-wide 500 above -- exactly as the neighbouring
+            # `/myplex/refreshReachability` 404s everything but its PUT. plexsim routed
+            # the handler for every method, so a GET answered the handler's own 400 and
+            # told a client the endpoint was there.
+            if method != "POST":
+                return ("error", 404, "plexsim: not found")
             return self.do_claim(query)
         if route == "/myplex/account":
             return self.myplex_account()
@@ -5683,7 +5692,11 @@ class PlexSim:
     # -- endpoint bodies -------------------------------------------------
 
     def do_claim(self, query):
-        """`PUT /myplex/claim?token=claim-XXXX` -- redeem and become claimed."""
+        """`POST /myplex/claim?token=claim-XXXX` -- redeem and become claimed.
+
+        POST, not PUT: measured cycle 44 on plexscratch42, and it is the verb the
+        harness's own claim step has always sent.
+        """
         token = query.get("token", "")
         if not token:
             return ("error", 400, "plexsim: missing claim token")
