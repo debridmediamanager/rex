@@ -516,6 +516,12 @@ CONTENT_TYPES = {
 # count of 0 on its own row) and on the copy.
 LEAF_COUNT_FILTERS = ("viewedLeafCount", "unviewedLeafCount", "viewedOrInProgressLeafCount")
 
+# The item leaves that read their second path segment as an artwork VERSION and answer
+# 200 for any value (cycle 29 for the version rule; cycle 45 for the SET). Every other
+# item leaf 404s an extra segment. `squareArt` is 1.43.4-only and plexsim keeps 404ing
+# it, so it is deliberately absent.
+ARTWORK_LEAVES = ("thumb", "art", "poster", "banner", "theme", "clearLogo")
+
 SECONDARY_TAGS = {
     "genre": "Genre",
     "collection": "Collection",
@@ -9714,6 +9720,21 @@ class PlexSim:
             return self.bare_container(Metadata=[detail], **fields)
 
         leaf = segments[3]
+        # Cycle 45, swept over 53 leaf names x four second segments on both references:
+        # an item leaf with an EXTRA path segment is a **404**, and there are exactly two
+        # kinds of exception. The ARTWORK leaves -- `poster`, `art`, `thumb`, `theme`,
+        # `clearLogo` (and `squareArt` on 1.43.4) -- read the second segment as the
+        # VERSION and answer 200 for any value, which is the rule cycle 29 already
+        # recorded; and `/extras/all` is a real leaf of its own. Everything else --
+        # `/children/1`, `/allLeaves/all`, `/tree/zzz`, `/related/1`, `/posters/all`,
+        # `/similar/1`, `/matches/zzz` and thirteen more -- is a 404 on kids and zen
+        # alike. plexsim answered the LEAF AGAIN for sixteen of them and its own 400 for
+        # four, which is fix 4's trap: a client reads a 200 as "this endpoint exists".
+        # 64 of the 212 swept cells were wrong.
+        if len(segments) > 4 and [part for part in segments[4:] if part] \
+                and leaf not in ARTWORK_LEAVES \
+                and not (leaf == "extras" and segments[4:] == ["all"]):
+            return ("error", 404, "plexsim: not found")
         if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
             # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
             # after the version is a 404 -- `/thumb/{v}/x` and `/thumb/{v}/1/2` both, on
