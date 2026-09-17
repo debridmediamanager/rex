@@ -25362,6 +25362,32 @@ def main():
           "sections=%s shared=%s show=%s"
           % (sections_summary_c46, shared_summary_c46, show_summary_c46))
 
+    # These five secondary/hierarchy consumers run the same field grammar as the
+    # library grid. No fixture row has a stored skipCount, and numeric nulls match
+    # nothing, so `skipCount=1` empties each while the bare control is populated.
+    skip_paths_c46 = [
+        "/library/metadata/%s/children" % season_c46g.get("ratingKey"),
+        "/library/sections/%s/firstCharacter" % movie_section,
+        "/library/sections/%s/genre" % movie_section,
+        "/library/sections/%s/firstCharacter?type=4" % show_section,
+        "/library/sections/%s/search?query=e&type=4" % show_section,
+    ]
+
+    def skip_size_c46(path_c46):
+        body_c46 = get(base, path_c46)[1]
+        return (len(body_c46.get("Directory") or [])
+                + len(body_c46.get("Metadata") or []))
+
+    skip_counts_c46 = []
+    for path_c46 in skip_paths_c46:
+        join_c46 = "&" if "?" in path_c46 else "?"
+        skip_counts_c46.append((skip_size_c46(path_c46),
+                                skip_size_c46(path_c46 + join_c46 + "skipCount=1")))
+    check("skipCount filters children, search and secondary-axis sources",
+          bool(season_c46g) and all(plain_c46 > 0 and filtered_c46 == 0
+                                    for plain_c46, filtered_c46 in skip_counts_c46),
+          str(list(zip(skip_paths_c46, skip_counts_c46))))
+
 
     # Cycle 46, from the option sweep, and it OVERTURNS a cycle-44 refutation:
     # `includeStorage=1` on `/media/providers` really does something. Cycle 44's hunt
