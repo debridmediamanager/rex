@@ -265,6 +265,34 @@ def direct_play(profile, media):
             return False, (NO_PROFILE + ", using video codec %s, audio codec %s, and "
                                         "subtitle codec %s.") % (
                 container, video_codec, audio_codec, subtitle.get("codec"))
+    # Cycle 44: the SUBTITLE twin of the audio rule above,
+    # and it runs after the audio-codec
+    # pass AND after the subtitle-CODEC pass:, and it was missing entirely.
+    # Measured on zen (1.42.2) over 21 rows whose selected EMBEDDED subtitle is not the
+    # first embedded one -- 917, 4315, 10442, 2721, 2124, 4583, 4641, 4853, 10279 and
+    # eleven Media of 1637 -- and on a file built for it on plexscratch (1.43.4): exactly
+    # three of the 78 profiles refuse, `Samsung`, `RokuDLNA-5000X-7.x` and
+    # `RokuDLNA-6000X-7.x`, with
+    #
+    #     App cannot direct play this item. Selected embedded subtitle stream is not the
+    #     first embedded subtitle stream.
+    #
+    # The gate is the same `DirectPlayStreamSelection` as the audio rule: on zen 917 only
+    # four profiles reach this stage at all, and the one that declares it
+    # (`Windows 10 Desktop`) direct-plays the row while the three that do not refuse it.
+    #
+    # The 2,106-cell corpus could not see this. In every corpus row whose selected
+    # subtitle is not first (zen 11901, 2157, 2925, 4969) the selected AUDIO is not first
+    # either, so the audio refusal fires above and masks it -- HANDOVER.md §3.1 class B,
+    # a sample that cannot disagree. It is reachable the moment a client uses its
+    # subtitle picker: plexsim told all three profiles "Direct play OK." for a row they
+    # will not render, which is cycle 26's failure mode from the other side.
+    if subtitle is not None and not subtitle.get("key") and not can_select:
+        embedded = [s for s in streams
+                    if s.get("streamType") == 3 and not s.get("key")]
+        if embedded and subtitle is not embedded[0]:
+            return False, ("App cannot direct play this item. Selected embedded subtitle "
+                           "stream is not the first embedded subtitle stream.")
     values = _values(media, selected_audio)
     # Limitations: the CONTAINER's first, then a codec profile that names the codec, then
     # one that says `*`. zen 848 on Android reports `part.optimizedForStreaming` before an
