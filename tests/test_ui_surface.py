@@ -25321,7 +25321,22 @@ def main():
           % ([row_c46m.get("type") for row_c46m in folder_types_c46
               if row_c46m.get("active")], len(folder_meta_c46.get("FieldType") or []),
              [(row_c46m.get("title"), row_c46m.get("active"))
-              for row_c46m in shared_types_c46]))
+             for row_c46m in shared_types_c46]))
+
+    # `/hubs/search` always has a Collections hub. `includeCollections=1` moves it
+    # directly after Tracks; it does not add a second row or change the seventeen-row
+    # census. The client uses this order to lay out its result shelves.
+    search_plain_c46 = [hub_c46.get("type") for hub_c46 in
+                        get(base, "/hubs/search?query=sin")[1].get("Hub") or []]
+    search_coll_c46 = [hub_c46.get("type") for hub_c46 in
+                       get(base, "/hubs/search?query=sin&includeCollections=1")[1]
+                       .get("Hub") or []]
+    check("includeCollections moves the search collection shelf after Tracks",
+          len(search_plain_c46) == len(search_coll_c46) == 17
+          and search_plain_c46.count("collection") == search_coll_c46.count("collection") == 1
+          and search_coll_c46.index("collection") == search_coll_c46.index("track") + 1
+          and search_plain_c46.index("collection") != search_plain_c46.index("track") + 1,
+          "plain=%s option=%s" % (search_plain_c46, search_coll_c46))
 
 
     # Cycle 46, from the option sweep, and it OVERTURNS a cycle-44 refutation:

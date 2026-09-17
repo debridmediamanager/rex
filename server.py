@@ -12378,8 +12378,19 @@ class PlexSim:
         score_query = text.strip()
         needle = score_query.lower()
 
+        search_hubs = list(self.SEARCH_HUBS)
+        if query.get("includeCollections") == "1":
+            # On this endpoint the flag does not add or remove the Collections hub;
+            # it moves that already-present row directly after Tracks. Both PMS
+            # versions agree, including when a scored hit promotes another hub.
+            collection = next(pair for pair in search_hubs if pair[0] == "collection")
+            search_hubs.remove(collection)
+            track_index = next(index for index, pair in enumerate(search_hubs)
+                               if pair[0] == "track")
+            search_hubs.insert(track_index + 1, collection)
+
         hubs = []
-        for kind, title in self.SEARCH_HUBS:
+        for kind, title in search_hubs:
             rows = []
             match_classes = []
             for row in typed.get(kind, []):
