@@ -25143,6 +25143,65 @@ def main():
           % (sum(1 for r_c46g in plain_c46g.get("Metadata") or [] if "Guid" in r_c46g),
              sum(1 for r_c46g in guided_c46g.get("Metadata") or [] if "Guid" in r_c46g)))
 
+
+    # Cycle 46, from the option sweep: `includeMeta=1` carries a `Meta` on three more
+    # containers than plexsim answered -- measured on kids and zen, which agree.
+    #
+    #  * `/hubs/home/onDeck` and `/hubs/home/continueWatching` each carry ONE `Type` row
+    #    naming the leaf itself: `{key, type: "mixed", title: "On Deck" / "Continue
+    #    Watching", active: true}` and no `FieldType` at all.
+    #  * `/library/sections/{id}/collections` carries the FULL section descriptor: one
+    #    `Type` row (`key` `/library/sections/{id}/all?type=18`, `type: "collection"`,
+    #    `title: "Collections"`, `active: true`) with a single `titleSort` `Sort` whose
+    #    `firstCharacterKey` is scoped `?type=18`, plus the section's own eight
+    #    `FieldType` rows.
+    #
+    # Everything else in the same sweep is a no-op on both references: `/library/onDeck`,
+    # `/library/recentlyAdded`, `/hubs/continueWatching`, a section's `recentlyAdded`,
+    # `newest`, `onDeck` and `search`, and `/library/all` are byte-identical with and
+    # without it, and the BARE `/hubs/home/recentlyAdded` is too (its Meta needs a
+    # `type=`, which cycle 25 already measured).
+    meta_c46 = {}
+    for leaf_c46m, want_c46m in (("/hubs/home/onDeck", "On Deck"),
+                                 ("/hubs/home/continueWatching", "Continue Watching")):
+        _status_c46m, body_c46m, _ = get(base, leaf_c46m + "?includeMeta=1")
+        rows_c46m = (body_c46m.get("Meta") or {}).get("Type") or []
+        meta_c46[leaf_c46m] = [(r_c46m.get("key"), r_c46m.get("type"), r_c46m.get("title"),
+                                r_c46m.get("active"), "FieldType" in (body_c46m.get("Meta") or {}))
+                               for r_c46m in rows_c46m]
+        meta_c46[leaf_c46m + " bare"] = "Meta" in get(base, leaf_c46m)[1]
+    _status_c46m, coll_c46m, _ = get(
+        base, "/library/sections/%s/collections?includeMeta=1" % movie_section)
+    block_c46m = coll_c46m.get("Meta") or {}
+    type_c46m = (block_c46m.get("Type") or [{}])[0]
+    meta_c46["collections"] = (type_c46m.get("key"), type_c46m.get("type"),
+                               type_c46m.get("title"), type_c46m.get("active"),
+                               [s_c46m.get("key") for s_c46m in type_c46m.get("Sort") or []],
+                               len(block_c46m.get("FieldType") or []))
+    meta_c46["collections bare"] = "Meta" in get(
+        base, "/library/sections/%s/collections" % movie_section)[1]
+    meta_c46["no-op leaves"] = [leaf_c46m for leaf_c46m in
+                                ("/library/onDeck", "/library/recentlyAdded",
+                                 "/hubs/continueWatching",
+                                 "/library/sections/%s/newest" % movie_section,
+                                 "/library/all")
+                                if "Meta" in get(base, leaf_c46m + "?includeMeta=1")[1]]
+    check("includeMeta reaches the two home leaves and the collections listing",
+          meta_c46["/hubs/home/onDeck"] == [("/hubs/home/onDeck", "mixed", "On Deck",
+                                             True, False)]
+          and meta_c46["/hubs/home/continueWatching"] == [
+              ("/hubs/home/continueWatching", "mixed", "Continue Watching", True, False)]
+          and not meta_c46["/hubs/home/onDeck bare"]
+          and not meta_c46["/hubs/home/continueWatching bare"]
+          and meta_c46["collections"][:4] == (
+              "/library/sections/%s/all?type=18" % movie_section, "collection",
+              "Collections", True)
+          and meta_c46["collections"][4] == ["titleSort"]
+          and meta_c46["collections"][5] == 8
+          and not meta_c46["collections bare"]
+          and meta_c46["no-op leaves"] == [],
+          str(meta_c46))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
