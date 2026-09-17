@@ -9052,8 +9052,11 @@ class PlexSim:
             if collection is None:
                 # A playlist has no leaf view of its own: both are 404s.
                 return ("error", 404, "plexsim: not found")
-            members = [_grid_row(row) for row in
-                       self.library.collection_children(collection)]
+            # Cycle 41, re-measured on fresh MOVIE and SHOW collections on both
+            # disposable PMS versions: these are real secondary containers, but
+            # neither is a member view. Both stay empty even when `/children`
+            # returns the collection's rows. plexsim copied those members here.
+            members = []
             section = self.catalog.section(collection["librarySectionID"]) or {}
             fields = dict(
                 size=len(members), allowSync=True,
