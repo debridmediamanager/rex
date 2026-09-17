@@ -2377,6 +2377,11 @@ precisely how the Seasons bug survived a fix attempt.
   families of the local 4.147.1 client plan and found four missing 1.42.2 source pairs: one server
   preference summary and three hub titles. Each was captured in all 28 languages. A table entry is
   complete only when every route context that emits that English source has been joined and checked.
+- **A clean cycle rebuilds the denominator; it does not inherit “no findings”.** Cycle 42 recreated
+  all 332 historical atoms and the 49/1,221/47/339/45/45 advertised-control graph from current
+  source, current tests and fresh live responses, then replayed all 24 preceding fixes. Both reports
+  ended `no findings`; this is the stopping gate. Retained evidence may be reused only when the
+  exact request/state is unchanged and the relevant source/test blobs are byte-identical and hashed.
 
 ## Conventions
 
