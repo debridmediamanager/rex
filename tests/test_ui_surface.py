@@ -2304,6 +2304,19 @@ def main():
           and set((frames[0][1].get("LogSentNotification") or {}))
               >= {"level", "thread", "time", "message"},
           "kinds=%s" % (kinds or "none"))
+    # Cycle 41 revalidated the opposite-looking literal: `all` is not a wildcard.
+    # It names no real event type, so even a write that produces timeline and log
+    # frames leaves this channel with keepalive pings only.
+    status_c41r1, events_c41r1 = eventsource(
+        base,
+        lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=c41-all" % movie),
+        seconds=11,
+        spec="?filters=all")
+    non_ping_c41r1 = [name_c41r1 for name_c41r1, _data_c41r1 in events_c41r1
+                      if name_c41r1 != "ping"]
+    check("filters=all names no event type and receives no event frames",
+          status_c41r1 == 200 and non_ping_c41r1 == [],
+          "status=%s events=%s" % (status_c41r1, non_ping_c41r1))
     frames = sequence(lambda: request(base, "PUT", "/library/metadata/%s?tagline.value=%s"
                                                   % (movie, quote("unfiltered"))))
     check("an unfiltered channel gets everything EXCEPT log",
@@ -21576,6 +21589,36 @@ def main():
               and dotted_c31l == 0,
               "%r -> %s | with a comma %s | doubled %s | with a dot %s (of %s rows)"
               % (word_c31l, plain_c31l, comma_c31l, double_c31l, dotted_c31l, all_c31l))
+
+    # Cycle 41 closed the remaining regression gap on the unambiguous episode
+    # fixture: non-empty members form an exact set union, while any empty member
+    # makes the title alternative match every row.
+    if show_section:
+        def titles_c41r2(value_c41r2):
+            suffix_c41r2 = "" if value_c41r2 is None else "&title=" + value_c41r2
+            status_c41r2, body_c41r2, _ = get(
+                base, "/library/sections/%s/all?type=4%s" % (show_section, suffix_c41r2))
+            return status_c41r2, {row_c41r2.get("title")
+                                  for row_c41r2 in body_c41r2.get("Metadata") or []}
+
+        status_all_c41r2, all_c41r2 = titles_c41r2(None)
+        status_a_c41r2, eternal_c41r2 = titles_c41r2("Eternal")
+        status_b_c41r2, fixture_c41r2 = titles_c41r2("Fixture")
+        status_union_c41r2, union_c41r2 = titles_c41r2("Eternal,Fixture")
+        empty_sets_c41r2 = [titles_c41r2(value_c41r2)[1]
+                            for value_c41r2 in ("Eternal,", ",Eternal", "Eternal,,")]
+        check("title comma members are ORed and an empty member matches every row",
+              {status_all_c41r2, status_a_c41r2, status_b_c41r2,
+               status_union_c41r2} == {200}
+              and len(eternal_c41r2) == 1 and len(fixture_c41r2) == 7
+              and union_c41r2 == eternal_c41r2 | fixture_c41r2 == all_c41r2
+              and all(rows_c41r2 == all_c41r2 for rows_c41r2 in empty_sets_c41r2),
+              "all=%d eternal=%d fixture=%d union=%d empties=%s"
+              % (len(all_c41r2), len(eternal_c41r2), len(fixture_c41r2),
+                 len(union_c41r2), [len(rows_c41r2) for rows_c41r2 in empty_sets_c41r2]))
+    else:
+        skip("title comma members are ORed and an empty member matches every row",
+             "no show section")
 
 
     # Cycle 31, measured on zen -- whose 471 rows with an `originalTitle` are the only
