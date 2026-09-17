@@ -16566,10 +16566,20 @@ class Handler(BaseHTTPRequestHandler):
                   "Access-Control-Allow-Origin", "Date"),
         # A 416 carries NO connection header at all -- on a closing request and a
         # keep-alive one alike, which is the only response class that does not.
-        "range-error": ("X-Plex-Protocol", "Content-Length", "Content-Type",
-                        "Cache-Control", "Date"),
+        # Cycle 44, with an `Origin` on the wire: the CORS pair sits directly after
+        # `X-Plex-Protocol` and `Access-Control-Allow-Origin` directly before `Date`, in
+        # EVERY family. Cycle 33 measured the families on a connection that sent no
+        # `Origin`, where the trio is absent altogether, so this was invisible to it.
+        "range-error": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                        "Content-Length", "Content-Type",
+                        "Cache-Control", "Access-Control-Allow-Origin", "Date"),
+        "range-error-container": ("X-Plex-Protocol", "Access-Control-Expose-Headers",
+                                  "Vary", "Content-Length", "Content-Type",
+                                  "Connection", "Keep-Alive", "Cache-Control",
+                                  "Access-Control-Allow-Origin", "Date"),
         # The plug-in framework's own `/system` paths, which also carry the cookie.
-        "system": ("X-Plex-Protocol", "Content-Length", "Content-Type", "Set-Cookie",
+        "system": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                   "Content-Length", "Content-Type", "Set-Cookie",
                    "Connection", "Keep-Alive", "Cache-Control",
                    "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
         # Cycle 40: `/system/services/url/lookup` is the one measured Framework
@@ -16582,29 +16592,39 @@ class Handler(BaseHTTPRequestHandler):
                         "X-Plex-Content-Compressed-Length", "Content-Length",
                         "Cache-Control", "Access-Control-Allow-Headers",
                         "Access-Control-Allow-Origin", "Date"),
-        "artwork": ("X-Plex-Protocol", "Content-Type", "X-Plex-Local-Asset",
+        "artwork": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                    "Content-Type", "X-Plex-Local-Asset",
                     "Cache-Control", "Accept-Ranges", "Content-Range", "Connection",
                     "Keep-Alive", "Content-Length", "Access-Control-Allow-Headers",
                     "Access-Control-Allow-Origin", "Date"),
-        "photo": ("X-Plex-Protocol", "Accept-Ranges", "Connection", "Keep-Alive",
+        "photo": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                  "Accept-Ranges", "Connection", "Keep-Alive",
                   "Content-Length", "Content-Type", "Cache-Control",
                   "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
-        "asset": ("X-Plex-Protocol", "Cache-Control", "Accept-Ranges", "Content-Range",
-                  "Connection", "Keep-Alive", "Content-Length", "Content-Type", "Date"),
+        "asset": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                  "Cache-Control", "Accept-Ranges", "Content-Range",
+                  "Connection", "Keep-Alive", "Content-Length", "Content-Type",
+                  "Access-Control-Allow-Origin", "Date"),
         # A part read carries no `Cache-Control` at all -- which is the one exception to
         # cycle 16's "no-cache goes on EVERY response", measured on both references --
         # and `Content-Disposition` sits between `Last-Modified` and `Accept-Ranges`.
-        "part": ("X-Plex-Protocol", "ETag", "Last-Modified", "Content-Disposition",
+        "part": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                 "ETag", "Last-Modified", "Content-Disposition",
                  "Accept-Ranges", "Content-Range", "Connection", "Keep-Alive",
-                 "Content-Length", "Content-Type", "Date"),
-        "redirect": ("X-Plex-Protocol", "Location", "Cache-Control", "Content-Length",
-                     "Connection", "Keep-Alive", "Date"),
+                 "Content-Length", "Content-Type",
+                 "Access-Control-Allow-Origin", "Date"),
+        "redirect": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                     "Location", "Cache-Control", "Content-Length",
+                     "Connection", "Keep-Alive",
+                     "Access-Control-Allow-Origin", "Date"),
         "preflight": ("X-Plex-Protocol", "Access-Control-Allow-Methods",
                       "Access-Control-Max-Age", "Vary", "Content-Length", "Content-Type",
                       "Connection", "Keep-Alive", "Cache-Control",
                       "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
                       "Date"),
     }
+
+    _range_error_container = False
 
     def _header_family(self, names, status):
         """Which order this response belongs to, from its own headers and path.
