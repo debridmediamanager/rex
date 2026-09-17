@@ -11533,12 +11533,17 @@ def main():
     word_c15f = {col_c15f: request(base, "GET", "/library/sections/%s/all?type=1&%s=abc"
                                    % (movie_section, col_c15f))[0]
                  for col_c15f in ("lastRatedAt", "createdAt", "lastViewedAt")}
+    empty_c15f = {col_c15f: request(base, "GET", "/library/sections/%s/all?type=1&%s="
+                                    % (movie_section, col_c15f))[0]
+                  for col_c15f in ("lastRatedAt", "createdAt", "lastViewedAt")}
     check("a fractional value refuses on the seven timestamp and state columns only",
           all(v_c15f == 500 for v_c15f in frac_c15f.values())
           and all(v_c15f == 200 for v_c15f in ok_c15f.values()),
           "refuse %s | allow %s" % (frac_c15f, ok_c15f))
-    check("the three date columns refuse a word even when no row carries them",
-          all(v_c15f == 500 for v_c15f in word_c15f.values()), str(word_c15f))
+    check("the three date columns refuse a word or empty value before reading rows",
+          all(v_c15f == 500 for v_c15f in word_c15f.values())
+          and all(v_c15f == 500 for v_c15f in empty_c15f.values()),
+          "word=%s empty=%s" % (word_c15f, empty_c15f))
 
     # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), identical on both:
     # `/hubs/search?limit=` refuses in two different ways, and plexsim had them the
@@ -13228,6 +13233,13 @@ def main():
           % (len(movie_fields_c17d1), len(ep_fields_c17d1), advertised_c17d1,
              filtered_c17d1, all_c17d1,
              "Error" if parsed_c17d1.get("Error") else "Rule"))
+    empty_codecs_c41a = {
+        name_c41a: get(base, "/library/sections/%s/all?type=1&%s="
+                       % (movie_section, name_c41a))[1].get("totalSize")
+        for name_c41a in ("videoCodec", "audioCodec", "subtitleCodec")}
+    check("the removed 1.43 codec fields are ignored even with empty operands",
+          all(value_c41a == all_c17d1 for value_c41a in empty_codecs_c41a.values()),
+          "%s vs %s" % (empty_codecs_c41a, all_c17d1))
 
 
     # Cycle 17, measured on kids (1.43.4) and zen (1.42.2), which agree byte for byte
@@ -18748,24 +18760,34 @@ def main():
         send_c27b(beat_c27b("stopped"))
         return answer_c27b
 
+    # Cycle 41 closes the sampling gap: the checked-in profile corpus is the exact
+    # 78-name set swept on the writable copy. A profile's measured reported name is
+    # its `redirect` target when present and its own key otherwise.
+    with open(os.path.join(os.path.dirname(__file__), "..", "client_profiles.json"),
+              encoding="utf-8") as profiles_file_c27b:
+        profile_rows_c27b = json.load(profiles_file_c27b)
+    reported_overrides_c27b = {"Plex Home Theater-RaspberryPi": "Raspberry PI"}
     measured_c27b = [
-        ("c27b1", {"X-Plex-Platform": "Roku"}, "Roku-7.x"),
-        ("c27b2", {"X-Plex-Platform": "Chrome"}, "Web"),
-        ("c27b3", {"X-Plex-Platform": "Safari"}, "Web"),
-        ("c27b4", {"X-Plex-Platform": "Plexamp"}, "Plexamp"),
-        ("c27b5", {"X-Plex-Platform": "Xbox One"}, "Xbox One"),
-        ("c27b6", {"X-Plex-Platform": "Opera TV App"}, "HTML TV App"),
-        ("c27b7", {"X-Plex-Platform": "webOS"}, None),
-        ("c27b8", {"X-Plex-Platform": "chrome"}, None),
-        ("c27b9", {"X-Plex-Platform": "nonsense", "X-Plex-Device": "Roku"}, "Roku-7.x"),
-        ("c27b10", {"X-Plex-Client-Profile-Name": "Xbox One",
-                    "X-Plex-Platform": "Chrome"}, "Xbox One"),
+        ("c27b-%02d" % index_c27b, {"X-Plex-Platform": name_c27b},
+         reported_overrides_c27b.get(
+             name_c27b, profile_c27b.get("redirect") or name_c27b))
+        for index_c27b, (name_c27b, profile_c27b) in enumerate(profile_rows_c27b.items())
+    ] + [
+        ("c27b-invalid-webos", {"X-Plex-Platform": "webOS"}, None),
+        ("c27b-invalid-case", {"X-Plex-Platform": "chrome"}, None),
+        ("c27b-fallthrough", {"X-Plex-Platform": "nonsense",
+                              "X-Plex-Device": "Roku"}, "Roku-7.x"),
+        ("c27b-precedence", {"X-Plex-Client-Profile-Name": "Xbox One",
+                             "X-Plex-Platform": "Chrome"}, "Xbox One"),
     ]
     got_c27b = [(tag_c27b, want_c27b, profile_of_c27b(tag_c27b, extra_c27b))
                 for tag_c27b, extra_c27b, want_c27b in measured_c27b]
-    check("Player.profile is the RESOLVED client profile, not the constant Web",
-          all(want_c27b == have_c27b for _t_c27b, want_c27b, have_c27b in got_c27b),
-          str(got_c27b))
+    wrong_c27b = [(tag_c27b, want_c27b, have_c27b)
+                  for tag_c27b, want_c27b, have_c27b in got_c27b
+                  if want_c27b != have_c27b]
+    check("Player.profile resolves all 78 measured client profile names",
+          len(profile_rows_c27b) == 78 and not wrong_c27b,
+          "%d profiles; wrong=%s" % (len(profile_rows_c27b), wrong_c27b[:5]))
 
 
     # Cycle 27, measured on the writable copy over three writes, reading the show, both
@@ -20934,6 +20956,42 @@ def main():
           and all(value_c30d is False for value_c30d in resume_c30d.values()),
           "detail %s | %s" % (detail_c30d, resume_c30d))
 
+    # Cycle 41 retains the complete 1.42.2 projection on both row types. The two
+    # hub leaves identify the library by key, while /library/onDeck identifies it
+    # by UUID; all three remove the detail row's Field block.
+    episodes_c41d = (get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                     .get("Metadata") or []) if show_section else []
+    episode_c41d = episodes_c41d[0].get("ratingKey") if episodes_c41d else None
+    if episode_c41d:
+        request(base, "PUT", "/library/metadata/%s?title.locked=1" % episode_c41d)
+        request(base, "GET", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                             "&time=300000&X-Plex-Client-Identifier=c41d"
+                             "&X-Plex-Session-Identifier=c41d" % episode_c41d)
+        projections_c41d = {}
+        for key_c41d in (str(movie), str(episode_c41d)):
+            projections_c41d[key_c41d] = {}
+            for path_c41d in ("/hubs/continueWatching/items",
+                              "/hubs/home/continueWatching", "/library/onDeck"):
+                rows_c41d = get(base, path_c41d)[1].get("Metadata") or []
+                row_c41d = next((candidate_c41d for candidate_c41d in rows_c41d
+                                 if str(candidate_c41d.get("ratingKey")) == key_c41d), {})
+                projections_c41d[key_c41d][path_c41d] = (
+                    bool(row_c41d), "Field" in row_c41d,
+                    bool(row_c41d.get("librarySectionKey")),
+                    bool(row_c41d.get("librarySectionUUID")))
+        expected_c41d = {
+            "/hubs/continueWatching/items": (True, False, True, False),
+            "/hubs/home/continueWatching": (True, False, True, False),
+            "/library/onDeck": (True, False, False, True),
+        }
+        check("movie and episode resume rows use the exact 1.42.2 projection",
+              all(paths_c41d == expected_c41d
+                  for paths_c41d in projections_c41d.values()),
+              str(projections_c41d))
+    else:
+        skip("movie and episode resume rows use the exact 1.42.2 projection",
+             "no episode row")
+
 
     # Cycle 30, measured on zen over 21 reads 20 s apart across 7 minutes: a `random="1"`
     # shelf's sample is STABLE. `movie.topunwatched.1` answered the identical 40
@@ -22468,6 +22526,47 @@ def main():
                   for k_c35b in want_c35b if want_c35b[k_c35b] != got_c35b[k_c35b]}
     check("the Range grammar is the reference's, byte span and status alike",
           not wrong_c35b, str(wrong_c35b)[:400])
+
+    # Cycle 41 added the exact negative witness for cycle 27's conditional-request
+    # rule: every validator is ignored, including ones that would ordinarily force
+    # 304 or 412, so the ranged status, span and bytes stay identical.
+    def conditional_c41b(name_c41b, value_c41b):
+        sock_c41b = socket.create_connection(
+            (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 10)
+        sock_c41b.settimeout(15)
+        sock_c41b.sendall(("GET /identity HTTP/1.1\r\nHost: h\r\n"
+                           "Accept: application/json\r\nAccept-Encoding: identity\r\n"
+                           "Range: bytes=0-9\r\n%s: %s\r\nConnection: close\r\n\r\n"
+                           % (name_c41b, value_c41b)).encode())
+        blob_c41b = b""
+        while True:
+            chunk_c41b = sock_c41b.recv(65536)
+            if not chunk_c41b:
+                break
+            blob_c41b += chunk_c41b
+        sock_c41b.close()
+        line_c41b, _, rest_c41b = blob_c41b.partition(b"\r\n")
+        block_c41b, _, body_c41b = rest_c41b.partition(b"\r\n\r\n")
+        span_c41b = next((line_c41b.partition(b":")[2].strip().decode()
+                          for line_c41b in block_c41b.split(b"\r\n")
+                          if line_c41b.lower().startswith(b"content-range:")), None)
+        return int(line_c41b.decode().split()[1]), span_c41b, body_c41b
+
+    conditional_c41b_rows = {
+        name_c41b: conditional_c41b(name_c41b, value_c41b)
+        for name_c41b, value_c41b in (
+            ("If-None-Match", "*"),
+            ("If-Modified-Since", "Wed, 31 Dec 2099 23:59:59 GMT"),
+            ("If-Range", "stale-validator"),
+            ("If-Match", "no-such-validator"))}
+    conditional_c41b_shapes = {
+        name_c41b: (row_c41b[0], row_c41b[1], len(row_c41b[2]))
+        for name_c41b, row_c41b in conditional_c41b_rows.items()}
+    check("conditional request headers are ignored on a ranged response",
+          len(set(conditional_c41b_shapes.values())) == 1
+          and next(iter(conditional_c41b_shapes.values()))[0] == 206
+          and next(iter(conditional_c41b_shapes.values()))[2] == 10,
+          str(conditional_c41b_shapes))
 
 
     # Cycle 35, the whole `GET /butler` enabled table diffed against both writable copies:
@@ -24723,6 +24822,41 @@ def main():
           % (plain_c40a[0], plain_c40a[2].get("Content-Length"),
              zipped_c40a[0], zipped_c40a[2].get("Content-Length"),
              head_c40a[0], head_c40a[2].get("Content-Length")))
+
+    # Cycle 41 turns cycle 27's settled request-header boundaries into an exact
+    # local regression. Length is measured after parsing: a 1024-byte name and a
+    # 4096-byte value pass, the next byte fails, and the aggregate boundary is
+    # 100 header lines (including Host and Connection), not a total byte size.
+    def envelope_status_c41c(extra_lines_c41c):
+        parsed_c41c = urllib.parse.urlsplit(base)
+        host_c41c = parsed_c41c.hostname or "127.0.0.1"
+        port_c41c = parsed_c41c.port or 80
+        request_c41c = (b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+                        + b"\r\n".join(extra_lines_c41c)
+                        + b"\r\nConnection: close\r\n\r\n")
+        with socket.create_connection((host_c41c, port_c41c), timeout=10) as sock_c41c:
+            sock_c41c.settimeout(15)
+            sock_c41c.sendall(request_c41c)
+            first_c41c = sock_c41c.recv(4096).partition(b"\r\n")[0]
+        try:
+            return int(first_c41c.split()[1])
+        except (IndexError, ValueError):
+            return None
+
+    name_1024_c41c = envelope_status_c41c([b"N" * 1024 + b": x"])
+    name_1025_c41c = envelope_status_c41c([b"N" * 1025 + b": x"])
+    value_4096_c41c = envelope_status_c41c([b"X-Boundary: " + b"v" * 4096])
+    value_4097_c41c = envelope_status_c41c([b"X-Boundary: " + b"v" * 4097])
+    lines_100_c41c = envelope_status_c41c(
+        [("X-C41-%03d: x" % index_c41c).encode() for index_c41c in range(98)])
+    lines_101_c41c = envelope_status_c41c(
+        [("X-C41-%03d: x" % index_c41c).encode() for index_c41c in range(99)])
+    check("request headers have exact name, value and line-count boundaries",
+          (name_1024_c41c, name_1025_c41c, value_4096_c41c, value_4097_c41c,
+           lines_100_c41c, lines_101_c41c) == (200, 400, 200, 400, 200, 400),
+          "name=%s/%s value=%s/%s lines=%s/%s"
+          % (name_1024_c41c, name_1025_c41c, value_4096_c41c,
+             value_4097_c41c, lines_100_c41c, lines_101_c41c))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
