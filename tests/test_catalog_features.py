@@ -674,6 +674,69 @@ def main():
           == [("season", "Season 1", "Rollup Show", 1789800002)],
           "one %r two %r" % (one_sibling, two_siblings))
 
+    # Cycle 44: the TMDB pipeline's own output, driven through `metadata.identify` with
+    # a stubbed TMDB client. Two things it got wrong, both measured on the references:
+    #
+    #  * a SEASON was given TMDB's season air-date year as its own `year`. 689 of zen's
+    #    742 seasons carry `parentYear` and exactly ONE carries a `year` of its own, so
+    #    a Plex series agent does not produce one -- and carrying it takes `parentYear`
+    #    away, because the year rule reads "has a year of its own" off that column;
+    #  * a SEASON and an EPISODE carried no `Guid` at all. The ids were fetched and
+    #    discarded on a note claiming a real PMS leaves those arrays empty. kids' season
+    #    7 answers `tmdb://3846` and `tvdb://15791` and its episode 8 answers three ids;
+    #    58 of 60 zen episodes surveyed carry a block.
+    import metadata as metadata_module
+
+    class _Tmdb:
+        def identify(self, parsed):
+            return "tv", 1396
+
+        def details(self, kind, tmdb_id):
+            return {"id": 1396, "name": "Stub Show", "first_air_date": "2008-09-23",
+                    "external_ids": {"imdb_id": "tt0903747"}, "genres": [],
+                    "credits": {"cast": [], "crew": []}}
+
+        def season(self, tmdb_id, number):
+            return {"id": 3572, "air_date": "2009-03-08",
+                    "external_ids": {"tvdb_id": 15791},
+                    "overview": "Stub season."}
+
+        def episode(self, tmdb_id, season, number):
+            return {"id": 62085, "name": "Stub Episode", "air_date": "2009-03-08",
+                    "external_ids": {"imdb_id": "tt1234567", "tvdb_id": 297989}}
+
+    probe_row = {"title": "Stub Show S01E07", "type": "episode"}
+    parsed = {"title": "Stub Show", "year": None, "season": 1, "episode": 7}
+    identified = False
+    try:
+        identified = metadata_module.enrich(probe_row, _Tmdb(), parsed)
+    except Exception as error:                       # pragma: no cover - reported below
+        check("the pipeline identifies a stub episode", False, repr(error))
+    if identified:
+        check("an identified episode carries its own Guid",
+              [g["id"] for g in probe_row.get("Guid") or []]
+              == ["imdb://tt1234567", "tmdb://62085", "tvdb://297989"],
+              str(probe_row.get("Guid")))
+        check("the pipeline stores no season year of its own",
+              "_season_year" not in probe_row, str(probe_row.get("_season_year")))
+        check("the pipeline stores the season's external ids",
+              [g["id"] for g in probe_row.get("_season_guids") or []]
+              == ["tmdb://3572", "tvdb://15791"], str(probe_row.get("_season_guids")))
+    # And the LOAD-time correction, for a season already written with its own year.
+    built = [
+        {"ratingKey": "9001", "type": "show", "title": "Load Show", "year": 2008,
+         "guid": "plex://show/aaaaaaaaaaaaaaaaaaaaaaaa",
+         "key": "/library/metadata/9001/children", "librarySectionID": 2},
+        {"ratingKey": "9002", "type": "season", "title": "Season 1", "index": 1,
+         "year": 2009, "parentRatingKey": "9001", "parentTitle": "Load Show",
+         "guid": "plex://season/bbbbbbbbbbbbbbbbbbbbbbbb",
+         "key": "/library/metadata/9002/children", "librarySectionID": 2},
+    ]
+    server.hierarchy_module.normalize_rows(built)
+    check("a season written with its own year loads with parentYear instead",
+          built[1].get("year") is None and built[1].get("parentYear") == 2008,
+          "year=%r parentYear=%r" % (built[1].get("year"), built[1].get("parentYear")))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
