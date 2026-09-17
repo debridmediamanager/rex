@@ -374,6 +374,33 @@ def main():
     check("a mixed folder level renders Directory then Video",
           mixed_tags == ["Directory", "Video"], str(mixed_tags))
 
+    # Cycle 41 adds the differentiating fixture cycle 19 lacked: row duration and
+    # Media.duration deliberately disagree, and one Media omits it. Both the filter
+    # and the ascending sort read the Media column on a real PMS.
+    duration_rows = [catalog.items[key] for key in (103, 104, 105)]
+    duration_before = [(row.get("duration"), row.get("Media")) for row in duration_rows]
+    for row, row_duration, media_duration in zip(
+            duration_rows, (300, 100, 50), (100, 300, None)):
+        row["duration"] = row_duration
+        row["Media"] = [{"id": 5000 + int(row["ratingKey"]),
+                         "duration": media_duration}]
+    duration_values = [sim.filter_value("duration", row) for row in duration_rows]
+    duration_order = [row["ratingKey"] for row in
+                      sorted(duration_rows, key=sim._sort_key("duration"))]
+    for row, (old_duration, old_media) in zip(duration_rows, duration_before):
+        if old_duration is None:
+            row.pop("duration", None)
+        else:
+            row["duration"] = old_duration
+        if old_media is None:
+            row.pop("Media", None)
+        else:
+            row["Media"] = old_media
+    check("duration filter and sort read Media.duration",
+          duration_values == [[100], [300], [None]]
+          and duration_order == ["105", "103", "104"],
+          "values %s order %s" % (duration_values, duration_order))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
