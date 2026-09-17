@@ -244,6 +244,26 @@ def _baseline(fixture):
     return out
 
 
+@check("container")
+def _container(fixture):
+    """The Media's and the Part's `container`, against what the real PMS wrote.
+
+    Cycle 44: this suite compared every stream field and the Media's geometry and never
+    the container, so the corpus carried a refutation for thirty-four cycles without
+    anyone reading it. `fun-1052407-0.json` is a **`.webm`** file whose recorded Media --
+    a real 1.42.2 PMS's own answer for it -- says `mkv`, while `mediainfo.py` overrode
+    the demuxer's answer with the extension and produced `webm`. Confirmed live on the
+    identical 571,346,576-byte file: zen answers `mkv`, and no row of its 4,508 movie
+    Media carries `webm` at all.
+    """
+    out = per_media(("container",))(fixture)
+    real_part = ((fixture["Media"].get("Part") or [{}])[0])
+    sim_part = ((fixture["sim"].get("Part") or [{}])[0])
+    out += [("%s Part container" % fixture["name"],
+             real_part.get("container"), sim_part.get("container"))]
+    return out
+
+
 @check("subtitle-codec-names")
 def _subtitle_codec_names(fixture):
     return per_stream(3, ("codec",))(fixture)

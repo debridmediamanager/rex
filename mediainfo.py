@@ -780,10 +780,27 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     container = _CONTAINER_ALIASES.get(
         fmt.get("format_name"), (fmt.get("format_name") or "").split(",")[0]
     )
-    # The shared matroska/webm demuxer cannot tell the two apart; the extension
-    # can, and it is what a real PMS reports.
-    if container == "mkv" and (container_hint or "").lower() == "webm":
-        container = "webm"
+    # Cycle 44 REFUTED the override that used to stand here. It read: "the shared
+    # matroska/webm demuxer cannot tell the two apart; the extension can, and it is what
+    # a real PMS reports", and turned a `.webm` file's container into `webm`.
+    #
+    # A real PMS reports `mkv`. Measured on the SAME FILE -- zen ratingKey 19769 and
+    # plexsim row 1002 are both `Tears of Steel.webm`, 571,346,576 bytes, vp8/vorbis
+    # 1920x800 -- where zen (1.42.2, the build plexsim reports) answers
+    # `container: "mkv"` and `Part.container: "mkv"` while the Part's key keeps
+    # `file.webm`. No row of zen's 4,508 movie Media carries `webm` as a container at
+    # all. And the project's own corpus has said so since cycle 10:
+    # `tests/fixtures/media/fun-1052407-0.json` is a `.webm` file whose RECORDED Media
+    # -- what a real PMS wrote for it -- is `mkv`. Nothing caught it because
+    # `test_mediainfo.py` compared every stream and never the container; it does now.
+    #
+    # `docs/findings.md` kept it as a cycle-10 lead on the argument that "plexsim keeps
+    # `webm`, which Plex Web's direct-play rule depends on". Driven across all 78 client
+    # profiles against both containers, the browser profiles answer the SAME outcome
+    # either way; the one cell that moves is `Sony Bravia 2013`, which direct-plays the
+    # row as `mkv` and is refused as `webm`. So the override cost a direct play rather
+    # than buying one.
+    del container_hint
     video_profile = _video_profile(video.get("profile")) if video else None
 
     part = {
