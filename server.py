@@ -2572,6 +2572,12 @@ class PlexSim:
         # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
         # `upload://` id a real PMS mints from the bytes.
         self.uploads = {}
+        # Cycle 45: the rows `/library/metadata/{id}/theme/{v}/metadata` MINTS, keyed by
+        # both the request path and the minted ratingKey. Beside the catalog, not in it:
+        # a real PMS's minted row carries no `librarySectionID` and is invisible in
+        # every listing, so putting it in `catalog.items` would leak a `track` row into
+        # the tag tables, the spelling index and `/library/all`.
+        self.theme_rows = {}
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
         # collections, play history. In memory only -- catalog.json is input.
@@ -7381,6 +7387,53 @@ class PlexSim:
         # the axis beside it. Paging is the generic post-pass, as everywhere else.
         return self.container(Directory=rows, **fields)
 
+    def theme_metadata(self, row, version):
+        """`/library/metadata/{id}/theme/{v}/metadata` -- the row a real PMS MINTS here.
+
+        Cycle 45, measured on both disposable copies. This is a GET that WRITES: a real
+        PMS creates a `track` row for the theme it was asked about -- whether or not the
+        item has one -- and answers it. The four orphan rows this cycle's hunt left on
+        the reference lab came from exactly this path, which is why it was re-measured
+        on a copy instead.
+
+        The `guid` is `library://` + the SHA-1 of the request path, so it is a pure
+        function of (item, version) and identical on two servers of two versions. The
+        `ratingKey` is the server's own next id, which nothing on the wire derives, so
+        plexsim allocates its own and keeps the row BESIDE the catalog rather than in
+        it: the reference's minted row carries no `librarySectionID` and is invisible in
+        every listing including `/library/all`, so a row in `catalog.items` would be a
+        `type: "track"` row leaking into the tag tables, the spelling index and
+        `/library/all` -- the pollution this endpoint is infamous for, reproduced.
+
+        plexsim holds no theme audio (no row names a `theme`), so it always answers the
+        bare form; a real PMS adds the theme's `duration` and `Media` when the item has
+        one at that version.
+        """
+        path = "/library/metadata/%s/theme/%s/metadata" % (row["ratingKey"], version)
+        minted = self.theme_rows.get(path)
+        if minted is None:
+            # The reference's ids are its own sequence. plexsim allocates above every
+            # key it holds, once per path, so the row is idempotent the way the
+            # reference's is -- the same request twice answers the same ratingKey and
+            # another version answers a new one.
+            self._theme_next = max(
+                getattr(self, "_theme_next", 0),
+                max([int(k) for k in self.catalog.items if str(k).isdigit()] or [0]) + 1)
+            key = self._theme_next
+            self._theme_next += 1
+            minted = {"ratingKey": str(key),
+                      "key": "/library/metadata/%s" % key,
+                      "guid": "library://%s" % hashlib.sha1(path.encode()).hexdigest(),
+                      "type": "track", "title": "", "summary": "", "index": 1,
+                      "addedAt": int(time.time()),
+                      # A string on both references, not the integer 1.
+                      "genuineMediaAnalysis": "1"}
+            self.theme_rows[path] = minted
+            self.theme_rows[str(key)] = minted
+        # The container carries no `allowSync` -- the ordinary detail read does -- which
+        # is exactly the per-item sub-resource container `tag_container` already builds.
+        return self.tag_container(size=1, Metadata=[dict(minted)])
+
     def axis_bucket(self, section_id, section, leaf, key, query):
         """`/library/sections/{id}/{axis}/{key}` -- the rows behind one axis entry.
 
@@ -10086,6 +10139,13 @@ class PlexSim:
             # to `/library/metadata/{key}` for a playlist on a server without the
             # true-playlists feature. plexsim kept them outside the catalog, so both
             # answered 404 and neither could be renamed from its own page.
+            minted = self.theme_rows.get(raw_key)
+            if minted is not None:
+                # Cycle 45: a row the theme metadata leaf minted is readable at its own
+                # key on both copies, and only as a bare read.
+                if len(segments) > 3 or method not in ("GET", "HEAD"):
+                    return ("error", 404, "plexsim: not found")
+                return self.container(size=1, Metadata=[dict(minted)])
             return self.library_list_item(rating_key, segments, query, method, body)
 
         if len(segments) == 3:
@@ -10159,6 +10219,14 @@ class PlexSim:
             return self.bare_container(Metadata=[detail], **fields)
 
         leaf = segments[3]
+        # Cycle 45, measured on both disposable copies: `theme` is the ONE artwork leaf
+        # with a `/metadata` sub-leaf, and it MINTS A ROW. `thumb`, `art`, `poster`,
+        # `banner`, `clearLogo`, `squareArt` and `squarePoster` all 404 the same second
+        # segment, and so does any other word after a theme version.
+        if leaf == "theme" and len(segments) == 6 and segments[5] == "metadata":
+            if method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            return self.theme_metadata(row, segments[4])
         # Cycle 45, swept over 53 leaf names x four second segments on both references:
         # an item leaf with an EXTRA path segment is a **404**, and there are exactly two
         # kinds of exception. The ARTWORK leaves -- `poster`, `art`, `thumb`, `theme`,
@@ -10184,6 +10252,10 @@ class PlexSim:
                 and leaf in ("poster", "art", "thumb", "banner", "theme", "clearLogo") \
                 and not query.get("url"):
             return ("error", 400, "plexsim: bad request")
+        if leaf == "theme" and [p for p in segments[5:] if p]:
+            # Only `/metadata` above; every other second segment after a theme version
+            # is a 404, like the other artwork leaves'.
+            return ("error", 404, "plexsim: not found")
         if leaf in ("thumb", "art", "poster") and [p for p in segments[5:] if p]:
             # Cycle 21, measured on kids and zen over four row types: an EXTRA segment
             # after the version is a 404 -- `/thumb/{v}/x` and `/thumb/{v}/1/2` both, on

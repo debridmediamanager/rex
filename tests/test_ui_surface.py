@@ -37,6 +37,7 @@ reason rather than passing quietly.
 
 import base64
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -24939,6 +24940,77 @@ def main():
           str({"tabs": shared_c45["tabs"][:2], "row": shared_c45["row keys"][:6],
                "deep": shared_c45["deep"], "grammar": grammar_c45, "orders": orders_c45,
                "same body": len({b_c45 for _s_c45, b_c45 in bodies_c45.values()})}))
+
+
+    # Cycle 45, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2) -- the
+    # DISPOSABLE copies, deliberately, because this endpoint WRITES:
+    # `/library/metadata/{id}/theme/{v}/metadata` MINTS A ROW on a real PMS. It is how
+    # this cycle's own hunt left four orphan rows on the reference lab, and it is the
+    # reason the measurement was moved to a copy that can be thrown away.
+    #
+    # It answers a container of ONE `track` row: `ratingKey` a fresh server id, `key` its
+    # own path, `guid` **`library://` + the SHA-1 of the request path itself** (identical
+    # on two servers of two versions for every (item, version) pair tried, including a
+    # row whose theme really exists), `type: "track"`, an EMPTY `title` and `summary`,
+    # `index: 1`, `addedAt` the mint time and `genuineMediaAnalysis: "1"`. A row that
+    # really HAS a theme at that version adds the theme's `duration` and its
+    # `Media`/`Part`/`Stream`; plexsim holds no theme audio at all -- no row names one --
+    # so it always answers the bare form. The minted row is idempotent per (item,
+    # version) and readable at `/library/metadata/{mintedKey}`, and it carries NO
+    # `librarySectionID`, which is why it is invisible in every listing including
+    # `/library/all` (the copy's stayed at 16 across four mints).
+    #
+    # `theme` is the ONLY artwork leaf with this sub-leaf: `/thumb/{v}/metadata`,
+    # `/art`, `/poster`, `/banner`, `/clearLogo`, `/squareArt` and `/squarePoster` are
+    # each a 404 on both copies, as is any other second segment after the version. GET
+    # and HEAD only; an unknown or non-numeric item id is a 404.
+    theme_c45 = {}
+    theme_path_c45 = "/library/metadata/%s/theme/1/metadata" % movie
+    _status_c45m, body_c45m, _ = get(base, theme_path_c45)
+    minted_c45 = (body_c45m.get("Metadata") or [{}])[0]
+    theme_c45["status"] = _status_c45m
+    theme_c45["container"] = sorted(k_c45m for k_c45m in body_c45m if k_c45m != "Metadata")
+    theme_c45["row"] = [k_c45m for k_c45m in minted_c45]
+    theme_c45["guid"] = minted_c45.get("guid")
+    theme_c45["want guid"] = "library://" + hashlib.sha1(theme_path_c45.encode()).hexdigest()
+    _status_c45m, again_c45, _ = get(base, theme_path_c45)
+    theme_c45["idempotent"] = ((again_c45.get("Metadata") or [{}])[0].get("ratingKey")
+                               == minted_c45.get("ratingKey"))
+    _status_c45m, other_c45, _ = get(
+        base, "/library/metadata/%s/theme/2/metadata" % movie)
+    theme_c45["other version"] = ((other_c45.get("Metadata") or [{}])[0].get("ratingKey")
+                                  != minted_c45.get("ratingKey"))
+    _status_c45m, read_c45, _ = get(
+        base, "/library/metadata/%s" % minted_c45.get("ratingKey"))
+    theme_c45["minted readable"] = (
+        _status_c45m, (read_c45.get("Metadata") or [{}])[0].get("guid"))
+    theme_c45["invisible"] = not any(
+        str(r_c45m.get("ratingKey")) == str(minted_c45.get("ratingKey"))
+        for r_c45m in (get(base, "/library/all")[1].get("Metadata") or []))
+    theme_c45["siblings"] = {
+        leaf_c45m: get(base, "/library/metadata/%s/%s/1/metadata" % (movie, leaf_c45m))[0]
+        for leaf_c45m in ("thumb", "art", "poster", "banner", "clearLogo", "squareArt")}
+    theme_c45["other segment"] = get(
+        base, "/library/metadata/%s/theme/1/zzz" % movie)[0]
+    theme_c45["verbs"] = {v_c45m: request(base, v_c45m, theme_path_c45)[0]
+                          for v_c45m in ("GET", "HEAD", "POST", "PUT", "DELETE")}
+    theme_c45["unknown item"] = get(base, "/library/metadata/999999/theme/1/metadata")[0]
+    check("the theme metadata leaf mints its track row",
+          theme_c45["status"] == 200
+          and theme_c45["container"] == ["identifier", "mediaTagPrefix",
+                                         "mediaTagVersion", "size"]
+          and theme_c45["row"] == ["ratingKey", "key", "guid", "type", "title",
+                                   "summary", "index", "addedAt", "genuineMediaAnalysis"]
+          and theme_c45["guid"] == theme_c45["want guid"]
+          and theme_c45["idempotent"] and theme_c45["other version"]
+          and theme_c45["minted readable"] == (200, theme_c45["want guid"])
+          and theme_c45["invisible"]
+          and set(theme_c45["siblings"].values()) == {404}
+          and theme_c45["other segment"] == 404
+          and theme_c45["unknown item"] == 404
+          and theme_c45["verbs"] == {"GET": 200, "HEAD": 200,
+                                     "POST": 404, "PUT": 404, "DELETE": 404},
+          str(theme_c45))
 
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
