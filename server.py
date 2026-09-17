@@ -3933,10 +3933,22 @@ class PlexSim:
             rows.sort(key=lambda row: str(row.get("title") or ""))
         # `limit=` is ignored entirely here -- `abc` and `0` both answer every row --
         # where the same parameter is a 500 on a section listing.
-        return self.bare_container(
+        answer = self.bare_container(
             size=len(rows), allowSync=False,
             identifier="com.plexapp.plugins.library.shared",
             Metadata=rows, _xml={"Metadata": "Directory"})
+        if segments[2] == "all" and query.get("includeMeta") == "1":
+            types = []
+            for key, title in self.SHARED_TYPES:
+                sorts = [dict(sort_row) for sort_row in self.SHARED_SORTS]
+                active = key == "/library/shared/all"
+                if active:
+                    sorts[0]["active"] = True
+                    sorts[0]["activeDirection"] = "asc"
+                types.append({"key": key, "type": "mixed", "title": title,
+                              "active": active, "Sort": sorts})
+            answer["MediaContainer"]["Meta"] = {"Type": types}
+        return answer
 
     def section_directory(self, section, shared=False):
         """One section as a Directory row.
@@ -8497,6 +8509,10 @@ class PlexSim:
             fields.update(offset=start, totalSize=total)
         if page and not any("type" in r for r in page):
             fields["_xml"] = {"Metadata": "Directory"}
+        if query.get("includeMeta") == "1":
+            meta = self.section_meta(section_id, section.get("type") or "movie")
+            if meta:
+                fields["Meta"] = self._meta_active(meta, "folder")
         return self.secondary_container(
             section_id, section, "By Folder", Metadata=page, allowSync=True,
             librarySectionID=int(section_id) if str(section_id).isdigit() else section_id,
