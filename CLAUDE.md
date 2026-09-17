@@ -2402,6 +2402,77 @@ precisely how the Seasons bug survived a fix attempt.
   unconditional Matroska assertion. MP4 carries `ftyp` at offset four; Matroska/WebM carries the
   EBML marker at zero. Keep the conformance target and magic assertion container-aware.
 
+- **plexsim's MEDIA BYTE PATH had never been run against a real byte until 2026-09-17**, because
+  every link in the fixture was dead and every part read a 502. It applied NO `Range` grammar: the
+  client's header went to the debrid CDN and whatever came back was echoed, so 13 of the 20 cells
+  both references agree on were wrong — `bytes=-1` read the FIRST byte where a real PMS reads the
+  LAST (which is how every player finds an MP4 `moov` or a Matroska Cues block), a reversed or
+  past-the-end range answered 206 instead of **416**, a one-byte probe pulled the whole file, and
+  `bytes=<N+10>-` answered `Content-Length: -10`. `_range_window` is now the ONE grammar both
+  `_ranged` and the part path ask. A bare **`bytes=-`** is not a Range at all (200 on every body);
+  `bytes=- `, `-x`, `-abc`, `-0` are the 206.
+- **A part read carries `X-Plex-Protocol` first like every other response**, its `Content-Type` is
+  keyed on the stored FILE's extension (a `mp4` Media whose file is `.mkv` answers
+  `video/x-matroska`; the URL's extension is ignored; an unknown extension is
+  `application/octet-stream`, NOT `video/mp4`), and the bandwidth statistic counts what was
+  WRITTEN — every seek and stop is an abort, so counting the advertised length moves the Dashboard
+  by a whole file per seek. **`POST`/`PUT` on the THREE-segment media path is a 404**; only
+  `/library/parts/{id}` takes the track write.
+- **A 416 of a MediaContainer names its connection state; a 416 of a BINARY body does not.**
+  Re-measured with a KEEP-ALIVE request, which is the only way to see the server's own choice
+  rather than an echo of the probe. That corrects "a 416 names no connection state at all" to its
+  binary half. **Every 416 is `Cache-Control: no-cache`**, the photo transcoder's included, whose
+  200 caches for three days — and no 416 carries `X-Plex-Local-Asset`.
+- **With an `Origin` on the wire, `Access-Control-Expose-Headers`/`Vary` sit directly after
+  `X-Plex-Protocol` and `Access-Control-Allow-Origin` directly before `Date`, in EVERY response
+  family** — the `/web` 302 included, which carried no CORS headers at all. Cycle 33 measured the
+  families without an `Origin`, where the trio is absent, so it could not see this.
+- **`/library/sections/{id}/rating` is a real axis that a MOVIE library ADVERTISES in its own pivot
+  list** (plexsim advertised it and 404'd it, so the client's Ratings entry opened nothing). Its
+  container is byte-identical to `/userRating`'s and its BUCKETS read the CRITIC rating.
+  **A star bucket rounds its key DOWN to an even star** and takes the values within one of it, so
+  8 and 9 answer the same rows; `key=0` is the rows with NO value. Truncation gets every other
+  bucket wrong.
+- **`videoCodec`, `audioCodec`, `subtitleCodec` and `audioLayout` are 1.43.4-only AXES** — 404 on
+  zen and on plexscratch42, 200 on kids. The same six media-codec names already split `/filters`
+  and the `Meta`; the axes split with them.
+- **A `.webm` file's `container` is `mkv`.** Measured on the identical 571,346,576-byte file: zen
+  answers `mkv` on the Media and the Part while the Part key keeps `file.webm`, and no row of zen's
+  4,508 movie Media carries `webm` at all. `tests/fixtures/media/fun-1052407-0.json` has recorded
+  that since cycle 10 and nothing read it, because `test_mediainfo.py` compared every stream field
+  and **never the container**. The override cost a direct play (`Sony Bravia 2013`) rather than
+  buying one.
+- **A direct play is refused when the SELECTED embedded subtitle is not the FIRST embedded one** —
+  `Samsung`, `RokuDLNA-5000X-7.x` and `RokuDLNA-6000X-7.x` only, gated on the same
+  `DirectPlayStreamSelection` as the audio rule, and it runs after the audio-codec pass AND after
+  the subtitle-codec pass. The 2,106-cell corpus could not show it: in every row it held whose
+  subtitle is not first, the AUDIO is not first either, so the audio refusal masked it.
+- **A SEASON carries `parentYear`, not a `year` of its own** — 689 of zen's 742 do, exactly one
+  does not — and a season and an episode carry `Guid`. `metadata.py` fetched those ids and threw
+  them away on a note claiming a real PMS leaves the arrays empty; kids' season 7 answers
+  `tmdb://3846` + `tvdb://15791` and its episode 8 answers three.
+- **A real PMS announces with `PUT https://servers.plex.tv/devices/{machineIdentifier}`** — the
+  identifier form, to `servers.plex.tv`, token in the query, empty body, thirteen headers led by
+  `User-Agent: PlexMediaServer/<version>` — and `httpsEnabled` is its own capability, not the uri's
+  scheme. The numeric `/devices/{id}` form resolves to whatever device row holds that id and
+  overwrites it. The harness's `capture/outbound.jsonl` is the instrument for this axis and no
+  cycle had swept it.
+- **`/myplex/claim` is routed for POST alone**; every other verb is a 404. **The two stream-select
+  parameters have different grammars**: an unparseable `subtitleStreamID` CLEARS the selection and
+  a negative other than `-1` is a 400, while `audioStreamID` 400s `0` and every negative but `-1`
+  and accepts an unparseable value as a no-op. **An EMPTY `session=` on transcode `ping`/`stop` is
+  a 404**, not the 400 a missing one gets.
+- **`/media/providers/metadata/{id}` and `/group/{id}` are real** (400 for a non-numeric id), and
+  in JSON `builtIn` is the STRING `"1"` on 1.42.2 and `order` is the FLOAT `1000.0` on both — the
+  XML cannot tell either apart.
+- **A part whose FILE is gone is a plain 404**, not a 5xx: zen part 23595 (`accessible=false`,
+  `exists=false`) answers 404 to the byte read. plexsim answered 502 to a dead link and to a
+  network failure alike. Real-Debrid's `unavailable_file`/error_code 24 is now the 404 and
+  everything else keeps the 502, so a transport failure is still diagnosable.
+- **`tests/test_part_bytes.py` stands up its own upstream** (a local CDN and a one-route
+  Real-Debrid stub behind `RD_API`) and drives the real handler, so the byte path is testable with
+  no credential at all. Use it rather than waiting for a live `/d/` link.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

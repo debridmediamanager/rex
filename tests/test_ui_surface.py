@@ -1204,15 +1204,22 @@ def main():
             base, "HEAD", "/library/parts/%s/file.mkv?download=1" % part_id,
             want_json=False)
         disposition = headers.get("Content-Disposition", "")
-        if status == 502:
+        if status in (404, 502):
             # The bytes come from the provider, so this needs a catalog whose
             # links the configured RD account owns. Verified by hand against a
             # live link: 206, video/x-matroska, and
             # `attachment; filename="For the Birds (2000).mkv"` plus the
             # RFC 5987 form -- the shape measured on a real PMS.
+            #
+            # Cycle 44 split the two refusals: a provider that says the FILE is gone
+            # (`unavailable_file`, error_code 24) is now a **404**, which is what a real
+            # PMS answers for a part it cannot open (zen part 23595), and a transport
+            # failure stays the 502. With `RD_TOKEN=dummy` the API answers 401, so this
+            # skip still fires on the 502; with a real token and a dead link it fires on
+            # the 404.
             skip("download serves an attachment named after the media file",
                  "part unresolvable: catalog links are account-scoped "
-                 "(HTTP 502 = the provider said unavailable_file)")
+                 "(HTTP %s)" % status)
         else:
             check("download serves an attachment named after the media file",
                   status in (200, 206) and "attachment" in disposition
