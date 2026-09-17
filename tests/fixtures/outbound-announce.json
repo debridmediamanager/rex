@@ -1,0 +1,298 @@
+{
+ "source": "harness capture/outbound.jsonl on kids, a real Plex 1.43.4 PMS announcing to plex.tv",
+ "captured": "2026-09-12",
+ "note": "Every token replaced with the literal PLEX-TOKEN. No credential here.",
+ "announces": [
+  {
+   "iso": "2026-09-12T05:00:32",
+   "status": 200,
+   "origin": "https://servers.plex.tv",
+   "url": "https://servers.plex.tv/devices/78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "machineIdentifier": "78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://172.31.7.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "1"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "connectionUri": "http://172.31.7.2:32400",
+   "headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept",
+     "*/*"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ],
+    [
+     "x-plex-client-identifier",
+     "78a364ad887787f74e834a5c48c987d3e6fb165a"
+    ],
+    [
+     "x-plex-version",
+     "1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "x-plex-provides",
+     "server"
+    ],
+    [
+     "x-plex-platform",
+     "Linux"
+    ],
+    [
+     "x-plex-product",
+     "Plex Media Server"
+    ],
+    [
+     "x-plex-platform-version",
+     "6.8.0-110-generic"
+    ],
+    [
+     "x-plex-device-name",
+     "plexlab"
+    ],
+    [
+     "x-plex-device",
+     "Docker Container"
+    ],
+    [
+     "x-plex-model",
+     "x86_64"
+    ],
+    [
+     "x-plex-device-vendor",
+     "Docker"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "version": "1.43.4.10903-e5521bd8c",
+   "platform": "Linux",
+   "platformVersion": "6.8.0-110-generic",
+   "deviceName": "plexlab",
+   "device": "Docker Container",
+   "model": "x86_64",
+   "vendor": "Docker",
+   "body": null,
+   "reqLen": 0
+  },
+  {
+   "iso": "2026-09-12T17:25:59",
+   "status": 200,
+   "origin": "https://servers.plex.tv",
+   "url": "https://servers.plex.tv/devices/78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "machineIdentifier": "78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://172.31.7.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "1"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "connectionUri": "http://172.31.7.2:32400",
+   "headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept",
+     "*/*"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ],
+    [
+     "x-plex-client-identifier",
+     "78a364ad887787f74e834a5c48c987d3e6fb165a"
+    ],
+    [
+     "x-plex-version",
+     "1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "x-plex-provides",
+     "server"
+    ],
+    [
+     "x-plex-platform",
+     "Linux"
+    ],
+    [
+     "x-plex-product",
+     "Plex Media Server"
+    ],
+    [
+     "x-plex-platform-version",
+     "6.8.0-110-generic"
+    ],
+    [
+     "x-plex-device-name",
+     "plexlab"
+    ],
+    [
+     "x-plex-device",
+     "Docker Container"
+    ],
+    [
+     "x-plex-model",
+     "x86_64"
+    ],
+    [
+     "x-plex-device-vendor",
+     "Docker"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "version": "1.43.4.10903-e5521bd8c",
+   "platform": "Linux",
+   "platformVersion": "6.8.0-110-generic",
+   "deviceName": "plexlab",
+   "device": "Docker Container",
+   "model": "x86_64",
+   "vendor": "Docker",
+   "body": null,
+   "reqLen": 0
+  },
+  {
+   "iso": "2026-09-12T17:26:32",
+   "status": 200,
+   "origin": "https://servers.plex.tv",
+   "url": "https://servers.plex.tv/devices/78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "machineIdentifier": "78a364ad887787f74e834a5c48c987d3e6fb165a",
+   "query": [
+    [
+     "Connection[][uri]",
+     "http://172.31.7.2:32400"
+    ],
+    [
+     "httpsEnabled",
+     "1"
+    ],
+    [
+     "httpsRequired",
+     "0"
+    ],
+    [
+     "dnsRebindingProtection",
+     "0"
+    ],
+    [
+     "X-Plex-Token",
+     "PLEX-TOKEN"
+    ]
+   ],
+   "connectionUri": "http://172.31.7.2:32400",
+   "headers": [
+    [
+     "user-agent",
+     "PlexMediaServer/1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "accept",
+     "*/*"
+    ],
+    [
+     "accept-encoding",
+     "gzip"
+    ],
+    [
+     "x-plex-client-identifier",
+     "78a364ad887787f74e834a5c48c987d3e6fb165a"
+    ],
+    [
+     "x-plex-version",
+     "1.43.4.10903-e5521bd8c"
+    ],
+    [
+     "x-plex-provides",
+     "server"
+    ],
+    [
+     "x-plex-platform",
+     "Linux"
+    ],
+    [
+     "x-plex-product",
+     "Plex Media Server"
+    ],
+    [
+     "x-plex-platform-version",
+     "6.8.0-110-generic"
+    ],
+    [
+     "x-plex-device-name",
+     "plexlab"
+    ],
+    [
+     "x-plex-device",
+     "Docker Container"
+    ],
+    [
+     "x-plex-model",
+     "x86_64"
+    ],
+    [
+     "x-plex-device-vendor",
+     "Docker"
+    ],
+    [
+     "content-length",
+     "0"
+    ]
+   ],
+   "version": "1.43.4.10903-e5521bd8c",
+   "platform": "Linux",
+   "platformVersion": "6.8.0-110-generic",
+   "deviceName": "plexlab",
+   "device": "Docker Container",
+   "model": "x86_64",
+   "vendor": "Docker",
+   "body": null,
+   "reqLen": 0
+  }
+ ]
+}
