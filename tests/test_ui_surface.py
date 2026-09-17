@@ -25012,6 +25012,41 @@ def main():
                                      "POST": 404, "PUT": 404, "DELETE": 404},
           str(theme_c45))
 
+
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): `ownerFeatures` on `GET /`
+    # and `subscriptionFeatures` on `/myplex/account` are the SAME STRING, byte for byte
+    # -- 7,078 characters on kids and 6,967 on zen, identical within each server.
+    # plexsim answered `pass,sync,hwtranscode` for one and the bare `pass` for the
+    # other, so its own two fields contradicted each other and the client -- which reads
+    # `ownerFeatures` in 28 places in its bundle -- was told the account had three
+    # features on one path and one on the other.
+    #
+    # The list is a SORTED comma join of the account's plex.tv entitlements: ~180 opaque
+    # UUIDs plus 32 NAMED features, and the 32 names are byte-identical on both servers
+    # while the UUID count differs (212 against 209). So the names are the modellable
+    # half and the UUIDs are account-and-server-scoped plex.tv content: plexsim carries
+    # the names and does not invent the ids. `owner_features.txt` beside `server.py`
+    # stays the local override for anyone who wants the real list, and it is gitignored
+    # for the same reason `catalog.json` is.
+    features_c45 = {}
+    _status_c45f, root_c45, _ = get(base, "/")
+    _status_c45f2, myplex_c45, _ = request(base, "GET", "/myplex/account")
+    account_c45 = json.loads(myplex_c45).get("MyPlex") or {}
+    features_c45["owner"] = root_c45.get("ownerFeatures")
+    features_c45["subscription"] = account_c45.get("subscriptionFeatures")
+    named_c45 = ("adaptive_bitrate,camera_upload,collections,content_filter,"
+                 "download_certificates,dvr,federated-auth,hardware_transcoding,home,"
+                 "hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,"
+                 "music-analysis,music_videos,pass,photosV6-edit,photosV6-tv-albums,"
+                 "premium_music_metadata,radio,server-manager,"
+                 "session_bandwidth_restrictions,session_kick,shared-radio,sync,"
+                 "trailers,tuner-sharing,type-first,unsupportedtuners,webhooks")
+    check("the two feature lists agree and carry the measured names",
+          features_c45["owner"] == features_c45["subscription"] == named_c45
+          and list(features_c45["owner"].split(",")) == sorted(
+              features_c45["owner"].split(",")),
+          str(features_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

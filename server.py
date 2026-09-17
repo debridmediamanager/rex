@@ -448,7 +448,22 @@ try:
     with open(_OWNER_FEATURES_PATH) as _handle:
         OWNER_FEATURES = _handle.read().strip()
 except OSError:
-    OWNER_FEATURES = "pass,sync,hwtranscode"
+    # Cycle 45, measured on kids (1.43.4) and zen (1.42.2): the account's feature list
+    # is a SORTED comma join of ~180 opaque plex.tv UUIDs and these 32 NAMED features,
+    # and the names are byte-identical on both servers where the UUID count is not (212
+    # against 209). The names are the half that means anything to a client -- Plex Web
+    # reads `ownerFeatures` in 28 places in its bundle -- so they are the default here
+    # and the ids, which are account-scoped plex.tv content, are deliberately not
+    # invented. `owner_features.txt` stays the local override, gitignored for the same
+    # reason `catalog.json` is. plexsim's three-name default advertised an account with
+    # no Collections, no Trailers, no Webhooks and no Session Kick.
+    OWNER_FEATURES = (
+        "adaptive_bitrate,camera_upload,collections,content_filter,"
+        "download_certificates,dvr,federated-auth,hardware_transcoding,home,"
+        "hwtranscode,item_clusters,kevin-bacon,livetv,loudness,lyrics,music-analysis,"
+        "music_videos,pass,photosV6-edit,photosV6-tv-albums,premium_music_metadata,"
+        "radio,server-manager,session_bandwidth_restrictions,session_kick,shared-radio,"
+        "sync,trailers,tuner-sharing,type-first,unsupportedtuners,webhooks")
 
 # `/media/grabbers`, verbatim off the reference. plexsim answered an empty
 # container, which tells the Live TV setup page the server supports no tuner
@@ -6072,7 +6087,10 @@ class PlexSim:
                 "publicPort": 0,
                 "privateAddress": self.private_address or "",
                 "privatePort": 32400,
-                "subscriptionFeatures": "pass",
+                # Cycle 45: this is the SAME STRING as `/`'s `ownerFeatures`,
+                # byte for byte on both references. plexsim sent the bare `pass` here
+                # and a three-name list there, so its own two answers disagreed.
+                "subscriptionFeatures": OWNER_FEATURES,
                 "subscriptionActive": claimed,
                 "subscriptionState": "Active" if claimed else "Unknown",
             }
