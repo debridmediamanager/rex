@@ -24140,6 +24140,25 @@ def main():
           and set(art_c45.values()) == {200},
           "composite=%s part=%s artwork=%s" % (comp_c45, part_c45, art_c45))
 
+
+    # Cycle 45, found by sweeping HEAD and GET over 76 reachable paths on all three
+    # servers -- the one disagreement of the 152 cells. `HEAD /library/sections/{id}/
+    # common` answers exactly what its GET answers on kids and zen: a 400 with no
+    # `type=` and a 200 with one. plexsim's handler tested `method != "GET"` and 404'd
+    # the HEAD, although its own SECTION_LEAF_VERBS table already allowed it -- the gate
+    # was written twice and the inner one forgot HEAD. Cycle 33's HEAD sweep used a hand
+    # list of sixty paths and `/common` was not on it.
+    common_c45 = {}
+    for method_c45 in ("GET", "HEAD"):
+        for suffix_c45 in ("", "?type=1"):
+            common_c45["%s%s" % (method_c45, suffix_c45)] = request(
+                base, method_c45,
+                "/library/sections/%s/common%s" % (movie_section, suffix_c45))[0]
+    check("HEAD /common answers what its GET answers",
+          common_c45["GET"] == common_c45["HEAD"] == 400
+          and common_c45["GET?type=1"] == common_c45["HEAD?type=1"] == 200,
+          str(common_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

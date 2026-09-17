@@ -6584,7 +6584,11 @@ class PlexSim:
         if leaf == "timeline":
             return self.section_timeline_container(section_id, section)
         if leaf == "common":
-            if method != "GET":
+            # Cycle 45: HEAD too. Both references answer a HEAD here exactly what the GET
+            # answers -- a 400 with no `type=` and a 200 with one -- and `SECTION_LEAF_VERBS`
+            # above already allowed it; this inner gate was a second, stricter copy that
+            # forgot HEAD. It was the ONE disagreement in a 76-path GET/HEAD sweep.
+            if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
             if query.get("type") is not None \
                     and not str(query.get("type")).strip().lstrip("-").isdigit():
