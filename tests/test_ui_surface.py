@@ -24073,6 +24073,32 @@ def main():
               "%s ; studio/platform %s ; unknown %s"
               % ({k: v[0] for k, v in same_c45t.items()}, closed_c45t, unknown_c45t))
 
+
+    # Cycle 45, swept over 53 leaf names x four second segments on both references: an
+    # item leaf with an EXTRA path segment is a **404**, with exactly two kinds of
+    # exception. The ARTWORK leaves read the second segment as the VERSION and answer 200
+    # for any value (cycle 29's rule; this is its SET), and `/extras/all` is a real leaf
+    # of its own. Everything else -- `/children/1`, `/allLeaves/all`, `/tree/zzz`,
+    # `/related/1`, `/posters/all`, `/similar/1`, `/matches/zzz` and thirteen more -- is a
+    # 404 on kids and zen alike. plexsim answered the LEAF AGAIN for sixteen of them and
+    # its own 400 for four: fix 4's trap, where a client reads a 200 as "this endpoint
+    # exists". 64 of the 212 swept cells were wrong.
+    closed_c45l = {}
+    for leaf_c45l in ("children", "allLeaves", "grandchildren", "tree", "related",
+                      "posters", "arts", "thumbs", "banners", "clearLogos", "themes",
+                      "similar", "matches", "nearest", "subtitles", "file"):
+        for sub_c45l in ("all", "1", "zzz"):
+            closed_c45l["%s/%s" % (leaf_c45l, sub_c45l)] = request(
+                base, "GET", "/library/metadata/%s/%s/%s" % (movie, leaf_c45l, sub_c45l))[0]
+    open_c45l = {}
+    for path_c45l in ("extras/all", "poster/1", "poster/zzz", "art/1", "thumb/all",
+                      "posters", "tree", "extras"):
+        open_c45l[path_c45l] = request(
+            base, "GET", "/library/metadata/%s/%s" % (movie, path_c45l))[0]
+    check("an item leaf 404s an extra path segment",
+          set(closed_c45l.values()) == {404} and set(open_c45l.values()) == {200},
+          "closed=%s open=%s" % (sorted(set(closed_c45l.values())), open_c45l))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the
