@@ -24226,6 +24226,49 @@ def main():
           and arts_c45q["?limit=1"] == (200, whole_c45q),
           str(arts_c45q))
 
+
+    # Cycle 45, found by sweeping the QUERY-PARAMETER name space (1,704 cells, three
+    # findings) and then pinned cell by cell on kids and zen with nothing else on the
+    # wire. Three columns plexsim reads wrongly:
+    #
+    #  * `extraType=` is a **500 wherever a listing consumes it** -- a section listing
+    #    and `/library/all`, typed or untyped, for every value. plexsim filtered on
+    #    nothing and answered 200. It is already in `PARSE_ONLY_FIELD_TYPES`, so
+    #    `/query/parse` knew it and the listing did not: the class-C shape exactly.
+    #  * `unmatched=` is a **500 on `/library/all`** (typed or not) while it is a real
+    #    filter on a SECTION listing on both library types. plexsim filtered on it
+    #    everywhere.
+    #  * `file=` is a **200 on `/library/all`** and really filters (kids 11 rows of 14,
+    #    zen 12,899). plexsim raised its show-listing 500 there, because it decides that
+    #    refusal per ROW and an untyped `/library/all` contains shows. The refusal is a
+    #    property of the QUERY's type: `type=2` refuses everywhere, `type=3` refuses on
+    #    `/library/all` and answers on a section listing, and nothing else refuses.
+    cols_c45 = {}
+    for label_c45, path_c45 in (
+            ("sec extraType", "/library/sections/%s/all?extraType=1" % movie_section),
+            ("all extraType", "/library/all?extraType=1"),
+            ("all extraType t1", "/library/all?type=1&extraType=1"),
+            ("sec unmatched", "/library/sections/%s/all?unmatched=1" % movie_section),
+            ("all unmatched", "/library/all?unmatched=1"),
+            ("all unmatched t1", "/library/all?type=1&unmatched=1"),
+            ("all file", "/library/all?file=mkv"),
+            ("all file t1", "/library/all?type=1&file=mkv"),
+            ("all file t2", "/library/all?type=2&file=mkv"),
+            ("all file t3", "/library/all?type=3&file=mkv"),
+            ("all file t4", "/library/all?type=4&file=mkv"),
+            ("sec file", "/library/sections/%s/all?file=mkv" % movie_section),
+            ("sec file t2", "/library/sections/%s/all?type=2&file=mkv" % movie_section),
+            ("sec file t3", "/library/sections/%s/all?type=3&file=mkv" % movie_section)):
+        cols_c45[label_c45] = get(base, path_c45)[0]
+    check("extraType, unmatched and file refuse where a real PMS refuses",
+          [cols_c45[k] for k in ("sec extraType", "all extraType", "all extraType t1",
+                                 "all unmatched", "all unmatched t1", "all file t2",
+                                 "all file t3", "sec file t2")] == [500] * 8
+          and [cols_c45[k] for k in ("sec unmatched", "all file", "all file t1",
+                                     "all file t4", "sec file", "sec file t3")]
+          == [200] * 6,
+          str(cols_c45))
+
     # Cycle 18, measured on plexscratch with a control write first (a title edit, which must
     # push `state 3` then `state 5`): a library DELETE pushes one `state 9` timeline frame
     # per row -- `type: 12`, `metadataState: "deleted"`, an empty title, `sectionID` the

@@ -421,6 +421,13 @@ for _bare in ("theme", "banner", "art", "thumb"):
 # And `slug` is the fifth: cycle 7 measured its listing 500 and left it alone, and the
 # cycle-20 sweep measured the same 500 for every operator on both references.
 REFUSED_FILTER_FIELDS.add("slug")
+# Cycle 45 adds `extraType`, found by sweeping the query-parameter name space: it is a
+# **500 wherever a listing consumes it** -- a section listing and `/library/all`, typed
+# or untyped, for every value -- on kids and zen alike. It was already in
+# `PARSE_ONLY_FIELD_TYPES` above, so `/query/parse` knew the field and the listing
+# filtered on nothing and answered 200: the same class-C shape as `slug` and the artwork
+# columns beside it.
+REFUSED_FILTER_FIELDS.add("extraType")
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
@@ -5115,7 +5122,9 @@ class PlexSim:
             # `type=` with 400 where a section listing answers 500, and both answer
             # 500 to an empty one.
             self._parsed_type(query, status=400)
-            refusal = self._listing_refusals(query)
+            refusal = (self._listing_refusals(query)
+                       or self.whole_library_refusal(query)
+                       or self.file_filter_refusal(query, whole_library=True))
             if refusal:
                 return refusal
             if str(query.get("type")) == "18":
@@ -7393,7 +7402,8 @@ class PlexSim:
         # Measured on both references: `parentIndex` is a 500 on a listing rather than a
         # filter, whatever operator key follows it. The operator lives in the KEY, so
         # the field is what is left once the operator characters come off the end.
-        refusal = self._listing_refusals(query)
+        refusal = (self._listing_refusals(query)
+                   or self.file_filter_refusal(query, whole_library=False))
         if refusal:
             return refusal
         # Cycle 16, measured on kids and on zen's 507-show library: a show library's
@@ -8326,12 +8336,11 @@ class PlexSim:
             # newline rather than returned as a list, because a LIST routes through the
             # tag-style set membership and would compare whole paths for equality; a
             # newline cannot occur inside a path, so no match can span the join.
-            if row.get("type") == "show":
-                # Cycle 20, measured on kids and zen: `file=` is a 500 on a SHOW
-                # listing -- the only media column that refuses rather than answering
-                # -- while a SEASON listing reads the leaves like every other media
-                # column and answers every season.
-                raise filters_module.FilterError(500, "cannot filter a show on file")
+            # Cycle 45: the refusal is a property of the QUERY's declared type, not of
+            # the row, and deciding it per row made an untyped `/library/all?file=` a 500
+            # where both references answer 200 and really filter (kids 11 of 14 rows, zen
+            # 12,899). It is raised before the rows are walked now -- see
+            # `_file_filter_refusal` -- so this branch only has to answer.
             if not row.get("Media") and row.get("type") == "season":
                 return chr(10).join(part.get("file") or ""
                                     for leaf in self.catalog.leaves(row.get("ratingKey")) or []
@@ -8520,6 +8529,42 @@ class PlexSim:
             # trash, so these are honestly false rather than guessed.
             return 0
         return row.get(field)
+
+    @staticmethod
+    def file_filter_refusal(query, whole_library):
+        """The 500 `file=` gets, decided by the QUERY's type rather than by a row.
+
+        Cycle 45, measured on kids and zen over fourteen cells and library-independent:
+        `type=2` refuses on a section listing and on `/library/all` alike; `type=3`
+        refuses on `/library/all` and ANSWERS on a section listing; an untyped
+        `/library/all` answers and really filters, and so does every other type. plexsim
+        raised the refusal per ROW -- "this row is a show" -- so an untyped
+        `/library/all`, which contains shows, was a 500 where a real PMS answers.
+
+        The `/library/all` versus section asymmetry at `type=3` is measured on both
+        references and recorded rather than explained.
+        """
+        if not any(key.rstrip("<>=!") == "file" for key in query):
+            return None
+        kind = str(query.get("type") or "").strip()
+        refused = {"2", "3"} if whole_library else {"2"}
+        if kind in refused:
+            return ("error", 500, "plexsim: cannot filter on file at type=%s" % kind)
+        if not kind and not whole_library:
+            # A show library's grid defaults to type 2.
+            return None
+        return None
+
+    @staticmethod
+    def whole_library_refusal(query):
+        """The 500s `/library/all` adds to the ordinary listing grammar. Cycle 45.
+
+        `unmatched=` is a **500** there, typed or untyped, while it is a real filter on a
+        SECTION listing on both library types -- measured on kids and zen.
+        """
+        if any(key.rstrip("<>=!") == "unmatched" for key in query):
+            return ("error", 500, "plexsim: cannot filter the whole library on unmatched")
+        return None
 
     def _listing_refusals(self, query):
         """The refusals a listing answers wherever it consumes a query.
