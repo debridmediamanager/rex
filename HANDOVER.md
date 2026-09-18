@@ -200,6 +200,28 @@ findings are the same shape — a decision's validation refusing what a real PMS
 statistics endpoints answering a series for a window they hold no data for, and
 `/status/sessions` answering nine paths that are 404s.
 
+Suite results at the head of cycle 49, run 2026-09-18 against the cycle tree:
+
+| Suite | Result | Notes |
+|---|---|---|
+| `tests/test_ui_surface.py` on `tests/catalog_ui.json` | **1685 PASS / 0 FAIL / 14 skipped** | +56 checks. SIX existing checks had to be repaired: four of this cycle's own read state the suite takes away three thousand lines later, one was cycle 23's Duplicates belief this cycle refuted, and one -- cycle 33's `/web` 302 -- had never tested what it claimed, because `urllib` FOLLOWS the redirect and it was reading `/web/index.html`'s headers instead |
+| `tests/test_gdm.py` | **101/101** | NEW. `gdm.py` against the GDM replies of four real servers, a 68-cell trigger bisection, and an end-to-end drive of the real responder over real sockets including multicast. No network |
+| `tests/test_part_bytes.py` | **11/11** | unchanged, and the strongest evidence the new request reader did not break the byte path |
+| `tests/test_decision.py` | **2340/2340 cells exact** | unchanged |
+| `tests/test_mediainfo.py` | **35/35** | unchanged |
+| `tests/test_catalog_features.py` | all pass | unchanged |
+| `tests/test_heartbeat.py` | **13/13** | unchanged |
+| `tests/test_accountstate.py` | **15/15** | unchanged |
+| `tests/test_sessions.py` | all pass | unchanged |
+| `tests/test_navigation.py` | **24/24** on the LIVE catalog | |
+| `tests/conformance.py` (python-plexapi) | **38/38** on the LIVE catalog | |
+| `tests/test_all.py` with decode | **5/5 served** | every playable part passed queue, decision, both transport legs and real frame decode -- after a cycle that rewrote the request path |
+
+The protected reference snapshot is byte-identical before and after. kids' device row 1 was
+REPAIRED during this cycle (§9) and is the one deliberate change to a reference's state; zen was
+not touched. Both writable copies are healthy; the hunts' writes are declared in §7. Exact-value
+secret scans over the whole branch diff are clean.
+
 Suite results at the head of cycle 44, run 2026-09-17 against the cycle tree:
 
 | Suite | Result | Notes |
