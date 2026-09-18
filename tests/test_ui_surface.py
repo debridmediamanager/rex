@@ -7662,6 +7662,36 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49 REFUTES cycle 23's "this form carries NO Duplicates Filter row at all".
+    # Re-measured on zen (1.42.2), kids (1.43.4) and both unclaimed copies in both
+    # parameter orders: with `includeAdvanced=1` the row IS there, and it is the one
+    # Filter row on this path that keeps `advanced="1"` -- cycle 16's "a Filter carries
+    # no advanced here" holds for every OTHER row. Cycle 23 read the absence of the FLAG
+    # as the absence of the ROW, so plexsim stripped it from the descriptor the Edit
+    # Library dialog reads.
+    def secdet_c49g(spec_c49g):
+        _, body_c49g, _ = request(base, "GET", "/library/sections/%s?%s"
+                                  % (movie_section, spec_c49g))
+        doc_c49g = json.loads(body_c49g).get("MediaContainer", {})
+        return [f_c49g for t_c49g in (doc_c49g.get("Type") or [])
+                for f_c49g in (t_c49g.get("Filter") or [])]
+    adv_c49g = secdet_c49g("includeDetails=1&includeAdvanced=1")
+    bare_c49g = secdet_c49g("includeDetails=1")
+    dup_c49g = [f_c49g for f_c49g in adv_c49g if f_c49g.get("filter") == "duplicate"]
+    check("includeDetails=1&includeAdvanced=1 carries the Duplicates Filter row",
+          len(dup_c49g) == 1, "%d row(s) of %d filters" % (len(dup_c49g), len(adv_c49g)))
+    check("the Duplicates row is the one Filter there that keeps advanced",
+          bool(dup_c49g) and dup_c49g[0].get("advanced") is True
+          and not [f_c49g for f_c49g in adv_c49g
+                   if f_c49g.get("filter") != "duplicate" and "advanced" in f_c49g],
+          "%r" % (dup_c49g[0] if dup_c49g else None))
+    check("includeDetails=1 alone still carries no Duplicates row",
+          not [f_c49g for f_c49g in bare_c49g if f_c49g.get("filter") == "duplicate"],
+          "%d filters" % len(bare_c49g))
+    check("the advanced flag adds exactly one filter to the section details",
+          len(adv_c49g) == len(bare_c49g) + 1,
+          "%d vs %d" % (len(adv_c49g), len(bare_c49g)))
+
     check("the capability blob reports livetv 7, the constant all four references send",
           root_c49c.get("livetv") == 7, "%r" % root_c49c.get("livetv"))
     check("the capability blob does not invent offlineTranscode 0",
