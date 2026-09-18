@@ -17435,6 +17435,92 @@ class PlexSim:
         return None, None, None, None
 
 
+class _RequestReader(object):
+    """Proxies the connection's buffered reader, so the handler can see two things the
+    stdlib hides from it.
+
+    Cycle 49, measured on kids (1.43.4), zen (1.42.2) and plexscratch42 from raw sockets:
+
+    * **A request has an ABSOLUTE deadline, not an idle one.** A 400-byte request split
+      into three pieces 12 s apart -- maximum idle 12 s, total 24 s -- is closed by both
+      references at exactly 20.0 s from the FIRST byte, with no response at all; so are
+      four pieces 7 s apart and six pieces 4 s apart. Python's `Handler.timeout` is a
+      socket timeout and is therefore per-read by construction, so plexsim answered every
+      one of them: fifty clients dribbling a byte every two seconds held fifty threads
+      for as long as they cared to, where a real PMS had dropped all fifty at 20.6 s.
+      The IDLE timer between requests is a separate 20 s and resets per request -- both
+      references and plexsim already agreed on that.
+    * **Whether the header block ended at EOF.** `http.client.parse_headers` stops on a
+      blank line OR on EOF and does not say which. A client that half-closes after its
+      headers, with no blank line, gets NOTHING from either reference; plexsim ran the
+      request -- and a `PUT .../library/metadata/{id}?title.value=...` sent that way
+      really committed, which is the one cell in this family where plexsim changed
+      durable state a real PMS discards.
+    """
+
+    def __init__(self, raw, connection, limit):
+        self._raw = raw
+        self._connection = connection
+        self._limit = limit
+        self.saw_eof = False
+        self._deadline = None
+
+    def begin(self):
+        """A new request: forget the last one's deadline and its EOF."""
+        self.saw_eof = False
+        self._deadline = None
+
+    def _arm(self):
+        if self._deadline is None:
+            return
+        left = self._deadline - time.monotonic()
+        if left <= 0:
+            raise socket.timeout("plexsim: request incomplete after %ds" % self._limit)
+        self._connection.settimeout(left)
+
+    def _seen(self, data):
+        if data:
+            if self._deadline is None:
+                self._deadline = time.monotonic() + self._limit
+        else:
+            self.saw_eof = True
+        return data
+
+    def readline(self, *args):
+        self._arm()
+        return self._seen(self._raw.readline(*args))
+
+    def read(self, *args):
+        self._arm()
+        return self._seen(self._raw.read(*args))
+
+    def read1(self, *args):
+        self._arm()
+        return self._seen(self._raw.read1(*args))
+
+    def drain(self, count, grace):
+        """Swallow up to `count` bytes that are already there; return what is left.
+
+        The request's own deadline does not apply -- the response has already gone out,
+        so this is the *next* request's prologue, not this one's. It reads through the
+        raw reader for that reason.
+        """
+        self._deadline = None
+        try:
+            self._connection.settimeout(grace)
+            while count > 0:
+                chunk = self._raw.read1(count)
+                if not chunk:
+                    break
+                count -= len(chunk)
+        except OSError:
+            pass
+        return count
+
+    def __getattr__(self, name):
+        return getattr(self._raw, name)
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "PlexSim/0.1"
@@ -17443,6 +17529,94 @@ class Handler(BaseHTTPRequestHandler):
     # `Keep-Alive: timeout=20`. plexsim never closed one, so an abandoned socket held
     # a ThreadingHTTPServer thread for the life of the process.
     timeout = 20
+
+    def setup(self):
+        BaseHTTPRequestHandler.setup(self)
+        # Everything read from the peer goes through the wrapper: it is what makes the
+        # request deadline absolute and the unterminated header block visible.
+        self.rfile = _RequestReader(self.rfile, self.connection, self.timeout)
+        self._undrained = 0
+
+    def handle_one_request(self):
+        """The stdlib's loop body, with the three things cycle 49 measured added.
+
+        Kept as close to `BaseHTTPRequestHandler.handle_one_request` as it can be; the
+        additions are marked.
+        """
+        try:
+            self.rfile.begin()                                   # cycle 49
+            self._undrained = 0
+            self.raw_requestline = self.rfile.readline(65537)
+            if len(self.raw_requestline) > 65536:
+                self.requestline = ""
+                self.request_version = ""
+                self.command = ""
+                self.send_error(http.HTTPStatus.REQUEST_URI_TOO_LONG)
+                return
+            if not self.raw_requestline:
+                self.close_connection = True
+                return
+            if not self.parse_request():
+                return
+            if self.rfile.saw_eof:
+                # cycle 49: the header block was ended by EOF rather than by a blank
+                # line. Both references answer NOTHING to that and close; plexsim ran
+                # the request, and a query-only write really committed.
+                self.close_connection = True
+                return
+            name = "do_" + self.command
+            if not hasattr(self, name):
+                self.send_error(http.HTTPStatus.NOT_IMPLEMENTED,
+                                "Unsupported method (%r)" % self.command)
+                return
+            getattr(self, name)()
+            self.wfile.flush()
+            self._drain_body()                                   # cycle 49
+        except socket.timeout as error:
+            # An incomplete request that ran past the absolute deadline, or an idle
+            # socket past its own. Neither reference answers anything to either.
+            self.log_error("request timed out: %r", error)
+            self.close_connection = True
+            return
+        finally:
+            try:
+                self.connection.settimeout(self.timeout)
+            except OSError:
+                pass
+
+    def _drain_body(self):
+        """Consume a declared body the handler chose not to read, then decide.
+
+        Cycle 49, measured on both references: a real PMS answers a GET carrying a body
+        WITHOUT waiting for it (cycle 37's half), and then consumes exactly
+        `Content-Length` bytes and carries on -- two requests on one socket get two
+        answers. plexsim left the bytes in the stream, so they were glued to the front of
+        the next request line and the client was handed a 400 belonging to nothing it
+        sent. With a body of nine bytes and `Content-Length: 5` both references leave the
+        four spare bytes and answer the NEXT request 500, which is how the count itself
+        was measured rather than inferred.
+
+        When the body never arrives a real PMS closes the socket -- already decided ~5 ms
+        after the response, whether the body then turns up at 2 ms or at a second. That
+        is the mechanism that makes a desync impossible there. plexsim gives it a short
+        grace instead of trying to read the reference's own decision point out of a
+        buffered reader that cannot be peeked without blocking: a body that arrives
+        inside the grace is consumed and the socket kept, which is safe in the other
+        direction. Recorded as a deviation in HANDOVER 3.3.
+        """
+        left = self._undrained
+        self._undrained = 0
+        if left <= 0:
+            return
+        try:
+            left = self.rfile.drain(left, 0.05)
+        finally:
+            try:
+                self.connection.settimeout(self.timeout)
+            except OSError:
+                pass
+        if left > 0:
+            self.close_connection = True
 
     def send_error(self, code, message=None, explain=None):
         """A real PMS answers 400 to every header refusal -- never 431.
@@ -18750,7 +18924,11 @@ class Handler(BaseHTTPRequestHandler):
         if declared.startswith("-") and declared[1:].isdigit():
             self._send_error(500, "plexsim: server error")
             return
-        length = int(declared) if declared.isdigit() else 0
+        # Cycle 49, measured on both references: a leading `+` parses -- `Content-Length:
+        # +5` consumes five bytes where plexsim read none. Everything else that does not
+        # parse (`abc`, `1.5`, an empty value, trailing garbage) is still ignored.
+        digits = declared[1:] if declared.startswith("+") else declared
+        length = int(digits) if digits.isdigit() else 0
         target = (self.requestline.split(" ") + ["", ""])[1]
         # Cycle 37, raw sockets on kids and zen: GET and HEAD answer immediately
         # without consuming a declared body, with or without Expect: 100-continue.
@@ -18769,6 +18947,10 @@ class Handler(BaseHTTPRequestHandler):
         ) or (method == "POST" and target_route == "/playlists")
         consumes_body = method not in ("GET", "HEAD") and not query_only_write
         body = self.rfile.read(length) if length and consumes_body else b""
+        # Cycle 49: whatever this handler does not read is drained after the response,
+        # because a real PMS consumes exactly the declared bytes and only then reads the
+        # next request. See `_drain_body`.
+        self._undrained = length if (length and not consumes_body) else 0
 
         if target.startswith("//"):
             # Measured: a leading empty segment is a 404 like any other. The stdlib's
