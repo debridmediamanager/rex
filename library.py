@@ -1483,21 +1483,23 @@ class Library:
         return before != len(collection["items"])
 
     def _untag_collection(self, row, title):
-        """Drop this row from the named collection, and the collection if empty."""
+        """Drop this row from the named collection. The collection itself SURVIVES.
+
+        Cycle 49 REFUTED the premise the deletion here rested on. The old comment said
+        the reference "also leaves the stale tag on the item, which is a state plexsim
+        has no way to represent consistently" -- it does not. Measured on plexscratch42
+        (1.42.2): a collection created over one movie, then that movie's collection list
+        replaced, leaves the collection ITEM alive (`/library/metadata/{id}` 200, still
+        in `/library/all?type=18`) AND removes the tag from the item (the `/collection`
+        axis carries only the surviving tag). So the state is perfectly representable,
+        and plexsim was deleting a row a real PMS keeps -- which a client sees as a
+        collection disappearing out of its Collections pivot when an item is edited.
+        """
         collection = self.find_collection(title, row.get("librarySectionID"))
         if not collection:
             return
         collection["items"] = [k for k in collection["items"]
                                if int(k) != int(row["ratingKey"])]
-        if not collection["items"]:
-            # A Plex collection exists only as the tag on its members: untag the
-            # last one and the collection is gone, rather than lingering in the
-            # Collections pivot as an empty row. (The reference DOES keep an empty
-            # collection row -- measured, childCount 0 and still listed -- but it
-            # also leaves the stale tag on the item, which is a state plexsim has
-            # no way to represent consistently; a vanishing collection is the
-            # lesser divergence.)
-            self._collections.pop(collection["ratingKey"], None)
 
     # -- match / unmatch / refresh / split / merge ------------------------
 
