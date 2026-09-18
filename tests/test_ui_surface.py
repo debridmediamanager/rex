@@ -7877,6 +7877,59 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50: a DECISION container is written by the same serialiser `/status/sessions`
+    # uses -- cycle 46 found that one and nobody asked whether the decision shares it. It
+    # does, measured on kids (1.43.4) and plexscratch42 (1.42.2): the row's scalars, its
+    # `Media`, `Part`, `Stream`, `Rating` and every person tag come out ALPHABETICALLY
+    # with the decision flags after; `librarySectionID`, every tag `id` and a `Rating`'s
+    # `value` are JSON STRINGS; `UltraBlurColors` is a LIST of one; an EMPTY `summary` is
+    # omitted (which is the reading cycle 26 fitted the other way round, off the one copy
+    # row whose summary is the empty string); and the client-title codec suffix is NOT
+    # applied although `X-Plex-Product: Plex Web` is on the wire. Every field the player
+    # reads off a decision was in the wrong shape.
+    import urllib.request as _u50g
+    def decision_row_c50g():
+        request_ = _u50g.Request(
+            base + "/video/:/transcode/universal/decision?path=/library/metadata/%s"
+            "&mediaIndex=0&partIndex=0&protocol=dash&hasMDE=1&directPlay=1&directStream=1"
+            "&X-Plex-Client-Profile-Name=Chrome" % movie,
+            headers={"Accept": "application/json", "User-Agent": UA,
+                     "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome"})
+        doc = json.loads(_u50g.urlopen(request_, timeout=20).read())
+        return (doc.get("MediaContainer", {}).get("Metadata") or [{}])[0]
+    row_c50g = decision_row_c50g()
+    scalars_c50g = [k for k, v in row_c50g.items() if not isinstance(v, (dict, list))]
+    check("a decision row's scalars come out alphabetically",
+          scalars_c50g == sorted(scalars_c50g), "%s" % scalars_c50g[:8])
+    check("...with librarySectionID a STRING",
+          isinstance(row_c50g.get("librarySectionID"), str),
+          "%r" % row_c50g.get("librarySectionID"))
+    check("...UltraBlurColors a LIST",
+          isinstance(row_c50g.get("UltraBlurColors"), list)
+          or "UltraBlurColors" not in row_c50g, "%r" % type(row_c50g.get("UltraBlurColors")))
+    ratings_c50g = row_c50g.get("Rating") or []
+    check("...and a Rating's value a string, its keys alphabetical",
+          all(isinstance(r.get("value"), str) and list(r) == sorted(r) for r in ratings_c50g),
+          "%r" % ratings_c50g[:1])
+    media_c50g = (row_c50g.get("Media") or [{}])[0]
+    media_keys_c50g = [k for k, v in media_c50g.items() if not isinstance(v, (dict, list))
+                       and k not in ("selected",)]
+    check("a decision's Media keys are alphabetical too",
+          media_keys_c50g == sorted(media_keys_c50g), "%s" % media_keys_c50g[:8])
+    streams_c50g = ((media_c50g.get("Part") or [{}])[0].get("Stream") or [])
+    video_c50g = [s for s in streams_c50g if s.get("streamType") == 1]
+    check("a decision's Stream carries NO client codec suffix in displayTitle",
+          bool(video_c50g) and "(" not in str(video_c50g[0].get("displayTitle") or ""),
+          "%r" % (video_c50g[0].get("displayTitle") if video_c50g else None))
+    _, item_c50g, _ = get(base, "/library/metadata/%s" % movie)
+    item_streams_c50g = [s for m in ((item_c50g.get("Metadata") or [{}])[0].get("Media") or [])
+                         for p in (m.get("Part") or []) for s in (p.get("Stream") or [])
+                         if s.get("streamType") == 1]
+    check("...while the item row still carries it for Plex Web",
+          bool(item_streams_c50g)
+          and "(" in str(item_streams_c50g[0].get("displayTitle") or ""),
+          "%r" % (item_streams_c50g[0].get("displayTitle") if item_streams_c50g else None))
+
     # Cycle 50: `/library/all`'s recorded "the default order is the ratingKey" holds for
     # the UNTYPED form only. A typed `?type=N` uses that type's own default listing order
     # -- kids answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
