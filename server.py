@@ -810,6 +810,22 @@ COLLECTION_META_SORT = {
     "title": "Title",
 }
 
+# Cycle 50: the BACKGROUND PROCESSING list and its play queue -- PMS's own, and the pair
+# the official client's Settings -> Status -> Conversions page is built from. Measured on
+# zen (1.42.2), kids (1.43.4) and plexscratch42 (1.42.2 unclaimed): `/playQueues?type=42`
+# answers a one-row container, `/playlists?type=42` the list behind it, and `/playQueues/1`
+# is permanently that queue. The `clientIdentifier` is the SAME CONSTANT on all three
+# servers -- it is PMS's, not the install's -- and the guid carries it too. Every one of
+# them was missing or refused on plexsim, and the client's own
+# `initializeConversionView` needs all three before it will draw: it renders
+# "The conversion queue is unavailable." otherwise, behind a `backgroundProcessing=true`
+# plexsim advertises on `/`.
+BACKGROUND_CLIENT = "55d3184c-28b9-43ce-842c-b7b03ca00e0f"
+BACKGROUND_TITLE = "Background Processing List"
+# Its ratingKey is per-install on a real PMS; plexsim mints one outside every
+# other id space it uses.
+PLAYLIST_BASE_BACKGROUND = 39999
+
 PLAYLIST_SORTS = [
     {"default": "asc", "defaultDirection": "asc", "descKey": "titleSort:desc",
      "key": "titleSort", "title": "Name"},
@@ -2634,8 +2650,13 @@ class PlexSim:
         # are GLOBALLY increasing and stable across inserts, moves and deletes,
         # its version increments on every mutation, and the client throws the
         # whole response away when the selected id is not the one it holds.
+        # When this process came up: the background-processing list's `addedAt` on a real
+        # PMS is when that server made it, so plexsim's is when this one started.
+        self.started_at = int(time.time())
         self.play_queues = {}
-        self.next_play_queue = 1
+        # Cycle 50: id 1 is PMS's own background-processing queue on every reference, so a
+        # user queue never gets it. plexsim handed 1 to the first queue a client made.
+        self.next_play_queue = 2
         self.next_play_queue_item = 1
         # Cycle 40, recovered from Plex Web 4.160 and measured on both disposable
         # PMS versions: Settings -> Agents can add, rename and remove a custom
@@ -5953,13 +5974,39 @@ class PlexSim:
         if route == "/playQueues" and method == "POST":
             return self.create_play_queue(query, headers)
         if route == "/playQueues":
-            # Re-measured, and it splits on ONE parameter: a bare GET (or one with
-            # any parameter but `type`) is an empty 200, and `?type=` is a 400 --
-            # naming a type without creating anything is the malformed request. The
-            # earlier finding saw only the `?type=1` half.
-            if query.get("type"):
+            # Cycle 50 corrected the earlier reading, which had seen only the `?type=1`
+            # half. Swept over the value grammar on three servers: `42` (and `042`,
+            # `00042`, `%2B42`) answers the BACKGROUND PROCESSING queue, `0` answers an
+            # empty container, every other value -- and an empty one -- is a 400, no
+            # `type` at all is an empty container, and a repeated parameter takes the
+            # LAST occurrence. plexsim inverted three of those cells: it 400'd `42` and
+            # `0` and answered 200 to the empty value.
+            if "type" not in query:
+                return self.bare_container(size=0)
+            wanted = str(query.get("type") or "")
+            digits = wanted[1:] if wanted.startswith("+") else wanted
+            if not digits.isdigit():
                 return ("error", 400, "plexsim: bad request")
-            return self.bare_container(size=0)
+            number = int(digits)
+            if number == 42:
+                return self.bare_container(size=1, PlayQueue=[{
+                    "id": 1, "clientIdentifier": BACKGROUND_CLIENT,
+                    "totalItemsCount": 0, "type": "playlist", "shuffled": False,
+                }])
+            if number == 0:
+                return self.bare_container(size=0)
+            return ("error", 400, "plexsim: bad request")
+        if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET" \
+                and segments[1] == "1" and "1" not in self.play_queues:
+            # Cycle 50: queue 1 is PMS's own background-processing queue, permanently,
+            # on all three references -- `/playQueues/2` is a 404 there. Its container
+            # carries `playQueueVersion: -1`, a value nothing else on the surface emits,
+            # and none of the selection/total/uri fields a real queue carries.
+            return self.bare_container(
+                size=0, identifier="com.plexapp.plugins.library",
+                mediaTagPrefix="/system/bundle/media/flags/",
+                mediaTagVersion=1655122614,
+                playQueueID=1, playQueueShuffled=False, playQueueVersion=-1)
         if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET":
             return self.get_play_queue(segments[1], query)
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
@@ -15529,6 +15576,22 @@ class PlexSim:
             if query.get("sectionID") is None or query.get("path") is None:
                 return ("error", 400, "plexsim: bad request")
             return ("error", 500, "plexsim: playlist import failed")
+        if len(segments) == 1 and str(query.get("type") or "") in ("42", "042", "00042"):
+            # Cycle 50: PMS's own BACKGROUND PROCESSING list, the second half of the
+            # Conversions page's pair. Measured on zen, kids and plexscratch42: the row is
+            # eight keys in this order and much lighter than an ordinary playlist row --
+            # no `composite`, `duration`, `leafCount`, `smart`, `icon`, `viewCount`,
+            # `lastViewedAt` or `updatedAt` -- and its guid carries the same constant
+            # client identifier the queue does. It is invisible in `/playlists`,
+            # `/playlists?type=15` and `/library/all?type=15` on every one of them.
+            key = PLAYLIST_BASE_BACKGROUND
+            return self.bare_container(size=1, Metadata=[{
+                "ratingKey": str(key), "key": "/playlists/%d/items" % key,
+                "guid": "com.plexapp.agents.none://%s" % BACKGROUND_CLIENT,
+                "type": "playlist", "title": BACKGROUND_TITLE, "summary": "",
+                "playlistType": "backgroundProcessing",
+                "addedAt": self.started_at,
+            }])
         if len(segments) == 1 or segments[1] in ("all", "sorts", "generators"):
             if len(segments) > 1 and segments[1] == "sorts":
                 return self.bare_container(size=len(PLAYLIST_SORTS),
