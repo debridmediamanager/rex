@@ -97,7 +97,58 @@ def main():
                 else:
                     check("udp/%d %s -> silence" % (port, label), data, None)
 
-        # 5. A rename re-stamps the advertisement, because Name is one of its fields.
+        # 5. The peer table: a real PMS's /servers is its own row plus what its own
+        #    5-second search found. Injected here, so the check does not depend on the
+        #    test host's multicast delivery; the live path is checked below.
+        peer = gdm.build_response(name="other", port=32400, machine="p" * 40,
+                                  version="1.43.4.10903-e5521bd8c",
+                                  host="abc.plex.direct", updated_at=1789000001)
+        disco._record(peer, ("10.9.8.7", 32414))
+        rows = disco.peers()
+        check("a peer's answer becomes a /servers row",
+              [(r["machine"], r["name"], r["address"], r["port"], r["version"]) for r in rows],
+              [("p" * 40, "other", "10.9.8.7", 32400, "1.43.4.10903-e5521bd8c")])
+        # Its own reply is dropped: zen lists itself ONCE.
+        disco._record(disco.response(), ("127.0.0.1", 32414))
+        check("the server's own answer is not a peer", len(disco.peers()), 1)
+        # A player answers `plex/media-player` on the player ports; it is not a server.
+        player = peer.replace(b"plex/media-server", b"plex/media-player")
+        disco._record(player, ("10.9.8.6", 32414))
+        check("a media-player answer is not a server", len(disco.peers()), 1)
+        check("a non-GDM datagram is not a server",
+              gdm.parse_response(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"), None)
+        # SERVERS_TTL ages a row out.
+        check("a peer ages out", disco.peers(now=time.time() + gdm.SERVERS_TTL + 1), [])
+
+        # 6. What a real PMS sends, byte for byte, and how often.
+        check("the search datagram", gdm.SEARCH, b"M-SEARCH * HTTP/1.1\r\n")
+        check("the search interval", gdm.SEARCH_INTERVAL, 5.0)
+        # Its own search answers its own responder, which is how the live path is proved
+        # without a second machine. A host with no multicast loopback cannot show it.
+        seen = []
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        probe.settimeout(2.0)
+        try:
+            probe.sendto(gdm.SEARCH, (gdm.GROUP, free[-1]))
+            deadline = time.time() + 2.0
+            while time.time() < deadline:
+                try:
+                    data, addr = probe.recvfrom(4096)
+                except socket.timeout:
+                    break
+                seen.append(data)
+        except OSError:
+            pass
+        finally:
+            probe.close()
+        if seen:
+            check("a multicast search reaches the responder", seen[0], want)
+        else:
+            print("SKIP a multicast search reaches the responder "
+                  "(this host does not deliver multicast to itself)")
+
+        # 7. A rename re-stamps the advertisement, because Name is one of its fields.
         before = disco.updated_at
         disco.name = "renamed"
         disco.touch()
