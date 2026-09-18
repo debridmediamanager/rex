@@ -3718,6 +3718,7 @@ class PlexSim:
         section = self.catalog.section(parent.get("librarySectionID")) or {}
         is_episode_list = ((bool(rows) and rows[0].get("type") == "episode")
                            or (leaf == "allLeaves" and parent.get("type") in ("season", "episode")))
+        is_movie_leaves = leaf == "allLeaves" and parent.get("type") == "movie"
         # Measured on kids (1.43.4) and zen (1.42.2), 20 rows across five shows: a
         # SHOW's `/allLeaves` -- and only that list -- gives every episode row the
         # SHOW's `studio`. The episode's own detail row, the season's `/children` and
@@ -3743,11 +3744,16 @@ class PlexSim:
                          for r in self._guid_gate([_full(r) for r in rows], query)],
             "key": str(parent.get("ratingKey")),
             "nocache": True,
-            "viewGroup": "episode" if is_episode_list else "season",
+            # Cycle 50: a MOVIE's own `/allLeaves` is `viewGroup="movie"` and
+            # `viewMode=65592` on kids and zen alike -- plexsim answered the SEASON pair,
+            # which is the same inversion that caused the founding Seasons bug, on the one
+            # row type nobody had asked for its leaves.
+            "viewGroup": ("movie" if is_movie_leaves
+                          else ("episode" if is_episode_list else "season")),
             # Measured on fun: a SEASON list is 65593 and an EPISODE list is
             # 65592. These were inverted here, so the client was handed the
             # episode layout for a season list and rendered no seasons.
-            "viewMode": 65592 if is_episode_list else 65593,
+            "viewMode": 65592 if (is_episode_list or is_movie_leaves) else 65593,
             "librarySectionID": parent.get("librarySectionID"),
             "librarySectionTitle": parent.get("librarySectionTitle"),
             "librarySectionUUID": section.get("uuid"),
@@ -6129,6 +6135,16 @@ class PlexSim:
             if parsed.scheme not in ("http", "https"):
                 if parsed.scheme or not inner.startswith("/"):
                     return ("error", 404, "plexsim: not found")
+                # Cycle 50: a real PMS also transcodes its OWN BUNDLED ASSETS.
+                # `url=/:/resources/movie.png` is a 200 image on kids, zen and
+                # plexscratch42 and `/:/resources/nope.png` their ordinary 404, where
+                # plexsim answered 500 to both -- and plexsim uses exactly those assets as
+                # the placeholder `thumb` on its own rows, so every placeholder tile Plex
+                # Web asked for through the transcoder was a 500.
+                if inner.startswith("/:/resources/"):
+                    if inner.split("/")[-1] not in KNOWN_RESOURCES:
+                        return ("error", 404, "plexsim: not found")
+                    return ("png", {})
                 owner = re.match(
                     r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)", inner)
                 if owner is None:
@@ -6439,7 +6455,8 @@ class PlexSim:
         return container
 
     # The 25 top-level Directory rows `/` lists, in the reference's order. The row
-    # shape is `{count, key, title}` and the count is 1 on every one.
+    # shape is `{count, key, title}`; cycle 50 measured the count itself -- 3 on
+    # `library`, `livetv` and `media`, 1 on the other 22.
     ROOT_DIRECTORIES = [
         "actions", "activities", "butler", "channels", "clients", "devices",
         "diagnostics", "downloadQueue", "hubs", "library", "livetv", "media",
@@ -6457,7 +6474,13 @@ class PlexSim:
         endpoints. python-plexapi's `PlexServer()` loads every attribute it has
         from here, so an identity document leaves it with almost none of them.
         """
-        rows = [{"count": 1, "key": name, "title": name}
+        # Cycle 50: `library`, `livetv` and `media` carry `count="3"` and the other 22
+        # carry 1 -- on kids, zen, plexscratch and plexscratch42, both versions and both
+        # claim states. plexsim's own comment said "the count is 1 on every one", which is
+        # a constant nobody had checked against the three that are not. python-plexapi
+        # loads every attribute it has from this document.
+        rows = [{"count": 3 if name in ("library", "livetv", "media") else 1,
+                 "key": name, "title": name}
                 for name in self.ROOT_DIRECTORIES]
         info = self.server_info()
         # Measured on BOTH real servers: `/` carries five capability flags that
@@ -7454,6 +7477,12 @@ class PlexSim:
             asked = str(query.get("type") or own)
             rows = [] if asked != str(own) else [
                 r for r in self.typed_rows(section_id, query) if not r.get("viewCount")]
+            # Cycle 50, measured on kids (`Big Buck Bunny, Elephants Dream, Sintel,
+            # Tears of Steel` -- ratingKeys 1, 17, 3, 4) and on zen, whose `/unwatched`
+            # page is byte-identical in order to `/library/sections/1/all` over 3,887
+            # rows: this subset is ordered like every other listing, by `titleSort`.
+            # plexsim answered it in catalog order.
+            rows, _ = self._sorted(rows, query.get("sort") or "titleSort")
             # Cycle 16, measured on kids and zen: like every other container a SHOW
             # library answers, this one carries `nocache`; a movie library's does not.
             # plexsim already had the rule on /all and the five subsets and had missed
@@ -7461,8 +7490,20 @@ class PlexSim:
             extra = {"nocache": True} if section.get("type") == "show" else {}
             if section.get("type") == "show" and asked != str(own):
                 extra["view_group"] = "episode"
+            # Cycle 50: a row that has children carries the SUBSET's own filter in its
+            # `key` here -- kids answers `/library/metadata/6/children?unwatched=1` and
+            # zen the same on all three of its rows, where the section GRID answers the
+            # bare path on both. The client follows `key` verbatim, so plexsim's bare path
+            # opened a show from the Unplayed list showing every child rather than the
+            # unwatched ones.
+            listed = []
+            for row in rows:
+                projected = _listing_row(row)
+                if str(projected.get("key") or "").endswith("/children"):
+                    projected["key"] = projected["key"] + "?unwatched=1"
+                listed.append(projected)
             return self.listing_container(
-                section_id, section, [_listing_row(r) for r in rows],
+                section_id, section, listed,
                 title2=SECONDARY_TITLES["unwatched"], **extra)
         if leaf == "search":
             # Measured again, more carefully than the first time: only the form
@@ -9705,6 +9746,18 @@ class PlexSim:
             # the axis from library ITEMS alone, so a label used to organise
             # collections could not be filtered on at all.
             rows = list(rows) + list(self.library.collections(section_id))
+        if leaf in ("director", "writer", "producer") \
+                and (section.get("type") or "") == "show":
+            # Cycle 50, measured on kids (3/2/2 rows) and zen (921/1094/914): a SHOW
+            # library's `director`, `writer` and `producer` axes are built from the
+            # EPISODES. A show ROW carries no `Director`, `Writer` or `Producer` at all --
+            # only `Role`, which is why `/actor` was the one person axis that worked -- so
+            # plexsim answered an empty container and a TV library's Director, Writer and
+            # Producer pickers were all empty while the filters behind them worked. Same
+            # rule as cycle 20's media axes, on the person axes.
+            rows = [item for row in rows
+                    for item in (self.catalog.leaves(row.get("ratingKey")) or []
+                                 if row.get("type") in ("show", "season") else [row])]
         entries = []
         if leaf in SECONDARY_TAGS:
             key = SECONDARY_TAGS[leaf]
