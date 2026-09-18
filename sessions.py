@@ -123,9 +123,16 @@ class Sessions:
             self._next_device += 1
             self._devices[identifier] = self._next_device
             self._device_seen[identifier] = int(time.time())
-        if identifier and name:
+        # Cycle 49, measured on both writable copies: a request carrying a device name or
+        # a platform and NO client identifier writes them onto the ANONYMOUS row -- the
+        # one with `clientIdentifier=""` -- exactly as an identified one writes its own.
+        # plexsim skipped it, so that row stayed nameless whatever a client sent. (This
+        # is the same write that corrupted both references: a numeric `X-Plex-Platform`
+        # stores as a number there and makes `/devices` a 500. plexsim stores the string
+        # it was given and does not reproduce the crash -- recorded, not emulated.)
+        if name:
             self._device_names[identifier] = name
-        if identifier and platform:
+        if platform:
             self._device_platforms[identifier] = platform
         return self._devices[identifier]
 
