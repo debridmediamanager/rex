@@ -109,7 +109,13 @@ PARSED_NOT_STORED = {"absoluteIndex"}
 
 # A tag type accepted and discarded: a show's `network[0].tag.tag=` is a 200 that stores
 # nothing visible, where plexsim 400'd it.
-IGNORED_TAG_TYPES = {"network"}
+# Cycle 49 added `mood`: on plexscratch42 (1.42.2) a `mood[0].tag.tag=` write to a MOVIE
+# is a 200 that stores nothing -- the row carries no `Mood` afterwards -- where the `style`
+# and `similar` beside it really store. plexsim stored it, and then carried a `Mood`
+# element no real PMS emits on a movie into every projection that reads the row.
+# (`mood` is a music-library field; plexsim holds no music library, so "not stored on the
+# types plexsim holds" is the whole of what is measured here.)
+IGNORED_TAG_TYPES = {"network", "mood"}
 
 # Cycle 31, re-measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which agree:
 # `hdr10plus` is accepted on BOTH halves of the grammar and stores NEITHER -- `.locked=1`

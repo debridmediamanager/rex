@@ -7662,6 +7662,26 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, measured on plexscratch42 (1.42.2): a `mood[0].tag.tag=` write to a MOVIE
+    # is a 200 that stores NOTHING, where the `style` and `similar` beside it really
+    # store. plexsim stored it and then carried a `Mood` element no real PMS emits on a
+    # movie into every projection that reads the row -- which is also why `Mood` has no
+    # slot in `xmlout._CHILD_ORDER`: its position there is unmeasurable.
+    status_c49s, _, _ = request(base, "PUT", "/library/metadata/%s?type=1&id=%s"
+                                "&mood%%5B0%%5D.tag.tag=C49Mood" % (movie, movie))
+    _, row_c49s, _ = get(base, "/library/metadata/%s" % movie)
+    item_c49s = (row_c49s.get("Metadata") or [{}])[0]
+    check("a mood write on a movie is accepted and stores nothing",
+          status_c49s == 200 and not item_c49s.get("Mood"), "%s %r" % (status_c49s, item_c49s.get("Mood")))
+    status_c49s2, _, _ = request(base, "PUT", "/library/metadata/%s?type=1&id=%s"
+                                 "&style%%5B0%%5D.tag.tag=C49Style" % (movie, movie))
+    _, row_c49s2, _ = get(base, "/library/metadata/%s" % movie)
+    check("...where the style beside it really stores",
+          status_c49s2 == 200
+          and [t.get("tag") for t in ((row_c49s2.get("Metadata") or [{}])[0]).get("Style") or []]
+          == ["C49Style"],
+          "%r" % ((row_c49s2.get("Metadata") or [{}])[0]).get("Style"))
+
     # Cycle 49 REFUTED the premise behind plexsim's deliberate deletion of an emptied
     # collection. The old comment said a real PMS keeps the empty row but "also leaves
     # the stale tag on the item", a state plexsim could not represent. Measured on
