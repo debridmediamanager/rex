@@ -7662,6 +7662,85 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, 16 framing cells and 13 header spellings on plexscratch42 (1.42.2) and
+    # plexscratch (1.43.4): a real PMS really dechunks a `Transfer-Encoding: chunked`
+    # request body, including on a write -- a chunked subtitle upload lands a sidecar
+    # byte-identical to the `Content-Length` form's. plexsim ignored the header, so the
+    # upload was its empty-body 406 and the chunk framing went into the next request.
+    # The size token parses like `strtol` in base 16 and NOTHING may follow it: a chunk
+    # EXTENSION, which HTTP allows, is a 400 on both references.
+    import socket as _s49m
+    _h49m, _, _p49m = base.split("//", 1)[1].partition(":")
+    _p49m = int(_p49m.split("/")[0])
+    def chunk_c49m(payload, wait=2.5):
+        sock = _s49m.create_connection((_h49m, _p49m), timeout=wait)
+        try:
+            sock.sendall(payload)
+            sock.settimeout(wait)
+            buf, closed = b"", False
+            try:
+                while True:
+                    piece = sock.recv(65536)
+                    if not piece:
+                        closed = True
+                        break
+                    buf += piece
+            except _s49m.timeout:
+                pass
+        finally:
+            sock.close()
+        starts = [buf[i:i + 30].split(b"\r\n")[0].decode("latin-1")
+                  for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)]
+        return ((starts[0] if starts else "(silence)"), len(starts), closed)
+    def teq_c49m(encoding, body):
+        return (b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+                + (b"Transfer-Encoding: " + encoding + b"\r\n" if encoding else b"")
+                + b"\r\n" + body
+                + b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+    OK49M = ("HTTP/1.1 200 OK", 2, False)
+    BAD49M = ("HTTP/1.1 400 Bad Request", 1, True)
+    SHORT49M = ("HTTP/1.1 200 OK", 1, True)
+    got_c49m = {name: chunk_c49m(teq_c49m(enc, body)) for name, enc, body in (
+        ("one chunk", b"chunked", b"5\r\nhello\r\n0\r\n\r\n"),
+        ("two chunks", b"chunked", b"2\r\nhe\r\n3\r\nllo\r\n0\r\n\r\n"),
+        ("0x prefix", b"chunked", b"0x5\r\nhello\r\n0\r\n\r\n"),
+        ("leading +", b"chunked", b"+5\r\nhello\r\n0\r\n\r\n"),
+        ("leading zeros", b"chunked", b"005\r\nhello\r\n0\r\n\r\n"),
+        ("hex digit", b"chunked", b"A\r\n0123456789\r\n0\r\n\r\n"),
+        ("mixed case header", b"Chunked", b"5\r\nhello\r\n0\r\n\r\n"),
+        ("size with a trailing space", b"chunked", b"5 \r\nhello\r\n0\r\n\r\n"),
+        ("a chunk extension", b"chunked", b"5;a=b\r\nhello\r\n0\r\n\r\n"),
+        ("LF-only framing", b"chunked", b"5\nhello\n0\n\n"),
+        ("a size that overflows", b"chunked", b"FFFFFFFFFFFFFFFF\r\nhello\r\n0\r\n\r\n"),
+        ("a negative size", b"chunked", b"-5\r\nhello\r\n0\r\n\r\n"),
+        ("gzip, chunked", b"gzip, chunked", b"5\r\nhello\r\n0\r\n\r\n"),
+        ("an unknown encoding", b"bogus", b"5\r\nhello\r\n0\r\n\r\n"))}
+    want_c49m = {"one chunk": OK49M, "two chunks": OK49M, "0x prefix": OK49M,
+                 "leading +": OK49M, "leading zeros": OK49M, "hex digit": OK49M,
+                 "mixed case header": OK49M, "size with a trailing space": BAD49M,
+                 "a chunk extension": BAD49M, "LF-only framing": BAD49M,
+                 "a size that overflows": BAD49M, "a negative size": SHORT49M,
+                 "gzip, chunked": SHORT49M, "an unknown encoding": SHORT49M}
+    check("a chunked request body is decoded, and its framing grammar is the reference's",
+          got_c49m == want_c49m,
+          "%s" % {k: (got_c49m[k], want_c49m[k]) for k in want_c49m if got_c49m[k] != want_c49m[k]})
+
+    # ...and it really lands on a write, which is the reachable half.
+    def subs_c49m():
+        _, row, _ = get(base, "/library/metadata/%s" % movie)
+        item = (row.get("Metadata") or [{}])[0]
+        return len([st for m in item.get("Media") or [] for p in m.get("Part") or []
+                    for st in p.get("Stream") or []])
+    before_c49m = subs_c49m()
+    srt_c49m = b"1\n00:00:00,000 --> 00:00:01,000\nhi\n\n"
+    status_c49m, _, _ = chunk_c49m(
+        ("POST /library/metadata/%s/subtitles?title=c49chunk.srt&format=srt HTTP/1.1\r\n"
+         "Host: h\r\nTransfer-Encoding: chunked\r\n\r\n" % movie).encode()
+        + b"%x\r\n" % len(srt_c49m) + srt_c49m + b"\r\n0\r\n\r\n")
+    check("a chunked subtitle upload is accepted and stores its sidecar",
+          status_c49m == "HTTP/1.1 200 OK" and subs_c49m() == before_c49m + 1,
+          "%s, %d -> %d streams" % (status_c49m, before_c49m, subs_c49m()))
+
     # Cycle 49, bisected over token lengths 1-19 on both writable copies and confirmed on
     # kids and zen with GET requests alone: the METHOD token is bounded at ten bytes, and
     # the eleventh byte is refused the moment it arrives -- before any delimiter. That is

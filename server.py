@@ -17610,6 +17610,51 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass
 
+    # A chunk size line, as a real PMS reads it. Cycle 49, 16 cells on both references:
+    # the token parses like `strtol` in base 16 -- an optional sign, an optional `0x`
+    # prefix, then hex digits -- and NOTHING may follow it before the CRLF. `5;a=b` and
+    # `5 ` are 400s, which is the surprise: a chunk EXTENSION, which HTTP allows, is
+    # refused. It is the same parser family as cycle 36's `%`-escape rule.
+    _CHUNK_SIZE = re.compile(rb"([+-]?)(?:0[xX])?([0-9A-Fa-f]+)\Z")
+
+    def _read_chunked(self):
+        """Decode a `Transfer-Encoding: chunked` request body.
+
+        Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a real PMS
+        really dechunks, including on a write -- a chunked subtitle upload lands a sidecar
+        byte-identical to the `Content-Length` form's. plexsim ignored the header
+        entirely, so the upload was its empty-body 406 and the chunk framing then went
+        into the next request. Returns `("ok", body)`, `("bad", b"")` for a framing error
+        (a 400 that closes) or `("short", b"")` for a body that simply stops (answered
+        normally, then the socket goes).
+        """
+        out = []
+        while True:
+            line = self.rfile.readline(65537)
+            if not line.endswith(b"\r\n"):
+                return "bad", b""                   # LF-only framing, or EOF mid-header
+            token = line[:-2]
+            match = self._CHUNK_SIZE.fullmatch(token)
+            if match is None:
+                # An empty size line is an unfinished body; anything else is malformed.
+                return ("short" if not token else "bad"), b""
+            if match.group(1) == b"-":
+                # `-5` parses and is nonsense: both references answer and then close.
+                return "short", b""
+            size = int(match.group(2), 16)
+            if size > 0x7fffffff:
+                return "bad", b""                   # `FFFFFFFFFFFFFFFF` is a 400
+            if size == 0:
+                # Only a bare CRLF closes it: a trailer is an unfinished body there.
+                return ("ok" if self.rfile.readline(65537) == b"\r\n" else "short"), \
+                    b"".join(out)
+            data = self.rfile.read(size)
+            if len(data) < size:
+                return "short", b""
+            if self.rfile.read(2) != b"\r\n":
+                return "bad", b""
+            out.append(data)
+
     def _drain_body(self):
         """Consume a declared body the handler chose not to read, then decide.
 
@@ -19086,11 +19131,35 @@ class Handler(BaseHTTPRequestHandler):
             and re.fullmatch(r"/library/metadata/[0-9]+", target_route) is not None
         ) or (method == "POST" and target_route == "/playlists")
         consumes_body = method not in ("GET", "HEAD") and not query_only_write
-        body = self.rfile.read(length) if length and consumes_body else b""
-        # Cycle 49: whatever this handler does not read is drained after the response,
-        # because a real PMS consumes exactly the declared bytes and only then reads the
-        # next request. See `_drain_body`.
-        self._undrained = length if (length and not consumes_body) else 0
+        # Cycle 49: `Transfer-Encoding` BEATS `Content-Length` when both are sent, and the
+        # value must be exactly `chunked` (case-insensitive, nothing else in it). Thirteen
+        # other spellings -- ` chunked`, `chunked `, `chunked;`, `identity, chunked`,
+        # `gzip, chunked`, `chunked, gzip`, `bogus`, an empty value -- are answered 200 and
+        # then CLOSED on both references, because the framing that follows cannot be read.
+        encoding = (self.headers.get("Transfer-Encoding") or "").strip()
+        if encoding:
+            if encoding.lower() == "chunked":
+                state, decoded = self._read_chunked()
+                if state == "bad":
+                    self.close_connection = True
+                    self._send_error(400, "plexsim: bad request")
+                    return
+                body = decoded if consumes_body else b""
+                if state == "short":
+                    self.close_connection = True
+                length = 0
+            else:
+                # Nothing readable follows, so answer and give the socket up.
+                self.close_connection = True
+                body = b""
+                length = 0
+            self._undrained = 0
+        else:
+            body = self.rfile.read(length) if length and consumes_body else b""
+            # Cycle 49: whatever this handler does not read is drained after the
+            # response, because a real PMS consumes exactly the declared bytes and only
+            # then reads the next request. See `_drain_body`.
+            self._undrained = length if (length and not consumes_body) else 0
 
         if target.startswith("//"):
             # Measured: a leading empty segment is a 404 like any other. The stdlib's
