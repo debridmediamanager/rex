@@ -7662,6 +7662,25 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, measured on both writable copies: a request carrying a device name or a
+    # platform and NO client identifier writes them onto the ANONYMOUS device row, the one
+    # with `clientIdentifier=""`. plexsim recorded them only for an identified client, so
+    # that row stayed nameless whatever a client sent. This is the same write that
+    # corrupted BOTH references during this programme: a NUMERIC `X-Plex-Platform` stores
+    # as a number there and makes `/devices` and `/statistics/bandwidth` a 500 (see
+    # HANDOVER 9). plexsim stores the string and does not reproduce the crash.
+    request(base, "GET", "/identity")   # make sure the anonymous row exists
+    import urllib.request as _u49q
+    req_c49q = _u49q.Request(base + "/identity", headers={
+        "X-Plex-Device-Name": "C49 Anon", "X-Plex-Platform": "Roku", "Accept": "application/json"})
+    _u49q.urlopen(req_c49q, timeout=10).read()
+    _, devices_c49q, _ = container(base, "GET", "/devices")
+    anon_c49q = [d for d in (devices_c49q.get("Device") or []) if not d.get("clientIdentifier")]
+    check("an identifier-less request writes its device name and platform on the anonymous row",
+          anon_c49q and anon_c49q[0].get("name") == "C49 Anon"
+          and anon_c49q[0].get("platform") == "Roku",
+          "%s" % anon_c49q[:1])
+
     # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
     # which is why cycle 23's 2,994-path child-order sweep could not see any of this.
