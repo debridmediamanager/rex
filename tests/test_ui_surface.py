@@ -7662,6 +7662,81 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, 20 target forms and 15 pipeline spellings on kids (1.43.4) and zen
+    # (1.42.2), both references identical: a real PMS accepts the ABSOLUTE FORM -- what a
+    # client sends through an explicit HTTP proxy -- and routes it, discarding the
+    # authority; plexsim read the scheme as a path segment and 404'd every one. And the
+    # `X-Plex-Http-Pipeline` opt-out cycle 45 measured as a header works as a QUERY
+    # parameter too, with the header's own grammar and the header winning when both are
+    # sent -- the same family as `X-Plex-Platform` and `X-Plex-Language`.
+    import socket as _s49i
+    _host49i, _, _port49i = base.split("//", 1)[1].partition(":")
+    _port49i = int(_port49i.split("/")[0])
+    def line_c49i(target, extra=""):
+        req = ("GET %s HTTP/1.1\r\nHost: h\r\n%s\r\n" % (target, extra)).encode()
+        sock = _s49i.create_connection((_host49i, _port49i), timeout=5)
+        try:
+            sock.sendall(req)
+            buf = b""
+            while b"\r\n\r\n" not in buf:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+        finally:
+            sock.close()
+        head = buf.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        return head[0], [h for h in head[1:] if h.lower().startswith(("connection", "keep-alive"))]
+
+    absolute_c49i = {t: line_c49i(t)[0] for t in (
+        "http://example.invalid/identity", "http://u:p@h/identity", "http:///identity",
+        "http://h/", "HTTP://example.invalid/identity", "Http://h/identity",
+        "https://example.invalid/identity", "ftp://h/x", "xyz://h/x",
+        "http:/example.invalid/identity", "http://example.invalid", "http://", "http:")}
+    want_c49i = {
+        "http://example.invalid/identity": "HTTP/1.1 200 OK",
+        "http://u:p@h/identity": "HTTP/1.1 200 OK",
+        "http:///identity": "HTTP/1.1 200 OK",
+        "http://h/": "HTTP/1.1 200 OK",
+        "HTTP://example.invalid/identity": "HTTP/1.1 400 Bad Request",
+        "Http://h/identity": "HTTP/1.1 400 Bad Request",
+        "https://example.invalid/identity": "HTTP/1.1 400 Bad Request",
+        "ftp://h/x": "HTTP/1.1 400 Bad Request",
+        "xyz://h/x": "HTTP/1.1 400 Bad Request",
+        "http:/example.invalid/identity": "HTTP/1.1 400 Bad Request",
+        "http://example.invalid": "HTTP/1.1 400 Bad Request",
+        "http://": "HTTP/1.1 400 Bad Request",
+        "http:": "HTTP/1.1 400 Bad Request",
+    }
+    check("the absolute-form request target is routed and every other scheme is a 400",
+          absolute_c49i == want_c49i,
+          "%s" % {k: v for k, v in absolute_c49i.items() if want_c49i[k] != v})
+    check("an absolute-form target answers what the origin form answers",
+          line_c49i("http://1.2.3.4:9999/identity")[0] == line_c49i("/identity")[0]
+          == "HTTP/1.1 200 OK", "")
+
+    pipe_c49i = {
+        "query disable": line_c49i("/identity?X-Plex-Http-Pipeline=disable")[1],
+        "query DISABLE": line_c49i("/identity?X-Plex-Http-Pipeline=DISABLE")[1],
+        "lower-case name": line_c49i("/identity?x-plex-http-pipeline=disable")[1],
+        "last wins": line_c49i("/identity?X-Plex-Http-Pipeline=zzz&X-Plex-Http-Pipeline=disable")[1],
+        "last wins the other way":
+            line_c49i("/identity?X-Plex-Http-Pipeline=disable&X-Plex-Http-Pipeline=zzz")[1],
+        "header beats query":
+            line_c49i("/identity?X-Plex-Http-Pipeline=zzz", "X-Plex-Http-Pipeline: disable\r\n")[1],
+        "header beats query the other way":
+            line_c49i("/identity?X-Plex-Http-Pipeline=disable", "X-Plex-Http-Pipeline: zzz\r\n")[1],
+    }
+    close_c49i = ["Connection: close"]
+    keep_c49i = ["Connection: Keep-Alive", "Keep-Alive: timeout=20"]
+    check("X-Plex-Http-Pipeline works as a query parameter, with the header's grammar",
+          pipe_c49i == {"query disable": close_c49i, "query DISABLE": keep_c49i,
+                        "lower-case name": keep_c49i, "last wins": close_c49i,
+                        "last wins the other way": keep_c49i,
+                        "header beats query": close_c49i,
+                        "header beats query the other way": keep_c49i},
+          "%s" % pipe_c49i)
+
     # Cycle 49, from raw sockets on kids (1.43.4), zen (1.42.2) and plexscratch42: the
     # CONNECTION layer, which no cycle had swept. A real PMS answers a GET carrying a
     # declared body without waiting (cycle 37's half) and THEN consumes exactly

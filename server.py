@@ -17704,6 +17704,10 @@ class Handler(BaseHTTPRequestHandler):
     # checked at all -- only the SHAPE is. `HTTP/1` with no minor is a 400.
     _VERSION = re.compile(rb"^HTTP/\d\.\d$")
 
+    # A target in scheme form. Anything matching this must be the absolute form a real
+    # PMS accepts -- lower-case `http://<authority>/<path>` -- or it is a 400.
+    _SCHEME = re.compile(rb"^[A-Za-z][A-Za-z0-9+.-]*:")
+
     def _request_line_ok(self):
         """The request LINE's own grammar, measured on kids and zen.
 
@@ -17754,6 +17758,31 @@ class Handler(BaseHTTPRequestHandler):
         if not self._VERSION.match(version) or target == b"*":
             self.send_error(400)
             return False
+        # Cycle 49, 20 forms on kids and zen with both references identical: a real PMS
+        # accepts the ABSOLUTE FORM -- what a client sends through an explicit HTTP proxy
+        # -- and routes it, discarding the authority entirely. `http://example.invalid/
+        # library/sections` is byte-identical to the origin-form answer, and so is
+        # `http://1.2.3.4:9999/...`. plexsim 404'd every one of them, reading the scheme
+        # as a path segment. The scheme must be lower-case `http` exactly (`HTTP://`,
+        # `Http://` and `https://` are 400s, as are `http:/h/x`, `http://h` with no path,
+        # and a bare `http:`), and a path is mandatory. Rewritten here so that every rule
+        # downstream -- the printable-ASCII target, the escape grammar, the dot segments,
+        # the query-pair 400 -- sees the origin form it was measured on.
+        if self._SCHEME.match(target):
+            rest = target[len(b"http:"):] if target.startswith(b"http:") else b""
+            authority, slash, path = rest[2:].partition(b"/")
+            if not rest.startswith(b"//") or not slash or b"?" in authority:
+                # Every other scheme-shaped target is refused outright: `HTTP://`,
+                # `Http://`, `https://`, `ftp://`, `xyz://`, `http:/h/x`, `http://h`
+                # with no path, `http://` and a bare `http:` are all 400s on both
+                # references, where plexsim read the scheme as a path segment and
+                # answered its ordinary 404 (or, for `http:`, the plug-in dispatcher's
+                # 200 for a single unknown segment).
+                self.send_error(400)
+                return False
+            target = b"/" + path
+            self.raw_requestline = b"%s %s %s\r\n" % (method, target, version)
+            self.requestline = self.raw_requestline.decode("latin-1").strip()
         if (not self._TARGET_BYTES.match(target)
                 or not self._path_escapes_ok(target.split(b"?", 1)[0])):
             self.send_error(400)
@@ -18129,6 +18158,26 @@ class Handler(BaseHTTPRequestHandler):
     FRAMEWORK_COOKIE = ("com.plexapp.system=Y2VyZWFsMQozCmRpY3QKbGlzdApkaWN0CjIKcjEKczcK"
                         "Y29va2llc3IyCnM3CnNlc3Npb24wCjAKcjAK")
 
+    def _pipeline_disabled(self):
+        """Whether this request asked for the connection to be closed after the answer.
+
+        Cycle 45 measured the HEADER. Cycle 49 measured the rest, 15 spellings on kids
+        and zen: the same opt-out works as a QUERY parameter, with the header's grammar
+        exactly -- the value must be lower-case `disable` (`DISABLE`, `Disable`, empty
+        and `zzz` keep the connection), the parameter name is case-SENSITIVE, a repeated
+        parameter takes the LAST occurrence, and the HEADER wins when both are sent.
+        That is the same header-or-query family `X-Plex-Platform` and `X-Plex-Language`
+        already belong to; plexsim read the header alone.
+        """
+        value = self.headers.get("X-Plex-Http-Pipeline")
+        if value is None:
+            raw = getattr(self, "path", "") or ""
+            pairs = urllib.parse.parse_qsl(raw.partition("?")[2], keep_blank_values=True)
+            for name, candidate in pairs:
+                if name == "X-Plex-Http-Pipeline":
+                    value = candidate
+        return value == "disable"
+
     def _connection_headers(self):
         """`Connection` (and `Keep-Alive` when the socket is being kept), as `_send` does.
 
@@ -18138,7 +18187,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 46: the hand-written /web redirect calls this helper directly
         # rather than going through _send. Honour the same exact pipeline opt-out
         # here so that response also closes and omits Keep-Alive.
-        if self.headers.get("X-Plex-Http-Pipeline") == "disable":
+        if self._pipeline_disabled():
             self.close_connection = True
         if self.close_connection:
             self.send_header("Connection", "close")
@@ -18240,7 +18289,7 @@ class Handler(BaseHTTPRequestHandler):
             # the socket. `DISABLE`, `Disable`, `infinite`, `zzz`, `0`, `1` and an
             # empty value all keep it alive. `Plex Transcoder` sends this header on its
             # own calls back to PMS.
-            if self.headers.get("X-Plex-Http-Pipeline") == "disable":
+            if self._pipeline_disabled():
                 self.close_connection = True
                 self.send_header("Connection", "close")
             elif self.close_connection:
