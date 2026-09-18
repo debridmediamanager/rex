@@ -2042,6 +2042,13 @@ def _with_client_titles(node, product):
     if not isinstance(node, dict):
         return node
     copy = None
+    # Cycle 50: a DECISION's streams are not given the client's codec suffix. kids answers
+    # `displayTitle: "1080p"` there with `X-Plex-Product: Plex Web` on the wire, where the
+    # same stream on the item row is `1080p (H.264)`. The row is marked by the same
+    # `_session` flag that orders it, so the exclusion rides with the projection rather
+    # than being read off the path.
+    if node.get("_session"):
+        return node
     if node.get("streamType") in (1, 3) and node.get("displayTitle"):
         title = mediainfo_module.client_display_title(node, product)
         if title != node["displayTitle"]:
@@ -13702,6 +13709,43 @@ class PlexSim:
             copy["Part"] = parts
             media.append(copy)
         item["Media"] = media
+
+        # Cycle 50: a decision container is written by the SAME serialiser
+        # `/status/sessions` uses, which cycle 46 found there and nobody asked about
+        # here. Measured on kids (1.43.4) and plexscratch42 (1.42.2): the row's scalars
+        # come out ALPHABETICALLY and so do its `Media`, `Part`, `Stream`, `Rating` and
+        # every person tag, with the decision flags after; `librarySectionID` and every
+        # tag `id` and `Rating.value` are JSON STRINGS; `UltraBlurColors` is a LIST of
+        # one; an EMPTY `summary` is omitted where a non-empty one is sent (which is what
+        # cycle 26's "a decision row KEEPS summary" was fitted to -- the one copy row
+        # whose summary is the empty string, read the other way round); and the
+        # client-title codec suffix is NOT applied although `X-Plex-Product: Plex Web` is
+        # on the wire. `Field` is the one child kept in its own order.
+        item["_session"] = True
+        if item.get("librarySectionID") is not None:
+            item["librarySectionID"] = str(item["librarySectionID"])
+        if item.get("summary") == "":
+            item.pop("summary")
+        if isinstance(item.get("UltraBlurColors"), dict):
+            item["UltraBlurColors"] = [dict(item["UltraBlurColors"], _session=True)]
+        if item.get("Rating"):
+            item["Rating"] = [dict(rating, _session=True,
+                                   **({"value": str(rating["value"])}
+                                      if rating.get("value") is not None else {}))
+                              for rating in item["Rating"]]
+        for tags in ("Genre", "Country", "Director", "Writer", "Role", "Producer",
+                     "Collection", "Similar", "Guid", "Label", "Style", "Mood"):
+            if item.get(tags):
+                item[tags] = [dict(tag, _session=True,
+                                   **({"id": str(tag["id"])} if tag.get("id") is not None
+                                      else {}))
+                              for tag in item[tags]]
+        for source in item["Media"]:
+            source["_session"] = True
+            for part in source.get("Part") or []:
+                part["_session"] = True
+                for stream in part.get("Stream") or []:
+                    stream["_session"] = True
         return item
 
     def download_queue(self, method, segments, query, headers=None):
