@@ -7662,6 +7662,89 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, from raw sockets on kids (1.43.4), zen (1.42.2) and plexscratch42: the
+    # CONNECTION layer, which no cycle had swept. A real PMS answers a GET carrying a
+    # declared body without waiting (cycle 37's half) and THEN consumes exactly
+    # `Content-Length` bytes, so two requests on one socket get two answers; plexsim left
+    # the bytes in the stream and the client was handed a refusal belonging to nothing it
+    # sent. When the body never comes a real PMS closes. A header block ended by EOF
+    # rather than by a blank line is answered with NOTHING -- plexsim ran it, and a
+    # query-only write really committed. And the incomplete-request cap is ABSOLUTE from
+    # the first byte, where Python's socket timeout is per-read: fifty clients dribbling a
+    # byte every two seconds held fifty threads where a real PMS dropped all fifty.
+    import socket as _sock49h
+    host_c49h, _, port_c49h = base.split("//", 1)[1].partition(":")
+    port_c49h = int(port_c49h.split("/")[0])
+
+    def wire_c49h(payload, half_close=False, wait=3.0):
+        """Send raw bytes, read everything back, and say whether the peer closed."""
+        sock = _sock49h.create_connection((host_c49h, port_c49h), timeout=wait)
+        try:
+            sock.sendall(payload)
+            if half_close:
+                sock.shutdown(_sock49h.SHUT_WR)
+            sock.settimeout(wait)
+            buf = b""
+            closed = False
+            try:
+                while True:
+                    chunk = sock.recv(65536)
+                    if not chunk:
+                        closed = True
+                        break
+                    buf += chunk
+                    if len(buf) > 400000:
+                        break
+            except _sock49h.timeout:
+                pass
+            return [buf[i:i + 40].split(b"\r\n")[0].decode("latin-1")
+                    for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)], closed
+        finally:
+            sock.close()
+
+    lines_c49h, _ = wire_c49h(
+        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhello"
+        b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+    check("a declared body on a GET is consumed, so the next request is still read",
+          lines_c49h == ["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], "%s" % (lines_c49h,))
+
+    lines_c49h2, closed_c49h2 = wire_c49h(
+        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\n", wait=2.0)
+    check("a declared body that never arrives closes the connection after the answer",
+          lines_c49h2 == ["HTTP/1.1 200 OK"] and closed_c49h2,
+          "%s closed=%s" % (lines_c49h2, closed_c49h2))
+
+    lines_c49h3, _ = wire_c49h(
+        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: +5\r\n\r\nhello"
+        b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+    check("a leading + on Content-Length parses",
+          lines_c49h3 == ["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], "%s" % (lines_c49h3,))
+
+    lines_c49h4, _ = wire_c49h(b"GET /library/sections HTTP/1.1\r\nHost: h\r\n",
+                               half_close=True, wait=3.0)
+    check("a header block ended by EOF rather than a blank line is answered with nothing",
+          lines_c49h4 == [], "%s" % (lines_c49h4,))
+
+    # The request deadline is ABSOLUTE: three pieces eleven seconds apart is 22 s in total
+    # and never 20 s idle, and both references close it at 20.0 s with no answer.
+    req_c49h = (b"GET /identity HTTP/1.1\r\nHost: h\r\nX-Plex-Pad: " + b"y" * 300 + b"\r\n\r\n")
+    step_c49h = (len(req_c49h) + 2) // 3
+    sock_c49h = _sock49h.create_connection((host_c49h, port_c49h), timeout=40)
+    try:
+        for at_c49h in range(0, len(req_c49h), step_c49h):
+            sock_c49h.sendall(req_c49h[at_c49h:at_c49h + step_c49h])
+            if at_c49h + step_c49h < len(req_c49h):
+                time.sleep(11)
+        sock_c49h.settimeout(15)
+        try:
+            answer_c49h = sock_c49h.recv(4096)
+        except _sock49h.timeout:
+            answer_c49h = b"TIMEOUT"
+    finally:
+        sock_c49h.close()
+    check("an incomplete request is dropped 20 s after its FIRST byte, not after 20 s idle",
+          answer_c49h == b"", "%r" % answer_c49h[:32])
+
     # Cycle 49 REFUTES cycle 23's "this form carries NO Duplicates Filter row at all".
     # Re-measured on zen (1.42.2), kids (1.43.4) and both unclaimed copies in both
     # parameter orders: with `includeAdvanced=1` the row IS there, and it is the one
