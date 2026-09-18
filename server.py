@@ -2601,7 +2601,10 @@ class PlexSim:
         self.owner_email = owner_email or owner_username
         # Reported on /myplex/account the way fun and zen do.
         self.public_address = ""
+        # The server's own LAN address and the port it really listens on. main()
+        # fills both in; they are what `/servers` and `/myplex/account` report.
         self.private_address = ""
+        self.private_port = 0
         self.unknown = []
         self.requests = []
         self.lock = threading.Lock()
@@ -5088,11 +5091,19 @@ class PlexSim:
             # A real PMS refuses this without the headers its own clients send.
             return ("error", 400, "plexsim: bad request")
         if route == "/servers":
+            # Cycle 49: this list is what the server has DISCOVERED, and its own row
+            # carries its own real address and its own real port. zen answers
+            # `192.168.88.244` and kids `172.31.7.2` -- each server's own interface
+            # address, not loopback -- and both name the port they listen on. plexsim
+            # hard-coded `127.0.0.1` and the constant 32400, so a companion client that
+            # reads /servers to find this server was sent to its own loopback on a port
+            # plexsim may not even be on. (`private_address` was declared and never
+            # assigned for the whole life of the field.)
             return self.bare_container(size=1, Server=[{
                 "name": catalog.friendly,
                 "host": self.private_address or "127.0.0.1",
                 "address": self.private_address or "127.0.0.1",
-                "port": 32400,
+                "port": self.private_port or 32400,
                 "machineIdentifier": catalog.machine,
                 "version": SERVER_VERSION,
             }])
@@ -6200,8 +6211,13 @@ class PlexSim:
                 "signInState": "ok" if claimed else "none",
                 "publicAddress": self.public_address or "",
                 "publicPort": 0,
+                # Cycle 49: the pair moves TOGETHER. zen answers
+                # `privateAddress="192.168.88.244" privatePort="32400"` and kids, whose
+                # plex.tv mapping carries no local connection, answers `""` and **0** --
+                # never a port beside an empty address, which is the combination plexsim
+                # was the only server to produce.
                 "privateAddress": self.private_address or "",
-                "privatePort": 32400,
+                "privatePort": (self.private_port or 32400) if self.private_address else 0,
                 # Cycle 45: this is the SAME STRING as `/`'s `ownerFeatures`,
                 # byte for byte on both references. plexsim sent the bare `pass` here
                 # and a three-name list there, so its own two answers disagreed.
@@ -20031,6 +20047,27 @@ def main():
             sim.push_log(record)
 
     logger.addHandler(_Capture())
+
+    # Cycle 49: `/servers` and `/myplex/account` both report the server's OWN address,
+    # and every real PMS answers its interface address there rather than loopback. The
+    # connected-UDP trick asks the routing table which source address would be used to
+    # reach the outside world; it sends nothing.
+    def _own_address(bind_host):
+        if bind_host not in ("", "0.0.0.0", "::"):
+            return bind_host
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.connect(("192.0.2.1", 9))          # TEST-NET-1: never routed anywhere
+            return probe.getsockname()[0]
+        except OSError:
+            # No route at all -- which is the state kids is in, and kids answers an
+            # EMPTY privateAddress there rather than inventing one.
+            return ""
+        finally:
+            probe.close()
+
+    sim.private_address = _own_address(args.host)
+    sim.private_port = args.port
 
     server = Server((args.host, args.port), sim, args.verbose)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")

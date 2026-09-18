@@ -7574,6 +7574,48 @@ def main():
           "HTTP %s, %d movie(s), states %s" % (holder_w15f, len(movies_w15f), states_w15f[:6]))
 
 
+    # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): `/servers` is the list of
+    # servers this one has discovered, and its OWN row carries its own interface address
+    # and the port it really listens on -- zen `192.168.88.244`/32400, kids
+    # `172.31.7.2`/32400, neither one loopback. plexsim answered `127.0.0.1` and the
+    # CONSTANT 32400 whatever port it was on, because `private_address` was declared and
+    # never assigned. A companion client reads this list to find the server.
+    port_c49a = int(base.rsplit(":", 1)[1].split("/")[0])
+    _, servers_c49a, _ = container(base, "GET", "/servers")
+    row_c49a = (servers_c49a.get("Server") or [{}])[0]
+    check("the /servers self row names the port the server really listens on",
+          row_c49a.get("port") == port_c49a,
+          "port %r on a server at %s" % (row_c49a.get("port"), base))
+    probe_c49a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe_c49a.connect(("192.0.2.1", 9))          # TEST-NET-1, never routed: sends nothing
+        routed_c49a = probe_c49a.getsockname()[0]
+    except OSError:
+        routed_c49a = ""                               # no route at all, which is kids' state
+    finally:
+        probe_c49a.close()
+    check("the /servers self row names this host's own address, not loopback",
+          (not routed_c49a) or row_c49a.get("address") == routed_c49a,
+          "address %r, this host routes from %r" % (row_c49a.get("address"), routed_c49a))
+    check("the /servers self row's host and address are the same string",
+          row_c49a.get("host") == row_c49a.get("address"),
+          "%r / %r" % (row_c49a.get("host"), row_c49a.get("address")))
+
+    # Cycle 49: `privateAddress` and `privatePort` move TOGETHER. zen carries both and
+    # kids -- whose plex.tv mapping holds no local connection -- carries `""` and **0**.
+    # plexsim was the only server of the four that answered a port beside an empty
+    # address, because the port was the literal 32400.
+    _, raw_c49b, _ = request(base, "GET", "/myplex/account")
+    my_c49b = json.loads(raw_c49b).get("MyPlex") or {}
+    addr_c49b = my_c49b.get("privateAddress")
+    pport_c49b = my_c49b.get("privatePort")
+    check("privateAddress and privatePort are both set or both empty",
+          bool(addr_c49b) == bool(pport_c49b),
+          "privateAddress=%r privatePort=%r" % (addr_c49b, pport_c49b))
+    check("a known privateAddress reports the real port",
+          (not addr_c49b) or pport_c49b == port_c49a,
+          "privateAddress=%r privatePort=%r want %d" % (addr_c49b, pport_c49b, port_c49a))
+
     def activities_w15(frames):
         return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
                 for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
