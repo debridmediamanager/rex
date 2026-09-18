@@ -1973,6 +1973,24 @@ def main():
     check("playlist sorts are offered",
           status == 200 and len(sorts.get("Directory") or []) >= 6,
           "%d sort(s)" % len(sorts.get("Directory") or []))
+    # Cycle 49 REFUTES cycle 15's "the two lists really are different": re-measured on
+    # zen (1.42.2), kids (1.43.4) and both unclaimed copies in six parameter spellings,
+    # `/playlists/sorts` ends with the SAME `mediaCount` "Item Count" row the `Meta`
+    # descriptor carries. plexsim ended it with `updatedAt` "Date Modified", so its two
+    # surfaces contradicted each other and the page's sort menu offered a key the
+    # playlist listing does not advertise.
+    rows_c49d = [(d_c49d.get("key"), d_c49d.get("title"), d_c49d.get("descKey"))
+                 for d_c49d in sorts.get("Directory") or []]
+    check("/playlists/sorts ends with mediaCount \"Item Count\"",
+          rows_c49d[-1:] == [("mediaCount", "Item Count", "mediaCount:desc")],
+          "%s" % (rows_c49d[-1:],))
+    meta_c49d = get(base, "/playlists?includeMeta=1")[1].get("Meta") or {}
+    types_c49d = meta_c49d.get("Type") or []
+    check("/playlists/sorts and the Meta descriptor are the same list",
+          rows_c49d == [(s_c49d.get("key"), s_c49d.get("title"), s_c49d.get("descKey"))
+                        for s_c49d in (types_c49d[0].get("Sort") if types_c49d else []) or []],
+          "%d vs %d rows" % (len(rows_c49d),
+                             len((types_c49d[0].get("Sort") if types_c49d else []) or [])))
 
     # ------------------------------------------------------------------
     # 14. Collections as items of their own
@@ -11376,9 +11394,10 @@ def main():
     # `Meta.Type[].Sort` is what the playlist page reads straight into its sort menu, so
     # without it the menu is empty. plexsim sent no Meta on either path.
     #
-    # The sixth sort is `mediaCount` "Item Count" -- NOT the `updatedAt` "Date Modified"
-    # that `/playlists/sorts` ends with. The two lists are different and were measured
-    # separately.
+    # The sixth sort is `mediaCount` "Item Count". Cycle 15 recorded that
+    # `/playlists/sorts` ends with `updatedAt` "Date Modified" instead; cycle 49
+    # re-measured that path on four servers and it carries this same row, so the two
+    # lists are identical and the "they are different" half is REFUTED.
     meta_c15m = get(base, "/playlists?includeMeta=1")[1].get("Meta") or {}
     types_c15m = meta_c15m.get("Type") or []
     sorts_c15m = [(s_c15m.get("key"), s_c15m.get("title"))

@@ -722,9 +722,9 @@ def _begins_word(text, wanted):
 # `/playlists/sorts`, from a real PMS.
 # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), byte-identical on both:
 # the `Meta` descriptor `/playlists?includeMeta=1` carries. Its sixth sort is
-# `mediaCount` "Item Count" where `/playlists/sorts` below ends with `updatedAt`
-# "Date Modified" -- the two lists really are different, and each was measured on
-# its own path. The client reads `Meta.Type[].Sort` straight into its sort menu.
+# `mediaCount` "Item Count" -- and cycle 49 re-measured `/playlists/sorts` on four
+# servers and found the SAME row there, so the two lists are identical after all.
+# The client reads `Meta.Type[].Sort` straight into its sort menu.
 # Cycle 15, captured verbatim from plexscratch: the two settings a collection's
 # `includePreferences=1` block carries. Which SECOND one appears depends on `smart` --
 # a smart collection has `collectionFilterBasedOnUser` and no collection ORDER at all,
@@ -820,8 +820,14 @@ PLAYLIST_SORTS = [
      "title": "Duration"},
     {"defaultDirection": "desc", "descKey": "addedAt:desc", "key": "addedAt",
      "title": "Date Added"},
-    {"defaultDirection": "desc", "descKey": "updatedAt:desc", "key": "updatedAt",
-     "title": "Date Modified"},
+    # Cycle 49 REFUTES cycle 15's "the two lists really are different". Re-measured on
+    # zen (1.42.2), kids (1.43.4) and both unclaimed copies, in six parameter spellings:
+    # `/playlists/sorts` ends with `mediaCount` "Item Count", exactly as the `Meta` that
+    # `/playlists?includeMeta=1` carries does. plexsim's two surfaces disagreed with each
+    # other, and the Playlists page's sort menu -- built from this URL -- offered a
+    # "Date Modified" that sorts on a key the playlist listing does not advertise.
+    {"defaultDirection": "desc", "descKey": "mediaCount:desc", "key": "mediaCount",
+     "title": "Item Count"},
 ]
 
 # `/system/agents` -- the modern agents a real PMS lists, each with the Language
