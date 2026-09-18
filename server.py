@@ -16521,8 +16521,14 @@ class PlexSim:
             # code and the title and dropped the flag, which turned a cycle-17 check red
             # -- the Add Library dialog preselects the row that carries it, so a German
             # user would have had the dropdown open on English.
+            # Cycle 49: `default` is the JSON BOOLEAN `true` on all four references and
+            # plexsim sent the STRING `"1"`. It survived because `agent_languages.json`
+            # is read out of the XML -- the only form that carries every row -- and the
+            # XML writes `default="1"` either way, so no XML sweep could ever see it.
             agents = [dict(agent, Language=[
-                dict(zip(("code", "title", "default"), row)) for row in rows])
+                dict(zip(("code", "title"), row[:2]),
+                     **({"default": True} if len(row) > 2 else {}))
+                for row in rows])
                 for agent in agents]
         return self.bare_container(size=len(agents), Agent=agents,
                                    _repeatKeys=True)

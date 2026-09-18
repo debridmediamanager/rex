@@ -519,8 +519,10 @@ def _element_name(key, row, overrides=None):
     return key
 
 
-# The two roots on the surface that are not a `MediaContainer`, both measured:
-# `/butler` answers `ButlerTasks` and `/library/sections/{id}/query/parse` a `Query`.
+# The roots on the surface that are not a `MediaContainer` but order their attributes
+# the way a container does, both measured: `/butler` answers `ButlerTasks` and
+# `/library/sections/{id}/query/parse` a `Query`. `MyPlex`, the third non-container root,
+# is NOT one of them -- see `to_xml`.
 _ROOT_NAMES = {"ButlerTasks", "Query"}
 
 
@@ -725,7 +727,17 @@ def to_xml(container, elements=None):
     """
     root, body = next(iter(container.items()))
     out = ['<?xml version="1.0" encoding="UTF-8"?>\n']
-    _render(root, body, out, elements, container=True)
+    # Cycle 49: the ROOT is not automatically a container. `to_xml` hard-coded it, so
+    # `/myplex/account` -- whose root is `MyPlex` -- came out with its attributes sorted
+    # alphabetically in XML while `ordered()`, which computes the same predicate
+    # properly, left the JSON in the reference's order. Both references emit ONE order in
+    # both formats (`authToken username mappingState mappingError signInState
+    # publicAddress publicPort privateAddress privatePort subscriptionFeatures
+    # subscriptionActive subscriptionState`), so this was the fifth instance of the
+    # two-writer bug cycle 19 established never happens on a real PMS -- and the only one
+    # left, because `ButlerTasks` and `Query` carry no attributes at all to disagree on.
+    _render(root, body, out, elements,
+            container=(root.endswith("Container") or root in _ROOT_NAMES))
     # Cycle 22, measured on zen (236 newlines in one movie's document) and kids (34):
     # a real PMS writes ONE element per line, with no indentation, and the document
     # ends with a newline. plexsim joined the pieces with nothing, so every XML
