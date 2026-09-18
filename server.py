@@ -1827,7 +1827,14 @@ def _public_row(row):
 # sample available (the richest row in 240 zen movies has two), so it is left alone
 # rather than guessed at; `Collection` and `Label` had no sample either.
 GRID_TAG_CAPS = {"Genre": 2, "Writer": 2, "Country": 2, "Role": 3, "Director": 3}
-GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection", "Label")
+# Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie made
+# to carry every tag family at once: a light row carries exactly `Genre, Country,
+# Director, Writer, Role, Collection` and NOT `Label`, `Style`, `Similar` or `Mood` --
+# the reference's grid row for that movie is `Genre Country Collection Director` where
+# its detail row is `Genre Country Style Collection Director Producer Label Similar`.
+# `label` is an advertised editable tag field on a movie library, so a Label chip was
+# reachable from the Edit dialog's Tags pane and drew on every grid tile and hub row.
+GRID_TAGS = ("Genre", "Country", "Director", "Writer", "Role", "Collection")
 
 
 def _bool_option(value):
@@ -2380,8 +2387,15 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     the container, where a hub's rows keep them. plexsim sent the full detail row
     everywhere. The catalog's own lists are shared, so this copies what it trims.
     """
+    # Cycle 49 added `Label`, `Style`, `Similar` and `Mood` to the dropped set. Measured
+    # on both writable copies on a movie made to carry every tag family at once: the
+    # reference's grid row is `Genre Country Collection Director` where its detail row is
+    # `Genre Country Style Collection Director Producer Label Similar`. plexsim passed all
+    # four through -- `Label` text-only through GRID_TAGS, the other three with their full
+    # `id`/`filter`, which the light projection never carries.
     out = {k: v for k, v in row.items()
-           if k not in ("Rating", "Field", "Producer")
+           if k not in ("Rating", "Field", "Producer",
+                        "Label", "Style", "Similar", "Mood")
            and (k != "Location" or keep_location)
            and (k != "Guid" or keep_guid)}
     # Cycle 19, measured on kids (1.43.4) and zen (1.42.2): a LIGHT row orders its
@@ -13851,8 +13865,13 @@ class PlexSim:
             # level only -- so they are COPIED here rather than marked in place. Writing
             # a marker into them would write it into the catalog, which is the trap the
             # `selected` flags fell into before cycle 15.
+            # Cycle 49: EVERY tag element the row holds, not a fixed ten. `Label`,
+            # `Style` and `Mood` were missing, so on this one path they came out in build
+            # order with a NUMERIC JSON `id` while the ten beside them were alphabetical
+            # with a string one -- the `/status/sessions` serialiser's own two rules.
             for tags in ("Genre", "Country", "Director", "Writer", "Role", "Producer",
-                         "Collection", "Similar", "Guid", "Field"):
+                         "Collection", "Similar", "Guid", "Field", "Label", "Style",
+                         "Mood"):
                 if item.get(tags):
                     item[tags] = [dict(tag, _session=True,
                                        **({"id": self._session_id(tag)} if tag.get("id") is not None
