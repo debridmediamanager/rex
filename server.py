@@ -878,6 +878,29 @@ try:
 except (OSError, ValueError, KeyError):
     AGENT_LANGUAGES = {}
 
+# Cycle 50: the LANGUAGE-LIST enums carry the language names in the REQUEST's language,
+# and `translations.json` has no `en` entry for them because English is the source -- so
+# an explicit `X-Plex-Language: en`, which is exactly what Plex Web sends, fell back to
+# the no-header list and the Advanced/Edit language picker read `català, Čeština,
+# Dansk...` where a real server reads `Catalan, Czech, Danish...`. The English spelling is
+# already in `agent_languages.json`; aligning it here by CODE invents nothing. Every other
+# language the reference answers and `translations.json` lacks (tr, th, and the regional
+# catalogues) is recorded in HANDOVER 3.3 rather than guessed at.
+for _source in list((TRANSLATIONS.get("enumValues") or {})):
+    if ":Library default|" not in _source and ":Account default|" not in _source \
+            and ":Series default|" not in _source:
+        continue
+    for _language, _rows in AGENT_LANGUAGES.items():
+        if not _language or _language in TRANSLATIONS["enumValues"][_source]:
+            continue
+        # The table's OWN rows and OWN order: cycle 45 measured that the list is stored
+        # per language and that the ORDER moves with the names (kids' Turkish list opens
+        # `de-DE:Almanca`), so it is not a re-spelling of the English one.
+        _lead, _, _ = _source.partition("|")
+        _tail = "|".join("%s:%s" % (_row[0], _row[1]) for _row in _rows)
+        if _tail:
+            TRANSLATIONS["enumValues"][_source][_language] = _lead + "|" + _tail
+
 
 # --------------------------------------------------------------------------
 # catalog
@@ -19012,7 +19035,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_container(self, container):
         language = self._language(None)
-        if language and language != "en" and TRANSLATIONS:
+        # Cycle 50: an explicit `en` is NOT "no translation". Plex Web sends
+        # `X-Plex-Language: en` on every request, and a real PMS answers the ENGLISH
+        # language-list enum there -- `ca-ES:Catalan|cs-CZ:Czech|...` -- where the
+        # NO-HEADER document names each language in itself (`català`, `Čeština`). This
+        # short-circuit made the two identical, so the Advanced/Edit language picker read
+        # the wrong spelling for every English user. English now goes through the
+        # localiser like any other language; the only `en` entries are the enums
+        # synthesised from `agent_languages.json`, so every other string falls through
+        # unchanged.
+        if language and TRANSLATIONS and language in TRANSLATED_LANGUAGES:
             body = next(iter(container.values()))
             # Cycle 25: the PLUG-IN FRAMEWORK's own container is not localised. `/system`
             # carries a `Directory` titled `Library Sections` -- the same English string
