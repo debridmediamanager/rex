@@ -1,0 +1,401 @@
+{
+ "measured": "2026-09-18",
+ "hosts": [
+  "zen 1.42.2 (claimed)",
+  "plexlab 1.43.4 (claimed)",
+  "plexscratch42 1.42.2 (unclaimed)",
+  "plexscratch 1.43.4 (unclaimed)"
+ ],
+ "ports": [
+  32410,
+  32414
+ ],
+ "silent_ports": [
+  32411,
+  32412,
+  32413
+ ],
+ "group": "239.0.0.250",
+ "servers": [
+  {
+   "label": "zen",
+   "version": "1.42.2.10156-f737b826c",
+   "name": "zen",
+   "port": 32400,
+   "machine": "e584cb2364c733c8d177ddab0140d307b5de2546",
+   "host": "52f61baa62dc4b78ae65d126bb72698d.plex.direct",
+   "updated_at": 1789689678,
+   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nHost: 52f61baa62dc4b78ae65d126bb72698d.plex.direct\r\nName: zen\r\nPort: 32400\r\nResource-Identifier: e584cb2364c733c8d177ddab0140d307b5de2546\r\nUpdated-At: 1789689678\r\nVersion: 1.42.2.10156-f737b826c\r\n\r\n"
+  },
+  {
+   "label": "plexlab",
+   "version": "1.43.4.10903-e5521bd8c",
+   "name": "plexlab",
+   "port": 32400,
+   "machine": "15fad815c00463b33e2e644245763ee42ef84757",
+   "host": "078903ce15614ec39e9b499ff18e8016.plex.direct",
+   "updated_at": 1789664935,
+   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nHost: 078903ce15614ec39e9b499ff18e8016.plex.direct\r\nName: plexlab\r\nPort: 32400\r\nResource-Identifier: 15fad815c00463b33e2e644245763ee42ef84757\r\nUpdated-At: 1789664935\r\nVersion: 1.43.4.10903-e5521bd8c\r\n\r\n"
+  },
+  {
+   "label": "plexscratch42 (unclaimed)",
+   "version": "1.42.2.10156-f737b826c",
+   "name": "6a94eec5772b",
+   "port": 32400,
+   "machine": "0d2eb677ef73a06e3e2068b945b42c047c0d0186",
+   "updated_at": 1789690002,
+   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nName: 6a94eec5772b\r\nPort: 32400\r\nResource-Identifier: 0d2eb677ef73a06e3e2068b945b42c047c0d0186\r\nUpdated-At: 1789690002\r\nVersion: 1.42.2.10156-f737b826c\r\n\r\n"
+  },
+  {
+   "label": "plexscratch (unclaimed)",
+   "version": "1.43.4.10903-e5521bd8c",
+   "name": "plexscratch",
+   "port": 32400,
+   "machine": "dad05a8389c9b1f20c916b2acfc5669317757a9a",
+   "updated_at": 1789690013,
+   "response": "HTTP/1.0 200 OK\r\nContent-Type: plex/media-server\r\nName: plexscratch\r\nPort: 32400\r\nResource-Identifier: dad05a8389c9b1f20c916b2acfc5669317757a9a\r\nUpdated-At: 1789690013\r\nVersion: 1.43.4.10903-e5521bd8c\r\n\r\n"
+  }
+ ],
+ "trigger": [
+  {
+   "label": "prefix len 0 of the client query",
+   "hex": "",
+   "answers": true
+  },
+  {
+   "label": "prefix len 1 of the client query",
+   "hex": "4d",
+   "answers": true
+  },
+  {
+   "label": "prefix len 2 of the client query",
+   "hex": "4d2d",
+   "answers": true
+  },
+  {
+   "label": "prefix len 3 of the client query",
+   "hex": "4d2d53",
+   "answers": true
+  },
+  {
+   "label": "prefix len 4 of the client query",
+   "hex": "4d2d5345",
+   "answers": true
+  },
+  {
+   "label": "prefix len 5 of the client query",
+   "hex": "4d2d534541",
+   "answers": true
+  },
+  {
+   "label": "prefix len 6 of the client query",
+   "hex": "4d2d53454152",
+   "answers": true
+  },
+  {
+   "label": "prefix len 7 of the client query",
+   "hex": "4d2d5345415243",
+   "answers": true
+  },
+  {
+   "label": "prefix len 8 of the client query",
+   "hex": "4d2d534541524348",
+   "answers": true
+  },
+  {
+   "label": "prefix len 9 of the client query",
+   "hex": "4d2d53454152434820",
+   "answers": true
+  },
+  {
+   "label": "prefix len 10 of the client query",
+   "hex": "4d2d534541524348202a",
+   "answers": true
+  },
+  {
+   "label": "prefix len 11 of the client query",
+   "hex": "4d2d534541524348202a20",
+   "answers": true
+  },
+  {
+   "label": "prefix len 12 of the client query",
+   "hex": "4d2d534541524348202a2048",
+   "answers": true
+  },
+  {
+   "label": "prefix len 13 of the client query",
+   "hex": "4d2d534541524348202a204854",
+   "answers": true
+  },
+  {
+   "label": "prefix len 14 of the client query",
+   "hex": "4d2d534541524348202a20485454",
+   "answers": true
+  },
+  {
+   "label": "prefix len 15 of the client query",
+   "hex": "4d2d534541524348202a2048545450",
+   "answers": true
+  },
+  {
+   "label": "prefix len 16 of the client query",
+   "hex": "4d2d534541524348202a20485454502f",
+   "answers": true
+  },
+  {
+   "label": "prefix len 17 of the client query",
+   "hex": "4d2d534541524348202a20485454502f31",
+   "answers": true
+  },
+  {
+   "label": "prefix len 18 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e",
+   "answers": true
+  },
+  {
+   "label": "prefix len 19 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e30",
+   "answers": true
+  },
+  {
+   "label": "prefix len 20 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e300d",
+   "answers": true
+  },
+  {
+   "label": "prefix len 21 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a",
+   "answers": true
+  },
+  {
+   "label": "prefix len 22 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a0d",
+   "answers": true
+  },
+  {
+   "label": "prefix len 23 of the client query",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a0d0a",
+   "answers": true
+  },
+  {
+   "label": "one wrong byte at position 0",
+   "hex": "5a2d534541524348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 1",
+   "hex": "4d5a534541524348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 2",
+   "hex": "4d2d5a4541524348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 3",
+   "hex": "4d2d535a41524348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 4",
+   "hex": "4d2d53455a524348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 5",
+   "hex": "4d2d5345415a4348202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 6",
+   "hex": "4d2d534541525a48202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 7",
+   "hex": "4d2d53454152435a202a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 8",
+   "hex": "4d2d5345415243485a2a",
+   "answers": false
+  },
+  {
+   "label": "one wrong byte at position 9",
+   "hex": "4d2d534541524348205a",
+   "answers": false
+  },
+  {
+   "label": "the 11-byte constant",
+   "hex": "4d2d534541524348202a20",
+   "answers": true
+  },
+  {
+   "label": "eleventh byte X",
+   "hex": "4d2d534541524348202a58",
+   "answers": false
+  },
+  {
+   "label": "eleventh byte CRLF",
+   "hex": "4d2d534541524348202a0d0a",
+   "answers": false
+  },
+  {
+   "label": "eleventh byte NUL",
+   "hex": "4d2d534541524348202a00",
+   "answers": false
+  },
+  {
+   "label": "junk after the constant",
+   "hex": "4d2d534541524348202a205a5a5a5a",
+   "answers": true
+  },
+  {
+   "label": "HTTP/1.1 client form",
+   "hex": "4d2d534541524348202a20485454502f312e310d0a",
+   "answers": true
+  },
+  {
+   "label": "HTTP/2.0",
+   "hex": "4d2d534541524348202a20485454502f322e300d0a0d0a",
+   "answers": true
+  },
+  {
+   "label": "full SSDP-style header block",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a486f73743a203233392e302e302e3235303a33323431340d0a4d616e3a2022737364703a646973636f766572220d0a4d583a20330d0a53543a20706c65782f6d656469612d7365727665720d0a0d0a",
+   "answers": true
+  },
+  {
+   "label": "lower case method",
+   "hex": "6d2d736561726368202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "no star",
+   "hex": "4d2d53454152434820485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "star with no space",
+   "hex": "4d2d5345415243482a",
+   "answers": false
+  },
+  {
+   "label": "slash instead of star",
+   "hex": "4d2d534541524348202f",
+   "answers": false
+  },
+  {
+   "label": "tab separator",
+   "hex": "4d2d534541524348092a0d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "two spaces",
+   "hex": "4d2d53454152434820202a0d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "leading space",
+   "hex": "204d2d534541524348202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "leading CRLF",
+   "hex": "0d0a4d2d534541524348202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "MSEARCH without the dash",
+   "hex": "4d534541524348202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "M_SEARCH with an underscore",
+   "hex": "4d5f534541524348202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "M-SEARCHX",
+   "hex": "4d2d53454152434858202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "OPTIONS",
+   "hex": "4f5054494f4e53202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "NOTIFY",
+   "hex": "4e4f54494659202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "HELLO",
+   "hex": "48454c4c4f202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "BYE",
+   "hex": "425945202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "UPDATE",
+   "hex": "555044415445202a20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "GET /",
+   "hex": "474554202f20485454502f312e300d0a0d0a",
+   "answers": false
+  },
+  {
+   "label": "a single space",
+   "hex": "20",
+   "answers": false
+  },
+  {
+   "label": "a single NUL",
+   "hex": "00",
+   "answers": false
+  },
+  {
+   "label": "a single A",
+   "hex": "41",
+   "answers": false
+  },
+  {
+   "label": "a bare CRLF",
+   "hex": "0d0a",
+   "answers": false
+  },
+  {
+   "label": "a bare LF",
+   "hex": "0a",
+   "answers": false
+  },
+  {
+   "label": "two spaces alone",
+   "hex": "2020",
+   "answers": false
+  },
+  {
+   "label": "four random bytes",
+   "hex": "00010203",
+   "answers": false
+  },
+  {
+   "label": "a 2 KB datagram behind the constant",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a583a2079797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979797979790d0a0d0a",
+   "answers": true
+  },
+  {
+   "label": "a non-ASCII header value",
+   "hex": "4d2d534541524348202a20485454502f312e300d0a583a2068c3a96c6c6f0d0a0d0a",
+   "answers": true
+  }
+ ]
+}

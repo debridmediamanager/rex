@@ -77,6 +77,7 @@ import decision as decision_module  # noqa: E402
 import sessions as sessions_module  # noqa: E402
 import metadata as metadata_module  # noqa: E402
 import spellfix as spellfix_module  # noqa: E402
+import gdm as gdm_module  # noqa: E402
 from debrid import Resolver, Unavailable as DebridUnavailable  # noqa: E402
 from xmlout import ordered as ordered_keys, to_xml  # noqa: E402
 
@@ -2586,6 +2587,9 @@ class PlexSim:
         # only when the measured scrobbling transport secret is configured.
         self.account_state = None
         self.account_refresh = None
+        # The GDM responder, when one is running: a FriendlyName write has to
+        # re-stamp the advertisement, because the name is one of its fields.
+        self.discovery = None
         # Directory holding the extracted Plex Web client, served at /web.
         self.web_root = web_root
         self.assert_claimed = assert_claimed
@@ -16078,6 +16082,9 @@ class PlexSim:
             # the host name. plexsim stored the preference and kept its old name everywhere,
             # so renaming the server in Settings changed nothing the client draws.
             self.catalog.friendly = dict(typed)["FriendlyName"] or socket.gethostname()
+            if self.discovery is not None:
+                self.discovery.name = self.catalog.friendly
+                self.discovery.touch()
         # One `preference` frame per written id, in ASCII order of the id, whether or not
         # the value changed -- the shape `/:/prefs/get` answers, label and summary emptied.
         # The client's alerts list and the Console consume these; plexsim pushed none.
@@ -19938,6 +19945,19 @@ def main():
         default=None,
         help="machineIdentifier to announce on; defaults to the catalog's own",
     )
+    # Cycle 49: a real PMS is FOUND on the LAN by answering GDM on udp/32410 and
+    # udp/32414 -- see gdm.py. `auto` is on only when the HTTP port is a real PMS's
+    # 32400, because a test instance on another port must not claim the host's one
+    # GDM identity; that gate is a deliberate deviation and is in HANDOVER 3.3.
+    parser.add_argument(
+        "--gdm", choices=("auto", "on", "off"), default="auto",
+        help="answer Plex's LAN discovery protocol on udp/32410 and udp/32414",
+    )
+    parser.add_argument(
+        "--plex-direct-host", default=None,
+        help="the <hash>.plex.direct hostname to advertise in GDM's Host: line; "
+             "omitted entirely when unknown, which is what a PMS with no certificate does",
+    )
     parser.add_argument("--heartbeat-interval", type=int, default=heartbeat_module.DEFAULT_INTERVAL)
     parser.add_argument("--account-state-interval", type=int,
                         default=accountstate_module.DEFAULT_INTERVAL,
@@ -20041,6 +20061,21 @@ def main():
             "Use --part-mode redirect unless you have verified Range passthrough."
         )
 
+    discovery = None
+    if args.gdm == "on" or (args.gdm == "auto" and args.port == 32400):
+        host = args.plex_direct_host
+        if host is None and args.public_url:
+            candidate = urllib.parse.urlsplit(args.public_url).hostname or ""
+            # Only a real plex.direct name goes in that line: a tunnel hostname is
+            # not what the field carries on either reference.
+            if candidate.endswith(".plex.direct"):
+                host = candidate
+        discovery = gdm_module.Discovery(
+            name=catalog.friendly, port=args.port, machine=catalog.machine,
+            version=SERVER_VERSION, host=host)
+        discovery.start()
+        sim.discovery = discovery
+
     beat = None
     if args.announce_url:
         plex_token = os.environ.get("PLEX_TOKEN")
@@ -20088,6 +20123,8 @@ def main():
         if account_sync is not None:
             account_sync.stop()
         account_refresh.stop()
+        if discovery is not None:
+            discovery.stop()
 
 
 if __name__ == "__main__":
