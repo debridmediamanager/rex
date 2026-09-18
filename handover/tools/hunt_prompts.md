@@ -2821,3 +2821,152 @@ decryptions and 309/309 latest-Bearer matches, zero unclassified read. Finite so
 24,452 advertisements and 49 controls/39 normalized families, zero unjoined or actionable row.
 Independent UI is 1,629/1,629. Every territory report ends exactly `no findings`; the loop stops
 until a new instrument or external universe exists. ====
+
+# Cycle 49 | Territory A | the CLAIMED-vs-UNCLAIMED census
+
+**The axis.** Every write rule this project holds, and a large share of its read rules, was
+measured on `plexscratch` or `plexscratch42` — which are **UNCLAIMED** servers, isolated from
+plex.tv. `zen` and `kids` are **CLAIMED**. Nobody has ever swept the difference systematically.
+Four differences are already known and recorded (`/livetv` answers 403 unclaimed and the three-row
+container claimed; `/statistics/*` 404s unclaimed; `/status/sessions/terminate` 401s unclaimed; no
+`Session` block is ever carried on a copy). Those four are the ones somebody happened to trip over.
+
+**This is the project's own failure class E — an instrument limit mistaken for a server rule — and
+it has never been audited.** plexsim runs `--assert-claimed`, so wherever a rule was copied off an
+unclaimed server and the claimed answer differs, plexsim is wrong.
+
+**What to do.**
+
+1. `plexscratch42` is the controlled instrument: it is the **same build as zen (1.42.2)** and the
+   same image, so a difference between them is either the claim or the library's content — and you
+   can tell those apart because `plexscratch` (1.43.4) is the same image as `kids` (1.43.4) and
+   gives you the second pair.
+2. Enumerate a broad, finite catalog of **safe read families** — every top-level path, every section
+   leaf, every item leaf, the hub paths, the `/system` subtree, `/media/providers`, `/:/prefs`,
+   `/library/shared`, `/myplex/*`, `/security/*`, `/updater/*`, `/butler`, `/devices`, `/accounts`,
+   `/clients*`, `/livetv/*`, `/media/*`, `/statistics/*`, `/sync*`, `/playQueues`, `/transcode/*`,
+   `/photo/:/transcode`, `/:/resources/*`, `/web/*`. Derive the list from what the servers
+   themselves emit (`GET /` carries 25 `Directory` rows naming the top-level endpoints) plus what
+   `docs/findings.md` names, rather than from what you can think of.
+3. For each family, read it on **all four servers** in both JSON and XML, with and without a token,
+   and classify each difference as: (a) claim-dependent, (b) version-dependent, (c) content-
+   dependent, (d) identical. Use the 2×2 (claimed/unclaimed × 1.42.2/1.43.4) to separate them —
+   that separation is the whole point of the design.
+4. For every claim-dependent difference, decide what **plexsim** should answer (it claims to be
+   claimed) and check what it actually answers on `http://127.0.0.1:32611`.
+5. Then go the other way: grep `docs/findings.md` for rules whose recorded evidence is
+   "measured on the copy" / "on plexscratch" / "on plexscratch42" and check each against the
+   claimed pair wherever a claimed server can answer it at all. Report every rule you find that is
+   a claim artifact.
+
+Report the family count, the four-way partition with counts, every claim-dependent difference, and
+for each one whether plexsim answers the claimed form. Also report the families where the claimed
+pair cannot be read at all (a write, a private surface), as explicit bounds rather than silence.
+
+
+# Cycle 49 | Territory B | the CONNECTION and TRANSPORT layer
+
+**The axis.** Cycle 37 swept the raw request *line* and the header caps; cycle 33 and cycle 50-era
+work swept the response *header block*; cycle 35 swept the encoded body; cycle 32 swept two
+concurrent requests released from one barrier. **Nobody has ever swept the connection itself** —
+what a real PMS does with the TCP stream around and between requests.
+
+Everything here must be driven from a **raw socket**, never `urllib`/`requests`/`curl`: every
+finding in this territory is invisible to a library that owns the connection for you.
+
+**What to measure**, on `zen` (1.42.2, the build plexsim reports) and `kids` (1.43.4), read-only, and
+then against frozen plexsim at `http://127.0.0.1:32611`:
+
+1. **Pipelining.** Two (and three) complete requests written into one socket in one `send()`, with
+   no read between. Does a real PMS answer both, in order, on the one connection? What about a
+   pipelined pair where the first is a 404 or a 401? What about a pipelined pair where the first
+   carries `Connection: close`? plexsim advertises `X-Plex-Http-Pipeline` handling (cycle 46), so
+   the answer matters.
+2. **Segmentation.** One request split across two or three TCP segments with a pause between
+   (header block split mid-name, mid-value, and exactly at the `\r\n\r\n`). Is there a timeout? How
+   long may a client take to finish a request line / a header block / a body before the server gives
+   up, and what does it answer when it does?
+3. **Keep-alive semantics.** `Connection: keep-alive` and `Connection: close` on an HTTP/1.0
+   request and on an HTTP/1.1 request, in both directions; an absent `Connection` on HTTP/1.0 (the
+   default is close) and on HTTP/1.1 (the default is keep-alive). What does the response say and
+   what does the socket actually do? The recorded rule is `Keep-Alive: timeout=20` and an idle
+   socket really closed at 20 s — re-measure the boundary and find out whether the timer is idle-
+   based or absolute, and whether it resets per request.
+4. **Request bodies.** `Transfer-Encoding: chunked` on a request that takes a body (the subtitle
+   upload on a writable copy; a query-only write). Is chunked accepted at all? A body larger than
+   `Content-Length`; a body smaller than it; `Content-Length` plus `Transfer-Encoding` together; two
+   `Content-Length` headers that disagree. The recorded rules are "an unparseable `Content-Length`
+   is IGNORED and a negative one is a 500" and "GET and HEAD never consume a declared request body"
+   — check what happens to the *next* request on the same socket in each case, which is the half
+   nobody measured.
+5. **Half-close and abort.** Client shuts down the write side after a complete request; client
+   resets the connection mid-response (an artwork read, a container read); client disappears during
+   a part read. What does the server log/do, and does anything leak (a session, a transcode, a
+   counter)? Cycle 44 measured that the bandwidth statistic counts what was WRITTEN — check the
+   connection-level half of that.
+6. **Connection limits.** How many simultaneous connections does a real PMS accept from one peer
+   before it stops accepting; what does the 101st look like? Keep this bounded and gentle on zen —
+   **it is production**: a handful of sockets, held briefly, never a flood. If you cannot do it
+   safely on zen, do it on `plexscratch42` and say so.
+7. **`Expect: 100-continue`** on a request with a body (recorded: no `100 Continue` is sent) — what
+   does the server do with the body, and with the socket, afterwards?
+
+For each cell, record the exact bytes sent, the exact bytes received, whether the socket stayed
+open, and the timing. Then check plexsim and report every difference.
+
+
+# Cycle 49 | Territory C | dual-format equality, exhaustively
+
+**The axis.** A real PMS answers the same document in XML and JSON, and this project has found four
+separate bugs where plexsim's two writers disagreed (`_xml=` never reaching the JSON writer; the
+`_light` marker stripped before the orderer; `json_body` stripping `null` and `[]`; and the JSON key
+order being the XML order). Each was found by accident, on one path. **The census has never been
+run.**
+
+Two things are invisible to every sweep this project has already done:
+
+* **A JSON scalar's TYPE.** XML cannot tell `"1"` from `1` from `true` from `1.0`. Known instances:
+  `durationTotal`/`storageTotal` are JSON STRINGS on a section grid row; a `Common`'s `userRating`
+  is `"8"` where the item row's is a number; `builtIn` is `"1"` on 1.42.2; `order` is `1000.0`; a
+  `/library/search` `score` is a NUMBER in JSON and five decimals in XML; `/status/sessions` sends
+  several ids as strings; `UltraBlurColors` is a LIST of one there. Those are the ones somebody
+  tripped over. **Sweep it.**
+* **The KEY SET and the KEY ORDER.** Which attributes each writer emits, and in what order. A real
+  PMS's JSON key order IS its XML order — verify that over every family rather than over the 1,241
+  pairs cycle 19 checked, and check the child-element key order too.
+* **Repeated children.** `/system/agents` writes its `Language` and `MediaType` as REPEATED JSON
+  KEYS rather than arrays (150 occurrences on zen, 195 on kids), so a JSON parser keeps exactly one.
+  Find out whether any OTHER path does that, by parsing the raw bytes rather than with `json.loads`.
+
+**What to do.**
+
+1. Build the family list from the servers' own words: `GET /` names the top-level endpoints; a
+   section's `Meta`/pivots name its leaves; `docs/findings.md` names the rest. Cover the item leaves,
+   the section leaves, the hub paths, the axes, `/system`, `/media/providers`, `/library/shared`,
+   the list surfaces, `/:/prefs`, the statistics endpoints and the write RESPONSES on a writable
+   copy. Aim for the same 76-family breadth cycle 46 used and say what your denominator is.
+2. For each family on `zen`, `kids` and frozen plexsim, fetch **both** formats (`Accept:
+   application/json` and `Accept: application/xml`) for the *identical* request, and compare:
+   attribute/key SET, key ORDER, and for each JSON scalar its TYPE. Parse JSON with a
+   duplicate-key-preserving parser (`object_pairs_hook`) so a repeated key is visible.
+3. Report every (family, element, attribute) where plexsim's JSON type differs from the
+   reference's, every key-set difference that is not explained by content, and every ordering
+   difference.
+4. Distinguish content differences from shape differences: plexsim's catalog is
+   `tests/catalog_ui.json`, not zen's library. Compare per (element, attribute) → set of observed
+   types, never row by row.
+
+Report the family denominator, the cell count, and the full partition. Bound explicitly anything
+plexsim cannot hold (a real rating, a real tag table) rather than reporting it as a mismatch.
+
+
+==== Cycle 49 result. The driver took GDM (the LAN discovery protocol plexsim answered
+nothing on) and found the whole surface plus `/servers`' own row and the transcoder ladder.
+Territory A swept 116 read families over the 2x2 of claim and version: 15 claim-dependent
+families, and one class-E correction (the ad-marker row cycle 35 read off two unclaimed
+copies). Territory B swept the connection itself from raw sockets and produced eight
+findings, three of them reachable. Territory C's dual-format census found one JSON type
+mismatch and one ordering mismatch in 1,331 pairs -- the useful negative -- plus four more
+from the tag-rich row it had to make. 26 findings, 23 commits. Territory A also found that
+BOTH references were broken instruments: a GET had corrupted a device row and made
+`/devices` and `/statistics/bandwidth` 500 on kids and zen. kids was repaired. ====
