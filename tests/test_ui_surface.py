@@ -7877,6 +7877,73 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50, driving the official Plex Web client end to end against plexsim: Settings
+    # -> Status -> **Conversions** renders "The conversion queue is unavailable." The
+    # client's own `initializeConversionView` waits on four requests and needs three of
+    # them, and plexsim answered none of the three: `/playQueues?type=42` was a 400 where
+    # all three references answer a one-row container, `/playlists?type=42` was empty
+    # where they answer the "Background Processing List", and `/playQueues/1` was a 404
+    # where it is permanently that queue. plexsim also handed id 1 to the first USER
+    # queue. This is cycle 6's rule from the other side: plexsim advertises
+    # `backgroundProcessing=true` on `/` and refused everything behind it. The
+    # `clientIdentifier` is the same constant on zen, kids and plexscratch42 -- PMS's own,
+    # not the install's -- and it is carried in the list's guid too.
+    # PMS's own background-processing queue and list -- the pair the official client's
+    # Settings -> Status -> Conversions page is built from.
+    _, pq42_c50b, _ = container(base, "GET", "/playQueues?type=42")
+    check("/playQueues?type=42 answers the background processing queue",
+          pq42_c50b.get("PlayQueue") == [{
+              "id": 1, "clientIdentifier": "55d3184c-28b9-43ce-842c-b7b03ca00e0f",
+              "totalItemsCount": 0, "type": "playlist", "shuffled": False}]
+          and pq42_c50b.get("size") == 1, "%r" % pq42_c50b)
+    grammar_c50b = {value: get(base, "/playQueues?type=%s" % value)[0]
+                    for value in ("0", "042", "00042", "%2B42", "1", "15", "abc", "")}
+    check("the type value is +?0*<digits>, 42 and 0 answer and everything else is a 400",
+          grammar_c50b == {"0": 200, "042": 200, "00042": 200, "%2B42": 200,
+                           "1": 400, "15": 400, "abc": 400, "": 400}, "%s" % grammar_c50b)
+    check("a bare /playQueues is an empty container",
+          get(base, "/playQueues")[0] == 200
+          and get(base, "/playQueues")[1].get("size") == 0, "")
+    check("a repeated type takes the last occurrence",
+          get(base, "/playQueues?type=1&type=42")[1].get("size") == 1
+          and get(base, "/playQueues?type=42&type=1")[0] == 400, "")
+
+    _, pl42_c50b, _ = container(base, "GET", "/playlists?type=42")
+    row_c50b = (pl42_c50b.get("Metadata") or [{}])[0]
+    check("/playlists?type=42 answers the Background Processing List",
+          [row_c50b.get(k) for k in ("guid", "type", "title", "summary", "playlistType")]
+          == ["com.plexapp.agents.none://55d3184c-28b9-43ce-842c-b7b03ca00e0f",
+              "playlist", "Background Processing List", "", "backgroundProcessing"]
+          and str(row_c50b.get("key")) == "/playlists/%s/items" % row_c50b.get("ratingKey"),
+          "%r" % row_c50b)
+    check("...and it is a LIGHT row: eight keys and no ordinary playlist fields",
+          not {"composite", "duration", "leafCount", "smart", "icon", "viewCount",
+               "lastViewedAt", "updatedAt"} & set(row_c50b), "%s" % sorted(row_c50b))
+    check("...and it is invisible everywhere else",
+          not [r for spec in ("/playlists", "/playlists?type=15", "/library/all?type=15")
+               for r in (get(base, spec)[1].get("Metadata") or [])
+               if r.get("title") == "Background Processing List"], "")
+
+    _, pq1_c50b, _ = container(base, "GET", "/playQueues/1")
+    check("/playQueues/1 is permanently that queue, with playQueueVersion -1",
+          pq1_c50b.get("playQueueID") == 1 and pq1_c50b.get("playQueueVersion") == -1
+          and pq1_c50b.get("playQueueShuffled") is False and pq1_c50b.get("size") == 0
+          and not {"playQueueSelectedItemID", "playQueueTotalCount", "playQueueSourceURI"}
+          & set(pq1_c50b), "%r" % pq1_c50b)
+    machine_c50b = get(base, "/identity")[1].get("machineIdentifier", "")
+    _, made_c50b, _ = container(
+        base, "POST", "/playQueues?type=video&uri=%s"
+        % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine_c50b, movie)))
+    check("a user play queue never gets id 1",
+          made_c50b.get("playQueueID") and made_c50b.get("playQueueID") != 1,
+          "%r" % made_c50b.get("playQueueID"))
+
+    # A Playlist element is written PAIRED even when it carries no children.
+    _, plxml_c50b, _ = request(base, "GET", "/playlists?type=42", want_json=False)
+    check("an empty Playlist element is written paired, not self-closed",
+          b"</Playlist>" in plxml_c50b and b"<Playlist" in plxml_c50b
+          and b"/>" not in plxml_c50b.split(b"<Playlist")[1].split(b">")[0], "")
+
     # Cycle 50 re-swept the request path cycle 49 rewrote, and found three REGRESSIONS in
     # it and four cells cycle 49 had mis-read. The regressions: a chunked body was WAITED
     # for even by a read-only route, so a GET carrying `Transfer-Encoding: chunked` and no
