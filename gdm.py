@@ -205,8 +205,9 @@ class Discovery(object):
         self.updated_at = int(time.time())
         self.answered = 0
         self.discover = discover
-        # machineIdentifier -> (row, last seen).  A real PMS's /servers is exactly this
-        # table plus its own row, which is why the list is a function of the WIRE.
+        # ADDRESS -> (row, last seen).  A real PMS's /servers is exactly this table plus
+        # its own row, which is why the list is a function of the WIRE -- and why it is
+        # keyed on the address the answer came from rather than on the identity in it.
         self._peers = {}
 
     # -- the advertised state -------------------------------------------------
@@ -282,18 +283,22 @@ class Discovery(object):
             return [dict(row) for row, _seen in live]
 
     def _record(self, datagram, addr):
+        """Record a peer's answer, keyed by its ADDRESS.
+
+        Cycle 50, measured on zen with three responders at one address answering its
+        searches: `/servers` never listed two rows for that address -- the single row
+        alternates, last writer wins -- while distinct addresses are listed side by side.
+        So the table is keyed on where the answer came FROM, not on the identity in it,
+        and plexsim keying on the machineIdentifier listed two servers on one host twice.
+        """
         row = parse_response(datagram)
         if row is None or row["machine"] == self.machine:
             return
         row = dict(row, address=addr[0])
         with self._lock:
-            previous = self._peers.get(row["machine"])
-            if previous is not None:
-                # Keep the insertion position: a dict preserves it, and a real PMS's
-                # list keeps a server where it first appeared.
-                self._peers[row["machine"]] = (row, time.time())
-            else:
-                self._peers[row["machine"]] = (row, time.time())
+            # A dict preserves insertion order, and a real PMS's list keeps an address
+            # where it first appeared, so an existing key is updated in place.
+            self._peers[addr[0]] = (row, time.time())
 
     def _search(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

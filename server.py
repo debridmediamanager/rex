@@ -5586,7 +5586,14 @@ class PlexSim:
                 # or script enumerating the server through `/library/all` never saw one.
                 for section in catalog.sections:
                     source += self.library.collections(section["key"])
+            # Cycle 50: only the UNTYPED form defaults to the ratingKey. A TYPED
+            # `/library/all?type=N` uses that type's own default listing order --
+            # `?type=1` on kids is 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4,
+            # 6, 7 (ratingKey), and zen's `?type=1` is its section grid's order over
+            # 3,887 rows. plexsim answered ratingKey to both.
             source = sorted(source, key=lambda r: int(r["ratingKey"]))
+            if kinds and not query.get("sort"):
+                source, _ = self._sorted(source, "titleSort")
             if kinds:
                 wanted = ({"1": "movie", "2": "show", "3": "season", "4": "episode"}
                           .get(next(iter(kinds))) if len(kinds) == 1 else None)
@@ -6798,6 +6805,10 @@ class PlexSim:
                 activity["progress"] = 100
                 self.notify_activity(activity, "ended")
                 logger.info("SECTION delete %s (%s)", section_id, section.get("title"))
+                if self.discovery is not None:
+                    # Cycle 50: a library delete is one of the three events that move the
+                    # GDM advertisement's `Updated-At`; nothing else does.
+                    self.discovery.touch()
                 return ("empty", 200)
             if method == "PUT":
                 # The Edit Library dialog sends the WHOLE form, and a real PMS
@@ -6857,6 +6868,10 @@ class PlexSim:
                 if any(query.get(field) for field in self.SCAN_TRIGGERING_EDIT_FIELDS):
                     self.notify_section_scan(section_id, section)
                 logger.info("SECTION edit %s -> %s", section_id, section.get("title"))
+                if self.discovery is not None:
+                    # Cycle 50: a library edit is one of the three events that move the
+                    # GDM advertisement's `Updated-At`; nothing else does.
+                    self.discovery.touch()
                 return ("empty", 200)
             return self.section_pivots(section_id, section, query)
 
@@ -16327,8 +16342,14 @@ class PlexSim:
             # so renaming the server in Settings changed nothing the client draws.
             self.catalog.friendly = dict(typed)["FriendlyName"] or socket.gethostname()
             if self.discovery is not None:
+                # Cycle 50: the NAME moves in the GDM reply at once -- but `Updated-At`
+                # does NOT. Measured on both copies with a 2 s sampler inside the
+                # container: a `FriendlyName` write changes the reply's `Name:` line and
+                # leaves the stamp where it was, while a library CREATE, EDIT or DELETE
+                # moves it to that write's own second. A refresh, an item edit, a
+                # collection create and an index delete all leave it alone. plexsim
+                # touched it here -- the one event that does not -- and on nothing else.
                 self.discovery.name = self.catalog.friendly
-                self.discovery.touch()
         # One `preference` frame per written id, in ASCII order of the id, whether or not
         # the value changed -- the shape `/:/prefs/get` answers, label and summary emptied.
         # The client's alerts list and the Console consume these; plexsim pushed none.
@@ -17501,6 +17522,10 @@ class PlexSim:
         section = self.catalog.add_section(
             title, section_type, "%032x" % (zlib.crc32(seed.encode()) & 0xFFFFFFFF))
         logger.info("SECTION create %s (%s)", title, section_type)
+        if self.discovery is not None:
+            # Cycle 50: a library create is one of the three events that move the
+            # GDM advertisement's `Updated-At`; nothing else does.
+            self.discovery.touch()
         prefs = {match.group(1): value for name, value in query.items()
                  for match in [re.match(r"^prefs\[(\w+)\]$", name)] if match}
         if prefs:

@@ -7877,6 +7877,44 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50: `/library/all`'s recorded "the default order is the ratingKey" holds for
+    # the UNTYPED form only. A typed `?type=N` uses that type's own default listing order
+    # -- kids answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
+    # zen's `?type=1` is its section grid's order over 3,887 rows.
+    # A TYPED /library/all uses that type's own default listing order; only the untyped form
+    # defaults to the ratingKey. The fixture's ratingKey order happens to BE its titleSort
+    # order, so the check has to earn the difference: rename the highest-keyed movie so it
+    # sorts first.
+    _, movies_c50f, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rows_c50f = sorted((r for r in movies_c50f.get("Metadata") or []),
+                       key=lambda r: int(r.get("ratingKey")))
+    if len(rows_c50f) >= 2:
+        last_c50f = rows_c50f[-1]
+        was_c50f = last_c50f.get("title")
+        request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s&title.locked=1"
+                % (last_c50f.get("ratingKey"), last_c50f.get("ratingKey"), quote("AAA C50 first")))
+        try:
+            _, typed_c50f, _ = get(base, "/library/all?type=1")
+            typed_c50f = [r.get("ratingKey") for r in typed_c50f.get("Metadata") or []]
+            _, grid_c50f, _ = get(base, "/library/sections/%s/all" % movie_section)
+            grid_c50f = [r.get("ratingKey") for r in grid_c50f.get("Metadata") or []]
+            check("a typed /library/all is ordered like its own section grid, not by ratingKey",
+                  typed_c50f == grid_c50f and typed_c50f[0] == last_c50f.get("ratingKey"),
+                  "typed %s vs grid %s" % (typed_c50f[:4], grid_c50f[:4]))
+            _, untyped_c50f, _ = get(base, "/library/all")
+            keys_c50f = [int(r.get("ratingKey")) for r in untyped_c50f.get("Metadata") or []
+                         if str(r.get("ratingKey") or "").isdigit()]
+            check("...while the untyped form still defaults to the ratingKey",
+                  keys_c50f == sorted(keys_c50f), "%s" % keys_c50f[:5])
+        finally:
+            request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.value=%s"
+                    % (last_c50f.get("ratingKey"), last_c50f.get("ratingKey"), quote(was_c50f)))
+            request(base, "PUT", "/library/metadata/%s?type=1&id=%s&title.locked=0"
+                    % (last_c50f.get("ratingKey"), last_c50f.get("ratingKey")))
+    else:
+        skip("a typed /library/all is ordered like its own section grid, not by ratingKey",
+             "needs two movies")
+
     # Cycle 50, 56 language tags on one row against kids and zen (identical on all 20 that
     # differ): the language-list enums carry their names in the REQUEST's language, and an
     # explicit `X-Plex-Language: en` -- which is exactly what Plex Web sends -- is NOT the
