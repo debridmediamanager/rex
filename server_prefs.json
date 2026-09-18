@@ -1624,7 +1624,7 @@
     "summary": "Detects movie and episode ads.",
     "type": "text",
     "default": "scheduled",
-    "value": "never",
+    "value": "scheduled",
     "hidden": false,
     "advanced": false,
     "group": "library",

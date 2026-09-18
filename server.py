@@ -16732,14 +16732,17 @@ class PlexSim:
                         "configured backup directory"},
         {"name": "ButlerTaskCleanSupplementalLogFiles", "interval": 1,
          "scheduleRandomized": False, "enabled": False},
-        # Cycle 35, re-measured on both writable copies: Ad Markers ships DISABLED on
-        # 1.42.2 and on 1.43.4 alike, alone among the three marker tasks -- Credits and
-        # Intro really do default to enabled, and plexsim was set from the siblings
-        # rather than from a reading (class D). It is the one disagreement in the whole
-        # 23-row enabled table, and `POST /butler` runs what is enabled, so a fresh
-        # plexsim generated ad markers where a fresh real server never does.
+        # Cycle 49 REFUTES cycle 35's reading of this row, which is HANDOVER 3.1 class E:
+        # cycle 35 measured it on the two writable copies, and both of those are
+        # UNCLAIMED. `enabled` here is computed from claim/subscription state, not
+        # stored -- plexscratch is a byte copy of kids' own config with only the claim
+        # stripped, and it answers `enabled="0"` where kids answers `enabled="1"`. Both
+        # CLAIMED references say enabled, on both versions, and so does the
+        # `GenerateAdMarkerBehavior` preference (`scheduled`, which does not exist at all
+        # on an unclaimed server). plexsim asserts a claim, so it answers the claimed
+        # form; cycle 35 fixed a class-D error by installing a class-E one.
         {"name": "ButlerTaskGenerateAdMarkers", "interval": 1,
-         "scheduleRandomized": False, "enabled": False},
+         "scheduleRandomized": False, "enabled": True},
         {"name": "ButlerTaskGenerateCreditsMarkers", "interval": 1,
          "scheduleRandomized": True, "enabled": True},
         {"name": "ButlerTaskGenerateIntroMarkers", "interval": 1,

@@ -23233,10 +23233,15 @@ def main():
           str(conditional_c41b_shapes))
 
 
-    # Cycle 35, the whole `GET /butler` enabled table diffed against both writable copies:
-    # 23 tasks, the two versions agreeing on every one, and plexsim disagreeing on exactly
-    # one -- Ad Markers, which ships DISABLED. `POST /butler` runs what is enabled, so the
-    # difference is a task and a progress message a fresh real server never produces.
+    # Cycle 35 diffed the whole `GET /butler` enabled table against both writable copies:
+    # 23 tasks, the two versions agreeing on every one. Cycle 49 REFUTED its one
+    # disagreement -- Ad Markers -- as HANDOVER 3.1 class E: both writable copies are
+    # UNCLAIMED, and `enabled` here is computed from claim state rather than stored.
+    # plexscratch is a byte copy of kids' own config with only the claim stripped and it
+    # answers 0 where kids answers 1; zen and kids, the two CLAIMED references, both
+    # answer 1 on both versions, and so does the `GenerateAdMarkerBehavior` preference
+    # (`scheduled`, a setting that does not exist at all on an unclaimed server).
+    # plexsim asserts a claim, so the claimed value is the one it has to answer.
     # `/butler` is one of the two roots on the surface that is not a MediaContainer.
     _, raw_c35c, _ = request(base, "GET", "/butler")
     enabled_c35c = {task_c35c.get("name"): task_c35c.get("enabled")
@@ -23246,7 +23251,7 @@ def main():
         "AutomaticUpdates": False,
         "BackupDatabase": True,
         "ButlerTaskCleanSupplementalLogFiles": False,
-        "ButlerTaskGenerateAdMarkers": False,
+        "ButlerTaskGenerateAdMarkers": True,
         "ButlerTaskGenerateCreditsMarkers": True,
         "ButlerTaskGenerateIntroMarkers": True,
         "ButlerTaskGenerateVoiceActivity": False,
@@ -23273,6 +23278,15 @@ def main():
     check("the butler's enabled table is the reference's, Ad Markers included",
           not wrong_c35c and len(enabled_c35c) == len(want_c35c),
           "%d task(s), wrong %s" % (len(enabled_c35c), wrong_c35c))
+    # Cycle 49: the preference behind the same task. Both CLAIMED references answer
+    # `default="scheduled" value="scheduled"`; plexsim's captured fixture carried
+    # `value="never"`, which is the value the Library settings pane draws.
+    prefs_c49e = {p_c49e.get("id"): p_c49e for p_c49e in
+                  (get(base, "/:/prefs")[1].get("Setting") or [])}
+    ads_c49e = prefs_c49e.get("GenerateAdMarkerBehavior") or {}
+    check("GenerateAdMarkerBehavior reports the claimed server's scheduled",
+          ads_c49e.get("default") == "scheduled" and ads_c49e.get("value") == "scheduled",
+          "default=%r value=%r" % (ads_c49e.get("default"), ads_c49e.get("value")))
 
 
     # Cycle 35, captured on plexscratch (1.43.4) and plexscratch42 (1.42.2) -- frame for
