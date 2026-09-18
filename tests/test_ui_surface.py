@@ -7877,6 +7877,40 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50, comparing `/:/prefs` setting by setting against kids AND zen (0 attribute
+    # mismatches in 174 rows -- the fixture's SHAPE is exact): seven captured VALUES are
+    # non-default where every real server answers its own default, and six of the seven
+    # are the default on both fresh copies too. A library's `useLocalAssets` is the same
+    # shape on the movie type only -- the show type was already right -- so the Edit
+    # Library dialog drew that toggle off. And the library provider declares
+    # `video,audio,photo` on both references, which hold only movie and show libraries:
+    # it is the provider's capability set, not a reading of the libraries.
+    prefs_c50d = {p.get("id"): p for p in (get(base, "/:/prefs")[1].get("Setting") or [])}
+    want_c50d = {
+        "BackgroundQueueIdlePaused": False, "ButlerTaskDeepMediaAnalysis": True,
+        "ButlerTaskUpgradeMediaAnalysis": True, "ButlerUpdateChannel": "16",
+        "GenerateChapterThumbBehavior": "scheduled", "LoudnessAnalysisBehavior": "scheduled",
+        "WanTotalMaxUploadRate": 0,
+    }
+    got_c50d = {name: (prefs_c50d.get(name) or {}).get("value") for name in want_c50d}
+    check("seven settings carry their own default, as every real server does",
+          got_c50d == want_c50d,
+          "%s" % {k: (got_c50d[k], want_c50d[k]) for k in want_c50d if got_c50d[k] != want_c50d[k]})
+    check("...and each of the seven really is its own default",
+          all((prefs_c50d.get(name) or {}).get("default") == want_c50d[name]
+              for name in want_c50d),
+          "%s" % {k: (prefs_c50d.get(k) or {}).get("default") for k in want_c50d})
+    lib_c50d = {p.get("id"): p for p in
+                (get(base, "/library/sections/%s/prefs" % movie_section)[1].get("Setting") or [])}
+    check("a movie library's useLocalAssets is on, like its own default",
+          (lib_c50d.get("useLocalAssets") or {}).get("value") == "true"
+          and (lib_c50d.get("useLocalAssets") or {}).get("default") == "true",
+          "%r" % (lib_c50d.get("useLocalAssets") or {}).get("value"))
+    _, prov_c50d, _ = container(base, "GET", "/media/providers")
+    check("the library provider declares video,audio,photo",
+          [p.get("types") for p in prov_c50d.get("MediaProvider") or []] == ["video,audio,photo"],
+          "%s" % [p.get("types") for p in prov_c50d.get("MediaProvider") or []])
+
     # Cycle 50, from the matched-catalog byte diff -- a plexsim catalog built to MIRROR
     # kids' library exactly, so the two servers could be compared byte for byte instead of
     # shape-wise. Five findings: the image transcoder also transcodes the server's OWN
