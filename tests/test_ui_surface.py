@@ -7662,6 +7662,35 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49 REFUTED the premise behind plexsim's deliberate deletion of an emptied
+    # collection. The old comment said a real PMS keeps the empty row but "also leaves
+    # the stale tag on the item", a state plexsim could not represent. Measured on
+    # plexscratch42 (1.42.2): it does BOTH the representable things -- the collection
+    # item stays alive and the tag comes off the item -- so plexsim was deleting a row a
+    # real PMS keeps, and a client saw a collection vanish out of its Collections pivot
+    # when an item was edited.
+    machine_c49r = get(base, "/identity")[1].get("machineIdentifier", "")
+    uri_c49r = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine_c49r, movie))
+    _, made_c49r, _ = container(
+        base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+        % (quote("C49 emptied"), movie_section, uri_c49r))
+    key_c49r = ((made_c49r.get("Metadata") or [{}])[0]).get("ratingKey")
+    request(base, "PUT", "/library/metadata/%s?type=1&id=%s&collection%%5B0%%5D.tag.tag=C49Keep"
+            % (movie, movie))
+    alive_c49r, row_c49r, _ = get(base, "/library/metadata/%s" % key_c49r)
+    _, all18_c49r, _ = get(base, "/library/all?type=18")
+    titles_c49r = [r.get("title") for r in all18_c49r.get("Metadata") or []]
+    _, item_c49r, _ = get(base, "/library/metadata/%s" % movie)
+    tags_c49r = [t.get("tag") for t in
+                 ((item_c49r.get("Metadata") or [{}])[0]).get("Collection") or []]
+    check("emptying a collection leaves the collection itself alive",
+          alive_c49r == 200 and "C49 emptied" in titles_c49r,
+          "GET=%s, type=18 lists %s" % (alive_c49r, titles_c49r))
+    check("...and takes the tag off the item",
+          tags_c49r == ["C49Keep"], "%s" % tags_c49r)
+    request(base, "DELETE", "/library/collections/%s" % key_c49r)
+
     # Cycle 49, measured on both writable copies: a request carrying a device name or a
     # platform and NO client identifier writes them onto the ANONYMOUS device row, the one
     # with `clientIdentifier=""`. plexsim recorded them only for an identified client, so
