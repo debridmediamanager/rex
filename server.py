@@ -6435,8 +6435,16 @@ class PlexSim:
             allowMediaDeletion=True,
             allowSharing=True,
             allowTuners=False,
-            livetv=0,
-            offlineTranscode=0,
+            # Cycle 49: `livetv` is a CONSTANT 7 on all four references -- zen and kids
+            # (claimed) and both unclaimed copies -- none of which has a tuner. It is not
+            # a capability readout, and plexsim's 0 is a value no real PMS emits.
+            livetv=7,
+            # ...where `offlineTranscode` really is state: 1 on both claimed references
+            # and ABSENT on both unclaimed copies. 0 is the third answer, which nothing
+            # answers. plexsim omits it, which is the shape of the server that cannot do
+            # it -- and it is the same capability `allowSync=False` above already
+            # withholds, so emitting a 1 beside that would contradict it.
+            offlineTranscode=None,
             streamingBrainVersion=2,
             streamingBrainABRVersion=3,
             # A real PMS says "logs,databases,streaminglogs"; plexsim has no

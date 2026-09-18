@@ -7658,6 +7658,20 @@ def main():
           root_c49c.get("transcoderVideoResolutions")
           == "128,128,160,240,320,480,768,720,720,1080,1080,1080,1080",
           repr(root_c49c.get("transcoderVideoResolutions")))
+    # Cycle 49: two more values on the same blob that no reference emits. `livetv` is a
+    # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
+    # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
+    # the unclaimed pair, never 0. plexsim answered 0 for both.
+    check("the capability blob reports livetv 7, the constant all four references send",
+          root_c49c.get("livetv") == 7, "%r" % root_c49c.get("livetv"))
+    check("the capability blob does not invent offlineTranscode 0",
+          "offlineTranscode" not in root_c49c, "%r" % root_c49c.get("offlineTranscode"))
+    _, prov_c49f, _ = container(base, "GET", "/media/providers")
+    check("/media/providers agrees with / on livetv and offlineTranscode",
+          prov_c49f.get("livetv") == 7 and "offlineTranscode" not in prov_c49f,
+          "livetv=%r offlineTranscode=%r"
+          % (prov_c49f.get("livetv"), prov_c49f.get("offlineTranscode")))
+
     check("the three transcoder ladders are parallel lists of the same length",
           len({len((root_c49c.get(n) or "").split(","))
                for n in ("transcoderVideoBitrates", "transcoderVideoQualities",
