@@ -7624,6 +7624,33 @@ def main():
           (not addr_c49b) or pport_c49b == port_c49a,
           "privateAddress=%r privatePort=%r want %d" % (addr_c49b, pport_c49b, port_c49a))
 
+    # Cycle 49, measured on zen (1.42.2 claimed), kids (1.43.4 claimed), plexscratch42
+    # (1.42.2 unclaimed) and plexscratch (1.43.4 unclaimed), byte-identical on all four:
+    # `/` carries the transcoder's quality LADDER as three parallel comma lists. Plex Web
+    # builds its Quality menu from them, index by index.
+    _, root_c49c, _ = container(base, "GET", "/")
+    check("/ advertises the transcoder video bitrate ladder",
+          root_c49c.get("transcoderVideoBitrates")
+          == "64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000",
+          repr(root_c49c.get("transcoderVideoBitrates")))
+    check("/ advertises the transcoder video quality ladder",
+          root_c49c.get("transcoderVideoQualities") == "0,1,2,3,4,5,6,7,8,9,10,11,12",
+          repr(root_c49c.get("transcoderVideoQualities")))
+    check("/ advertises the transcoder video resolution ladder",
+          root_c49c.get("transcoderVideoResolutions")
+          == "128,128,160,240,320,480,768,720,720,1080,1080,1080,1080",
+          repr(root_c49c.get("transcoderVideoResolutions")))
+    check("the three transcoder ladders are parallel lists of the same length",
+          len({len((root_c49c.get(n) or "").split(","))
+               for n in ("transcoderVideoBitrates", "transcoderVideoQualities",
+                         "transcoderVideoResolutions")}) == 1,
+          "%s" % [len((root_c49c.get(n) or "").split(",")) for n in
+                  ("transcoderVideoBitrates", "transcoderVideoQualities", "transcoderVideoResolutions")])
+    # zen alone carries `transcoderVideoRemuxOnly`; the 1.42.2 copy omits it, so it is that
+    # server's own state and NOT the version attribute it first looked like.
+    check("/ does not invent transcoderVideoRemuxOnly",
+          "transcoderVideoRemuxOnly" not in root_c49c, ",".join(sorted(root_c49c)[:3]))
+
     def activities_w15(frames):
         return [(a.get("event"), (a.get("Activity") or {}).get("type"), (a.get("Activity") or {}).get("progress"))
                 for f in frames or [] for a in (f.get("NotificationContainer") or {}).get("ActivityNotification") or []]
