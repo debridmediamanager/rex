@@ -6681,7 +6681,11 @@ class PlexSim:
                 {
                     "identifier": "com.plexapp.plugins.library",
                     "title": "Library",
-                    "types": "video",
+                    # Cycle 50: `video,audio,photo` on kids and zen alike, both of which
+                    # hold only movie and show libraries -- it is the PROVIDER's declared
+                    # capability set, not a function of what the libraries contain.
+                    # plexsim derived it from its own library types and answered `video`.
+                    "types": "video,audio,photo",
                     # `download` here is what draws the Download entry in the
                     # item context menu (client module 92273: `showDownload`
                     # reads `provider.protocols.download`). plexsim can serve

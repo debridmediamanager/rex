@@ -303,7 +303,7 @@
    "summary": "When scanning this library, use local posters and artwork if present.",
    "type": "bool",
    "default": "true",
-   "value": "false",
+   "value": "true",
    "hidden": false,
    "advanced": false,
    "group": ""
