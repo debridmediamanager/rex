@@ -7662,6 +7662,38 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, the dual-format census: two differences XML cannot see. A
+    # `/system/agents` `Language`'s `default` is the JSON BOOLEAN `true` on all four
+    # references and plexsim sent the string `"1"` -- it survived because
+    # `agent_languages.json` is read out of the XML, which writes `default="1"` either
+    # way. And `/myplex/account`'s root is `MyPlex`, which `to_xml` treated as a container
+    # and sorted alphabetically while the JSON writer kept the reference's own order: the
+    # fifth instance of the two-writer bug cycle 19 established never happens on a real
+    # PMS, and the last one the surface had.
+    # `Language` is written as REPEATED JSON KEYS here, so `json.loads` keeps one row per
+    # agent -- the raw bytes are the only place every row is visible.
+    _, raw_c49o, _ = request(base, "GET", "/system/agents?mediaType=1")
+    check("a /system/agents Language default is the JSON boolean, not the string \"1\"",
+          b'"default":true' in raw_c49o and b'"default":"1"' not in raw_c49o,
+          "true=%d string=%d" % (raw_c49o.count(b'"default":true'),
+                                 raw_c49o.count(b'"default":"1"')))
+    _, xml_c49o, _ = request(base, "GET", "/system/agents?mediaType=1", want_json=False)
+    check("...while the XML still writes default=\"1\"",
+          b'default="1"' in xml_c49o and b'default="true"' not in xml_c49o, "")
+
+    # The MyPlex root is not a container: both writers must agree on its attribute order.
+    _, mx_c49o, _ = request(base, "GET", "/myplex/account", want_json=False)
+    _, mj_c49o, _ = request(base, "GET", "/myplex/account")
+    import re as _re49o
+    xml_order_c49o = _re49o.findall(rb'([A-Za-z]+)="', _re49o.search(rb"<MyPlex[^>]*>", mx_c49o).group(0))
+    json_order_c49o = [k.encode() for k in json.loads(mj_c49o)["MyPlex"].keys()]
+    check("/myplex/account writes one attribute order in both formats",
+          xml_order_c49o == json_order_c49o,
+          "xml %s json %s" % (xml_order_c49o, json_order_c49o))
+    check("...and it is the reference's order, not the container's alphabetical one",
+          xml_order_c49o[:4] == [b"username", b"mappingState", b"mappingError", b"signInState"],
+          "%s" % xml_order_c49o[:4])
+
     # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): two named endpoints behind
     # the legacy single-segment dispatcher are real. `/dlna` is the DLNA server's own
     # library list -- the section rows keyed by their full path, without `allowSync`,
