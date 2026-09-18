@@ -7662,6 +7662,53 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, four refusal shapes on kids and zen, both identical: only the image
+    # transcoder's 200 belongs to the image header family. Its 400s and 404s order the
+    # length before the type, like every other refusal on the surface, where plexsim sent
+    # the image order to them too and put the connection pair in front of both.
+    import socket as _s49k
+    _h49k, _, _p49k = base.split("//", 1)[1].partition(":")
+    _p49k = int(_p49k.split("/")[0])
+    def names_c49k(path):
+        req = ("GET %s HTTP/1.1\r\nHost: h\r\n\r\n" % path).encode()
+        sock = _s49k.create_connection((_h49k, _p49k), timeout=5)
+        try:
+            sock.sendall(req)
+            buf = b""
+            while b"\r\n\r\n" not in buf:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                buf += chunk
+        finally:
+            sock.close()
+        head = buf.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        return head[0].split(" ", 1)[1], [h.split(":")[0] for h in head[1:] if h]
+    ERROR49K = ["X-Plex-Protocol", "Content-Length", "Content-Type",
+                "Connection", "Keep-Alive", "Cache-Control", "Date"]
+    PHOTO49K = ["X-Plex-Protocol", "Accept-Ranges", "Connection", "Keep-Alive",
+                "Content-Length", "Content-Type", "Cache-Control", "Date"]
+    status_c49k, block_c49k = names_c49k(
+        "/photo/:/transcode?url=%2Flibrary%2Fmetadata%2F999999%2Fthumb%2F1&width=10&height=10")
+    check("a /photo/:/transcode 404 orders its headers like every other refusal",
+          (status_c49k, block_c49k) == ("404 Not Found", ERROR49K), "%s %s" % (status_c49k, block_c49k))
+    status_c49k2, block_c49k2 = names_c49k("/photo/:/transcode?width=100&height=100")
+    check("a /photo/:/transcode 400 orders its headers like every other refusal",
+          (status_c49k2, block_c49k2) == ("400 Bad Request", ERROR49K),
+          "%s %s" % (status_c49k2, block_c49k2))
+    # ...and the transcoder's own 200 keeps the image family's order, which is what makes
+    # this a split rather than a move.
+    _, row_c49k, _ = get(base, "/library/sections/%s/all?X-Plex-Container-Start=0&X-Plex-Container-Size=1" % movie_section)
+    thumb_c49k = ((row_c49k.get("Metadata") or [{}])[0]).get("thumb") or ""
+    if thumb_c49k:
+        status_c49k3, block_c49k3 = names_c49k(
+            "/photo/:/transcode?url=%s&width=100&height=100" % quote(thumb_c49k))
+        check("a /photo/:/transcode 200 keeps the image family's own order",
+              (status_c49k3, block_c49k3) == ("200 OK", PHOTO49K),
+              "%s %s" % (status_c49k3, block_c49k3))
+    else:
+        skip("a /photo/:/transcode 200 keeps the image family's own order", "no thumb on the fixture")
+
     # Cycle 49, 27 refusal shapes on raw sockets against kids (1.43.4) and zen (1.42.2),
     # both agreeing on every one. Cycle 30 swept the connection state of every refusal the
     # ROUTER writes; the ones written BELOW it were never swept. The rule they show is

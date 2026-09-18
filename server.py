@@ -18049,9 +18049,15 @@ class Handler(BaseHTTPRequestHandler):
             return None
         if "x-plex-local-asset" in names:
             return "artwork"
-        if path.startswith("/photo/:/transcode"):
+        # Cycle 49, four refusal shapes on kids and zen, both identical: only the
+        # transcoder's own 200 belongs to the image family. Its 400s and 404s order like
+        # every other refusal -- the length before the type -- where plexsim sent the
+        # image order to its refusals too and put `Connection`/`Keep-Alive` in front of
+        # both. The asset family below has the same split: its missing-file 404 is an
+        # error, and cycle 49 also found it names no connection state at all.
+        if status < 400 and path.startswith("/photo/:/transcode"):
             return "photo"
-        if path.startswith("/web") or path.startswith("/:/resources"):
+        if status < 400 and (path.startswith("/web") or path.startswith("/:/resources")):
             return "asset"
         if "content-encoding" in names:
             return "gzip"
