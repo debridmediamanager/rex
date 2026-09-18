@@ -7,6 +7,10 @@
 set -e
 cd "$(dirname "$0")"
 export RD_TOKEN=...
+#
+# On --port 32400 plexsim answers Plex's LAN discovery protocol (GDM) on udp/32410
+# and udp/32414 by default, which is what a real PMS does and what lets an official
+# client on the same network find it without plex.tv. `--gdm off` turns it off.
 exec /usr/bin/python3 server.py \
   --port 32400 \
   --part-mode proxy \

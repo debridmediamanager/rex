@@ -18154,13 +18154,13 @@ def main():
                    and [c_c23d[0] for c_c23d in cells_c23d["show type=4"]] == ["episode"])),
           "%s" % cells_c23d)
 
-    # Cycle 23, measured on kids and zen: `?includeDetails=1&includeAdvanced=1` carries NO
-    # Duplicates Filter row at all -- the option pair that adds it to the `includeMeta`
-    # form adds nothing here -- where plexsim emitted one (without `advanced`). Cycle 16
-    # recorded "`includeDetails=1` carries no `advanced` on a Filter" from a request that
-    # had no `includeAdvanced=1`, so the row did not exist to carry it, and plexsim
-    # implemented the absence of the FLAG rather than the absence of the ROW. The
-    # `includeMeta` form is unchanged and still carries the row with `advanced="1"`.
+    # Cycle 23 recorded that `?includeDetails=1&includeAdvanced=1` carries NO Duplicates
+    # Filter row at all. Cycle 49 REFUTED that on zen (1.42.2), kids (1.43.4) and both
+    # unclaimed copies, in both parameter orders: the row IS there and it is the ONE
+    # Filter row on that path that keeps `advanced="1"`. Cycle 16's rule -- a Filter here
+    # carries no `advanced` -- holds for every OTHER row, and cycle 23 read that absence
+    # of the FLAG as the absence of the ROW, which is the same mistake one step on. The
+    # `includeMeta` form is unchanged and carries the row with `advanced="1"` too.
     _, details_c23e, _ = request(
         base, "GET", "/library/sections/%s?includeDetails=1&includeAdvanced=1" % movie_section,
         want_json=False)
@@ -18173,8 +18173,8 @@ def main():
     meta_rows_c23e = [m_c23e for m_c23e in
                       re.findall(r"<Filter [^>]*>", meta_c23e.decode("utf-8", "replace"))
                       if "duplicate" in m_c23e]
-    check("includeDetails carries no Duplicates filter row at all",
-          not details_rows_c23e
+    check("includeDetails and includeMeta both carry the advanced Duplicates row",
+          len(details_rows_c23e) == 1 and 'advanced="1"' in details_rows_c23e[0]
           and len(meta_rows_c23e) == 1 and 'advanced="1"' in meta_rows_c23e[0],
           "includeDetails %s | includeMeta %s" % (details_rows_c23e, meta_rows_c23e))
 
@@ -23546,7 +23546,31 @@ def main():
     except urllib.error.HTTPError as error_c33c:
         error_c33c.read()
         preflight_c33c = dict(error_c33c.headers)
-    redirect_c33c = request(base, "GET", "/web")[2]
+    # Cycle 49: this has to be a RAW socket. `request` goes through urllib, which FOLLOWS
+    # the 302, so what this check read was never the redirect's own header block -- it was
+    # whatever `/web/index.html` answered. That went unnoticed until cycle 49 made a
+    # missing `/web` asset a 404 that names no connection state at all, which is exactly
+    # the header this check asserts.
+    redirect_host_c33c, _, redirect_port_c33c = base.split("//", 1)[1].partition(":")
+    redirect_port_c33c = int(redirect_port_c33c.split("/")[0])
+    redirect_sock_c33c = socket.create_connection(
+        (redirect_host_c33c, redirect_port_c33c), timeout=10)
+    try:
+        redirect_sock_c33c.sendall(
+            ("GET /web HTTP/1.1\r\nHost: %s:%d\r\n\r\n"
+             % (redirect_host_c33c, redirect_port_c33c)).encode())
+        redirect_buf_c33c = b""
+        while b"\r\n\r\n" not in redirect_buf_c33c:
+            piece_c33c = redirect_sock_c33c.recv(65536)
+            if not piece_c33c:
+                break
+            redirect_buf_c33c += piece_c33c
+    finally:
+        redirect_sock_c33c.close()
+    redirect_c33c = dict(
+        line_c33c.split(": ", 1)
+        for line_c33c in redirect_buf_c33c.partition(b"\r\n\r\n")[0]
+        .decode("latin-1").split("\r\n")[1:] if ": " in line_c33c)
     check("the preflight and the /web 302 name their connection state",
           preflight_c33c.get("Connection") and preflight_c33c.get("Cache-Control") == "no-cache"
           and redirect_c33c.get("Connection"),
