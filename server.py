@@ -6445,6 +6445,18 @@ class PlexSim:
             transcoderAudio=False,
             transcoderSubtitles=False,
             transcoderLyrics=False,
+            # Cycle 49: three CONSTANT strings, byte-identical on all four servers --
+            # zen (1.42.2 claimed), kids (1.43.4 claimed) and both unclaimed copies --
+            # and they are the ladder the client's own Quality menu is built from: the
+            # three lists are parallel, index by index. plexsim advertised none of them,
+            # so the picker had no ladder to draw. They are a capability TABLE, not a
+            # function of the transcoder's state, which is why they are sent beside
+            # `transcoderVideo=False`. (`transcoderVideoRemuxOnly`, which zen also
+            # carries, is NOT a version attribute: the 1.42.2 copy omits it too, so it
+            # is zen's own state -- see docs/findings.md.)
+            transcoderVideoBitrates="64,96,208,320,720,1500,2000,3000,4000,8000,10000,12000,20000",
+            transcoderVideoQualities="0,1,2,3,4,5,6,7,8,9,10,11,12",
+            transcoderVideoResolutions="128,128,160,240,320,480,768,720,720,1080,1080,1080,1080",
         )
 
     def media_provider_rows(self):
