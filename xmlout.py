@@ -42,17 +42,25 @@ _METADATA_ELEMENT = {
 # `Guid` directly after `UltraBlurColors`, before the tags, on both references. The
 # builder marks the projection with a private `_light` key because nothing in the row
 # itself distinguishes the two.
+# Cycle 49 dropped `Label`: no reference light row carries one. See `GRID_TAGS`.
 _LIGHT_CHILD_ORDER = {name: index for index, name in enumerate((
     "Media", "Image", "UltraBlurColors", "Guid", "Genre", "Country", "Director",
-    "Writer", "Role", "Collection", "Label", "Location"))}
+    "Writer", "Role", "Collection", "Location"))}
 
 # Cycle 45: `includeAlternates=1` inlines `Thumb` and `Art` between the tags and
 # `Guid`, and `Theme` directly after `Rating` -- kids' show 6 answers `Genre, Country,
 # Thumb, Art, Guid, Rating, Theme, Role` and zen's movie 380 `Genre, Country, Thumb,
 # Art, Guid, Rating, Director`. Without the entries they would fall to the END, which
 # is this table's documented failure mode for a pair no reference emitted.
+# Cycle 49 moved `Style`: it sits AFTER `Country` and before `Thumb`, not between
+# `UltraBlurColors` and `Genre`. Measured on plexscratch42 (1.42.2) and plexscratch
+# (1.43.4) on a movie MADE to carry the whole tag family at once -- `Genre Country Style
+# Collection Director Producer Label Similar Field` -- which is a row shape no reference
+# library holds, so cycle 23's 2,994-path sweep could not have seen it. `Mood` is
+# deliberately absent from this table still: a real PMS refuses a `mood` write on a movie
+# and stores nothing, so its slot is unmeasured rather than guessed.
 _CHILD_ORDER = {name: index for index, name in enumerate((
-    "Media", "Image", "UltraBlurColors", "Style", "Genre", "Country",
+    "Media", "Image", "UltraBlurColors", "Genre", "Country", "Style",
     "Thumb", "Art", "Guid", "Rating", "Theme",
     "Collection", "Director", "Writer", "Role", "Producer", "Label", "Similar",
     "CommonSenseMedia", "Chapter", "Marker", "Review", "Field", "Location", "Preferences",

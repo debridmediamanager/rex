@@ -7662,6 +7662,57 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
+    # MADE to carry the whole tag family at once -- a row shape no reference library holds,
+    # which is why cycle 23's 2,994-path child-order sweep could not see any of this.
+    # Three findings: a LIGHT row carries none of `Label`, `Style`, `Similar` or `Mood`
+    # (plexsim passed all four through, `Label` text-only and the rest with their full
+    # `id`/`filter`); `Style` sits AFTER `Country` on a detail row, not before `Genre`;
+    # and `/status/sessions`, which has a serialiser of its own, applied its alphabetical
+    # string-id rule to ten tag names and missed those three.
+    # Give the fixture's movie the tag families a real library does not hold, so the three
+    # projections can be told apart at all.
+    request(base, "PUT", "/library/metadata/%s?type=1&id=%s"
+            "&label%%5B0%%5D.tag.tag=C49L&style%%5B0%%5D.tag.tag=C49S"
+            "&similar%%5B0%%5D.tag.tag=C49Sim" % (movie, movie))
+    def children_c49p(path):
+        _, body, _ = request(base, "GET", path, want_json=False)
+        import re as _re49p
+        return [name.decode() for name in _re49p.findall(rb"<([A-Za-z]+)", body)]
+    detail_c49p = children_c49p("/library/metadata/%s" % movie)
+    grid_c49p = children_c49p("/library/sections/%s/all?id=%s" % (movie_section, movie))
+    check("a light row carries none of Label, Style, Similar or Mood",
+          not {"Label", "Style", "Similar", "Mood"} & set(grid_c49p),
+          "%s" % [n for n in grid_c49p if n in ("Label", "Style", "Similar", "Mood")])
+    check("...while the detail row carries them",
+          {"Label", "Style", "Similar"} <= set(detail_c49p), "%s" % detail_c49p)
+    check("Style sits after Country and before Guid on a detail row",
+          "Style" in detail_c49p and "Country" in detail_c49p
+          and detail_c49p.index("Country") < detail_c49p.index("Style")
+          and (("Guid" not in detail_c49p)
+               or detail_c49p.index("Style") < detail_c49p.index("Guid")),
+          "%s" % detail_c49p)
+    check("Label and Similar come after the people on a detail row",
+          "Label" in detail_c49p and "Director" in detail_c49p
+          and detail_c49p.index("Director") < detail_c49p.index("Label"),
+          "%s" % detail_c49p)
+
+    # ...and the session serialiser writes EVERY tag element alphabetically with a string id.
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
+            "&state=playing&time=20000&duration=600000&X-Plex-Session-Identifier=c49p"
+            % (movie, movie))
+    _, sess_c49p, _ = container(base, "GET", "/status/sessions")
+    rows_c49p = sess_c49p.get("Metadata") or []
+    tags_c49p = {name: (rows_c49p[0].get(name) or [{}])[0]
+                 for name in ("Genre", "Label", "Style", "Similar") if rows_c49p} if rows_c49p else {}
+    check("a session row writes every tag element with a string id, alphabetically",
+          bool(tags_c49p) and all(isinstance(tag.get("id"), str)
+                                  and list(tag) == sorted(tag) for tag in tags_c49p.values()),
+          "%s" % tags_c49p)
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
+            "&state=stopped&time=20000&duration=600000&X-Plex-Session-Identifier=c49p"
+            % (movie, movie))
+
     # Cycle 49, the dual-format census: two differences XML cannot see. A
     # `/system/agents` `Language`'s `default` is the JSON BOOLEAN `true` on all four
     # references and plexsim sent the string `"1"` -- it survived because
