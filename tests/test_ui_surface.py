@@ -3175,11 +3175,19 @@ def main():
               ", ".join(str(s.get("name")) for s in show_scanners.get("Scanner") or []))
     else:
         skip("a show library lists its own two scanners", "no show library")
-    # A real PMS does NOT put its account token in /myplex/account, and plexsim
-    # did -- a page that reads this endpoint is a page that could log the token.
+    # Cycle 49 REFUTES the claim this check used to carry ("a real PMS does NOT put its
+    # account token in /myplex/account"). zen (1.42.2, claimed and fully mapped) answers
+    # `authToken="<its PlexOnlineToken>"`; kids (1.43.4, claimed) does not -- and kids
+    # also answers an EMPTY publicAddress/publicPort/privateAddress/privatePort, so the
+    # whole plex.tv mapping block is missing there. Version and mapping state are
+    # CONFOUNDED on the only two claimed servers this project has, and neither unclaimed
+    # copy can separate them (an unclaimed PMS holds no account token at all).
+    # plexsim's omission therefore stands as a DELIBERATE deviation, not a measurement:
+    # its own token gate defaults OFF, so emitting the claim token here would hand it to
+    # every peer that can reach the port. See HANDOVER 3.3 and 8.
     _, body, _ = request(base, "GET", "/myplex/account")
     account = json.loads(body).get("MyPlex", {}) if body[:1] == b"{" else {}
-    check("/myplex/account carries no authToken",
+    check("/myplex/account carries no authToken (deliberate: zen 1.42.2 sends one)",
           "authToken" not in account and account.get("signInState"),
           ",".join(sorted(account)))
     status, token, _ = get(base, "/security/token?type=delegation&scope=all")

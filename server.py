@@ -6200,11 +6200,15 @@ class PlexSim:
         claimed = self._claimed()
         return {
             "MyPlex": {
-                # No `authToken` here: measured against the reference, a real PMS
-                # does NOT put its account token in this response, and plexsim did.
-                # A page that reads /myplex/account is a page that could log the
-                # token, and the field buys nothing -- the client already holds one.
-                # fun and zen both report the owner's EMAIL here.
+                # No `authToken` here, and cycle 49 REFUTED the reason this comment
+                # used to give. zen (1.42.2, claimed and mapped) DOES answer
+                # `authToken="<its PlexOnlineToken>"`; kids (1.43.4, claimed) does not,
+                # and kids also answers an empty public/private address pair -- so the
+                # whole plex.tv mapping block is absent there and version is confounded
+                # with mapping state. The omission is now a DELIBERATE deviation: plexsim's
+                # token gate defaults OFF, so publishing the claim token here would hand it
+                # to every peer that can reach the port. fun and zen both report the
+                # owner's EMAIL here.
                 "username": self._owner() if claimed else None,
                 "mappingState": "mapped",
                 "mappingError": "",
