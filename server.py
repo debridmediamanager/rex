@@ -6109,7 +6109,28 @@ class PlexSim:
         # origin -- rather than discovering servers through plex.tv. That
         # sidesteps the resource `accessToken` entirely, which is the one thing
         # blocking app.plex.tv from connecting to plexsim.
-        if route == "/web" or route == "/web/":
+        if route in ("/dlna", "/dlna/"):
+            # Cycle 49, measured on zen (1.42.2) and kids (1.43.4), identical in shape:
+            # the DLNA server's own library list. The rows are the library `Directory`
+            # rows with two differences -- the `key` is the full `/library/sections/{id}`
+            # path rather than the bare id, and `allowSync`, `filters` and `refreshing`
+            # are dropped -- and the list ends with a `/channels/all` "Channels" row. The
+            # container carries nothing but its `size`. plexsim answered the plug-in
+            # dispatcher's empty container. (`/dlna/x` is a 404 on both; the bare path
+            # and its trailing slash are the same document.)
+            rows = []
+            for section in catalog.sections:
+                row = dict(self.section_directory(section))
+                row["key"] = "/library/sections/%s" % section["key"]
+                for dropped in ("allowSync", "filters", "refreshing"):
+                    row.pop(dropped, None)
+                rows.append(row)
+            rows.append({"key": "/channels/all", "title": "Channels"})
+            return self.bare_container(size=len(rows), Directory=rows)
+        if route in ("/manage", "/manage/") or route == "/web" or route == "/web/":
+            # Cycle 49: `/manage` is the same 302 as `/web` on both references, byte for
+            # byte -- the short URL a person types to reach the web client. plexsim
+            # answered the plug-in dispatcher's empty container there.
             # Cycle 16, measured on kids and zen: the Location is ABSOLUTE and
             # built from the request's own `Host` header -- `Host:
             # example.com:1234` gives `http://example.com:1234/web/index.html`

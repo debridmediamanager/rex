@@ -7662,6 +7662,59 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): two named endpoints behind
+    # the legacy single-segment dispatcher are real. `/dlna` is the DLNA server's own
+    # library list -- the section rows keyed by their full path, without `allowSync`,
+    # `filters` and `refreshing`, ending in a `/channels/all` "Channels" row -- and
+    # `/manage` is the same 302 into the web client that `/web` answers, byte for byte.
+    # plexsim answered the dispatcher's empty `content="plugins"` container to both.
+    # (The dispatcher's PREFIX listing beside them -- `/dev` naming `devices`, `/me`
+    # naming media's children -- is measured and recorded in docs/findings.md rather
+    # than built: reproducing it needs PMS's own route registry.)
+    status_c49n, dlna_c49n, _ = container(base, "GET", "/dlna")
+    rows_c49n = dlna_c49n.get("Directory") or []
+    _, sections_c49n, _ = get(base, "/library/sections")
+    want_c49n = sections_c49n.get("Directory") or []
+    check("/dlna lists the libraries and ends with the Channels row",
+          status_c49n == 200 and len(rows_c49n) == len(want_c49n) + 1
+          and rows_c49n[-1] == {"key": "/channels/all", "title": "Channels"},
+          "%d row(s), last %r" % (len(rows_c49n), rows_c49n[-1:] ))
+    check("a /dlna library row keys the full section path and drops three attributes",
+          all(row.get("key") == "/library/sections/%s" % want.get("key")
+              and not {"allowSync", "filters", "refreshing"} & set(row)
+              for row, want in zip(rows_c49n, want_c49n)),
+          "%r" % (rows_c49n[:1],))
+    check("the /dlna container carries nothing but its size",
+          set(dlna_c49n) == {"size", "Directory"}, "%s" % sorted(dlna_c49n))
+    check("/dlna/x is a 404", get(base, "/dlna/x")[0] == 404, "")
+    # urllib follows a redirect, so the 302 itself needs a raw socket.
+    import socket as _s49n
+    _h49n, _, _p49n = base.split("//", 1)[1].partition(":")
+    _p49n = int(_p49n.split("/")[0])
+    def head_c49n(path):
+        sock = _s49n.create_connection((_h49n, _p49n), timeout=5)
+        try:
+            sock.sendall(("GET %s HTTP/1.1\r\nHost: %s:%d\r\n\r\n"
+                          % (path, _h49n, _p49n)).encode())
+            buf = b""
+            while b"\r\n\r\n" not in buf:
+                piece = sock.recv(65536)
+                if not piece:
+                    break
+                buf += piece
+        finally:
+            sock.close()
+        lines = buf.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        return lines[0], dict(l.split(": ", 1) for l in lines[1:] if ": " in l)
+    manage_c49n = head_c49n("/manage")
+    web_c49n = head_c49n("/web")
+    check("/manage is the same redirect as /web",
+          manage_c49n[0] == "HTTP/1.1 302 Moved Temporarily"
+          and manage_c49n[0] == web_c49n[0]
+          and manage_c49n[1].get("Location") == web_c49n[1].get("Location")
+          and manage_c49n[1].get("Cache-Control") == "public",
+          "%s / %s" % (manage_c49n, web_c49n))
+
     # Cycle 49, 16 framing cells and 13 header spellings on plexscratch42 (1.42.2) and
     # plexscratch (1.43.4): a real PMS really dechunks a `Transfer-Encoding: chunked`
     # request body, including on a write -- a chunked subtitle upload lands a sidecar
