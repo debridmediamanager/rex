@@ -38,6 +38,7 @@ import random
 import re
 import resource
 import socket
+import ssl
 import struct
 import sys
 import threading
@@ -17536,13 +17537,43 @@ class _RequestReader(object):
             self.saw_eof = True
         return data
 
-    def readline(self, *args):
-        self._arm()
-        line = self._seen(self._raw.readline(*args))
+    def readline(self, limit=-1):
+        """One line, with the request's deadline re-checked before EVERY read.
+
+        Cycle 50: `BufferedReader.readline` loops `recv` internally and each one gets the
+        socket's whole timeout afresh, so arming the deadline once per CALL bounds a peer
+        that stops between LINES and not one that dribbles inside one. Cycle 49's fix
+        closed only the first: a peer sending a byte every two seconds still held a socket
+        -- and a thread -- past 256 s where every reference drops it at 20.0 s. Reading
+        through `peek` costs one `recv` per iteration, so the deadline is re-armed for
+        each of them.
+        """
+        out = bytearray()
+        while True:
+            self._arm()
+            block = self._raw.peek(1)
+            if not block:
+                self._seen(b"")                       # EOF
+                break
+            self._deadline = self._deadline or (time.monotonic() + self._limit)
+            index = block.find(b"\n")
+            take = index + 1 if index >= 0 else len(block)
+            if limit is not None and limit >= 0:
+                take = min(take, max(0, limit - len(out)))
+                if take == 0:
+                    break
+            out += self._raw.read(take)
+            if index >= 0 and take == index + 1:
+                break
+        line = bytes(out)
         if self.capture:
             # The header block's RAW lines. `http.client.parse_headers` unfolds an
             # `obs-fold` continuation before the handler can see it, and a real PMS
-            # refuses one outright -- so the only place to catch it is here.
+            # refuses one outright -- so the only place to catch it is here. Cycle 50
+            # also reads the header VALUES back off these: Python strips whitespace from
+            # both ends and a real PMS removes ONE optional leading space and nothing
+            # else, so `Content-Length:  7` is not a length and `X-Plex-Token:  <tok>` is
+            # not that token.
             self.lines.append(line)
         return line
 
@@ -17554,24 +17585,63 @@ class _RequestReader(object):
         self._arm()
         return self._seen(self._raw.read1(*args))
 
-    def drain(self, count, grace):
-        """Swallow up to `count` bytes that are already there; return what is left.
+    def available(self, count):
+        """Swallow up to `count` bytes that are ALREADY THERE; return what is left.
 
-        The request's own deadline does not apply -- the response has already gone out,
-        so this is the *next* request's prologue, not this one's. It reads through the
-        raw reader for that reason.
+        Cycle 50 settled cycle 49's open question: a real PMS's decision to close after a
+        declared body is not a timer at all. Measured on four servers at delays of 0, 1,
+        2, 5, 10, 20, 45, 50, 100, 300 and 1000 ms, its EOF arrives WITH the response
+        (`resp_at` and `closed_at` identical to four decimal places) -- so what it
+        consumes is exactly what was buffered when it answered, and everything else is a
+        close. Cycle 49's 50 ms grace was observable at every delay under 40 ms, and
+        worse, it was per READ: a 100 KB body at one byte per 10 ms held a socket for the
+        whole test where every reference closed it at 0.03 s, and fifty of them held
+        fifty threads.
         """
         self._deadline = None
         try:
-            self._connection.settimeout(grace)
+            self._connection.settimeout(0)
             while count > 0:
                 chunk = self._raw.read1(count)
                 if not chunk:
                     break
                 count -= len(chunk)
         except OSError:
-            pass
+            pass                                      # nothing more is buffered
         return count
+
+    def drain_chunked(self):
+        """Swallow a chunked body that is already buffered. True when it ended cleanly.
+
+        Cycle 50: a real PMS answers FIRST and consumes the framing afterwards, exactly as
+        it does a `Content-Length` body -- a GET carrying `Transfer-Encoding: chunked` and
+        NO body at all is answered in 0.16 s on zen and 0.18 s on the 1.42.2 copy, where
+        cycle 49's decoder waited for the body and answered nothing for 20 s. And it
+        generates no refusals of its own: whatever it cannot parse is LEFT in the stream
+        and read as the next request line, which is where the 400s cycle 49 attributed to
+        the framing actually come from -- `5 \r\n` is a malformed request line, a trailer
+        line is a malformed request line, and a size larger than the body simply runs out.
+        """
+        self._deadline = None
+        try:
+            self._connection.settimeout(0)
+            while True:
+                line = self._raw.readline(65537)
+                if not line.endswith(b"\r\n"):
+                    return False
+                match = Handler._CHUNK_SIZE.fullmatch(line[:-2])
+                if match is None or match.group(1) == b"-":
+                    return False
+                size = int(match.group(2), 16)
+                if size == 0:
+                    # Only a bare CRLF closes it cleanly; a trailer is left behind and
+                    # becomes the next request's own 400.
+                    return self._raw.readline(65537) == b"\r\n"
+                data = self._raw.read(size)
+                if len(data) < size or self._raw.read(2) != b"\r\n":
+                    return False
+        except OSError:
+            return False                              # nothing more is buffered
 
     def __getattr__(self, name):
         return getattr(self._raw, name)
@@ -17587,6 +17657,30 @@ class Handler(BaseHTTPRequestHandler):
     timeout = 20
 
     def setup(self):
+        # Cycle 50: a real PMS MULTIPLEXES TLS and plain HTTP on the same TCP port.
+        # Measured on zen (1.42.2) and kids (1.43.4): both complete a TLS 1.3 handshake on
+        # 32400 and both answer the identical API, with the identical header block, on the
+        # plain side of the same port. The discriminator is the FIRST BYTE -- `0x16`, a TLS
+        # handshake record -- and everything else is read as HTTP: `0x16` followed by a
+        # malformed record draws a TLS alert (`15 03 03 00 02 02 0a`, fatal
+        # unexpected_message) where a `GET` on the same port draws the ordinary 200.
+        # The certificate is a real Let's Encrypt wildcard for
+        # `*.<hash>.plex.direct` -- the same hash the GDM reply's `Host` line carries --
+        # which plex.tv issues to a claimed server, so plexsim cannot mint one: the
+        # operator supplies it with `--tls-cert`/`--tls-key` and this sniffs for it.
+        self._tls = False
+        context = getattr(self.server, "tls_context", None)
+        if context is not None:
+            try:
+                self.request.settimeout(self.timeout)
+                if self.request.recv(1, socket.MSG_PEEK)[:1] == b"\x16":
+                    self.request = context.wrap_socket(self.request, server_side=True)
+                    self._tls = True
+            except OSError as error:
+                # A failed handshake is not an HTTP request: let the reader below see an
+                # immediate EOF and close, rather than parsing record bytes as a request
+                # line. Quietly, because a scanner opening TLS sockets is not an event.
+                logger.debug("TLS handshake failed from %s: %s", self.client_address, error)
         BaseHTTPRequestHandler.setup(self)
         # Everything read from the peer goes through the wrapper: it is what makes the
         # request deadline absolute and the unterminated header block visible.
@@ -17605,8 +17699,21 @@ class Handler(BaseHTTPRequestHandler):
             # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
             # when the line finishes. `peek` blocks for the first byte, as this read
             # would anyway, and then hands back whatever the one raw read brought.
+            # Cycle 50: the bound is checked on EVERY read until the token can be
+            # decided, not only on the first. `ELEVE` then `NCHARS` a second later draws
+            # the 400 the moment the eleventh byte lands on both writable copies, where
+            # cycle 49's single `peek` saw five bytes, fell through, and answered nothing
+            # for 20 s.
+            head = b""
             try:
-                head = self.rfile.peek(self.METHOD_BYTES + 1)
+                while len(head) <= self.METHOD_BYTES:
+                    self.rfile._arm()
+                    more = self.rfile.peek(self.METHOD_BYTES + 1)
+                    if not more or len(more) == len(head):
+                        break
+                    head = more
+                    if re.match(rb"[^ \r\n\t]{0,%d}[ \r\n\t]" % self.METHOD_BYTES, head):
+                        break
             except OSError:
                 head = b""
             if (len(head) > self.METHOD_BYTES
@@ -17651,6 +17758,17 @@ class Handler(BaseHTTPRequestHandler):
             self.close_connection = True
             return
         finally:
+            # Cycle 50: flush HERE, not only on the success path. Every early `return`
+            # above -- a refused request line, a refused header block, an EOF-terminated
+            # one -- skipped the stdlib's own `self.wfile.flush()`, so a refusal written
+            # for a PIPELINED second request never reached the wire: plexsim answered the
+            # first request and then dropped the socket in silence where a real PMS
+            # answers 200 and then 400. It pre-dates cycle 49 and is visible only when a
+            # refusal follows a successful response on one connection.
+            try:
+                self.wfile.flush()
+            except OSError:
+                pass
             try:
                 self.connection.settimeout(self.timeout)
             except OSError:
@@ -17663,7 +17781,45 @@ class Handler(BaseHTTPRequestHandler):
     # refused. It is the same parser family as cycle 36's `%`-escape rule.
     _CHUNK_SIZE = re.compile(rb"([+-]?)(?:0[xX])?([0-9A-Fa-f]+)\Z")
 
-    def _read_chunked(self):
+    def _header_value(self, name):
+        """A header's value as a real PMS reads it, off the RAW line.
+
+        Cycle 50, 12 forms x 4 servers: the value is everything after the colon with ONE
+        optional leading space removed, and NOTHING else trimmed. `Content-Length:7` and
+        `: 7` parse everywhere; `:  7`, `:   7` and `: 7 ` parse only on plexsim, because
+        Python's `email.parser` strips whitespace from both ends. The same rule governs
+        the TOKEN: `X-Plex-Token: <tok>` is a 200 on all four references and
+        `X-Plex-Token:  <tok>` a **401**, where plexsim answered 200 -- so a token a real
+        PMS rejects was opening the whole library. Returns the LAST occurrence, as the
+        surface's other repeated readers do, except where `Transfer-Encoding` asks for the
+        first (it is the only header measured to take it).
+        """
+        wanted = name.lower().encode("latin-1")
+        first = name.lower() == "transfer-encoding"
+        found = None
+        for line in getattr(self.rfile, "lines", ()) or ():
+            if line[:1] in (b" ", b"\t"):
+                continue                                   # a continuation, not a header
+            head, colon, value = line.partition(b":")
+            if not colon or head.strip().lower() != wanted:
+                continue
+            if value.endswith(b"\r\n"):
+                value = value[:-2]
+            elif value.endswith(b"\n"):
+                value = value[:-1]
+            if value[:1] == b" ":
+                value = value[1:]
+            text = value.decode("latin-1")
+            if first:
+                return text
+            found = text
+        if found is not None:
+            return found
+        # Before the header block has been read -- a refusal written by the envelope --
+        # there is nothing to read off, so fall back to Python's own view.
+        return self.headers.get(name) if getattr(self, "headers", None) is not None else None
+
+    def _read_chunked(self, blocking=True):
         """Decode a `Transfer-Encoding: chunked` request body.
 
         Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a real PMS
@@ -17675,10 +17831,44 @@ class Handler(BaseHTTPRequestHandler):
         normally, then the socket goes).
         """
         out = []
+        if not blocking:
+            # Only what the peer has already sent: a real PMS answers a chunked GET whose
+            # body has not arrived rather than waiting for it.
+            try:
+                self.connection.settimeout(0)
+            except OSError:
+                pass
+        try:
+            return self._chunks(out, blocking)
+        finally:
+            if not blocking:
+                try:
+                    self.connection.settimeout(self.timeout)
+                except OSError:
+                    pass
+
+    def _chunks(self, out, blocking):
+        # A non-blocking `BufferedReader` returns **None**, not b"", when nothing is
+        # buffered -- and raises nothing. Every read here goes through these two so that
+        # None is read as "no more", which is what makes the decode stop at what the peer
+        # has actually sent.
+        def read_line(limit):
+            line = (self.rfile.readline(limit) if blocking
+                    else self.rfile._raw.readline(limit))
+            return line or b""
+
+        def read_bytes(count):
+            data = self.rfile.read(count) if blocking else self.rfile._raw.read(count)
+            return data or b""
         while True:
-            line = self.rfile.readline(65537)
+            try:
+                line = read_line(65537)
+            except OSError:
+                return "short", b""
+            if not line:
+                return "short", b""                 # nothing buffered, or EOF
             if not line.endswith(b"\r\n"):
-                return "bad", b""                   # LF-only framing, or EOF mid-header
+                return "bad", b""                   # LF-only framing, or a partial line
             token = line[:-2]
             match = self._CHUNK_SIZE.fullmatch(token)
             if match is None:
@@ -17688,17 +17878,32 @@ class Handler(BaseHTTPRequestHandler):
                 # `-5` parses and is nonsense: both references answer and then close.
                 return "short", b""
             size = int(match.group(2), 16)
-            if size > 0x7fffffff:
-                return "bad", b""                   # `FFFFFFFFFFFFFFFF` is a 400
+            # Cycle 50: a size larger than the body is NOT a refusal. `FFFFFFFFFFFFFFFF`
+            # and every value above it are 200 + close on all four references -- the
+            # server simply runs out of body -- where cycle 49 read the pipelined
+            # request's own 400 as the size's.
             if size == 0:
-                # Only a bare CRLF closes it: a trailer is an unfinished body there.
-                return ("ok" if self.rfile.readline(65537) == b"\r\n" else "short"), \
-                    b"".join(out)
-            data = self.rfile.read(size)
-            if len(data) < size:
+                # Only a bare CRLF ends it cleanly, and it is PEEKED at rather than read:
+                # a TRAILER has to stay in the stream, because it is read as the next
+                # request line and its 400 is where that refusal comes from on a real PMS.
+                try:
+                    ahead = (self.rfile._raw.peek(2) or b"")[:2]
+                except OSError:
+                    return "short", b""
+                if ahead == b"\r\n":
+                    read_bytes(2)
+                    return "ok", b"".join(out)
+                return ("left" if ahead else "short"), b"".join(out)
+            try:
+                # Capped: `FFFFFFFFFFFFFFFF` is a legal size token and asking the reader
+                # for 18 quintillion bytes raises before it can run out of body.
+                data = read_bytes(min(size, 1 << 24))
+                if len(data) < size:
+                    return "short", b""
+                if read_bytes(2) != b"\r\n":
+                    return "bad", b""
+            except OSError:
                 return "short", b""
-            if self.rfile.read(2) != b"\r\n":
-                return "bad", b""
             out.append(data)
 
     def _drain_body(self):
@@ -17722,17 +17927,19 @@ class Handler(BaseHTTPRequestHandler):
         direction. Recorded as a deviation in HANDOVER 3.3.
         """
         left = self._undrained
+        chunked = getattr(self, "_undrained_chunked", False)
         self._undrained = 0
-        if left <= 0:
+        self._undrained_chunked = False
+        if left <= 0 and not chunked:
             return
         try:
-            left = self.rfile.drain(left, 0.05)
+            done = self.rfile.drain_chunked() if chunked else (self.rfile.available(left) == 0)
         finally:
             try:
                 self.connection.settimeout(self.timeout)
             except OSError:
                 pass
-        if left > 0:
+        if not done:
             self.close_connection = True
 
     def send_error(self, code, message=None, explain=None):
@@ -17925,9 +18132,14 @@ class Handler(BaseHTTPRequestHandler):
                 or not self._path_escapes_ok(target.split(b"?", 1)[0])):
             self.send_error(400)
             return False
-        if method != method.upper():
-            # Measured: no response at all, on both references. Nothing is written and
-            # the connection goes.
+        if method[:1] != method[:1].upper():
+            # Cycle 50: it is the FIRST BYTE, not the whole token. Measured on both
+            # writable copies: `Get`, `Blah`, `HELLOGET` and `BLAH` are each the 500 an
+            # unrecognised method gets, while `get`, `gET`, `blah` and `helloGET` draw
+            # NOTHING -- so a mixed-case token that merely starts upper-case is answered.
+            # plexsim silenced anything that was not wholly upper-case, which is cycle
+            # 27's rule read one step too wide; the cell that shows it is a leftover body
+            # byte glued to the next request's `GET`.
             self.close_connection = True
             return False
         if version not in (b"HTTP/1.0", b"HTTP/1.1"):
@@ -17967,7 +18179,12 @@ class Handler(BaseHTTPRequestHandler):
         # references refuse. (A TAB continuation was already a 400, because Python
         # refuses a tab in a value, so only the space form was reachable.)
         for line in self.rfile.lines:
-            if line[:1] in (b" ", b"\t") and line.strip():
+            # Cycle 50: a WHITESPACE-ONLY continuation is a fold too. Cycle 49's
+            # `and line.strip()` exempted it, and all four references answer 400 to a bare
+            # `" \r\n"` where plexsim answered 200 -- and a `PUT .../title.value=` sent
+            # that way really COMMITTED, which is the second time this cycle's family has
+            # changed durable state a real PMS discards.
+            if line[:1] in (b" ", b"\t") and line not in (b"\r\n", b"\n", b""):
                 self.close_connection = True
                 self.send_error(400)
                 return False
@@ -18393,6 +18610,13 @@ class Handler(BaseHTTPRequestHandler):
         # bytes; a 206 is never gzipped. plexsim honoured Range on part reads
         # alone and answered the whole body with a 200 everywhere else. It runs
         # before the status line goes out, which is the whole point.
+        # Cycle 50: a real PMS answers a FULL HTTP/1.1 response to an HTTP/0.9 request
+        # line -- a recorded rule this project already holds -- but Python's
+        # `send_response_only` and `send_header` write NOTHING at all when
+        # `request_version` is HTTP/0.9, which `parse_request` sets for any two-word line.
+        # A refusal for such a line therefore reached the wire as a bare HTML body with no
+        # status line and no headers.
+        self.request_version = "HTTP/1.1"
         payload, status, content_range = self._ranged(status, payload)
         # Per REQUEST, not per connection: a handler instance serves every request on a
         # kept-alive socket, so a 416 earlier on the same connection must not decide
@@ -18932,7 +19156,10 @@ class Handler(BaseHTTPRequestHandler):
         # and the notification channels' `filters=` whitelist. A token appended to a URL
         # that already carried one -- what a client concatenating a base URL produces --
         # was therefore refused by plexsim and accepted by a real PMS.
-        given = self.headers.get("X-Plex-Token") or urllib.parse.parse_qs(
+        # Cycle 50: the HEADER's value is read the way a real PMS reads it -- one optional
+        # leading space and nothing else trimmed -- so `X-Plex-Token:  <tok>` is not that
+        # token and this gate refuses it, as all four references do.
+        given = self._header_value("X-Plex-Token") or urllib.parse.parse_qs(
             raw_query).get("X-Plex-Token", [""])[-1]
         return given == wanted
 
@@ -19145,7 +19372,10 @@ class Handler(BaseHTTPRequestHandler):
         # raw value, so `abc` raised inside the handler thread and the connection died
         # with no response at all, and `-1` became `rfile.read(-1)`, which blocks until
         # the peer closes. Both read to a client as a server that hung up.
-        declared = (self.headers.get("Content-Length") or "").strip()
+        # NOT stripped: `_header_value` already removed the one optional leading space a
+        # real PMS removes, and stripping again turns `Content-Length:  7` -- which no
+        # reference reads as a length -- back into one.
+        declared = self._header_value("Content-Length") or ""
         if declared.startswith("-") and declared[1:].isdigit():
             # Cycle 49: and it CLOSES on both references. The unifying rule the raw-socket
             # sweep found is that a refusal of the request's ENVELOPE closes the socket
@@ -19182,24 +19412,46 @@ class Handler(BaseHTTPRequestHandler):
         # other spellings -- ` chunked`, `chunked `, `chunked;`, `identity, chunked`,
         # `gzip, chunked`, `chunked, gzip`, `bogus`, an empty value -- are answered 200 and
         # then CLOSED on both references, because the framing that follows cannot be read.
-        encoding = (self.headers.get("Transfer-Encoding") or "").strip()
-        if encoding:
-            if encoding.lower() == "chunked":
-                state, decoded = self._read_chunked()
-                if state == "bad":
-                    self.close_connection = True
-                    self._send_error(400, "plexsim: bad request")
-                    return
-                body = decoded if consumes_body else b""
-                if state == "short":
-                    self.close_connection = True
-                length = 0
-            else:
-                # Nothing readable follows, so answer and give the socket up.
+        # Cycle 50 corrected cycle 49 here twice. `Transfer-Encoding` must be exactly
+        # `chunked` (case-insensitive, nothing else in the value, FIRST occurrence when
+        # repeated); **any other value is IGNORED**, not answered-and-closed -- `TE: bogus`
+        # followed by another request is 200 + 200 with the socket kept on all four
+        # references, and the close cycle 49 recorded came from the chunk framing behind
+        # it being read as a request line. And a chunked body a read-only route does not
+        # want is consumed AFTER the answer, like a `Content-Length` one: a GET carrying
+        # `chunked` and no body at all is answered at once on every reference and waited
+        # 20 s for by cycle 49's decoder.
+        encoding = (self._header_value("Transfer-Encoding") or "").strip().lower()
+        chunked = encoding == "chunked"
+        self._undrained = 0
+        self._undrained_chunked = False
+        if chunked and consumes_body:
+            # An upload really does wait for its bytes -- that half of cycle 49 holds.
+            state, decoded = self._read_chunked()
+            if state == "bad":
                 self.close_connection = True
-                body = b""
-                length = 0
-            self._undrained = 0
+                self._send_error(400, "plexsim: bad request")
+                return
+            body = decoded
+            if state == "short":
+                self.close_connection = True
+        elif chunked:
+            # Measured on four servers: what is already BUFFERED is decoded before the
+            # answer -- a malformed size line (`5 \r\n`) is a 400 and the GET is never
+            # answered -- while nothing buffered at all is answered at once. So this is
+            # cycle 49's decode, made non-blocking; the 20 s wait was the whole bug.
+            state, _ = self._read_chunked(blocking=False)
+            body = b""
+            if state == "bad":
+                self.close_connection = True
+                self._send_error(400, "plexsim: bad request")
+                return
+            if state == "short":
+                # Ran out of buffered framing: answer, then the socket goes, exactly as a
+                # declared `Content-Length` body that never arrives does.
+                self.close_connection = True
+            # `left` is the trailer case: the remainder stays in the stream and earns its
+            # own refusal as the next request line, which is what a real PMS answers.
         else:
             body = self.rfile.read(length) if length and consumes_body else b""
             # Cycle 49: whatever this handler does not read is drained after the
@@ -20394,9 +20646,14 @@ class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, address, sim, verbose):
+    def __init__(self, address, sim, verbose, tls_context=None):
         self.sim = sim
         self.verbose = verbose
+        # Cycle 50: when this is set the port carries TLS as well as plain HTTP, the way a
+        # real PMS's does. The sniff is in `Handler.setup`, which runs in the worker
+        # thread -- doing it in `get_request` would block the accept loop on a peer that
+        # connects and then says nothing.
+        self.tls_context = tls_context
         super().__init__(address, Handler)
 
 
@@ -20454,6 +20711,18 @@ def main():
     # udp/32414 -- see gdm.py. `auto` is on only when the HTTP port is a real PMS's
     # 32400, because a test instance on another port must not claim the host's one
     # GDM identity; that gate is a deliberate deviation and is in HANDOVER 3.3.
+    # Cycle 50: a real PMS carries TLS on its HTTP port, behind a `*.<hash>.plex.direct`
+    # certificate plex.tv issues to a claimed server. plexsim cannot mint one, so the
+    # operator supplies it; without it the port stays plain, which is what plexsim always
+    # was.
+    parser.add_argument(
+        "--tls-cert", default=None,
+        help="PEM certificate chain to serve TLS with, on the same port as plain HTTP",
+    )
+    parser.add_argument(
+        "--tls-key", default=None,
+        help="PEM private key for --tls-cert (defaults to the certificate file itself)",
+    )
     parser.add_argument(
         "--gdm", choices=("auto", "on", "off"), default="auto",
         help="answer Plex's LAN discovery protocol on udp/32410 and udp/32414",
@@ -20558,7 +20827,20 @@ def main():
     sim.private_address = _own_address(args.host)
     sim.private_port = args.port
 
-    server = Server((args.host, args.port), sim, args.verbose)
+    tls_context = None
+    if args.tls_cert:
+        # Measured on zen and kids: TLS 1.2 and 1.3 both negotiate, SNI is IGNORED (no SNI
+        # and a bogus one complete with the same certificate), and the server selects NO
+        # ALPN protocol even when the client offers only `h2` -- so it does not negotiate
+        # the extension at all rather than refusing h2.
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        tls_context.load_cert_chain(args.tls_cert, args.tls_key or args.tls_cert)
+        logger.info("TLS multiplexed on tcp/%d from %s", args.port, args.tls_cert)
+    elif args.tls_key:
+        parser.error("--tls-key needs --tls-cert")
+
+    server = Server((args.host, args.port), sim, args.verbose, tls_context=tls_context)
     logger.info("claim state: %s", "CLAIMED by %s" % claim.owner if claim.claimed else "unclaimed")
     # Said out loud either way: a real PMS 401s everything but /identity and /web/*
     # without its token, and a plexsim with no token is readable by any peer that

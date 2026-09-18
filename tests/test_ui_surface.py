@@ -7877,6 +7877,103 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50 re-swept the request path cycle 49 rewrote, and found three REGRESSIONS in
+    # it and four cells cycle 49 had mis-read. The regressions: a chunked body was WAITED
+    # for even by a read-only route, so a GET carrying `Transfer-Encoding: chunked` and no
+    # body answered nothing for 20 s where every reference answers in 0.02 s; an
+    # unrecognised `Transfer-Encoding` was answered-and-closed where a real PMS IGNORES
+    # it; and a whitespace-only `obs-fold` was exempted from the fold refusal, so a `PUT
+    # ...title.value=` sent that way COMMITTED. The mis-readings all have one cause --
+    # cycle 49 read a refusal earned by the LEFTOVER bytes as the framing's own answer.
+    # Two more, older than cycle 49: a header VALUE keeps everything after ONE optional
+    # leading space (Python strips both ends, so `X-Plex-Token:  <tok>` opened the whole
+    # library where all four references answer 401), and a refusal written for a PIPELINED
+    # request never reached the wire at all, because every early return skipped the
+    # stdlib's own flush and Python writes no status line for an HTTP/0.9 request version.
+    import socket as _s50a
+    _h50a, _, _p50a = base.split("//", 1)[1].partition(":")
+    _p50a = int(_p50a.split("/")[0])
+    def wire_c50a(payload, wait=3.0):
+        sock = _s50a.create_connection((_h50a, _p50a), timeout=wait)
+        try:
+            sock.sendall(payload)
+            sock.settimeout(wait)
+            buf, closed = b"", False
+            try:
+                while True:
+                    piece = sock.recv(65536)
+                    if not piece:
+                        closed = True
+                        break
+                    buf += piece
+            except _s50a.timeout:
+                pass
+        finally:
+            sock.close()
+        return ([buf[i:i + 26].split(b"\r\n")[0].decode("latin-1")
+                 for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)], closed)
+    FOLLOW50A = b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n"
+    OK2_50A = (["HTTP/1.1 200 OK", "HTTP/1.1 200 OK"], False)
+
+    # A chunked body a read-only route does not want must not be WAITED for.
+    import time as _t50a
+    began_c50a = _t50a.time()
+    answer_c50a = wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n",
+                            wait=3.0)
+    check("a chunked GET with no body at all is answered at once, not waited for",
+          answer_c50a == (["HTTP/1.1 200 OK"], True) and _t50a.time() - began_c50a < 2.5,
+          "%s in %.1fs" % (answer_c50a, _t50a.time() - began_c50a))
+
+    # An unrecognised Transfer-Encoding is IGNORED, not answered-and-closed.
+    check("an unrecognised Transfer-Encoding is ignored and the socket is kept",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
+                    + FOLLOW50A) == OK2_50A, "")
+    check("...and its framing, if any, becomes the next request's own refusal",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
+                    b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A)
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
+    check("a chunk size larger than the body is answered and closed, not refused",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+                    b"FFFFFFFFFFFFFFFF\r\n") == (["HTTP/1.1 200 OK"], True), "")
+    check("a trailer after the last chunk is left in the stream and earns its own 400",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+                    b"0\r\nX-T: v\r\n\r\n")
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
+
+    # A header VALUE keeps everything after ONE optional leading space.
+    check("a header value keeps everything after one optional leading space",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:  7\r\n\r\nhello\r\n"
+                    + FOLLOW50A) == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True),
+          "")
+    check("...and one leading space is still removed",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhello"
+                    + FOLLOW50A) == OK2_50A, "")
+    check("...as is none at all",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:5\r\n\r\nhello"
+                    + FOLLOW50A) == OK2_50A, "")
+
+    # A whitespace-only obs-fold is a fold too.
+    check("a whitespace-only continuation line is refused like any other fold",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nX-A: v\r\n \r\n\r\n")
+          == (["HTTP/1.1 400 Bad Request"], True), "")
+
+    # The method's FIRST BYTE decides the silence, not the whole token.
+    methods_c50a = {name: wire_c50a(name.encode() + b" /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0]
+                    for name in ("Get", "Blah", "HELLOGET", "get", "gET", "blah", "helloGET")}
+    check("an unknown method starting upper-case is a 500 and one starting lower-case is silence",
+          methods_c50a == {"Get": ["HTTP/1.1 500 Internal Serv"],
+                           "Blah": ["HTTP/1.1 500 Internal Serv"],
+                           "HELLOGET": ["HTTP/1.1 500 Internal Serv"],
+                           "get": [], "gET": [], "blah": [], "helloGET": []},
+          "%s" % methods_c50a)
+
+    # A refusal that follows a successful response on one connection reaches the wire.
+    check("a refusal written for a pipelined request is flushed, with its status line",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\nX-T: v\r\n\r\n")
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
+    check("...and a bare HTTP/0.9-shaped line alone is answered a full HTTP/1.1 refusal",
+          wire_c50a(b"X-T: v\r\n\r\n") == (["HTTP/1.1 400 Bad Request"], True), "")
+
     # Cycle 49, 16 framing cells and 13 header spellings on plexscratch42 (1.42.2) and
     # plexscratch (1.43.4): a real PMS really dechunks a `Transfer-Encoding: chunked`
     # request body, including on a write -- a chunked subtitle upload lands a sidecar
@@ -7930,12 +8027,19 @@ def main():
         ("a negative size", b"chunked", b"-5\r\nhello\r\n0\r\n\r\n"),
         ("gzip, chunked", b"gzip, chunked", b"5\r\nhello\r\n0\r\n\r\n"),
         ("an unknown encoding", b"bogus", b"5\r\nhello\r\n0\r\n\r\n"))}
+    # Cycle 50 REFUTED three of these cells, each the same way: cycle 49 read a refusal
+    # earned by the LEFTOVER bytes as the framing's own answer. A size larger than the
+    # body is 200 + close on all four references (the server runs out of body, it does not
+    # refuse), and an unrecognised `Transfer-Encoding` is IGNORED -- 200 + 200 with the
+    # socket kept when nothing follows it, and 200 + 400 here because the chunk framing
+    # behind it is read as the next request line.
+    LEFT49M = ("HTTP/1.1 200 OK", 2, True)
     want_c49m = {"one chunk": OK49M, "two chunks": OK49M, "0x prefix": OK49M,
                  "leading +": OK49M, "leading zeros": OK49M, "hex digit": OK49M,
                  "mixed case header": OK49M, "size with a trailing space": BAD49M,
                  "a chunk extension": BAD49M, "LF-only framing": BAD49M,
-                 "a size that overflows": BAD49M, "a negative size": SHORT49M,
-                 "gzip, chunked": SHORT49M, "an unknown encoding": SHORT49M}
+                 "a size that overflows": SHORT49M, "a negative size": SHORT49M,
+                 "gzip, chunked": LEFT49M, "an unknown encoding": LEFT49M}
     check("a chunked request body is decoded, and its framing grammar is the reference's",
           got_c49m == want_c49m,
           "%s" % {k: (got_c49m[k], want_c49m[k]) for k in want_c49m if got_c49m[k] != want_c49m[k]})
