@@ -5099,14 +5099,28 @@ class PlexSim:
             # reads /servers to find this server was sent to its own loopback on a port
             # plexsim may not even be on. (`private_address` was declared and never
             # assigned for the whole life of the field.)
-            return self.bare_container(size=1, Server=[{
+            # ... and the rest of the list is what GDM found. zen answered THREE rows
+            # while a plexsim was on its wire -- itself, the other server, and plexsim --
+            # and two once plexsim stopped. The self row comes first and the discovered
+            # ones follow in the order they were first seen.
+            rows = [{
                 "name": catalog.friendly,
                 "host": self.private_address or "127.0.0.1",
                 "address": self.private_address or "127.0.0.1",
                 "port": self.private_port or 32400,
                 "machineIdentifier": catalog.machine,
                 "version": SERVER_VERSION,
-            }])
+            }]
+            for peer in (self.discovery.peers() if self.discovery else []):
+                rows.append({
+                    "name": peer["name"],
+                    "host": peer["address"],
+                    "address": peer["address"],
+                    "port": peer["port"],
+                    "machineIdentifier": peer["machine"],
+                    "version": peer["version"],
+                })
+            return self.bare_container(size=len(rows), Server=rows)
         if segments[:1] == ["butler"]:
             return self.butler(method, segments)
         if segments[:2] == ["library", "sections"] and len(segments) == 4 \

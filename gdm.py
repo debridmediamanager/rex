@@ -66,12 +66,24 @@ unclaimed PMS has no plex.direct certificate, so the claim and the certificate a
 confounded on these four instruments; plexsim therefore emits the line only when it
 actually holds a plex.direct hostname, which is the honest reading either way.
 
-**`Updated-At` is not a clock.**  It stands still under polling (zen answered the
-same value to fifteen reads over a minute) and it is stale on an idle server: the
-second server on zen's wire answered a value 3.5 days old.  It is the time the
-advertisement was last (re)generated.  plexsim stamps it when the advertised state
-is built and refreshes it when any advertised field changes; the exact event a real
-PMS refreshes it on is NOT measured (see HANDOVER 3.3).
+**A real PMS also SENDS.**  Listening on the group from zen's own LAN, zen emits
+``b"M-SEARCH * HTTP/1.1\r\n"`` -- 21 bytes, ONE CRLF, not the doubled terminator -- to
+239.0.0.250:32414 every **5.00 seconds**, on every interface it holds (nine samples at
+0.96, 5.96, 10.96 ... 40.97 s).  That is how `/servers` is populated: zen's `/servers`
+listed itself, the second server on the wire, and -- within six seconds of plexsim being
+started with this module -- plexsim, at the address and port plexsim advertised.  A row
+ages out when its server stops answering; see SERVERS_TTL.
+
+**`Updated-At` is not a clock.**  It stands still under polling (zen answered the same
+value to fifteen reads over a minute), it is stale on an idle server -- the second
+server on zen's wire answered a value 3.5 days old -- and on an IDLE unclaimed copy it
+did not move once in 86 samples over seventeen minutes.  It is the time the
+advertisement was last (re)generated.  The two ports can even disagree: plexscratch42
+answered 1789624280 on 32410 and 1789690002 on 32414 in the same second, and converged
+afterwards, so each socket carries its own last-regenerated stamp rather than reading
+one server-wide value.  plexsim stamps it when the advertised state is built and
+refreshes it when any advertised field changes; the exact event a real PMS refreshes it
+on is NOT measured (see HANDOVER 3.3).
 """
 
 import logging
@@ -93,6 +105,19 @@ GROUP = "239.0.0.250"
 # min(len(datagram), len(QUERY)) bytes -- so "" and b"M" answer and b"M-SEARCH *X"
 # does not.  The trailing space is load-bearing and was bisected.
 QUERY = b"M-SEARCH * "
+
+# What a real PMS sends when it goes looking, byte for byte: one CRLF, no blank line.
+SEARCH = b"M-SEARCH * HTTP/1.1\r\n"
+
+# Measured on zen: every 5.00 s, to GROUP:32414.
+SEARCH_INTERVAL = 5.0
+
+# How long a discovered row survives without an answer.  Bracketed on zen by starting a
+# server on its wire, stopping it and polling `/servers` every three seconds: present at
+# 177 s, gone at 180 s.  An earlier run read (154, 165] and is discarded -- it reused a
+# machineIdentifier zen had already held, so its row's age was not its last answer's.
+# 180 s is the same cutoff PMS applies to a playback session (sessions.py).
+SERVERS_TTL = 180.0
 
 # Alphabetical, which is the order both references emit.  `Host` is inserted in
 # its alphabetical place when the server has one.
@@ -125,11 +150,44 @@ def matches(datagram):
     return datagram[:n] == QUERY[:n]
 
 
+def parse_response(datagram):
+    """Read a peer's answer into a row, or None when it is not one.
+
+    The block is HTTP-shaped but is not HTTP: the field names are the ones in
+    `build_response`, and a peer that answers anything else is not a Plex server.
+    """
+    try:
+        text = datagram.decode("utf-8", "replace")
+    except Exception:
+        return None
+    lines = text.split("\r\n")
+    if not lines or not lines[0].startswith("HTTP/1.0 200"):
+        return None
+    fields = {}
+    for line in lines[1:]:
+        name, sep, value = line.partition(":")
+        if sep:
+            fields[name.strip()] = value.strip()
+    if fields.get("Content-Type") != CONTENT_TYPE:
+        # `plex/media-player` answers the player ports; it is not a server.
+        return None
+    machine = fields.get("Resource-Identifier")
+    if not machine:
+        return None
+    try:
+        port = int(fields.get("Port") or 0)
+    except ValueError:
+        return None
+    return {"machine": machine, "name": fields.get("Name") or "",
+            "port": port, "version": fields.get("Version") or "",
+            "host": fields.get("Host") or ""}
+
+
 class Discovery(object):
     """Answers GDM on both ports, on unicast, broadcast and the multicast group."""
 
     def __init__(self, *, name, port, machine, version, host=None, ports=PORTS,
-                 group=GROUP, bind="0.0.0.0"):
+                 group=GROUP, bind="0.0.0.0", discover=True):
         self.name = name
         self.port = port
         self.machine = machine
@@ -146,6 +204,10 @@ class Discovery(object):
         # off the clock per request, which is the one thing it provably is not.
         self.updated_at = int(time.time())
         self.answered = 0
+        self.discover = discover
+        # machineIdentifier -> (row, last seen).  A real PMS's /servers is exactly this
+        # table plus its own row, which is why the list is a function of the WIRE.
+        self._peers = {}
 
     # -- the advertised state -------------------------------------------------
 
@@ -204,6 +266,57 @@ class Discovery(object):
             except OSError as error:
                 logger.debug("GDM: could not answer %s: %s", addr, error)
 
+    # -- the search half ------------------------------------------------------
+
+    def peers(self, now=None):
+        """Every server seen on the wire recently, in first-seen order.
+
+        A row that has stopped answering ages out: SERVERS_TTL is measured, not
+        chosen.  plexsim's own machineIdentifier is never in here -- its reply to its
+        own search is dropped, so `/servers` carries one self row and no duplicate.
+        """
+        now = time.time() if now is None else now
+        with self._lock:
+            live = [(row, seen) for row, seen in self._peers.values()
+                    if now - seen <= SERVERS_TTL]
+            return [dict(row) for row, _seen in live]
+
+    def _record(self, datagram, addr):
+        row = parse_response(datagram)
+        if row is None or row["machine"] == self.machine:
+            return
+        row = dict(row, address=addr[0])
+        with self._lock:
+            previous = self._peers.get(row["machine"])
+            if previous is not None:
+                # Keep the insertion position: a dict preserves it, and a real PMS's
+                # list keeps a server where it first appeared.
+                self._peers[row["machine"]] = (row, time.time())
+            else:
+                self._peers[row["machine"]] = (row, time.time())
+
+    def _search(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+        sock.settimeout(0.5)
+        try:
+            while not self._stop.is_set():
+                try:
+                    sock.sendto(SEARCH, (self.group, self.ports[-1]))
+                except OSError as error:
+                    logger.debug("GDM: search failed: %s", error)
+                deadline = time.time() + SEARCH_INTERVAL
+                while time.time() < deadline and not self._stop.is_set():
+                    try:
+                        data, addr = sock.recvfrom(4096)
+                    except socket.timeout:
+                        continue
+                    except OSError:
+                        break
+                    self._record(data, addr)
+        finally:
+            sock.close()
+
     def start(self):
         for port in self.ports:
             try:
@@ -215,6 +328,12 @@ class Discovery(object):
             self._sockets.append(sock)
             thread = threading.Thread(target=self._serve, args=(sock, port),
                                       name="gdm-%d" % port, daemon=True)
+            thread.start()
+            self._threads.append(thread)
+        if self._sockets and self.discover:
+            # A real PMS searches as well as answers, every 5 s; `/servers` is what
+            # that search found.
+            thread = threading.Thread(target=self._search, name="gdm-search", daemon=True)
             thread.start()
             self._threads.append(thread)
         if self._sockets:
