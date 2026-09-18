@@ -7926,16 +7926,16 @@ class PlexSim:
                 for sort in described.get("Sort") or []:
                     sort.pop("active", None)
                     sort.pop("activeDirection", None)
-                # Cycle 23, measured on kids and zen: this form carries NO Duplicates
-                # Filter row at all, even with `includeAdvanced=1` -- the option pair
-                # that adds the row to the `includeMeta` form adds nothing here. Cycle
-                # 16 measured this path WITHOUT `includeAdvanced=1`, where the row does
-                # not exist to carry a flag, so the rule it recorded was the absence of
-                # the FLAG and plexsim implemented exactly that -- leaving the row.
-                described["Filter"] = [entry for entry in described.get("Filter") or []
-                                       if entry.get("filter") != "duplicate"]
+                # Cycle 49 REFUTES cycle 23's reading. Re-measured on zen (1.42.2), kids
+                # (1.43.4) and both unclaimed copies, in both parameter orders: with
+                # `includeAdvanced=1` this form DOES carry the Duplicates row, and it is
+                # the ONE Filter row here that keeps `advanced="1"` -- every other row
+                # carries no flag at all, which is cycle 16's rule and still holds. Cycle
+                # 23 read "carries no `advanced`" as "carries no ROW", and plexsim then
+                # stripped the row from the descriptor the Edit Library dialog reads.
                 for entry in described.get("Filter") or []:
-                    entry.pop("advanced", None)
+                    if entry.get("filter") != "duplicate":
+                        entry.pop("advanced", None)
             if meta.get("Type"):
                 # ...and this form carries NO `folder` row and marks none of the
                 # others active: kids and zen both answer exactly one `Type` on a
