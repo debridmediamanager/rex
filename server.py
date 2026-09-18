@@ -17556,6 +17556,22 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.rfile.begin()                                   # cycle 49
             self._undrained = 0
+            # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
+            # when the line finishes. `peek` blocks for the first byte, as this read
+            # would anyway, and then hands back whatever the one raw read brought.
+            try:
+                head = self.rfile.peek(self.METHOD_BYTES + 1)
+            except OSError:
+                head = b""
+            if (len(head) > self.METHOD_BYTES
+                    and not re.match(rb"[^ \r\n\t]{0,%d}[ \r\n\t]" % self.METHOD_BYTES,
+                                     head)):
+                self.requestline = ""
+                self.request_version = ""
+                self.command = ""
+                self.close_connection = True
+                self.send_error(400)
+                return
             self.raw_requestline = self.rfile.readline(65537)
             if len(self.raw_requestline) > 65536:
                 self.requestline = ""
@@ -17718,6 +17734,16 @@ class Handler(BaseHTTPRequestHandler):
     # PMS accepts -- lower-case `http://<authority>/<path>` -- or it is a 400.
     _SCHEME = re.compile(rb"^[A-Za-z][A-Za-z0-9+.-]*:")
 
+    # Cycle 49, bisected over token lengths 1-19 on both writable copies (1.42.2 and
+    # 1.43.4) and confirmed on kids and zen with GET requests alone: the METHOD token is
+    # bounded at ten bytes. An unrecognised method of ten bytes or fewer is the recorded
+    # `500` with the connection kept; the eleventh byte is a `400` with `Connection:
+    # close`, and it arrives the moment that byte does -- before any delimiter, so a peer
+    # that sends eleven bytes and stops is refused at once where plexsim held the socket
+    # to its own 20-second cap. That is the missing half of "a method a real PMS does not
+    # recognise at all is a 500, never a 501".
+    METHOD_BYTES = 10
+
     def _request_line_ok(self):
         """The request LINE's own grammar, measured on kids and zen.
 
@@ -17765,6 +17791,10 @@ class Handler(BaseHTTPRequestHandler):
         # plexsim answered its 400.
         if not parts[0]:
             self.close_connection = True
+            return False
+        if len(parts[0]) > self.METHOD_BYTES:
+            self.close_connection = True
+            self.send_error(400)
             return False
         if len(parts) == 2 and all(parts):
             return True                    # HTTP/0.9; the version is fixed up above

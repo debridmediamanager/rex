@@ -7662,6 +7662,54 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, bisected over token lengths 1-19 on both writable copies and confirmed on
+    # kids and zen with GET requests alone: the METHOD token is bounded at ten bytes, and
+    # the eleventh byte is refused the moment it arrives -- before any delimiter. That is
+    # the missing half of "a method a real PMS does not recognise at all is a 500", which
+    # holds only up to ten bytes.
+    import socket as _s49l
+    _h49l, _, _p49l = base.split("//", 1)[1].partition(":")
+    _p49l = int(_p49l.split("/")[0])
+    def method_c49l(payload, wait=2.0):
+        sock = _s49l.create_connection((_h49l, _p49l), timeout=wait)
+        try:
+            sock.sendall(payload)
+            sock.settimeout(wait)
+            buf, closed = b"", False
+            try:
+                while True:
+                    chunk = sock.recv(65536)
+                    if not chunk:
+                        closed = True
+                        break
+                    buf += chunk
+            except _s49l.timeout:
+                pass
+        finally:
+            sock.close()
+        if not buf:
+            return ("(silence)", closed)
+        return (buf.partition(b"\r\n")[0].decode("latin-1"), closed)
+
+    bare_c49l = {n: method_c49l(b"A" * n) for n in (8, 10, 11, 12)}
+    check("a bare method token is refused the moment its eleventh byte arrives",
+          bare_c49l == {8: ("(silence)", False), 10: ("(silence)", False),
+                        11: ("HTTP/1.1 400 Bad Request", True),
+                        12: ("HTTP/1.1 400 Bad Request", True)},
+          "%s" % bare_c49l)
+    line_c49l = {n: method_c49l(b"A" * n + b" /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+                 for n in (3, 10, 11, 12)}
+    check("an unknown method is a 500 up to ten bytes and a 400 from eleven",
+          line_c49l == {3: ("HTTP/1.1 500 Internal Server Error", False),
+                        10: ("HTTP/1.1 500 Internal Server Error", False),
+                        11: ("HTTP/1.1 400 Bad Request", True),
+                        12: ("HTTP/1.1 400 Bad Request", True)},
+          "%s" % line_c49l)
+    check("a real method is unaffected by the bound",
+          method_c49l(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0] == "HTTP/1.1 200 OK"
+          and method_c49l(b"OPTIONS /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0] == "HTTP/1.1 200 OK",
+          "")
+
     # Cycle 49, four refusal shapes on kids and zen, both identical: only the image
     # transcoder's 200 belongs to the image header family. Its 400s and 404s order the
     # length before the type, like every other refusal on the surface, where plexsim sent
