@@ -1,0 +1,23 @@
+{
+ "measured": "2026-09-18",
+ "hosts": [
+  "zen 1.42.2 (claimed)",
+  "kids 1.43.4 (claimed)"
+ ],
+ "port": 32400,
+ "note": "A real PMS multiplexes TLS and plain HTTP on the same TCP port. The first byte decides: 0x16 is a TLS handshake record, anything else is read as HTTP.",
+ "tls_versions": {
+  "TLSv1.3": true,
+  "TLSv1.2": true
+ },
+ "alpn": null,
+ "sni": "ignored -- no SNI and a bogus SNI both complete with the same certificate",
+ "malformed_record_alert": "1503030002020a",
+ "certificate": {
+  "subject_cn": "*.<32 hex>.plex.direct",
+  "issuer": "C=US, O=Let's Encrypt, CN=YR2",
+  "san": "DNS:*.<32 hex>.plex.direct",
+  "note": "The same 32-hex hash the GDM reply's Host line carries. plex.tv issues it to a claimed server, so plexsim cannot mint one: the operator supplies it."
+ },
+ "plain_side": "identical API and identical response header block on the same port"
+}
