@@ -17464,11 +17464,15 @@ class _RequestReader(object):
         self._limit = limit
         self.saw_eof = False
         self._deadline = None
+        self.lines = []
+        self.capture = False
 
     def begin(self):
-        """A new request: forget the last one's deadline and its EOF."""
+        """A new request: forget the last one's deadline, its EOF and its header lines."""
         self.saw_eof = False
         self._deadline = None
+        self.lines = []
+        self.capture = False
 
     def _arm(self):
         if self._deadline is None:
@@ -17488,7 +17492,13 @@ class _RequestReader(object):
 
     def readline(self, *args):
         self._arm()
-        return self._seen(self._raw.readline(*args))
+        line = self._seen(self._raw.readline(*args))
+        if self.capture:
+            # The header block's RAW lines. `http.client.parse_headers` unfolds an
+            # `obs-fold` continuation before the handler can see it, and a real PMS
+            # refuses one outright -- so the only place to catch it is here.
+            self.lines.append(line)
+        return line
 
     def read(self, *args):
         self._arm()
@@ -17749,6 +17759,13 @@ class Handler(BaseHTTPRequestHandler):
         else:
             text = line
         parts = text.split(b" ")
+        # Cycle 49, on both references: a request line with an EMPTY method token --
+        # a bare CRLF before the request, or a leading space -- draws no answer at all
+        # and the socket goes, which is the same silence a lower-case method gets.
+        # plexsim answered its 400.
+        if not parts[0]:
+            self.close_connection = True
+            return False
         if len(parts) == 2 and all(parts):
             return True                    # HTTP/0.9; the version is fixed up above
         if len(parts) != 3 or not all(parts) or b"\t" in text:
@@ -17815,8 +17832,24 @@ class Handler(BaseHTTPRequestHandler):
         """
         if not self._request_line_ok():
             return False
-        if not BaseHTTPRequestHandler.parse_request(self):
+        self.rfile.capture = True
+        try:
+            parsed = BaseHTTPRequestHandler.parse_request(self)
+        finally:
+            self.rfile.capture = False
+        if not parsed:
             return False
+        # Cycle 49, raw sockets on kids and zen: an `obs-fold` continuation line -- a
+        # header value continued on the next line, indented with a space -- is a plain
+        # 400 and the connection closes. Python's own reader unfolds it and hands the
+        # handler a perfectly ordinary header, so plexsim answered 200 to a request both
+        # references refuse. (A TAB continuation was already a 400, because Python
+        # refuses a tab in a value, so only the space form was reachable.)
+        for line in self.rfile.lines:
+            if line[:1] in (b" ", b"\t") and line.strip():
+                self.close_connection = True
+                self.send_error(400)
+                return False
         if self.request_version == "HTTP/0.9":
             # A real PMS answers an HTTP/0.9 request line (`GET /identity` with no
             # version at all) with a FULL `HTTP/1.1 200 OK` response -- measured on both
@@ -17966,6 +17999,12 @@ class Handler(BaseHTTPRequestHandler):
     }
 
     _range_error_container = False
+    # Cycle 49, raw sockets on kids and zen: an asset that is NOT THERE -- a missing
+    # `/:/resources/*` and a missing `/web/*` -- answers a 404 that names NO connection
+    # state at all and really closes the socket. It is the only 404 family on the surface
+    # that does, and it is the same shape the binary 416 already had. plexsim kept both
+    # alive with `Connection: Keep-Alive`.
+    _silent_close = False
 
     def _header_family(self, names, status):
         """Which order this response belongs to, from its own headers and path.
@@ -18281,7 +18320,10 @@ class Handler(BaseHTTPRequestHandler):
         # Keep-Alive` plus `Keep-Alive: timeout=20` when the connection is being
         # kept, `Connection: close` when it is not. plexsim sent neither, so a
         # client reading the advertised timeout to schedule reuse got nothing.
-        if "connection" not in names and not (
+        if getattr(self, "_silent_close", False):
+            # Cycle 49: named nothing, and the socket goes. See `_silent_close`.
+            self.close_connection = True
+        elif "connection" not in names and not (
                 status == 416 and not getattr(self, "_range_error_container", False)):
             # Cycle 45, measured on kids and zen over every response family:
             # `X-Plex-Http-Pipeline: disable` -- that exact lower-case spelling --
@@ -18704,8 +18746,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_error(self, status, sentence, extra_headers=()):
         """A refusal: the reference's own document on the wire, plexsim's in the log."""
-        logger.info("%s %s %s -- %s", status, self.command,
-                    (self.path or "").split("?")[0], sentence)
+        route = (self.path or "").split("?")[0]
+        # Cycle 49: an ASSET that is not there -- under `/:/resources/` or `/web/` --
+        # answers a 404 naming no connection state at all and closes. Every other 404 on
+        # the surface carries `Connection: Keep-Alive` and is reusable, including the
+        # ordinary unknown path beside it.
+        if status == 404 and (route.startswith("/:/resources/")
+                              or route.startswith("/web/")):
+            self._silent_close = True
+        logger.info("%s %s %s -- %s", status, self.command, route, sentence)
         self._send(status, "text/html", self._error_document(status), extra_headers)
 
     def _unauthorised(self, method):
@@ -18971,6 +19020,12 @@ class Handler(BaseHTTPRequestHandler):
         # the peer closes. Both read to a client as a server that hung up.
         declared = (self.headers.get("Content-Length") or "").strip()
         if declared.startswith("-") and declared[1:].isdigit():
+            # Cycle 49: and it CLOSES on both references. The unifying rule the raw-socket
+            # sweep found is that a refusal of the request's ENVELOPE closes the socket
+            # while a refusal of its MEANING keeps it -- which is also why cycle 30's
+            # "the one refusal that closes" (a query pair with no `=`) was never an
+            # exception: it is envelope-level too.
+            self.close_connection = True
             self._send_error(500, "plexsim: server error")
             return
         # Cycle 49, measured on both references: a leading `+` parses -- `Content-Length:
@@ -19017,6 +19072,7 @@ class Handler(BaseHTTPRequestHandler):
         for segment in target_route.split("/")[:-1]:
             dot_segment = re.sub(r"(?i)%2e", ".", segment)
             if len(dot_segment) >= 2 and not dot_segment.strip("."):
+                self.close_connection = True          # cycle 49: envelope, so it closes
                 self._send_error(400, "plexsim: bad request")
                 return
 
@@ -19563,6 +19619,7 @@ class Handler(BaseHTTPRequestHandler):
         """Serve the bundled web client from --web-root."""
         root = self.server.sim.web_root
         if not root:
+            self._silent_close = True          # cycle 49: no connection state, and close
             self._send_error(404, "plexsim: no web client bundled")
             return
 
@@ -19573,6 +19630,8 @@ class Handler(BaseHTTPRequestHandler):
         # plexsim answered 403, a status that appears nowhere else on the surface.
         target = os.path.realpath(os.path.join(root, relative))
         if not target.startswith(os.path.realpath(root) + os.sep):
+            # Cycle 49: and it CLOSES, like every other refusal of the envelope.
+            self.close_connection = True
             self._send_error(400, "plexsim: bad request")
             return
         # Cycle 29: a DIRECTORY is an empty `application/octet-stream` 200 on both
@@ -19587,6 +19646,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 29: a trailing slash after a FILE is a 404 on both references, where
         # plexsim's `realpath` collapsed it and served the file.
         if relative.endswith("/") or not os.path.isfile(target):
+            self._silent_close = True          # cycle 49: no connection state, and close
             self._send_error(404, "plexsim: not found")
             return
 
