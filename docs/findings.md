@@ -9449,6 +9449,254 @@ plex.tv content and are deliberately not invented.
   the six real names and are identical on three servers; the *generating rule* behind PMS's
   shared integer space is not identified and is recorded as such.
 
+#### The forty-ninth pass — the LAN, the connection, and the claim
+
+Cycles 46–48 closed five finite axes and cycle 48 reported no findings on every one of
+them. Cycle 49 reopened the loop the only way it has ever been reopened: by recognising an
+instrument. **plexsim had never been asked how a client FINDS it.** Everything this
+programme has measured happens over TCP 32400 after a client already knows the address.
+Three axes fell out of that, and none of them had been swept:
+
+* **UDP.** A real PMS answers Plex's own LAN discovery protocol, GDM, on two ports.
+  plexsim answered nothing, so no official client could find it without plex.tv or a
+  hand-typed address.
+* **The connection itself.** Cycle 37 swept the request LINE and cycle 33 the response
+  header BLOCK; nobody had swept what a real PMS does with the TCP stream around and
+  between requests.
+* **The claim.** Every write rule this project holds was measured on an UNCLAIMED copy,
+  and nobody had ever diffed the claim systematically. That is the project's own failure
+  class E, unaudited for forty-eight cycles.
+
+**26 findings, 21 commits, every one proved fail-then-pass against its own parent.**
+
+##### GDM — the protocol that makes a server FOUND
+
+Measured on four servers: zen (1.42.2, claimed), the plexlab reference (1.43.4, claimed)
+and both unclaimed disposable copies. The two versions answer byte-identical blocks apart
+from their own values, so nothing here is version-split; the CLAIM is what splits it.
+
+* **Two ports, and only two.** A GDM query is answered on UDP **32410** and UDP **32414**
+  and on nothing else — 32400–32409, 32411, 32412, 32413 and 32415–32419 were swept on
+  zen and answer nothing. 32412/32413 are the PLAYER side of the same protocol; a server
+  neither binds nor answers them. Both ports are joined to the multicast group
+  **239.0.0.250** and both answer a subnet or global broadcast; `239.0.0.250:32412` and
+  `:32413` draw nothing. The reply is unicast back to the source, from the port it
+  arrived on.
+* **The trigger is a PREFIX COMPARE, not a parse.** The datagram and the constant
+  `b"M-SEARCH * "` must agree over `min(len(datagram), 11)` bytes. Bisected byte by byte:
+  every proper prefix answers — including the EMPTY datagram and a bare `b"M"` — one
+  wrong byte at any of the eleven positions is silent, anything at all may follow the
+  eleven bytes (a 2 KB datagram answers), and it is case-SENSITIVE. That is why both a
+  client's `M-SEARCH * HTTP/1.1\r\n` and an `M-SEARCH * HTTP/1.0\r\n\r\n` work: the
+  version and the terminator are never read.
+* **The reply** is `HTTP/1.0 200 OK` and then the headers in ALPHABETICAL order, CRLF
+  endings, terminated by a blank line: `Content-Type: plex/media-server`, `Host`, `Name`,
+  `Port`, `Resource-Identifier`, `Updated-At`, `Version`.
+* **`Host` is the one field the claim moves.** Both claimed references carry
+  `<certificate hash>.plex.direct` and neither unclaimed copy carries the line at all —
+  absent, not empty. An unclaimed PMS has no certificate, so the claim and the certificate
+  are confounded on these four instruments; plexsim emits the line only when it holds a
+  plex.direct hostname, which is the honest reading either way.
+* **`Updated-At` is not a clock.** It stood still under fifteen reads in a minute on zen,
+  the second server on that wire answered a value **3.5 days** old, and on an idle
+  unclaimed copy it did not move once in 86 samples over seventeen minutes. The two ports
+  can even disagree — plexscratch42 answered 1789624280 on 32410 and 1789690002 on 32414
+  in the same second — so each socket carries its own last-regenerated stamp. The event a
+  real PMS refreshes it on is NOT measured.
+* **A real PMS also SENDS.** It emits `b"M-SEARCH * HTTP/1.1\r\n"` — 21 bytes, ONE CRLF —
+  to 239.0.0.250:32414 every **5.00 seconds**, on every interface (nine samples at 0.96,
+  5.96, 10.96 … 40.97 s).
+* **`/servers` is what that search found.** zen's `/servers` listed itself, the second
+  server on its wire, and — within six seconds of plexsim being started with the new
+  module — **plexsim**, at the address and port plexsim advertised. A row ages out
+  between **177 s and 180 s** after its last answer, bracketed by polling every three
+  seconds; an earlier run reading (154, 165] is discarded, because it reused a
+  machineIdentifier zen already held.
+* **Nothing else on the LAN.** Bonjour/mDNS advertises no Plex service at all, and TCP
+  8324 (Companion), 32469 (DLNA) and 1900 (SSDP) are refused on zen: GDM is the whole of
+  LAN discovery.
+
+##### Two more things the discovery surface exposed
+
+* **`/servers`' own row carries the server's own address and port.** zen answers
+  `192.168.88.244`/32400 and kids `172.31.7.2`/32400 — each its own interface address,
+  never loopback. plexsim hard-coded `127.0.0.1` and the constant 32400 whatever port it
+  was on, because `private_address` was declared and never assigned for the whole life of
+  the field. `/myplex/account`'s `privateAddress`/`privatePort` move TOGETHER: zen carries
+  both and kids, whose plex.tv mapping holds no local connection, carries `""` and **0**.
+  plexsim was the only server of the four answering a port beside an empty address.
+* **`/` advertises the transcoder's quality LADDER**, three parallel comma lists,
+  byte-identical on all four servers and independent of the transcoder's own state:
+  `transcoderVideoBitrates`, `transcoderVideoQualities`, `transcoderVideoResolutions`.
+  Plex Web builds its Quality menu from them, index by index; plexsim sent none.
+  `transcoderVideoRemuxOnly`, which zen also carries, is **not** a version attribute — the
+  1.42.2 copy omits it too, so it is zen's own state. And two more values on that blob are
+  ones no reference emits: `livetv` is a CONSTANT **7** on all four (none of which has a
+  tuner) where plexsim said 0, and `offlineTranscode` is 1 claimed and ABSENT unclaimed,
+  never the 0 plexsim invented.
+
+##### The connection and transport layer
+
+Every cell below came off a raw socket; a library that owns the connection cannot see any
+of it.
+
+* **A real PMS consumes a declared request body before reading the next request.** It
+  answers a GET carrying a body WITHOUT waiting (cycle 37's half) and then consumes
+  exactly `Content-Length` bytes, so two requests on one socket get two answers. plexsim
+  left the bytes in the stream, glued to the next request line, and the client was handed
+  a 400 belonging to nothing it sent. The count is a positive measurement, not an
+  inference: nine body bytes behind `Content-Length: 5` leave four spare and the NEXT
+  request is a 500. When the body never arrives a real PMS CLOSES — already decided ~5 ms
+  after the response, whether the body then turns up at 2 ms or at a second — and that is
+  the mechanism that makes a desync impossible there. **A duplicate `Content-Length` takes
+  the FIRST occurrence**, the opposite of the repeated-query-parameter rule, and a leading
+  `+` parses.
+* **A real PMS decodes `Transfer-Encoding: chunked`**, including on a write: a chunked
+  subtitle upload lands a sidecar byte-identical to the `Content-Length` form's. plexsim
+  ignored the header, so the upload was its empty-body 406 and the chunk framing went into
+  the next request. The size token parses like `strtol` in base 16 — an optional sign, an
+  optional `0x`, hex digits — and **nothing may follow it**: a chunk EXTENSION, which HTTP
+  allows, is a 400, and so are a trailing space, LF-only framing, a wrong chunk length and
+  a size that overflows. A negative size, an empty size line and a trailer after `0\r\n`
+  are answered and then closed. The header must be exactly `chunked`, case-insensitive,
+  with nothing else in the value (13 spellings measured), and **it beats
+  `Content-Length`**.
+* **The incomplete-request cap is ABSOLUTE, not idle.** A 400-byte request in three pieces
+  twelve seconds apart — maximum idle 12 s, total 24 s — is closed at exactly 20.0 s from
+  the FIRST byte with no response, and so are four pieces 7 s apart and six pieces 4 s
+  apart. Python's `Handler.timeout` is a socket timeout and is per-read by construction,
+  so plexsim answered every one: fifty clients dribbling a byte every two seconds held
+  fifty threads where a real PMS dropped all fifty at 20.6 s. The IDLE timer between
+  requests is a separate 20 s and resets per request; all three servers already agreed on
+  that.
+* **A header block ended by EOF rather than by a blank line is answered with NOTHING.**
+  plexsim ran the request — and a `PUT /library/metadata/{id}?title.value=…` sent that way
+  really COMMITTED. It is the one cell in this family where plexsim changed durable state
+  a real PMS discards.
+* **The ABSOLUTE-FORM request target is routed**, with the authority discarded entirely:
+  `http://example.invalid/library/sections` is byte-identical to the origin-form answer,
+  and so is `http://1.2.3.4:9999/…`. The scheme must be lower-case `http` exactly and a
+  path is mandatory; `HTTP://`, `Http://`, `https://`, `ftp://`, `xyz://`, `http:/h/x`,
+  `http://h` with no path, `http://` and a bare `http:` are each a 400. plexsim read the
+  scheme as a path segment and 404'd every one.
+* **The METHOD token is bounded at ten bytes**, bisected over lengths 1–19 on both
+  writable copies and confirmed on kids and zen with GET requests alone. An unrecognised
+  method of ten bytes or fewer is the recorded 500 with the connection kept; the eleventh
+  byte is a 400 with `Connection: close`, **and it arrives the moment that byte does**,
+  before any delimiter.
+* **`X-Plex-Http-Pipeline: disable` works as a QUERY parameter too**, with the header's
+  grammar exactly — lower-case `disable` only, a case-SENSITIVE parameter name, the LAST
+  occurrence winning, and the HEADER beating the query when both are sent.
+* **A refusal of the request's ENVELOPE closes the connection; a refusal of its MEANING
+  keeps it.** 27 shapes on both references. That is also why cycle 30's "the one refusal
+  that closes" was never an exception — the query-pair-without-`=` 400 is envelope-level
+  too. plexsim broke it in seven cells: `Content-Length: -1` (500), a non-terminal dot
+  segment (400), a missing `/:/resources/*` and a missing `/web/*` asset (404, and those
+  two name **no connection state at all**), a `/web` path escaping the root (400), and a
+  leading CRLF or space before the request line, which draws **silence** rather than a
+  400. And one of the seven is not a connection state at all: plexsim answered **200** to
+  an `obs-fold` continuation both references refuse outright, because Python's reader
+  unfolds it before the handler can see it.
+* **Only the image transcoder's 200 belongs to the image header family.** Its 400s and
+  404s order the length before the type, like every other refusal.
+
+##### The claim, audited for the first time
+
+116 safe read families on all four servers, in both formats, with and without a token.
+The status-level partition is 101 identical, **15 claim-dependent**, 0 version-dependent;
+297 container-attribute cells partition 193 identical, 40 claim-dependent, 20 version, 44
+content. plexsim answers the claimed form on all fifteen families and on all but one of
+the claim-dependent attributes. Two real findings came out of it:
+
+* **`ButlerTaskGenerateAdMarkers` ships ENABLED on a claimed PMS**, and the
+  `GenerateAdMarkerBehavior` preference reads `scheduled` — a setting that does not exist
+  at all on an unclaimed server. Cycle 35 measured the row on the two writable copies,
+  which are both UNCLAIMED, and recorded "ships DISABLED": `enabled` is COMPUTED from
+  claim state, not stored, and plexscratch is a byte copy of kids' own config with only
+  the claim stripped, answering 0 where kids answers 1. Cycle 35 fixed a class-D error by
+  installing a class-E one, which is exactly what this audit existed to find.
+* **`/playlists/sorts` ends with `mediaCount` "Item Count"**, not the `updatedAt` "Date
+  Modified" cycle 15 recorded. Four servers, six parameter spellings. plexsim's two
+  surfaces disagreed with each other, because `/playlists?includeMeta=1` already answered
+  the right row.
+
+Two more named endpoints behind the legacy single-segment dispatcher are real: **`/dlna`**
+is the DLNA server's own library list — the section rows keyed by their full path, without
+`allowSync`, `filters` and `refreshing`, ending in a `/channels/all` "Channels" row — and
+**`/manage`** is the same 302 into the web client that `/web` answers, byte for byte.
+
+##### Dual-format equality, and three tag projections
+
+The census is 209 family templates across 7 servers = 1,331 dual-format pairs; 23,674
+element nodes compared for key set and order and 1,298 JSON scalar-type cells. It found
+**one** type mismatch and **one** ordering mismatch, which is the useful negative result —
+and four more findings came out of the tag-rich row it had to MAKE to be non-vacuous.
+
+* **A `/system/agents` `Language`'s `default` is the JSON boolean `true`**, not the string
+  `"1"`. It survived because `agent_languages.json` is read out of the XML, which writes
+  `default="1"` either way — XML cannot tell the two apart, so no XML sweep could see it.
+* **`/myplex/account`'s root is not a container.** `to_xml` hard-coded `container=True`
+  for every root, so its attributes came out alphabetically in XML while the JSON writer
+  kept the reference's own order. That is the fifth instance of the two-writer bug cycle
+  19 established never happens on a real PMS, and the last one the surface had:
+  `ButlerTasks` and `Query`, the other two non-container roots, carry no attributes to
+  disagree on.
+* **`?includeDetails=1&includeAdvanced=1` DOES carry the Duplicates Filter row**, and it
+  is the one Filter row on that path that keeps `advanced="1"`. Cycle 16 measured the path
+  without `includeAdvanced=1`, where the row does not exist to carry a flag; cycle 23 read
+  that absence of the FLAG as an absence of the ROW and plexsim stripped it from the
+  descriptor the Edit Library dialog reads.
+* **A LIGHT row carries none of `Label`, `Style`, `Similar` or `Mood`** — the reference's
+  grid row for a movie made to carry every tag family is `Genre Country Collection
+  Director` where its detail row is `Genre Country Style Collection Director Producer
+  Label Similar`. plexsim passed all four through, `Label` text-only and the other three
+  with their full `id`/`filter`. `label` is an advertised editable tag field on a movie
+  library, so a Label chip was reachable from the Edit dialog and drew on every tile.
+* **`Style` sits AFTER `Country`** on a detail row, not between `UltraBlurColors` and
+  `Genre`. `Mood` has no slot at all, and deliberately: a real PMS refuses to store a
+  `mood` on a movie, so its position is unmeasurable.
+* **`/status/sessions` has a serialiser of its own**, and its alphabetical string-id rule
+  was applied to ten tag names and missed `Label`, `Style` and `Mood`.
+
+##### Three more, from re-measuring what a hunt reported
+
+* **A `mood` write on a movie is a 200 that stores NOTHING**, where the `style` and
+  `similar` beside it really store.
+* **Emptying a collection leaves the collection ALIVE.** plexsim deleted it, on a comment
+  claiming a real PMS "also leaves the stale tag on the item, which is a state plexsim has
+  no way to represent". It does not: the collection item survives AND the tag comes off
+  the item, so the state is perfectly representable and plexsim was deleting a row a real
+  PMS keeps.
+* **An identifier-less request's device name and platform land on the ANONYMOUS device
+  row** — the one with `clientIdentifier=""`. plexsim recorded them only for an identified
+  client.
+
+##### Measured and NOT acted on
+
+* **The legacy dispatcher's PREFIX listing.** A single segment that is a proper prefix of
+  one or more registered plug-in routes answers the last segments of every registered
+  route whose path begins with it — `/dev` names `devices`, `/me` names media's three
+  children, `/serve` names `server` and `servers`, `/s` names seventeen. Derived from a
+  38-cell prefix sweep on zen and consistent on every one, but reproducing it needs PMS's
+  own route registry, which plexsim does not have and which no client asks for.
+* **`/connections`**, the live-connection diagnostic: `text/plain`, one line per
+  connection with a state, a timing, a byte count, a request line and a token name.
+  plexsim keeps no connection registry, and every part of that line it cannot derive would
+  be a fabrication.
+* **`transcoderVideoRemuxOnly`** — zen's alone among four servers, so it is that server's
+  state and not a rule.
+* **`/myplex/account` carries `authToken` on zen and not on kids**, and the whole plex.tv
+  mapping block (public and private address and port) is empty on kids as well. Version
+  and mapping state are CONFOUNDED on the only two claimed servers this project has, and
+  neither unclaimed copy can separate them. plexsim's omission is now a DELIBERATE
+  deviation rather than a measurement: its token gate defaults OFF, so publishing the
+  claim token there would hand it to every peer that can reach the port.
+* **The `std::bad_cast` 500.** A device row whose `platform` parses as a number makes
+  `GET /devices` — and `GET /statistics/bandwidth` — a 500 on a real PMS. plexsim stores
+  the string it was given and does not reproduce the crash. See HANDOVER §9: both
+  references were in that state, and it is damage this programme caused.
+
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

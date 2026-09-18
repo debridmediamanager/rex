@@ -7754,15 +7754,20 @@ def main():
           "%s" % [n for n in grid_c49p if n in ("Label", "Style", "Similar", "Mood")])
     check("...while the detail row carries them",
           {"Label", "Style", "Similar"} <= set(detail_c49p), "%s" % detail_c49p)
-    check("Style sits after Country and before Guid on a detail row",
-          "Style" in detail_c49p and "Country" in detail_c49p
-          and detail_c49p.index("Country") < detail_c49p.index("Style")
-          and (("Guid" not in detail_c49p)
-               or detail_c49p.index("Style") < detail_c49p.index("Guid")),
+    def before_c49p(first, second):
+        """Whether `first` precedes `second`, when the row still carries both."""
+        return (first not in detail_c49p or second not in detail_c49p
+                or detail_c49p.index(first) < detail_c49p.index(second))
+    check("Style sits after the tags and before Guid on a detail row",
+          "Style" in detail_c49p and before_c49p("Genre", "Style")
+          and before_c49p("Country", "Style") and before_c49p("Style", "Guid")
+          and before_c49p("Style", "Rating"),
           "%s" % detail_c49p)
     check("Label and Similar come after the people on a detail row",
-          "Label" in detail_c49p and "Director" in detail_c49p
-          and detail_c49p.index("Director") < detail_c49p.index("Label"),
+          "Label" in detail_c49p and "Similar" in detail_c49p
+          and before_c49p("Director", "Label") and before_c49p("Role", "Label")
+          and before_c49p("Collection", "Label") and before_c49p("Label", "Similar")
+          and before_c49p("Label", "Field"),
           "%s" % detail_c49p)
 
     # ...and the session serialiser writes EVERY tag element alphabetically with a string id.
@@ -7770,9 +7775,12 @@ def main():
             "&state=playing&time=20000&duration=600000&X-Plex-Session-Identifier=c49p"
             % (movie, movie))
     _, sess_c49p, _ = container(base, "GET", "/status/sessions")
-    rows_c49p = sess_c49p.get("Metadata") or []
+    # Another check may have left its own session open, so take the row for THIS item.
+    rows_c49p = [r_c49p for r_c49p in (sess_c49p.get("Metadata") or [])
+                 if str(r_c49p.get("ratingKey")) == str(movie)]
     tags_c49p = {name: (rows_c49p[0].get(name) or [{}])[0]
-                 for name in ("Genre", "Label", "Style", "Similar") if rows_c49p} if rows_c49p else {}
+                 for name in ("Genre", "Label", "Style", "Similar")
+                 if rows_c49p and rows_c49p[0].get(name)} if rows_c49p else {}
     check("a session row writes every tag element with a string id, alphabetically",
           bool(tags_c49p) and all(isinstance(tag.get("id"), str)
                                   and list(tag) == sorted(tag) for tag in tags_c49p.values()),
@@ -7810,8 +7818,11 @@ def main():
           xml_order_c49o == json_order_c49o,
           "xml %s json %s" % (xml_order_c49o, json_order_c49o))
     check("...and it is the reference's order, not the container's alphabetical one",
-          xml_order_c49o[:4] == [b"username", b"mappingState", b"mappingError", b"signInState"],
-          "%s" % xml_order_c49o[:4])
+          xml_order_c49o != sorted(xml_order_c49o)
+          and [n_c49o for n_c49o in xml_order_c49o if n_c49o in
+               (b"mappingState", b"mappingError", b"signInState", b"privateAddress")]
+          == [b"mappingState", b"mappingError", b"signInState", b"privateAddress"],
+          "%s" % xml_order_c49o)
 
     # Cycle 49, measured on zen (1.42.2) and kids (1.43.4): two named endpoints behind
     # the legacy single-segment dispatcher are real. `/dlna` is the DLNA server's own

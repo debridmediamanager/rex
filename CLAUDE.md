@@ -37,6 +37,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `mediainfo.py` | ffprobe JSON → `Media`/`Part`/`Stream` elements |
 | `decision.py` | A plain-form decision: the client's own profile file (`client_profiles.json`) against the item |
 | `debrid.py` | Real-Debrid unrestrict |
+| `gdm.py` | Plex's LAN discovery protocol: the UDP half of being FOUND |
 | `gate.py` | Applies a client's direct-play gate to the catalog |
 | `xmlout.py` | MediaContainer → Plex XML (clients that refuse JSON) |
 | `build_catalog.py` | Builds `catalog.json` from real RD content |
@@ -288,6 +289,7 @@ python3 tests/test_all.py                   # play queue → decision → byte r
 python3 tests/conformance.py                # drives plexsim with python-plexapi
 python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
+python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
@@ -2571,6 +2573,76 @@ precisely how the Seasons bug survived a fix attempt.
   view time, `unplayed` clears it, an absent rating pair PRESERVES stars, `-1` clears them and a
   nonnegative rating sets them. Persist an `endCursor` only after applying the page; import writes
   no local history row.
+
+- **A client FINDS a server over UDP, and plexsim answered nothing.** A real PMS answers
+  Plex's own GDM discovery on udp/**32410** and udp/**32414** only (32412/32413 are the
+  PLAYER side), on unicast, on broadcast and on the multicast group **239.0.0.250**. The
+  trigger is a PREFIX COMPARE against `b"M-SEARCH * "` over `min(len, 11)` bytes -- an
+  EMPTY datagram and a bare `M` answer, one wrong byte anywhere in the eleven is silent,
+  anything may follow, and it is case-sensitive. The reply is `HTTP/1.0 200 OK` plus seven
+  ALPHABETICAL headers, and `Host: <cert hash>.plex.direct` is present only on a CLAIMED
+  server -- absent, not empty. A real PMS also SENDS `M-SEARCH * HTTP/1.1\r\n` (one CRLF)
+  to the group every **5.00 s**, and `/servers` is exactly what that search found, each row
+  ageing out between 177 s and 180 s after its last answer. `Updated-At` is NOT a clock: it
+  stands still under polling, is days stale on an idle server, and the two ports carry
+  independent stamps.
+- **`/servers`' own row names the server's own interface address and its REAL port**, never
+  loopback and never a constant 32400; `/myplex/account`'s `privateAddress` and
+  `privatePort` move TOGETHER (both set, or `""` and **0**). `livetv` is a constant **7** on
+  every server, tuner or no tuner, and `offlineTranscode` is 1 claimed and ABSENT unclaimed
+  -- never 0. `/` also carries the transcoder's quality LADDER as three parallel comma
+  lists (`transcoderVideoBitrates`/`Qualities`/`Resolutions`), identical on all four
+  servers, which is what the client's Quality menu is built from.
+- **A real PMS CONSUMES a declared request body after answering, and closes if it never
+  comes.** Cycle 37's "GET and HEAD never consume a declared body" is half the rule: they
+  answer without waiting AND then swallow exactly `Content-Length` bytes, so two requests on
+  one socket get two answers. A duplicate `Content-Length` takes the **FIRST** occurrence --
+  the opposite of the repeated-query-parameter rule -- and a leading `+` parses. It also
+  really DECHUNKS `Transfer-Encoding: chunked`, including on an upload; the size token is
+  `strtol` base 16 and **nothing may follow it**, so a chunk EXTENSION is a 400, and the
+  header must be exactly `chunked` with nothing else in the value, beating `Content-Length`.
+- **The incomplete-request cap is ABSOLUTE from the first byte, not idle.** Three pieces
+  twelve seconds apart is closed at 20.0 s with no answer. A socket timeout is per-read by
+  construction, which is why fifty dribbling clients held fifty threads. And a header block
+  ended by **EOF** rather than by a blank line is answered with NOTHING -- plexsim ran it,
+  and a query-only write really committed.
+- **A refusal of the ENVELOPE closes the connection; a refusal of the MEANING keeps it.**
+  That is the rule behind cycle 30's lone "exception". A missing `/:/resources/*` or
+  `/web/*` asset is a 404 that names **no connection state at all** and closes; an
+  `obs-fold` continuation line is a 400 both references refuse where Python's own reader
+  unfolds it into an ordinary header; a leading CRLF or space before the request line draws
+  **silence**. The METHOD token is bounded at **ten bytes** and the eleventh is refused the
+  moment it arrives, before any delimiter. The ABSOLUTE-FORM target (`http://host/path`) is
+  ROUTED with the authority discarded, and every other scheme spelling is a 400.
+  `X-Plex-Http-Pipeline: disable` is a header-or-QUERY option, last occurrence winning,
+  header beating query.
+- **Every write rule in this project was measured on an UNCLAIMED copy, and the claim moves
+  things.** 116 read families across the 2x2 of claim and version: 15 families and 40
+  container attributes are claim-dependent. `ButlerTaskGenerateAdMarkers` ships **ENABLED**
+  on a claimed server (with `GenerateAdMarkerBehavior: scheduled`, a setting the copies do
+  not have at all) -- cycle 35 read the copies and recorded the opposite, which is class E.
+  Before trusting any rule whose evidence is "measured on plexscratch", ask whether the
+  claim could be computing it.
+- **`/playlists/sorts` ends with `mediaCount` "Item Count"**, the same row
+  `/playlists?includeMeta=1`'s `Meta` carries: cycle 15's "the two lists really are
+  different" is REFUTED on four servers. **`?includeDetails=1&includeAdvanced=1` DOES carry
+  the Duplicates Filter row**, and it is the one Filter there that keeps `advanced="1"`:
+  cycle 23 read the absence of the FLAG as the absence of the ROW. **`/dlna` and `/manage`
+  are real** -- the DLNA library list and the same 302 `/web` answers.
+- **A LIGHT row carries none of `Label`, `Style`, `Similar` or `Mood`**, `Style` sits AFTER
+  `Country` on a detail row, and `/status/sessions` writes EVERY tag element alphabetically
+  with a string `id`. None of it is visible on a real library: it needed a movie MADE to
+  carry the whole tag family at once, which is why cycle 23's 2,994-path order sweep could
+  not have found it. A `mood` write on a movie is a 200 that stores nothing.
+- **Emptying a collection leaves the collection ALIVE** and takes the tag off the item --
+  both, so the state plexsim's deliberate deletion called unrepresentable is not. And an
+  identifier-less request's `X-Plex-Device-Name`/`X-Plex-Platform` land on the ANONYMOUS
+  device row.
+- **XML cannot see a JSON scalar's TYPE**, and that is where the last two-writer bug was
+  hiding: a `/system/agents` `Language`'s `default` is the boolean `true` and plexsim sent
+  `"1"`, because the fixture is read out of the XML, which writes `default="1"` either way.
+  `to_xml` also hard-coded `container=True` for the ROOT, so `/myplex/account` sorted its
+  attributes alphabetically in XML and kept the right order in JSON.
 
 ## Conventions
 

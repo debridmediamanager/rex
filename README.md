@@ -17,6 +17,10 @@ Jellyfin.
   PART 200`, verified byte-identical across proxy, redirect and CDN paths
   (`e49cf18e698064cddc10a13ea0926fb3`), with real frames decoded at an offset
   rather than a trusted HTTP 200.
+- **Discoverable on the LAN.** plexsim answers Plex's own GDM discovery protocol
+  on udp/32410 and udp/32414, so an official client on the same network finds it
+  without plex.tv — and a real Plex Media Server on the same wire lists it in its
+  own `/servers`.
 - **A real library shape.** Movies in a movie section; shows with seasons and
   episodes, synthesised parents, `childCount`/`leafCount`, On Deck, Extras and
   per-section preferences.

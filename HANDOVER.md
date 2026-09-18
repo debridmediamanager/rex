@@ -65,8 +65,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 48 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **48 — the stopping repeat is clean across every Cycle-46 axis.** Cycle 46 exhausted the query-option namespace (**116 names × 76 safe families × 3 hosts = 26,448 cells**), the request-header namespace (**61 normalized names / 88 spellings; 24,156 logical cells**), the installed Plex Desktop static/native boundary, live/dead provider availability, all **1,829** frozen outbound exchanges, and both finite source/control universes. It produced **19 product findings**: 14 query propagation rules, two `/web` header rules, provider-backed file availability, exact account feature acquisition, and cloud watch/rating import. Cycle 47 repeated the external axes and found one product residual — daily account/feature renewal — plus one test-order defect in the new regressions. Cycle 48 repeated query, header, outbound, historical and advertised-control denominators after both repairs. Every Cycle-48 territory report ends exactly `no findings`; UI is **1,629/1,629**, decisions **2,340/2,340**, mediainfo **35/35**, and the explicit safety/capability bounds are retained rather than silently omitted. |
+| `main` | cycle 49 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **49 — the loop is OPEN again, on three axes nobody had swept.** Cycle 48 was clean on every axis it repeated, so cycle 49 reopened it the only way it has ever been reopened: by recognising an instrument. Every measurement this programme had ever made happens over TCP 32400 *after a client already knows the address*. Cycle 49 swept **how a client FINDS the server** (GDM, the LAN discovery protocol, which plexsim answered nothing on), **the connection itself** (raw sockets around and between requests), and **the claim** (116 read families over the 2x2 of claim and version — the project's own failure class E, unaudited for forty-eight cycles). **26 findings in 21 commits**, every one proved fail-then-pass. The proof of the first is the strongest this programme has had: a real Plex Media Server discovered plexsim on the wire and listed it. It also found that **both references were broken instruments** — `GET /devices` and `GET /statistics/bandwidth` are 500 on kids and zen, from a device row a GET wrote — and repaired kids. See §7 and §9. |
+| Cycle 48 | **48 — the stopping repeat was clean across every Cycle-46 axis.** Cycle 46 exhausted the query-option namespace (**116 names × 76 safe families × 3 hosts = 26,448 cells**), the request-header namespace (**61 normalized names / 88 spellings; 24,156 logical cells**), the installed Plex Desktop static/native boundary, live/dead provider availability, all **1,829** frozen outbound exchanges, and both finite source/control universes. It produced **19 product findings**: 14 query propagation rules, two `/web` header rules, provider-backed file availability, exact account feature acquisition, and cloud watch/rating import. Cycle 47 repeated the external axes and found one product residual — daily account/feature renewal — plus one test-order defect in the new regressions. Cycle 48 repeated query, header, outbound, historical and advertised-control denominators after both repairs. Every Cycle-48 territory report ends exactly `no findings`; UI is **1,629/1,629**, decisions **2,340/2,340**, mediainfo **35/35**, and the explicit safety/capability bounds are retained rather than silently omitted. |
 | Cycle 43 | **43 — stopping gate met on every finite axis at the time.** Cycle 43 reopened the clean Cycle-42 head and independently replayed the 332-atom historical universe and the complete 4.147.1 advertised-control graph; both reports again end exactly `no findings`. It also closed the only remaining current-client boundary by obtaining the complete public Plex Web 4.160.0 app build: 205/205 JavaScript assets, 16/16 CSS assets and 207/207 SRI checks. The 177 JavaScript assets absent from Cycle 40's app-side subset contain zero new PMS call sites, request-builder imports, controls or actions. The historical axis is 332/332 with all 24 Cycle-41 cross-fix audits passing and zero actionable/unbounded unresolved atoms. The advertised graph remains 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs, with 39 exact witnesses, six explicit bounds and zero unresolved. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every verified Cycle-43 process is stopped. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
 | Cycle 35 | **35**. Cycle 35 got its hunts back after two cycles without them, and all three territories produced two apiece. The driver swept the ENCODED body, which no cycle had looked at: a real PMS ZEROES its gzip header's MTIME (so a compressed body is a pure function of the body, where plexsim's changed every second), and the `Range` grammar -- 172 cells -- had twelve of 43 header values wrong, two of them provokable by a real client. The write-frames hunt found that a library CREATE scans, skeleton and all, even over an empty folder, and that Ad Markers ships DISABLED. The search hunt found that both SCORERS had never used the matcher's own rule (class C), so a skipped middle word scored at the fuzzy floor. |
@@ -75,12 +76,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — Cycle 48 is the closed stopping cycle** |
+| Work half-done | **none — every Cycle-49 finding is implemented or recorded in §8** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 49 | UI **UICOUNT**; decisions **2,340/2,340**; mediainfo **35/35**; catalog features; part bytes 11/11; heartbeat 13/13; account state 15/15; **new** `test_gdm` **101/101** | 20,657 | **26 findings in 21 commits**, every one proved fail-then-pass. **8 recorded beliefs overturned** (cycle 35's ad-marker row as class E, cycle 15's `/playlists/sorts`, cycle 23's Duplicates row, cycle 37's body rule, the `authToken` claim, the emptied collection, the `transcoderVideoRemuxOnly` version framing, and `/servers`' own address). **1 new protocol** (GDM: two UDP ports, a multicast group, an 11-byte prefix trigger, a 5 s search and the `/servers` list it populates), **1 new offline suite**, **1 broken instrument found and repaired**, **4 suite checks repaired** where they read state the suite takes away, and **6 findings recorded rather than emulated** |
 | 48 | UI **1,629/1,629**; decisions **2,340/2,340**; mediainfo **35/35**; catalog features; part bytes **11/11**; heartbeat **13/13**; account state **15/15** | 20,094 | **0.** Exact stopping repeats: query options **26,448 cells**; headers **24,156 logical / 16,842 physical requests**; outbound **1,829 exchanges / 1,620 reads**; durable history **745 rows including all 24 Cycle-41 fixes**; current client **205 assets / 9,314,084 bytes**; advertisements **24,452**; controls **49 / 39 normalized families**. Every territory report ends `no findings` |
 | 47 | same final suites; the pre-repair full UI exposed six false late failures, while fresh discriminators passed | 20,094 | **2**: one product finding (claimed user/features renew daily, user then features about 11 s later) and one audit-harness finding (six option regressions consumed state mutated earlier in the suite). The product repair is `3cff10e`; the final pristine-response harness repair is `768377a` |
 | 46 | UI grew from 1,612 to **1,629**; decisions 2,340; mediainfo 35; catalog features; part bytes 11; heartbeat/account-state suites added | 20,086 before the Cycle-47 renewal | **19 product findings**: **14** query-option projection/source fixes, **2** request-header fixes, **1** provider availability fix and **2** outbound account-state fixes. Query denominator 26,448 cells; header denominator 8,052 candidates plus controls; outbound prefix 1,665 exchanges. One deliberate query bound (`includeBandwidths`) and three Desktop runtime cells were explicitly retained |
@@ -459,6 +461,14 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **`ButlerTaskGenerateAdMarkers` ships DISABLED** -- "re-measured on both writable copies", 1.42.2 and 1.43.4 alike | `enabled` is COMPUTED from CLAIM state, and both writable copies are UNCLAIMED. plexscratch is a byte copy of kids' own config with only the claim stripped and it answers `0` where kids answers `1`; zen and kids, the two claimed references, both answer `1`, and so does the `GenerateAdMarkerBehavior` preference (`scheduled` -- a setting that does not exist at all on an unclaimed server). Cycle 35 fixed a class-D error by installing a class-E one, and this is the finding the claim audit existed to produce | **E** | cycle 49 |
+| **`/playlists/sorts` ends with `updatedAt` "Date Modified"** -- "the two lists really are different, and each was measured on its own path" | It ends with `mediaCount` "Item Count", the same row `/playlists?includeMeta=1`'s `Meta` carries. Four servers, both versions, both claim states, six parameter spellings. plexsim's own two surfaces therefore contradicted each other | B | cycle 49 |
+| **`?includeDetails=1&includeAdvanced=1` carries NO Duplicates Filter row at all** | It carries the row, and it is the ONE Filter row on that path that keeps `advanced="1"` -- every other carries no flag, which is cycle 16's rule and still holds. Cycle 16 measured the path WITHOUT `includeAdvanced=1`, where the row does not exist to carry a flag; cycle 23 read that absence of the FLAG as the absence of the ROW | A | cycle 49 |
+| **A real PMS does NOT put its account token in `/myplex/account`** | zen (1.42.2, claimed and fully mapped) answers `authToken="<its PlexOnlineToken>"`. kids does not -- and kids also answers an empty public/private address pair, so its whole plex.tv mapping block is missing. Version and mapping state are CONFOUNDED on the only two claimed servers this project has. plexsim's omission stands, but as a deliberate deviation rather than a measurement | B | cycle 49 |
+| **"GET and HEAD never consume a declared request body"** | Half the rule. A real PMS answers WITHOUT waiting and then CONSUMES exactly `Content-Length` bytes, and closes when they never arrive. Cycle 37 measured it with `Content-Length: 999` and NO body bytes at all -- a sample that cannot tell "does not wait" from "does not consume". plexsim left the bytes in the stream and one request produced two responses | A | cycle 49 |
+| **An emptied collection cannot be kept, because a real PMS "also leaves the stale tag on the item"** | It does both representable things: the collection ITEM survives (`/library/metadata/{id}` 200, still in `/library/all?type=18`) AND the tag comes off the item. The state plexsim called unrepresentable is exactly what the reference holds, so plexsim was deleting a row a real PMS keeps | F | cycle 49 |
+| **`transcoderVideoRemuxOnly` looks like a 1.42.2 attribute** (zen carries it, kids does not) | Refuted by the copy: plexscratch42 is 1.42.2 and omits it too, so it is zen's own state and not a version split. Recorded rather than built -- and it is why the 2x2 of claim and version is the right instrument for anything that looks version-shaped | E | cycle 49 |
+| **`/servers` and `/myplex/account` may report loopback and a constant port** | Never measured at all: `private_address` was declared and never assigned for the whole life of the field. zen answers its own `192.168.88.244`/32400 and kids `172.31.7.2`/32400, and `privateAddress`/`privatePort` move together or are `""`/**0** | C | cycle 49 |
 | **`includeAlternates` is a 1.43.4-only option** | Refuted by the instrument, not by the servers: the hunt measured 1.42.2 on **plexscratch42**, a fresh install whose every row is unmatched and which therefore holds no agent artwork for the option to inline. zen -- a real matched 1.42.2 library -- honours it on `/hubs`, `/library/onDeck`, `/library/metadata/{id}` and both `related` paths. CLAUDE.md's "use the copy for grammar, never for a count" read from the other side: an EMPTY answer on the copy is not a negative | **E** | cycle 45 |
 | **A play completes only past a minute** -- "the timeline's minute is strict and has no `stopped` exemption" | The minute gate belongs to the RESUME POINT, not to completion. A beat that CROSSES 90% completes the play however short the item is; the gate is `position >= (total * 9) // 10`, an integer comparison, and the float `0.9` plexsim used disagreed with it on short rows | **D** | cycle 45 |
 | **`file=` is a 500 on a SHOW listing** -- decided per ROW | The refusal is a property of the QUERY's declared type. `type=2` refuses on a section listing and on `/library/all` alike, `type=3` refuses on `/library/all` and ANSWERS on a section listing, and an **untyped** `/library/all?file=` answers and really filters (kids 11 of 14 rows, zen 12,899). plexsim raised it from inside the row walk -- "this row is a show" -- so the untyped whole-library query was a 500 where a real PMS answers | **C** | cycle 45 |
@@ -755,6 +765,13 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
+| **GDM's `Updated-At`** | It is not a clock and it is not a counter: it stands still under polling, is days stale on an idle server, and the two ports carry INDEPENDENT stamps (plexscratch42 answered 1789624280 on 32410 and 1789690002 on 32414 in the same second, then converged). plexsim stamps it when the advertisement is built and re-stamps it when an advertised field changes, which reproduces the shape and not the trigger | Watch a server whose state is under your control -- rename it, rescan it, restart it -- and see which event moves it |
+| **`Host` in the GDM reply is claim-dependent** | Both CLAIMED references carry `<hash>.plex.direct` and neither unclaimed copy carries the line at all. An unclaimed PMS has no certificate, so the CLAIM and the CERTIFICATE are confounded on all four instruments. plexsim emits the line only when it holds a plex.direct hostname, which is right under either reading | A claimed server with its certificate removed, which nothing here can make |
+| **The drain grace after a response** | A real PMS decides to close ~5 ms after answering, whether the declared body then turns up at 2 ms or at a second. plexsim gives it a 50 ms grace instead, because the reference's decision point cannot be read out of a buffered reader without a peek that can block. A body inside the grace is consumed and the socket kept -- safe in the other direction, and NOT what the reference does | Rewrite the request reader on a raw socket rather than on `BufferedReader` |
+| **`SERVERS_TTL` = 180 s** | Bracketed to (177, 180] in ONE clean run on zen, by starting a server on its wire and polling every three seconds. A second run read (154, 165] and is discarded because it reused a machineIdentifier zen already held -- so the number rests on a single uncontaminated observation | Repeat it with a fresh machineIdentifier each time |
+| **The legacy dispatcher's PREFIX listing** | The rule is derived and consistent over 38 cells -- rows are the last segments of every registered plug-in route whose path begins with the request -- but reproducing it needs PMS's own route REGISTRY, which plexsim does not have. `/dev`, `/me`, `/serve` and `/s` are recorded and not built | Transcribe the registry from a wider sweep, if any client is ever seen to use it |
+| **`/connections`** | A real PMS answers a `text/plain` line per live connection with a state, a timing, a byte count, a request line and a token name. plexsim keeps no connection registry, and every part of that line it cannot derive would be a fabrication | Add connection bookkeeping and measure each field against a copy |
+| **`Mood`'s slot in `xmlout._CHILD_ORDER`** | Absent, deliberately: a real PMS refuses to STORE a `mood` on a movie, so no reference row can ever carry one for its position to be read from. A movie library is the only type plexsim holds | A music library, which plexsim will never have |
 | **`/library/shared/all?sort=` crashes a real PMS** | An EMPTY sort dropped the connection on kids and SEGV'd zen's Plex (`code=killed, signal=SEGV`), reproduced on both and isolated to that one parameter. There is no answer to copy, so plexsim reads the empty value as absent -- the convention `/collections` already has for an empty sort -- which is a SURFACE CONVENTION applied, not a measurement | Nothing on a reference can settle it. A third 1.42.2 instance that may be crashed freely could confirm the crash is universal; the correct ANSWER is unobtainable |
 | **The generating rule behind `/{name}/top`'s eleven-name map** | The eleven names resolve in six pairs -- a tag name and a metadata COLUMN name sharing each number (`genre`/`title` 1, `director`/`studio` 4, `writer`/`rating` 5, `actor`/`tagline` 6, `producer`/`summary` 7) -- which says PMS looks the segment up in one integer space that both vocabularies feed. The TABLE is measured on three servers and two versions and is what plexsim implements; the rule that generates it is not identified, so a name outside the swept 91 is a guess | Read the lookup out of the binary, or sweep a wider vocabulary against a library holding tags of types 2, 3 and 9+ |
 | **The `/library/shared` verb table** | GET and HEAD are measured on kids and zen, which are read-only references; the two writable copies **404 the whole subtree** (they are unclaimed and isolated from plex.tv, the same shape as `/livetv`'s 403 there). So the non-GET half is applied from the surface's read-only rule rather than measured | A claimed writable copy, which the isolation rules currently forbid |
@@ -1421,6 +1438,7 @@ uv run --quiet --no-project --with plexapi python3 tests/conformance.py --base h
 python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 --public http://127.0.0.1:32543
 python3 tests/test_mediainfo.py        # no server
 python3 tests/test_decision.py         # no server
+python3 tests/test_gdm.py              # no server, no network
 ```
 
 | Suite | What it is |
@@ -1430,6 +1448,7 @@ python3 tests/test_decision.py         # no server
 | `test_all.py` | Play queue → decision → byte reads → real decode. It decodes frames rather than trusting a 200 |
 | `conformance.py` | Drives plexsim with python-plexapi, as a third-party client |
 | `test_mediainfo.py` | `mediainfo.py` against 46 recorded probes and a real PMS's analysis of the same files. Offline |
+| `test_gdm.py` | `gdm.py` against the GDM replies of four real servers and a byte-by-byte trigger bisection, plus an end-to-end drive of the real responder over real sockets. Offline |
 | `test_decision.py` | `decision.py` against `tests/fixtures/decisions/` -- 2,028 measured (profile, row) cells from kids, zen and plexscratch, each row's `Media` as the reference wrote it. Offline. The 156 cells taken before a client had chosen an audio track are counted and never fail it |
 
 Suite conventions, each learnt the hard way:
@@ -3575,6 +3594,58 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 49 — the LAN, the connection and the claim
+
+Cycle 48 was clean on every axis it repeated, so cycle 49 reopened the loop the only way it
+has ever been reopened: **by recognising an instrument**. Every measurement this programme
+has ever made happens over TCP 32400 *after a client already knows the address*. Nobody had
+asked how a client FINDS the server, what a real PMS does with the TCP stream around a
+request, or what the CLAIM itself moves — and the last of those is the project's own
+failure class E, unaudited for forty-eight cycles.
+
+**26 findings, 21 commits, every one proved fail-then-pass against its own parent.**
+
+The driver took GDM, the LAN discovery protocol, and found a whole surface plexsim answered
+nothing on: two UDP ports, a multicast group, a prefix-compare trigger bisected byte by
+byte, a seven-header reply whose one claim-dependent field is `Host`, a five-second search
+of its own, and `/servers` as the list that search populates. The proof is the strongest
+this programme has had: **a real Plex Media Server discovered plexsim on the wire and listed
+it**, at the address and port plexsim advertised, within six seconds of the module starting.
+The same territory then found that `/servers`' own row had been answering `127.0.0.1` and a
+constant `32400` for the life of the field, and that `/` was missing the transcoder quality
+ladder the client's Quality menu is built from.
+
+Three hunts ran beside it.
+
+* **Territory A, the claimed-vs-unclaimed census** — 116 read families over the 2×2 of claim
+  and version. 15 claim-dependent families, 40 claim-dependent container attributes, and
+  plexsim correct on all but one: `ButlerTaskGenerateAdMarkers`, which cycle 35 measured on
+  two UNCLAIMED copies and recorded as shipping disabled where both claimed references ship
+  it enabled. It also found `/playlists/sorts`' sixth row, two real endpoints behind the
+  legacy dispatcher (`/dlna`, `/manage`), the asset-404 connection state and the photo
+  transcoder's refusal header order.
+* **Territory B, the connection and transport layer** — every cell from a raw socket. Eight
+  findings, three of them serious: one request could produce two responses on plexsim and
+  put every later response on that connection off by one; fifty dribbling clients held fifty
+  threads where a real PMS dropped all fifty at 20.6 s; and a client that vanished
+  mid-request COMMITTED a write a real PMS discards.
+* **Territory C, dual-format equality** — 1,331 dual-format pairs, 23,674 element nodes and
+  1,298 JSON scalar-type cells, which found exactly one type mismatch and one ordering
+  mismatch. That is the useful negative result. Four more findings came out of the tag-rich
+  row it had to MAKE to be non-vacuous, and one of them — `Style`'s slot in
+  `_CHILD_ORDER` — is a correction to a table cycle 23 declared settled, because no
+  reference library holds a movie carrying a `Style` at all.
+
+**And the cycle found that both references were broken instruments.** `GET /devices` and
+`GET /statistics/bandwidth` answer **500** on kids and on zen, because a device row whose
+`platform` column parses as a number crashes PMS's own serialiser (`std::bad_cast`), and
+that row is written by an ordinary **GET** carrying `X-Plex-Platform: <number>` with no
+client identifier — the shape a uniform-zero header sweep sends. kids' row was healthy in
+the byte copy taken 2026-09-13 and is corrupt now, so the damage happened inside this
+programme. kids has been repaired to its exact original (`LG TV`/`iOS`, read out of
+plexscratch); **zen has not**, because it is production, it takes GET and HEAD only, and its
+original value predates the copy and is unknown. See §9.
+
 ### Cycle 48 — the stopping repeat reports no findings on every covered axis
 
 Cycle 48 froze the repaired implementation/test head `768377a` and repeated the finite Cycle-46
@@ -4328,6 +4399,32 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 49.**
+
+- **The legacy dispatcher's PREFIX listing.** A single segment that is a proper prefix of one
+  or more registered plug-in routes answers the LAST SEGMENTS of every registered route whose
+  path begins with it: `/dev` names `devices`, `/me` names media's three children, `/serve`
+  names `server` and `servers`, `/s` names seventeen. Derived from a 38-cell prefix sweep on
+  zen and consistent on every one, but reproducing it needs PMS's own route REGISTRY, which
+  plexsim does not have and which no client asks for. The two named endpoints in that family
+  that carry real content -- `/dlna` and `/manage` -- ARE built.
+- **`/connections`.** A `text/plain` line per live connection with a state, a timing, a byte
+  count, a request line and a token name. plexsim keeps no connection registry; every part of
+  that line it cannot derive would be a fabrication.
+- **`transcoderVideoRemuxOnly`.** zen's alone among four servers -- the 1.42.2 copy omits it
+  too -- so it is that server's own state and not a rule.
+- **`authToken` on `/myplex/account`.** zen (1.42.2, claimed and mapped) sends it; kids does
+  not, and kids' whole plex.tv mapping block is empty as well, so version and mapping state
+  are confounded on the only two claimed servers this project has. plexsim's omission is now
+  a DELIBERATE deviation rather than a measurement: its token gate defaults OFF, so publishing
+  the claim token there would hand it to every peer that can reach the port.
+- **PMS's `std::bad_cast` 500.** A device row whose `platform` column parses as a number makes
+  `GET /devices` and `GET /statistics/bandwidth` a 500 on a real PMS. plexsim stores the string
+  it was given and does not reproduce the crash.
+- **The GDM sender's own consumers.** plexsim searches the LAN every five seconds and lists
+  what answers on `/servers`, as a real PMS does, but it does nothing else with the peers: it
+  cannot browse or proxy another server, and nothing on its surface pretends it can.
+
 **Cycles 46–48.**
 
 - **`includeBandwidths=1` on a deeply analysed Part.** The complete query census proves the
@@ -4876,6 +4973,38 @@ copy; the `<CODEC> External` label's single witness.
 ---
 
 ## 9. Safety rules and incidents
+
+**A GET wrote to both references and broke two read families (found cycle 49).** `GET /devices`
+and `GET /statistics/bandwidth` answer **500** on kids and on zen. The cause is PMS's own
+serialiser: a device row whose `platform` column parses as a NUMBER raises `std::bad_cast`
+(`ERROR - Got exception from request handler: std::bad_cast` in its log) when the row is
+listed, while `GET /devices/{that id}` stays a clean 200. The row is written by an ordinary
+**GET** carrying `X-Plex-Device-Name` and `X-Plex-Platform` with **no**
+`X-Plex-Client-Identifier` — it lands on the anonymous device row, id 1 — and `0 1 2 3 5 9 10
+11 12 20 100 007 +1 -0 1.0 " 1" "1 " 01 0000 999999999 2147483647 2147483648 1e3` all do it,
+storing the NORMALISED number. Reproduced and repaired end to end on both writable copies.
+
+kids' row 1 was `name="LG TV" platform="iOS"` in the byte copy taken 2026-09-13 and was
+`0`/`0` when cycle 49 looked, so the write happened inside this programme's lifetime. A
+uniform-zero header sweep — sending `X-Plex-Platform: 0` to every path — is exactly the shape
+that does it, and this project has run one.
+
+**kids has been repaired** to its exact original, with one GET carrying those two headers;
+`/devices` and `/statistics/bandwidth` are 200 again. **zen has NOT been touched.** It is
+production, it takes GET and HEAD only, and its original device-row values predate the copy
+and are unknown, so any repair there would invent a string. That is the user's call, not this
+programme's: the repair is `GET /identity` with `X-Plex-Device-Name: <the original name>` and
+`X-Plex-Platform: <the original platform>` and no client identifier.
+
+**The lesson for every future sweep: a GET can write.** A header census that sends a uniform
+value for every header name is not a read-only sweep. Put device-identity headers
+(`X-Plex-Device-Name`, `X-Plex-Platform`, `X-Plex-Device`, `X-Plex-Client-Identifier`) on the
+sweep's own exclusion list for the shared references, or send them only to a disposable copy.
+
+**Cycle 49 also put a transient row into zen's `/servers`.** Starting plexsim with `--gdm on`
+on the same LAN made zen discover it, exactly as any Plex server on that wire would; the row
+aged out on its own and nothing on disk changed. It is recorded because it is a state change
+to production that a reader of this file should expect to see in the logs.
 
 **`GET /library/shared/all?sort=` crashes a real PMS (cycle 45).** An EMPTY sort value on that
 path dropped the connection on kids and took zen's Plex down outright — `systemd: Main PID …
