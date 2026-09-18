@@ -7877,6 +7877,82 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50, from the matched-catalog byte diff -- a plexsim catalog built to MIRROR
+    # kids' library exactly, so the two servers could be compared byte for byte instead of
+    # shape-wise. Five findings: the image transcoder also transcodes the server's OWN
+    # bundled assets (and plexsim uses exactly those as its placeholder `thumb`, so every
+    # placeholder tile it asked for through the transcoder was a 500); three of `/`'s 25
+    # Directory rows carry `count="3"` where plexsim's own comment said "the count is 1 on
+    # every one"; a MOVIE's `/allLeaves` is the movie view pair and plexsim answered the
+    # SEASON one, the same inversion as the founding Seasons bug; a show library's
+    # `director`, `writer` and `producer` axes are built from the EPISODES (a show row
+    # carries no such tag, which is why `/actor` was the one that worked); and
+    # `/unwatched` is ordered like every other listing and carries the subset's own filter
+    # in each row's `key`.
+    # The image transcoder also transcodes the server's OWN bundled assets.
+    check("/photo/:/transcode serves a bundled /:/resources asset",
+          request(base, "GET", "/photo/:/transcode?url=%2F%3A%2Fresources%2Fmovie.png"
+                  "&width=100&height=100", want_json=False)[0] == 200, "")
+    check("...and 404s one it does not have",
+          request(base, "GET", "/photo/:/transcode?url=%2F%3A%2Fresources%2Fnope.png"
+                  "&width=100&height=100", want_json=False)[0] == 404, "")
+    check("...while a server path that is not artwork is still a 500",
+          request(base, "GET", "/photo/:/transcode?url=%2Fidentity&width=100&height=100",
+                  want_json=False)[0] == 500, "")
+
+    # `/`'s Directory rows: three of the 25 carry count=3.
+    _, root_c50c, _ = container(base, "GET", "/")
+    counts_c50c = {d.get("key"): d.get("count") for d in root_c50c.get("Directory") or []}
+    check("library, livetv and media carry count 3 and the other 22 carry 1",
+          [counts_c50c.get(k) for k in ("library", "livetv", "media")] == [3, 3, 3]
+          and sorted({v for k, v in counts_c50c.items()
+                      if k not in ("library", "livetv", "media")}) == [1],
+          "%s" % sorted(set(counts_c50c.values())))
+
+    # A MOVIE's own /allLeaves is the movie pair, not the season one.
+    _, leaves_c50c, _ = container(base, "GET", "/library/metadata/%s/allLeaves" % movie)
+    check("a movie's /allLeaves is viewGroup movie and viewMode 65592",
+          (leaves_c50c.get("viewGroup"), leaves_c50c.get("viewMode")) == ("movie", 65592),
+          "%r/%r" % (leaves_c50c.get("viewGroup"), leaves_c50c.get("viewMode")))
+
+    # A show library's person axes are built from the EPISODES.
+    if show_section:
+        _, eps_c50c, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+        episode_c50c = ((eps_c50c.get("Metadata") or [{}])[0]).get("ratingKey")
+        if episode_c50c:
+            request(base, "PUT", "/library/metadata/%s?type=4&id=%s"
+                    "&director%%5B0%%5D.tag.tag=C50Dir&writer%%5B0%%5D.tag.tag=C50Wri"
+                    "&producer%%5B0%%5D.tag.tag=C50Pro" % (episode_c50c, episode_c50c))
+            axes_c50c = {}
+            for axis_c50c in ("director", "writer", "producer"):
+                _, body_c50c, _ = get(base, "/library/sections/%s/%s" % (show_section, axis_c50c))
+                axes_c50c[axis_c50c] = [d.get("title") for d in body_c50c.get("Directory") or []]
+            check("a show library's person axes are built from the episodes",
+                  "C50Dir" in axes_c50c["director"] and "C50Wri" in axes_c50c["writer"]
+                  and "C50Pro" in axes_c50c["producer"], "%s" % axes_c50c)
+        else:
+            skip("a show library's person axes are built from the episodes", "no episode")
+    else:
+        skip("a show library's person axes are built from the episodes", "no show library")
+
+    # `/unwatched` is ordered like every other listing, and its rows carry the subset filter.
+    _, unwatched_c50c, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
+    titles_c50c = [r.get("title") for r in unwatched_c50c.get("Metadata") or []]
+    _, grid_c50c, _ = get(base, "/library/sections/%s/all" % movie_section)
+    order_c50c = [r.get("title") for r in grid_c50c.get("Metadata") or []]
+    check("/unwatched is ordered by titleSort, like the grid it comes from",
+          titles_c50c == [t for t in order_c50c if t in set(titles_c50c)],
+          "%s vs %s" % (titles_c50c[:4], order_c50c[:4]))
+    if show_section:
+        _, sub_c50c, _ = get(base, "/library/sections/%s/unwatched" % show_section)
+        keys_c50c = [r.get("key") for r in sub_c50c.get("Metadata") or []
+                     if "/children" in str(r.get("key") or "")]
+        check("...and a row with children carries the subset's own filter in its key",
+              bool(keys_c50c) and all(k.endswith("/children?unwatched=1") for k in keys_c50c),
+              "%s" % keys_c50c[:2])
+    else:
+        skip("...and a row with children carries the subset's own filter in its key", "no shows")
+
     # Cycle 50, driving the official Plex Web client end to end against plexsim: Settings
     # -> Status -> **Conversions** renders "The conversion queue is unavailable." The
     # client's own `initializeConversionView` waits on four requests and needs three of
