@@ -111,6 +111,20 @@ def main():
         # Its own reply is dropped: zen lists itself ONCE.
         disco._record(disco.response(), ("127.0.0.1", 32414))
         check("the server's own answer is not a peer", len(disco.peers()), 1)
+        # Cycle 50: the table is keyed by ADDRESS, not by machineIdentifier. Measured on
+        # zen with three responders at one address: it never listed two rows for that
+        # address, while distinct addresses are listed side by side.
+        second = gdm.build_response(name="second", port=32401, machine="q" * 40,
+                                    version="1.42.2.10156-f737b826c", updated_at=1789000002)
+        disco._record(second, ("10.9.8.7", 32414))
+        check("two servers at one address are ONE row, last writer wins",
+              [(r["machine"], r["name"]) for r in disco.peers()],
+              [("q" * 40, "second")])
+        disco._record(peer, ("10.9.8.8", 32414))
+        check("two addresses are two rows", len(disco.peers()), 2)
+        disco._peers.pop("10.9.8.8", None)
+        disco._record(peer, ("10.9.8.7", 32414))
+
         # A player answers `plex/media-player` on the player ports; it is not a server.
         player = peer.replace(b"plex/media-server", b"plex/media-player")
         disco._record(player, ("10.9.8.6", 32414))
