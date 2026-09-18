@@ -7877,6 +7877,40 @@ def main():
           and manage_c49n[1].get("Cache-Control") == "public",
           "%s / %s" % (manage_c49n, web_c49n))
 
+    # Cycle 50, 56 language tags on one row against kids and zen (identical on all 20 that
+    # differ): the language-list enums carry their names in the REQUEST's language, and an
+    # explicit `X-Plex-Language: en` -- which is exactly what Plex Web sends -- is NOT the
+    # no-header document. plexsim short-circuited English in `_send_container` and
+    # `translations.json` carries no `en` entry for these enums because English is the
+    # source, so every English user's Advanced/Edit language picker read `català,
+    # Čeština, Dansk...` where a real server reads `Catalan, Czech, Danish...`. The
+    # English spelling was already in `agent_languages.json`, which `/system/agents`
+    # alone was using; the list is stored per language and its ORDER moves with the
+    # names, so the table's own rows are used in the table's own order.
+    import urllib.request as _u50e
+    def prefs_enum_c50e(language):
+        request_ = _u50e.Request(base + "/library/metadata/%s?includePreferences=1" % movie,
+                                 headers={"Accept": "application/json", "User-Agent": UA,
+                                          "X-Plex-Language": language} if language
+                                 else {"Accept": "application/json", "User-Agent": UA})
+        doc = json.loads(_u50e.urlopen(request_, timeout=20).read())
+        row = (doc.get("MediaContainer", {}).get("Metadata") or [{}])[0]
+        for setting in (row.get("Preferences") or {}).get("Setting") or []:
+            if setting.get("id") == "languageOverride":
+                return setting.get("enumValues") or ""
+        return ""
+    english_c50e = prefs_enum_c50e("en")
+    bare_c50e = prefs_enum_c50e(None)
+    turkish_c50e = prefs_enum_c50e("tr")
+    check("an explicit X-Plex-Language: en names every language in ENGLISH",
+          english_c50e.startswith(":Library default|ar-SA:Arabic (Saudi Arabia)|bg-BG:Bulgarian"
+                                  "|ca-ES:Catalan"), english_c50e[:90])
+    check("...which is NOT the no-header document, where each is named in itself",
+          bare_c50e.startswith(":Library default|ca-ES:catal") and bare_c50e != english_c50e,
+          bare_c50e[:60])
+    check("...and another language keeps its own names AND its own order",
+          turkish_c50e.startswith(":Library default|de-DE:Almanca|ar-SA:Arap"), turkish_c50e[:60])
+
     # Cycle 50, comparing `/:/prefs` setting by setting against kids AND zen (0 attribute
     # mismatches in 174 rows -- the fixture's SHAPE is exact): seven captured VALUES are
     # non-default where every real server answers its own default, and six of the seven
