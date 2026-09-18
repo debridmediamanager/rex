@@ -7662,6 +7662,75 @@ def main():
     # CONSTANT 7 on all four -- zen and kids (claimed) and both unclaimed copies, none of
     # which has a tuner -- and `offlineTranscode` is 1 on the claimed pair and ABSENT on
     # the unclaimed pair, never 0. plexsim answered 0 for both.
+    # Cycle 49, 27 refusal shapes on raw sockets against kids (1.43.4) and zen (1.42.2),
+    # both agreeing on every one. Cycle 30 swept the connection state of every refusal the
+    # ROUTER writes; the ones written BELOW it were never swept. The rule they show is
+    # that a refusal of the request's ENVELOPE closes the connection and a refusal of its
+    # MEANING keeps it -- which is why cycle 30's "the one refusal that closes" was never
+    # an exception. plexsim broke it in seven cells, and one of them is not a connection
+    # state at all: it answered 200 to an `obs-fold` continuation both references refuse,
+    # because Python's reader unfolds it before the handler can see it.
+    import socket as _s49j
+    _h49j, _, _p49j = base.split("//", 1)[1].partition(":")
+    _p49j = int(_p49j.split("/")[0])
+    def envelope_c49j(payload, wait=2.5):
+        sock = _s49j.create_connection((_h49j, _p49j), timeout=wait)
+        try:
+            sock.sendall(payload)
+            sock.settimeout(wait)
+            buf, closed = b"", False
+            try:
+                while True:
+                    chunk = sock.recv(65536)
+                    if not chunk:
+                        closed = True
+                        break
+                    buf += chunk
+            except _s49j.timeout:
+                pass
+        finally:
+            sock.close()
+        if not buf:
+            return ("(silence)", [], closed)
+        head = buf.partition(b"\r\n\r\n")[0].decode("latin-1").split("\r\n")
+        return (head[0], [h for h in head[1:]
+                          if h.lower().startswith(("connection", "keep-alive"))], closed)
+
+    KEEP49J = ["Connection: Keep-Alive", "Keep-Alive: timeout=20"]
+    CLOSE49J = ["Connection: close"]
+    got_c49j = {
+        "Content-Length: -1": envelope_c49j(
+            b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: -1\r\n\r\n"),
+        "non-terminal dot segment": envelope_c49j(
+            b"GET /x/../identity HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "obs-fold continuation": envelope_c49j(
+            b"GET /identity HTTP/1.1\r\nHost: h\r\nX-V: a\r\n b\r\n\r\n"),
+        "leading CRLF": envelope_c49j(b"\r\nGET /identity HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "leading space": envelope_c49j(b" GET /identity HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "missing /:/resources asset": envelope_c49j(
+            b"GET /:/resources/nope.png HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "missing /web asset": envelope_c49j(
+            b"GET /web/nosuchfile.js HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "unknown path (control)": envelope_c49j(
+            b"GET /nosuchpath/at/all HTTP/1.1\r\nHost: h\r\n\r\n"),
+        "a real asset (control)": envelope_c49j(
+            b"GET /:/resources/movie.png HTTP/1.1\r\nHost: h\r\n\r\n"),
+    }
+    want_c49j = {
+        "Content-Length: -1": ("HTTP/1.1 500 Internal Server Error", CLOSE49J, True),
+        "non-terminal dot segment": ("HTTP/1.1 400 Bad Request", CLOSE49J, True),
+        "obs-fold continuation": ("HTTP/1.1 400 Bad Request", CLOSE49J, True),
+        "leading CRLF": ("(silence)", [], True),
+        "leading space": ("(silence)", [], True),
+        "missing /:/resources asset": ("HTTP/1.1 404 Not Found", [], True),
+        "missing /web asset": ("HTTP/1.1 404 Not Found", [], True),
+        "unknown path (control)": ("HTTP/1.1 404 Not Found", KEEP49J, False),
+        "a real asset (control)": ("HTTP/1.1 200 OK", KEEP49J, False),
+    }
+    check("a refusal of the ENVELOPE closes and a refusal of the MEANING does not",
+          got_c49j == want_c49j,
+          "%s" % {k: (got_c49j[k], want_c49j[k]) for k in want_c49j if got_c49j[k] != want_c49j[k]})
+
     # Cycle 49, 20 target forms and 15 pipeline spellings on kids (1.43.4) and zen
     # (1.42.2), both references identical: a real PMS accepts the ABSOLUTE FORM -- what a
     # client sends through an explicit HTTP proxy -- and routes it, discarding the
