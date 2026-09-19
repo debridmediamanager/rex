@@ -8192,6 +8192,19 @@ def main():
                for r in (get(base, spec)[1].get("Metadata") or [])
                if r.get("title") == "Background Processing List"], "")
 
+    background_key_c50b = row_c50b.get("ratingKey")
+    status_items_c50b, items_c50b, _ = container(
+        base, "GET", "/playlists/%s/items" % background_key_c50b)
+    _, items_xml_c50b, _ = request(
+        base, "GET", "/playlists/%s/items" % background_key_c50b, want_json=False)
+    check("the advertised Background Processing List children path answers",
+          status_items_c50b == 200
+          and items_c50b == {"size": 0, "totalSize": 0, "offset": 0},
+          "HTTP %s %r" % (status_items_c50b, items_c50b))
+    check("...and its empty XML container remains paired",
+          b"<MediaContainer" in items_xml_c50b
+          and b"</MediaContainer>" in items_xml_c50b, "%r" % items_xml_c50b)
+
     _, pq1_c50b, _ = container(base, "GET", "/playQueues/1")
     check("/playQueues/1 is permanently that queue, with playQueueVersion -1",
           pq1_c50b.get("playQueueID") == 1 and pq1_c50b.get("playQueueVersion") == -1

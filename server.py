@@ -15833,6 +15833,16 @@ class PlexSim:
                 answer["MediaContainer"]["Meta"] = PLAYLIST_META
             return answer
 
+        if (len(segments) == 3 and segments[1] == str(PLAYLIST_BASE_BACKGROUND)
+                and segments[2] == "items" and method == "GET"):
+            # Cycle 50's official-client trace reached one request beyond the initial
+            # Conversions promise: the returned playlist row's own `children` model
+            # fetches this advertised key. Kids and both disposable versions answer the
+            # same empty, paged container. Leaving it at the generic unknown-playlist
+            # 404 still rejected the promise and rendered "conversion queue unavailable"
+            # after the first three routes had been implemented.
+            return self.bare_container(size=0, totalSize=0, offset=0)
+
         playlist = self.library.playlist(segments[1])
         if playlist is None:
             return ("error", 404, "plexsim: no such playlist")
