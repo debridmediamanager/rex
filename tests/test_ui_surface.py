@@ -29397,6 +29397,29 @@ def main():
           "%s/%s/%s" % (status_c53e, len(body_slash_c53e),
                         head_slash_c53e.get("Content-Type")))
 
+    # Cycle 53, measured over three identifiers on kids (1.43.4) and zen (1.42.2), which agree:
+    # only the BARE `/system/agents` is PMS's own handler. Everything under it is the plug-in
+    # framework's, so `/system/agents/{id}/config/{N}` is written by the framework's
+    # serialiser -- the single-quoted declaration and a SELF-CLOSED empty container, 130 bytes
+    # -- and it is the one framework document that carries NO cookie, where its sibling
+    # `/contributors` carries one. plexsim wrote it with the core writer (147 bytes, paired,
+    # double-quoted `UTF-8`) and sent the cookie on both.
+    status_c53f, config_c53f, head_c53f = request(
+        base, "GET", "/system/agents/tv.plex.agents.movie/config/1", want_json=False)
+    _, contrib_c53f, contrib_head_c53f = request(
+        base, "GET", "/system/agents/contributors?mediaType=1&primaryAgent=tv.plex.agents.movie",
+        want_json=False)
+    check("a framework agent document is written by the framework's serialiser",
+          status_c53f == 200 and len(config_c53f) == 130
+          and config_c53f.startswith(b"<?xml version='1.0' encoding='utf-8'?>")
+          and config_c53f.rstrip().endswith(b"/>")
+          and head_c53f.get("Set-Cookie") is None
+          and contrib_head_c53f.get("Set-Cookie") is not None
+          and len(contrib_c53f) == 130,
+          "config=%s/%s cookie=%s contributors=%s/%s"
+          % (status_c53f, len(config_c53f), head_c53f.get("Set-Cookie") is not None,
+             len(contrib_c53f), contrib_head_c53f.get("Set-Cookie") is not None))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
