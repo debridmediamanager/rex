@@ -1,0 +1,5485 @@
+{
+ "blank": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQAAAABbAUdZAAAAAnRSTlMAAHaTzTgAAAALSURBVHgB\nYxjkAAAAoAABVCqexwAAAABJRU5ErkJggg==",
+ "flags": {
+  "aspectRatio": {
+   "1.33": [
+    55,
+    38
+   ],
+   "1.66": [
+    91,
+    38
+   ],
+   "1.78": [
+    73,
+    38
+   ],
+   "1.85": [
+    90,
+    38
+   ],
+   "2.20": [
+    101,
+    38
+   ],
+   "2.25": [
+    101,
+    38
+   ],
+   "2.35": [
+    101,
+    38
+   ]
+  },
+  "audioChannels": {
+   "1": [
+    46,
+    38
+   ],
+   "2": [
+    55,
+    38
+   ],
+   "5": [
+    49,
+    38
+   ],
+   "6": [
+    49,
+    38
+   ],
+   "7": [
+    49,
+    38
+   ],
+   "8": [
+    48,
+    38
+   ]
+  },
+  "audioCodec": {
+   "aac": [
+    153,
+    40
+   ],
+   "aif": [
+    82,
+    100
+   ],
+   "aifc": [
+    82,
+    100
+   ],
+   "aiff": [
+    82,
+    100
+   ],
+   "alac": [
+    82,
+    100
+   ],
+   "ape": [
+    93,
+    95
+   ],
+   "cdda": [
+    150,
+    92
+   ],
+   "dca-ma": [
+    129,
+    54
+   ],
+   "dolby_digital": [
+    128,
+    58
+   ],
+   "dolby_truehd": [
+    136,
+    58
+   ],
+   "dts": [
+    129,
+    54
+   ],
+   "eac3": [
+    130,
+    58
+   ],
+   "flac": [
+    115,
+    56
+   ],
+   "m4a": [
+    82,
+    100
+   ],
+   "mlp": [
+    161,
+    59
+   ],
+   "mp2": [
+    128,
+    37
+   ],
+   "mp3": [
+    111,
+    56
+   ],
+   "mpc": [
+    161,
+    57
+   ],
+   "ogg": [
+    101,
+    55
+   ],
+   "pcm": [
+    124,
+    42
+   ],
+   "ra": [
+    161,
+    76
+   ],
+   "shn": [
+    98,
+    40
+   ],
+   "wav": [
+    157,
+    38
+   ],
+   "wave": [
+    157,
+    38
+   ],
+   "wma": [
+    159,
+    42
+   ],
+   "wmahd": [
+    158,
+    33
+   ],
+   "wmapro": [
+    110,
+    22
+   ],
+   "wmav2": [
+    158,
+    33
+   ],
+   "wv": [
+    134,
+    77
+   ]
+  },
+  "contentRating": {
+   "G": [
+    86,
+    74
+   ],
+   "NC-17": [
+    195,
+    74
+   ],
+   "NR": [
+    142,
+    74
+   ],
+   "Not Rated": [
+    212,
+    74
+   ],
+   "PG": [
+    142,
+    74
+   ],
+   "PG-13": [
+    212,
+    74
+   ],
+   "R": [
+    86,
+    74
+   ],
+   "TV-14": [
+    84,
+    84
+   ],
+   "TV-G": [
+    84,
+    84
+   ],
+   "TV-MA": [
+    84,
+    84
+   ],
+   "TV-PG": [
+    84,
+    84
+   ],
+   "TV-Y": [
+    84,
+    84
+   ],
+   "TV-Y7": [
+    84,
+    84
+   ],
+   "TV-Y7-FV": [
+    84,
+    84
+   ],
+   "Unrated": [
+    212,
+    74
+   ],
+   "X": [
+    86,
+    74
+   ],
+   "au/E": [
+    88,
+    88
+   ],
+   "au/G": [
+    88,
+    88
+   ],
+   "au/M": [
+    88,
+    88
+   ],
+   "au/MA15": [
+    89,
+    88
+   ],
+   "au/MA15+": [
+    89,
+    88
+   ],
+   "au/PG": [
+    88,
+    88
+   ],
+   "au/R18": [
+    89,
+    88
+   ],
+   "au/R18+": [
+    89,
+    88
+   ],
+   "au/X18": [
+    89,
+    88
+   ],
+   "au/X18+": [
+    89,
+    88
+   ],
+   "ca/14A": [
+    103,
+    80
+   ],
+   "ca/18A": [
+    103,
+    80
+   ],
+   "ca/E": [
+    85,
+    84
+   ],
+   "ca/G": [
+    84,
+    84
+   ],
+   "ca/PG": [
+    100,
+    79
+   ],
+   "ca/R": [
+    86,
+    85
+   ],
+   "de/0": [
+    100,
+    100
+   ],
+   "de/12": [
+    100,
+    100
+   ],
+   "de/16": [
+    100,
+    100
+   ],
+   "de/18": [
+    100,
+    100
+   ],
+   "de/6": [
+    100,
+    100
+   ],
+   "fr/-10": [
+    82,
+    83
+   ],
+   "fr/-12": [
+    82,
+    83
+   ],
+   "fr/-16": [
+    82,
+    83
+   ],
+   "fr/-18": [
+    82,
+    83
+   ],
+   "fr/Tout Public": [
+    82,
+    83
+   ],
+   "fr/U": [
+    82,
+    83
+   ],
+   "gb/12": [
+    85,
+    84
+   ],
+   "gb/12A": [
+    84,
+    84
+   ],
+   "gb/15": [
+    85,
+    84
+   ],
+   "gb/18": [
+    84,
+    84
+   ],
+   "gb/PG": [
+    96,
+    78
+   ],
+   "gb/R18": [
+    96,
+    80
+   ],
+   "gb/U": [
+    89,
+    71
+   ],
+   "nl/12": [
+    88,
+    87
+   ],
+   "nl/16": [
+    88,
+    87
+   ],
+   "nl/6": [
+    88,
+    87
+   ],
+   "nl/9": [
+    88,
+    87
+   ],
+   "nl/AL": [
+    88,
+    87
+   ],
+   "nl/Alle Leeftijden": [
+    88,
+    87
+   ]
+  },
+  "studio": {
+   "1492_pictures": [
+    512,
+    278
+   ],
+   "20th_century_fox": [
+    512,
+    421
+   ],
+   "20th_century_fox_animation": [
+    512,
+    423
+   ],
+   "21_laps_entertainment": [
+    512,
+    316
+   ],
+   "2929": [
+    326,
+    350
+   ],
+   "360_pictures": [
+    512,
+    269
+   ],
+   "40_acres": [
+    512,
+    512
+   ],
+   "57_irving": [
+    125,
+    15
+   ],
+   "777_film_corp": [
+    512,
+    280
+   ],
+   "a24": [
+    300,
+    124
+   ],
+   "a_1_pictures": [
+    512,
+    437
+   ],
+   "a_and_e": [
+    203,
+    106
+   ],
+   "aardman": [
+    512,
+    179
+   ],
+   "abandon": [
+    116,
+    80
+   ],
+   "abc": [
+    511,
+    512
+   ],
+   "abc_australia": [
+    332,
+    247
+   ],
+   "abc_family": [
+    512,
+    145
+   ],
+   "actf": [
+    512,
+    98
+   ],
+   "adult_swim": [
+    512,
+    95
+   ],
+   "afi": [
+    512,
+    261
+   ],
+   "after_dark": [
+    497,
+    226
+   ],
+   "aic": [
+    300,
+    109
+   ],
+   "alcon_entertainment": [
+    418,
+    512
+   ],
+   "alfred_hitchcock_productions": [
+    491,
+    461
+   ],
+   "alliance": [
+    264,
+    112
+   ],
+   "alloy": [
+    512,
+    221
+   ],
+   "alphaville": [
+    141,
+    59
+   ],
+   "amazon_studios": [
+    484,
+    91
+   ],
+   "ambience": [
+    165,
+    76
+   ],
+   "amblin_entertainment": [
+    512,
+    243
+   ],
+   "amc": [
+    512,
+    233
+   ],
+   "american_international_pictures": [
+    512,
+    512
+   ],
+   "american_masters": [
+    512,
+    312
+   ],
+   "american_zoetrope": [
+    299,
+    512
+   ],
+   "anchor_bay_entertainment": [
+    308,
+    512
+   ],
+   "animal_planet": [
+    256,
+    124
+   ],
+   "animax": [
+    512,
+    83
+   ],
+   "anonymous_content": [
+    512,
+    99
+   ],
+   "antena_3": [
+    172,
+    112
+   ],
+   "apatow_productions": [
+    512,
+    205
+   ],
+   "apple": [
+    99,
+    80
+   ],
+   "ard": [
+    98,
+    128
+   ],
+   "ark": [
+    125,
+    83
+   ],
+   "arte": [
+    256,
+    66
+   ],
+   "artisan_entertainment": [
+    501,
+    118
+   ],
+   "aspen_film_society": [
+    449,
+    512
+   ],
+   "atom_films": [
+    512,
+    196
+   ],
+   "audience_network": [
+    440,
+    100
+   ],
+   "australian_film_commission": [
+    512,
+    251
+   ],
+   "avalanche_studios": [
+    512,
+    284
+   ],
+   "avnet_kerner": [
+    125,
+    17
+   ],
+   "babylonian": [
+    125,
+    55
+   ],
+   "bad_boy_entertainment": [
+    512,
+    512
+   ],
+   "bad_robot": [
+    512,
+    384
+   ],
+   "baltimore_pictures": [
+    512,
+    446
+   ],
+   "bandai": [
+    77,
+    73
+   ],
+   "bandai_visual": [
+    114,
+    80
+   ],
+   "bandapart": [
+    48,
+    60
+   ],
+   "batjac": [
+    512,
+    213
+   ],
+   "bazmark": [
+    120,
+    83
+   ],
+   "bbc": [
+    237,
+    72
+   ],
+   "bbc_america": [
+    214,
+    110
+   ],
+   "bbc_films": [
+    512,
+    236
+   ],
+   "bbc_four": [
+    512,
+    256
+   ],
+   "bbc_one": [
+    427,
+    272
+   ],
+   "bbc_prime": [
+    490,
+    74
+   ],
+   "bbc_three": [
+    512,
+    273
+   ],
+   "bbc_two": [
+    479,
+    272
+   ],
+   "beacon": [
+    120,
+    78
+   ],
+   "becker_entertainment": [
+    512,
+    140
+   ],
+   "belair_entertainment": [
+    512,
+    334
+   ],
+   "bet": [
+    589,
+    185
+   ],
+   "bigtalk": [
+    125,
+    16
+   ],
+   "biography_channel": [
+    512,
+    225
+   ],
+   "black_bear_pictures": [
+    512,
+    434
+   ],
+   "blackdog": [
+    125,
+    42
+   ],
+   "bleecker_street": [
+    218,
+    53
+   ],
+   "blind_ambition_entertainment": [
+    512,
+    315
+   ],
+   "blizzard_entertainment": [
+    512,
+    269
+   ],
+   "blue_sky": [
+    512,
+    269
+   ],
+   "blue_sky_studios": [
+    512,
+    153
+   ],
+   "blue_underground": [
+    512,
+    99
+   ],
+   "blumhouse_productions": [
+    387,
+    115
+   ],
+   "bnn": [
+    256,
+    122
+   ],
+   "bold_films": [
+    406,
+    187
+   ],
+   "boomerang": [
+    512,
+    366
+   ],
+   "bravo": [
+    172,
+    128
+   ],
+   "brightlight": [
+    160,
+    68
+   ],
+   "bristol_bay": [
+    512,
+    325
+   ],
+   "broken_lizard": [
+    419,
+    512
+   ],
+   "brooklyn_films": [
+    512,
+    477
+   ],
+   "buena_vista": [
+    512,
+    464
+   ],
+   "bulletproof": [
+    512,
+    259
+   ],
+   "c2_pictures": [
+    512,
+    442
+   ],
+   "canalplus": [
+    256,
+    64
+   ],
+   "cannon_pictures": [
+    496,
+    510
+   ],
+   "capcom": [
+    146,
+    28
+   ],
+   "capitol_films": [
+    142,
+    66
+   ],
+   "caravan_pictures": [
+    512,
+    380
+   ],
+   "carnaby": [
+    437,
+    512
+   ],
+   "carolco": [
+    455,
+    471
+   ],
+   "cartoonnetwork": [
+    186,
+    113
+   ],
+   "casablanca_filmes": [
+    512,
+    88
+   ],
+   "cascade_film": [
+    512,
+    343
+   ],
+   "casey_silver_productions": [
+    512,
+    104
+   ],
+   "castle_rock_entertainment": [
+    508,
+    204
+   ],
+   "cat_in_the_hat": [
+    508,
+    508
+   ],
+   "cbbc": [
+    184,
+    108
+   ],
+   "cbc": [
+    92,
+    124
+   ],
+   "cbs": [
+    512,
+    156
+   ],
+   "celador": [
+    125,
+    36
+   ],
+   "centropolis_entertainment": [
+    311,
+    512
+   ],
+   "ceska_televize": [
+    125,
+    23
+   ],
+   "channel4": [
+    371,
+    512
+   ],
+   "channel5": [
+    352,
+    512
+   ],
+   "channel_nine": [
+    240,
+    112
+   ],
+   "channel_seven": [
+    107,
+    112
+   ],
+   "channel_ten": [
+    112,
+    112
+   ],
+   "cheyenne": [
+    125,
+    30
+   ],
+   "chiller": [
+    512,
+    223
+   ],
+   "cinemax": [
+    500,
+    174
+   ],
+   "city": [
+    600,
+    296
+   ],
+   "cmt": [
+    512,
+    306
+   ],
+   "cnc": [
+    125,
+    39
+   ],
+   "columbia_pictures": [
+    343,
+    409
+   ],
+   "comedy_central": [
+    144,
+    112
+   ],
+   "concorde": [
+    129,
+    90
+   ],
+   "condemned": [
+    125,
+    26
+   ],
+   "constantin_film": [
+    512,
+    80
+   ],
+   "constellation": [
+    512,
+    375
+   ],
+   "cookie_jar": [
+    502,
+    512
+   ],
+   "cpfilms": [
+    512,
+    147
+   ],
+   "crackle": [
+    620,
+    118
+   ],
+   "criterion": [
+    81,
+    83
+   ],
+   "ctv": [
+    256,
+    82
+   ],
+   "cw": [
+    255,
+    102
+   ],
+   "cw_seed": [
+    300,
+    303
+   ],
+   "czolowka": [
+    125,
+    77
+   ],
+   "damselfly": [
+    512,
+    308
+   ],
+   "danjaq": [
+    161,
+    68
+   ],
+   "dark_castle_entertainment": [
+    387,
+    510
+   ],
+   "dark_horse": [
+    512,
+    512
+   ],
+   "dave": [
+    512,
+    155
+   ],
+   "davis_entertainment": [
+    508,
+    373
+   ],
+   "dc": [
+    512,
+    512
+   ],
+   "de_laurentiis": [
+    508,
+    330
+   ],
+   "defa": [
+    512,
+    295
+   ],
+   "destination_films": [
+    512,
+    311
+   ],
+   "dfi": [
+    125,
+    48
+   ],
+   "dickhouse_productions": [
+    512,
+    394
+   ],
+   "digital_factory": [
+    476,
+    324
+   ],
+   "digital_playground": [
+    91,
+    80
+   ],
+   "dimension_films": [
+    512,
+    88
+   ],
+   "discovery_channel": [
+    253,
+    56
+   ],
+   "disney_channel": [
+    512,
+    210
+   ],
+   "disney_xd": [
+    192,
+    107
+   ],
+   "distant_horizon": [
+    512,
+    284
+   ],
+   "dmax": [
+    240,
+    58
+   ],
+   "dna": [
+    359,
+    106
+   ],
+   "dolores_pictures": [
+    412,
+    512
+   ],
+   "don_simpson_jerry_bruckheimer_films": [
+    512,
+    210
+   ],
+   "donners": [
+    512,
+    150
+   ],
+   "dreamworks": [
+    512,
+    101
+   ],
+   "dreamworks_animation": [
+    512,
+    147
+   ],
+   "e4": [
+    130,
+    128
+   ],
+   "ealing": [
+    512,
+    210
+   ],
+   "eclectic": [
+    512,
+    78
+   ],
+   "edmonds_entertainment": [
+    512,
+    225
+   ],
+   "el_rey_network": [
+    161,
+    122
+   ],
+   "electric_enterteinment": [
+    331,
+    512
+   ],
+   "electric_pictures": [
+    512,
+    512
+   ],
+   "eleven": [
+    512,
+    512
+   ],
+   "emi": [
+    512,
+    248
+   ],
+   "emmedia": [
+    126,
+    64
+   ],
+   "encore": [
+    512,
+    179
+   ],
+   "endgame_entertainment": [
+    512,
+    323
+   ],
+   "entara": [
+    379,
+    512
+   ],
+   "entertainment_one": [
+    512,
+    588
+   ],
+   "entertainment_television": [
+    250,
+    74
+   ],
+   "eon_productions": [
+    512,
+    512
+   ],
+   "epix": [
+    512,
+    223
+   ],
+   "escape_artists": [
+    512,
+    276
+   ],
+   "espn": [
+    246,
+    60
+   ],
+   "eurimages": [
+    494,
+    248
+   ],
+   "europa_corp": [
+    509,
+    264
+   ],
+   "eurosport": [
+    177,
+    112
+   ],
+   "excel": [
+    102,
+    82
+   ],
+   "eyekiss_films": [
+    512,
+    323
+   ],
+   "fact": [
+    125,
+    37
+   ],
+   "figaro": [
+    123,
+    73
+   ],
+   "film_colony": [
+    512,
+    168
+   ],
+   "film_four": [
+    512,
+    512
+   ],
+   "film_institut": [
+    512,
+    158
+   ],
+   "film_media": [
+    512,
+    251
+   ],
+   "film_polski": [
+    92,
+    80
+   ],
+   "film_tv": [
+    512,
+    201
+   ],
+   "filmauro": [
+    512,
+    414
+   ],
+   "filmax_animation": [
+    512,
+    401
+   ],
+   "filmforderung_hamburg": [
+    512,
+    171
+   ],
+   "filmnation_entertainment": [
+    512,
+    190
+   ],
+   "filmoteka_narodowa": [
+    89,
+    83
+   ],
+   "filmstiftung_nordrhein-westfalen": [
+    512,
+    209
+   ],
+   "finos_film": [
+    512,
+    433
+   ],
+   "fireworks_entertainment": [
+    433,
+    512
+   ],
+   "first_look_pictures": [
+    512,
+    446
+   ],
+   "five": [
+    256,
+    114
+   ],
+   "flower_films": [
+    508,
+    499
+   ],
+   "focus_features": [
+    512,
+    141
+   ],
+   "food_network": [
+    495,
+    492
+   ],
+   "forte_cinema": [
+    508,
+    334
+   ],
+   "fourhands_film": [
+    512,
+    461
+   ],
+   "fox": [
+    242,
+    105
+   ],
+   "fox_atomic": [
+    512,
+    359
+   ],
+   "fox_kids": [
+    512,
+    436
+   ],
+   "fox_searchlight_pictures": [
+    512,
+    404
+   ],
+   "france_2": [
+    72,
+    123
+   ],
+   "france_3": [
+    72,
+    123
+   ],
+   "france_4": [
+    72,
+    123
+   ],
+   "franchise_pictures": [
+    374,
+    512
+   ],
+   "freeform": [
+    512,
+    94
+   ],
+   "fuji_tv": [
+    220,
+    112
+   ],
+   "future_flix": [
+    512,
+    456
+   ],
+   "fx": [
+    512,
+    324
+   ],
+   "fxx": [
+    512,
+    447
+   ],
+   "g4": [
+    192,
+    128
+   ],
+   "gaumont": [
+    246,
+    82
+   ],
+   "geffen": [
+    343,
+    512
+   ],
+   "ghost_house": [
+    512,
+    95
+   ],
+   "gk_films": [
+    744,
+    156
+   ],
+   "glass_eye_pix": [
+    482,
+    507
+   ],
+   "global_tv": [
+    236,
+    112
+   ],
+   "glue_works_entertainment": [
+    512,
+    490
+   ],
+   "gofilms": [
+    125,
+    34
+   ],
+   "gold_circle_films": [
+    346,
+    512
+   ],
+   "goldwyn": [
+    512,
+    135
+   ],
+   "gracie_films": [
+    508,
+    247
+   ],
+   "gramercy_pictures": [
+    512,
+    393
+   ],
+   "grandhustle": [
+    512,
+    137
+   ],
+   "green_street": [
+    508,
+    129
+   ],
+   "greentree_pictures": [
+    304,
+    512
+   ],
+   "grub_street_productions": [
+    512,
+    107
+   ],
+   "guinea_pig_films": [
+    512,
+    192
+   ],
+   "gutek": [
+    117,
+    80
+   ],
+   "halestorm": [
+    125,
+    33
+   ],
+   "hallmark_channel": [
+    512,
+    217
+   ],
+   "hallucination_on_film": [
+    512,
+    109
+   ],
+   "hand_made_films": [
+    510,
+    237
+   ],
+   "happy_madison": [
+    512,
+    216
+   ],
+   "hasbro": [
+    512,
+    277
+   ],
+   "hbo": [
+    256,
+    106
+   ],
+   "hbo_films": [
+    259,
+    52
+   ],
+   "head_gear_films": [
+    344,
+    508
+   ],
+   "hemus_film": [
+    512,
+    287
+   ],
+   "heyday_films": [
+    508,
+    451
+   ],
+   "hgtv": [
+    230,
+    110
+   ],
+   "history_channel": [
+    512,
+    471
+   ],
+   "hollywood_pictures": [
+    512,
+    245
+   ],
+   "hopscotch_films": [
+    512,
+    127
+   ],
+   "hulu": [
+    512,
+    169
+   ],
+   "hustler_video": [
+    303,
+    512
+   ],
+   "hyde_park_entertainment": [
+    455,
+    512
+   ],
+   "icon_entertainment": [
+    265,
+    508
+   ],
+   "ifc": [
+    299,
+    199
+   ],
+   "illumination_entertainment": [
+    512,
+    146
+   ],
+   "image": [
+    512,
+    289
+   ],
+   "image_movers": [
+    512,
+    284
+   ],
+   "imagi_studios": [
+    512,
+    241
+   ],
+   "imaginary_forces": [
+    512,
+    291
+   ],
+   "imagine": [
+    512,
+    146
+   ],
+   "imax": [
+    399,
+    76
+   ],
+   "imperial_entertainment": [
+    388,
+    512
+   ],
+   "independent_pictures": [
+    512,
+    236
+   ],
+   "industrial_light_and_magic": [
+    508,
+    386
+   ],
+   "infilm": [
+    83,
+    83
+   ],
+   "ingenious_film_partners": [
+    512,
+    49
+   ],
+   "ingenius_entertainment": [
+    425,
+    512
+   ],
+   "inside_track": [
+    508,
+    332
+   ],
+   "insurge_pictures": [
+    176,
+    120
+   ],
+   "interactual": [
+    514,
+    404
+   ],
+   "intermedia": [
+    512,
+    110
+   ],
+   "interscope_shady_aftermath": [
+    512,
+    256
+   ],
+   "intrepid_pictures": [
+    512,
+    324
+   ],
+   "island_world": [
+    512,
+    343
+   ],
+   "itv": [
+    512,
+    254
+   ],
+   "janus": [
+    508,
+    485
+   ],
+   "jarowskij": [
+    80,
+    120
+   ],
+   "jawa": [
+    125,
+    26
+   ],
+   "jerry_bruckheimer_films": [
+    512,
+    307
+   ],
+   "jersey_films": [
+    512,
+    232
+   ],
+   "jim_henson": [
+    508,
+    356
+   ],
+   "jj_splice": [
+    500,
+    304
+   ],
+   "kaboom_entertainment": [
+    512,
+    172
+   ],
+   "kadokawa_pictures": [
+    512,
+    354
+   ],
+   "kadr": [
+    125,
+    78
+   ],
+   "kamera": [
+    122,
+    18
+   ],
+   "kanal_5": [
+    118,
+    118
+   ],
+   "kennedymarshall": [
+    159,
+    92
+   ],
+   "kid_rhino": [
+    512,
+    269
+   ],
+   "killer_films": [
+    508,
+    373
+   ],
+   "kinepolis": [
+    512,
+    482
+   ],
+   "king_world": [
+    512,
+    135
+   ],
+   "kinowelt": [
+    134,
+    87
+   ],
+   "konami": [
+    512,
+    86
+   ],
+   "kopelson": [
+    512,
+    456
+   ],
+   "kyoto_animation": [
+    509,
+    64
+   ],
+   "ladd": [
+    89,
+    83
+   ],
+   "lakeshore_entertainment": [
+    512,
+    490
+   ],
+   "latham": [
+    512,
+    471
+   ],
+   "lawrence_bender_productions": [
+    508,
+    161
+   ],
+   "league of noble peers": [
+    93,
+    83
+   ],
+   "legendary_pictures": [
+    508,
+    506
+   ],
+   "lego": [
+    512,
+    512
+   ],
+   "liberty_films": [
+    512,
+    445
+   ],
+   "lifetime": [
+    250,
+    253
+   ],
+   "lift": [
+    512,
+    289
+   ],
+   "lightstorm_entertainment": [
+    508,
+    339
+   ],
+   "lionsgate": [
+    500,
+    67
+   ],
+   "little_chicken": [
+    512,
+    473
+   ],
+   "london_films": [
+    512,
+    512
+   ],
+   "lookout": [
+    309,
+    512
+   ],
+   "lucasfilm": [
+    255,
+    80
+   ],
+   "lucky_7": [
+    512,
+    508
+   ],
+   "m6": [
+    512,
+    391
+   ],
+   "madhouse": [
+    512,
+    128
+   ],
+   "madman": [
+    98,
+    83
+   ],
+   "magnolia_pictures": [
+    512,
+    308
+   ],
+   "mandalay_pictures": [
+    390,
+    512
+   ],
+   "mandate_pictures": [
+    508,
+    476
+   ],
+   "manga": [
+    83,
+    83
+   ],
+   "marc_dorcel": [
+    512,
+    308
+   ],
+   "marvel": [
+    512,
+    206
+   ],
+   "maverick": [
+    493,
+    502
+   ],
+   "maya_entertainment": [
+    512,
+    267
+   ],
+   "mbs": [
+    512,
+    160
+   ],
+   "media8": [
+    209,
+    36
+   ],
+   "mediapro": [
+    125,
+    79
+   ],
+   "meridian_films": [
+    465,
+    512
+   ],
+   "mgm": [
+    594,
+    315
+   ],
+   "mibac": [
+    99,
+    80
+   ],
+   "midway_pictures": [
+    512,
+    469
+   ],
+   "mike_zoss_productions": [
+    512,
+    368
+   ],
+   "milkshake": [
+    512,
+    49
+   ],
+   "millennium_films": [
+    512,
+    231
+   ],
+   "minds_eye_entertainment": [
+    512,
+    303
+   ],
+   "mirage": [
+    512,
+    100
+   ],
+   "miramax": [
+    256,
+    68
+   ],
+   "momentum_pictures": [
+    512,
+    99
+   ],
+   "monarch_pictures": [
+    512,
+    472
+   ],
+   "monolith": [
+    471,
+    512
+   ],
+   "montecito_picture_company": [
+    512,
+    359
+   ],
+   "morgan_creek": [
+    298,
+    512
+   ],
+   "mosaic_media": [
+    512,
+    202
+   ],
+   "mosfilm": [
+    120,
+    83
+   ],
+   "mpca": [
+    512,
+    195
+   ],
+   "msnbc": [
+    305,
+    201
+   ],
+   "mtv": [
+    528,
+    324
+   ],
+   "mtv3": [
+    512,
+    464
+   ],
+   "musashi_films": [
+    512,
+    504
+   ],
+   "mutual_film_company": [
+    508,
+    159
+   ],
+   "myriad": [
+    125,
+    27
+   ],
+   "mytv": [
+    81,
+    56
+   ],
+   "nala": [
+    125,
+    38
+   ],
+   "nat_geo_wild": [
+    240,
+    87
+   ],
+   "national geographic": [
+    512,
+    151
+   ],
+   "national_general_pictures": [
+    512,
+    512
+   ],
+   "nbc": [
+    114,
+    112
+   ],
+   "nbc_universal": [
+    244,
+    96
+   ],
+   "nelvana": [
+    508,
+    387
+   ],
+   "netflix": [
+    550,
+    148
+   ],
+   "new_deal_entertainment": [
+    512,
+    364
+   ],
+   "new_line_cinema": [
+    508,
+    479
+   ],
+   "new_world_pictures": [
+    512,
+    271
+   ],
+   "new_zealand_film_commission": [
+    512,
+    383
+   ],
+   "newmarket": [
+    512,
+    284
+   ],
+   "nick_at_nite": [
+    242,
+    46
+   ],
+   "nick_jr": [
+    220,
+    63
+   ],
+   "nickelodeon": [
+    248,
+    37
+   ],
+   "nicktoons": [
+    234,
+    42
+   ],
+   "nine network": [
+    240,
+    112
+   ],
+   "nord_ouest": [
+    512,
+    382
+   ],
+   "nordisk film": [
+    224,
+    120
+   ],
+   "northern_lights_entertainment": [
+    512,
+    258
+   ],
+   "nothing": [
+    125,
+    30
+   ],
+   "nrk1": [
+    512,
+    202
+   ],
+   "nuimage": [
+    125,
+    30
+   ],
+   "o2_filmes": [
+    403,
+    512
+   ],
+   "oddlot": [
+    137,
+    95
+   ],
+   "oko": [
+    125,
+    76
+   ],
+   "only_vegas": [
+    508,
+    288
+   ],
+   "openroad": [
+    512,
+    74
+   ],
+   "oprah_winfrey_network": [
+    512,
+    219
+   ],
+   "orf": [
+    240,
+    103
+   ],
+   "original_film": [
+    512,
+    130
+   ],
+   "orion": [
+    256,
+    56
+   ],
+   "overturefilms": [
+    512,
+    350
+   ],
+   "pa_works": [
+    512,
+    480
+   ],
+   "pan_vision": [
+    110,
+    114
+   ],
+   "pandora_film": [
+    508,
+    168
+   ],
+   "paramount_classics": [
+    358,
+    512
+   ],
+   "paramount_pictures": [
+    475,
+    347
+   ],
+   "paramount_vantage": [
+    512,
+    161
+   ],
+   "participant": [
+    512,
+    108
+   ],
+   "pathe": [
+    256,
+    114
+   ],
+   "pbs": [
+    228,
+    128
+   ],
+   "peacearch": [
+    512,
+    379
+   ],
+   "pecf": [
+    77,
+    82
+   ],
+   "peters_entertainment2": [
+    512,
+    237
+   ],
+   "phase_4_films": [
+    450,
+    414
+   ],
+   "pheonix": [
+    512,
+    130
+   ],
+   "picturehouse": [
+    158,
+    67
+   ],
+   "pisf": [
+    125,
+    70
+   ],
+   "pixar": [
+    189,
+    23
+   ],
+   "plan_b": [
+    508,
+    167
+   ],
+   "platige": [
+    59,
+    80
+   ],
+   "platinum_dunes": [
+    512,
+    240
+   ],
+   "play_uk": [
+    400,
+    68
+   ],
+   "playstation_network": [
+    568,
+    132
+   ],
+   "playtone": [
+    125,
+    30
+   ],
+   "polsat": [
+    95,
+    97
+   ],
+   "polygram": [
+    352,
+    153
+   ],
+   "pop": [
+    512,
+    268
+   ],
+   "porchlight": [
+    506,
+    512
+   ],
+   "portman_film": [
+    508,
+    271
+   ],
+   "premiere": [
+    125,
+    41
+   ],
+   "premiere direkt": [
+    125,
+    35
+   ],
+   "private_pictures": [
+    512,
+    251
+   ],
+   "pro7": [
+    112,
+    112
+   ],
+   "production_i_g": [
+    513,
+    228
+   ],
+   "profilm_productions": [
+    512,
+    223
+   ],
+   "promotion_pictures": [
+    512,
+    137
+   ],
+   "prosieben": [
+    112,
+    112
+   ],
+   "radical_media": [
+    508,
+    120
+   ],
+   "rai_cinema": [
+    512,
+    178
+   ],
+   "rankin": [
+    161,
+    109
+   ],
+   "ratpac_dune_entertainment": [
+    512,
+    287
+   ],
+   "ratpac_entertainment": [
+    419,
+    512
+   ],
+   "red_hour": [
+    313,
+    512
+   ],
+   "red_wagon_entertainment": [
+    512,
+    470
+   ],
+   "redrum": [
+    512,
+    191
+   ],
+   "reel_dog_productions": [
+    512,
+    397
+   ],
+   "regency": [
+    353,
+    100
+   ],
+   "relativity_media": [
+    512,
+    269
+   ],
+   "renaissance_films": [
+    512,
+    234
+   ],
+   "republic_pictures": [
+    452,
+    512
+   ],
+   "resident_evil": [
+    512,
+    146
+   ],
+   "revere_pictures": [
+    508,
+    168
+   ],
+   "revision3": [
+    246,
+    72
+   ],
+   "revolution_studios": [
+    512,
+    457
+   ],
+   "rhombus": [
+    125,
+    69
+   ],
+   "rick_mill": [
+    381,
+    512
+   ],
+   "rickety_shack_films": [
+    512,
+    131
+   ],
+   "river_road_entertainment": [
+    508,
+    233
+   ],
+   "rko_radio_pictures": [
+    512,
+    747
+   ],
+   "roadside_attractions": [
+    512,
+    308
+   ],
+   "rogue_pictures": [
+    512,
+    138
+   ],
+   "romar": [
+    511,
+    512
+   ],
+   "rte_one": [
+    512,
+    109
+   ],
+   "rtl": [
+    244,
+    52
+   ],
+   "rtl4": [
+    512,
+    528
+   ],
+   "rtl5": [
+    305,
+    512
+   ],
+   "rtl7": [
+    230,
+    51
+   ],
+   "rtl8": [
+    512,
+    584
+   ],
+   "rtl_ii": [
+    108,
+    122
+   ],
+   "rysher_entertainment": [
+    512,
+    265
+   ],
+   "saban": [
+    512,
+    214
+   ],
+   "salter_street_films": [
+    512,
+    182
+   ],
+   "sandrew": [
+    472,
+    59
+   ],
+   "sat1": [
+    240,
+    92
+   ],
+   "saturn_films": [
+    512,
+    302
+   ],
+   "saul_zaentz": [
+    125,
+    26
+   ],
+   "sbs": [
+    392,
+    273
+   ],
+   "scholastic": [
+    512,
+    34
+   ],
+   "scifi": [
+    512,
+    197
+   ],
+   "scott_free": [
+    512,
+    122
+   ],
+   "screen_australia": [
+    512,
+    163
+   ],
+   "screen_gems": [
+    508,
+    418
+   ],
+   "seeso": [
+    192,
+    208
+   ],
+   "selznick_pictures": [
+    512,
+    344
+   ],
+   "semafor": [
+    114,
+    45
+   ],
+   "seven network": [
+    107,
+    112
+   ],
+   "sfi": [
+    120,
+    76
+   ],
+   "shady_acres_entertainment": [
+    508,
+    334
+   ],
+   "shaft": [
+    511,
+    159
+   ],
+   "shangri-la_entertainment": [
+    508,
+    408
+   ],
+   "shout_factory": [
+    512,
+    300
+   ],
+   "showcase": [
+    512,
+    265
+   ],
+   "showcase_au": [
+    512,
+    92
+   ],
+   "showtime": [
+    256,
+    92
+   ],
+   "sidney_kimmel": [
+    385,
+    510
+   ],
+   "silver_pictures": [
+    387,
+    512
+   ],
+   "sky": [
+    193,
+    118
+   ],
+   "sky_1": [
+    206,
+    80
+   ],
+   "sky_atlantic": [
+    512,
+    84
+   ],
+   "skydance_productions": [
+    512,
+    83
+   ],
+   "slim_films": [
+    442,
+    512
+   ],
+   "smc": [
+    146,
+    78
+   ],
+   "snl_studios": [
+    512,
+    77
+   ],
+   "sobini_films": [
+    471,
+    510
+   ],
+   "sony_pictures": [
+    252,
+    377
+   ],
+   "sony_pictures_animation": [
+    512,
+    130
+   ],
+   "space": [
+    512,
+    511
+   ],
+   "spelling_films": [
+    323,
+    510
+   ],
+   "spike": [
+    512,
+    215
+   ],
+   "spitfire_pictures": [
+    494,
+    384
+   ],
+   "splendid": [
+    512,
+    95
+   ],
+   "spyglass_entertainment": [
+    512,
+    467
+   ],
+   "squareenix": [
+    156,
+    17
+   ],
+   "stage6": [
+    512,
+    192
+   ],
+   "stan": [
+    512,
+    154
+   ],
+   "starbucks_entertainment": [
+    486,
+    335
+   ],
+   "starz": [
+    512,
+    127
+   ],
+   "steele": [
+    95,
+    107
+   ],
+   "storyline": [
+    125,
+    80
+   ],
+   "studio_canal": [
+    512,
+    74
+   ],
+   "studio_ghibli": [
+    512,
+    230
+   ],
+   "summit": [
+    128,
+    128
+   ],
+   "sundancetv": [
+    380,
+    74
+   ],
+   "sunrise": [
+    512,
+    132
+   ],
+   "super_channel": [
+    512,
+    176
+   ],
+   "svensk_filmindustri": [
+    512,
+    511
+   ],
+   "svt": [
+    512,
+    222
+   ],
+   "svt1": [
+    201,
+    114
+   ],
+   "svt2": [
+    201,
+    114
+   ],
+   "syfy": [
+    512,
+    125
+   ],
+   "syncopy": [
+    512,
+    127
+   ],
+   "syrena": [
+    559,
+    216
+   ],
+   "tandem": [
+    512,
+    504
+   ],
+   "taurus_film": [
+    512,
+    328
+   ],
+   "tbs": [
+    512,
+    276
+   ],
+   "telecinco": [
+    88,
+    112
+   ],
+   "telemundo": [
+    435,
+    512
+   ],
+   "teletoon": [
+    512,
+    218
+   ],
+   "telos": [
+    125,
+    77
+   ],
+   "tf1": [
+    400,
+    147
+   ],
+   "the_cw": [
+    255,
+    102
+   ],
+   "the_entertainment_group": [
+    512,
+    505
+   ],
+   "the_film_foundry": [
+    477,
+    512
+   ],
+   "the_hub": [
+    500,
+    634
+   ],
+   "the_independent_film_channel": [
+    512,
+    435
+   ],
+   "the_wb": [
+    128,
+    128
+   ],
+   "the_wb_television_network": [
+    429,
+    512
+   ],
+   "thierry_mugler": [
+    512,
+    158
+   ],
+   "think_film": [
+    512,
+    79
+   ],
+   "this_is_that": [
+    508,
+    240
+   ],
+   "tlc": [
+    403,
+    192
+   ],
+   "tnt": [
+    512,
+    512
+   ],
+   "toho": [
+    79,
+    86
+   ],
+   "tor": [
+    70,
+    80
+   ],
+   "touchstone": [
+    610,
+    209
+   ],
+   "tristar_pictures": [
+    508,
+    484
+   ],
+   "trutv": [
+    512,
+    259
+   ],
+   "turner": [
+    125,
+    23
+   ],
+   "tv2": [
+    92,
+    114
+   ],
+   "tv3": [
+    71,
+    112
+   ],
+   "tv4": [
+    116,
+    116
+   ],
+   "tv_2": [
+    82,
+    112
+   ],
+   "tv_land": [
+    512,
+    178
+   ],
+   "tv_tokyo": [
+    202,
+    112
+   ],
+   "tvn": [
+    80,
+    80
+   ],
+   "tvnz": [
+    438,
+    110
+   ],
+   "tvp": [
+    125,
+    55
+   ],
+   "twisted_pictures": [
+    512,
+    167
+   ],
+   "twit": [
+    512,
+    231
+   ],
+   "ugc": [
+    120,
+    57
+   ],
+   "uk_film_council": [
+    327,
+    512
+   ],
+   "united_artists": [
+    512,
+    320
+   ],
+   "universal": [
+    247,
+    119
+   ],
+   "univision": [
+    512,
+    511
+   ],
+   "up_tv": [
+    512,
+    512
+   ],
+   "upn": [
+    112,
+    111
+   ],
+   "usa_network": [
+    240,
+    105
+   ],
+   "vara": [
+    256,
+    74
+   ],
+   "versus": [
+    116,
+    71
+   ],
+   "vertigo": [
+    512,
+    229
+   ],
+   "vh1": [
+    512,
+    198
+   ],
+   "viacom": [
+    508,
+    105
+   ],
+   "view_askew": [
+    512,
+    512
+   ],
+   "village_roadshow_pictures": [
+    508,
+    391
+   ],
+   "vimeo": [
+    512,
+    147
+   ],
+   "virtual_studios": [
+    512,
+    243
+   ],
+   "vital_film_works": [
+    512,
+    266
+   ],
+   "viz": [
+    512,
+    405
+   ],
+   "vortex_entertainment": [
+    383,
+    510
+   ],
+   "vox": [
+    240,
+    77
+   ],
+   "vpro": [
+    646,
+    191
+   ],
+   "vtm": [
+    303,
+    120
+   ],
+   "walden_media": [
+    457,
+    510
+   ],
+   "walt_disney_pictures": [
+    512,
+    378
+   ],
+   "warner_bros": [
+    440,
+    512
+   ],
+   "warner_bros_animation": [
+    512,
+    690
+   ],
+   "warner_independent_pictures": [
+    512,
+    224
+   ],
+   "water_walk_productions": [
+    255,
+    512
+   ],
+   "wdr": [
+    125,
+    40
+   ],
+   "we_tv": [
+    512,
+    390
+   ],
+   "weinstein_company": [
+    512,
+    443
+   ],
+   "wfdif": [
+    84,
+    80
+   ],
+   "wgn": [
+    400,
+    177
+   ],
+   "wild_bunch": [
+    512,
+    306
+   ],
+   "wild_side": [
+    234,
+    512
+   ],
+   "working_title_films": [
+    512,
+    206
+   ],
+   "xfilme": [
+    125,
+    43
+   ],
+   "xxx_productions": [
+    512,
+    138
+   ],
+   "yahoo_screen": [
+    697,
+    231
+   ],
+   "yari_film_group": [
+    508,
+    348
+   ],
+   "youtube": [
+    502,
+    210
+   ],
+   "ytv": [
+    615,
+    512
+   ],
+   "zaloom_mayfield": [
+    508,
+    508
+   ],
+   "zdf": [
+    190,
+    112
+   ],
+   "zebra": [
+    90,
+    80
+   ],
+   "zentropa": [
+    79,
+    80
+   ],
+   "zomba": [
+    512,
+    250
+   ]
+  },
+  "videoCodec": {
+   "h264": [
+    139,
+    42
+   ],
+   "hevc": [
+    139,
+    42
+   ],
+   "mpeg1video": [
+    114,
+    42
+   ],
+   "mpeg2video": [
+    114,
+    42
+   ],
+   "mpeg4": [
+    160,
+    42
+   ],
+   "vc1": [
+    118,
+    42
+   ],
+   "wmv": [
+    122,
+    31
+   ],
+   "wmvhd": [
+    153,
+    31
+   ]
+  },
+  "videoFrameRate": {
+   "24p": [
+    62,
+    38
+   ],
+   "25p": [
+    62,
+    38
+   ],
+   "50p": [
+    62,
+    38
+   ],
+   "60p": [
+    62,
+    38
+   ],
+   "NTSC": [
+    91,
+    34
+   ],
+   "PAL": [
+    66,
+    33
+   ]
+  },
+  "videoResolution": {
+   "1080": [
+    98,
+    38
+   ],
+   "1080i": [
+    88,
+    38
+   ],
+   "270": [
+    80,
+    38
+   ],
+   "360": [
+    81,
+    38
+   ],
+   "432": [
+    81,
+    38
+   ],
+   "468": [
+    81,
+    38
+   ],
+   "480": [
+    81,
+    38
+   ],
+   "480i": [
+    71,
+    38
+   ],
+   "4k": [
+    72,
+    38
+   ],
+   "540": [
+    81,
+    38
+   ],
+   "544": [
+    81,
+    38
+   ],
+   "576": [
+    80,
+    38
+   ],
+   "576i": [
+    70,
+    38
+   ],
+   "720": [
+    79,
+    38
+   ],
+   "8k": [
+    72,
+    38
+   ],
+   "hdtv": [
+    138,
+    43
+   ],
+   "sd": [
+    52,
+    38
+   ]
+  }
+ },
+ "substitutions": {
+  "audioCodec": [
+   [
+    "ac.?3",
+    "dolby_digital"
+   ],
+   [
+    "truehd",
+    "dolby_truehd"
+   ],
+   [
+    "(dca|dta)",
+    "dts"
+   ],
+   [
+    "dts(hd_|-hd|-)?ma",
+    "dca-ma"
+   ],
+   [
+    "pcm",
+    "pcm"
+   ],
+   [
+    "vorbis",
+    "ogg"
+   ]
+  ],
+  "studio": [
+   [
+    "^1492",
+    "1492_pictures"
+   ],
+   [
+    "(20th|twentieth) century fox animation",
+    "20th_century_fox_animation"
+   ],
+   [
+    "^(?!.*animation)((20th|twentieth) century fox|fox 2000|fox film corp)",
+    "20th_century_fox"
+   ],
+   [
+    "21 laps entertainment",
+    "21_laps_entertainment"
+   ],
+   [
+    "^2929",
+    "2929"
+   ],
+   [
+    "360 pictures",
+    "360_pictures"
+   ],
+   [
+    "40 acres",
+    "40_acres"
+   ],
+   [
+    "57 irving",
+    "57_irving"
+   ],
+   [
+    "^777",
+    "777_film_corp"
+   ],
+   [
+    "^a24",
+    "a24"
+   ],
+   [
+    "aardman",
+    "aardman"
+   ],
+   [
+    "abandon",
+    "abandon"
+   ],
+   [
+    "(abc1|australian broadcasting|abc \\(au\\))",
+    "abc_australia"
+   ],
+   [
+    "abc \\(us\\)",
+    "abc"
+   ],
+   [
+    "^abc.*family",
+    "abc_family"
+   ],
+   [
+    "adult.*swim",
+    "adult_swim"
+   ],
+   [
+    "(^afi$|american film institute)",
+    "afi"
+   ],
+   [
+    "after dark",
+    "after_dark"
+   ],
+   [
+    "^aic *(digital|classic)?$",
+    "aic"
+   ],
+   [
+    "alcon",
+    "alcon_entertainment"
+   ],
+   [
+    "hitchcock",
+    "alfred_hitchcock_productions"
+   ],
+   [
+    "^alliance",
+    "alliance"
+   ],
+   [
+    "alloy",
+    "alloy"
+   ],
+   [
+    "alphaville",
+    "alphaville"
+   ],
+   [
+    "amazon",
+    "amazon_studios"
+   ],
+   [
+    "ambience",
+    "ambience"
+   ],
+   [
+    "amblin",
+    "amblin_entertainment"
+   ],
+   [
+    "american movie classics",
+    "amc"
+   ],
+   [
+    "american international pictures",
+    "american_international_pictures"
+   ],
+   [
+    "american masters",
+    "american_masters"
+   ],
+   [
+    "zoetrope",
+    "american_zoetrope"
+   ],
+   [
+    "anchor bay",
+    "anchor_bay_entertainment"
+   ],
+   [
+    "animal.?planet",
+    "animal_planet"
+   ],
+   [
+    "animax",
+    "animax"
+   ],
+   [
+    "anonymous content",
+    "anonymous_content"
+   ],
+   [
+    "antena.?3",
+    "antena_3"
+   ],
+   [
+    "apatow",
+    "apatow_productions"
+   ],
+   [
+    "apple",
+    "apple"
+   ],
+   [
+    "^ard$",
+    "ard"
+   ],
+   [
+    "^ark$",
+    "ark"
+   ],
+   [
+    "^arte$",
+    "arte"
+   ],
+   [
+    "artisan",
+    "artisan_entertainment"
+   ],
+   [
+    "aspen film soc",
+    "aspen_film_society"
+   ],
+   [
+    "atom",
+    "atom_films"
+   ],
+   [
+    "audience network",
+    "audience_network"
+   ],
+   [
+    "australian children.*s television foundation",
+    "actf"
+   ],
+   [
+    "australian film commission",
+    "australian_film_commission"
+   ],
+   [
+    "avalanche",
+    "avalanche_studios"
+   ],
+   [
+    "avnet.?kerner",
+    "avnet_kerner"
+   ],
+   [
+    "a(\\.|\\-| )?1 pictures",
+    "a_1_pictures"
+   ],
+   [
+    "a&amp;e",
+    "a_and_e"
+   ],
+   [
+    "a&amp;m",
+    "a_and_m"
+   ],
+   [
+    "babylonian",
+    "babylonian"
+   ],
+   [
+    "bad boy",
+    "bad_boy_entertainment"
+   ],
+   [
+    "bad robot",
+    "bad_robot"
+   ],
+   [
+    "baltimore",
+    "baltimore_pictures"
+   ],
+   [
+    "bandai visual",
+    "bandai_visual"
+   ],
+   [
+    "bandai",
+    "bandai"
+   ],
+   [
+    "band.?apart",
+    "bandapart"
+   ],
+   [
+    "batjac productions",
+    "batjac"
+   ],
+   [
+    "bazmark",
+    "bazmark"
+   ],
+   [
+    "bbc.?america",
+    "bbc_america"
+   ],
+   [
+    "bbc.?films",
+    "bbc_films"
+   ],
+   [
+    "bbc.?(4|four)",
+    "bbc_four"
+   ],
+   [
+    "bbc.?(1|one)",
+    "bbc_one"
+   ],
+   [
+    "bbc.?prime",
+    "bbc_prime"
+   ],
+   [
+    "bbc.?(3|three)",
+    "bbc_three"
+   ],
+   [
+    "bbc.?(2|two)",
+    "bbc_two"
+   ],
+   [
+    "^bbc$",
+    "bbc"
+   ],
+   [
+    "beacon",
+    "beacon"
+   ],
+   [
+    "becker",
+    "becker_entertainment"
+   ],
+   [
+    "belair",
+    "belair_entertainment"
+   ],
+   [
+    "^bet$",
+    "bet"
+   ],
+   [
+    "big talk productions",
+    "bigtalk"
+   ],
+   [
+    "biography",
+    "biography_channel"
+   ],
+   [
+    "black bear pictures",
+    "black_bear_pictures"
+   ],
+   [
+    "black.?dog",
+    "blackdog"
+   ],
+   [
+    "bleecker street",
+    "bleecker_street"
+   ],
+   [
+    "blind ambition",
+    "blind_ambition_entertainment"
+   ],
+   [
+    "blizzard entertainment",
+    "blizzard_entertainment"
+   ],
+   [
+    "blue sky studios",
+    "blue_sky_studios"
+   ],
+   [
+    "blue sky",
+    "blue_sky"
+   ],
+   [
+    "blue underground",
+    "blue_underground"
+   ],
+   [
+    "blumhouse productions",
+    "blumhouse_productions"
+   ],
+   [
+    "bnn",
+    "bnn"
+   ],
+   [
+    "bold films",
+    "bold_films"
+   ],
+   [
+    "boomerang",
+    "boomerang"
+   ],
+   [
+    "bravo",
+    "bravo"
+   ],
+   [
+    "bright.?light",
+    "brightlight"
+   ],
+   [
+    "bristol bay",
+    "bristol_bay"
+   ],
+   [
+    "broken lizard industries",
+    "broken_lizard"
+   ],
+   [
+    "brooklyn",
+    "brooklyn_films"
+   ],
+   [
+    "buena vista",
+    "buena_vista"
+   ],
+   [
+    "bulletproof",
+    "bulletproof"
+   ],
+   [
+    "c2",
+    "c2_pictures"
+   ],
+   [
+    "canal.?(\\+|plus)",
+    "canalplus"
+   ],
+   [
+    "cannon",
+    "cannon_pictures"
+   ],
+   [
+    "capcom",
+    "capcom"
+   ],
+   [
+    "capitol",
+    "capitol_films"
+   ],
+   [
+    "caravan",
+    "caravan_pictures"
+   ],
+   [
+    "carnaby",
+    "carnaby"
+   ],
+   [
+    "carolco",
+    "carolco"
+   ],
+   [
+    "cartoon network",
+    "cartoonnetwork"
+   ],
+   [
+    "casablanca filmes",
+    "casablanca_filmes"
+   ],
+   [
+    "cascade",
+    "cascade_film"
+   ],
+   [
+    "casey silver productions",
+    "casey_silver_productions"
+   ],
+   [
+    "castle rock",
+    "castle_rock_entertainment"
+   ],
+   [
+    "cat in the hat",
+    "cat_in_the_hat"
+   ],
+   [
+    "cbbc",
+    "cbbc"
+   ],
+   [
+    "^cbc",
+    "cbc"
+   ],
+   [
+    "^cbs",
+    "cbs"
+   ],
+   [
+    "celador",
+    "celador"
+   ],
+   [
+    "centropolis",
+    "centropolis_entertainment"
+   ],
+   [
+    "ceska televize",
+    "ceska_televize"
+   ],
+   [
+    "(channel nine|nine network)",
+    "channel_nine"
+   ],
+   [
+    "channel seven",
+    "channel_seven"
+   ],
+   [
+    "(channel ten|network ten)",
+    "channel_ten"
+   ],
+   [
+    "channel.?4",
+    "channel4"
+   ],
+   [
+    "channel.?5",
+    "channel5"
+   ],
+   [
+    "cheyenne",
+    "cheyenne"
+   ],
+   [
+    "chiller",
+    "chiller"
+   ],
+   [
+    "cinemax",
+    "cinemax"
+   ],
+   [
+    "^city$",
+    "city"
+   ],
+   [
+    "^cmt",
+    "cmt"
+   ],
+   [
+    "^cnc",
+    "cnc"
+   ],
+   [
+    "columbia",
+    "columbia_pictures"
+   ],
+   [
+    "comedy.?central",
+    "comedy_central"
+   ],
+   [
+    "concorde",
+    "concorde"
+   ],
+   [
+    "condemned",
+    "condemned"
+   ],
+   [
+    "constantin film",
+    "constantin_film"
+   ],
+   [
+    "constellation",
+    "constellation"
+   ],
+   [
+    "cookie jar",
+    "cookie_jar"
+   ],
+   [
+    "cpfilms",
+    "cpfilms"
+   ],
+   [
+    "crackle",
+    "crackle"
+   ],
+   [
+    "criterion",
+    "criterion"
+   ],
+   [
+    "^ctv",
+    "ctv"
+   ],
+   [
+    "cw seed",
+    "cw_seed"
+   ],
+   [
+    "cw",
+    "cw"
+   ],
+   [
+    "czolowka",
+    "czolowka"
+   ],
+   [
+    "damselfly",
+    "damselfly"
+   ],
+   [
+    "danjaq",
+    "danjaq"
+   ],
+   [
+    "dark castle",
+    "dark_castle_entertainment"
+   ],
+   [
+    "dave",
+    "dave"
+   ],
+   [
+    "dark horse",
+    "dark_horse"
+   ],
+   [
+    "davis entertainment",
+    "davis_entertainment"
+   ],
+   [
+    "^dc (comics|entertainment)",
+    "dc"
+   ],
+   [
+    "destination",
+    "destination_films"
+   ],
+   [
+    "de laurentiis",
+    "de_laurentiis"
+   ],
+   [
+    "(deutsche film ag|defa-filmverleih|defa-studio.+)",
+    "defa"
+   ],
+   [
+    "dfi",
+    "dfi"
+   ],
+   [
+    "dickhouse",
+    "dickhouse_productions"
+   ],
+   [
+    "digital playground",
+    "digital_playground"
+   ],
+   [
+    "digital factory",
+    "digital_factory"
+   ],
+   [
+    "dimension",
+    "dimension_films"
+   ],
+   [
+    "discovery(.?channel)?",
+    "discovery_channel"
+   ],
+   [
+    "disney.?channel",
+    "disney_channel"
+   ],
+   [
+    "disney.?xd",
+    "disney_xd"
+   ],
+   [
+    "distant horizon",
+    "distant_horizon"
+   ],
+   [
+    "dmax",
+    "dmax"
+   ],
+   [
+    "dna films",
+    "dna"
+   ],
+   [
+    "dolores pictures",
+    "dolores_pictures"
+   ],
+   [
+    "donners",
+    "donners"
+   ],
+   [
+    "don simpson.?jerry bruckheimer films",
+    "don_simpson_jerry_bruckheimer_films"
+   ],
+   [
+    "dreamworks animation",
+    "dreamworks_animation"
+   ],
+   [
+    "dreamworks",
+    "dreamworks"
+   ],
+   [
+    "e4",
+    "e4"
+   ],
+   [
+    "ealing",
+    "ealing"
+   ],
+   [
+    "eclectic",
+    "eclectic"
+   ],
+   [
+    "edmonds",
+    "edmonds_entertainment"
+   ],
+   [
+    "el rey network",
+    "el_rey_network"
+   ],
+   [
+    "electric enterteinment",
+    "electric_enterteinment"
+   ],
+   [
+    "electric pictures",
+    "electric_pictures"
+   ],
+   [
+    "^eleven$",
+    "eleven"
+   ],
+   [
+    "^emi film",
+    "emi"
+   ],
+   [
+    "emmedia",
+    "emmedia"
+   ],
+   [
+    "encore",
+    "encore"
+   ],
+   [
+    "endgame",
+    "endgame_entertainment"
+   ],
+   [
+    "entara",
+    "entara"
+   ],
+   [
+    "^(entertainment one|eone|e1)",
+    "entertainment_one"
+   ],
+   [
+    "(e\\!|entertainment television)",
+    "entertainment_television"
+   ],
+   [
+    "eon productions",
+    "eon_productions"
+   ],
+   [
+    "epix",
+    "epix"
+   ],
+   [
+    "escape artists",
+    "escape_artists"
+   ],
+   [
+    "espn",
+    "espn"
+   ],
+   [
+    "eurimages",
+    "eurimages"
+   ],
+   [
+    "europa\\s{0,1}corp",
+    "europa_corp"
+   ],
+   [
+    "eurosport",
+    "eurosport"
+   ],
+   [
+    "excel",
+    "excel"
+   ],
+   [
+    "eyekiss films",
+    "eyekiss_films"
+   ],
+   [
+    "fact",
+    "fact"
+   ],
+   [
+    "figaro",
+    "figaro"
+   ],
+   [
+    "film polski",
+    "film_polski"
+   ],
+   [
+    "filmauro",
+    "filmauro"
+   ],
+   [
+    "filmax",
+    "filmax_animation"
+   ],
+   [
+    "filmforderung hamburg",
+    "filmforderung_hamburg"
+   ],
+   [
+    "filmnation entertainment",
+    "filmnation_entertainment"
+   ],
+   [
+    "filmoteka narodowa",
+    "filmoteka_narodowa"
+   ],
+   [
+    "filmstiftung nordrhein-westfalen",
+    "filmstiftung_nordrhein-westfalen"
+   ],
+   [
+    "film ?colony",
+    "film_colony"
+   ],
+   [
+    "(channel four films|film.?(4|four))",
+    "film_four"
+   ],
+   [
+    "film institut",
+    "film_institut"
+   ],
+   [
+    "film media",
+    "film_media"
+   ],
+   [
+    "film tv",
+    "film_tv"
+   ],
+   [
+    "finos film",
+    "finos_film"
+   ],
+   [
+    "fireworks",
+    "fireworks_entertainment"
+   ],
+   [
+    "first look",
+    "first_look_pictures"
+   ],
+   [
+    "five",
+    "five"
+   ],
+   [
+    "flower",
+    "flower_films"
+   ],
+   [
+    "focus",
+    "focus_features"
+   ],
+   [
+    "food.?network",
+    "food_network"
+   ],
+   [
+    "forte",
+    "forte_cinema"
+   ],
+   [
+    "fourhands",
+    "fourhands_film"
+   ],
+   [
+    "(fox network|fox \\(us\\))",
+    "fox"
+   ],
+   [
+    "fox atomic",
+    "fox_atomic"
+   ],
+   [
+    "fox kids",
+    "fox_kids"
+   ],
+   [
+    "fox searchlight",
+    "fox_searchlight_pictures"
+   ],
+   [
+    "france 2",
+    "france_2"
+   ],
+   [
+    "france 3",
+    "france_3"
+   ],
+   [
+    "france 4",
+    "france_4"
+   ],
+   [
+    "franchise pictures",
+    "franchise_pictures"
+   ],
+   [
+    "freeform",
+    "freeform"
+   ],
+   [
+    "fuji",
+    "fuji_tv"
+   ],
+   [
+    "future flix",
+    "future_flix"
+   ],
+   [
+    "^fx( \\(us\\))?$",
+    "fx"
+   ],
+   [
+    "^fxx$",
+    "fxx"
+   ],
+   [
+    "^g4",
+    "g4"
+   ],
+   [
+    "gaumont",
+    "gaumont"
+   ],
+   [
+    "gk films",
+    "gk_films"
+   ],
+   [
+    "geffen",
+    "geffen"
+   ],
+   [
+    "ghost house",
+    "ghost_house"
+   ],
+   [
+    "glass eye pix",
+    "glass_eye_pix"
+   ],
+   [
+    "global.?tv",
+    "global_tv"
+   ],
+   [
+    "glue works entertainment",
+    "glue_works_entertainment"
+   ],
+   [
+    "gofilms",
+    "gofilms"
+   ],
+   [
+    "^((?!metro).)*goldwyn",
+    "goldwyn"
+   ],
+   [
+    "gold ?circle",
+    "gold_circle_films"
+   ],
+   [
+    "gracie",
+    "gracie_films"
+   ],
+   [
+    "gramercy",
+    "gramercy_pictures"
+   ],
+   [
+    "grandhustle",
+    "grandhustle"
+   ],
+   [
+    "greentree pictures",
+    "greentree_pictures"
+   ],
+   [
+    "green street",
+    "green_street"
+   ],
+   [
+    "grub street productions",
+    "grub_street_productions"
+   ],
+   [
+    "guinea pig films",
+    "guinea_pig_films"
+   ],
+   [
+    "gutek",
+    "gutek"
+   ],
+   [
+    "halestorm",
+    "halestorm"
+   ],
+   [
+    "hallucination on film",
+    "hallucination_on_film"
+   ],
+   [
+    "hallmark channel",
+    "hallmark_channel"
+   ],
+   [
+    "hand.?made.?films",
+    "hand_made_films"
+   ],
+   [
+    "happy madison productions",
+    "happy_madison"
+   ],
+   [
+    "hasbro",
+    "hasbro"
+   ],
+   [
+    "^(hbo|home box office)$",
+    "hbo"
+   ],
+   [
+    "head gear films",
+    "head_gear_films"
+   ],
+   [
+    "hbo films",
+    "hbo_films"
+   ],
+   [
+    "hemus",
+    "hemus_film"
+   ],
+   [
+    "heyday",
+    "heyday_films"
+   ],
+   [
+    "hgtv",
+    "hgtv"
+   ],
+   [
+    "history.?(channel)?",
+    "history_channel"
+   ],
+   [
+    "hollywood pictures",
+    "hollywood_pictures"
+   ],
+   [
+    "hopscotch films",
+    "hopscotch_films"
+   ],
+   [
+    "hulu",
+    "hulu"
+   ],
+   [
+    "hustler video",
+    "hustler_video"
+   ],
+   [
+    "hyde park",
+    "hyde_park_entertainment"
+   ],
+   [
+    "icon",
+    "icon_entertainment"
+   ],
+   [
+    "(ifc|independent film channel)",
+    "ifc"
+   ],
+   [
+    "illumination( entertainment)?",
+    "illumination_entertainment"
+   ],
+   [
+    "image",
+    "image"
+   ],
+   [
+    "imagemovers",
+    "image_movers"
+   ],
+   [
+    "imaginary forces",
+    "imaginary_forces"
+   ],
+   [
+    "imagine",
+    "imagine"
+   ],
+   [
+    "imagi studios",
+    "imagi_studios"
+   ],
+   [
+    "imax",
+    "imax"
+   ],
+   [
+    "imperial ent",
+    "imperial_entertainment"
+   ],
+   [
+    "independent pictures",
+    "independent_pictures"
+   ],
+   [
+    "industrial light",
+    "industrial_light_and_magic"
+   ],
+   [
+    "infilm",
+    "infilm"
+   ],
+   [
+    "ingenious",
+    "ingenious_film_partners"
+   ],
+   [
+    "ingenious entertainment",
+    "ingenius_entertainment"
+   ],
+   [
+    "inside track",
+    "inside_track"
+   ],
+   [
+    "insurge pictures",
+    "insurge_pictures"
+   ],
+   [
+    "interactual",
+    "interactual"
+   ],
+   [
+    "intermedia",
+    "intermedia"
+   ],
+   [
+    "interscope.?shady.?aftermath",
+    "interscope_shady_aftermath"
+   ],
+   [
+    "intrepid",
+    "intrepid_pictures"
+   ],
+   [
+    "island world",
+    "island_world"
+   ],
+   [
+    "iti film studio",
+    "iti_film_studio"
+   ],
+   [
+    "^itv",
+    "itv"
+   ],
+   [
+    "janus",
+    "janus"
+   ],
+   [
+    "jarowskij",
+    "jarowskij"
+   ],
+   [
+    "jawa",
+    "jawa"
+   ],
+   [
+    "jerry bruckheimer",
+    "jerry_bruckheimer_films"
+   ],
+   [
+    "jersey films",
+    "jersey_films"
+   ],
+   [
+    "jim henson",
+    "jim_henson"
+   ],
+   [
+    "jj splice",
+    "jj_splice"
+   ],
+   [
+    "kaboom\\!? entertainment",
+    "kaboom_entertainment"
+   ],
+   [
+    "kadokawa",
+    "kadokawa_pictures"
+   ],
+   [
+    "kadr",
+    "kadr"
+   ],
+   [
+    "kamera",
+    "kamera"
+   ],
+   [
+    "kanal 5",
+    "kanal_5"
+   ],
+   [
+    "kennedy/marshall",
+    "kennedymarshall"
+   ],
+   [
+    "kid rhino",
+    "kid_rhino"
+   ],
+   [
+    "killer films",
+    "killer_films"
+   ],
+   [
+    "kinepolis",
+    "kinepolis"
+   ],
+   [
+    "king world",
+    "king_world"
+   ],
+   [
+    "kinowelt",
+    "kinowelt"
+   ],
+   [
+    "^konami",
+    "konami"
+   ],
+   [
+    "kopelson",
+    "kopelson"
+   ],
+   [
+    "kyoto animation",
+    "kyoto_animation"
+   ],
+   [
+    "ladd",
+    "ladd"
+   ],
+   [
+    "lakeshore",
+    "lakeshore_entertainment"
+   ],
+   [
+    "latham",
+    "latham"
+   ],
+   [
+    "lawrence bender",
+    "lawrence_bender_productions"
+   ],
+   [
+    "league of noble peers",
+    "league of noble peers"
+   ],
+   [
+    "legendary",
+    "legendary_pictures"
+   ],
+   [
+    "^lego",
+    "lego"
+   ],
+   [
+    "liberty",
+    "liberty_films"
+   ],
+   [
+    "lifetime",
+    "lifetime"
+   ],
+   [
+    "lift",
+    "lift"
+   ],
+   [
+    "lightstorm",
+    "lightstorm_entertainment"
+   ],
+   [
+    "lions.?gate",
+    "lionsgate"
+   ],
+   [
+    "little chicken",
+    "little_chicken"
+   ],
+   [
+    "london",
+    "london_films"
+   ],
+   [
+    "lookout",
+    "lookout"
+   ],
+   [
+    "lucas(arts|film)",
+    "lucasfilm"
+   ],
+   [
+    "lucky 7",
+    "lucky_7"
+   ],
+   [
+    "^m6$",
+    "m6"
+   ],
+   [
+    "mad ?house",
+    "madhouse"
+   ],
+   [
+    "madman",
+    "madman"
+   ],
+   [
+    "magnolia",
+    "magnolia_pictures"
+   ],
+   [
+    "mandalay",
+    "mandalay_pictures"
+   ],
+   [
+    "mandate",
+    "mandate_pictures"
+   ],
+   [
+    "manga",
+    "manga"
+   ],
+   [
+    "marc dorcel",
+    "marc_dorcel"
+   ],
+   [
+    "marvel",
+    "marvel"
+   ],
+   [
+    "maverick",
+    "maverick"
+   ],
+   [
+    "maya",
+    "maya_entertainment"
+   ],
+   [
+    "^mbs",
+    "mbs"
+   ],
+   [
+    "media 8",
+    "media8"
+   ],
+   [
+    "media pro",
+    "mediapro"
+   ],
+   [
+    "meridian",
+    "meridian_films"
+   ],
+   [
+    "(mgm|metro.?goldwyn.?mayer|loew.?s)",
+    "mgm"
+   ],
+   [
+    "mibac",
+    "mibac"
+   ],
+   [
+    "midway",
+    "midway_pictures"
+   ],
+   [
+    "mike zoss productions",
+    "mike_zoss_productions"
+   ],
+   [
+    "milkshake",
+    "milkshake"
+   ],
+   [
+    "millennium films",
+    "millennium_films"
+   ],
+   [
+    "minds eye",
+    "minds_eye_entertainment"
+   ],
+   [
+    "mirage",
+    "mirage"
+   ],
+   [
+    "miramax",
+    "miramax"
+   ],
+   [
+    "momentum pictures",
+    "momentum_pictures"
+   ],
+   [
+    "monarch",
+    "monarch_pictures"
+   ],
+   [
+    "monolith",
+    "monolith"
+   ],
+   [
+    "montecito picture company",
+    "montecito_picture_company"
+   ],
+   [
+    "morgan creek",
+    "morgan_creek"
+   ],
+   [
+    "mosaic",
+    "mosaic_media"
+   ],
+   [
+    "mosfilm",
+    "mosfilm"
+   ],
+   [
+    "mpca",
+    "mpca"
+   ],
+   [
+    "msnbc",
+    "msnbc"
+   ],
+   [
+    "^mtv( \\(us\\))?$",
+    "mtv"
+   ],
+   [
+    "mtv3",
+    "mtv3"
+   ],
+   [
+    "musashi",
+    "musashi_films"
+   ],
+   [
+    "mutual film company",
+    "mutual_film_company"
+   ],
+   [
+    "myriad",
+    "myriad"
+   ],
+   [
+    "mytv",
+    "mytv"
+   ],
+   [
+    "nala",
+    "nala"
+   ],
+   [
+    "nat geo wild",
+    "nat_geo_wild"
+   ],
+   [
+    "national general pictures",
+    "national_general_pictures"
+   ],
+   [
+    "nbc universal",
+    "nbc_universal"
+   ],
+   [
+    "^nbc$",
+    "nbc"
+   ],
+   [
+    "nelvana",
+    "nelvana"
+   ],
+   [
+    "newmarket",
+    "newmarket"
+   ],
+   [
+    "new deal",
+    "new_deal_entertainment"
+   ],
+   [
+    "new line cinema",
+    "new_line_cinema"
+   ],
+   [
+    "new world pictures",
+    "new_world_pictures"
+   ],
+   [
+    "(nzfc|new zealand film commission)",
+    "new_zealand_film_commission"
+   ],
+   [
+    "(ngc|national geographic)",
+    "national geographic"
+   ],
+   [
+    "nick jr",
+    "nick_jr"
+   ],
+   [
+    "nick at nite",
+    "nick_at_nite"
+   ],
+   [
+    "nickelodeon",
+    "nickelodeon"
+   ],
+   [
+    "nicktoons",
+    "nicktoons"
+   ],
+   [
+    "nord.?ouest",
+    "nord_ouest"
+   ],
+   [
+    "nordisk.?film",
+    "nordisk_film"
+   ],
+   [
+    "northern lights entertainment",
+    "northern_lights_entertainment"
+   ],
+   [
+    "nothing",
+    "nothing"
+   ],
+   [
+    "^nrk1",
+    "nrk1"
+   ],
+   [
+    "nuimage",
+    "nuimage"
+   ],
+   [
+    "o2 filmes",
+    "o2_filmes"
+   ],
+   [
+    "oddlot",
+    "oddlot"
+   ],
+   [
+    "oko",
+    "oko"
+   ],
+   [
+    "only vegas",
+    "only_vegas"
+   ],
+   [
+    "open road films",
+    "openroad"
+   ],
+   [
+    "^(oprah winfrey network|own)$",
+    "oprah_winfrey_network"
+   ],
+   [
+    "orf",
+    "orf"
+   ],
+   [
+    "original film",
+    "original_film"
+   ],
+   [
+    "orion",
+    "orion"
+   ],
+   [
+    "overturefilms",
+    "overturefilms"
+   ],
+   [
+    "(progressive animation|p.a.) works",
+    "pa_works"
+   ],
+   [
+    "pan vision",
+    "pan_vision"
+   ],
+   [
+    "pandora film",
+    "pandora_film"
+   ],
+   [
+    "paramount class",
+    "paramount_classics"
+   ],
+   [
+    "paramount( pictures)?",
+    "paramount_pictures"
+   ],
+   [
+    "paramount vantage",
+    "paramount_vantage"
+   ],
+   [
+    "participant",
+    "participant"
+   ],
+   [
+    "pathe",
+    "pathe"
+   ],
+   [
+    "pbs",
+    "pbs"
+   ],
+   [
+    "peacearch",
+    "peacearch"
+   ],
+   [
+    "pecf",
+    "pecf"
+   ],
+   [
+    "peters entertainment",
+    "peters_entertainment2"
+   ],
+   [
+    "phase 4 films",
+    "phase_4_films"
+   ],
+   [
+    "pheonix",
+    "pheonix"
+   ],
+   [
+    "picturehouse",
+    "picturehouse"
+   ],
+   [
+    "pisf",
+    "pisf"
+   ],
+   [
+    "pixar",
+    "pixar"
+   ],
+   [
+    "plan b",
+    "plan_b"
+   ],
+   [
+    "platige",
+    "platige"
+   ],
+   [
+    "platinumdunes",
+    "platinum_dunes"
+   ],
+   [
+    "playstation network",
+    "playstation_network"
+   ],
+   [
+    "playtone",
+    "playtone"
+   ],
+   [
+    "play uk",
+    "play_uk"
+   ],
+   [
+    "uk play",
+    "play_uk"
+   ],
+   [
+    "polsat",
+    "polsat"
+   ],
+   [
+    "^pop$",
+    "pop"
+   ],
+   [
+    "polygram",
+    "polygram"
+   ],
+   [
+    "porchlight",
+    "porchlight"
+   ],
+   [
+    "portman film",
+    "portman_film"
+   ],
+   [
+    "premiere direkt",
+    "premiere direkt"
+   ],
+   [
+    "premiere",
+    "premiere"
+   ],
+   [
+    "private pictures",
+    "private_pictures"
+   ],
+   [
+    "production i\\.?g\\.?",
+    "production_i_g"
+   ],
+   [
+    "profilm",
+    "profilm_productions"
+   ],
+   [
+    "promotion pictures",
+    "promotion_pictures"
+   ],
+   [
+    "prosieben",
+    "prosieben"
+   ],
+   [
+    "radical media",
+    "radical_media"
+   ],
+   [
+    "rai cinema",
+    "rai_cinema"
+   ],
+   [
+    "rankin",
+    "rankin"
+   ],
+   [
+    "ratpac.dune entertainment",
+    "ratpac_dune_entertainment"
+   ],
+   [
+    "ratpac entertainment",
+    "ratpac_entertainment"
+   ],
+   [
+    "redrum",
+    "redrum"
+   ],
+   [
+    "red hour",
+    "red_hour"
+   ],
+   [
+    "red wagon entertainment",
+    "red_wagon_entertainment"
+   ],
+   [
+    "reel dog productions",
+    "reel_dog_productions"
+   ],
+   [
+    "regency",
+    "regency"
+   ],
+   [
+    "relativity media",
+    "relativity_media"
+   ],
+   [
+    "renaissancefilms",
+    "renaissance_films"
+   ],
+   [
+    "republic(pictures)?",
+    "republic_pictures"
+   ],
+   [
+    "resident evil",
+    "resident_evil"
+   ],
+   [
+    "revere pictures",
+    "revere_pictures"
+   ],
+   [
+    "revision3",
+    "revision3"
+   ],
+   [
+    "revolution",
+    "revolution_studios"
+   ],
+   [
+    "rhombus",
+    "rhombus"
+   ],
+   [
+    "rickety shack",
+    "rickety_shack_films"
+   ],
+   [
+    "rick mill",
+    "rick_mill"
+   ],
+   [
+    "river road",
+    "river_road_entertainment"
+   ],
+   [
+    "rko radio pictures",
+    "rko_radio_pictures"
+   ],
+   [
+    "roadside attractions",
+    "roadside_attractions"
+   ],
+   [
+    "rogue pictures",
+    "rogue_pictures"
+   ],
+   [
+    "romar",
+    "romar"
+   ],
+   [
+    "^rt. one",
+    "rte_one"
+   ],
+   [
+    "rtl ii",
+    "rtl_ii"
+   ],
+   [
+    "rtl",
+    "rtl"
+   ],
+   [
+    "rtl 4",
+    "rtl4"
+   ],
+   [
+    "rtl 5",
+    "rtl5"
+   ],
+   [
+    "rtl 7",
+    "rtl7"
+   ],
+   [
+    "rtl 8",
+    "rtl8"
+   ],
+   [
+    "rysher",
+    "rysher_entertainment"
+   ],
+   [
+    "saban",
+    "saban"
+   ],
+   [
+    "salter street",
+    "salter_street_films"
+   ],
+   [
+    "sandrew",
+    "sandrew"
+   ],
+   [
+    "sat1",
+    "sat1"
+   ],
+   [
+    "saturn",
+    "saturn_films"
+   ],
+   [
+    "saul zaentz",
+    "saul_zaentz"
+   ],
+   [
+    "^(sbs( \\(au\\))?|special broadcasting)",
+    "sbs"
+   ],
+   [
+    "^scholastic",
+    "scholastic"
+   ],
+   [
+    "sci.?fi",
+    "scifi"
+   ],
+   [
+    "scott free",
+    "scott_free"
+   ],
+   [
+    "screen australia",
+    "screen_australia"
+   ],
+   [
+    "screen gems",
+    "screen_gems"
+   ],
+   [
+    "seeso",
+    "seeso"
+   ],
+   [
+    "selznick",
+    "selznick_pictures"
+   ],
+   [
+    "semafor",
+    "semafor"
+   ],
+   [
+    "seven network",
+    "seven network"
+   ],
+   [
+    "seven",
+    "seven network"
+   ],
+   [
+    "(^sfi$|swedish film institute)",
+    "sfi"
+   ],
+   [
+    "shady acres",
+    "shady_acres_entertainment"
+   ],
+   [
+    "(studio )?shaft",
+    "shaft"
+   ],
+   [
+    "shangri-la",
+    "shangri-la_entertainment"
+   ],
+   [
+    "shout factory",
+    "shout_factory"
+   ],
+   [
+    "^showcase( \\(ca\\))?$",
+    "showcase"
+   ],
+   [
+    "^showcase \\(au\\)$",
+    "showcase_au"
+   ],
+   [
+    "showtime",
+    "showtime"
+   ],
+   [
+    "sidney kimmel",
+    "sidney_kimmel"
+   ],
+   [
+    "silver pictures",
+    "silver_pictures"
+   ],
+   [
+    "sky[ ]{0,1}1",
+    "sky_1"
+   ],
+   [
+    "sky atlantic",
+    "sky_atlantic"
+   ],
+   [
+    "^sky$",
+    "sky"
+   ],
+   [
+    "skydance productions",
+    "skydance_productions"
+   ],
+   [
+    "slim films",
+    "slim_films"
+   ],
+   [
+    "smc",
+    "smc"
+   ],
+   [
+    "snl studios",
+    "snl_studios"
+   ],
+   [
+    "sobini films",
+    "sobini_films"
+   ],
+   [
+    "sony pictures animation",
+    "sony_pictures_animation"
+   ],
+   [
+    "sony pictures( entertainment)?",
+    "sony_pictures"
+   ],
+   [
+    "space",
+    "space"
+   ],
+   [
+    "spelling films",
+    "spelling_films"
+   ],
+   [
+    "spike",
+    "spike"
+   ],
+   [
+    "spitfire",
+    "spitfire_pictures"
+   ],
+   [
+    "splendid",
+    "splendid"
+   ],
+   [
+    "spyglass",
+    "spyglass_entertainment"
+   ],
+   [
+    "squareenix",
+    "squareenix"
+   ],
+   [
+    "stage6",
+    "stage6"
+   ],
+   [
+    "^stan$",
+    "stan"
+   ],
+   [
+    "starbucks",
+    "starbucks_entertainment"
+   ],
+   [
+    "starz\\!?",
+    "starz"
+   ],
+   [
+    "steele",
+    "steele"
+   ],
+   [
+    "storyline",
+    "storyline"
+   ],
+   [
+    "studio ?canal",
+    "studio_canal"
+   ],
+   [
+    "studio ghibli",
+    "studio_ghibli"
+   ],
+   [
+    "summit",
+    "summit"
+   ],
+   [
+    "sundance.*tv",
+    "sundancetv"
+   ],
+   [
+    "sunrise",
+    "sunrise"
+   ],
+   [
+    "super channel",
+    "super_channel"
+   ],
+   [
+    "svensk",
+    "svensk_filmindustri"
+   ],
+   [
+    "svt",
+    "svt"
+   ],
+   [
+    "svt1",
+    "svt1"
+   ],
+   [
+    "svt2",
+    "svt2"
+   ],
+   [
+    "syfy",
+    "syfy"
+   ],
+   [
+    "syncopy",
+    "syncopy"
+   ],
+   [
+    "syndicated",
+    "syndicated"
+   ],
+   [
+    "syrena",
+    "syrena"
+   ],
+   [
+    "tandem",
+    "tandem"
+   ],
+   [
+    "taurus",
+    "taurus_film"
+   ],
+   [
+    "tbs( superstation)?",
+    "tbs"
+   ],
+   [
+    "tcm",
+    "tcm"
+   ],
+   [
+    "telecinco",
+    "telecinco"
+   ],
+   [
+    "telemundo",
+    "telemundo"
+   ],
+   [
+    "teletoon",
+    "teletoon"
+   ],
+   [
+    "telos",
+    "telos"
+   ],
+   [
+    "^tf1",
+    "tf1"
+   ],
+   [
+    "the.?cw",
+    "the_cw"
+   ],
+   [
+    "the.?wb",
+    "the_wb"
+   ],
+   [
+    "the entertainment group",
+    "the_entertainment_group"
+   ],
+   [
+    "film foundry",
+    "the_film_foundry"
+   ],
+   [
+    "the hub",
+    "the_hub"
+   ],
+   [
+    "the independent film channel",
+    "the_independent_film_channel"
+   ],
+   [
+    "the wb television network",
+    "the_wb_television_network"
+   ],
+   [
+    "thierry mugler",
+    "thierry_mugler"
+   ],
+   [
+    "think.?film",
+    "think_film"
+   ],
+   [
+    "this is that",
+    "this_is_that"
+   ],
+   [
+    "tlc",
+    "tlc"
+   ],
+   [
+    "tnt",
+    "tnt"
+   ],
+   [
+    "toho",
+    "toho"
+   ],
+   [
+    "tor film",
+    "tor"
+   ],
+   [
+    "touchstone",
+    "touchstone"
+   ],
+   [
+    "tristar",
+    "tristar_pictures"
+   ],
+   [
+    "trutv",
+    "trutv"
+   ],
+   [
+    "turner",
+    "turner"
+   ],
+   [
+    "tv 2",
+    "tv_2"
+   ],
+   [
+    "tv tokyo",
+    "tv_tokyo"
+   ],
+   [
+    "tv2",
+    "tv2"
+   ],
+   [
+    "tv3",
+    "tv3"
+   ],
+   [
+    "tv4",
+    "tv4"
+   ],
+   [
+    "^tvn$",
+    "tvn"
+   ],
+   [
+    "^tvnz$",
+    "tvnz"
+   ],
+   [
+    "tvp",
+    "tvp"
+   ],
+   [
+    "tv land",
+    "tv_land"
+   ],
+   [
+    "twisted",
+    "twisted_pictures"
+   ],
+   [
+    "^twit( tv)?$",
+    "twit"
+   ],
+   [
+    "ugc",
+    "ugc"
+   ],
+   [
+    "uk film council",
+    "uk_film_council"
+   ],
+   [
+    "united artists",
+    "united_artists"
+   ],
+   [
+    "universal( pictures| studios)?",
+    "universal"
+   ],
+   [
+    "univision",
+    "univision"
+   ],
+   [
+    "^up tv",
+    "up_tv"
+   ],
+   [
+    "upn",
+    "upn"
+   ],
+   [
+    "usa.?network",
+    "usa_network"
+   ],
+   [
+    "vara",
+    "vara"
+   ],
+   [
+    "versus",
+    "versus"
+   ],
+   [
+    "vertigo",
+    "vertigo"
+   ],
+   [
+    "vh1",
+    "vh1"
+   ],
+   [
+    "viacom",
+    "viacom"
+   ],
+   [
+    "view askew",
+    "view_askew"
+   ],
+   [
+    "village roadshow",
+    "village_roadshow_pictures"
+   ],
+   [
+    "vimeo",
+    "vimeo"
+   ],
+   [
+    "virtual studios",
+    "virtual_studios"
+   ],
+   [
+    "vital",
+    "vital_film_works"
+   ],
+   [
+    "viz",
+    "viz"
+   ],
+   [
+    "vortex",
+    "vortex_entertainment"
+   ],
+   [
+    "vox",
+    "vox"
+   ],
+   [
+    "vpro",
+    "vpro"
+   ],
+   [
+    "vtm",
+    "vtm"
+   ],
+   [
+    "walden",
+    "walden_media"
+   ],
+   [
+    "disney",
+    "walt_disney_pictures"
+   ],
+   [
+    "^(?!.*animation)(wb|warner bros\\.?)",
+    "warner_bros"
+   ],
+   [
+    "warner bros\\.? animation",
+    "warner_bros_animation"
+   ],
+   [
+    "warner independent pictures",
+    "warner_independent_pictures"
+   ],
+   [
+    "water walk productions",
+    "water_walk_productions"
+   ],
+   [
+    "wdr",
+    "wdr"
+   ],
+   [
+    "we tv",
+    "we_tv"
+   ],
+   [
+    "weinstein",
+    "weinstein_company"
+   ],
+   [
+    "wfdif",
+    "wfdif"
+   ],
+   [
+    "wgn",
+    "wgn"
+   ],
+   [
+    "wild bunch",
+    "wild_bunch"
+   ],
+   [
+    "wild side",
+    "wild_side"
+   ],
+   [
+    "working title",
+    "working_title_films"
+   ],
+   [
+    "x-filme",
+    "xfilme"
+   ],
+   [
+    "xxx productions",
+    "xxx_productions"
+   ],
+   [
+    "yahoo.*screen",
+    "yahoo_screen"
+   ],
+   [
+    "yari",
+    "yari_film_group"
+   ],
+   [
+    "youtube",
+    "youtube"
+   ],
+   [
+    "^ytv",
+    "ytv"
+   ],
+   [
+    "zaloom",
+    "zaloom_mayfield"
+   ],
+   [
+    "zdf",
+    "zdf"
+   ],
+   [
+    "zebra",
+    "zebra"
+   ],
+   [
+    "zentropa",
+    "zentropa"
+   ],
+   [
+    "zomba",
+    "zomba"
+   ]
+  ],
+  "videoCodec": [
+   [
+    "avc1",
+    "h264"
+   ],
+   [
+    "mpeg4",
+    "mpeg4"
+   ],
+   [
+    "wmv(1|2)",
+    "wmv"
+   ],
+   [
+    "wmv3",
+    "wmvhd"
+   ]
+  ]
+ }
+}
