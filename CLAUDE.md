@@ -2756,6 +2756,87 @@ precisely how the Seasons bug survived a fix attempt.
   `.tag.`** (`.role`, `.thumb`, `.id`, `.filter`, `.zzz` are all 200s and the role stores
   empty), not a type-scoped filter.
 
+
+- **The plug-in framework is PYTHON, shipped uncompiled in the image, and
+  `System.bundle/Contents/Code/*.py` IS the `/system` surface.** Every `@route` in those
+  files is an endpoint (`ssh ben@kids docker exec plexlab-plex sh -c 'ls
+  /usr/lib/plexmediaserver/Resources/Plug-ins-e5521bd8c/'`; zen's is `Plug-ins-f737b826c`
+  and the two differ). `runtime.py`'s `handle_request` is the `f(**d)` in every framework
+  traceback, so the TypeError sentence is the function's own signature: `given` counts
+  `self` plus every supplied name the function DECLARES, an undeclared one is "got an
+  unexpected keyword argument", and a `**kwargs` tail is why `search` alone swallows one.
+- **`/system/bundle/media/flags/{type}[/{country}]/{value}` is a real image family, and
+  every container's `mediaTagPrefix` points at it.** TEN types (`aspectRatio audioChannels
+  audioCodec contentRating media recordLabel studio videoCodec videoFrameRate
+  videoResolution`), 742 PNGs, and a 624-regex `substitutions.xml` for studio, audio codec
+  and video codec. An unknown VALUE is the bundle's 82-byte `blank.png` with a **200**; an
+  unknown TYPE, an empty value and a THIRD segment are the `/system` empty-bodied 404;
+  `media` and `recordLabel` have no directory so every value under them is blank; a direct
+  file name is case-SENSITIVE and the substituted types are not (`studio/Disney` and
+  `studio/Walt Disney Pictures` are one logo, `audioCodec/dca` the DTS one).
+- **Eighteen more framework routes are real**: `/system/channels/{all,music,video,photos,
+  applications}` and `/system/plugins/{same five}` (the framework's 130-byte EMPTY
+  container), `/system/notify/serverUpdated` (an empty `text/plain` 200),
+  `/system/debug/agentservice/status` (a 229-byte report), `/system/messaging/*`, and
+  `/system/services/{search,searches,relatedcontent/lookup}` plus both
+  `/system/agents/attribution` leaves (the framework's TypeError traceback). **A framework
+  STRING result spells its header `Content-type`**, with a lower-case `t`.
+- **Five sub-paths under a hosted plug-in are real** beyond cycle 52's `prefs`:
+  `prefs/list` (byte-identical to `prefs`), `plist` (the bundle's `Info.plist`, text/plain),
+  `prefs/set` (empty 200), `messaging/wait` (a 16-byte constant) and `resources/{name}`.
+  `root` is a **302 to `/system` for `com.plexapp.system`** -- the only bundle with a
+  prefix -- and the framework's `IndexError` traceback for every other running one. The
+  four bundles the server hosts but does not run answer the 109-byte 500 to all of them.
+- **The ELEVEN legacy agents are listed beside the modern four** -- 15 rows on 1.42.2,
+  identical on four servers, so it is a fixed table in the image and not hosting, the same
+  argument that retired the `/:/plugins` listing. A legacy row carries `MediaType` children
+  and no `Language` in the BARE form; in the typed form the primaries for that type come
+  FIRST with their own `Language` CODES (no titles: 1 for Personal Media, 33 for the legacy
+  IMDb agent, 26 for The Movie Database). 1.43.4 adds an `id` to every legacy row; the
+  order of `lastfm` and `plexthememusic` is the server's own load order. With them listed,
+  `/system/agents/attribution[/image]?identifier=` is reachable: nine texts, eight images,
+  `org.musicbrainz.agents.music` an EMPTY text and no image, everything else a 404.
+- **A framework error KEEPS the connection alive.** All five `plugin-xml` paths answer
+  `Connection: Keep-Alive` and really serve the next request on the same socket -- cycle
+  45's rule, a refusal of the MEANING rather than of the ENVELOPE. **Five routes put
+  `Cache-Control` SECOND** (`/system/search`, `/system/library/sections`,
+  `/system/channels/*`, `/system/plugins/*`, `/system/notify/serverUpdated`) where every
+  other `/system` response puts it last. **A framework container pages without an `offset`
+  and still names its window in the response headers.** **`/system//` is the framework's
+  empty-bodied 404**, not the 85-byte document.
+- **Only the BARE `/system/agents` is PMS's own handler**: everything under it is the
+  framework's, so `/system/agents/{id}/config/{N}` is written by the framework's serialiser
+  (single-quoted declaration, SELF-CLOSED empty container) and is the one framework
+  document carrying NO cookie. **`/system/library/sections` carries thirteen attributes**,
+  its `key` the URL-safe base64 of `http://{host}:{port}/library/sections/{id}`, `unique`
+  set when the title occurs once, rows sorted by the lower-cased title -- and an extra
+  segment is a 404.
+- **A state cookie the server cannot unpack empties the framework**: a 200 with an EMPTY
+  body, `text/html; charset=UTF-8` and **`Server: TornadoServer/1.0`** -- the one `Server:`
+  banner on the surface, against cycle 33's "no banner at all". It swallows the route's own
+  status, the cookie NAME must be the identifier serving the route, and PMS's own handlers
+  are untouched.
+
+- **PMS's own DATABASE TEMPLATE is a column oracle.**
+  `Resources/com.plexapp.plugins.library.db` is an empty 311 KB database whose schema
+  names every column PMS can store (71 tables; 1.42.2's and 1.43.4's templates are
+  identical and the live schemas differ only in `metadata_items.user_square_art_url`).
+  **Ten more of its columns are real query fields** -- `remote isAdult
+  resourcesChangedAt userFields lastSkippedAt mediaAnalysisVersion beginsAt endsAt agent
+  source` -- filtering, parsing, sorting, grouping and taking an item edit on both
+  references, where an UNKNOWN field answers every row. Five refuse an unparseable value
+  with a 500 and `userFields` refuses every value; seven SORT and three GROUP, so here
+  the sort surface is wider than the group surface; six are a 500 on the SECTION path.
+- **`isAdult` is a real row attribute**: exactly the literal `1` stores it, every other
+  value clears it, and the row then carries the JSON boolean `true` between
+  `librarySectionKey`/`originalTitle` and `summary` on every projection.
+- **A continue-watching row carries `includedAt`**, an integer directly after
+  `lastViewedAt`, on `/hubs/continueWatching` and its `/items` leaf and on NOTHING else.
+  Plex Web's reducer reads `includedAt ?? lastViewedAt`.
+- **`includeAlternates=1` inlines only the artwork the row OWNS**: a season's and an
+  episode's `/arts` are empty, so neither carries an inline `Art` -- the option must apply
+  the same gate the candidate leaf does, or the server contradicts its own `/arts`.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

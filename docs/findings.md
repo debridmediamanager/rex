@@ -9886,6 +9886,174 @@ while the item path accepted it.
   `/hubs/sections/{id}/newReleases`, which plexsim already answers; nothing in the code
   followed the wrong name, so this is the document being corrected rather than a defect.
 
+#### The fifty-third pass — the framework's own source
+
+Cycle 52 read PMS's route table out of the binary. Cycle 53 read the **source beside it**:
+the plug-in framework is Python, shipped uncompiled in the image, and
+`System.bundle/Contents/Code/*.py` *is* the `/system` surface. Every `@route` in those
+files is an endpoint, so "which endpoints exist under `/system`" stopped being a sweep and
+became a read — and then a measurement, because a route the source declares is not
+necessarily reachable.
+
+Cycle 52 had already met the instrument without recognising it: it fitted the framework's
+argument counting to twelve measured cells and then found the rule in one grep of
+`agentservice.py`. This cycle did that deliberately, and the framework surface it opened
+is large.
+
+**`/system/bundle/media/flags/*` is a whole image family, and every container plexsim
+answers points a client at it.** `mediaTagPrefix="/system/bundle/media/flags/"` is on every
+library container plexsim serves, exactly as it is on zen's, and every URL under it was a
+404 here. `flagservice.py` registers **ten** types and `Media-Flags.bundle` holds 742 PNGs
+and a 35 KB `substitutions.xml` of 624 regular expressions. Measured on kids and zen,
+identical: a known value is its own image; an unknown VALUE is never a 404 but the
+bundle's 82-byte `blank.png` with a 200; an unknown TYPE, and an empty value, and a third
+path segment, are the `/system` subtree's empty-bodied 404; `media` and `recordLabel` are
+registered types with no directory at all, so every value under them is the blank; a
+direct file name matches case-SENSITIVELY while the three substituted types (studio, audio
+codec, video codec) match their regex case-insensitively — `studio/Disney` and
+`studio/Walt Disney Pictures` are one logo, `audioCodec/dca` is the DTS one and `ac3` the
+Dolby Digital one. Twelve independent sizes reproduce exactly from the table.
+
+**Eighteen more framework routes answered nothing here.** `peerservice.py` registers
+channels and plugins over five directory names — ten paths, each the framework's 130-byte
+empty container with no channel installed; `systemservice.py` answers a 229-byte
+agent-service status report and an empty `serverUpdated`; `messageservice.py` three empty
+event routes; and `/system/services/{search,searches,relatedcontent/lookup}` plus the two
+`/system/agents/attribution` leaves answer the framework's own TypeError traceback, where
+plexsim 404'd most of them and sent its own 109-byte HTML 500 for the attribution pair. A
+framework STRING result also spells its header **`Content-type`**, with a lower-case `t`,
+because `construct_response` writes it literally — the one such header on the surface.
+
+**Five more sub-paths under a hosted plug-in are real.** Cycle 52 measured the preference
+document and recorded everything else as the empty-bodied 404. `prefs/list` is
+byte-identical to `prefs`; `plist` is the bundle's own `Info.plist` as `text/plain`;
+`prefs/set` an empty `text/plain` 200; `messaging/wait` a 16-byte constant; and
+`resources/{name}` the bundle's own images, with a 404 for a name it does not have.
+`root` is a 302 to `/system` for `com.plexapp.system` — the only bundle that registers a
+prefix — and the framework's `IndexError` traceback for every other running bundle, which
+is `handlers/runtime.py:113` reaching for `handlers[0]` of an empty list. The four bundles
+the server hosts but does not run answer the 109-byte 500 to every one of them.
+
+**And the eleven legacy agents are listed.** HANDOVER §8 carried "legacy agents and the
+`/:/plugins` listing" as one inherited bound from cycles 1–6. Cycle 52 retired the second
+half on the grounds that a fixed table in the image is not hosting; this is the same
+table, and leaving the two halves split was drift rather than a decision. kids, zen,
+plexscratch and plexscratch42 answer the identical eleven identifiers with the identical
+attributes, so a settings page reading `/system/agents` sees **15** rows on a real 1.42.2
+server and saw four here. In the bare form a legacy row carries `MediaType` children and
+no `Language`; in the typed form the primaries for that type come FIRST, each with its own
+`Language` CODES — a bare `code`, no title, one for Personal Media, 33 for the legacy IMDb
+agent, 26 for The Movie Database. Two differences are deliberate: 1.43.4 adds an `id` to
+every legacy row and plexsim reports 1.42.2, and the order of `lastfm` and
+`plexthememusic` is the server's own load order, where three of four instruments agree and
+zen alone differs.
+
+With the agents listed, their **attribution** is reachable: the bundle plexsim itself
+serves renders a 100×100 `<img>` per agent from
+`/system/agents/attribution/image?identifier=`. Nine answer a text and eight an image,
+`org.musicbrainz.agents.music` answers an EMPTY text and no image, and every other
+identifier — the four modern agents included — is a 404 on both leaves.
+
+**Four envelope rules, each measured on four servers.**
+
+* **A framework error does NOT close the connection.** All five `plugin-xml` paths answer
+  `Connection: Keep-Alive` with `timeout=20`, and a second request on the same socket is
+  served — proved by reading the 500 and then `/identity` down one socket. plexsim set
+  `close_connection` there on a comment nobody had measured, so a pipelining client lost
+  its socket on every Agents-page probe. Cycle 45's rule says which way it goes: a refusal
+  of the ENVELOPE closes, a refusal of the MEANING keeps alive, and a TypeError inside a
+  plug-in is the latter.
+* **Five routes put `Cache-Control` SECOND**, straight after `X-Plex-Protocol` —
+  `/system/search`, `/system/library/sections`, `/system/channels/{name}`,
+  `/system/plugins/{name}` and `/system/notify/serverUpdated` — where every other `/system`
+  response puts it last. The mechanism is not identified; the set is measured.
+* **A framework container pages without emitting an `offset` and still names its window in
+  the response headers.** plexsim keyed those headers on the body's `offset`, so the one
+  family that has none sent neither; and `/:/plugins/{id}/prefs` did not page at all.
+* **`/system//` is the framework's empty-bodied 404**, not the 85-byte document: plexsim
+  dropped the empty segment and left the `/system` envelope before its own refusal applied.
+
+**Two more corrections inside the subtree.** Only the BARE `/system/agents` is PMS's own
+handler — everything under it is the framework's, so `/system/agents/{id}/config/{N}` is
+written by the framework's serialiser (single-quoted declaration, self-closed empty
+container, 130 bytes where plexsim wrote 147) and is the one framework document that
+carries no cookie. And `/system/library/sections` carries **thirteen** attributes per row,
+of which plexsim emitted four plus an `agent` no reference sends: the `key` is the
+URL-safe base64 of `http://{host}:{port}/library/sections/{id}`, `unique` marks a title
+that occurs once, the rows are sorted by the lower-cased title, and an extra segment is a
+404 where plexsim answered the whole listing again.
+
+**And a corrupt state cookie empties the framework.** A framework route whose own
+`com.plexapp.*` cookie the server cannot unpack answers a 200 with an EMPTY body,
+`Content-Type: text/html; charset=UTF-8` and **`Server: TornadoServer/1.0`** — the one
+`Server:` banner on the surface, which cycle 33 recorded as never sent. It swallows the
+route's own status too, so `/system/zzz` becomes 200/0 instead of 404. The cookie's NAME
+has to be the identifier serving the route, a well-formed blob behaves normally, and PMS's
+own handlers (`/system/agents`, `/system/scanners/{N}`) are untouched — the same split as
+the cookie they send. The framework's `Set-Cookie` is same-origin with Plex Web, so a
+browser holding a blob the server can no longer read silently empties every `/system`
+response.
+
+
+Territory B took the other half of the image: PMS's own **database template**
+(`Resources/com.plexapp.plugins.library.db`, whose schema names every column it can
+store) and the binary's attribute vocabulary.
+
+**Ten more columns the schema names are real query fields.** `metadata_items.{remote,
+is_adult, resources_changed_at, user_fields}`, `media_items.{begins_at, ends_at,
+media_analysis_version, source}`, `metadata_item_settings.last_skipped_at` and
+`library_sections.agent`, camel-cased, filter, parse, sort, group and take an item edit on
+kids and zen alike -- the same family as the nine cycle 20 found and the four cycle 26
+found. plexsim knew none of them, and an unknown field answers EVERY row, which is the
+worst outcome: a smart list built on one silently selected the whole library while
+`/query/parse` told the builder the field did not exist. Five of them refuse an
+unparseable value with a 500 and `userFields` refuses every value under every operator;
+seven sort and three group -- so here the sort surface is WIDER than the group surface,
+the other way round from the columns cycle 26 added; the item path takes all ten and six
+are a 500 on the SECTION path, the split `lastRatedAt` already had.
+
+**`isAdult` is the one that reads back.** Exactly the literal `1` stores it and every
+other value clears it; the row then carries the JSON boolean `true` between
+`librarySectionKey`/`originalTitle` and `summary`, on the detail row, the light grid row,
+`/library/all` and the hub rows alike -- zen's row 631 shows it on a real library. plexsim
+never emitted the attribute although its TMDB identification has the flag.
+
+**A continue-watching row carries `includedAt`**, an integer directly after
+`lastViewedAt`, on `/hubs/continueWatching` and its `/items` leaf and on nothing else --
+not `/hubs/home/continueWatching`, not the section leaf, not `/library/onDeck`. Plex Web's
+own reducer reads `includedAt ?? lastViewedAt`, so the shelf fell back to the view time
+instead of the hub's inclusion stamp. In all five witnesses the two are equal; what makes
+them differ is not measurable here.
+
+**And `includeAlternates=1` inlined artwork the row does not own.** A season's and an
+episode's `/arts` are empty -- cycle 7's rule, and plexsim's own candidate leaf applies it
+-- while the option inlined the SHOW's candidate onto both, because `hierarchy` copies
+`_art_url` down and the option read it without the gate. The server contradicted its own
+`/arts`.
+
+The census behind those four is the useful negative: 130 request families across kids, zen
+and plexsim produced **zero JSON scalar-type differences** where the two references agree,
+and every element either reference emits is emitted by plexsim somewhere. The 121
+(element, attribute) cells present on both references and never here are, after
+re-measurement, content or state or already in HANDOVER 8.
+
+**Measured and not acted on.**
+
+* **The pixels of the bundled artwork.** The flag images, each bundle's `icon-default.png`
+  and `attribution.png`, and the 68 `/:/resources` images are served at the file's real
+  media type and geometry with plexsim's own placeholder inside. Shipping several
+  megabytes of a product's artwork to reproduce the bytes is not done.
+* **A populated `/system/channels/*` row.** No instrument hosts a channel, so only the
+  empty container is measurable; the `DirectoryItem` shape is readable in the source and
+  not reachable here.
+* **`/system/messaging/{register_for_event,broadcast_event}`'s semantics.** They mutate the
+  System bundle's event dictionary, so they were driven on the disposable copies only.
+* **The mechanism behind the `Cache-Control` split.** It separates cleanly along the
+  peer-service routes plus one across four servers and does not fall out of
+  `construct_response`; recorded as measured rather than modelled.
+* **The legacy agents' WORK.** Listing them is a fixed table; identifying with one, its
+  contributor chain and its preference pane beyond the captured document are not claimed.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
