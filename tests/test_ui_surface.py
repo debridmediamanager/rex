@@ -352,10 +352,17 @@ def main():
     # the state created by unrelated write checks.
     c46_pristine = {}
     c46_season = None
+    c46_show_ondeck = {}
     if show:
         c46_seasons = (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
                        .get("Metadata") or [])
         c46_season = c46_seasons[0].get("ratingKey") if c46_seasons else None
+    for c46_show in shows:
+        c46_show_key = c46_show.get("ratingKey")
+        c46_show_detail = get(
+            base, "/library/metadata/%s?includeOnDeck=1" % c46_show_key)[1]
+        c46_show_row = (c46_show_detail.get("Metadata") or [{}])[0]
+        c46_show_ondeck[str(c46_show_key)] = bool(c46_show_row.get("OnDeck"))
     c46_guid_paths = [
         "/hubs",
         "/hubs/home/recentlyAdded?type=1",
@@ -28478,13 +28485,19 @@ def main():
     hubs_ondeck_c46c = c46_pristine["/hubs?includeOnDeck=1"].get("Hub") or []
     ondeck_show_c46c = [row_c46c for hub_c46c in hubs_ondeck_c46c
                         for row_c46c in hub_c46c.get("Metadata") or []
-                        if row_c46c.get("type") == "show"
-                        and isinstance(row_c46c.get("OnDeck"), dict)]
-    check("/hubs honours includeOnDeck on its full show rows",
+                        if row_c46c.get("type") == "show"]
+    check("/hubs scopes includeOnDeck to full shows with a current candidate",
           ondeck_show_c46c
-          and all((row_c46c["OnDeck"].get("Metadata") or {}).get("type") == "episode"
+          and all(bool(row_c46c.get("OnDeck"))
+                  == c46_show_ondeck.get(str(row_c46c.get("ratingKey")), False)
+                  for row_c46c in ondeck_show_c46c)
+          and all(not row_c46c.get("OnDeck")
+                  or (row_c46c["OnDeck"].get("Metadata") or {}).get("type") == "episode"
                   for row_c46c in ondeck_show_c46c),
-          "expanded=%d" % len(ondeck_show_c46c))
+          "shows=%d expanded=%d expected=%s"
+          % (len(ondeck_show_c46c),
+             sum(1 for row_c46c in ondeck_show_c46c if row_c46c.get("OnDeck")),
+             c46_show_ondeck))
 
     hubs_related_c46d = c46_pristine["/hubs?includeRelated=1"].get("Hub") or []
     related_show_c46d = [row_c46d for hub_c46d in hubs_related_c46d
