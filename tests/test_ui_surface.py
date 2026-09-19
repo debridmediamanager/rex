@@ -29490,6 +29490,66 @@ def main():
     check("a framework container pages and names its window in the headers",
           not wrong_c53h, "; ".join(wrong_c53h)[:250])
 
+    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2), identical on both: five more
+    # sub-paths under a hosted plug-in are real, where cycle 52 recorded everything but
+    # `prefs` as the framework's empty-bodied 404. `prefs/list` is byte-identical to `prefs`;
+    # `plist` is the bundle's own `Info.plist` as `text/plain`; `prefs/set` an empty
+    # `text/plain` 200; `messaging/wait` a 16-byte constant; `resources/{name}` the bundle's
+    # own images with a 404 for a name it does not have; and `root` is a 302 to `/system` for
+    # `com.plexapp.system` and the framework's `IndexError` traceback for every other running
+    # bundle. The four bundles that are not running keep their 109-byte 500.
+    wrong_c53i = []
+    for path_c53i, status_c53i, kind_c53i in (
+            ("/:/plugins/com.plexapp.agents.themoviedb/prefs/list", 200, "xml"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/plist", 200, "plist"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/prefs/set", 200, "empty"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/messaging/wait", 200, "wait"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/resources/icon-default.png", 200, "png"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/resources/nosuch.png", 404, "empty404"),
+            ("/:/plugins/com.plexapp.agents.themoviedb/root", 500, "xml"),
+            ("/:/plugins/com.plexapp.framework/plist", 500, "html"),
+            ("/:/plugins/com.plexapp.framework/messaging/wait", 500, "html")):
+        got_c53i, body_c53i, head_c53i = request(base, "GET", path_c53i, want_json=False)
+        ok_c53i = got_c53i == status_c53i
+        if kind_c53i == "plist":
+            ok_c53i = ok_c53i and body_c53i.startswith(b"<?xml") and b"plist" in body_c53i
+        elif kind_c53i == "empty":
+            ok_c53i = ok_c53i and body_c53i == b""
+        elif kind_c53i == "wait":
+            ok_c53i = ok_c53i and len(body_c53i) == 16
+        elif kind_c53i == "png":
+            ok_c53i = ok_c53i and body_c53i[:8] == b"\x89PNG\r\n\x1a\n"
+        elif kind_c53i == "empty404":
+            ok_c53i = ok_c53i and not body_c53i and not head_c53i.get("Content-Type")
+        elif kind_c53i == "html":
+            ok_c53i = ok_c53i and len(body_c53i) == 109
+        elif kind_c53i == "xml":
+            ok_c53i = ok_c53i and body_c53i.startswith(b"<?xml version='1.0'")
+        if not ok_c53i:
+            wrong_c53i.append("%s -> %s/%s" % (path_c53i, got_c53i, len(body_c53i)))
+    check("the five sub-paths a hosted plug-in really answers",
+          not wrong_c53i, "; ".join(wrong_c53i)[:280])
+
+    # `prefs/list` is the preference document byte for byte, and only `com.plexapp.system`
+    # redirects its `root`.
+    _, prefs_c53i, _ = request(base, "GET", "/:/plugins/com.plexapp.agents.themoviedb/prefs",
+                               want_json=False)
+    _, list_c53i, _ = request(base, "GET",
+                              "/:/plugins/com.plexapp.agents.themoviedb/prefs/list",
+                              want_json=False)
+    root_c53i, root_head_c53i = 0, {}
+    try:
+        urllib.request.build_opener(_NoRedirect_c52l()).open(
+            base.rstrip("/") + "/:/plugins/com.plexapp.system/root", timeout=15)
+    except urllib.error.HTTPError as error_c53i:
+        root_c53i, root_head_c53i = error_c53i.code, dict(error_c53i.headers)
+    check("prefs/list is the prefs document and only the system bundle redirects",
+          prefs_c53i == list_c53i and len(prefs_c53i) > 100
+          and root_c53i == 302
+          and (root_head_c53i.get("Location") or "").endswith("/system"),
+          "same=%s root=%s %s" % (prefs_c53i == list_c53i, root_c53i,
+                                  root_head_c53i.get("Location")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
