@@ -19182,6 +19182,14 @@ class Handler(BaseHTTPRequestHandler):
         keep -- which is invisible to the Plex clients and is exactly the kind of thing
         a byte-for-byte diff of the two servers reads.
         """
+        if self.command in ("OPTIONS", "PATCH"):
+            # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) over `/system`,
+            # `/system/zzz` and `/:/plugins/{id}/prefs`: neither the bare OPTIONS 200 nor
+            # the PATCH refusal carries the cookie, on either version. Both are answered
+            # before the plug-in framework runs -- PATCH is not a method at all on 1.42.2
+            # (a 500) and Tornado's own 405 on 1.43.4 -- so there is no plug-in session to
+            # hand back. plexsim attached the cookie to every response under `/system`.
+            return None
         path = (self.path or "").split("?")[0].rstrip("/")
         if path.startswith("/:/plugins/"):
             # Cycle 52: the framework names the cookie after the PLUG-IN, and sends it

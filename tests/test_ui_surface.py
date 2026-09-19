@@ -28662,6 +28662,26 @@ def main():
     check("the plug-in framework's envelope under /:/plugins",
           not wrong_c52c, "; ".join(wrong_c52c)[:300])
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) over `/system`, `/system/zzz` and
+    # `/:/plugins/{id}/prefs`: the plug-in framework's cookie rides its OWN responses, and
+    # neither the bare OPTIONS 200 nor the PATCH refusal is one of them. Both are answered
+    # before the framework runs, so neither carries `Set-Cookie` on either version, where
+    # plexsim attached it to every response under `/system`.
+    wrong_c52d = []
+    for method_c52d, path_c52d in (("OPTIONS", "/system"), ("PATCH", "/system"),
+                                   ("OPTIONS", "/system/zzz"), ("PATCH", "/system/zzz"),
+                                   ("OPTIONS", "/:/plugins/com.plexapp.agents.imdb/prefs"),
+                                   ("PATCH", "/:/plugins/com.plexapp.agents.imdb/prefs")):
+        _, _, head_c52d = request(base, method_c52d, path_c52d, want_json=False)
+        if head_c52d.get("Set-Cookie"):
+            wrong_c52d.append("%s %s" % (method_c52d, path_c52d))
+    # the control: the framework's own answers still carry it
+    _, _, get_c52d = request(base, "GET", "/system", want_json=False)
+    _, _, put_c52d = request(base, "PUT", "/system/zzz", want_json=False)
+    check("the framework cookie rides only the framework's own responses",
+          not wrong_c52d and get_c52d.get("Set-Cookie") and put_c52d.get("Set-Cookie"),
+          "; ".join(wrong_c52d)[:200] or "controls ok")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
