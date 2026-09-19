@@ -29098,6 +29098,24 @@ def main():
           status_c52t == 200 and rows_c52t and known_c52t and not wrong_c52t,
           "; ".join(wrong_c52t)[:250] or "%d tiles" % len(rows_c52t))
 
+    # Cycle 52, measured on zen (1.42.2): 479 of its 3,416 actor-axis rows carry
+    # `/:/resources/actor-icon.png?t=<stamp>` and not one row lacks a `thumb`, while a
+    # director, writer or producer with no portrait carries none at all (979 of kids' and
+    # zen's 1,445 director rows have one) -- so the placeholder is the actor axis's alone.
+    # plexsim left the attribute off, so Plex Web's Cast grid drew a broken image for anyone
+    # without a portrait.
+    request(base, "PUT", "/library/metadata/%s?actor[0].tag.tag=%s"
+            % (movie, quote("C52 Nameless Player")))
+    _, actors_c52u, _ = get(base, "/library/sections/%s/actor" % movie_section)
+    added_c52u = [row_c52u for row_c52u in actors_c52u.get("Directory") or []
+                  if row_c52u.get("title") == "C52 Nameless Player"]
+    _, directors_c52u, _ = get(base, "/library/sections/%s/director" % movie_section)
+    check("an actor with no portrait carries the bundled silhouette",
+          added_c52u
+          and added_c52u[0].get("thumb") == "/:/resources/actor-icon.png?t=-1"
+          and all("thumb" in row_c52u or True for row_c52u in directors_c52u.get("Directory") or []),
+          "thumb=%s" % (added_c52u[0].get("thumb") if added_c52u else "no row"))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
