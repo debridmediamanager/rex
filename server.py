@@ -1856,7 +1856,10 @@ def _public_row(row):
             images.append({"alt": title, "type": "snapshot", "url": out["thumb"]})
     elif out.get("thumb"):
         images.append({"alt": title, "type": "coverPoster", "url": out["thumb"]})
-    if out.get("art"):
+    # Cycle 50: a clip borrows its parent's `art` ATTRIBUTE but that borrowed
+    # background does not become an Image row.  Both item- and section-extras lists
+    # carry exactly the clip's own coverPoster.
+    if out.get("art") and out.get("type") != "clip":
         images.append({"alt": title, "type": "background", "url": out["art"]})
     if images:
         out["Image"] = images
@@ -8605,7 +8608,8 @@ class PlexSim:
         if page:
             # The section projection is the light row: no Stream children and no
             # librarySection triple, exactly as cycle 29's census found.
-            fields["Metadata"] = [_grid_row(row, keep_section=False) for row in page]
+            fields["Metadata"] = [_grid_row(_public_row(row), keep_section=False)
+                                  for row in page]
         return self.bare_container(**fields)
 
     def section_leaf(self, section_id, section, leaf, query):
