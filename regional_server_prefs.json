@@ -1,0 +1,1812 @@
+{
+ "_provenance": "Captured by three GET-only requests to kids Plex 1.43.4 /:/prefs with X-Plex-Language pt-BR, pt-PT and hu-HU. The requests carried the server token but no device identity headers. All three returned 174 ordered rows; pt-BR and pt-PT were identical. Only the complete server-owned localisable attributes are retained here, so installation/account values are absent.",
+ "aliases": {
+  "pt-PT": "pt-BR"
+ },
+ "catalogues": {
+  "pt-BR": [
+   {
+    "id": "FriendlyName",
+    "label": "Nome amigável",
+    "summary": "Esse nome será usado para identificar este servidor de mídia em outros computadores da sua rede. Se você deixar em branco, o nome do seu computador será usado em seu lugar."
+   },
+   {
+    "id": "sendCrashReports",
+    "label": "Enviar relatórios de falhas ao Plex",
+    "summary": "Isso nos ajuda a melhorar sua experiência."
+   },
+   {
+    "id": "FSEventLibraryUpdatesEnabled",
+    "label": "Verificar minha biblioteca automaticamente",
+    "summary": "Sua biblioteca será atualizada automaticamente quando forem detectadas alterações em suas pastas"
+   },
+   {
+    "id": "FSEventLibraryPartialScanEnabled",
+    "label": "Execute uma varredura parcial quando forem detectadas alterações",
+    "summary": "Quando forem detectadas alterações nas pastas da biblioteca, execute a varredura apenas nestas pastas."
+   },
+   {
+    "id": "watchMusicSections",
+    "label": "Incluir bibliotecas de música nas atualizações automáticas",
+    "summary": "Sistemas Linux limitam o número máximo de pastas monitoradas; Isto pode causar problemas com bibliotecas grandes de música."
+   },
+   {
+    "id": "ScheduledLibraryUpdatesEnabled",
+    "label": "Escaneie minha biblioteca periodicamente",
+    "summary": ""
+   },
+   {
+    "id": "ScheduledLibraryUpdateInterval",
+    "label": "Intervalo de verificação da biblioteca",
+    "summary": "",
+    "enumValues": "900:a cada 15 minutos|1800:a cada 30 minutos|3600:de hora em hora|7200:a cada 2 horas|21600:a cada 6 horas|43200:a cada 12 horas|86400:diariamente"
+   },
+   {
+    "id": "autoEmptyTrash",
+    "label": "Esvaziar lixeira automaticamente após cada varredura",
+    "summary": ""
+   },
+   {
+    "id": "allowMediaDeletion",
+    "label": "Permitir exclusão de mídia",
+    "summary": "O proprietário do servidor poderá excluir arquivos de mídia do disco."
+   },
+   {
+    "id": "allowMediaDeletionLanOnly",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "OnDeckWindow",
+    "label": "Semanas a considerar para Continuar Assistindo",
+    "summary": "A mídia não assistida neste período de tempo não irá aparecer em Continuar Assistindo."
+   },
+   {
+    "id": "OnDeckLimit",
+    "label": "Número máximo de itens em Continuar Assistindo que irão aparecer.",
+    "summary": "Limita o número de programas que irão aparecer em Continuar Assistindo. Configurá-lo com um valor muito alto pode afetar o desempenho."
+   },
+   {
+    "id": "OnDeckIncludePremieres",
+    "label": "Incluir estreias de temporada em Continuar Assistindo",
+    "summary": "Estreias da nova temporada sempre aparecerão, não importa quantas semanas se passaram desde a observação."
+   },
+   {
+    "id": "LibraryVideoPlayedThreshold",
+    "label": "Limite de vídeo reproduzido",
+    "summary": "Defina a porcentagem de progresso para reprodução de vídeo em que ponto o vídeo será marcado como reproduzido.",
+    "enumValues": "70:70%|75:75%|80:80%|85:85%|90:90%|95:95%"
+   },
+   {
+    "id": "LibraryVideoPlayedAtBehaviour",
+    "label": "Comportamento de conclusão de reprodução de vídeo",
+    "summary": "Decida se deseja usar marcadores de créditos finais para determinar o estado \"assistido\" dos itens de vídeo. Quando os marcadores não estiverem disponíveis, a porcentagem limite selecionada será usada.",
+    "enumValues": "0:at selected threshold percentage|1:at final credits marker position|2:at first credits marker position|3:earliest between threshold percent and first credits marker"
+   },
+   {
+    "id": "SmartShuffleMusic",
+    "label": "Habilitar reprodução aleatório inteligente de artistas e playlists inteligentes de músicas",
+    "summary": "A reprodução aleatória inteligente prefere faixas altamente cotadas, populares e ouvidas menos recentemente."
+   },
+   {
+    "id": "MusicSeparateAlbumTypes",
+    "label": "Agrupar álbuns por tipo",
+    "summary": "Agrupa em LPs, EPs & Singles, Compilações, Álbuns Ao Vivo, Demos e Remixes.",
+    "enumValues": "disabled:desabilitado|enabled:habilitado"
+   },
+   {
+    "id": "LibraryDefaultVisibility",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersType",
+    "label": "Escolha trailers de cinema de",
+    "summary": "",
+    "enumValues": "0:Todos os filmes|1:Apenas filmes não assistidos"
+   },
+   {
+    "id": "CinemaTrailersFromLibrary",
+    "label": "Incluir trailers de cinema dos filmes em minha biblioteca",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersFromTheater",
+    "label": "Incluir trailers de cinema de filmes novos e futuros lançamentos do cinema",
+    "summary": "Esse recurso está disponível somente para assinantes Plex Pass."
+   },
+   {
+    "id": "CinemaTrailersFromBluRay",
+    "label": "Incluir trailers de cinema de filmes novos e futuros lançamentos em Blu-Ray",
+    "summary": "Esse recurso está disponível somente para assinantes Plex Pass."
+   },
+   {
+    "id": "CinemaTrailersIncludeEnglish",
+    "label": "Sempre inclua trailers de cinema em inglês para trailers de filmes que não estão na minha biblioteca.",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersPrerollID",
+    "label": "Vídeo pre-roll de filme",
+    "summary": "Digite o caminho completo para o arquivo de vídeo pré-roll. Se vários caminhos separados por vírgulas forem inseridos, os vídeos serão reproduzidos sequencialmente. Se forem utilizados vários caminhos separados por ponto e vírgula, um único vídeo pré-roll será escolhido aleatoriamente da lista."
+   },
+   {
+    "id": "GlobalMusicVideoPath",
+    "label": "Caminho de videoclipes globais",
+    "summary": "Um caminho global para videoclipes para todas as bibliotecas de música."
+   },
+   {
+    "id": "iTunesSharingEnabled",
+    "label": "Habilitar o plugin do iTunes ",
+    "summary": "É necessário reiniciar o servidor para que a alteração seja efetivada."
+   },
+   {
+    "id": "iTunesLibraryXmlPath",
+    "label": "Caminho XML da biblioteca do iTunes",
+    "summary": ""
+   },
+   {
+    "id": "AllowLegacyAgents",
+    "label": "Mostrar agentes legados durante a configuração da biblioteca",
+    "summary": "Se estiver habilitado, os agentes legados estarão disponíveis ao configurar novas bibliotecas. Requer atualização do navegador após alteração."
+   },
+   {
+    "id": "MachineIdentifier",
+    "label": "Um identificador único para a máquina",
+    "summary": ""
+   },
+   {
+    "id": "AllowHighOutputBitrates",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ConfigurationUrl",
+    "label": "URL do Web Manager",
+    "summary": ""
+   },
+   {
+    "id": "AcceptedEULA",
+    "label": "O usuário aceitou o EULA?",
+    "summary": ""
+   },
+   {
+    "id": "LanguageInCloud",
+    "label": "Use as configurações de idioma de plex.tv",
+    "summary": ""
+   },
+   {
+    "id": "ArticleStrings",
+    "label": "Lista de strings separadas por vírgulas consideradas artigos ao classificar títulos. É necessária uma reinicialização do servidor para que uma alteração tenha efeito.",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderVideoResolutionLimit",
+    "label": "Resolução máxima de saída de vídeo para o transcodificador",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderPhotoFileSizeLimitMiB",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableIPv6",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "IPNetworkType",
+    "label": "Rede do Cliente",
+    "summary": "Rede para anunciar aos clientes.",
+    "enumValues": "v4only:Só IPv4|v6only:Só IPv6|dualstack:IPv4 e IPv6"
+   },
+   {
+    "id": "secureConnections",
+    "label": "Conexões seguras",
+    "summary": "Se definido como \"Obrigatório\", algumas conexões não criptografadas (provenientes do computador do servidor de mídia) ainda serão permitidas e aplicativos que não suportam conexão segura não poderão se conectar.",
+    "enumValues": "1:Preferível|0:Obrigatório"
+   },
+   {
+    "id": "customCertificatePath",
+    "label": "Localização do certificado personalizado",
+    "summary": "Caminho para um arquivo PKCS #12, que contém um certificado e a chave privada para habilitar o suporte a TLS em um domínio personalizado."
+   },
+   {
+    "id": "customCertificateKey",
+    "label": "Chave de criptografia do certificado personalizado",
+    "summary": ""
+   },
+   {
+    "id": "customCertificateDomain",
+    "label": "Domínio do certificado personalizado",
+    "summary": "Nome de domínio a ser publicado no plex.tv usando sua porta mapeada; deve corresponder a um nome do arquivo de certificado personalizado. [Só IPv4]"
+   },
+   {
+    "id": "PreferredNetworkInterface",
+    "label": "Interface de rede preferida",
+    "summary": "A interface de rede quais os clientes locais usarão para se conectar.",
+    "enumValues": ":Qualquer|eth0:eth0 (172.31.7.2)"
+   },
+   {
+    "id": "DisableTLSv1_0",
+    "label": "Configuração TLS rigorosa",
+    "summary": "Desativa cifras fracas legadas, aumenta o tamanho do grupo DH e muda para certificados ECDSA ao renovar. Pode impedir que clientes mais antigos se conectem."
+   },
+   {
+    "id": "allowedHttpOrigins",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "requestLimitsScale",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "GdmEnabled",
+    "label": "Habilitar descoberta na rede local (GDM)",
+    "summary": "Isso permite que o servidor de mídia localize outros servidores e clientes na rede local."
+   },
+   {
+    "id": "PublishServerOnPlexOnlineKey",
+    "label": "Publicar servidor no Plex Online",
+    "summary": "Publicar um servidor irá disponibilizá-lo automaticamente em seus dispositivos clientes sem qualquer configuração em seu roteador."
+   },
+   {
+    "id": "PlexOnlineMail",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexOnlineUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexWebDesktopUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexWebAuthUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnablePinAuth",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ManualPortMappingMode",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ManualPortMappingPort",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LastAutomaticMappedPort",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PushNotificationsEnabled",
+    "label": "Notificações via push",
+    "summary": "Permita que este servidor envie notificações por push para dispositivos móveis. Nota: As notificações push são entregues usando os serviços Plex. Eles estão associados à sua conta e alguns deles podem conter informações sobre o conteúdo de sua biblioteca."
+   },
+   {
+    "id": "TranscoderQuality",
+    "label": "Qualidade de transcodificação",
+    "summary": "Perfil de qualidade usado pelo transcodificador.",
+    "enumValues": "0:Automático|1:Preferir codificação em alta velocidade|2:Preferir codificação com alta qualidade|3:Faça minha CPU sofrer"
+   },
+   {
+    "id": "SegmentedTranscoderTimeout",
+    "label": "Tempo limite do transcodificador segmentado",
+    "summary": "Tempo limite em segundos que os transcodificadores segmentados aguardam para que o transcodificador comece a escrever dados."
+   },
+   {
+    "id": "TranscoderTempDirectory",
+    "label": "Diretório temporário do transcodificador",
+    "summary": "Diretório usado para transcodificar arquivos temporários. Idealmente, este deve ser um local em uma unidade física local. Não é recomendado definir isso para um local de rede ou disco RAM."
+   },
+   {
+    "id": "DownloadsTempDirectory",
+    "label": "Diretório de download temporário",
+    "summary": "Diretório usado para armazenar downloads transcodificados até que o cliente os baixe. Idealmente, este deve ser um local em uma unidade física local. Não é recomendado definir isso para um local de rede ou disco RAM."
+   },
+   {
+    "id": "TranscoderDefaultDuration",
+    "label": "Duração padrão do transcodificador",
+    "summary": "Duração em minutos para usar ao transcodificar um item com duração desconhecida."
+   },
+   {
+    "id": "TranscoderThrottleBuffer",
+    "label": "Buffer de aceleração padrão do transcodificador",
+    "summary": "Tempo em segundos para adicionar em buffer antes de acelerar o transcodificador."
+   },
+   {
+    "id": "TranscoderPruneBuffer",
+    "label": "Buffer de corte padrão do transcodificador",
+    "summary": "Quantidade dos últimos segundos para manter, antes de aparar os segmentos de uma transcodificação."
+   },
+   {
+    "id": "TranscoderLivePruneBuffer",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264Preset",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264BackgroundPreset",
+    "label": "Predefinição de transcodificação x264 em segundo plano",
+    "summary": "Valor da predefinição do x264 usado para transcodificação em segundo plano (Sincronização e otimização de mídia). Valores mais lentos resultarão em melhor qualidade de vídeo e arquivos menores, mas demorarão muito mais para terminar.",
+    "enumValues": "ultrafast:Ultra rápido|superfast:Super rápido|veryfast:Muito rápido|faster:Mais rápido|fast:Rápido|medium:Moderado|slow:Lenta|slower:Mais lenta|veryslow:Muito lenta"
+   },
+   {
+    "id": "TranscoderH264Options",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264OptionsOverride",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264MinimumCRF",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderLogLevel",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderSessionLogLevel",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderToneMapping",
+    "label": "Habilitar HDR Tone Mapping",
+    "summary": "O conteúdo HDR transcodificado aparecerá muito esmaecido e dessaturado com esta opção desabilitada. Componentes adicionais do driver podem ser necessários para suportar a transcodificação de hardware com este recurso habilitado; consulte nossos artigos de suporte para obter mais detalhes."
+   },
+   {
+    "id": "TranscoderToneMappingAgorithm",
+    "label": "Algoritmo de Mapeamento de Tons",
+    "summary": "Algoritmo a ser usado ao realizar o mapeamento de tons HDR.",
+    "enumValues": "linear|gamma|clip|reinhard|hable|mobius"
+   },
+   {
+    "id": "TranscoderInputTracing",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderPersistSessionDirs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderCanOnlyRemuxVideo",
+    "label": "Desativar transcodificação de streaming de vídeo",
+    "summary": "Desativa a transcodificação do stream de vídeo nas operações do transcodificador. Com isto definido, o transcodificador ainda pode transcodificar o áudio como também realizar o remux do vídeo."
+   },
+   {
+    "id": "HardwareAcceleratedCodecs",
+    "label": "Use aceleração de hardware quando disponível",
+    "summary": "Plex Media Server tentará usar codecs de vídeo acelerados por hardware ao codificar e decodificar vídeos. Aceleração de hardware pode deixar a transcodificação mais rápida e permitir mais transcodificações simultâneas de vídeo, mas pode reduzir a qualidade de video e compatibilidade."
+   },
+   {
+    "id": "HardwareAcceleratedEncoders",
+    "label": "Usar codificação de vídeo com aceleração de hardware",
+    "summary": "Se a aceleração de hardware estiver ativada, isso controla quando é usada para codificação, além da decodificação."
+   },
+   {
+    "id": "TranscoderHEVCEncoding",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SystemAudioCodecs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "HardwareDevicePath",
+    "label": "Dispositivo de transcodificação de hardware",
+    "summary": "A GPU ou outro dispositivo de hardware que será usado para transcodificação",
+    "enumValues": ":Automático"
+   },
+   {
+    "id": "VaapiDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "VaapiKernelDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CLDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "omxdecExtraOutBufs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PluginsLaunchTimeout",
+    "label": "Números de segundos para aguardar antes que o plugin expire",
+    "summary": ""
+   },
+   {
+    "id": "DlnaEnabled",
+    "label": "Habilitar o servidor DLNA",
+    "summary": "Isto permite que o servidor transmita mídia para dispositivos DLNA (suportados pela Digital Living Network Alliance)."
+   },
+   {
+    "id": "DlnaPlatinumLoggingLevel",
+    "label": "Nível de log do servidor DLNA",
+    "summary": "",
+    "enumValues": "OFF|FATAL|SEVERE|WARNING|INFO|FINE|FINER|FINEST|ALL"
+   },
+   {
+    "id": "DlnaClientPreferences",
+    "label": "Preferências do cliente DLNA",
+    "summary": "Configurações específicas de cliente para o servidor DLNA."
+   },
+   {
+    "id": "DlnaReportTimeline",
+    "label": "Relatórios de linha do tempo do servidor DLNA",
+    "summary": "Permite que o servidor DLNA relate cronogramas de atividade de exibição de vídeo."
+   },
+   {
+    "id": "DlnaDefaultProtocolInfo",
+    "label": "Informação do protocolo padrão do DLNA",
+    "summary": "Linha de informações de protocolo usada nas respostas GetProtocolInfo pelo servidor DLNA."
+   },
+   {
+    "id": "DlnaDeviceDiscoveryInterval",
+    "label": "Intervalo de descoberta do renderizador de mídia DLNA",
+    "summary": "Número de segundos entre as requisições de descoberta do renderizador de mídia DLNA."
+   },
+   {
+    "id": "DlnaAnnouncementLeaseTime",
+    "label": "Tempo de concessão de anúncio do servidor DLNA",
+    "summary": "Duração em segundos do tempo de concessão do anúncio SSDP do servidor DLNA."
+   },
+   {
+    "id": "DlnaDescriptionIcons",
+    "label": "Ícones de descrição do servidor DLNA",
+    "summary": "Ícones oferecidos pelo servidor DLNA quando dispositivos solicitam descrições do servidor."
+   },
+   {
+    "id": "SyncMyPlexLoginGCDeferral",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SyncPagingItemsLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "BackgroundQueueIdlePaused",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ScannerLowPriority",
+    "label": "Executar tarefas de varredura em uma prioridade mais baixa",
+    "summary": ""
+   },
+   {
+    "id": "WanPerStreamMaxUploadRate",
+    "label": "Limitar taxa de bits da stream remota",
+    "summary": "Definir a taxa máxima de bits de uma stream remota para este servidor.",
+    "enumValues": "0:Original (Sem limite)|40000:40 Mbps (4k)|30000:30 Mbps (4k)|25000:25 Mbps (4k)|20000:20 Mbps (1080p)|15000:15 Mbps (1080p)|12000:12 Mbps (1080p)|10000:10 Mbps (1080p)|8000:8 Mbps (1080p)|4000:4 Mbps (720p)|3000:3 Mbps (720p)|2000:2 Mbps (480p)|1500:1.5 Mbps (480p)|720:720 kbps|320:320 kbps"
+   },
+   {
+    "id": "WanTotalMaxUploadRate",
+    "label": "Limite de envio total (kbps) para rede externa",
+    "summary": "Velocidade na qual deseja limitar a banda larga total fora da rede local em kilobits por segundo. Use 0 para definir sem limite."
+   },
+   {
+    "id": "WanPerUserStreamCount",
+    "label": "Streams remotos permitidos por usuário",
+    "summary": "Número máximo de streams simultâneos que cada usuário pode usar quando não está na rede local.",
+    "enumValues": "0:Ilimitado|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "LanNetworksBandwidth",
+    "label": "Redes LAN",
+    "summary": "Lista de endereços IP ou entradas IP/netmask separados por vírgula para redes que são consideradas rede local para forçar as restrições de banda larga. Se definida, todos os outros endereço IP serão considerados que estão em rede externa e estarão sujeitos às restrições de banda larga de rede externa. Se deixar em branco, apenas a subrede do servidor é considerada como rede local. "
+   },
+   {
+    "id": "MinutesAllowedPaused",
+    "label": "Encerrar sessões pausadas por mais de",
+    "summary": "O valor está em minutos. Encerrar quaisquer sessões que tenham sido pausadas por um período maior que o período de tempo especificado. Sessões somente de áudio e sessões ao vivo são excluídas"
+   },
+   {
+    "id": "forceAutoAdjustQuality",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableABRDebugOverlay",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ABRKeepOldTranscodes",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ForceABRDisabled",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TreatWanIpAsLocal",
+    "label": "Tratar o IP da WAN como a largura de banda da LAN",
+    "summary": "Tratar as solicitações recebidas do endereço IP da WAN dessa rede como solicitações da LAN em termos de largura de banda. Isso geralmente ocorre quando a proteção de religação de DNS está em vigor e os clientes na LAN não podem contatar o servidor diretamente, mas precisam passar pelo endereço IP da WAN."
+   },
+   {
+    "id": "RelayEnabled",
+    "label": "Habilitar Retransmitir",
+    "summary": "A Retransmissão permite conexões ao servidor por meio de uma retransmissão de proxy quando o servidor não estiver acessível de outra maneira. Nota: esta retransmissão de proxy é limitada à largura de banda"
+   },
+   {
+    "id": "TranscodeCountLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "_CPU-TranscodeCountLimit",
+    "label": "Máximo de transcodificações simultâneas pela CPU",
+    "summary": "Limite o número de faixas de transcodificação de vídeo simultâneos que seu servidor pode utilizar em sua CPU",
+    "enumValues": "0:Ilimitado|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "OptimizerTranscodeCountLimit",
+    "label": "Máximo de transcodificação de vídeo em segundo plano simultâneo",
+    "summary": "Limita o número de transcodificações de vídeo simultâneas que seu servidor pode utilizar para o otimizador e downloads",
+    "enumValues": "0:Ilimitado|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "logDebug",
+    "label": "Habilitar o registro de depuração do Plex Media Server",
+    "summary": "O log de depuração permite detalhes adicionais nos arquivos de log e é útil para diagnosticar problemas."
+   },
+   {
+    "id": "LogVerbose",
+    "label": "Ativar o registro detalhado do Plex Media Server",
+    "summary": "O log detalhado só é útil para depurar problemas específicos e só deve ser ativado se solicitado pela equipe de suporte."
+   },
+   {
+    "id": "LogTokensForDebug",
+    "label": "Permitir tokens do Plex Media Server nos logs",
+    "summary": "Tokens do servidor de mídia podem ser utilizados para obter acesso ao conteúdo da biblioteca. Não compartilhe publicamente logs que contenham tokens. É necessário reiniciar o servidor para que a alteração seja efetivada."
+   },
+   {
+    "id": "LogMemoryUse",
+    "label": "Adicionar Plex Media Server e uso de memória do Sistema para Log de Depuração",
+    "summary": "Log de uso de memória do Plex Media Server e a memória total usada pelo sistema nos logs do Plex Media Server. Reiniciar o server é necessário para aplicar as alterações."
+   },
+   {
+    "id": "LogSynchronous",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MinimumProgressTime",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "customConnections",
+    "label": "URLs personalizadas de acesso ao servidor ",
+    "summary": "Uma lista separada por vírgulas de URLs (http ou https) que são publicadas até plex.tv para descoberta de servidor. Os endereços IPv6 devem especificar uma porta."
+   },
+   {
+    "id": "allowedNetworks",
+    "label": "Lista de endereços IP e redes que estão permitidos sem autorização",
+    "summary": "Lista de endereços IP ou entradas IP/netmask separados por vírgula que podem acessar o Plex Media Server sem ter que iniciar sessão. Quando o servidor estiver sem sessão aberta e este valor for definido, apenas o localhost e endereços nesta lista serão permitidos."
+   },
+   {
+    "id": "WebHooksEnabled",
+    "label": "Webhooks",
+    "summary": "Permitir que este servidor envie eventos para serviços externos."
+   },
+   {
+    "id": "ButlerStartHour",
+    "label": "Hora de início da execução de tarefas",
+    "summary": "O horário em que o servidor começa a executar tarefas de manutenção em segundo plano.",
+    "enumValues": "0:0꞉00|1:1꞉00|2:2꞉00|3:3꞉00|4:4꞉00|5:5꞉00|6:6꞉00|7:7꞉00|8:8꞉00|9:9꞉00|10:10꞉00|11:11꞉00|12:12꞉00|13:13꞉00|14:14꞉00|15:15꞉00|16:16꞉00|17:17꞉00|18:18꞉00|19:19꞉00|20:20꞉00|21:21꞉00|22:22꞉00|23:23꞉00"
+   },
+   {
+    "id": "ButlerEndHour",
+    "label": "Hora que as tarefas param de ser executadas",
+    "summary": "Hora na qual o servidor para de executar as tarefas de manutenção em segundo plano.",
+    "enumValues": "0:0꞉00|1:1꞉00|2:2꞉00|3:3꞉00|4:4꞉00|5:5꞉00|6:6꞉00|7:7꞉00|8:8꞉00|9:9꞉00|10:10꞉00|11:11꞉00|12:12꞉00|13:13꞉00|14:14꞉00|15:15꞉00|16:16꞉00|17:17꞉00|18:18꞉00|19:19꞉00|20:20꞉00|21:21꞉00|22:22꞉00|23:23꞉00"
+   },
+   {
+    "id": "ButlerTaskBackupDatabase",
+    "label": "Fazer backup da base de dados a cada três dias",
+    "summary": ""
+   },
+   {
+    "id": "ButlerDatabaseBackupPath",
+    "label": "Diretório de backup",
+    "summary": "O diretório em que os backups do banco de dados serão armazenados."
+   },
+   {
+    "id": "ButlerTaskOptimizeDatabase",
+    "label": "Otimizar a base de dados semanalmente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskCleanOldBundles",
+    "label": "Remover pacotes antigos semanalmente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskCleanOldCacheFiles",
+    "label": "Remover arquivos de cache antigos semanalmente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshLocalMedia",
+    "label": "Atualizar metadados locais a cada três dias",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshLibraries",
+    "label": "Atualizar todas as bibliotecas durante a manutenção",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskUpgradeMediaAnalysis",
+    "label": "Aprimorar a análise de mídia durante a manutenção",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshPeriodicMetadata",
+    "label": "Atualizar metadados da biblioteca periodicamente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskDeepMediaAnalysis",
+    "label": "Executar uma análise extensiva de mídia durante a manutenção",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskGarbageCollectBlobs",
+    "label": "Perform cleanup on blobs database",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshEpgGuides",
+    "label": "Executar atualização dos dados do guia de programas.",
+    "summary": ""
+   },
+   {
+    "id": "ButlerUpdateChannel",
+    "label": "Canal de atualização do servidor",
+    "summary": "",
+    "enumValues": "0:Public|8:Beta"
+   },
+   {
+    "id": "GenerateIndexFilesDuringAnalysis",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskGenerateMediaIndexFiles",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "GenerateBIFKeyframesOnly",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MarkerSource",
+    "label": "Fonte de marcação",
+    "summary": "Os marcadores de créditos podem ser gerados localmente e/ou recuperados por meio de um banco de dados online. Marcadores online podem nem sempre existir, se esta preferência for definida como 'ambos', quaisquer marcadores detectados localmente serão enviados anonimamente de volta ao banco de dados online para uso futuro.",
+    "enumValues": "any:ambos, tente primeiro online|cloud:apenas on-line (sem detecção local)|local:apenas detecção local"
+   },
+   {
+    "id": "GenerateBIFBehavior",
+    "label": "Gerar miniaturas de visualização de vídeo",
+    "summary": "As miniaturas de visualização de vídeo oferecem atualizações dinâmicas para a categoria Exibindo Agora e ao fazer buscas em aplicativos suportados. A criação das miniaturas pode ser demorada e elas consomem CPU e espaço adicional em disco. Você pode desativar a geração de miniaturas para bibliotecas individuais nas configurações avançadas da biblioteca.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "GenerateBIFFrameInterval",
+    "label": "Duração do quadro da miniatura de pré-visualização do vídeo",
+    "summary": "Tempo (em segundos) entre cada quadro de pré-visualização do vídeo."
+   },
+   {
+    "id": "GenerateIntroMarkerBehavior",
+    "label": "Gerar marcadores de introdução do vídeo",
+    "summary": "Detecta introduções de programas, exibindo o botão 'Pular Introdução' nos clientes.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "GenerateCreditsMarkerBehavior",
+    "label": "Gerar marcadores de créditos no vídeo",
+    "summary": "Detecta os créditos finais do filme e do episódio.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "GenerateAdMarkerBehavior",
+    "label": "Gerar marcadores de vídeo de anúncio",
+    "summary": "Detecta anúncios de filmes e episódios.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "GenerateVADBehavior",
+    "label": "Gerar dados de atividade de voz",
+    "summary": "Detecta dados de atividade de voz para filmes e episódios. Isso é usado para sincronizar as legendas com a trilha de áudio. Essa detecção pode ser alternada por biblioteca editando a biblioteca individual e navegando até a seção avançada.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "GenerateChapterThumbBehavior",
+    "label": "Gerar miniaturas de capítulo",
+    "summary": "As miniaturas de capítulo oferecem imagens na visualização de capítulo nos aplicativos suportados. Elas podem demorar bastante para serem geradas  e podem consumir espaço adicional no disco.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "LoudnessAnalysisBehavior",
+    "label": "Analise faixas de áudio para intensidade sonora",
+    "summary": "A análise de intensidade permite vários recursos, como nivelamento de intensidade e transições inteligentes. Pode levar muito tempo para concluir ao analisar várias trilhas e causar alto uso da CPU.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "MusicAnalysisBehavior",
+    "label": "Analisar faixas de áudio para recursos sonoros",
+    "summary": "A análise sonora permite vários recursos, como rádio da faixa. Isto pode demorar bastante para completar ao analisar muitas faixas e causar alto uso de CPU.",
+    "enumValues": "never:nunca|scheduled:como uma tarefa agendada|asap:como uma tarefa agendada e quando uma mídia for adicionada"
+   },
+   {
+    "id": "LongRunningJobThreads",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LoudnessAnalysisThreads",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LoudnessReplayGainStyle",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioTopTracksPerAlbum",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDaysSinceLastPlayed",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDirectoryThreshold",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDirectoryLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LocationVisibility",
+    "label": "Visibilidade do local",
+    "summary": "Donos de servidor podem querer restringir quem vê os locais em itens com geolocalização nos metadados. Por padrão somente o dono do servidor terá acesso a esses detalhes.",
+    "enumValues": "1:apenas administrador|2:todos"
+   },
+   {
+    "id": "DatabaseCacheSize",
+    "label": "Tamanho do cache do banco de dados (MB)",
+    "summary": "Defina o tamanho do cache do banco de dados principal em MB. As alterações têm efeito quando o servidor é reiniciado."
+   },
+   {
+    "id": "CertificateVersion",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CertificateUUID",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "enableLocalSecurity",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EyeQUser",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrShowUnsupportedDevices",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrComskipRemoveIntermediates",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrComskipKeepOriginal",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SubtitlesPersistIfAdmin",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrIncrementalEpgLoader",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EpgUseSelectedProvider",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MetadataUseDevProvider",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SyncMPRootDirectoryOverride",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MediaServerManagerAllowHttp",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MergedRecentlyAdded",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableDatabaseTrace",
+    "label": "",
+    "summary": ""
+   }
+  ],
+  "hu-HU": [
+   {
+    "id": "FriendlyName",
+    "label": "Rövid név",
+    "summary": "Média szerverét ez a név azonosítja a hálózaton lévő más számítógépek számára . Ha üresen hagyja, akkor a számítógép nevét fogja használni."
+   },
+   {
+    "id": "sendCrashReports",
+    "label": "Összeomlási jelentés küldése a Plex-nek",
+    "summary": "Ez segít nekünk fejleszteni a felhasználói élményt."
+   },
+   {
+    "id": "FSEventLibraryUpdatesEnabled",
+    "label": "Automatikusan beolvasni a könyvtárat",
+    "summary": "A könyvtár automatikus frissítése, ha a mappákban változás észlelhető"
+   },
+   {
+    "id": "FSEventLibraryPartialScanEnabled",
+    "label": "Részleges vizsgálat indítása, ha változások észlelhetőek",
+    "summary": "Amikor a könyvtár mappáiban változtatások észlelhetők csak a változások kerülnek beolvasásra."
+   },
+   {
+    "id": "watchMusicSections",
+    "label": "Zenei könyvtárakat is tartalmazza az automatikus frissítés",
+    "summary": "A Linux rendszerek korlátozzák a megtekintett könyvtárak maximális számát, ez problémát okozhat nagy zenei könyvtárak esetében."
+   },
+   {
+    "id": "ScheduledLibraryUpdatesEnabled",
+    "label": "Időről időre vizsgálja meg a könyvtárat",
+    "summary": ""
+   },
+   {
+    "id": "ScheduledLibraryUpdateInterval",
+    "label": "Könyvtár szkennelési időköze",
+    "summary": "",
+    "enumValues": "900:15 percenként|1800:30 percenként|3600:óránként|7200:2 óránként|21600:6 óránként|43200:12 óránként|86400:naponta"
+   },
+   {
+    "id": "autoEmptyTrash",
+    "label": "Szemét ürítése minden automatikus vizsgálat után",
+    "summary": ""
+   },
+   {
+    "id": "allowMediaDeletion",
+    "label": "Média törlésének engedélyezése",
+    "summary": "A szerver tulajdonosa törölhet médiafájlokat a lemezről."
+   },
+   {
+    "id": "allowMediaDeletionLanOnly",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "OnDeckWindow",
+    "label": "Hány hétig tartsa meg a Plex a 'Lejátszás folytatása' elemeit",
+    "summary": "Azok a tartalmak, amiket nem néztünk meg ennyi hét alatt, nem fognak megjelenni a 'Lejátszás folytatása' alatt."
+   },
+   {
+    "id": "OnDeckLimit",
+    "label": "A folytatandó elemek maximális mennyisége.",
+    "summary": "Korlátozza a megjelenő Folytatandó műsorok számát. A túl magas beállítás befolyásolhatja a teljesítményt."
+   },
+   {
+    "id": "OnDeckIncludePremieres",
+    "label": "Tartalmazza az évadbemutatókat a Folytatás nézésben",
+    "summary": "Az új évad premierjei mindig megjelennek, függetlenül attól, hogy hány hét telt el a megnézés óta."
+   },
+   {
+    "id": "LibraryVideoPlayedThreshold",
+    "label": "Videó lejátszási küszöbértéke",
+    "summary": "Állítsa be a videólejátszás előrehaladásának százalékos arányát, amelynél a videó lejátszottként lesz megjelölve.",
+    "enumValues": "70:70%|75:75%|80:80%|85:85%|90:90%|95:95%"
+   },
+   {
+    "id": "LibraryVideoPlayedAtBehaviour",
+    "label": "Videólejátszás befejezésének viselkedése",
+    "summary": "Decide whether to use end credits markers to determine the 'watched' state of video items. When markers are not available the selected threshold percentage will be used.",
+    "enumValues": "0:at selected threshold percentage|1:at final credits marker position|2:at first credits marker position|3:earliest between threshold percent and first credits marker"
+   },
+   {
+    "id": "SmartShuffleMusic",
+    "label": "Intelligens véletlenszerű keverés engedélyezése a művészek és az intelligens zenelejátszási listák között",
+    "summary": "Az intelligens véletlenszerű keverés a legjobban értékelt, népszerű és kevésbé hallott zeneszámokat részesíti előnyben."
+   },
+   {
+    "id": "MusicSeparateAlbumTypes",
+    "label": "Albumok csoportosítása típus szerint",
+    "summary": "Albumok csoportosítása LP-k, EP-k, kislemezek, összeállítások, élő albumok, demók és remixek szerint.",
+    "enumValues": "disabled:letiltva|enabled:engedélyezve"
+   },
+   {
+    "id": "LibraryDefaultVisibility",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersType",
+    "label": "Mozielőzetesek kiválasztása innen:",
+    "summary": "",
+    "enumValues": "0:Összes film|1:Csak a nézetlen filmek"
+   },
+   {
+    "id": "CinemaTrailersFromLibrary",
+    "label": "A könyvtár tartalmazza a mozielőzeteseket a filmekről",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersFromTheater",
+    "label": "A könyvtár tartalmazza az új vagy rövidesen megjelenő mozielőzeteseket",
+    "summary": "Ez csak Plex Pass-al rendelkezőknek érhető el."
+   },
+   {
+    "id": "CinemaTrailersFromBluRay",
+    "label": "A könyvtár tartalmazza az új vagy rövidesen megjelenő Blu-ray előzeteseket",
+    "summary": "Ez csak Plex Pass-al rendelkezőknek érhető el."
+   },
+   {
+    "id": "CinemaTrailersIncludeEnglish",
+    "label": "Always include English language Cinema Trailers for trailers of movies not in my library.",
+    "summary": ""
+   },
+   {
+    "id": "CinemaTrailersPrerollID",
+    "label": "Filmelőzetes",
+    "summary": "Adja meg a videó előtti videofájl teljes elérési útját. Ha több vesszővel elválasztott útvonalat ír be, a videók lejátszása egymás után történik. Ha pontosvesszővel elválasztott több útvonalat használ, akkor egyetlen re-roll videó véletlenszerűen kerül kiválasztásra a listából."
+   },
+   {
+    "id": "GlobalMusicVideoPath",
+    "label": "Globális \"zenei videók\" mappája",
+    "summary": "Globális elérési űt a zenei videókhoz minden zenei könyvtár számára."
+   },
+   {
+    "id": "iTunesSharingEnabled",
+    "label": "iTunes-bővítmény engedélyezése",
+    "summary": "A változtatások életbe lépéséhez a szerver újraindítása szükséges."
+   },
+   {
+    "id": "iTunesLibraryXmlPath",
+    "label": "iTunes könyvtár XML útvonala",
+    "summary": ""
+   },
+   {
+    "id": "AllowLegacyAgents",
+    "label": "Show legacy agents during library setup",
+    "summary": "If this is enabled legacy agents will be available when setting up new libraries. Requires browser refresh after changing."
+   },
+   {
+    "id": "MachineIdentifier",
+    "label": "A készülék egyedi azonosítója",
+    "summary": ""
+   },
+   {
+    "id": "AllowHighOutputBitrates",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ConfigurationUrl",
+    "label": "Web Manager URL",
+    "summary": ""
+   },
+   {
+    "id": "AcceptedEULA",
+    "label": "A felhasználó már elfogadta a végfelhasználói licencszerződést",
+    "summary": ""
+   },
+   {
+    "id": "LanguageInCloud",
+    "label": "Használja a nyelvi beállításokat a plex.tv-től",
+    "summary": ""
+   },
+   {
+    "id": "ArticleStrings",
+    "label": "A sorok vesszővel elválasztott listája a címek rendezésénél a cikkeket tekintette. A változás bekövetkezése esetén a kiszolgáló újraindítása szükséges.",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderVideoResolutionLimit",
+    "label": "A videó kódoló maximális kimeneti felbontása",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderPhotoFileSizeLimitMiB",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableIPv6",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "IPNetworkType",
+    "label": "Client Network",
+    "summary": "Network to advertise to clients.",
+    "enumValues": "v4only:IPv4 Only|v6only:IPv6 Only|dualstack:IPv4 and IPv6"
+   },
+   {
+    "id": "secureConnections",
+    "label": "Biztonságos kapcsolatok",
+    "summary": "Ha \"Szükséges\" van beállítva, néhány nem titkosított ( a Média Szerver számítógépről származó) kapcsolat továbbra is engedélyezett és alkalmazások, amelyek nem támogatják a biztonságos kapcsolatot nem lesznek képesek csatlakozni egyáltalán.",
+    "enumValues": "1:Előnyben részesített|0:Szükséges"
+   },
+   {
+    "id": "customCertificatePath",
+    "label": "Egyedi tanúsítvány helye",
+    "summary": "Az elérési útvonal a PKCS #12 fájlhoz magába foglal egy tanúsítványt és egy privát kulcsot ahhoz, hogy engedélyezze a TLS támogatást egyedi domain-on."
+   },
+   {
+    "id": "customCertificateKey",
+    "label": "Egyedi titkosítási tanúsítvány kulcs",
+    "summary": ""
+   },
+   {
+    "id": "customCertificateDomain",
+    "label": "Egyedi tanúsítvány domain",
+    "summary": "Domain name to be published to plex.tv using your mapped port; must match a name from the custom certificate file. [IPv4 Only]"
+   },
+   {
+    "id": "PreferredNetworkInterface",
+    "label": "Előnyben részesített hálózati csatoló",
+    "summary": "A helyi kliensek hálózati csatolója csatlakozik.",
+    "enumValues": ":Bármilyen|eth0:eth0 (172.31.7.2)"
+   },
+   {
+    "id": "DisableTLSv1_0",
+    "label": "Szigorú TLS konfiguráció",
+    "summary": "Letiltja az örökölt gyenge titkosításokat, növeli a DH csoport méretét, és megújításkor ECDSA tanúsítványokra vált. Megakadályozhatja az idősebb ügyfelek csatlakozását."
+   },
+   {
+    "id": "allowedHttpOrigins",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "requestLimitsScale",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "GdmEnabled",
+    "label": "Helyi hálózat felderítésének engedélyezése (GDM)",
+    "summary": "Ez lehetővé teszi a média szervernek, hogy felfedezzen más szervereket és lejátszókat a helyi hálózaton."
+   },
+   {
+    "id": "PublishServerOnPlexOnlineKey",
+    "label": "Szerver közzététele a Plex Online-on",
+    "summary": "A közzétett szerver automatikusan elérhetővé válik a kliens eszközökön a router konfigurálása nélkül is."
+   },
+   {
+    "id": "PlexOnlineMail",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexOnlineUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexWebDesktopUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PlexWebAuthUrl",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnablePinAuth",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ManualPortMappingMode",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ManualPortMappingPort",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LastAutomaticMappedPort",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PushNotificationsEnabled",
+    "label": "Azonnali értesítések",
+    "summary": "Megengedni, hogy ez a szerver küldjön értesítéseket a mobileszközeire. Megjegyzés: A push értesítéseket a Plex szolgáltatásaival kézbesítjük. Ezek kapcsolatban vannak a fiókjával, és néhányuk tartalmazhat információkat a könyvtár tartalmáról."
+   },
+   {
+    "id": "TranscoderQuality",
+    "label": "Átkódoló minősége",
+    "summary": "A kódoló által használ minőségi profil.",
+    "enumValues": "0:Automatikus|1:Nagyobb sebességű kódolás előnybe helyezése|2:Nagyobb minőségű kódolás előnybe helyezése|3:A legjobb minőségű, de lassú kódolás magas CPU használattal"
+   },
+   {
+    "id": "SegmentedTranscoderTimeout",
+    "label": "Osztott átkódoló időtúllépés",
+    "summary": "Időtúllépés másodpercben. Az átkódolók várakozási ideje az adatok írásának megkezdéséig."
+   },
+   {
+    "id": "TranscoderTempDirectory",
+    "label": "Átkódoló ideiglenes könyvtára",
+    "summary": "Directory to use when transcoding for temporary files. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk."
+   },
+   {
+    "id": "DownloadsTempDirectory",
+    "label": "Downloads temporary directory",
+    "summary": "Directory to use when storing transcoded downloads until the client downloads them. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk."
+   },
+   {
+    "id": "TranscoderDefaultDuration",
+    "label": "Átkódoló alapértelmezett időtartama",
+    "summary": "Átkódolás hossza percekben megadva ha nem ismert az időtartama"
+   },
+   {
+    "id": "TranscoderThrottleBuffer",
+    "label": "Átkódoló alapértelmezett gyorsítótár",
+    "summary": "Időtartam másodpercben, az átkódoló gyorsítótár bekapcsolása előtt."
+   },
+   {
+    "id": "TranscoderPruneBuffer",
+    "label": "Átkódoló alapértelmezett gyorsítótár",
+    "summary": "Az átkódolásból származó szegmensek utolsó másodpercig megtartott mennyisége."
+   },
+   {
+    "id": "TranscoderLivePruneBuffer",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264Preset",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264BackgroundPreset",
+    "label": "Előre beállított háttérben történő x264 átkódolás",
+    "summary": "Az x264 beállított értéke háttérben történő átkódoláshoz (Szinkronizálás és Média Optimalizáló). A lassabb érték jobb minőségű videót és kisebb fájlméretet eredményez, de jelentősen hosszabb időt veszi igénybe a feldolgozása.",
+    "enumValues": "ultrafast:Ultra gyors|superfast:Szuper gyors|veryfast:Nagyon gyors|faster:Gyorsabb|fast:Gyors|medium:Közepes|slow:Lassú|slower:Lassabb|veryslow:Leglassabb"
+   },
+   {
+    "id": "TranscoderH264Options",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264OptionsOverride",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderH264MinimumCRF",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderLogLevel",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderSessionLogLevel",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderToneMapping",
+    "label": "HDR hang leképzés engedélyezése",
+    "summary": "Az átkódolt HDR-tartalom nagyon halványan és telítetlenül fog megjelenni, ha ez az opció le van tiltva. Lehetséges, hogy további illesztőprogram-összetevőkre van szükség a hardveres átkódolás támogatásához, ha ez a funkció engedélyezve van. A részleteket lásd a támogatási cikkekben."
+   },
+   {
+    "id": "TranscoderToneMappingAgorithm",
+    "label": "Tonemapping Algorithm",
+    "summary": "Algorithm to use when performing HDR tone mapping.",
+    "enumValues": "linear|gamma|clip|reinhard|hable|mobius"
+   },
+   {
+    "id": "TranscoderInputTracing",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderPersistSessionDirs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TranscoderCanOnlyRemuxVideo",
+    "label": "Videó adatfolyam átkódolásának letiltása",
+    "summary": "Videó adatfolyam átkódolásának letiltása átkódolási művelet során. Ezzel a készlettel a transzkóder továbbra is átkódolhatja az audiót és a remux videót. "
+   },
+   {
+    "id": "HardwareAcceleratedCodecs",
+    "label": "A rendelkezésre álló hardveres gyorsítást használja",
+    "summary": "A Plex Media Server megpróbálja hardveresen felgyorsított video kodekeket használni a videó kódolása és dekódolása során. A hardveres gyorsítás gyorsabb átkódolást tesz lehetővé, és több egyidejű videoátalakítást tesz lehetővé, de csökkentheti a videó minőségét és kompatibilitását is."
+   },
+   {
+    "id": "HardwareAcceleratedEncoders",
+    "label": "Hardveres gyorsítású videókódolás használata",
+    "summary": "Ha a hardveres gyorsítás engedélyezve van, ez ellenőrzi, hogy a dekódoláson túl kódolásra is használják-e."
+   },
+   {
+    "id": "TranscoderHEVCEncoding",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SystemAudioCodecs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "HardwareDevicePath",
+    "label": "Hardveres átkódoló eszköz",
+    "summary": "Az átkódoláshoz használt GPU vagy más hardvereszköz",
+    "enumValues": ":Automatikus"
+   },
+   {
+    "id": "VaapiDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "VaapiKernelDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CLDriver",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "omxdecExtraOutBufs",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "PluginsLaunchTimeout",
+    "label": "A plugin időtúllépése miatt ennyi másodpercet kell várni",
+    "summary": ""
+   },
+   {
+    "id": "DlnaEnabled",
+    "label": "DLNA szerver engedélyezése",
+    "summary": "Ez lehetővé teszi a szervernek, hogy médiákat közvetítsen a DLNA (Digital Living Network Alliance) képes eszközöknek."
+   },
+   {
+    "id": "DlnaPlatinumLoggingLevel",
+    "label": "DLNA kiszolgáló naplózási szintje",
+    "summary": "",
+    "enumValues": "OFF|FATAL|SEVERE|WARNING|INFO|FINE|FINER|FINEST|ALL"
+   },
+   {
+    "id": "DlnaClientPreferences",
+    "label": "DLNA kliens beállítások",
+    "summary": "Kliens-specifikus konfigurációs beállítások a DLNA szerver számára."
+   },
+   {
+    "id": "DlnaReportTimeline",
+    "label": "DLNA szerver idővonal jelentés",
+    "summary": "Engedélyezi a DLNA szervernek az idővonal jelentést a videólejátszási tevékenységről"
+   },
+   {
+    "id": "DlnaDefaultProtocolInfo",
+    "label": "Alap DLNA protokoll információ",
+    "summary": "Protokoll adatok a DLNA szerver által használt GetProtocolInfo válaszokban."
+   },
+   {
+    "id": "DlnaDeviceDiscoveryInterval",
+    "label": "DLNA médiamegjelenítő felfedezési időtartam",
+    "summary": "Időtartam másodpercben, amíg a DLNA médiamegjelenítő felderítési kéréseket fogad."
+   },
+   {
+    "id": "DlnaAnnouncementLeaseTime",
+    "label": "DLNA szerver bejelentés bérleti idő",
+    "summary": "A DLNA szerver SSDP bejelentés bérleti időtartam, másodpercben"
+   },
+   {
+    "id": "DlnaDescriptionIcons",
+    "label": "DLNA szerverleírás ikonok",
+    "summary": "A DLNA szerver által kínált ikonok, ha az eszközök szerver leírást kérnek"
+   },
+   {
+    "id": "SyncMyPlexLoginGCDeferral",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SyncPagingItemsLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "BackgroundQueueIdlePaused",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ScannerLowPriority",
+    "label": "Fejlessze a szkenner feladatait alacsonyabb prioritás mellett",
+    "summary": ""
+   },
+   {
+    "id": "WanPerStreamMaxUploadRate",
+    "label": "Korlátozza a távoli adatfolyam-bitrátát",
+    "summary": "Állítsa be a távoli adatfolyam maximális bitsebességét a szerverről.",
+    "enumValues": "0:Eredeti (nincs korlátozás)|40000:40 Mbps (4k)|30000:30 Mbps (4k)|25000:25 Mbps (4k)|20000:20 Mbps (1080p)|15000:15 Mbps (1080p)|12000:12 Mbps (1080p)|10000:10 Mbps (1080p)|8000:8 Mbps (1080p)|4000:4 Mbps (720p)|3000:3 Mbps (720p)|2000:2 Mbps (480p)|1500:1,5 Mbps (480p)|720:720 kbps|320:320 kbps"
+   },
+   {
+    "id": "WanTotalMaxUploadRate",
+    "label": "Külső hálózat összesített sávszélességi korlátja (kbps)",
+    "summary": "Az a sávszélesség kilobit/másodperc formában, amelyre az összes nem helyi hálózati forgalmat korlátozni kell. Használja a 0 értéket, ha nem szeretné korlátozni."
+   },
+   {
+    "id": "WanPerUserStreamCount",
+    "label": "Távoli streamek száma felhasználónként",
+    "summary": "Az egyidejű streamek maximális száma felhasználónként, ha nem a helyi hálózatról használja.",
+    "enumValues": "0:Korlátlan|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "LanNetworksBandwidth",
+    "label": "LAN hálózatok",
+    "summary": "Vesszővel elválasztott lista az IP-címekről vagy IP / netmask bejegyzésekről a hálózatoknál, amelyeket a helyi hálózaton a sávszélesség korlátozások végrehajtásakor veszünk figyelembe. Ha be van állítva, akkor az összes többi IP-cím a külső hálózaton található, és külső hálózati sávszélesség-korlátozásoknak lesz alávetve. Ha üres marad, csak a kiszolgáló alhálózata tekinthető helyi hálózatnak."
+   },
+   {
+    "id": "MinutesAllowedPaused",
+    "label": "Azon folyamatok megszüntetése, amelyek ennyi ideje meg vannak állítva",
+    "summary": "Az érték percben van megadva. A megadott időnél hosszabb ideig szüneteltetett munkamenetek automatikus befejezése. Kivételek: az audio és az élő munkamenetek"
+   },
+   {
+    "id": "forceAutoAdjustQuality",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableABRDebugOverlay",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ABRKeepOldTranscodes",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ForceABRDisabled",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "TreatWanIpAsLocal",
+    "label": "Kezelje a WAN IP címét, mintha LAN sávszélesség volna",
+    "summary": "Kezelje az internetről származó kéréseket, mintha a helyi hálózatról érkező kérések volnának. Ez gyakran hasznos amikor a 'DNS rebind' védelem miatt a helyi kliensek nem képesek közvetlenül kapcsolódni a szerverhez, és csak WAN IP címen keresztül érik el azt."
+   },
+   {
+    "id": "RelayEnabled",
+    "label": "Átjátszó engedélyezése",
+    "summary": "Az 'Átjátszó' lehetővé teszi a kiszolgálóval való kapcsolatokat proxyn keresztül, ha a szerver egyébként nem érhető el. Megjegyzés: ez a proxy-átjátszó sávszélesség korlátozott"
+   },
+   {
+    "id": "TranscodeCountLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "_CPU-TranscodeCountLimit",
+    "label": "Maximum simultaneous CPU transcodes",
+    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your CPU",
+    "enumValues": "0:Korlátlan|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "OptimizerTranscodeCountLimit",
+    "label": "Maximum simultaneous background video transcode",
+    "summary": "Limit the number of simultaneous video transcode your server can utilize for the optimizer and downloads",
+    "enumValues": "0:Korlátlan|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
+   },
+   {
+    "id": "logDebug",
+    "label": "Engedélyezi a Plex Média Szerver hibakereső naplózását",
+    "summary": "Az engedélyezett hibakeresési naplózás további részleteket tesz lehetővé a naplófájlokban, és hasznos a problémák diagnosztizálásában."
+   },
+   {
+    "id": "LogVerbose",
+    "label": "Engedélyezi a Plex Média Szerver részletes naplózását",
+    "summary": "A részletes naplózás csak konkrét problémák hibakereséséhez hasznos, és csak akkor engedélyezendő, ha a támogatási személyzet kéri."
+   },
+   {
+    "id": "LogTokensForDebug",
+    "label": "Engedélyezi a Plex Média Szerver jelzések naplózását",
+    "summary": "A média szerver jelzőket használ, hogy hozzáférjen a könyvtár tartalmához. A naplókat tartalmazó jelzőket ne ossza meg nyilvánosan. A kiszolgáló újraindítása is szükséges a változtatás életbe léptetéséhez."
+   },
+   {
+    "id": "LogMemoryUse",
+    "label": "A Plex Media Server és a rendszermemória használatának hozzáadása a hibakereséshez",
+    "summary": "A Plex Media Server memóriahasználatának és a rendszer összes felhasznált memóriájának naplózása a Plex Media Server naplóiban. A változás életbe léptetéséhez újra kell indítani a szervert."
+   },
+   {
+    "id": "LogSynchronous",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MinimumProgressTime",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "customConnections",
+    "label": "Egyéni szerver hozzáférés URL-ekhez",
+    "summary": "A comma-separated list of URLs (http or https) which are published up to plex.tv for server discovery. IPv6 addresses must specify a port."
+   },
+   {
+    "id": "allowedNetworks",
+    "label": "Hitelesítés nélkül engedélyezett IP címek és hálózatok listája",
+    "summary": "Az IP-címek vagy IP / hálómaszk beviteleinek vesszővel elválasztott listája azon hálózatok számára, amelyekhez a bejelentkezés nélkül hozzáférhet a Plex Médiakiszolgálóhoz. Ha a kiszolgáló ki van jelentkezve, és ez az érték be van állítva, csak a helyi host és a listán szereplő címek engedélyezettek."
+   },
+   {
+    "id": "WebHooksEnabled",
+    "label": "Webhookok",
+    "summary": "Engedélyezni, hogy ez a szerver eseményeket küldjön külső szolgáltatásoknak."
+   },
+   {
+    "id": "ButlerStartHour",
+    "label": "Feladatok elindításának időpontja",
+    "summary": "A beállított idő elteltével a szerver karbantartási feladatokat futtat a háttérben.",
+    "enumValues": "0:0꞉00|1:1꞉00|2:2꞉00|3:3꞉00|4:4꞉00|5:5꞉00|6:6꞉00|7:7꞉00|8:8꞉00|9:9꞉00|10:10꞉00|11:11꞉00|12:12꞉00|13:13꞉00|14:14꞉00|15:15꞉00|16:16꞉00|17:17꞉00|18:18꞉00|19:19꞉00|20:20꞉00|21:21꞉00|22:22꞉00|23:23꞉00"
+   },
+   {
+    "id": "ButlerEndHour",
+    "label": "Feladatok leállításának időpontja",
+    "summary": "A beállított idő elteltével a háttérben futtatott karbantartási feladatok futása leáll.",
+    "enumValues": "0:0꞉00|1:1꞉00|2:2꞉00|3:3꞉00|4:4꞉00|5:5꞉00|6:6꞉00|7:7꞉00|8:8꞉00|9:9꞉00|10:10꞉00|11:11꞉00|12:12꞉00|13:13꞉00|14:14꞉00|15:15꞉00|16:16꞉00|17:17꞉00|18:18꞉00|19:19꞉00|20:20꞉00|21:21꞉00|22:22꞉00|23:23꞉00"
+   },
+   {
+    "id": "ButlerTaskBackupDatabase",
+    "label": "Adatbázis biztonsági mentése 3 naponta",
+    "summary": ""
+   },
+   {
+    "id": "ButlerDatabaseBackupPath",
+    "label": "Biztonsági mentés könyvtára",
+    "summary": "Az a könyvtár, ahol a biztonsági mentések tárolásra kerülnek."
+   },
+   {
+    "id": "ButlerTaskOptimizeDatabase",
+    "label": "Adatbázis optimalizálása hetente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskCleanOldBundles",
+    "label": "Régi kötegek eltávolítása hetente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskCleanOldCacheFiles",
+    "label": "Régi cache fájlok eltávolítása hetente",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshLocalMedia",
+    "label": "Helyi metaadatok frissítése három naponta",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshLibraries",
+    "label": "Karbantartáskor minden könyvtár frissítése",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskUpgradeMediaAnalysis",
+    "label": "Média elemzés frissítése a karbantartás alatt",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshPeriodicMetadata",
+    "label": "A könyvtár metaadatainak rendszeres frissítése",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskDeepMediaAnalysis",
+    "label": "A karbantartás során végezzen kiterjedt médiaelemzést",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskGarbageCollectBlobs",
+    "label": "Perform cleanup on blobs database",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskRefreshEpgGuides",
+    "label": "Végezze el a programvezetési adatok frissítését.",
+    "summary": ""
+   },
+   {
+    "id": "ButlerUpdateChannel",
+    "label": "Szerver frissítési csatorna",
+    "summary": "",
+    "enumValues": "0:Public|8:Beta"
+   },
+   {
+    "id": "GenerateIndexFilesDuringAnalysis",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "ButlerTaskGenerateMediaIndexFiles",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "GenerateBIFKeyframesOnly",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MarkerSource",
+    "label": "A markerek forrása",
+    "summary": "A kreditjelölők helyileg generálhatók és/vagy online adatbázison keresztül lehívhatók. Előfordulhat, hogy online jelölők nem mindig léteznek, ha ez a beállítás „mindkettő”-re van állítva, akkor a helyileg észlelt markerek névtelenül visszaküldésre kerülnek az online adatbázisba későbbi felhasználás céljából.",
+    "enumValues": "any:mindkettőt próbálja ki először online|cloud:csak online (nincs helyi észlelés)|local:csak helyi észlelés"
+   },
+   {
+    "id": "GenerateBIFBehavior",
+    "label": "Videó előnézetek generálása",
+    "summary": "A videók előnézeti bélyegképei élő frissítéseket biztosítanak a Most játszott és a támogatott alkalmazások keresése közben. A miniatűrök előállítása sok időt vehet igénybe, nagy CPU-használatot eredményezhet, és további lemezterületet is igénybe vehet. A könyvtár speciális beállításaiban kikapcsolhatja az egyes könyvtárak miniatűr generációját.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "GenerateBIFFrameInterval",
+    "label": "A videó előnézeti miniatűr képének időtartama",
+    "summary": "Az egyes előnézeti képkockák közötti idő (másodpercben)."
+   },
+   {
+    "id": "GenerateIntroMarkerBehavior",
+    "label": "Intro-videó jelölők generálása",
+    "summary": "Műsor bevezetők érzékelése, 'Bevezető átugrása' gomb kihelyezése.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "GenerateCreditsMarkerBehavior",
+    "label": "Készítsen a stáblistához videójelzőt",
+    "summary": "Érzékeje a film/epizód stáblistáját.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "GenerateAdMarkerBehavior",
+    "label": "Hirdetési videójelzők generálása",
+    "summary": "Film- és epizódhirdetések észlelése.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "GenerateVADBehavior",
+    "label": "Generate voice activity data",
+    "summary": "Detects voice activity data for movies and episodes. This is used to help syncronize subtitles to the audio track. This detection can be toggled per-library by editing the individual library and navigating to the advanced section.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "GenerateChapterThumbBehavior",
+    "label": "Fejezet bélyegképeinek létrehozása",
+    "summary": "A bélyegképek fejezete a támogatott alkalmazások fejezetnézetében nyújt képet. Tarthatnak sok időt a lemezterületek létrehozása és fogyasztása érdekében.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "LoudnessAnalysisBehavior",
+    "label": "Elemezze a hangsávokat a hangosságért",
+    "summary": "A hangosságelemzés lehetővé teszi a különféle funkciók, például a hangosság kiegyenlítését és az intelligens átmeneteket. Számos sáv elemzéséhez hosszú idő telhet el, és nagy CPU-használatot eredményez.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "MusicAnalysisBehavior",
+    "label": "A hanganyagok elemzése a szonikus funkciókhoz",
+    "summary": "A szonikus elemzés különféle funkciókat tesz lehetővé, például rádiónyomokat. Sok műsorszám elemzésekor hosszú időbe telhet, és nagy CPU-használatot okozhat.",
+    "enumValues": "never:soha|scheduled:mint egy ütemezett feladat|asap:mint egy ütemezett feladat és amikor a hozzáadják a médiát"
+   },
+   {
+    "id": "LongRunningJobThreads",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LoudnessAnalysisThreads",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LoudnessReplayGainStyle",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioTopTracksPerAlbum",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDaysSinceLastPlayed",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDirectoryThreshold",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "RadioDirectoryLimit",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "LocationVisibility",
+    "label": "A hely láthatósága",
+    "summary": "A kiszolgáló tulajdonosai korlátozhatják a földrajzi helyet tartalmazó metaadatokat tartalmazó elemek helyét. Alapértelmezés szerint csak a kiszolgáló tulajdonos látható.",
+    "enumValues": "1:csak admin|2:mindenki"
+   },
+   {
+    "id": "DatabaseCacheSize",
+    "label": "Adatbázis gyorsítótár mérete (MB)",
+    "summary": "A fő adatbázis gyorsítótár méretét MB-ban. A változtatások a szerver újraindításakor lépnek életbe."
+   },
+   {
+    "id": "CertificateVersion",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "CertificateUUID",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "enableLocalSecurity",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EyeQUser",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrShowUnsupportedDevices",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrComskipRemoveIntermediates",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrComskipKeepOriginal",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SubtitlesPersistIfAdmin",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "DvrIncrementalEpgLoader",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EpgUseSelectedProvider",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MetadataUseDevProvider",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "SyncMPRootDirectoryOverride",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MediaServerManagerAllowHttp",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "MergedRecentlyAdded",
+    "label": "",
+    "summary": ""
+   },
+   {
+    "id": "EnableDatabaseTrace",
+    "label": "",
+    "summary": ""
+   }
+  ]
+ }
+}
