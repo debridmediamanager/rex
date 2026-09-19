@@ -921,6 +921,77 @@ PLUGIN_ROWS = {
     "/livetv": ["dvrs", "epg", "sessions"],
 }
 
+# Cycle 50 replayed the legacy dispatcher's PREFIX registry from the exact Cycle 49
+# request list on kids (claimed 1.43.4), plexscratch (unclaimed 1.43.4) and
+# plexscratch42 (unclaimed 1.42.2). All 174 status cells were 200 and all 58 ordered
+# XML trees agreed byte-for-shape. The Cycle 49 prose called this a 57-path sweep, but
+# its executed P list contains 58 UNIQUE paths; keep the executed denominator. This is
+# the captured finite registry, not a startswith rule: `/co` and `/con` are empty even
+# though `/c` names channels/clients, and `/r` names resources where several other
+# one-letter paths are empty.
+PLUGIN_PREFIX_ROWS = {
+    "/s": ("browse", "clustering", "codecs", "defaultLibraries", "iva", "lyricfind",
+           "search", "security", "server", "servers", "sessions", "songkick",
+           "statistics", "system", "thetvdb", "tmdb", "ultrablur"),
+    "/st": ("sessions", "statistics"),
+    "/sta": ("sessions", "statistics"),
+    "/stat": ("sessions", "statistics"),
+    "/stati": ("statistics",),
+    "/statu": ("sessions",),
+    "/l": ("epg", "augmentation", "dvrs", "shared", "log", "sessions", "library"),
+    "/li": ("augmentation", "dvrs", "epg", "sessions", "shared", "library"),
+    "/lib": ("augmentation", "shared", "library"),
+    "/d": ("devices", "diagnostics", "dlna", "downloadQueue"),
+    "/de": ("devices",),
+    "/dev": ("devices",),
+    "/do": ("downloadQueue",),
+    "/down": ("downloadQueue",),
+    "/p": ("playQueues", "playlists"),
+    "/pl": ("playQueues", "playlists"),
+    "/a": ("accounts", "actions", "activities"),
+    "/ac": ("accounts", "actions", "activities"),
+    "/m": ("grabbers", "myplex", "providers", "subscriptions"),
+    "/me": ("grabbers", "providers", "subscriptions"),
+    "/med": ("grabbers", "providers", "subscriptions"),
+    "/sy": ("system",),
+    "/sys": ("system",),
+    "/up": ("updater",),
+    "/update": ("updater",),
+    "/re": ("resources",),
+    "/res": ("resources",),
+    "/resource": ("resources",),
+    "/c": ("channels", "clients"),
+    "/ch": ("channels",),
+    "/cl": ("clients",),
+    "/co": (),
+    "/con": (),
+    "/connection": (),
+    "/b": ("butler",),
+    "/but": ("butler",),
+    "/h": ("hubs",),
+    "/hu": ("hubs",),
+    "/i": (),
+    "/id": (),
+    "/n": ("neighborhood",),
+    "/t": ("transcode",),
+    "/tr": ("transcode",),
+    "/u": ("updater", "user"),
+    "/us": ("user",),
+    "/v": (),
+    "/w": (),
+    "/e": (),
+    "/f": (),
+    "/g": (),
+    "/j": (),
+    "/k": (),
+    "/q": (),
+    "/r": ("resources",),
+    "/x": (),
+    "/y": (),
+    "/z": (),
+    "/o": (),
+}
+
 # The single-segment paths that really implement a verb other than GET/HEAD. Measured
 # on plexscratch: everything else falls through to the dispatcher, including
 # `PUT /identity` and `PUT /hubs`, which a recorded rule had answering their own GET.
@@ -943,11 +1014,23 @@ def plugin_container(route):
         # Measured on both references: a real (empty, paged) container with no
         # `content` at all -- the one place plexsim let the dispatcher leak.
         return {"size": 0}
-    rows = PLUGIN_ROWS.get(route)
+    rows = PLUGIN_PREFIX_ROWS.get(route, PLUGIN_ROWS.get(route))
     if not rows:
         return {"size": 0, "content": "plugins"}
+    directories = []
+    for name in rows:
+        if name == "library":
+            # The registry's library plug-in row is not the ordinary key/title pair.
+            # JSON on all three witnesses also pins `share` as the NUMBER 0.
+            directories.append({"_pluginLibrary": True,
+                                "art": "/:/resources/library-art.png",
+                                "thumb": "/:/resources/library-icon.png",
+                                "key": "library", "title": "Library", "share": 0,
+                                "identifier": "com.plexapp.plugins.library"})
+        else:
+            directories.append({"key": name, "title": name})
     return {"size": len(rows), "content": "plugins",
-            "Directory": [{"key": name, "title": name} for name in rows]}
+            "Directory": directories}
 
 
 # Cycle 18, measured on kids (1.43.4) and zen (1.42.2) over 76 candidate field names:
@@ -6423,7 +6506,7 @@ class PlexSim:
             # GET -- `PUT /prefs`, `POST /setting`, `DELETE /users` and `/devices.xml`
             # are all 200 with `content="plugins"`. plexsim served the GET alone.
             logger.info("PLUGIN PATH %s %s -- legacy dispatcher", method, route)
-            return self.bare_container(size=0, content="plugins")
+            return self.bare_container(**plugin_container(route))
 
         with self.lock:
             self.unknown.append("%s %s" % (method, route))
