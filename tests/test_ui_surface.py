@@ -29116,6 +29116,24 @@ def main():
           and all("thumb" in row_c52u or True for row_c52u in directors_c52u.get("Directory") or []),
           "thumb=%s" % (added_c52u[0].get("thumb") if added_c52u else "no row"))
 
+    # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), five sub-keys
+    # each: on the SECTION save path an indexed tag parameter is a tag write whatever follows
+    # `.tag.` -- `actor[0].tag.role`, `.thumb`, `.id`, `.filter` and even `.zzz` are all 200s,
+    # and the role itself is stored EMPTY. plexsim skipped only `.tag.tag`, so the Edit
+    # dialog's own Cast row -- which sends the name and the role together -- was refused with
+    # a 400 from the section path while the item path accepted it.
+    status_c52v, _, _ = request(
+        base, "PUT", "/library/sections/%s/all?type=1&id=%s&actor[0].tag.tag=%s"
+        "&actor[0].tag.role=%s" % (movie_section, movie, quote("C52 Section Cast"),
+                                   quote("Detective")))
+    _, detail_c52v, _ = get(base, "/library/metadata/%s" % movie)
+    roles_c52v = [role_c52v for role_c52v
+                  in ((detail_c52v.get("Metadata") or [{}])[0].get("Role") or [])
+                  if role_c52v.get("tag") == "C52 Section Cast"]
+    check("an indexed tag write on the section path is not a scoped filter",
+          status_c52v == 200 and roles_c52v and not roles_c52v[0].get("role"),
+          "HTTP %s rows=%d" % (status_c52v, len(roles_c52v)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

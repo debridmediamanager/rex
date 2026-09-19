@@ -7806,7 +7806,7 @@ class PlexSim:
                 self._parsed_type(query, 400, 400)
                 for name, _ in query.get("_pairs") or []:
                     if name.startswith(("X-Plex-", "include", "exclude")) \
-                            or name in ("type", "id") or ".tag.tag" in name \
+                            or name in ("type", "id") or ".tag." in name \
                             or name.endswith((".value", ".locked")):
                         continue
                     # Measured: a TYPE-SCOPED filter (`show.title=`, `movie.year>>=`,
