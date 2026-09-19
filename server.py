@@ -18081,6 +18081,12 @@ class Handler(BaseHTTPRequestHandler):
                     head = more
                     if re.match(rb"[^ \r\n\t]{0,%d}[ \r\n\t]" % self.METHOD_BYTES, head):
                         break
+            except socket.timeout:
+                # Do not swallow the normal keep-alive idle timeout.  A buffered
+                # reader becomes unusable after it, and the next readline otherwise
+                # raises `OSError: cannot read from timed out object` outside the
+                # timeout handler, producing one traceback per idle connection.
+                raise
             except OSError:
                 head = b""
             if (len(head) > self.METHOD_BYTES
