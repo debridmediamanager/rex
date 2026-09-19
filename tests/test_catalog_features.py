@@ -623,6 +623,10 @@ def main():
                "url": catalog.items[201].get("thumb")}]
           and section_row.get("Image") == item_row.get("Image"),
           "item=%s section=%s" % (item_row.get("Image"), section_row.get("Image")))
+    untyped_library_keys = [row.get("ratingKey") for row in
+                            get("/library/all").get("Metadata") or []]
+    check("the untyped whole-library listing omits clips",
+          "201" not in untyped_library_keys, str(untyped_library_keys))
 
     clip = get("/library/metadata/201")
     clip_row = ((clip.get("Metadata") or [{}])[0]

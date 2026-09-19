@@ -5683,6 +5683,10 @@ class PlexSim:
                 # gap is this query alone. plexsim's collections are not rows in
                 # `catalog.items` and this handler only ever looked there, so any client
                 # or script enumerating the server through `/library/all` never saw one.
+                # Cycle 50: clips are the opposite exception.  kids' untyped list has
+                # fourteen metadata rows and omits its IVA clip; plexsim included it
+                # because the raw catalog source was used before adding collections.
+                source = [row for row in source if row.get("type") != "clip"]
                 for section in catalog.sections:
                     source += self.library.collections(section["key"])
             # Cycle 50: only the UNTYPED form defaults to the ratingKey. A TYPED
