@@ -10158,3 +10158,176 @@ PUT by its numeric id.
 1.43.x, dated per section), `docs/plex-openapi.json` (1.3 MB),
 `docs/pms-hls-protocol-probe.md`, `docs/shared-servers.md` (74 KB). That is the
 best PMS documentation found, and its mock is the skeleton plexsim grew from.
+
+#### The fiftieth pass — recovered findings, complete implementation, and the deferred register
+
+Cycle 50 was recovered from seven surviving commits plus the original session and three hunter
+transcripts. The recovered branch was not the completed cycle: one measured `/system` XML patch
+had been lost, **18 reported entries had not been implemented**, three transport/GDM rules lacked
+durable discriminators, and no full post-cycle suite had run. The audit separated the last two
+apparently evidence-bound entries on both isolated writable PMS versions, so all 18 became exact
+and actionable. Every one is now implemented; the one remaining Cycle-49 actionable entry was
+also closed. No reported entry was silently dropped.
+
+##### Territory A — all 23 matched-catalog findings
+
+1. A decision is serialized like `/status/sessions`: alphabetic scalar attributes and child
+   scalars, string `librarySectionID`/tag ids/rating values, list `UltraBlurColors`, and the
+   decision Stream's plain display title.
+2. Language tags are not generally reduced to the primary subtag. `zh-HK` and `zh-TW` use the
+   measured English catalogue. On `/:/prefs`, `pt-BR` and `pt-PT` are identical
+   complete regional documents and `hu-HU` is distinct. Three authorized GET-only captures held
+   174 rows each; the reported 1.42 surface serves 172, with **1,122 exact localisable cells**.
+3. The language enum is named and ordered in the request language; explicit English is not the
+   no-header self-named document.
+4. A season's inline OnDeck is the show's selected episode and appears only on the season that
+   owns it. An unwatched show or another season omits the block.
+5. `/unwatched` uses `titleSort` order.
+6. A child-bearing `/unwatched` row keeps `?unwatched=1` in its key.
+7. Typed `/library/all?type=N` takes that type's default order; only untyped `/library/all`
+   defaults to ratingKey.
+8. `CommonSenseMedia` is detail-only and absent from light rows.
+9. a rolled-up `tv.recentlyadded` row is dated by its newest leaf.
+10. a `/children` container carries `thumb` only when that row owns the artwork.
+11. show-library director/writer/producer axes are sourced from episodes.
+12. a movie's `/allLeaves` is `viewGroup=movie`, `viewMode=65592`.
+13. show `/allLeaves` re-stamps derived Image URLs with each leaf's `addedAt` projection.
+14. the root `library`, `livetv`, and `media` directories carry `count=3`.
+15. `includeExtras=1` propagates into an inline OnDeck row.
+16. the anchored search tier reads `titleSort`, not the display title.
+17. a searchable tag row is gated by a currently tagged top-level movie/show in the requested
+    library, then counts **all** currently tagged metadata rows in that library. Show+episode is
+    count 2 while the row key lists one show; an episode alone and zero membership emit no row;
+    remove/re-add proves a current count while the tag id persists.
+18. `/clients/profiles` follows deterministic profile-file order, not title order.
+19. the library provider advertises `video,audio,photo`.
+20. seven server preference values and `useLocalAssets` follow their captured defaults.
+21. a clip Image uses its own poster on extras listings.
+22. untyped `/library/all` omits clips.
+23. an untyped row's duration is its stored metadata runtime, not a Media duration, and may be
+    absent.
+
+##### Territory B — all eight official-client findings
+
+1–3. The Conversions view has a permanent background queue and list:
+`/playQueues?type=42`, `/playlists?type=42`, `/playQueues/1`, and the advertised
+`/playlists/39999/items` empty paged children response. Queue id 1 is reserved; user queues start
+after it. The type grammar, light row, invisibility elsewhere, version `-1`, and paired empty XML
+Playlist are all reproduced.
+
+4. `playbackState=progress` is a per-`X-Plex-Session-Identifier` minute latch. A session that
+crosses 60 seconds remains progress after rewinding or stopping below the minute; a fresh session
+is ignore despite the stored offset or prior scrobble. Changing only the client identifier does
+not reset the session latch.
+
+5. `/system` except `/system/agents` uses the plug-in framework's distinct XML writer: its own
+declaration, `application/xml` content type, indentation, compact empty elements, and self-closing
+empty container.
+
+6. eventsource response headers use the measured non-Origin and CORS order.
+
+7. trailing and doubled slashes are a finite per-route table. `/:/plugins` has the measured
+bare/single/double pattern 200/404/200; the other enumerated pass-through and refusal paths are
+kept explicitly rather than normalized globally.
+
+8. a normal idle keep-alive timeout closes quietly. A timeout during the method peek can poison
+the buffered reader and make its next read raise `OSError`; that operational exception is
+absorbed without changing the measured EOF.
+
+##### Territory C — all ten transport, GDM, and bundled-resource findings
+
+The absolute incomplete-request deadline is enforced inside line reads; whitespace-only obs-fold
+is refused; the ten-byte method bound still holds when the method arrives in pieces; a header
+value loses at most one optional leading space; unrecognized Transfer-Encoding and non-exact
+`chunked` values are ignored; a chunked GET is answered before its body arrives; post-response
+body draining has **zero grace**; GDM `Updated-At` moves only on library create/edit/delete; GDM
+peers are keyed by source address; and bundled `/:/resources/*` artwork works through the photo
+transcoder. Follow-up regressions also preserve first duplicate Content-Length, exact
+Transfer-Encoding whitespace, signed-64-bit chunk sizes, closing after a short chunk, and a
+lower-case pipelined method.
+
+GDM lifecycle controls are load-bearing: FriendlyName changes `Name` without touching the stamp;
+refresh, item edit, collection creation, and index deletion do not touch it. The offline GDM suite
+is now **103/103**.
+
+##### Cycle-49 deferred entries, closed or bounded
+
+The old prefix note said 57 paths, but the durable executed list contains **58 unique paths**.
+The complete registry was replayed as **58 paths × 3 references = 174 GETs**, all exact in root
+attributes, row order, element type, and row-attribute order. A captured finite registry was built;
+no rule was fitted to plexsim's own router.
+
+Numeric device platforms are now reproduced: the direct device row preserves normalized numeric
+JSON, while `/devices` and `/statistics/bandwidth` return the measured 500 until a nonnumeric
+overwrite repairs the anonymous row. The exhaustive numeric spelling table remains local-only so
+no device identity header can mutate a shared reference.
+
+`/connections` received the requested expanded disposable-only matrix: **78 successful observer
+snapshots and 26 bounded test sockets** across unclaimed 1.43.4 and 1.42.2. Blank/partial requests
+are Pending; routed rows expose method/path and an opaque hexadecimal request number; a partial
+second request becomes `Paused ... Pipelined - 1`; close becomes Finished; Pending survives to
+19.78 seconds and disappears at the next cleanup sample. But the leading ordinals and order are
+snapshot-unstable, the hexadecimal allocator has invisible gaps, Finished retirement is coupled
+to an opaque cleanup event, and the byte-count variant needs excluded media traffic. Exact
+emulation is therefore terminally underivable without fabricating visible state. No route was
+added.
+
+The other terminal entries remain unchanged: `transcoderVideoRemuxOnly` is a server capability
+plexsim does not possess; `/myplex/account` authToken is mapping-state-confounded and unsafe while
+the token gate can be off; no measured PMS-side GDM peer consumer exists; and deeper conversion
+generator/job rows require unadvertised encoder state.
+
+##### Finite denominators and safety
+
+The safe claim replay covered **111 of 116 families × four host slots × two formats × two auth
+states = 1,776 requests**; the five exclusions were three asset bodies, photo transcode, and the
+claim write. The retained full Cycle-49 matrix remains 928 reference and 232 plexsim status cells.
+The recovered dual-format pass issued **692 safe XML/JSON pairs** from 176 templates, parsed 614
+pairs / 9,206 nodes, and found zero structure, set, order, or scalar-type mismatches; the retained
+full matrix remains 1,331 pairs. The served client corpus is 208 JavaScript files / 9,318,734
+bytes, 205 of them versioned 4.147.1 assets, with no new reachable PMS family after the background
+children fix. The complete legacy prefix denominator is 58/58.
+
+One safety incident is retained rather than hidden: a first `/connections` wrapper misquoted its
+remote multiline command and sent exactly six tokenless `GET /connections` requests plus two
+blank, immediately closed TCP opens to the shared kids reference. It sent no token, device
+identity, or write. All later connection work was stopped on shared references and confined to
+inside-container loopback on the isolated copies. Both copies were restored, proved unclaimed and
+network-isolated, and released.
+
+#### The fifty-first pass — the stopping repeat reports no findings
+
+Cycle 51 froze behavior/test head `4069fd4` and independently repeated every finite Cycle-50
+axis without contacting a protected reference, either scratch copy, plex.tv, or a media body.
+Three read-only audits end literally **`NO FINDINGS`**.
+
+The exact-request/catalog audit maps **23/23** Territory-A and **8/8** Territory-B findings to a
+measured implementation and discriminating regression. Its retained denominators are 421 matched
+request pairs / 37,112 leaf cells; five official-client sessions / 519 flows / 34 method-path
+shapes / 79 non-identity query parameters; a durable 70-exchange reference walk; and the complete
+58-path prefix and three-document regional fixtures.
+
+The catalog/hierarchy audit closes all 12 assigned catalog changes and repeats catalog features
+**54/54**, regional preferences **3/3 documents and 1,122/1,122 cells**, navigation **28/28**,
+decisions **2,340/2,340**, mediainfo **35/35**, GDM **103/103**, and the prefix registry **58/58**.
+It re-audits the retained 36 axes, 18 subsets, 31 option cases / 248 requests, 270 screen cells,
+76 decision-option cells, 27 timeline-option cells, and 780 literal-path cells.
+
+The formats/discovery/transport audit locally repeats the 116-family claim registry (111 safe
+families, **444 GETs**), 173 safe dual-format pairs / 2,540 nodes / 13,072 scalar occurrences,
+the nine-route `/system` writer map, all transport boundaries, the 92-cell numeric-platform
+matrix plus four repair controls, TLS **10/10** under both LibreSSL and TLS-1.3-capable OpenSSL,
+GDM **103/103** plus eight lifecycle hooks, regional preferences, and the prefix registry. It
+also re-audits the retained 1,776-request claim replay, 692-pair safe dual-format replay, and
+1,331-pair complete dual-format corpus without pretending those external cells were freshly read.
+
+The completed `/connections` matrix remains a terminal evidence bound, not an actionable
+mismatch. The same is true of encoder-only generator/job state, the confounded account-token and
+transcoder-capability cells, unmeasured PMS-side GDM consumers, live zen while unavailable, and
+the explicitly safety-bounded first-beat/asynchronous/claimed-write cells. Every executable
+finite cell is green; no report turns an absent capability or unsafe instrument into a guessed
+implementation. Cycle 51 is therefore the required clean stopping cycle.
+
+Root's final uncontended mutable-surface run passed **1,756/1,756** checks with 14 explicit
+fixture/capability skips. An earlier green run was discarded because two worker-owned duplicate
+runs overlapped part of it; the authoritative pass ran alone on a pristine restarted fixture.

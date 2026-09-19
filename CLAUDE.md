@@ -2643,6 +2643,42 @@ precisely how the Seasons bug survived a fix attempt.
   `"1"`, because the fixture is read out of the XML, which writes `default="1"` either way.
   `to_xml` also hard-coded `container=True` for the ROOT, so `/myplex/account` sorted its
   attributes alphabetically in XML and kept the right order in JSON.
+- **Inline OnDeck is playback state, not a required detail block.** A show exposes one current
+  episode only when its watch state selects one; a season exposes the block only when it owns
+  that same episode. A pristine unwatched show and every other season omit it. The timeline's
+  `playbackState=progress` is separately latched by `X-Plex-Session-Identifier`: once that live
+  session crosses one minute, rewinding it below a minute remains `progress`, while a fresh
+  session is `ignore` even though the stored item offset is still above a minute.
+- **A searchable tag row has a top-level membership gate but an all-row count.** The tag must be
+  present on at least one current top-level movie/show in the requested library before search
+  emits a row. Once admitted, `count` is every current metadata row in that library carrying the
+  tag, including episodes: show+episode is count 2 while the row's key lists one show. An
+  episode alone emits no row; removing and re-adding proves the count is current, not cumulative,
+  while the tag id itself persists.
+- **Regional language equivalence is surface-specific.** `/:/prefs` has complete measured
+  regional catalogues: `pt-BR` and `pt-PT` are identical, `hu-HU` is distinct, and the reported
+  1.42 build serves 172 of each captured 174 rows. Do not collapse them to their primary subtag,
+  and do not project this exception onto unmeasured endpoints. `zh-HK` and `zh-TW` likewise route
+  to their measured English catalogue rather than generic `zh`.
+- **The legacy single-segment prefix dispatcher is a finite registry, not a prefix algorithm.**
+  The durable executed denominator is 58 unique paths (old prose said 57), identical over 174
+  reference GETs. Reproduce the captured ordered shapes only; deriving rows from plexsim's own
+  router would model plexsim rather than PMS. Double and trailing slashes are another finite
+  per-route table: there is no global path normalisation rule.
+- **GDM `Updated-At` moves only with library lifecycle.** Section create, edit and delete touch
+  the advertisement. FriendlyName changes `Name` without moving the stamp; refresh, item edit,
+  collection creation and index deletion do not touch it. A manual `disco.touch()` in a test is
+  not evidence for a server lifecycle hook.
+- **`/connections` is deliberately absent after a complete disposable-only matrix.** Both PMS
+  versions show Pending partial requests, Routing observers, Pipelined pauses, Finished rows and
+  a cleanup around the 20-second incomplete-request sweep, but snapshot ordinals/order are
+  unstable, the hexadecimal allocator has invisible gaps, Finished cleanup is coupled to an
+  opaque scheduler and the byte-count form requires excluded media traffic. Implementing any
+  visible row now would fabricate fields or lifecycle.
+- **A normal keep-alive idle close must be quiet.** The first timeout can occur in the method
+  peek and poison `BufferedReader`, whose following `readline()` raises `OSError: cannot read
+  from timed out object`. Close the connection there; never let the handler traceback while the
+  wire correctly reaches EOF.
 
 ## Conventions
 
