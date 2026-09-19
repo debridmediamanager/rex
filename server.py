@@ -947,6 +947,38 @@ for _resource in STATIC_RESOURCES:
         STATIC_RESOURCE_BYTES[_resource] = _handle.read()
 
 
+# Cycle 52: the seventeen plug-ins a real PMS hosts, in the order both references list
+# them. They are PMS's OWN bundled bundles -- the legacy agents, the framework, the media
+# flag resource and the web client -- so the list is a constant, not this account's or
+# this library's: kids (claimed 1.43.4), zen (claimed 1.42.2), plexscratch and
+# plexscratch42 answer the same seventeen identifiers in the same order. `state` is 4 on
+# every one but `com.plexapp.system`, which is 0 on all four servers. (zen answers 0 for
+# `com.plexapp.agents.imdb` as well, which is that one server's own plug-in state.)
+#
+# HANDOVER §8 inherited "legacy agents and the `/:/plugins` listing" from cycles 1-6 as a
+# deliberate bound on the grounds that plexsim hosts no plug-ins. The listing is not
+# hosting: it is a fixed table in the image, like `Resources/Profiles`, which cycle 31
+# already read out and shipped.
+PLUGIN_LIST = (
+    "com.plexapp.agents.fanarttv", "com.plexapp.framework", "com.plexapp.agents.htbackdrops",
+    "com.plexapp.agents.lastfm", "com.plexapp.agents.localmedia", "com.plexapp.agents.lyricfind",
+    "com.plexapp.resources.mediaflags", "com.plexapp.agents.movieposterdb",
+    "org.musicbrainz.agents.music", "com.plexapp.agents.none", "com.plexapp.agents.imdb",
+    "com.plexapp.agents.plexthememusic", "com.plexapp.system.scanners", "com.plexapp.system",
+    "com.plexapp.agents.themoviedb", "com.plexapp.agents.thetvdb", "com.plexapp.plugins.webclient",
+)
+
+# Each plug-in's own preference document, captured from kids and byte-identical on zen --
+# the framework's writer, with its single-quoted declaration and two-space indent. Four of
+# the seventeen answer the framework's 500 instead (`null` here): the framework itself,
+# the media flags resource, the scanners and the web client. `/:/plugins/{id}/prefs` is
+# what the Console's plug-in pane and `prefsKey` open, and plexsim -- which advertises
+# `prefsKey="/:/plugins/com.plexapp.system/prefs"` itself -- 404'd every one of them.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "plugin_prefs.json"), encoding="utf-8") as _handle:
+    PLUGIN_PREFS = json.load(_handle)
+
+
 # --------------------------------------------------------------------------
 # catalog
 # --------------------------------------------------------------------------
@@ -4594,6 +4626,18 @@ class PlexSim:
             # reads to a client as an accepted write. It has to come BEFORE that
             # fallthrough, which is what makes every other single segment answer.
             return ("error", 400, "plexsim: bad request")
+        if route.startswith("/:/plugins/") and method not in ("GET", "HEAD"):
+            # Cycle 52, swept over seven verbs on kids and zen: `/:/plugins/{hosted id}`
+            # and everything under it carry the plug-in framework's envelope, exactly as
+            # `/system` does -- a bare OPTIONS is an EMPTY 200, POST, PUT and DELETE are
+            # empty-bodied 404s, and PATCH is the version's own refusal. So the "only one
+            # on the surface" in cycle 18's `/system` note is two subtrees, not one.
+            pieces = route.split("/")[3:]
+            if pieces and pieces[0] in PLUGIN_LIST:
+                if method == "OPTIONS":
+                    return ("bare", 200)
+                if method != "PATCH":
+                    return ("bare", 404)
         if (len(segments) == 1 and method not in ("GET", "HEAD")
                 and (method, route) not in SINGLE_SEGMENT_WRITERS):
             return self.bare_container(**plugin_container(route))
@@ -5023,15 +5067,33 @@ class PlexSim:
             # is gone, and the client's Plugins page copes with that.
             return ("error", 404, "plexsim: not found")
         if route.startswith("/:/plugins"):
-            # The Plugins page. A real PMS lists its built-in agents here;
-            # plexsim has no plug-in host, so the honest answer is none.
-            if route in ("/:/plugins", "/:/plugins/"):
-                return self.bare_container(size=0, Plugin=[])
-            # Measured: `/:/plugins/<id>/prefs` is a 404 for a modern agent and for
-            # an unknown identifier alike (only a hosted legacy plug-in has one),
-            # and so is `/:/plugins/<id>`. plexsim answered an empty Plugin list to
-            # every path under it -- the Edit Library dialog asks unconditionally.
-            return ("error", 404, "plexsim: not found")
+            # The Plugins page. Cycle 52, measured on kids (1.43.4), zen (1.42.2) and both
+            # disposable copies, which answer the identical seventeen rows in the identical
+            # order: a real PMS lists its own bundled plug-ins here. The listing is the
+            # CORE's handler -- `text/xml;charset=utf-8`, container header order, no
+            # framework cookie -- where everything under it is the framework's.
+            if route == "/:/plugins":
+                rows = [{"identifier": identifier,
+                         "state": 0 if identifier == "com.plexapp.system" else 4}
+                        for identifier in PLUGIN_LIST]
+                return self.bare_container(size=len(rows), Plugin=rows)
+            # `/:/plugins/` and an identifier the server does not host are the ordinary
+            # 404 document; everything under a HOSTED identifier is the framework's own
+            # empty-bodied 404, and only `/prefs` answers a document.
+            pieces = route.split("/")[3:]
+            if not pieces or pieces[0] not in PLUGIN_LIST:
+                return ("error", 404, "plexsim: not found")
+            if pieces[1:] == ["prefs"]:
+                document = PLUGIN_PREFS.get(pieces[0])
+                if document is None:
+                    # The framework's own failure for the four bundles that have no
+                    # preference document: a 500 with the standard page and NO cookie.
+                    return ("error", 500, "plexsim: plug-in has no preferences")
+                return ("framework-xml", document.encode("utf-8"))
+            # A bare identifier, and any other path under one, is a 404 with an EMPTY
+            # body -- no `Content-Type` at all -- which is the framework's shape (cycle
+            # 21's `bare` kind) and not the API's 85-byte document.
+            return ("bare", 404)
         if route == "/system/services/url/lookup":
             # This is a legacy plug-in framework action called without its two
             # required arguments, not an empty PMS API collection.  Both target
@@ -19121,6 +19183,14 @@ class Handler(BaseHTTPRequestHandler):
         a byte-for-byte diff of the two servers reads.
         """
         path = (self.path or "").split("?")[0].rstrip("/")
+        if path.startswith("/:/plugins/"):
+            # Cycle 52: the framework names the cookie after the PLUG-IN, and sends it
+            # only for a hosted identifier -- the prefs document, the empty 404s and
+            # nothing else. Its value is the same `cereal1` blob `/system` carries.
+            pieces = path.split("/")[3:]
+            if pieces and pieces[0] in PLUGIN_LIST:
+                return "%s=%s" % (pieces[0], self.FRAMEWORK_COOKIE.partition("=")[2])
+            return None
         if path != "/system" and not path.startswith("/system/"):
             return None
         if path in ("/system/agents", "/system/proxy"):
@@ -20214,6 +20284,11 @@ class Handler(BaseHTTPRequestHandler):
                 # rate, the prefs write and the section tasks. A MediaContainer
                 # here is a different shape from the one the client parses.
                 self._send(result[1], "text/html", b"")
+                return
+            if kind == "framework-xml":
+                # Cycle 52: a plug-in's preference document, served verbatim. The
+                # framework writes `application/xml` and its own per-plug-in cookie.
+                self._send(200, "application/xml", result[1])
                 return
             if kind == "plugin-xml":
                 # The Framework closes its error response. GET still honours a
