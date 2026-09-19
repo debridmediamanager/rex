@@ -16840,6 +16840,10 @@ class PlexSim:
 
     def devices(self):
         """`/devices` -- every client the server has seen, as the reference lists."""
+        if self.sessions.has_numeric_platform():
+            # Cycle 49, reproduced on both writable references: the row itself is
+            # readable but this list's string cast throws `std::bad_cast`.
+            return ("error", 500, "plexsim: internal error")
         rows = self.sessions.devices()
         return self.bare_container(
             size=len(rows), identifier="com.plexapp.system.devices", Device=rows)
@@ -16874,6 +16878,10 @@ class PlexSim:
         """
         if which not in ("bandwidth", "media", "resources"):
             return ("error", 404, "plexsim: not found")
+        if which == "bandwidth" and self.sessions.has_numeric_platform():
+            # This family serialises the Device block even when the direct row can
+            # still be read, and hits the same measured bad cast as `/devices`.
+            return ("error", 500, "plexsim: internal error")
         if "timespan" in (query or {}) and not str((query or {})["timespan"]).lstrip("-").isdigit():
             # Measured on kids (1.43.4) and zen (1.42.2), on all three endpoints: the
             # rollup window has to parse as a whole number. `abc`, `1.5`, an empty value

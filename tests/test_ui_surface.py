@@ -7730,6 +7730,45 @@ def main():
           and anon_c49q[0].get("platform") == "Roku",
           "%s" % anon_c49q[:1])
 
+    # The same Cycle 49 measurement found that numeric spellings are stored as numbers.
+    # The direct row remains readable, but both list serializers raise std::bad_cast.
+    # Exercise every retained spelling locally; never send this identity-header sweep to
+    # a shared reference.
+    numeric_c49q = (
+        "0", "1", "2", "3", "5", "9", "10", "11", "12", "20", "100",
+        "007", "+1", "-0", "1.0", " 1", "1 ", "01", "0000",
+        "999999999", "2147483647", "2147483648", "1e3")
+    numeric_results_c49q = []
+    for spelling_c49q in numeric_c49q:
+        req_c49q = _u49q.Request(base + "/identity", headers={
+            "X-Plex-Device-Name": "C49 Numeric", "X-Plex-Platform": spelling_c49q,
+            "Accept": "application/json"})
+        _u49q.urlopen(req_c49q, timeout=10).read()
+        direct_status_c49q, direct_c49q, _ = get(base, "/devices/1")
+        stored_c49q = ((direct_c49q.get("Device") or [{}])[0]).get("platform")
+        numeric_results_c49q.append(
+            (spelling_c49q, direct_status_c49q, stored_c49q,
+             get(base, "/devices")[0],
+             get(base, "/statistics/bandwidth?timespan=6")[0]))
+    check("numeric device platforms stay readable directly and poison both list serializers",
+          all(direct == 200 and isinstance(stored, (int, float))
+              and devices == 500 and bandwidth == 500
+              for _, direct, stored, devices, bandwidth in numeric_results_c49q),
+          "%s" % numeric_results_c49q)
+    req_c49q = _u49q.Request(base + "/identity", headers={
+        "X-Plex-Device-Name": "C49 Anon", "X-Plex-Platform": "Roku",
+        "Accept": "application/json"})
+    _u49q.urlopen(req_c49q, timeout=10).read()
+    repaired_c49q = get(base, "/devices/1")
+    check("a nonnumeric overwrite repairs both numeric-platform list failures",
+          repaired_c49q[0] == 200
+          and ((repaired_c49q[1].get("Device") or [{}])[0]).get("platform") == "Roku"
+          and get(base, "/devices")[0] == 200
+          and get(base, "/statistics/bandwidth?timespan=6")[0] == 200,
+          "direct=%s devices=%s bandwidth=%s" %
+          (repaired_c49q[0], get(base, "/devices")[0],
+           get(base, "/statistics/bandwidth?timespan=6")[0]))
+
     # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
     # which is why cycle 23's 2,994-path child-order sweep could not see any of this.

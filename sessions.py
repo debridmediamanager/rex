@@ -29,7 +29,24 @@ when a `Session` is present and a `TranscodeSession` is not, which is the truth
 for a server with no encoder.
 """
 
+import re
 import time
+
+
+_NUMERIC_PLATFORM = re.compile(
+    r"^[ \t]*[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?[ \t]*$")
+
+
+def _stored_platform(value):
+    """Return the typed platform value PMS stores for a numeric spelling."""
+    text = str(value)
+    if not _NUMERIC_PLATFORM.fullmatch(text):
+        return value
+    text = text.strip()
+    try:
+        return float(text) if "." in text or "e" in text.lower() else int(text, 10)
+    except (OverflowError, ValueError):
+        return value
 
 # Cycle 26, re-measured on the writable copy on `long` media over TEN runs, polling once
 # a second and with the row identified by its own client identifier: the row went at
@@ -128,12 +145,13 @@ class Sessions:
         # one with `clientIdentifier=""` -- exactly as an identified one writes its own.
         # plexsim skipped it, so that row stayed nameless whatever a client sent. (This
         # is the same write that corrupted both references: a numeric `X-Plex-Platform`
-        # stores as a number there and makes `/devices` a 500. plexsim stores the string
-        # it was given and does not reproduce the crash -- recorded, not emulated.)
+        # stores as a number there and makes `/devices` a 500. Preserve that typed state;
+        # the two affected list endpoints reproduce the measured refusal while the
+        # direct device row remains readable.)
         if name:
             self._device_names[identifier] = name
         if platform:
-            self._device_platforms[identifier] = platform
+            self._device_platforms[identifier] = _stored_platform(platform)
         return self._devices[identifier]
 
     def devices(self):
@@ -149,6 +167,11 @@ class Sessions:
         """
         return [self._device_row(identifier, key)
                 for identifier, key in sorted(self._devices.items(), key=lambda kv: kv[1])]
+
+    def has_numeric_platform(self):
+        """Whether a listed Device would trip PMS's string-only serialiser."""
+        return any(isinstance(value, (int, float)) and not isinstance(value, bool)
+                   for value in self._device_platforms.values())
 
     def device(self, device_id):
         for identifier, key in self._devices.items():
