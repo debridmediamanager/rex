@@ -10561,6 +10561,17 @@ class PlexSim:
                                     % (section_id, leaf, tag.get("id"))}
                 if tag.get("thumb"):
                     entry["thumb"] = tag["thumb"]
+                elif leaf == "actor":
+                    # Cycle 52, measured on zen: 479 of its 3,416 actor rows carry
+                    # `/:/resources/actor-icon.png?t=<stamp>` and NOT ONE lacks a `thumb`,
+                    # while a director, writer or producer with no portrait simply carries
+                    # none -- so the placeholder belongs to the actor axis alone. A tag
+                    # the agent never fetched a portrait for stamps `t=-1`, which is what
+                    # both writable copies answer for an actor added by hand; plexsim has
+                    # no per-tag fetch time, so that is the honest stamp for every one.
+                    # Without it Plex Web's Cast grid draws a broken image where a real
+                    # PMS draws its silhouette.
+                    entry["thumb"] = "/:/resources/actor-icon.png?t=-1"
                 entry["key"] = str(tag.get("id"))
                 entry["title"] = name
                 if leaf == "genre":
