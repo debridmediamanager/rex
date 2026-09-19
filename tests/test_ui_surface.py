@@ -8359,18 +8359,16 @@ def main():
         ("a negative size", b"chunked", b"-5\r\nhello\r\n0\r\n\r\n"),
         ("gzip, chunked", b"gzip, chunked", b"5\r\nhello\r\n0\r\n\r\n"),
         ("an unknown encoding", b"bogus", b"5\r\nhello\r\n0\r\n\r\n"))}
-    # Cycle 50 REFUTED three of these cells, each the same way: cycle 49 read a refusal
-    # earned by the LEFTOVER bytes as the framing's own answer. A size larger than the
-    # body is 200 + close on all four references (the server runs out of body, it does not
-    # refuse), and an unrecognised `Transfer-Encoding` is IGNORED -- 200 + 200 with the
-    # socket kept when nothing follows it, and 200 + 400 here because the chunk framing
-    # behind it is read as the next request line.
+    # Cycle 50 refuted the unrecognised-encoding cells: that value is ignored, so framing
+    # behind it becomes the next request. The overflow cell was then rechecked with exact
+    # response draining on kids and both disposable versions: the parser is signed-64,
+    # so `FFFFFFFFFFFFFFFF` is its own 400 rather than a short body.
     LEFT49M = ("HTTP/1.1 200 OK", 2, True)
     want_c49m = {"one chunk": OK49M, "two chunks": OK49M, "0x prefix": OK49M,
                  "leading +": OK49M, "leading zeros": OK49M, "hex digit": OK49M,
                  "mixed case header": OK49M, "size with a trailing space": BAD49M,
                  "a chunk extension": BAD49M, "LF-only framing": BAD49M,
-                 "a size that overflows": SHORT49M, "a negative size": SHORT49M,
+                 "a size that overflows": BAD49M, "a negative size": SHORT49M,
                  "gzip, chunked": LEFT49M, "an unknown encoding": LEFT49M}
     check("a chunked request body is decoded, and its framing grammar is the reference's",
           got_c49m == want_c49m,
