@@ -5259,6 +5259,12 @@ class PlexSim:
             return ("plugin-xml", 500, URL_LOOKUP_ERROR)
 
         if segments[:1] == ["accounts"]:
+            if len(segments) > 2:
+                # Cycle 52, measured on kids and zen: an extra segment after the account
+                # id is a 404 -- `/accounts/1/history` and `/accounts/1/zzz` alike.
+                # plexsim's handler read `segments[1]` and ignored the rest, so both
+                # answered the account row, which reads as "this endpoint exists".
+                return ("error", 404, "plexsim: not found")
             if method == "DELETE":
                 # Cycle 19: a 404 for a known id and an unknown one alike, measured on
                 # plexscratch. plexsim answered the accounts LISTING to `DELETE
@@ -5267,6 +5273,10 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.accounts(segments[1] if len(segments) > 1 else None)
         if segments[:1] == ["devices"]:
+            if len(segments) > 2:
+                # Cycle 52: and the same on `/devices/{id}/zzz`, where plexsim answered
+                # the WHOLE device list.
+                return ("error", 404, "plexsim: not found")
             if method == "DELETE":
                 # Cycle 19, measured on plexscratch: `DELETE /devices/{id}` is a 404 for
                 # an id the server's own `/devices` lists (62 rows there) AND for one it
