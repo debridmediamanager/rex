@@ -8670,6 +8670,35 @@ def main():
           and method_c49l(b"OPTIONS /identity HTTP/1.1\r\nHost: h\r\n\r\n")[0] == "HTTP/1.1 200 OK",
           "")
 
+    # The limit applies across TCP reads, not only to the bytes available on the
+    # first peek.  The Cycle 50 parent accepted this staged eleven-byte token and
+    # reached the unknown-method 500; both PMS versions refuse it as soon as byte
+    # eleven arrives, before they need its delimiter.
+    split_method_c50j = _s49l.create_connection((_h49l, _p49l), timeout=3)
+    try:
+        split_method_c50j.sendall(b"A" * 10)
+        time.sleep(0.05)
+        split_method_c50j.sendall(
+            b"A /identity HTTP/1.1\r\nHost: h\r\n\r\n")
+        split_method_c50j.settimeout(3)
+        split_method_raw_c50j = b""
+        split_method_closed_c50j = False
+        try:
+            while True:
+                piece_c50j = split_method_c50j.recv(65536)
+                if not piece_c50j:
+                    split_method_closed_c50j = True
+                    break
+                split_method_raw_c50j += piece_c50j
+        except _s49l.timeout:
+            pass
+    finally:
+        split_method_c50j.close()
+    check("the method-token bound spans split TCP arrivals",
+          split_method_raw_c50j.startswith(b"HTTP/1.1 400 Bad Request\r\n")
+          and split_method_closed_c50j,
+          "%r closed=%s" % (split_method_raw_c50j[:40], split_method_closed_c50j))
+
     # Cycle 49, four refusal shapes on kids and zen, both identical: only the image
     # transcoder's 200 belongs to the image header family. Its 400s and 404s order the
     # length before the type, like every other refusal on the surface, where plexsim sent
@@ -8912,6 +8941,51 @@ def main():
     check("a declared body that never arrives closes the connection after the answer",
           lines_c49h2 == ["HTTP/1.1 200 OK"] and closed_c49h2,
           "%s closed=%s" % (lines_c49h2, closed_c49h2))
+
+    # There is no post-response grace timer.  PMS drains only entity bytes that were
+    # already buffered when it answered.  Cycle 49 waited another 50 ms, so a body
+    # sent after observing the response was consumed and its following request ran.
+    # Current behavior closes with exactly the first response even at a 20 ms delay.
+    delayed_body_c50j = _sock49h.create_connection((host_c49h, port_c49h), timeout=3)
+    delayed_raw_c50j = b""
+    delayed_closed_c50j = False
+    try:
+        delayed_body_c50j.sendall(
+            b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\n")
+        delayed_body_c50j.settimeout(3)
+        while b"\r\n\r\n" not in delayed_raw_c50j:
+            delayed_raw_c50j += delayed_body_c50j.recv(65536)
+        head_c50j, _, rest_c50j = delayed_raw_c50j.partition(b"\r\n\r\n")
+        length_c50j = int(next(
+            line.split(b":", 1)[1].strip() for line in head_c50j.split(b"\r\n")
+            if line.lower().startswith(b"content-length:")))
+        while len(rest_c50j) < length_c50j:
+            rest_c50j += delayed_body_c50j.recv(65536)
+        delayed_raw_c50j = head_c50j + b"\r\n\r\n" + rest_c50j
+        time.sleep(0.02)
+        try:
+            delayed_body_c50j.sendall(b"hello" +
+                                      b"GET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+        except OSError:
+            delayed_closed_c50j = True
+        try:
+            while True:
+                piece_c50j = delayed_body_c50j.recv(65536)
+                if not piece_c50j:
+                    delayed_closed_c50j = True
+                    break
+                delayed_raw_c50j += piece_c50j
+        except _sock49h.timeout:
+            pass
+    finally:
+        delayed_body_c50j.close()
+    delayed_statuses_c50j = [
+        delayed_raw_c50j[i:i + 40].split(b"\r\n")[0]
+        for i in range(len(delayed_raw_c50j))
+        if delayed_raw_c50j.startswith(b"HTTP/1.1 ", i)]
+    check("body draining has zero post-response grace",
+          delayed_statuses_c50j == [b"HTTP/1.1 200 OK"] and delayed_closed_c50j,
+          "%r closed=%s" % (delayed_statuses_c50j, delayed_closed_c50j))
 
     lines_c49h3, _ = wire_c49h(
         b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: +5\r\n\r\nhello"
