@@ -15742,9 +15742,14 @@ def main():
     def agents_c17d6(query_c17d6):
         return [a_c17d6.get("identifier") for a_c17d6
                 in (get(base, "/system/agents%s" % query_c17d6)[1].get("Agent") or [])]
-    bare_c17d6 = agents_c17d6("")
-    movie_c17d6 = agents_c17d6("?mediaType=1")
-    show_c17d6 = agents_c17d6("?mediaType=2")
+    # Cycle 53 scopes this to the MODERN rows: a real PMS lists the eleven legacy
+    # plug-in agents first, which plexsim now does too, so a check written against
+    # its four-agent catalogue was testing the bound rather than the surface.
+    def modern_c17d6(rows_c17d6):
+        return [a_c17d6 for a_c17d6 in rows_c17d6 if str(a_c17d6).startswith("tv.plex.")]
+    bare_c17d6 = modern_c17d6(agents_c17d6(""))
+    movie_c17d6 = modern_c17d6(agents_c17d6("?mediaType=1"))
+    show_c17d6 = modern_c17d6(agents_c17d6("?mediaType=2"))
     check("the NFO agents are 1.43.4's and not 1.42.2's",
           not [a_c17d6 for a_c17d6 in bare_c17d6 if "nfo" in str(a_c17d6)]
           and bare_c17d6 == ["tv.plex.agents.movie", "tv.plex.agents.series",
@@ -18188,7 +18193,11 @@ def main():
     _, typed_c21a, _ = get(base, "/system/agents?mediaType=1")
 
     def shape_c21a(doc_c21a):
-        rows_c21a = doc_c21a.get("Agent") or []
+        # Cycle 53: the LEGACY rows are the other half of this rule -- they carry a
+        # `MediaType` in the bare form and a `Language` list in the typed one -- so the
+        # modern rule is asserted on the modern rows.
+        rows_c21a = [r_c21a for r_c21a in doc_c21a.get("Agent") or []
+                     if str(r_c21a.get("identifier", "")).startswith("tv.plex.")]
         return [(r_c21a.get("identifier"),
                  len(r_c21a.get("Language") or []), len(r_c21a.get("MediaType") or []))
                 for r_c21a in rows_c21a]
@@ -21266,12 +21275,13 @@ def main():
         "utf-8", "replace")
     typed_c27i = request(base, "GET", "/system/agents?mediaType=1",
                          want_json=False)[1].decode("utf-8", "replace")
-    first_c27i = re.search(r"<Agent\b[^>]*>(.*?)</Agent>", bare_c27i, re.S)
+    # Cycle 53: the first `<Agent>` is now a LEGACY row, which carries the `MediaType`
+    # this rule is about; read the first MODERN one.
+    first_c27i = re.search(r'<Agent\b[^>]*identifier="tv\.plex[^>]*>(.*?)</Agent>',
+                           bare_c27i, re.S)
     body_c27i = first_c27i.group(1) if first_c27i else ""
     check("the bare /system/agents carries the Language rows and no MediaType",
-          body_c27i.count("<Language") >= 40 and body_c27i.count("<MediaType") == 0
-          and bare_c27i.count("<Language") == typed_c27i.count("<Language")
-          * (bare_c27i.count("<Agent") / max(1, typed_c27i.count("<Agent"))),
+          body_c27i.count("<Language") >= 40 and body_c27i.count("<MediaType") == 0,
           "bare lang=%d mediatype=%d agents=%d | typed lang=%d agents=%d"
           % (bare_c27i.count("<Language"), bare_c27i.count("<MediaType"),
              bare_c27i.count("<Agent"), typed_c27i.count("<Language"),
@@ -21284,10 +21294,13 @@ def main():
     # this on the LEGACY rows' own pairs, which the modern rows do not carry.
     agent_xml_c27j = request(base, "GET", "/system/agents",
                              want_json=False)[1].decode("utf-8", "replace")
-    agent_names_c27j = re.findall(r"(\w+)=", re.search(r"<Agent\b[^>]*>",
-                                                       agent_xml_c27j).group(0))
-    agent_json_c27j = list((get(base, "/system/agents")[1].get("Agent")
-                            or [{}])[0].keys())
+    # Cycle 53: the MODERN row's order, read past the eleven legacy rows that now lead.
+    agent_names_c27j = re.findall(
+        r"(\w+)=", re.search(r'<Agent\b[^>]*identifier="tv\.plex[^>]*>',
+                             agent_xml_c27j).group(0))
+    agent_json_c27j = list(next(
+        (r_c27j for r_c27j in get(base, "/system/agents")[1].get("Agent") or []
+         if str(r_c27j.get("identifier", "")).startswith("tv.plex.")), {}).keys())
     check("a modern Agent row leads identifier, name, hasPrefs, id",
           agent_names_c27j[:4] == ["identifier", "name", "hasPrefs", "id"]
           and [k_c27j for k_c27j in agent_json_c27j
