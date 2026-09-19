@@ -20035,9 +20035,21 @@ class Handler(BaseHTTPRequestHandler):
     # token IS given (`/channels` is a real two-row Directory with one). It is not a
     # rule about the plug-in framework, and not about whether the path exists: it is
     # this list.
+    # Cycle 52 swept the whole single-segment vocabulary -- 131 names, from the servers'
+    # own binaries -- with no token at all, and the partition is wider than cycle 16's
+    # eleven. `connections` and `dlna` are 401s on kids AND zen and were 403s here; both
+    # are routes cycle 49 added, and the list was not revisited when they landed.
     UNAUTHORISED_401_ROOTS = ("library", "hubs", "playlists", "devices", "butler",
                               "servers", "clients", "accounts", "activities",
-                              "playQueues", "log")
+                              "playQueues", "log", "connections", "dlna")
+
+    # And three single-segment paths answer their OWN refusal BEFORE the gate, on both
+    # references: `/search` its no-parameters 400, `/downloadQueue` a 404 (a real PMS has
+    # no such route -- plexsim's own download queue is its invention, and the
+    # unauthenticated answer is still the measured one), and `/player` a 400 on 1.42.2,
+    # the build plexsim reports (kids answers 401 there, so it is a version split).
+    # plexsim answered the generic 403 to all three.
+    UNAUTHORISED_OWN_REFUSAL = {"search": 400, "downloadQueue": 404, "player": 400}
 
     # Cycle 36, measured on kids and zen over seven statuses -- 400, 401, 403, 404, 406,
     # 416 and 500 -- and across every path family that answers one: a real PMS's refusal
@@ -20088,6 +20100,9 @@ class Handler(BaseHTTPRequestHandler):
         if route in ("", "/"):
             return 401, self.UNAUTHORISED_ROOT
         segments = [piece for piece in route.split("/") if piece]
+        if len(segments) == 1 and segments[0] in self.UNAUTHORISED_OWN_REFUSAL:
+            status = self.UNAUTHORISED_OWN_REFUSAL[segments[0]]
+            return status, self._error_document(status)
         if len(segments) == 1 and segments[0] not in self.UNAUTHORISED_401_ROOTS:
             return 403, self.FORBIDDEN_BODY
         if method in ("GET", "HEAD") and not self.WRITE_SHAPED.search(self.path):
@@ -20109,6 +20124,12 @@ class Handler(BaseHTTPRequestHandler):
             return True
         route, raw_query = _target_parts(path)
         if route == "/identity" or route.startswith("/web"):
+            return True
+        if route in ("/manage", "/manage/"):
+            # Cycle 52, measured on kids and zen with no token: `/manage` answers its 302
+            # to the web client, like `/web` -- it is the short url a person types, and
+            # refusing it would send them to a 403 instead of the sign-in page. plexsim
+            # answered the generic 403.
             return True
         if route in STATIC_RESOURCES and self.command in ("GET", "HEAD"):
             # Cycle 52, measured on kids and zen with no token at all: the two

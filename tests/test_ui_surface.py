@@ -68,6 +68,12 @@ results = []
 skipped = []
 
 
+class _NoRedirect_c52l(urllib.request.HTTPRedirectHandler):
+    """Cycle 52: `/manage` answers a 302 without a token, and urllib follows it."""
+
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
 def check(label, ok, detail=""):
     results.append((label, bool(ok)))
     print("  %s  %-52s %s" % (GREEN + "PASS" + OFF if ok else RED + "FAIL" + OFF,
@@ -2883,6 +2889,28 @@ def main():
               and b"web/index.html" in root_c16w and len(root_c16w) == 193,
               "%s ; root body %d bytes, redirect=%s"
               % (routed_c16w, len(root_c16w), b"web/index.html" in root_c16w))
+        # Cycle 52, swept over the whole single-segment vocabulary -- 131 names taken from
+        # the two servers' own binaries -- with NO token, on kids (1.43.4) and zen
+        # (1.42.2), which agree on every name but `/player`: the unauthenticated partition
+        # is wider than the eleven 401s cycle 16 recorded. `/connections` and `/dlna` --
+        # both routes cycle 49 added, after this list was written -- are 401s; `/manage`
+        # answers its 302 to the web client like `/web`; and `/search`, `/downloadQueue`
+        # and `/player` answer their OWN refusal before the gate (400, 404 and, on 1.42.2,
+        # 400). plexsim answered the generic 403 to all six.
+        widened_c52l = {path_c52l: gated_status(path_c52l)[0]
+                        for path_c52l in ("/connections", "/dlna", "/search",
+                                          "/downloadQueue", "/player")}
+        redirect_c52l = None
+        try:
+            _opener_c52l = urllib.request.build_opener(_NoRedirect_c52l())
+            _opener_c52l.open(gated_base + "/manage", timeout=10)
+        except urllib.error.HTTPError as error_c52l:
+            redirect_c52l = error_c52l.code
+        check("the unauthenticated partition covers the routes added since cycle 16",
+              widened_c52l == {"/connections": 401, "/dlna": 401, "/search": 400,
+                               "/downloadQueue": 404, "/player": 400}
+              and redirect_c52l == 302,
+              "%s manage=%s" % (widened_c52l, redirect_c52l))
         # /security/token is the one exception: its own 400 and 403, not a 401.
         bare, _, _ = gated_status("/security/token")
         forbidden, _, _ = gated_status("/security/token?type=delegation&scope=all", "nope")
