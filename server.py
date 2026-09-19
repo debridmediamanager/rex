@@ -4798,6 +4798,7 @@ class PlexSim:
     # only thing that knows -- and read the kind it returns. `_inner_refuses` carries the
     # two-way split back: a non-200 is a 404 here and a 200 that is not an image is a 500.
     _inner_refuses = False
+    _inner_result = None
 
     def _transcodable(self, inner, inner_query, headers, address):
         """Would a GET of `inner` answer an IMAGE? Sets `_inner_refuses` when it 404s."""
@@ -4825,6 +4826,7 @@ class PlexSim:
         kind = result[0] if isinstance(result, tuple) else ""
         if kind in ("image", "png", "image-key", "composite"):
             self._inner_refuses = False
+            self._inner_result = result
             return True
         # A 200 whose body is not an image: the reference reads the bytes and fails to
         # decode them, which is the 500.
@@ -6544,6 +6546,16 @@ class PlexSim:
                         inner, dict(urllib.parse.parse_qsl(parsed.query)), headers, address):
                     return ("error", 404, "plexsim: not found") \
                         if self._inner_refuses else ("error", 500, "plexsim: server error")
+                else:
+                    # And the bytes are the DIRECT path's own. `resolve_artwork` only
+                    # knows item artwork urls, so a section composite fell through to the
+                    # generated grey PNG while its direct path answers the library's real
+                    # jpeg -- the transcoder handing back a different picture from the one
+                    # it was pointed at.
+                    inner_result = self._inner_result
+                    if inner_result[0] == "image":
+                        return ("image", self._at_width(inner_result[1], query.get("width")))
+                    return inner_result
             # The client asks for artwork through the transcoder, passing the
             # real path in `url`. Resolve that to the row's TMDB image when
             # there is one; only fall back to a generated tile when there is not.

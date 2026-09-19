@@ -28716,6 +28716,22 @@ def main():
     check("the transcoder mirrors the direct path's refusal",
           not wrong_c52e, "; ".join(wrong_c52e)[:300])
 
+    # Cycle 52: and the transcoder answers the direct path's own BYTES. `resolve_artwork`
+    # only knows item artwork urls, so a section composite reached the generated grey PNG
+    # where its direct path answers the library's real jpeg -- the transcoder handing back a
+    # different picture from the one it was pointed at.
+    composite_c52f = "/library/sections/%s/composite/0" % movie_section
+    _, direct_body_c52f, direct_head_c52f = request(base, "GET", composite_c52f, want_json=False)
+    _, through_body_c52f, through_head_c52f = request(
+        base, "GET", "/photo/:/transcode?width=200&height=200&url=" + quote(composite_c52f),
+        want_json=False)
+    check("the transcoder serves the composite's own bytes",
+          direct_head_c52f.get("Content-Type") == through_head_c52f.get("Content-Type")
+          and len(direct_body_c52f) == len(through_body_c52f) and len(direct_body_c52f) > 0,
+          "direct %s/%d through %s/%d"
+          % (direct_head_c52f.get("Content-Type"), len(direct_body_c52f),
+             through_head_c52f.get("Content-Type"), len(through_body_c52f)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
