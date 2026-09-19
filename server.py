@@ -11174,6 +11174,21 @@ class PlexSim:
             return self.item_action(row, leaf, method, query)
         if leaf == "matches":
             return self.matches(row, query)
+        if leaf in ("art", "poster", "thumb") and method not in ("GET", "HEAD", "PUT",
+                                                                 "DELETE", "PATCH"):
+            # Cycle 52, measured on plexscratch42 (1.42.2 -- the build plexsim reports)
+            # and plexscratch (1.43.4) on a row that OWNS its poster, three repeats each:
+            # the artwork READ leaves take GET, HEAD, PUT (the write, a 400 with no
+            # parameters) and DELETE (a 404 on 1.42.2) and answer the ordinary 85-byte
+            # 404 to POST and to a bare OPTIONS. plexsim had no verb gate here at all, so
+            # `POST /library/metadata/{id}/thumb` and a bare `OPTIONS` both answered the
+            # whole JPEG -- the same class cycle 15 closed for twenty read-only routes and
+            # cycle 31 for ten more, and the shape python-plexapi's capability probes send.
+            return ("error", 404, "plexsim: not found")
+        if leaf in ("art", "poster", "thumb") and method == "PUT" and len(segments) >= 5:
+            # And the VERSIONED path is not the write: `PUT /thumb/{v}` is a 404 on both
+            # versions where the bare `PUT /thumb` is the artwork pick's own 400.
+            return ("error", 404, "plexsim: not found")
         if leaf in ("art", "poster", "thumb") and method in ("GET", "HEAD") \
                 and not self._owns_artwork(row, leaf):
             # Cycle 21: the guard is the READ's. Measured on plexscratch, a WRITE to a

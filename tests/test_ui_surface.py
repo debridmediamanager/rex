@@ -28732,6 +28732,35 @@ def main():
           % (direct_head_c52f.get("Content-Type"), len(direct_body_c52f),
              through_head_c52f.get("Content-Type"), len(through_body_c52f)))
 
+    # Cycle 52, measured on plexscratch42 (1.42.2, the build plexsim reports) and plexscratch
+    # (1.43.4) on a row that owns its poster, three repeats each: an artwork READ leaf takes
+    # GET, HEAD, PUT and DELETE, and answers the ordinary 85-byte 404 to POST and to a bare
+    # OPTIONS -- and the VERSIONED path 404s the PUT as well. plexsim had no verb gate there,
+    # so `POST /library/metadata/{id}/thumb` and a bare `OPTIONS` each answered the whole
+    # image.
+    _, detail_c52g, _ = get(base, "/library/metadata/%s" % movie)
+    row_c52g = (detail_c52g.get("Metadata") or [{}])[0]
+    version_c52g = row_c52g.get("updatedAt")
+    wrong_c52g = []
+    for leaf_c52g in ("thumb", "art", "poster"):
+        for method_c52g, suffix_c52g, want_c52g in (
+                ("GET", "", 200), ("POST", "", 404), ("OPTIONS", "", 404),
+                ("POST", "/%s" % version_c52g, 404), ("PUT", "/%s" % version_c52g, 404),
+                ("OPTIONS", "/%s" % version_c52g, 404)):
+            status_c52g, body_c52g, head_c52g = request(
+                base, method_c52g, "/library/metadata/%s/%s%s" % (movie, leaf_c52g, suffix_c52g),
+                want_json=False)
+            if status_c52g != want_c52g:
+                wrong_c52g.append("%s %s%s -> %s" % (method_c52g, leaf_c52g, suffix_c52g,
+                                                     status_c52g))
+            elif want_c52g == 404 and (head_c52g.get("Content-Type") != "text/html"
+                                       or len(body_c52g) != 85):
+                wrong_c52g.append("%s %s%s body %s/%s" % (method_c52g, leaf_c52g, suffix_c52g,
+                                                          head_c52g.get("Content-Type"),
+                                                          len(body_c52g)))
+    check("an artwork read leaf refuses POST and a bare OPTIONS",
+          not wrong_c52g, "; ".join(wrong_c52g)[:300])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
