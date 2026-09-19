@@ -28531,6 +28531,43 @@ def main():
           "hub shows=%d shared=%d/%d"
           % (len(prefs_show_c46e), len(shared_prefs_c46e), len(shared_plain_c46e)))
 
+    # Cycle 52, measured on kids (1.43.4), zen (1.42.2) and plexscratch42 (unclaimed 1.42.2),
+    # which agree on all 190 single-segment prefixes of the dispatcher's 31 first segments:
+    # the legacy plug-in dispatcher lists the LAST SEGMENT of every registered prefix that
+    # begins with the requested path and is STRICTLY LONGER than it. Cycle 50 captured 58
+    # points of that rule as a table, so 119 of the 190 -- every prefix it had not sampled --
+    # answered an empty listing here where all three references answer rows.
+    expected_c52a = {
+        "/account": ["accounts"],
+        "/acco": ["accounts"],
+        "/activitie": ["activities"],
+        "/serve": ["server", "servers"],
+        "/server": ["servers"],
+        "/servi": ["browse", "clustering", "codecs", "defaultLibraries", "iva",
+                   "lyricfind", "songkick", "thetvdb", "tmdb", "ultrablur"],
+        "/librar": ["augmentation", "shared", "library"],
+        "/liv": ["dvrs", "epg", "sessions"],
+        "/searc": ["search"],
+        "/transcod": ["transcode"],
+        "/playlist": ["playlists"],
+        "/statistic": ["statistics"],
+        # the strictness: a path that IS a registered prefix lists nothing of its own
+        "/statistics": [],
+        # `/connections` is a native route, so no prefix of it is registered
+        "/co": [],
+        # the one recorded order, and the `library` row written last
+        "/l": ["epg", "augmentation", "dvrs", "shared", "log", "sessions", "library"],
+        "/lib": ["augmentation", "shared", "library"],
+    }
+    wrong_c52a = []
+    for path_c52a, want_c52a in sorted(expected_c52a.items()):
+        _, body_c52a, _ = get(base, path_c52a)
+        got_c52a = [row_c52a.get("key") for row_c52a in body_c52a.get("Directory") or []]
+        if got_c52a != want_c52a:
+            wrong_c52a.append("%s got %s want %s" % (path_c52a, got_c52a, want_c52a))
+    check("the dispatcher's prefix registry follows its own rule",
+          not wrong_c52a, "; ".join(wrong_c52a)[:300])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

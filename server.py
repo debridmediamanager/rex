@@ -927,90 +927,57 @@ for _source in list((TRANSLATIONS.get("enumValues") or {})):
 # --------------------------------------------------------------------------
 
 
-# The legacy plug-in dispatcher's own directory listings, measured on kids (1.43.4) and
-# zen (1.42.2), which answer these byte for byte. Cycle 17 found `/livetv` was one of
-# them; cycle 18 swept the rest. A path not named here answers the empty
-# `{size: 0, content: "plugins"}` every unknown single-segment path does -- except
-# `/security`, which carries no `content` key at all.
-PLUGIN_ROWS = {
-    "/library": ["augmentation", "shared"],
-    "/status": ["sessions"],
-    "/media": ["grabbers", "providers", "subscriptions"],
-    "/services": ["browse", "clustering", "codecs", "defaultLibraries", "iva",
-                  "lyricfind", "songkick", "thetvdb", "tmdb", "ultrablur"],
-    "/livetv": ["dvrs", "epg", "sessions"],
+# Cycle 52 derived the legacy dispatcher's listing from its own RULE instead of
+# sampling it. A breadth-first walk of every prefix over the alphabet on plexscratch42
+# (1.42.2) recovered 154 non-empty listings, and one rule reproduces all 154 with ZERO
+# membership mismatches: the dispatcher answers the LAST SEGMENT of every registered
+# legacy prefix that BEGINS WITH the requested path and is STRICTLY LONGER than it.
+#
+# The strictness is visible: `/statistic` names `statistics` and `/statistics` itself is
+# EMPTY. So is `/server`, which names only `servers`. And `/co` is empty although
+# `/connections` exists, because `/connections` is a native route and not a registered
+# plug-in prefix -- which is why cycle 50 read the registry as a table with holes in it.
+#
+# These are the 45 registered prefixes the walk recovered. Confirmed on kids (claimed
+# 1.43.4), zen (claimed 1.42.2) and plexscratch42 (unclaimed 1.42.2), which agree on all
+# 190 prefixes of their first segments; cycle 50's 58-path table was this same rule
+# sampled at 58 points, and 119 of those 190 -- `/account`, `/serv`, `/play`, `/sea`,
+# `/transcod` and the rest -- answered rows on all three references and an empty listing
+# here.
+PLUGIN_REGISTRY = (
+    "/accounts", "/actions", "/activities", "/butler", "/channels", "/clients",
+    "/devices", "/diagnostics", "/dlna", "/downloadQueue", "/hubs", "/library",
+    "/library/augmentation", "/library/shared", "/livetv/dvrs", "/livetv/epg",
+    "/livetv/sessions", "/log", "/media/grabbers", "/media/providers",
+    "/media/subscriptions", "/myplex", "/neighborhood", "/playQueues", "/playlists",
+    "/resources", "/search", "/security", "/server", "/servers", "/services/browse",
+    "/services/clustering", "/services/codecs", "/services/defaultLibraries",
+    "/services/iva", "/services/lyricfind", "/services/songkick", "/services/thetvdb",
+    "/services/tmdb", "/services/ultrablur", "/statistics", "/status/sessions",
+    "/system", "/transcode", "/updater", "/user",
+)
+
+# 148 of the 154 listings come back in byte order of the row key. The six that do not are
+# exactly the ones carrying the built-in `library` plug-in row, which is written LAST.
+# `/l` is the one cell neither rule explains: its order is stable across four servers and
+# both versions and identical to what cycle 50 captured, so it is recorded here rather
+# than fitted to something that would also have to explain the other 153.
+PLUGIN_ROW_ORDER = {
+    "/l": ("epg", "augmentation", "dvrs", "shared", "log", "sessions", "library"),
 }
 
-# Cycle 50 replayed the legacy dispatcher's PREFIX registry from the exact Cycle 49
-# request list on kids (claimed 1.43.4), plexscratch (unclaimed 1.43.4) and
-# plexscratch42 (unclaimed 1.42.2). All 174 status cells were 200 and all 58 ordered
-# XML trees agreed byte-for-shape. The Cycle 49 prose called this a 57-path sweep, but
-# its executed P list contains 58 UNIQUE paths; keep the executed denominator. This is
-# the captured finite registry, not a startswith rule: `/co` and `/con` are empty even
-# though `/c` names channels/clients, and `/r` names resources where several other
-# one-letter paths are empty.
-PLUGIN_PREFIX_ROWS = {
-    "/s": ("browse", "clustering", "codecs", "defaultLibraries", "iva", "lyricfind",
-           "search", "security", "server", "servers", "sessions", "songkick",
-           "statistics", "system", "thetvdb", "tmdb", "ultrablur"),
-    "/st": ("sessions", "statistics"),
-    "/sta": ("sessions", "statistics"),
-    "/stat": ("sessions", "statistics"),
-    "/stati": ("statistics",),
-    "/statu": ("sessions",),
-    "/l": ("epg", "augmentation", "dvrs", "shared", "log", "sessions", "library"),
-    "/li": ("augmentation", "dvrs", "epg", "sessions", "shared", "library"),
-    "/lib": ("augmentation", "shared", "library"),
-    "/d": ("devices", "diagnostics", "dlna", "downloadQueue"),
-    "/de": ("devices",),
-    "/dev": ("devices",),
-    "/do": ("downloadQueue",),
-    "/down": ("downloadQueue",),
-    "/p": ("playQueues", "playlists"),
-    "/pl": ("playQueues", "playlists"),
-    "/a": ("accounts", "actions", "activities"),
-    "/ac": ("accounts", "actions", "activities"),
-    "/m": ("grabbers", "myplex", "providers", "subscriptions"),
-    "/me": ("grabbers", "providers", "subscriptions"),
-    "/med": ("grabbers", "providers", "subscriptions"),
-    "/sy": ("system",),
-    "/sys": ("system",),
-    "/up": ("updater",),
-    "/update": ("updater",),
-    "/re": ("resources",),
-    "/res": ("resources",),
-    "/resource": ("resources",),
-    "/c": ("channels", "clients"),
-    "/ch": ("channels",),
-    "/cl": ("clients",),
-    "/co": (),
-    "/con": (),
-    "/connection": (),
-    "/b": ("butler",),
-    "/but": ("butler",),
-    "/h": ("hubs",),
-    "/hu": ("hubs",),
-    "/i": (),
-    "/id": (),
-    "/n": ("neighborhood",),
-    "/t": ("transcode",),
-    "/tr": ("transcode",),
-    "/u": ("updater", "user"),
-    "/us": ("user",),
-    "/v": (),
-    "/w": (),
-    "/e": (),
-    "/f": (),
-    "/g": (),
-    "/j": (),
-    "/k": (),
-    "/q": (),
-    "/r": ("resources",),
-    "/x": (),
-    "/y": (),
-    "/z": (),
-    "/o": (),
-}
+
+def plugin_rows(route):
+    """The dispatcher's ordered row keys for one single-segment path."""
+    if route in PLUGIN_ROW_ORDER:
+        return list(PLUGIN_ROW_ORDER[route])
+    names = sorted({registered.rsplit("/", 1)[-1] for registered in PLUGIN_REGISTRY
+                    if registered.startswith(route) and len(registered) > len(route)})
+    if "library" in names:
+        names = [name for name in names if name != "library"] + ["library"]
+    return names
+
+
 
 # The single-segment paths that really implement a verb other than GET/HEAD. Measured
 # on plexscratch: everything else falls through to the dispatcher, including
@@ -1034,7 +1001,7 @@ def plugin_container(route):
         # Measured on both references: a real (empty, paged) container with no
         # `content` at all -- the one place plexsim let the dispatcher leak.
         return {"size": 0}
-    rows = PLUGIN_PREFIX_ROWS.get(route, PLUGIN_ROWS.get(route))
+    rows = plugin_rows(route)
     if not rows:
         return {"size": 0, "content": "plugins"}
     directories = []
