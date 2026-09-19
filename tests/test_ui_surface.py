@@ -29138,6 +29138,32 @@ def main():
           status_c52v == 200 and roles_c52v and not roles_c52v[0].get("role"),
           "HTTP %s rows=%d" % (status_c52v, len(roles_c52v)))
 
+    # Cycle 52, corrected from the reference image's own source rather than from the twelve
+    # cells the first patch fitted: `agentservice.py` declares
+    # `search(self, identifier, mediaType, lang, manual=False, **kwargs)`,
+    # `update(self, mediaType, guid, id=None, ...)`,
+    # `list_contributors(self, mediaType, primaryAgent, primary_only=True)` and
+    # `media_get(self, mediaType, guid, url, parentGUID=None)`, and `runtime.py` calls
+    # `f(**d)` with the whole query -- so `given` counts `self` plus every supplied name the
+    # function DECLARES, an undeclared one is "got an unexpected keyword argument", and
+    # `search`'s `**kwargs` is why it alone swallows one. The fitted table had `identifier`
+    # unknown to `search` (which really counts it) and known to `update` (which really
+    # refuses it).
+    wrong_c52w = []
+    for path_c52w, want_c52w in (
+            ("/system/agents/search?identifier=x", b"(2 given)"),
+            ("/system/agents/search?lang=en", b"(2 given)"),
+            ("/system/agents/search?zzz=1", b"(1 given)"),
+            ("/system/agents/update?identifier=x", b"unexpected keyword argument 'identifier'"),
+            ("/system/agents/update?guid=x", b"(2 given)"),
+            ("/system/agents/contributors?primary_only=1", b"(2 given)"),
+            ("/system/agents/media/get?guid=x&url=y", b"(3 given)")):
+        status_c52w, body_c52w, _ = request(base, "GET", path_c52w, want_json=False)
+        if status_c52w != 500 or want_c52w not in body_c52w:
+            wrong_c52w.append("%s -> %s" % (path_c52w, status_c52w))
+    check("the framework counts the arguments its own signature declares",
+          not wrong_c52w, "; ".join(wrong_c52w)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
