@@ -19886,6 +19886,13 @@ class Handler(BaseHTTPRequestHandler):
             return None
         if path in ("/system/agents", "/system/proxy"):
             return None
+        pieces_config = path.split("/")
+        if (len(pieces_config) == 6 and pieces_config[:3] == ["", "system", "agents"]
+                and pieces_config[4] == "config"):
+            # Cycle 53: `/system/agents/{id}/config/{N}` is the one framework document
+            # that carries NO cookie, on kids and zen alike, where its sibling
+            # `/system/agents/contributors` carries one. plexsim sent it on both.
+            return None
         pieces = path.split("/")
         if len(pieces) == 4 and pieces[2] == "scanners" and pieces[3].isdigit():
             return None
@@ -20258,7 +20265,14 @@ class Handler(BaseHTTPRequestHandler):
             # charset. See `xmlout.to_system_xml`.
             route = (getattr(self, "path", "") or "").split("?")[0].rstrip("/")
             if (route == "/system" or route.startswith("/system/")) \
-                    and not route.startswith("/system/agents"):
+                    and route != "/system/agents":
+                # Cycle 53: only the BARE `/system/agents` is PMS's own handler. Everything
+                # UNDER it -- `/{id}/config/{N}`, `/contributors` -- is the framework's and
+                # is written by the framework's serialiser: the single-quoted declaration
+                # and a SELF-CLOSED empty container, where the core writer pairs
+                # `MediaContainer` and double-quotes `UTF-8`. Measured over three
+                # identifiers on kids and zen, which answer 130 bytes where plexsim
+                # answered 147.
                 self._send(200, "application/xml",
                            to_system_xml(container, elements), window)
             else:
