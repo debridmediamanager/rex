@@ -459,6 +459,34 @@ def main():
           % (common_sense_detail.get("CommonSenseMedia"),
              common_sense_grid.get("CommonSenseMedia")))
 
+    recent_show = catalog.items[108]
+    recent_leaf = catalog.items[109]
+    old_show_added = recent_show.get("addedAt")
+    old_leaf_added = recent_leaf.get("addedAt")
+    recent_show["addedAt"] = 300
+    recent_leaf["addedAt"] = 200
+    section_hubs = sim.section_hubs("2")["MediaContainer"].get("Hub") or []
+    section_recent = next(h for h in section_hubs
+                          if h.get("hubIdentifier") == "tv.recentlyadded.2")
+    promoted_hubs = sim.promoted_hubs({"contentDirectoryID": "2"})["MediaContainer"].get("Hub") or []
+    promoted_recent = next(h for h in promoted_hubs
+                           if h.get("hubIdentifier") == "tv.recentlyadded.2")
+    section_stamp = next(r.get("addedAt") for r in section_recent.get("Metadata") or []
+                         if r.get("ratingKey") == "108")
+    promoted_stamp = next(r.get("addedAt") for r in promoted_recent.get("Metadata") or []
+                          if r.get("ratingKey") == "108")
+    if old_show_added is None:
+        recent_show.pop("addedAt", None)
+    else:
+        recent_show["addedAt"] = old_show_added
+    if old_leaf_added is None:
+        recent_leaf.pop("addedAt", None)
+    else:
+        recent_leaf["addedAt"] = old_leaf_added
+    check("the TV Recently Added shelves date a show by its newest leaf",
+          section_stamp == 200 and promoted_stamp == 200,
+          "section=%s promoted=%s" % (section_stamp, promoted_stamp))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []
