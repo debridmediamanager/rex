@@ -29164,6 +29164,65 @@ def main():
     check("the framework counts the arguments its own signature declares",
           not wrong_c52w, "; ".join(wrong_c52w)[:250])
 
+    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2), identical on both: every container
+    # carries `mediaTagPrefix="/system/bundle/media/flags/"` and every path under it answered
+    # a 404 here -- so a client that followed the prefix a row gave it got nothing. PMS's own
+    # `Media-Flags.bundle` holds eight types, 742 PNGs and 624 substitution regexes; a known
+    # value is its own image, an unknown VALUE is the bundle's 32x32 blank with a 200, and an
+    # unknown TYPE or an empty value is the `/system` empty-bodied 404. The three substituted
+    # types match case-insensitively (`studio/Disney` and `studio/Walt Disney Pictures` are
+    # one logo, `audioCodec/dca` is the DTS one) while a direct file name is case-SENSITIVE.
+    prefix_c53a = "/system/bundle/media/flags/"
+
+
+    def _flag_path_c53a(value_c53a):
+        # The slashes are real path segments; only the value's own characters are escaped.
+        return prefix_c53a + "/".join(quote(piece) for piece in value_c53a.split("/"))
+
+    _, providers_c53a, _ = get(base, "/media/providers")
+    wrong_c53a = []
+    for value_c53a, want_c53a in (("videoResolution/1080", "image"),
+                                  ("videoResolution/4k", "image"),
+                                  ("contentRating/PG-13", "image"),
+                                  ("contentRating/gb/12", "image"),
+                                  ("aspectRatio/1.78", "image"),
+                                  ("audioChannels/6", "image"),
+                                  ("videoFrameRate/24p", "image"),
+                                  ("videoCodec/h264", "image"),
+                                  ("audioCodec/dca", "image"),
+                                  ("studio/Walt Disney Pictures", "image"),
+                                  ("contentRating/us/PG-13", "blank"),
+                                  ("contentRating/pg-13", "blank"),
+                                  ("videoResolution/nosuch", "blank"),
+                                  ("studio/nosuchstudioatall", "blank"),
+                                  ("nosuchtype/x", "404"),
+                                  ("videoResolution/", "404")):
+        status_c53a, body_c53a, head_c53a = request(
+            base, "GET", _flag_path_c53a(value_c53a), want_json=False)
+        if want_c53a == "404":
+            ok_c53a = status_c53a == 404 and not body_c53a and not head_c53a.get("Content-Type")
+        else:
+            ok_c53a = (status_c53a == 200 and head_c53a.get("Content-Type") == "image/png"
+                       and body_c53a[:8] == b"\x89PNG\r\n\x1a\n"
+                       and ((len(body_c53a) == 82) == (want_c53a == "blank")))
+        if not ok_c53a:
+            wrong_c53a.append("%s -> %s/%s" % (value_c53a, status_c53a, len(body_c53a)))
+    check("the media flag images every mediaTagPrefix points at",
+          providers_c53a and not wrong_c53a, "; ".join(wrong_c53a)[:300])
+
+    # The substituted types really substitute: two spellings of one studio are one image, and
+    # the DTS and Dolby Digital icons are different files from the codec names that select them.
+    _, disney_c53a, _ = request(base, "GET", _flag_path_c53a("studio/Disney"), want_json=False)
+    _, walt_c53a, _ = request(base, "GET", _flag_path_c53a("studio/Walt Disney Pictures"),
+                              want_json=False)
+    _, dts_c53a, _ = request(base, "GET", prefix_c53a + "audioCodec/dca", want_json=False)
+    _, ac3_c53a, _ = request(base, "GET", prefix_c53a + "audioCodec/ac3", want_json=False)
+    check("a studio or codec name is matched through the substitution table",
+          disney_c53a == walt_c53a and len(disney_c53a) != 82
+          and dts_c53a != ac3_c53a and len(dts_c53a) != 82 and len(ac3_c53a) != 82,
+          "disney=%d walt=%d dts=%d ac3=%d"
+          % (len(disney_c53a), len(walt_c53a), len(dts_c53a), len(ac3_c53a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

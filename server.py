@@ -1071,6 +1071,39 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
     PLUGIN_PREFS = json.load(_handle)
 
 
+# Cycle 53: the media FLAG images. Every container plexsim answers carries
+# `mediaTagPrefix="/system/bundle/media/flags/"`, and every one of those paths was a 404
+# here -- so a client that follows the prefix a row gave it (the resolution badge, the
+# audio-codec icon, the content-rating shield, the studio logo) got nothing from a server
+# that had just told it where to look.
+#
+# The table is PMS's own `Media-Flags.bundle`: eight flag types, 742 PNG files, and a
+# 35 KB `substitutions.xml` whose 624 regular expressions map a STUDIO, an AUDIO CODEC or
+# a VIDEO CODEC name onto a file. Measured on kids (1.43.4) and zen (1.42.2), identical:
+#
+#   * a known value answers its own PNG, `image/png`, in the `/system` envelope -- the
+#     framework cookie, the length before the type, no `Accept-Ranges`;
+#   * an unknown VALUE answers the bundle's 32x32 `blank.png` with a 200, not a 404;
+#   * an unknown TYPE, and an EMPTY value, are the `/system` subtree's empty-bodied 404;
+#   * `contentRating` alone takes a COUNTRY segment (`gb/12` resolves; `us/PG-13` does
+#     not, because there is no `us` directory, and it does NOT fall back to the top level);
+#   * a direct file name is matched case-SENSITIVELY (`pg-13` is blank where `PG-13` is
+#     the shield), while the three substituted types match their regex case-insensitively
+#     -- `studio/Disney` and `studio/Walt Disney Pictures` are the same logo, `audioCodec/
+#     dca` is the DTS one and `ac3` the Dolby Digital one.
+#
+# The pixels are plexsim's own placeholder at the file's real geometry, the convention
+# cycle 52 set for `/:/resources`; `blank.png` is 82 bytes and is carried verbatim.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "media_flags.json"), encoding="utf-8") as _handle:
+    MEDIA_FLAGS = json.load(_handle)
+MEDIA_FLAG_BLANK = base64.b64decode(MEDIA_FLAGS["blank"])
+MEDIA_FLAG_SUBSTITUTIONS = {
+    kind: [(re.compile(expression, re.I), name) for expression, name in rules]
+    for kind, rules in MEDIA_FLAGS["substitutions"].items()
+}
+
+
 # --------------------------------------------------------------------------
 # catalog
 # --------------------------------------------------------------------------
@@ -5343,6 +5376,9 @@ class PlexSim:
             return self.bare_container(size=len(rows),
                                        identifier="com.plexapp.system",
                                        Directory=rows)
+        if route.startswith("/system/bundle/media/flags/"):
+            # Cycle 53: the flag image family every row's `mediaTagPrefix` points at.
+            return self.media_flag(route[len("/system/bundle/media/flags/"):])
         if route.startswith("/system/appstore"):
             # Measured: a real PMS 404s the appstore paths -- the channel store
             # is gone, and the client's Plugins page copes with that.
@@ -8356,6 +8392,24 @@ class PlexSim:
         # A leaf a real PMS does not have is a 404 there, not an empty container.
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
+
+    def media_flag(self, relative):
+        """`/system/bundle/media/flags/{type}/{value}` -- one of PMS's own flag images."""
+        kind, _, value = relative.partition("/")
+        table = MEDIA_FLAGS["flags"].get(kind)
+        if table is None or not value:
+            # An unknown type, and an empty value, are the `/system` empty-bodied 404.
+            return ("bare", 404)
+        name = value
+        for pattern, substitute in MEDIA_FLAG_SUBSTITUTIONS.get(kind, ()):
+            if pattern.search(value):
+                name = substitute
+                break
+        size = table.get(name)
+        if size is None:
+            # Measured: an unknown VALUE is the bundle's own 32x32 blank, with a 200.
+            return ("asset", "image/png", MEDIA_FLAG_BLANK)
+        return ("asset", "image/png", _png(size[0], size[1], (32, 34, 38)))
 
     def bundled_resource(self, relative):
         """`/:/resources/<relative>` -- one of PMS's own 70 bundled files.
