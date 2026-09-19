@@ -1132,6 +1132,22 @@ PLUGIN_ROOT_ERROR = (
     "</Traceback>\n"
     "</Response>\n").encode("utf-8")
 
+# Cycle 53: each legacy agent's ATTRIBUTION -- the line and the logo the Settings > Agents
+# page draws beside it. `chunk-1439-*.js` in the bundle plexsim itself serves renders
+# `new Gb.A({url: "/system/agents/attribution/image?identifier=" + this.model.id,
+# className: "agent-icon", width: 100, height: 100})` for every listed agent, and
+# `main-8792-*.js` reads the text from `/system/agents/attribution?identifier=`.
+#
+# Measured over all seventeen hosted identifiers on kids and zen, identical: nine answer a
+# text and eight an image, `org.musicbrainz.agents.music` answers an EMPTY text and no
+# image, and every other identifier -- including all four modern agents -- is a 404 on
+# both leaves. The values are each bundle's `PlexAgentAttributionText` and
+# `Contents/Resources/attribution.png`; the image's pixels are plexsim's placeholder at
+# the file's real geometry, as the rest of this cycle's bundled artwork is.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "attributions.json"), encoding="utf-8") as _handle:
+    AGENT_ATTRIBUTIONS = json.load(_handle)
+
 # Cycle 53: the ELEVEN legacy plug-in agents a real PMS lists beside the modern four.
 # HANDOVER 8 has carried "legacy agents and the `/:/plugins` listing" as one inherited
 # bound since cycles 1-6, and cycle 52 retired the second half of it on the grounds that
@@ -5461,7 +5477,11 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.bare_container(noHistory=0, replaceParent=0, size=0,
                                        identifier="com.plexapp.system")
-        if route in FRAMEWORK_BARE_ERRORS:
+        if route in FRAMEWORK_BARE_ERRORS and not (
+            route.startswith("/system/agents/attribution") and query.get("identifier")):
+            # Cycle 53: the two attribution leaves are the framework's traceback only
+            # when the identifier the function needs is absent; with one they are the
+            # agent's own line and logo.
             name, count, form = FRAMEWORK_BARE_ERRORS[route]
             return ("plugin-xml", 500,
                     (framework_error if form == "least" else framework_exactly)(name, count))
@@ -5525,12 +5545,21 @@ class PlexSim:
                                        identifier="com.plexapp.system")
         if route in ("/system/agents/attribution", "/system/agents/attribution/image") \
                 and query.get("identifier"):
-            # Measured: a modern agent has no attribution, text or image, and says so
-            # with a 404; with no identifier at all it is a 500. plexsim answered the
-            # JSON agent list to both, which the Agents page fed to an <img>.
-            if not query.get("identifier"):
-                return ("error", 500, "plexsim: internal error")
-            return ("error", 404, "plexsim: not found")
+            # Measured: a MODERN agent has no attribution, text or image, and says so
+            # with a 404; with no identifier at all it is the framework's own traceback
+            # (above). plexsim answered the JSON agent list to both, which the Agents page
+            # fed to an <img>.
+            entry = AGENT_ATTRIBUTIONS.get(query["identifier"]) or {}
+            if route.endswith("/image"):
+                size = entry.get("image")
+                if size is None:
+                    return ("error", 404, "plexsim: not found")
+                return ("asset", entry.get("imageType") or "image/png",
+                        _png(size[0], size[1], (32, 34, 38)), False)
+            if "text" not in entry:
+                return ("error", 404, "plexsim: not found")
+            return ("framework-plain", 200, entry["text"].encode("utf-8"),
+                    entry.get("textType") or "text/plain")
         if segments[:2] == ["system", "agents"] and len(segments) == 3:
             # Measured on both servers: one agent by identifier -- a real one or
             # `nosuch.agent` -- is a 404 with an empty body. plexsim answered the whole
