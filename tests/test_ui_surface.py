@@ -28761,6 +28761,40 @@ def main():
     check("an artwork read leaf refuses POST and a bare OPTIONS",
           not wrong_c52g, "; ".join(wrong_c52g)[:300])
 
+    # Cycle 52, measured on plexscratch42 (1.42.2, the build plexsim reports) and plexscratch
+    # (1.43.4) on a fresh collection and a fresh playlist: a list's artwork READ leaves follow
+    # the same ownership rule an item's do. A collection with nothing uploaded carries
+    # `/library/collections/{id}/composite/{v}` in its `thumb` and a playlist carries none at
+    # all, so `/thumb`, `/art` and `/poster` are 404s -- while `/clearLogos` and `/themes` are
+    # the same empty candidate containers an item answers. plexsim served a generated grey
+    # tile to the first three and 404'd the last two, the exact inverse.
+    _, made_c52h, _ = request(
+        base, "POST", "/library/collections?title=C52h&type=1&smart=0&sectionId=%s"
+        "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+        % (movie_section, machine, movie))
+    collection_c52h = (json.loads(made_c52h).get("MediaContainer", {}).get("Metadata")
+                       or [{}])[0].get("ratingKey")
+    _, madepl_c52h, _ = request(
+        base, "POST", "/playlists?title=P52h&type=video&smart=0"
+        "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F%s"
+        % (machine, movie))
+    playlist_c52h = (json.loads(madepl_c52h).get("MediaContainer", {}).get("Metadata")
+                     or [{}])[0].get("ratingKey")
+    wrong_c52h = []
+    for rk_c52h in (collection_c52h, playlist_c52h):
+        for leaf_c52h, want_c52h in (("thumb", 404), ("art", 404), ("poster", 404),
+                                     ("clearLogos", 200), ("themes", 200)):
+            status_c52h, body_c52h, _ = request(
+                base, "GET", "/library/metadata/%s/%s" % (rk_c52h, leaf_c52h), want_json=False)
+            if status_c52h != want_c52h:
+                wrong_c52h.append("%s/%s -> %s" % (rk_c52h, leaf_c52h, status_c52h))
+            elif want_c52h == 200 and b'size="0"' not in body_c52h:
+                wrong_c52h.append("%s/%s not empty" % (rk_c52h, leaf_c52h))
+    check("a list's artwork leaves follow the item ownership rule",
+          collection_c52h and playlist_c52h and not wrong_c52h,
+          "; ".join(wrong_c52h)[:250] or "collection %s playlist %s"
+          % (collection_c52h, playlist_c52h))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

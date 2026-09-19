@@ -10461,6 +10461,30 @@ class PlexSim:
             container["librarySectionUUID"] = section.get("uuid")
             container.pop("thumb", None)
             return body
+        if len(segments) == 4 and segments[3] in ("clearLogos", "themes"):
+            # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a
+            # fresh collection and a fresh playlist: both answer the same empty candidate
+            # container an ITEM answers (198 bytes, `Photo` rows for clear logos and
+            # `Track` for themes), where plexsim 404'd them -- which is what
+            # python-plexapi's `logos()` and `themes()` raise on, the failure cycle 6
+            # fixed for items and left on the two list types.
+            return self.tag_container(
+                size=0,
+                _xml={"Metadata": "Photo" if segments[3] == "clearLogos" else "Track"})
+        if len(segments) == 4 and segments[3] in ("poster", "art", "thumb") \
+                and method in ("GET", "HEAD"):
+            # Cycle 52: the ownership rule is the ITEM's, and it reads the LIST's own
+            # stored path. A collection with no uploaded artwork carries
+            # `/library/collections/{id}/composite/{v}` in its `thumb` and a playlist
+            # carries no `thumb` at all, so `/library/metadata/{rk}/{thumb,art,poster}` is
+            # a 404 on both versions until something is uploaded -- after which `thumb`
+            # and `poster` are the image and `art` stays a 404. plexsim served its
+            # generated grey tile to all three on a brand-new list, with no
+            # `X-Plex-Local-Asset`, so a list page drew a placeholder the server declared
+            # real -- and cached -- instead of letting the client draw its own.
+            stored = str(target_row.get("art" if segments[3] == "art" else "thumb") or "")
+            if not stored.startswith("/library/metadata/%s/" % target_row.get("ratingKey")):
+                return ("error", 404, "plexsim: not found")
         if len(segments) == 4 and segments[3] in ("analyze", "match", "extras", "related",
                                                   "allLeaves", "grandchildren",
                                                   "refresh", "unmatch",
