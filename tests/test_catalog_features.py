@@ -615,8 +615,14 @@ def main():
           and str(item_row.get("art") or "").startswith("/library/metadata/101/art/")
           and section.get("size") == 1 and not (forbidden & set(section_row))
           and all("Stream" not in part for media in section_row.get("Media") or []
-                  for part in media.get("Part") or [])
+          for part in media.get("Part") or [])
           and section_miss.get("size") == 0)
+    check("a clip carries only its own coverPoster Image on both extras lists",
+          item_row.get("Image")
+          == [{"alt": "Stacked Feature Trailer", "type": "coverPoster",
+               "url": catalog.items[201].get("thumb")}]
+          and section_row.get("Image") == item_row.get("Image"),
+          "item=%s section=%s" % (item_row.get("Image"), section_row.get("Image")))
 
     clip = get("/library/metadata/201")
     clip_row = ((clip.get("Metadata") or [{}])[0]
