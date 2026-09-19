@@ -2169,7 +2169,17 @@ def request_language(query, headers):
                 # A malformed header falls back to English rather than to the next
                 # source: `de;q=abc` is not "no Accept-Language".
                 return None
-    primary = str(wanted or "").replace("_", "-").split("-")[0].lower()
+    normalized = str(wanted or "").replace("_", "-").lower()
+    # Cycle 50 refuted the blanket primary-subtag rule for X-Plex-Language.
+    # Both supported PMS versions route Traditional-Chinese regional tags to the
+    # English catalogue, while bare `zh` and `zh-CN` select Simplified Chinese.
+    # The other measured exceptions (Brazilian Portuguese and hu-HU) require full
+    # locale catalogues that were not retained by the hunt; do not fabricate them
+    # from one sample string.
+    exact = {"zh-hk": "en", "zh-tw": "en"}
+    if normalized in exact:
+        return exact[normalized]
+    primary = normalized.split("-")[0]
     return primary or None
 
 
