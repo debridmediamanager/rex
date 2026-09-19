@@ -17,7 +17,7 @@ If you are picking this up cold, read in this order:
 
 1. **§1**, the mission and the one rule — two minutes, and everything else follows from it.
 2. **§3, the revalidation register** — before you trust anything in `docs/findings.md`. It is
-   the list of things this project has already got wrong, the six ways it got them wrong, and
+   the list of things this project has already got wrong, the seven ways it got them wrong, and
    the items still standing on thin evidence.
 3. **§4**, the instruments, and **§5**, the cycle procedure.
 4. Then §6–§9 as reference while a cycle runs.
@@ -65,8 +65,8 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 49 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **49 — the loop is OPEN again, on three axes nobody had swept.** Cycle 48 was clean on every axis it repeated, so cycle 49 reopened it the only way it has ever been reopened: by recognising an instrument. Every measurement this programme had ever made happens over TCP 32400 *after a client already knows the address*. Cycle 49 swept **how a client FINDS the server** (GDM, the LAN discovery protocol, which plexsim answered nothing on), **the connection itself** (raw sockets around and between requests), and **the claim** (116 read families over the 2x2 of claim and version — the project's own failure class E, unaudited for forty-eight cycles). **26 findings in 21 commits**, every one proved fail-then-pass. The proof of the first is the strongest this programme has had: a real Plex Media Server discovered plexsim on the wire and listed it. It also found that **both references were broken instruments** — `GET /devices` and `GET /statistics/bandwidth` are 500 on kids and zen, from a device row a GET wrote — and repaired kids. See §7 and §9. |
+| `main` | cycle 51 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **51 — stopping gate met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
 | Cycle 48 | **48 — the stopping repeat was clean across every Cycle-46 axis.** Cycle 46 exhausted the query-option namespace (**116 names × 76 safe families × 3 hosts = 26,448 cells**), the request-header namespace (**61 normalized names / 88 spellings; 24,156 logical cells**), the installed Plex Desktop static/native boundary, live/dead provider availability, all **1,829** frozen outbound exchanges, and both finite source/control universes. It produced **19 product findings**: 14 query propagation rules, two `/web` header rules, provider-backed file availability, exact account feature acquisition, and cloud watch/rating import. Cycle 47 repeated the external axes and found one product residual — daily account/feature renewal — plus one test-order defect in the new regressions. Cycle 48 repeated query, header, outbound, historical and advertised-control denominators after both repairs. Every Cycle-48 territory report ends exactly `no findings`; UI is **1,629/1,629**, decisions **2,340/2,340**, mediainfo **35/35**, and the explicit safety/capability bounds are retained rather than silently omitted. |
 | Cycle 43 | **43 — stopping gate met on every finite axis at the time.** Cycle 43 reopened the clean Cycle-42 head and independently replayed the 332-atom historical universe and the complete 4.147.1 advertised-control graph; both reports again end exactly `no findings`. It also closed the only remaining current-client boundary by obtaining the complete public Plex Web 4.160.0 app build: 205/205 JavaScript assets, 16/16 CSS assets and 207/207 SRI checks. The 177 JavaScript assets absent from Cycle 40's app-side subset contain zero new PMS call sites, request-builder imports, controls or actions. The historical axis is 332/332 with all 24 Cycle-41 cross-fix audits passing and zero actionable/unbounded unresolved atoms. The advertised graph remains 49 source families, 1,221 advertisements, 47 predicates, 339 controls and 45 action/readback pairs, with 39 exact witnesses, six explicit bounds and zero unresolved. Root independently repeated all suites. Protected references are byte-identical, secret scans are clean and every verified Cycle-43 process is stopped. |
 | Cycle 36 | **36**. Cycle 36's driver swept a dimension no cycle had taken -- **what a real PMS answers when it REFUSES** -- and got eight findings in an afternoon: a refusal's BODY is one fixed HTML document per status (plexsim had three of eight and answered `text/plain` sentences everywhere else, cycle 1's "deliberate deviation" re-justified three times without anyone reading the reference), the ENVELOPE's own refusals answered Python's DOCTYPE page, a path-segment id parses as a NUMBER, four paths bound it to int32, the request target must be printable ASCII with a readable escape, and two hub leaves never looked their id up. **Both hunts overturned a recorded belief.** The search hunt refuted cycle 35's own tier model one cycle after it landed and found the score is a TIER plus the row's `audienceRating`/10000 over 11,076 held-out pairs, a FOURTH tier at 0.53, and a base per row TYPE. The write hunt held out the list cycle 35 called "already correct" (§3.1 class F) and four of its seven items were open. |
@@ -76,13 +76,15 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-49 finding is implemented or recorded in §8** |
+| Work half-done | **none — every Cycle-50 report entry is implemented; every remaining bound is explicit in §8; Cycle 51 is clean** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
-| 49 | UI **UICOUNT**; decisions **2,340/2,340**; mediainfo **35/35**; catalog features; part bytes 11/11; heartbeat 13/13; account state 15/15; **new** `test_gdm` **101/101** | 20,657 | **26 findings in 21 commits**, every one proved fail-then-pass. **8 recorded beliefs overturned** (cycle 35's ad-marker row as class E, cycle 15's `/playlists/sorts`, cycle 23's Duplicates row, cycle 37's body rule, the `authToken` claim, the emptied collection, the `transcoderVideoRemuxOnly` version framing, and `/servers`' own address). **1 new protocol** (GDM: two UDP ports, a multicast group, an 11-byte prefix trigger, a 5 s search and the `/servers` list it populates), **1 new offline suite**, **1 broken instrument found and repaired**, **4 suite checks repaired** where they read state the suite takes away, and **6 findings recorded rather than emulated** |
+| 51 | UI **1,756/1,756** with 14 fixture skips; catalog **54/54**; regional prefs **3/3, 1,122/1,122**; navigation **28/28**; decisions **2,340/2,340**; mediainfo **35/35**; GDM **103/103**; prefix **58/58**; part bytes **11/11**; heartbeat **13/13**; account state **15/15**; TLS **10/10** under LibreSSL and OpenSSL | 21,537 | **0.** Three independent reports end `NO FINDINGS`. Fresh finite repeats include 111 safe claim families / 444 GETs, 173 dual-format pairs / 2,540 nodes / 13,072 scalar occurrences, nine system-writer routes, 92 numeric-platform cells plus four repair controls, every raw transport boundary and eight GDM lifecycle hooks. Retained 1,776-request claim, 692-pair safe dual-format, 1,331-pair complete dual-format, 421-pair catalog and 519-flow official-client denominators are all explicitly reconciled |
+| 50 | same final suites; GDM grew to **103/103**, catalog to **54/54**, plus regional and prefix suites | 21,537 | Recovered and closed Territory A **23/23**, Territory B **8/8**, Territory C **10/10**, including **18 entries absent from the seven-commit recovered branch**, one lost measured patch, three missing regressions and the Cycle-49 numeric-platform deferred entry. Safe claim replay **1,776 requests**; dual format **692 pairs / 9,206 nodes / 0 mismatches**; regional **1,122 cells**; prefix **58 paths / 174 reference GETs**. The expanded `/connections` matrix is an explicit terminal bound, not a guessed implementation |
+| 49 | UI **1,685/1,685** with 14 fixture skips; decisions **2,340/2,340**; mediainfo **35/35**; catalog features; part bytes 11/11; heartbeat 13/13; account state 15/15; **new** `test_gdm` **101/101** | 20,657 | **26 findings in 21 commits**, every one proved fail-then-pass. **8 recorded beliefs overturned** (cycle 35's ad-marker row as class E, cycle 15's `/playlists/sorts`, cycle 23's Duplicates row, cycle 37's body rule, the `authToken` claim, the emptied collection, the `transcoderVideoRemuxOnly` version framing, and `/servers`' own address). **1 new protocol** (GDM: two UDP ports, a multicast group, an 11-byte prefix trigger, a 5 s search and the `/servers` list it populates), **1 new offline suite**, **1 broken instrument found and repaired**, **4 suite checks repaired** where they read state the suite takes away, and **6 findings recorded rather than emulated** |
 | 48 | UI **1,629/1,629**; decisions **2,340/2,340**; mediainfo **35/35**; catalog features; part bytes **11/11**; heartbeat **13/13**; account state **15/15** | 20,094 | **0.** Exact stopping repeats: query options **26,448 cells**; headers **24,156 logical / 16,842 physical requests**; outbound **1,829 exchanges / 1,620 reads**; durable history **745 rows including all 24 Cycle-41 fixes**; current client **205 assets / 9,314,084 bytes**; advertisements **24,452**; controls **49 / 39 normalized families**. Every territory report ends `no findings` |
 | 47 | same final suites; the pre-repair full UI exposed six false late failures, while fresh discriminators passed | 20,094 | **2**: one product finding (claimed user/features renew daily, user then features about 11 s later) and one audit-harness finding (six option regressions consumed state mutated earlier in the suite). The product repair is `3cff10e`; the final pristine-response harness repair is `768377a` |
 | 46 | UI grew from 1,612 to **1,629**; decisions 2,340; mediainfo 35; catalog features; part bytes 11; heartbeat/account-state suites added | 20,086 before the Cycle-47 renewal | **19 product findings**: **14** query-option projection/source fixes, **2** request-header fixes, **1** provider availability fix and **2** outbound account-state fixes. Query denominator 26,448 cells; header denominator 8,052 candidates plus controls; outbound prefix 1,665 exchanges. One deliberate query bound (`includeBandwidths`) and three Desktop runtime cells were explicitly retained |
@@ -782,17 +784,23 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | The spellfix score is `editdist1 + 32 - floor(log2(rank))` | SQLite uses `editdist1 + 32 - bit_length(rank)`, equivalently `+31-floor(log2(rank))` for a positive rank. `riders`, rank 4 and distance 0, scores 29, not 30. The old expression was inferred from black-box candidates without reading the extension's arithmetic | C | cycle 37 |
 | The database has four spellfix vocabularies: title, sort title, original title and tags | Both versions have exactly TWO live virtual tables: `spellfix_metadata_titles` and `spellfix_tag_titles`. Sort and original-title spellings survive only in historical executable strings; the live FTS table, not a separate spellfix table, indexes title, sort title and original title | F | cycle 37 |
 | A mid-word or non-table Unicode search miss is a useful negative control | It enters the measured spelling fallback and may be a real hit. Two UI checks still asserted that fuzzy membership was absent after the server acquired it; both were replaced with measured score/membership controls | C | cycle 37 |
+| The recovered Cycle-50 branch's seven commits represented the completed cycle | The original session had measured an eighth patch, and the hunt reports still held 18 unimplemented entries plus three unprotected rules. Recovery must join reports and transcripts to code, not count commits | F | cycle 50 |
+| A stored resume offset determines timeline `playbackState` | `progress` is a live latch keyed by `X-Plex-Session-Identifier`: crossing one minute sticks for that session after rewind/stop; a new session is `ignore` despite the stored offset | C | cycle 50 |
+| A searchable tag's count is the size of its top-level key list or a persisted historical counter | Top-level current membership is only the admission gate; `count` is every current tagged metadata row in that library, including episodes. The tag id persists, the count does not | B, C | cycle 50 |
+| GDM `Updated-At` changes with any advertised field, including FriendlyName | Only section create/edit/delete move it. FriendlyName changes `Name` without moving the stamp; refresh, item edit, collection create and index delete are non-events | C | cycle 50 |
+| The retained legacy-prefix denominator was 57 paths | The durable executed command contains 58 unique paths. All 58 shapes agree over 174 reference GETs and are now protected exactly | F | cycle 50 |
+| A post-response body drain needs a small grace interval | The measured boundary is zero: drain only framing already buffered when the response completes. A body arriving later becomes the next request's bytes | C | cycle 50 |
 
 ### 3.3 Standing on thin evidence right now — revalidate before building on these
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
-| **GDM's `Updated-At`** | It is not a clock and it is not a counter: it stands still under polling, is days stale on an idle server, and the two ports carry INDEPENDENT stamps (plexscratch42 answered 1789624280 on 32410 and 1789690002 on 32414 in the same second, then converged). plexsim stamps it when the advertisement is built and re-stamps it when an advertised field changes, which reproduces the shape and not the trigger | Watch a server whose state is under your control -- rename it, rescan it, restart it -- and see which event moves it |
+| ~~**GDM's `Updated-At`**~~ | **CLOSED and BUILT in cycle 50.** Controlled writes on both disposable versions prove that only section create, edit and delete move the stamp. Friendly-name changes move `Name` without moving the stamp; refresh, item edit, collection creation and index deletion do not move it. `tests/test_gdm.py` now protects the lifecycle | — |
 | **`Host` in the GDM reply is claim-dependent** | Both CLAIMED references carry `<hash>.plex.direct` and neither unclaimed copy carries the line at all. An unclaimed PMS has no certificate, so the CLAIM and the CERTIFICATE are confounded on all four instruments. plexsim emits the line only when it holds a plex.direct hostname, which is right under either reading | A claimed server with its certificate removed, which nothing here can make |
-| **The drain grace after a response** | A real PMS decides to close ~5 ms after answering, whether the declared body then turns up at 2 ms or at a second. plexsim gives it a 50 ms grace instead, because the reference's decision point cannot be read out of a buffered reader without a peek that can block. A body inside the grace is consumed and the socket kept -- safe in the other direction, and NOT what the reference does | Rewrite the request reader on a raw socket rather than on `BufferedReader` |
+| ~~**The drain grace after a response**~~ | **CLOSED and BUILT in cycle 50.** A response drains only body framing already buffered at the response boundary; there is no post-response grace. A delayed body becomes the next request's bytes. The raw-socket regression holds the boundary at zero | — |
 | **`SERVERS_TTL` = 180 s** | Bracketed to (177, 180] in ONE clean run on zen, by starting a server on its wire and polling every three seconds. A second run read (154, 165] and is discarded because it reused a machineIdentifier zen already held -- so the number rests on a single uncontaminated observation | Repeat it with a fresh machineIdentifier each time |
-| **The legacy dispatcher's PREFIX listing** | The rule is derived and consistent over 38 cells -- rows are the last segments of every registered plug-in route whose path begins with the request -- but reproducing it needs PMS's own route REGISTRY, which plexsim does not have. `/dev`, `/me`, `/serve` and `/s` are recorded and not built | Transcribe the registry from a wider sweep, if any client is ever seen to use it |
-| **`/connections`** | A real PMS answers a `text/plain` line per live connection with a state, a timing, a byte count, a request line and a token name. plexsim keeps no connection registry, and every part of that line it cannot derive would be a fabrication | Add connection bookkeeping and measure each field against a copy |
+| ~~**The legacy dispatcher's PREFIX listing**~~ | **CLOSED and BUILT in cycle 50.** The retained command contains 58 unique executed paths, not the 57 the old prose claimed. All 58 ordered response shapes agree over 174 reference GETs and are served from a finite captured registry; the regression is 58/58 | — |
+| **`/connections`** | Cycle 50 expanded this to 78 observer snapshots and 26 bounded sockets across both disposable versions. Pending, Routing, Paused/Pipelined and Finished states and the ~20 s cleanup are qualitative matches, but ordinals/order are unstable, request numbers consume invisible events, Finished cleanup is scheduler-coupled and the byte-count form requires excluded media traffic. An exact row remains underivable, not merely unmeasured | A reference-exposed stable id/allocator and an isolated media-byte experiment; otherwise any implementation fabricates visible fields |
 | **`Mood`'s slot in `xmlout._CHILD_ORDER`** | Absent, deliberately: a real PMS refuses to STORE a `mood` on a movie, so no reference row can ever carry one for its position to be read from. A movie library is the only type plexsim holds | A music library, which plexsim will never have |
 | **`/library/shared/all?sort=` crashes a real PMS** | An EMPTY sort dropped the connection on kids and SEGV'd zen's Plex (`code=killed, signal=SEGV`), reproduced on both and isolated to that one parameter. There is no answer to copy, so plexsim reads the empty value as absent -- the convention `/collections` already has for an empty sort -- which is a SURFACE CONVENTION applied, not a measurement | Nothing on a reference can settle it. A third 1.42.2 instance that may be crashed freely could confirm the crash is universal; the correct ANSWER is unobtainable |
 | **The generating rule behind `/{name}/top`'s eleven-name map** | The eleven names resolve in six pairs -- a tag name and a metadata COLUMN name sharing each number (`genre`/`title` 1, `director`/`studio` 4, `writer`/`rating` 5, `actor`/`tagline` 6, `producer`/`summary` 7) -- which says PMS looks the segment up in one integer space that both vocabularies feed. The TABLE is measured on three servers and two versions and is what plexsim implements; the rule that generates it is not identified, so a name outside the swept 91 is a guess | Read the lookup out of the binary, or sweep a wider vocabulary against a library holding tags of types 2, 3 and 9+ |
@@ -1126,6 +1134,14 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycles 50–51).** The first root full-UI pass used `32683` and passed, but was discarded
+when the serial-suite rule found worker-owned duplicate runs on `32671` and `32752` during part of
+its lifetime. The workers stopped only their own processes. Root then ran the authoritative
+pristine serial UI pass alone on `32684`; `32598`/`32599` were clear before it started. Focused
+Cycle-51 audits used ephemeral loopback ports and `32751`/`32752`. Every named listener is stopped
+at final cleanup. The disposable PMS copies were restored/recreated, proved unclaimed and attached
+only to `internal: true` networks, then released; no launchd job was registered.
 
 **Ports (cycle 43).** Root served frozen `5874d01` on `32643`/`32644`, ran the serial live suites
 on `32645`, and Territory C used `32647`/`32648` plus suite helpers `32649`/`32650`; Territory B's
@@ -3616,6 +3632,65 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 51 — clean stopping repeat over every Cycle-50 axis
+
+Cycle 51 froze behavior/test head `4069fd4` and assigned the recovered exact-request and
+official-client findings, catalog/hierarchy surface, and claim/format/transport/discovery surface
+to three independent read-only audits. All three reports end literally **`NO FINDINGS`**. They
+contacted no protected reference, scratch copy, plex.tv endpoint or media body; retained external
+denominators are labelled as retained rather than presented as fresh observations.
+
+The exact-request audit closes Territory A **23/23** and Territory B **8/8** against 421 retained
+request pairs / 37,112 leaf cells, five official-client sessions / 519 flows / 34 method-path
+shapes, the 70-exchange durable walk, and the checked-in prefix and regional fixtures. The catalog
+audit closes all 12 assigned catalog changes and repeats catalog features **54/54**, regional
+preferences **3/3 and 1,122/1,122**, navigation **28/28**, decisions **2,340/2,340**, mediainfo
+**35/35**, GDM **103/103**, and prefix registry **58/58**, plus the retained 36 axes, 18 subsets
+and complete option/control matrices.
+
+The format/transport audit locally repeats the 116-family claim registry as 111 safe families /
+444 GETs, 173 safe dual-format pairs / 2,540 nodes / 13,072 scalar occurrences, nine `/system`
+writer routes, the 92-cell numeric-platform matrix plus four repair controls, every maintained raw
+transport boundary, TLS **10/10** under both LibreSSL and TLS-1.3-capable OpenSSL, the eight GDM
+lifecycle hooks, and all regional/prefix regressions. It separately re-audits the retained 1,776-
+request claim and 692-pair safe dual-format captures. The completed 78-observation/26-socket
+`/connections` matrix remains terminally underivable for exact emulation. There are no actionable
+or unbounded unresolved cells, so this is the clean cycle that stops the loop.
+
+### Cycle 50 — recovered, audited, and completed entry by entry
+
+Cycle 50 began as a recovered branch: seven measured commits survived, but the original session
+had ended after finding an eighth change, three hunt reports still held **18 unimplemented
+entries**, three transport/GDM rules lacked durable discriminators, and no post-cycle full suite or
+handover existed. The recovery audit replayed the surviving evidence, separated the two apparently
+bounded findings on both disposable versions, and implemented every reported entry. Territory A
+is **23/23**, Territory B **8/8**, and Territory C **10/10**; the remaining actionable Cycle-49
+entry, numeric-platform list failure, is built too.
+
+The largest corrections were the per-session playback-progress latch, exact regional `/:/prefs`
+documents, the top-level gate/all-row-current-count searchable-tag rule, season-scoped state-aware
+OnDeck, show/catalog projection ownership and dating, a distinct stored untyped runtime, the
+framework `/system` XML writer, background-playlist children, raw transport boundaries, the exact
+58-path legacy prefix registry, and GDM's section-only `Updated-At` lifecycle. Every finding has a
+focused discriminator; stale UI assumptions about OnDeck were re-measured and corrected rather
+than preserving a fixture accident.
+
+The safe claim repeat covered 111 of 116 families over four hosts, two formats and two auth states
+(**1,776 requests**). The safe dual-format repeat issued **692 pairs**, parsed 614 / 9,206 nodes,
+and found zero structure, set, order or scalar-type mismatch; the retained complete corpus remains
+1,331 pairs. The served-client graph is 208 JavaScript files / 9,318,734 bytes, with no reachable
+new PMS family after the background-child repair. Regional preferences are three 174-row captures
+and 1,122 exact localisable cells; the prefix registry is 58 paths × three references = 174 exact
+GETs.
+
+`/connections` received the requested disposable-only expansion: 78 observer snapshots and 26
+bounded sockets across both PMS versions. Pending, Routing, Paused/Pipelined, Finished and the
+~20-second cleanup are measured, but unstable ordinals/order, invisible request-number events,
+scheduler-coupled cleanup and the excluded byte-count form prevent an exact row. It therefore
+remains absent rather than fabricated. The first wrapper caused the Cycle-50 safety incident in
+§9; all contaminated observations were discarded, both copies were restored and isolated, and
+the replacement matrix never left container loopback.
+
 ### Cycle 49 — the LAN, the connection and the claim
 
 Cycle 48 was clean on every axis it repeated, so cycle 49 reopened the loop the only way it
@@ -4421,18 +4496,35 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycles 50–51.**
+
+- **`/connections`, after the full disposable-only matrix.** The requested follow-up is complete:
+  78 successful observer snapshots and 26 bounded raw sockets across unclaimed 1.43.4 and 1.42.2.
+  Partial requests are Pending; a partial pipelined request is Paused/Pipelined; a close becomes
+  Finished; the incomplete-request cleanup falls just after 19.78 seconds. An exact response is
+  still terminally underivable: the leading integers and row order are snapshot-unstable, the
+  hexadecimal request allocator consumes invisible events, Finished cleanup is coupled to an
+  opaque sweep, and the byte-count form needs excluded media traffic. A partial implementation
+  would fabricate client-visible state, so the route remains absent.
+- **The background generator/job subtree.** The served client calls generator and generator-item
+  paths only after an Optimize/conversion row exists. plexsim advertises no encoder, its permanent
+  background queue is empty, and no safe read creates that state. The queue/list/children surface
+  is built; deeper job CRUD remains an explicit capability/state bound.
+- **Live zen cells.** zen was listening but HTTP and TLS were unresponsive during Cycle 50. It was
+  not retried or restarted. Retained two-version evidence remains valid; no new result is inferred
+  from a broken instrument.
+
 **Cycle 49.**
 
-- **The legacy dispatcher's PREFIX listing.** A single segment that is a proper prefix of one
+- ~~**The legacy dispatcher's PREFIX listing.**~~ **BUILT in Cycle 50 from the complete retained
+  executed registry.** A single segment that is a proper prefix of one
   or more registered plug-in routes answers the LAST SEGMENTS of every registered route whose
   path begins with it: `/dev` names `devices`, `/me` names media's three children, `/serve`
   names `server` and `servers`, `/s` names seventeen. Derived from a 38-cell prefix sweep on
-  zen and consistent on every one, but reproducing it needs PMS's own route REGISTRY, which
-  plexsim does not have and which no client asks for. The two named endpoints in that family
-  that carry real content -- `/dlna` and `/manage` -- ARE built.
-- **`/connections`.** A `text/plain` line per live connection with a state, a timing, a byte
-  count, a request line and a token name. plexsim keeps no connection registry; every part of
-  that line it cannot derive would be a fabrication.
+  zen and consistent on every one. The old report said 57 paths; the durable command contains
+  58, replayed as 174 exact reference GETs. plexsim serves those captured ordered shapes from a
+  finite sidecar rather than fitting an algorithm to its own router.
+- **`/connections`.** Superseded by the expanded Cycle-50 bound above.
 - **`transcoderVideoRemuxOnly`.** zen's alone among four servers -- the 1.42.2 copy omits it
   too -- so it is that server's own state and not a rule.
 - **`authToken` on `/myplex/account`.** zen (1.42.2, claimed and mapped) sends it; kids does
@@ -4440,9 +4532,11 @@ same title stem, so release, alphabetical and insertion order coincided.
   are confounded on the only two claimed servers this project has. plexsim's omission is now
   a DELIBERATE deviation rather than a measurement: its token gate defaults OFF, so publishing
   the claim token there would hand it to every peer that can reach the port.
-- **PMS's `std::bad_cast` 500.** A device row whose `platform` column parses as a number makes
-  `GET /devices` and `GET /statistics/bandwidth` a 500 on a real PMS. plexsim stores the string
-  it was given and does not reproduce the crash.
+- ~~**PMS's `std::bad_cast` 500.**~~ **BUILT in Cycle 50.** A device row whose `platform` column parses as a number makes
+  `GET /devices` and `GET /statistics/bandwidth` a 500 on a real PMS. plexsim now stores the
+  normalized numeric JSON value on the direct row and reproduces both list failures until
+  a nonnumeric overwrite repairs them. The spelling matrix is local-only; it is never sent to a
+  shared reference.
 - **The GDM sender's own consumers.** plexsim searches the LAN every five seconds and lists
   what answers on `/servers`, as a real PMS does, but it does nothing else with the peers: it
   cannot browse or proxy another server, and nothing on its surface pretends it can.
@@ -5023,6 +5117,16 @@ value for every header name is not a read-only sweep. Put device-identity header
 (`X-Plex-Device-Name`, `X-Plex-Platform`, `X-Plex-Device`, `X-Plex-Client-Identifier`) on the
 sweep's own exclusion list for the shared references, or send them only to a disposable copy.
 
+**A misquoted Cycle-50 `/connections` wrapper touched the shared lab.** The first remote
+multiline command was not passed as one quoted argument, so exactly **six tokenless
+`GET /connections` requests and two blank TCP opens** ran against kids host-loopback instead of
+inside the disposable container. The blank sockets sent zero bytes and were closed immediately.
+There was no token, device identity, media read, or write. The contaminated observations were
+discarded, all shared-reference connection work stopped, and the complete replacement matrix ran
+only through `docker exec` to each disposable PMS's own loopback on an `internal: true` network.
+Quote a remote program as one argument and prove the container/network target before opening the
+first socket.
+
 **Cycle 49 also put a transient row into zen's `/servers`.** Starting plexsim with `--gdm on`
 on the same LAN made zen discover it, exactly as any Plex server on that wire would; the row
 aged out on its own and nothing on disk changed. It is recorded because it is a state change
@@ -5092,6 +5196,7 @@ Incidents, so the rules make sense:
 | 2026-09-12 | A broken-DB copy parked at `kids:/home/ben/plexlab/db-broken-20260912/` | Deleted at the user's request; the live config verified intact |
 | Cycle 9 | Three patches committed with every backtick-quoted word stripped from their comments, and a fourth that never ran | An UNQUOTED heredoc runs backticked words as commands — see §10 |
 | Cycle 11 | fun's Plex found stopped and SIGKILLed mid-`deploy-fun.sh` by another session | Left alone; it came back when that session finished. Not ours to restart |
+| Cycle 50 | A misquoted `/connections` wrapper sent six tokenless GETs and opened two blank sockets on kids host-loopback | No write or identity; sockets closed, evidence discarded, all later work confined to isolated container loopback; both copies reset/recreated and re-proved isolated |
 
 Local processes **not** belonging to this work, left alone on purpose (re-checked at the end of
 cycle 15): `32400` is another session's plexsim; `8787` another session's `http.server`; `32502`
@@ -5543,6 +5648,14 @@ Per-cycle scratch directories are ephemeral. Each holds the hunt prompts, the re
 clients, the patch module, the frozen trees and the suite logs. The transcripts are the
 authoritative record of a hunt's reasoning:
 
+- cycles 50–51: `/private/tmp/plexsim-c50.58ZRIO/`. `A/REPORT.md` reconstructs the recovered
+  branch and audits every deferred Cycle-49/Cycle-50 entry; `territory-a-implementation-report.md`
+  maps the catalog fixes; `C/REPORT.md` holds the claim, dual-format, client-graph and expanded
+  `/connections` results; `F/` holds the 58-path registry and redacted disposable connection
+  evidence. The stopping reports are `A/CYCLE51_REPORT.md`, `CYCLE51_CATALOG_REPORT.md`, and
+  `C/CYCLE51_REPORT.md`; all end `NO FINDINGS`. `ui-serial.log` is the uncontended final UI proof.
+  The directory is ephemeral. Durable behavior lives in the checked-in fixtures/tests and the exact denominators/rules in this handover and
+  `docs/findings.md`; no token or raw unredacted external body belongs in the repository.
 - cycles 46–48: session scratch `6646e767-4912-4dac-bbe0-eea51f838555/scratchpad/{c46,c47,c48}/`.
   `c46/A` holds the complete
   116-name/76-family query-option census and its final zero-mismatch output; `c46/B`, `c47/B` and

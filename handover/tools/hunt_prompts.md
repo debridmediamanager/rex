@@ -2970,3 +2970,94 @@ mismatch and one ordering mismatch in 1,331 pairs -- the useful negative -- plus
 from the tag-rich row it had to make. 26 findings, 23 commits. Territory A also found that
 BOTH references were broken instruments: a GET had corrupted a device row and made
 `/devices` and `/statistics/bandwidth` 500 on kids and zen. kids was repaired. ====
+
+
+==== Cycle 50 (2026-09-19). Recover the interrupted Cycle-50 branch from its surviving commits,
+original session and three hunt transcripts. Audit every reported finding and every Cycle-49
+deferred entry against the exact retained request/evidence; do not equate a surviving commit with
+a completed cycle. Re-measure apparently bounded entries only on the isolated writable copies,
+with explicit state undo and no shared-reference write/device identity. Add a discriminating
+regression for every implementation, run the complete suites serially, update the durable findings
+and handover, and perform a clean stopping cycle afterward. ====
+
+
+# Cycle 50 | recovery audit and exact-request closure
+
+Reconstruct the seven surviving commits and the uncommitted eighth measured finding. Join all
+Territory-A matched-catalog and Territory-B official-client report entries to current code and to
+a regression that fails on the unfixed behavior. Separate the searchable-tag and playback-state
+rules on both disposable PMS versions rather than retaining an ambiguous bound. Audit every
+Cycle-49 deliberately-unimplemented entry for newly actionable evidence. Report missing artifacts,
+parent/child proof quality, exact denominators, terminal bounds and safety state.
+
+
+# Cycle 50 | catalog/hierarchy implementation
+
+Implement every actionable matched-catalog difference using the exact report/request semantics:
+state-aware season OnDeck, detail/light projection, newest-leaf dating, artwork ownership and
+restamping, extras propagation, titleSort scoring, searchable-tag membership/count, deterministic
+profile order, clip Images and untyped-library clip/runtime behavior. Build synthetic
+discriminators where the UI fixture is vacuous. Do not reconstruct absent locale documents or
+runtime columns from guesses; return an explicit data requirement until exact evidence exists.
+
+
+# Cycle 50 | claim/format/transport and deferred entries
+
+Reconstruct and safely repeat the finite 116-family claim registry and dual-format family set;
+inspect the complete served-client graph for newly reachable paths. Close the missing system-XML,
+background children, split-method, zero-grace and GDM-lifecycle regressions. Rebuild the complete
+executed legacy-prefix denominator from the durable command and audit numeric-platform serializer
+behavior locally. Expand `/connections` only inside each disposable PMS container, targeting its
+own loopback; derive an implementation only if every client-visible field and lifecycle is exact.
+Retain zen as a broken-instrument bound if it is unavailable.
+
+
+==== Cycle 50 result. Territory A's 23 entries, Territory B's eight and Territory C's ten are all
+implemented and regression-protected. The recovery found 18 report entries missing from the
+seven-commit branch, separated the searchable-tag gate/current count and per-session playback
+latch on both disposable versions, restored the lost `/system` writer, and closed numeric-platform
+behavior. Regional prefs retain three complete 174-row documents / 1,122 exact cells; the legacy
+registry is 58 paths / 174 reference GETs. Claim replay is 1,776 safe requests; dual format is 692
+safe pairs with zero remaining mismatch. `/connections` is bounded by 78 observations and 26
+sockets but remains terminally underivable, so no fabricated route was added. ====
+
+
+==== Cycle 51 (2026-09-19). Freeze behavior/test head `4069fd4` and perform the stopping repeat.
+Use only local execution and retained checked-in/cycle artifacts; contact no protected reference,
+scratch copy, plex.tv endpoint or media body. A territory may end `NO FINDINGS` only after every
+finite Cycle-50 entry and denominator is either freshly green or explicitly retained/bounded. ====
+
+
+# Cycle 51 | exact requests and official-client findings
+
+Map all 23 Territory-A and eight Territory-B findings to current implementation and a
+discriminating regression. Re-audit the 421-pair/37,112-leaf matched corpus, five-session/519-flow
+official-client report, durable reference walk, prefix registry and regional fixtures. Separate
+artifact-retention and capability limits from actionable behavior. Report a literal final verdict.
+
+
+# Cycle 51 | catalog, hierarchy, navigation and controls
+
+Re-run every assigned catalog fix through the focused catalog fixture and mutable UI fixture;
+repeat regional preferences, navigation, decision, mediainfo, GDM and prefix suites. Re-audit the
+36 axes, 18 subsets and retained option/screen/decision/timeline/literal-path control matrices.
+Treat playback-state-dependent OnDeck as state, not a required block. Report a literal final
+verdict.
+
+
+# Cycle 51 | claim, dual format, transport, TLS and discovery
+
+Locally repeat the complete safe claim registry, recovered XML/JSON pairs, `/system` writer map,
+numeric-platform matrix, raw transport boundaries, both TLS runtimes, GDM lifecycle, regional
+prefs and the prefix registry. Reconcile each current result with retained multi-server
+denominators without calling retained evidence fresh. Restate the completed `/connections` bound
+and do not revisit scratch merely to produce activity. Report a literal final verdict.
+
+
+==== Cycle 51 result. All three independent reports end exactly `NO FINDINGS`. Exact-request:
+23/23 Territory A and 8/8 Territory B closed. Catalog: 54/54 focused checks, regional 3/3 and
+1,122/1,122 cells, navigation 28/28, decisions 2,340/2,340, mediainfo 35/35, GDM 103/103 and
+prefix 58/58. Formats/transport: 111 safe claim families / 444 local GETs, 173 safe dual-format
+pairs / 2,540 nodes / 13,072 scalar occurrences, nine system routes, 92 numeric cells plus four
+repairs, all raw transport boundaries, and TLS 10/10 on both runtimes. Every finite axis is green;
+only explicit capability, safety and underivable-state bounds remain. ====
