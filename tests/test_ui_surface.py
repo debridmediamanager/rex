@@ -8235,6 +8235,17 @@ def main():
     check("an unrecognised Transfer-Encoding is ignored and the socket is kept",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
                     + FOLLOW50A) == OK2_50A, "")
+    # Exact means exact after removing only the header separator's one optional space.
+    # Cycle 50's first parser patch preserved these bytes, then erased the distinction
+    # with `.strip()` in the dispatcher and accepted both spellings as chunked.
+    chunk_framing_c50a = b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A
+    check("surrounding whitespace makes Transfer-Encoding non-exact and ignored",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+                    b"Transfer-Encoding:  chunked\r\n\r\n" + chunk_framing_c50a)
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True)
+          and wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+                        b"Transfer-Encoding: chunked \r\n\r\n" + chunk_framing_c50a)
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
     check("...and its framing, if any, becomes the next request's own refusal",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
                     b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A)
