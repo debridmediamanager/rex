@@ -11379,8 +11379,7 @@ class PlexSim:
             if wanted is not None and str(section["key"]) not in wanted:
                 continue
             is_show = section.get("type") == "show"
-            rows = sorted(self.catalog.section_items(section["key"]),
-                          key=lambda r: -(r.get("addedAt") or 0))
+            rows = self.section_recently_added_rows(section)
             # Measured: a SHOW library's Recently Added shelf is typed `mixed` and
             # its key goes to /hubs/home/recentlyAdded; a movie library's is typed
             # `movie` and goes straight to the section listing.
@@ -11626,6 +11625,25 @@ class PlexSim:
             rows = [r for r in rows if str(r.get("librarySectionID")) == str(section_id)]
         rows.sort(key=lambda r: -(r.get("addedAt") or 0))
         return rows
+
+    def section_recently_added_rows(self, section):
+        """Top-level rows for a library's ``tv/movie.recentlyadded`` shelf.
+
+        Cycle 50 measured the show form independently on kids and zen: the shelf
+        keeps its top-level show row, but stamps that projection with the newest
+        leaf's ``addedAt``.  This differs deliberately from the mixed Home listing,
+        whose roll-up can return a season or episode instead.
+        """
+        rows = list(self.catalog.section_items(section.get("key")))
+        if section.get("type") == "show":
+            dated = []
+            for row in rows:
+                leaves = self.catalog.leaves(row.get("ratingKey"))
+                stamp = max([int(leaf.get("addedAt") or 0) for leaf in leaves]
+                            or [int(row.get("addedAt") or 0)])
+                dated.append(dict(row, addedAt=stamp))
+            rows = dated
+        return sorted(rows, key=lambda row: -(row.get("addedAt") or 0))
 
     # Cycle 28: the cap `type=2` answers and `type=1` does not. Measured on zen:
     # `?type=2` is `size 50, totalSize 50` at a 100-row window and pages correctly to
@@ -11897,7 +11915,7 @@ class PlexSim:
                            if str(r.get("originallyAvailableAt") or "") >= year_ago],
                           key=lambda r: str(r.get("originallyAvailableAt") or ""),
                           reverse=True)
-        added = sorted(items, key=lambda r: -(r.get("addedAt") or 0))
+        added = self.section_recently_added_rows(section)
         # Each of the three shelves added below is built from its own key, which is
         # the listing its "see all" opens: Top Unwatched is unwatched films rated 7.0
         # or better, best first; Start Watching is the shows with no episode watched or
