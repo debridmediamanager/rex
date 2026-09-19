@@ -406,6 +406,45 @@ def main():
             return ("exception", type(error).__name__)
         return answer.get("MediaContainer") if isinstance(answer, dict) else answer
 
+    # Cycle 50 measured the season form on both supported PMS versions.  Its OnDeck
+    # row is selected for the whole show, then exposed only by the season that owns
+    # that episode; it is not each season's first unwatched episode.
+    ondeck_rows = [
+        {"ratingKey": "45101", "key": "/library/metadata/45101/children",
+         "type": "show", "title": "On Deck Show", "librarySectionID": 2},
+        {"ratingKey": "45102", "key": "/library/metadata/45102/children",
+         "type": "season", "title": "Season 1", "index": 1,
+         "parentRatingKey": "45101", "librarySectionID": 2},
+        {"ratingKey": "45103", "key": "/library/metadata/45103/children",
+         "type": "season", "title": "Season 2", "index": 2,
+         "parentRatingKey": "45101", "librarySectionID": 2},
+        {"ratingKey": "45104", "key": "/library/metadata/45104", "type": "episode",
+         "title": "Watched", "index": 1, "parentIndex": 1,
+         "parentRatingKey": "45102", "grandparentRatingKey": "45101",
+         "librarySectionID": 2, "viewCount": 1, "lastViewedAt": 100},
+        {"ratingKey": "45105", "key": "/library/metadata/45105", "type": "episode",
+         "title": "Next", "index": 2, "parentIndex": 1,
+         "parentRatingKey": "45102", "grandparentRatingKey": "45101",
+         "librarySectionID": 2},
+        {"ratingKey": "45106", "key": "/library/metadata/45106", "type": "episode",
+         "title": "Later Season", "index": 1, "parentIndex": 2,
+         "parentRatingKey": "45103", "grandparentRatingKey": "45101",
+         "librarySectionID": 2},
+    ]
+    for synthetic in ondeck_rows:
+        catalog.add(synthetic)
+    season_one = get("/library/metadata/45102?includeOnDeck=1")
+    season_two = get("/library/metadata/45103?includeOnDeck=1")
+    season_one_row = (season_one.get("Metadata") or [{}])[0]
+    season_two_row = (season_two.get("Metadata") or [{}])[0]
+    catalog.remove(45101)
+    check("a season exposes only the show's own On Deck episode",
+          ((season_one_row.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey")
+          == "45105" and "OnDeck" not in season_two_row,
+          "season1=%s season2=%s"
+          % (((season_one_row.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey"),
+             ((season_two_row.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey")))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []

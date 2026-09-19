@@ -3496,9 +3496,21 @@ class PlexSim:
                 detail["Extras"]["Metadata"] = rows
 
         if _include_int(query.get("includeOnDeck")):
-            # First episode with no view offset, else the first episode.
-            unwatched = [l for l in leaves if not l.get("viewOffset") and not l.get("viewCount")]
-            pick = (unwatched or leaves or [None])[0]
+            # Cycle 50: On Deck is selected once for the SHOW.  A season exposes
+            # that same row only when it owns the selected episode; it does not
+            # manufacture a row from its own first unwatched child.  Across four
+            # shows and nineteen seasons on both supported PMS versions, every
+            # non-owning season omitted the block (including seasons that did have
+            # unwatched episodes).
+            show_key = (row.get("parentRatingKey") if row.get("type") == "season"
+                        else row.get("ratingKey"))
+            pick = next((candidate for candidate in self.continue_watching()
+                         if candidate.get("type") == "episode"
+                         and str(candidate.get("grandparentRatingKey")) == str(show_key)),
+                        None)
+            if (pick is not None and row.get("type") == "season"
+                    and str(pick.get("parentRatingKey")) != str(row.get("ratingKey"))):
+                pick = None
             if pick is not None:
                 detail["OnDeck"] = {"Metadata": _full(pick)}
 
