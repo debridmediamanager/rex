@@ -8250,9 +8250,10 @@ def main():
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: bogus\r\n\r\n"
                     b"5\r\nhello\r\n0\r\n\r\n" + FOLLOW50A)
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
-    check("a chunk size larger than the body is answered and closed, not refused",
+    check("a chunk size beyond signed 64-bit is refused and closed",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
-                    b"FFFFFFFFFFFFFFFF\r\n") == (["HTTP/1.1 200 OK"], True), "")
+                    b"FFFFFFFFFFFFFFFF\r\n")
+          == (["HTTP/1.1 400 Bad Request"], True), "")
     check("a trailer after the last chunk is left in the stream and earns its own 400",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
                     b"0\r\nX-T: v\r\n\r\n")
@@ -8305,6 +8306,37 @@ def main():
           == (["HTTP/1.1 200 OK", "HTTP/1.1 400 Bad Request"], True), "")
     check("...and a bare HTTP/0.9-shaped line alone is answered a full HTTP/1.1 refusal",
           wire_c50a(b"X-T: v\r\n\r\n") == (["HTTP/1.1 400 Bad Request"], True), "")
+
+    # A short but syntactically valid chunk body closes the transport only AFTER a
+    # successful response which still advertises Keep-Alive. Status and EOF alone miss
+    # this wire-visible split. Use the signed maximum here; the next value is the 400
+    # overflow boundary checked by the grammar table below.
+    def short_chunk_headers_c50a(body):
+        sock = _s50a.create_connection((_h50a, _p50a), timeout=3.0)
+        try:
+            sock.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\n"
+                         b"Transfer-Encoding: chunked\r\n\r\n" + body)
+            sock.settimeout(3.0)
+            raw, closed = b"", False
+            try:
+                while True:
+                    piece = sock.recv(65536)
+                    if not piece:
+                        closed = True
+                        break
+                    raw += piece
+            except _s50a.timeout:
+                pass
+        finally:
+            sock.close()
+        head = raw.partition(b"\r\n\r\n")[0].decode("latin-1")
+        return ("\r\nConnection: Keep-Alive\r\n" in "\r\n" + head + "\r\n",
+                "\r\nKeep-Alive: timeout=20\r\n" in "\r\n" + head + "\r\n",
+                closed)
+    short_states_c50a = [short_chunk_headers_c50a(body) for body in
+                         (b"", b"-5\r\n", b"7FFFFFFFFFFFFFFF\r\nhello\r\n")]
+    check("a short chunk body advertises Keep-Alive and then really closes",
+          short_states_c50a == [(True, True, True)] * 3, "%s" % short_states_c50a)
 
     # Cycle 49, 16 framing cells and 13 header spellings on plexscratch42 (1.42.2) and
     # plexscratch (1.43.4): a real PMS really dechunks a `Transfer-Encoding: chunked`

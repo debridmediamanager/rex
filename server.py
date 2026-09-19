@@ -17908,6 +17908,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.rfile.begin()                                   # cycle 49
             self._undrained = 0
+            self._close_after_response = False
             # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
             # when the line finishes. `peek` blocks for the first byte, as this read
             # would anyway, and then hands back whatever the one raw read brought.
@@ -17963,6 +17964,12 @@ class Handler(BaseHTTPRequestHandler):
             getattr(self, name)()
             self.wfile.flush()
             self._drain_body()                                   # cycle 49
+            if self._close_after_response:
+                # Some incomplete chunk bodies are discovered before routing, but the
+                # reference still advertises this response as reusable and only then
+                # closes the transport. Delay the loop decision until the headers and
+                # body have gone out so `_send` writes the measured Keep-Alive pair.
+                self.close_connection = True
         except socket.timeout as error:
             # An incomplete request that ran past the absolute deadline, or an idle
             # socket past its own. Neither reference answers anything to either.
@@ -19676,8 +19683,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if state == "short":
                 # Ran out of buffered framing: answer, then the socket goes, exactly as a
-                # declared `Content-Length` body that never arrives does.
-                self.close_connection = True
+                # declared `Content-Length` body that never arrives does. All three
+                # live reference versions still ADVERTISE Keep-Alive on this successful
+                # response, so the actual close is deferred until after it is written.
+                self._close_after_response = True
             # `left` is the trailer case: the remainder stays in the stream and earns its
             # own refusal as the next request line, which is what a real PMS answers.
         else:
