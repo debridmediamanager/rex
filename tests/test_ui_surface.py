@@ -7810,6 +7810,41 @@ def main():
     check("an agent config path without its index is a 404",
           agent_c50g and config_status_c50g == 404,
           "agent=%r status=%r" % (agent_c50g, config_status_c50g))
+    # Cycle 50: a normal keep-alive idle timeout first fires in the method peek.
+    # Swallowing it poisons BufferedReader; the following readline raises the plain
+    # OSError below and ThreadingHTTPServer prints a traceback.  Reproduce the exact
+    # exception transition without adding 20 idle seconds to every suite run.
+    import server as _server_c50h
+    class _TimedReaderC50H:
+        saw_eof = False
+        def begin(self):
+            pass
+        def _arm(self):
+            pass
+        def peek(self, _count):
+            raise socket.timeout("timed out")
+        def readline(self, _count):
+            raise OSError("cannot read from timed out object")
+    class _FlushC50H:
+        def flush(self):
+            pass
+    class _ConnectionC50H:
+        def settimeout(self, _seconds):
+            pass
+    handler_c50h = object.__new__(_server_c50h.Handler)
+    handler_c50h.rfile = _TimedReaderC50H()
+    handler_c50h.wfile = _FlushC50H()
+    handler_c50h.connection = _ConnectionC50H()
+    handler_c50h.log_error = lambda *_args: None
+    handler_c50h.close_connection = False
+    error_c50h = None
+    try:
+        handler_c50h.handle_one_request()
+    except OSError as caught_c50h:
+        error_c50h = caught_c50h
+    check("an idle keep-alive timeout closes quietly instead of escaping as OSError",
+          error_c50h is None and handler_c50h.close_connection,
+          "%r" % error_c50h)
 
     # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
