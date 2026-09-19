@@ -28911,6 +28911,27 @@ def main():
           status_post_c52k == 200 and b'content="plugins"' in post_c52k,
           "HTTP %s" % status_post_c52k)
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), three repeats each: an extra
+    # segment after a stream id is a 404, whatever it is -- `/colors`, `/zzz`, `/loudness/1`
+    # -- where the stream itself is the 501 and `/loudness` and `/levels` are their own 404.
+    # plexsim answered the 501 to every name it did not know.
+    _, detail_c52m, _ = get(base, "/library/metadata/%s" % movie)
+    stream_c52m = None
+    for media_c52m in ((detail_c52m.get("Metadata") or [{}])[0].get("Media") or []):
+        for part_c52m in media_c52m.get("Part") or []:
+            for candidate_c52m in part_c52m.get("Stream") or []:
+                stream_c52m = stream_c52m or candidate_c52m.get("id")
+    wrong_c52m = []
+    for suffix_c52m in ("/colors", "/zzz", "/loudness/1", "/levels/x"):
+        status_c52m, body_c52m, _ = request(
+            base, "GET", "/library/streams/%s%s" % (stream_c52m, suffix_c52m), want_json=False)
+        if status_c52m != 404 or len(body_c52m) != 85:
+            wrong_c52m.append("%s -> %s/%s" % (suffix_c52m, status_c52m, len(body_c52m)))
+    bare_c52m, _, _ = request(base, "GET", "/library/streams/%s" % stream_c52m, want_json=False)
+    check("an extra segment after a stream id is a 404",
+          stream_c52m and not wrong_c52m and bare_c52m == 501,
+          "; ".join(wrong_c52m)[:200] or "bare=%s" % bare_c52m)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
