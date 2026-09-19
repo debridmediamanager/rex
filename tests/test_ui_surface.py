@@ -7980,7 +7980,12 @@ def main():
     # names, so the table's own rows are used in the table's own order.
     import urllib.request as _u50e
     def prefs_enum_c50e(language):
-        request_ = _u50e.Request(base + "/library/metadata/%s?includePreferences=1" % movie,
+        # `movie` was deliberately unmatched above, and the cycle-16 assertion proves
+        # an unmatched row carries no Preferences at all. Read the still-matched row the
+        # suite already discovered so this late check measures localisation rather than
+        # inheriting an unrelated write from an earlier section.
+        prefs_key = matched_movie or movie
+        request_ = _u50e.Request(base + "/library/metadata/%s?includePreferences=1" % prefs_key,
                                  headers={"Accept": "application/json", "User-Agent": UA,
                                           "X-Plex-Language": language} if language
                                  else {"Accept": "application/json", "User-Agent": UA})
