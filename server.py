@@ -5446,16 +5446,43 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.system_scanners(segments[2])
         if segments[:3] == ["system", "library", "sections"]:
-            # The system view of the libraries, which the Agents page reads to
-            # know which sections an agent can be configured for. Measured: a
-            # `com.plexapp.system` container of Directory rows.
-            rows = [{"key": section["key"], "type": section.get("type"),
-                     "title": section.get("title"),
-                     "agent": ("tv.plex.agents.series"
-                               if section.get("type") == "show"
-                               else "tv.plex.agents.movie")}
-                    for section in catalog.sections]
-            return self.bare_container(size=len(rows),
+            # The system view of the libraries, which the Agents page reads to know which
+            # sections an agent can be configured for.
+            #
+            # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): thirteen attributes,
+            # and plexsim emitted four of them plus an `agent` NO reference sends. The
+            # `key` is the URL-safe base64 of `http://{host}:{port}/library/sections/{id}`
+            # with `=` written as `_`; `unique` marks a title that occurs once; the rows
+            # are sorted by the title folded to lower case; and the container carries the
+            # framework's `noHistory`/`replaceParent` pair, which plexsim left off.
+            # An extra segment is a 404 on both references, where plexsim answered the
+            # whole listing again -- the class cycle 52 closed for streams, accounts and
+            # devices.
+            if len(segments) > 3:
+                return ("bare", 404)
+            host = self.private_address or "127.0.0.1"
+            titles = [section.get("title") for section in catalog.sections]
+            rows = []
+            for section in sorted(catalog.sections,
+                                  key=lambda row: str(row.get("title") or "").lower()):
+                url = "http://%s:%s/library/sections/%s" % (host, self.private_port or 32400,
+                                                            section["key"])
+                rows.append({
+                    "key": base64.urlsafe_b64encode(url.encode()).decode().replace("=", "_"),
+                    "unique": 1 if titles.count(section.get("title")) == 1 else 0,
+                    "name": section.get("title"),
+                    "title": section.get("title"),
+                    "type": section.get("type"),
+                    "serverVersion": SERVER_VERSION,
+                    "uuid": section.get("uuid"),
+                    "host": host,
+                    "serverName": catalog.friendly,
+                    "path": "/library/sections/%s" % section["key"],
+                    "machineIdentifier": catalog.machine,
+                    "local": 1,
+                    "port": self.private_port or 32400,
+                })
+            return self.bare_container(noHistory=0, replaceParent=0, size=len(rows),
                                        identifier="com.plexapp.system",
                                        Directory=rows)
         if route.startswith("/system/bundle/media/flags/"):
