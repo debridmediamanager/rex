@@ -4997,9 +4997,17 @@ def main():
     # `tv.plex.agents.nfo.*` rows exist only on 1.43.4, and plexsim reports 1.42.2, so
     # a movie library is offered TWO modern agents and not three. The fixture this
     # check was written against was captured off kids.
-    check("a movie library is offered its two modern agents",
+    #
+    # Cycle 53 re-measured the whole list: a real 1.42.2 server offers FIVE agents for a
+    # movie library, because the three legacy PRIMARIES for that type come first. This
+    # check encoded plexsim's own four-agent catalogue, which was the inherited bound
+    # cycle 53 retired -- so it is updated to what zen and plexscratch42 answer rather
+    # than deleted.
+    check("a movie library is offered its five agents, legacy first",
           [a.get("identifier") for a in agent_rows]
-          == ["tv.plex.agents.movie", "tv.plex.agents.none"],
+          == ["com.plexapp.agents.none", "com.plexapp.agents.imdb",
+              "com.plexapp.agents.themoviedb",
+              "tv.plex.agents.movie", "tv.plex.agents.none"],
           ",".join(str(a.get("identifier")) for a in agent_rows))
     # Cycle 21: the list is read from the XML, because this endpoint writes its
     # `Language` rows as repeated JSON KEYS and a parser keeps only the last -- which
