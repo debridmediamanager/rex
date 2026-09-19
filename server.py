@@ -5349,6 +5349,16 @@ class PlexSim:
             # and runtime line; use the 1.42.2 form that plexsim advertises.
             return ("plugin-xml", 500, URL_LOOKUP_ERROR)
 
+        if segments[:3] == ["library", "metadata", "augmentations"]:
+            # Cycle 52, measured on kids and zen: the augmentation id is PARSED before the
+            # row is looked up, so a value that is not a number is a **400** and a number
+            # the server does not hold is the ordinary 404 -- the shape `/devices`,
+            # `/accounts`, `/playQueues` and `/system/scanners` already have. plexsim
+            # answered 404 to both, so a client could not tell a malformed id from a
+            # missing augmentation.
+            if len(segments) > 3 and not segments[3].isdigit():
+                return ("error", 400, "plexsim: bad request")
+            return ("error", 404, "plexsim: not found")
         if segments[:1] == ["accounts"]:
             if len(segments) > 2:
                 # Cycle 52, measured on kids and zen: an extra segment after the account

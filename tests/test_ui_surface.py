@@ -29025,6 +29025,19 @@ def main():
     check("the part path's changestamp/filename arity",
           part_c52r and not wrong_c52r, "; ".join(wrong_c52r)[:200])
 
+    # Cycle 52, measured on kids and zen: `/library/metadata/augmentations/{x}` parses the id
+    # BEFORE it looks the row up, so a value that is not a number is a **400** (89 bytes) and
+    # a number is the ordinary 404 -- the shape `/devices`, `/accounts`, `/playQueues` and
+    # `/system/scanners` already have. plexsim answered 404 to both.
+    bad_c52p, body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/zzz",
+                                     want_json=False)
+    good_c52p, good_body_c52p, _ = request(base, "GET", "/library/metadata/augmentations/1",
+                                           want_json=False)
+    check("an unparseable augmentation id is a 400",
+          bad_c52p == 400 and len(body_c52p) == 89
+          and good_c52p == 404 and len(good_body_c52p) == 85,
+          "bad=%s/%s good=%s" % (bad_c52p, len(body_c52p), good_c52p))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
