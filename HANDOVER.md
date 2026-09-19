@@ -3634,6 +3634,46 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 53 — the framework's own source, and the database's own schema
+
+Cycle 52 read PMS's route table out of the binary. Cycle 53 read the **source and the
+schema beside it**: the plug-in framework ships as uncompiled Python — 289 files, plus
+`System.bundle/Contents/Code/*.py`, which *is* the `/system` surface — and
+`Resources/com.plexapp.plugins.library.db` is an empty database template whose schema
+names every column PMS can store. Cycle 52 had already met the first instrument without
+recognising it: it fitted the framework's argument counting to twelve cells and then found
+the rule in one grep of `agentservice.py`.
+
+**19 findings, 21 commits, every one proved fail-then-pass against its own parent.**
+
+The driver took the media flag images, and the two hunts took the framework and the
+vocabulary.
+
+* **Territory A, the framework from its own source** — thirteen findings. Every `@route`
+  in `System.bundle` enumerated and then measured: eighteen more framework routes,
+  five more sub-paths under every hosted plug-in, the eleven legacy agents and their
+  attributions, and four envelope rules (a framework error does NOT close the connection;
+  five routes put `Cache-Control` second; a framework container pages without an `offset`
+  and still names its window; `/system//` is the framework's empty 404). Plus two writer
+  corrections and the discovery that a state cookie the server cannot unpack makes every
+  framework route answer Tornado's empty 200 — carrying the one `Server:` banner on the
+  surface, which cycle 33 recorded as never sent.
+* **Territory B, the attribute vocabulary and the schema** — four findings and one large
+  negative. Ten more database columns are real query fields where plexsim treated each as
+  unknown (and an unknown field answers EVERY row); `isAdult` is a real row attribute;
+  a continue-watching row carries `includedAt`; and `includeAlternates=1` inlined artwork
+  the row does not own. The negative is the census: 130 request families across three
+  servers, **zero JSON scalar-type differences** where the references agree.
+
+**One inherited bound retired and two recorded beliefs corrected.** HANDOVER §8 has
+carried "legacy agents and the `/:/plugins` listing" as one bound since cycles 1–6; cycle
+52 retired the listing half on the grounds that a fixed table in the image is not hosting,
+and leaving the two halves split was drift rather than a decision, so the agents are now
+listed too — 15 rows where plexsim answered four. Cycle 33's "no `Server:` banner at all"
+is the API's rule and not the framework's, and cycle 18's "PATCH is a 405, the only one on
+the surface" names two framework subtrees. **Six existing checks were re-measured and
+updated** where they encoded plexsim's own four-agent catalogue rather than the surface.
+
 ### Cycle 52 — the server's own binary as the route table
 
 Cycle 51 was clean, so cycle 52 reopened the loop the only way it has ever been reopened:
@@ -4542,6 +4582,35 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 53.**
+
+- **The pixels of every bundled image.** The 742 media flags, each plug-in bundle's
+  `icon-default.png` and `attribution.png`, and cycle 52's 68 `/:/resources` files are
+  served at the file's own media type and geometry with plexsim's placeholder inside.
+  Shipping several megabytes of a product's artwork to reproduce the bytes is not done.
+- **A populated `/system/channels/*` row.** No instrument hosts a channel, so only the
+  empty container is measurable; `get_directory`'s `DirectoryItem` shape is readable in
+  `peerservice.py` and not reachable here.
+- **`/system/messaging/{register_for_event,broadcast_event}`'s semantics.** They mutate
+  the System bundle's event dictionary; only their status and body were measured, on the
+  disposable copies.
+- **The mechanism behind the `Cache-Control` split.** Five framework routes put it second
+  and every other `/system` response last; the set separates cleanly along the
+  peer-service routes plus one across four servers and does not fall out of
+  `construct_response`. The SET is measured; the rule is not identified.
+- **The fully-supplied framework call.** `/system/agents/search?identifier=x&mediaType=1&
+  lang=en` runs the real agent function and answers a value-dependent traceback
+  (`KeyError: 'x'`). The under-supplied forms are reproduced exactly from the signatures;
+  this one is PMS's own internals.
+- **The legacy agents' WORK.** Listing them, their attributions and their preference
+  documents are fixed tables in the image. Identifying with one, its contributor chain and
+  its per-agent pane beyond the captured document are not claimed.
+- **`includedAt`'s independence from `lastViewedAt`.** Equal in all five witnesses; what
+  makes them differ is not reachable on any instrument, so plexsim stamps the same value.
+- **`deletedAt` and the trash.** zen lists 2,234 trashed movies whose rows carry it; kids
+  holds none and making one needs a file removed inside the container plus a scan. One
+  witness, one version -- and plexsim has no trash state.
 
 **Cycle 52.**
 
