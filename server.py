@@ -6501,6 +6501,36 @@ class PlexSim:
                      "promotedToSharedHome": home}
                     for identifier, title, home in MANAGED_HUBS[kind]]
             return self.bare_container(size=len(rows), Hub=rows)
+        if (segments[:2] == ["hubs", "sections"] and len(segments) == 4
+                and segments[3] == "popular"):
+            # Cycle 52, measured on zen (1.42.2 -- the build plexsim reports) and kids
+            # (1.43.4): a real route that plexsim 404'd. Its rows are the library's
+            # SEASONS that have been watched -- a season row with `viewCount` above zero
+            # -- most-watched first, and its container carries `allowSync` and the
+            # librarySection triple with a NUMERIC id. zen's show library answers one
+            # season at `viewCount 73`; its other show library and both movie libraries
+            # answer `size 0`, so a movie is never a row here whatever its play count.
+            #
+            # kids answers a 500 for a MOVIE library where zen answers the empty
+            # container; the driver is not identified (not history, not watch state, not
+            # the version, not the claim), so plexsim takes zen's, being the version it
+            # reports. `/popular/zzz` and a section the server does not hold are 404s.
+            section = catalog.section(segments[2])
+            if section is None or method not in ("GET", "HEAD"):
+                return ("error", 404, "plexsim: not found")
+            seasons = sorted(
+                (row for row in catalog.items.values()
+                 if row.get("type") == "season"
+                 and str(row.get("librarySectionID")) == str(section["key"])
+                 and (row.get("viewCount") or 0) > 0),
+                key=lambda row: (-(row.get("viewCount") or 0), int(row["ratingKey"])))
+            return self.bare_container(
+                size=len(seasons), allowSync=True,
+                identifier="com.plexapp.plugins.library",
+                librarySectionID=int(section["key"]),
+                librarySectionTitle=section.get("title"),
+                librarySectionUUID=section.get("uuid"),
+                Metadata=[_full(row) for row in seasons])
         if segments[:2] == ["hubs", "sections"] and len(segments) == 4 and segments[3] == "extras":
             # Measured on both servers: an empty hub list -- `size 0`, `allowSync` and the
             # identifier, nothing else -- for a movie library, a show library and a section id
