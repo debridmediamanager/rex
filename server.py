@@ -4760,6 +4760,49 @@ class PlexSim:
 
     # -- routing ---------------------------------------------------------
 
+    # Cycle 53, measured on kids, zen and both disposable copies: a framework route whose
+    # own state COOKIE the server can no longer unpack answers a 200 with an EMPTY body
+    # and Tornado's own banner -- the one `Server:` header on the surface, which cycle 33
+    # recorded as never sent. `parse_state_data` raises inside the framework's `before_all`
+    # and the plug-in's Tornado server answers directly, swallowing the route's own status
+    # too: `/system/zzz` becomes 200/0 instead of 404 and `/system/services/url/lookup`
+    # 200/0 instead of its 500.
+    #
+    # The cookie's NAME has to be the identifier serving the route -- `com.plexapp.system`
+    # for `/system/*`, the plug-in's own id under `/:/plugins/{id}` -- and a well-formed
+    # blob behaves normally. PMS's own handlers (`/system/agents`, `/system/scanners/{N}`,
+    # `/:/plugins` itself) are untouched, which is the same split as the cookie they send.
+    #
+    # A browser that has ever stored a blob the server cannot unpack therefore empties
+    # every framework response, and the framework's `Set-Cookie` is same-origin with Plex
+    # Web -- so this is reachable, not theoretical.
+    FRAMEWORK_STATE_PREFIX = "Y2VyZWFsMQ"
+
+    def _stale_framework_cookie(self, route, headers):
+        """A framework route whose state cookie will not unpack -> Tornado's empty 200."""
+        cookie = (headers or {}).get("Cookie") if headers else None
+        if not cookie:
+            return None
+        if route == "/system" or route.startswith("/system/"):
+            if route in ("/system/agents", "/system/proxy") or route.startswith(
+                    "/system/scanners/"):
+                return None
+            owner = "com.plexapp.system"
+        elif route.startswith("/:/plugins/"):
+            pieces = route.split("/")[3:]
+            owner = pieces[0] if pieces and pieces[0] in PLUGIN_LIST else None
+        else:
+            return None
+        if not owner:
+            return None
+        for piece in cookie.split(";"):
+            name, _, value = piece.strip().partition("=")
+            if name != owner:
+                continue
+            if not value.startswith(self.FRAMEWORK_STATE_PREFIX):
+                return ("tornado-empty",)
+        return None
+
     def handle(self, method, path, body, headers, address=None):
         if path.startswith("//"):
             # A leading empty segment is a 404 like any other (`//identity`,
@@ -5035,6 +5078,9 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return ("stream", segments, query)
 
+        stale = self._stale_framework_cookie(route, headers)
+        if stale is not None:
+            return stale
         try:
             result = self._route(method, route, segments, query, body, headers, address)
             if (segments[:1] == ["system"] and isinstance(result, tuple)
@@ -21197,6 +21243,12 @@ class Handler(BaseHTTPRequestHandler):
                 document = self._page_framework_document(result[1].decode("utf-8"))
                 self._send(200, "application/xml", document.encode("utf-8"),
                            self._framework_document_window(document))
+                return
+            if kind == "tornado-empty":
+                # Cycle 53: the plug-in's own Tornado server answering past the framework,
+                # with the one `Server:` banner on the surface and no framework cookie.
+                self._send(200, "text/html; charset=UTF-8", b"",
+                           [("Server", "TornadoServer/1.0"), ("Set-Cookie", None)])
                 return
             if kind == "framework-plain":
                 # Cycle 53: a framework route whose result is a STRING or a document the
