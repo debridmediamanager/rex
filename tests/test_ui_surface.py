@@ -29071,6 +29071,33 @@ def main():
           % (len(before_c52s.get("Metadata") or []), len(rows_c52s), movie_c52s,
              extra_c52s, missing_c52s))
 
+    # Cycle 52, measured on zen (1.42.2, 32 genres) and kids (1.43.4, 7), which agree on every
+    # cell: a Categories tile's `thumb` carries a `blendColor` -- thirteen genre names have a
+    # FIXED colour and every other genre takes the next of a seven-colour cycle walked in
+    # TAG-ID order among the unknown ones (19 of 19 on zen, 3 of 3 on kids) -- and the thumb
+    # is the FIRST attribute of the row, ahead of `type`. plexsim emitted no `blendColor` at
+    # all, so a TV client's Categories browse drew every tile untinted, and its attribute
+    # order was `type, key, title, thumb`.
+    status_c52t, categories_c52t, _ = get(base, "/library/sections/%s/categories" % movie_section)
+    rows_c52t = categories_c52t.get("Directory") or []
+    wrong_c52t = []
+    for row_c52t in rows_c52t:
+        thumb_c52t = row_c52t.get("thumb") or ""
+        if "blendColor=" not in thumb_c52t:
+            wrong_c52t.append("%s no blendColor" % row_c52t.get("title"))
+        if list(row_c52t)[0] != "thumb":
+            wrong_c52t.append("%s leads with %s" % (row_c52t.get("title"), list(row_c52t)[0]))
+    known_c52t = [row_c52t for row_c52t in rows_c52t
+                  if str(row_c52t.get("title", "")).lower() in ("animation", "science fiction", "drama")]
+    for row_c52t in known_c52t:
+        want_c52t = {"animation": "347431", "science fiction": "673E8B",
+                     "drama": "846E49"}[str(row_c52t["title"]).lower()]
+        if ("blendColor=%s&" % want_c52t) not in (row_c52t.get("thumb") or ""):
+            wrong_c52t.append("%s wrong colour" % row_c52t.get("title"))
+    check("a Categories tile carries its measured blend colour",
+          status_c52t == 200 and rows_c52t and known_c52t and not wrong_c52t,
+          "; ".join(wrong_c52t)[:250] or "%d tiles" % len(rows_c52t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

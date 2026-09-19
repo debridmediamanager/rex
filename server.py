@@ -564,6 +564,21 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 RESOURCE_DIRECTORIES = {""} | {name.rsplit("/", 1)[0]
                                for name in RESOURCE_ASSETS if "/" in name}
 
+# Cycle 52: the Categories tab's tile colour. Measured on zen (1.42.2, 32 genres) and kids
+# (1.43.4, 7), which agree on every cell: thirteen genre names carry a FIXED colour, and
+# every other genre takes the next colour of a seven-entry cycle walked in TAG-ID order
+# among the unknown ones -- 19 of 19 on zen and 3 of 3 on kids. The colour is not derived
+# from the artwork; plexsim's own comment assumed it was and it emitted no `blendColor` at
+# all, so a client drew the tile untinted.
+CATEGORY_COLOURS = {
+    "action": "2B717E", "animation": "347431", "comedy": "51284C", "crime": "33486E",
+    "documentary": "884624", "drama": "846E49", "history": "37397A", "horror": "7A281A",
+    "musical": "3B8265", "romance": "892959", "science fiction": "673E8B",
+    "thriller": "57222B", "western": "704A23",
+}
+CATEGORY_COLOUR_CYCLE = ("494616", "91293D", "4C561B", "883E7D", "8B6122", "8B4D43",
+                         "23533C")
+
 # Which verbs each section leaf accepts. Everything absent here is a 404 for POST,
 # PUT and DELETE -- measured leaf by leaf, and a real PMS never answers 405: that
 # status does not appear anywhere on its surface.
@@ -8073,23 +8088,53 @@ class PlexSim:
             # key, title} plus a Meta.Type block naming the active category. The
             # thumb is an art transcode of one of the genre's own items, which is
             # what a real PMS blends its tile colour from.
+            entries = (self.secondary_directory(section_id, section, "genre")
+                       ["MediaContainer"].get("Directory") or [])
+            # The colour cycle is walked in TAG-ID order over the genres whose name is not
+            # in the fixed table, so the tile a genre gets does not move when another
+            # genre is added above it alphabetically.
+            unknown = 0
+            colours = {}
+            for entry in sorted(entries, key=lambda row: int(row["key"])):
+                name = str(entry.get("title") or "").lower()
+                if name in CATEGORY_COLOURS:
+                    colours[entry["key"]] = CATEGORY_COLOURS[name]
+                else:
+                    colours[entry["key"]] = CATEGORY_COLOUR_CYCLE[
+                        unknown % len(CATEGORY_COLOUR_CYCLE)]
+                    unknown += 1
+            # And the ART is not the first row carrying the genre. Measured over zen's 32
+            # tiles and kids' 7: the genres are walked in TAG-ID order and each takes the
+            # highest-rated item that carries `art` and has not already been taken, ties
+            # broken by the lowest ratingKey, falling back to the highest-rated one when
+            # every candidate is spoken for -- which is what makes kids' five genres share
+            # one movie's backdrop. 38 of the 39 observed picks; the miss is a tie.
+            taken = set()
+            arts = {}
+            for entry in sorted(entries, key=lambda row: int(row["key"])):
+                candidates = sorted(
+                    (row for row in self.catalog.section_items(section_id)
+                     if row.get("art") and any(str(tag.get("id")) == entry["key"]
+                                               for tag in row.get("Genre") or [])),
+                    key=lambda row: (-(row.get("audienceRating") or 0),
+                                     int(row["ratingKey"])))
+                fresh = [row for row in candidates
+                         if str(row["ratingKey"]) not in taken]
+                pick = (fresh or candidates or [None])[0]
+                if pick is not None:
+                    taken.add(str(pick["ratingKey"]))
+                    arts[entry["key"]] = pick.get("art")
             tiles = []
-            for entry in (self.secondary_directory(section_id, section, "genre")
-                          ["MediaContainer"].get("Directory") or []):
-                art = None
-                for row in self.catalog.section_items(section_id):
-                    if any(str(tag.get("id")) == entry["key"]
-                           for tag in row.get("Genre") or []):
-                        art = row.get("art")
-                        break
-                tile = {
-                    "type": "directory",
-                    "key": entry["fastKey"],
-                    "title": entry["title"],
-                }
+            for entry in entries:
+                # The measured attribute order puts the thumb FIRST, ahead of `type`.
+                tile = {}
+                art = arts.get(entry["key"])
                 if art:
-                    tile["thumb"] = ("/photo/:/transcode?width=2560&height=1440&url=%s"
-                                     % urllib.parse.quote(art, safe=""))
+                    tile["thumb"] = (
+                        "/photo/:/transcode?blendColor=%s&width=2560&height=1440&url=%s"
+                        % (colours[entry["key"]], urllib.parse.quote(art, safe="")))
+                tile.update({"type": "directory", "key": entry["fastKey"],
+                             "title": entry["title"]})
                 tiles.append(tile)
             return self.secondary_container(
                 section_id, section, "", Directory=tiles,
