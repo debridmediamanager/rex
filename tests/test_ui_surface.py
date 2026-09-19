@@ -29238,6 +29238,27 @@ def main():
           "flag=%s asset=%s" % (flag_head_c53b.get("Accept-Ranges"),
                                 asset_head_c53b.get("Accept-Ranges")))
 
+    # Cycle 53, measured on kids and zen: the flag service registers TEN types, two of which
+    # (`media`, `recordLabel`) have no directory in the bundle at all -- so every value under
+    # them is the blank with a 200 where an unknown TYPE is the empty-bodied 404. And the
+    # value takes at most ONE extra segment (the country form, which every type accepts and
+    # only `contentRating` has files for); a third segment is a 404. plexsim 404'd the two
+    # directoryless types and answered the blank to a third segment.
+    wrong_c53c = []
+    for value_c53c, want_c53c in (("media/zzz", "blank"), ("recordLabel/zzz", "blank"),
+                                  ("media/en/zzz", "blank"), ("videoResolution/en/1080", "blank"),
+                                  ("audioCodec/a/b/c", "404"), ("zzz/dts", "404")):
+        status_c53c, body_c53c, head_c53c = request(
+            base, "GET", "/system/bundle/media/flags/" + value_c53c, want_json=False)
+        if want_c53c == "404":
+            ok_c53c = status_c53c == 404 and not body_c53c and not head_c53c.get("Content-Type")
+        else:
+            ok_c53c = status_c53c == 200 and len(body_c53c) == 82
+        if not ok_c53c:
+            wrong_c53c.append("%s -> %s/%s" % (value_c53c, status_c53c, len(body_c53c)))
+    check("the flag service's ten types and its one country segment",
+          not wrong_c53c, "; ".join(wrong_c53c)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

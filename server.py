@@ -1098,6 +1098,13 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "media_flags.json"), encoding="utf-8") as _handle:
     MEDIA_FLAGS = json.load(_handle)
 MEDIA_FLAG_BLANK = base64.b64decode(MEDIA_FLAGS["blank"])
+# Cycle 53: `flagservice.py` registers TEN types, and `media` and `recordLabel` have no
+# directory in the bundle at all -- so every value under them is the blank, where an
+# unknown TYPE is a 404. Measured on kids and zen: `media/zzz` is the 82-byte blank with
+# a 200 and `zzz/dts` is the empty-bodied 404.
+MEDIA_FLAG_TYPES = ("aspectRatio", "audioChannels", "audioCodec", "contentRating",
+                    "media", "recordLabel", "studio", "videoCodec", "videoFrameRate",
+                    "videoResolution")
 MEDIA_FLAG_SUBSTITUTIONS = {
     kind: [(re.compile(expression, re.I), name) for expression, name in rules]
     for kind, rules in MEDIA_FLAGS["substitutions"].items()
@@ -8396,10 +8403,13 @@ class PlexSim:
     def media_flag(self, relative):
         """`/system/bundle/media/flags/{type}/{value}` -- one of PMS's own flag images."""
         kind, _, value = relative.partition("/")
-        table = MEDIA_FLAGS["flags"].get(kind)
-        if table is None or not value:
-            # An unknown type, and an empty value, are the `/system` empty-bodied 404.
+        if kind not in MEDIA_FLAG_TYPES or not value or value.count("/") > 1:
+            # An unknown type, an empty value and a THIRD segment are the `/system`
+            # empty-bodied 404. The second segment is the country form -- measured on
+            # every type, not just `contentRating`, and only `contentRating` has a
+            # directory for one.
             return ("bare", 404)
+        table = MEDIA_FLAGS["flags"].get(kind) or {}
         name = value
         for pattern, substitute in MEDIA_FLAG_SUBSTITUTIONS.get(kind, ()):
             if pattern.search(value):
