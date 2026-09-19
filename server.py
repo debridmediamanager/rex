@@ -1562,7 +1562,13 @@ class Catalog:
         words = cls._search_tier_words(row.get("title"))
         if not words:
             return "fuzzy"
-        if words[0] == terms[0]:
+        # Cycle 50: the anchored comparison uses the sort title, just like the
+        # whole-title equality tier above.  Both PMS versions score ``6th`` against
+        # ``The 6th Day``/``6th Day`` at the anchored tier; using the display title's
+        # first token demoted it to fuzzy.  Keep the prefix tier on the display-title
+        # words: that neighbouring rule was not part of the measured correction.
+        anchored_words = cls._search_tier_words(row.get("titleSort") or row.get("title"))
+        if anchored_words and anchored_words[0] == terms[0]:
             return "anchored"
         if (len(terms) <= len(words) and words[0].startswith(terms[0])
                 and all(words[index].startswith(terms[index])
