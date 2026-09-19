@@ -1,0 +1,663 @@
+{
+ "bare": [
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.fanarttv",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "0",
+    "identifier": "com.plexapp.agents.none",
+    "primary": "1"
+   },
+   "MediaType": [
+    {
+     "name": "Personal Media",
+     "mediaType": "1"
+    },
+    {
+     "name": "Personal Media Shows",
+     "mediaType": "2"
+    },
+    {
+     "name": "Personal Media Artists",
+     "mediaType": "8"
+    },
+    {
+     "name": "Personal Media Albums",
+     "mediaType": "9"
+    },
+    {
+     "name": "Photos",
+     "mediaType": "13"
+    }
+   ]
+  },
+  {
+   "attrs": {
+    "hasPrefs": "0",
+    "identifier": "com.plexapp.agents.htbackdrops",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.imdb",
+    "primary": "1"
+   },
+   "MediaType": [
+    {
+     "name": "Plex Movie (Legacy)",
+     "mediaType": "1"
+    }
+   ]
+  },
+  {
+   "attrs": {
+    "hasPrefs": "0",
+    "identifier": "com.plexapp.agents.lyricfind",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.thetvdb",
+    "primary": "1"
+   },
+   "MediaType": [
+    {
+     "name": "TheTVDB",
+     "mediaType": "2"
+    }
+   ]
+  },
+  {
+   "attrs": {
+    "hasPrefs": "0",
+    "identifier": "com.plexapp.agents.plexthememusic",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.themoviedb",
+    "primary": "1"
+   },
+   "MediaType": [
+    {
+     "name": "The Movie Database",
+     "mediaType": "1"
+    },
+    {
+     "name": "The Movie Database",
+     "mediaType": "2"
+    }
+   ]
+  },
+  {
+   "attrs": {
+    "hasPrefs": "0",
+    "identifier": "com.plexapp.agents.movieposterdb",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.localmedia",
+    "primary": "0"
+   },
+   "MediaType": []
+  },
+  {
+   "attrs": {
+    "hasPrefs": "1",
+    "identifier": "com.plexapp.agents.lastfm",
+    "primary": "1"
+   },
+   "MediaType": [
+    {
+     "name": "Last.fm",
+     "mediaType": "8"
+    },
+    {
+     "name": "Last.fm",
+     "mediaType": "9"
+    }
+   ]
+  }
+ ],
+ "byType": {
+  "1": [
+   {
+    "attrs": {
+     "hasPrefs": "0",
+     "identifier": "com.plexapp.agents.none",
+     "primary": "1",
+     "name": "Personal Media"
+    },
+    "Language": [
+     {
+      "code": "xn"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.imdb",
+     "primary": "1",
+     "name": "Plex Movie (Legacy)"
+    },
+    "Language": [
+     {
+      "code": "ar"
+     },
+     {
+      "code": "ca"
+     },
+     {
+      "code": "cs"
+     },
+     {
+      "code": "da"
+     },
+     {
+      "code": "de"
+     },
+     {
+      "code": "el"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "et"
+     },
+     {
+      "code": "fa"
+     },
+     {
+      "code": "fi"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "he"
+     },
+     {
+      "code": "hi"
+     },
+     {
+      "code": "hu"
+     },
+     {
+      "code": "id"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ja"
+     },
+     {
+      "code": "ko"
+     },
+     {
+      "code": "lv"
+     },
+     {
+      "code": "nl"
+     },
+     {
+      "code": "no"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ro"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sk"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "th"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "uk"
+     },
+     {
+      "code": "vi"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.themoviedb",
+     "primary": "1",
+     "name": "The Movie Database"
+    },
+    "Language": [
+     {
+      "code": "cs"
+     },
+     {
+      "code": "da"
+     },
+     {
+      "code": "de"
+     },
+     {
+      "code": "el"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "fi"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "he"
+     },
+     {
+      "code": "hr"
+     },
+     {
+      "code": "hu"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ko"
+     },
+     {
+      "code": "lt"
+     },
+     {
+      "code": "lv"
+     },
+     {
+      "code": "nl"
+     },
+     {
+      "code": "no"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sk"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "th"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "vi"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   }
+  ],
+  "2": [
+   {
+    "attrs": {
+     "hasPrefs": "0",
+     "identifier": "com.plexapp.agents.none",
+     "primary": "1",
+     "name": "Personal Media Shows"
+    },
+    "Language": [
+     {
+      "code": "xn"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.thetvdb",
+     "primary": "1",
+     "name": "TheTVDB"
+    },
+    "Language": [
+     {
+      "code": "cs"
+     },
+     {
+      "code": "da"
+     },
+     {
+      "code": "de"
+     },
+     {
+      "code": "el"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "fi"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "he"
+     },
+     {
+      "code": "hr"
+     },
+     {
+      "code": "hu"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ja"
+     },
+     {
+      "code": "ko"
+     },
+     {
+      "code": "nl"
+     },
+     {
+      "code": "no"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sl"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.themoviedb",
+     "primary": "1",
+     "name": "The Movie Database"
+    },
+    "Language": [
+     {
+      "code": "cs"
+     },
+     {
+      "code": "da"
+     },
+     {
+      "code": "de"
+     },
+     {
+      "code": "el"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "fi"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "he"
+     },
+     {
+      "code": "hr"
+     },
+     {
+      "code": "hu"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ko"
+     },
+     {
+      "code": "lt"
+     },
+     {
+      "code": "lv"
+     },
+     {
+      "code": "nl"
+     },
+     {
+      "code": "no"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sk"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "th"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "vi"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   }
+  ],
+  "3": [],
+  "4": [],
+  "8": [
+   {
+    "attrs": {
+     "hasPrefs": "0",
+     "identifier": "com.plexapp.agents.none",
+     "primary": "1",
+     "name": "Personal Media Artists"
+    },
+    "Language": [
+     {
+      "code": "xn"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.lastfm",
+     "primary": "1",
+     "name": "Last.fm"
+    },
+    "Language": [
+     {
+      "code": "de"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ja"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   }
+  ],
+  "9": [
+   {
+    "attrs": {
+     "hasPrefs": "0",
+     "identifier": "com.plexapp.agents.none",
+     "primary": "1",
+     "name": "Personal Media Albums"
+    },
+    "Language": [
+     {
+      "code": "xn"
+     }
+    ]
+   },
+   {
+    "attrs": {
+     "hasPrefs": "1",
+     "identifier": "com.plexapp.agents.lastfm",
+     "primary": "1",
+     "name": "Last.fm"
+    },
+    "Language": [
+     {
+      "code": "de"
+     },
+     {
+      "code": "en"
+     },
+     {
+      "code": "es"
+     },
+     {
+      "code": "fr"
+     },
+     {
+      "code": "it"
+     },
+     {
+      "code": "ja"
+     },
+     {
+      "code": "pl"
+     },
+     {
+      "code": "pt"
+     },
+     {
+      "code": "ru"
+     },
+     {
+      "code": "sv"
+     },
+     {
+      "code": "tr"
+     },
+     {
+      "code": "zh"
+     }
+    ]
+   }
+  ],
+  "10": [],
+  "13": []
+ }
+}

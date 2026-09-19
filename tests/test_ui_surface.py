@@ -29593,6 +29593,60 @@ def main():
     check("a framework route with an unreadable state cookie answers Tornado's empty 200",
           not wrong_c53j, "; ".join(wrong_c53j)[:280])
 
+    # Cycle 53, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
+    # answer the identical eleven identifiers: a real PMS lists the LEGACY plug-in agents
+    # beside the modern four, so a settings page reading `/system/agents` sees 15 rows on
+    # 1.42.2 and saw four here. HANDOVER 8 carried them as an inherited bound since cycles
+    # 1-6; cycle 52 retired the sibling half (the `/:/plugins` listing) on the grounds that a
+    # fixed table in the image is not hosting, and this is the same table. In the BARE form a
+    # legacy row carries `MediaType` children and no `Language`; in the typed form the
+    # primaries for that type carry their own `Language` CODES.
+    def _rows_c53k(value_c53k):
+        # `_repeatKeys` writes a single child as an object, not a one-element list.
+        if isinstance(value_c53k, dict):
+            return [value_c53k]
+        return value_c53k or []
+
+
+    _, bare_c53k, _ = get(base, "/system/agents")
+    rows_c53k = bare_c53k.get("Agent") or []
+    identifiers_c53k = [row_c53k.get("identifier") for row_c53k in rows_c53k]
+    legacy_c53k = [row_c53k for row_c53k in rows_c53k
+                   if str(row_c53k.get("identifier", "")).startswith("com.plexapp.")
+                   or str(row_c53k.get("identifier", "")).startswith("org.musicbrainz.")]
+    imdb_c53k = [row_c53k for row_c53k in rows_c53k
+                 if row_c53k.get("identifier") == "com.plexapp.agents.imdb"]
+    check("the eleven legacy agents are listed beside the modern four",
+          len(rows_c53k) == 15 and len(legacy_c53k) == 11
+          and identifiers_c53k[0] == "com.plexapp.agents.fanarttv"
+          and identifiers_c53k[-1] == "tv.plex.agents.none"
+          and imdb_c53k and imdb_c53k[0].get("primary") == "1"
+          and (_rows_c53k(imdb_c53k[0].get("MediaType")) or [{}])[0].get("name")
+          == "Plex Movie (Legacy)"
+          and "Language" not in imdb_c53k[0]
+          and "id" not in imdb_c53k[0],
+          "%d rows, %d legacy" % (len(rows_c53k), len(legacy_c53k)))
+
+    # The typed form has to be read as XML: cycle 44 measured that `/system/agents` writes its
+    # `Language` and `MediaType` as REPEATED JSON KEYS, so a JSON parser keeps exactly one.
+    import xml.etree.ElementTree as _ET_c53k
+    _, typed_xml_c53k, _ = request(base, "GET", "/system/agents?mediaType=1", want_json=False)
+    typed_root_c53k = _ET_c53k.fromstring(typed_xml_c53k)
+    typed_rows_c53k = list(typed_root_c53k)
+    typed_legacy_c53k = [row_c53k for row_c53k in typed_rows_c53k
+                         if not str(row_c53k.get("identifier", "")).startswith("tv.plex.")]
+    imdb_langs_c53k = ([child_c53k for child_c53k in typed_legacy_c53k[1]
+                        if child_c53k.tag == "Language"] if len(typed_legacy_c53k) > 1 else [])
+    check("a typed agent list leads with the legacy primaries and their own codes",
+          len(typed_rows_c53k) == 5 and len(typed_legacy_c53k) == 3
+          and [row_c53k.get("identifier") for row_c53k in typed_rows_c53k[:3]]
+          == ["com.plexapp.agents.none", "com.plexapp.agents.imdb",
+              "com.plexapp.agents.themoviedb"]
+          and len(imdb_langs_c53k) == 33
+          and "title" not in imdb_langs_c53k[0].attrib,
+          "%d rows, %d legacy, imdb langs=%d"
+          % (len(typed_rows_c53k), len(typed_legacy_c53k), len(imdb_langs_c53k)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

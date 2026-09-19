@@ -1132,6 +1132,26 @@ PLUGIN_ROOT_ERROR = (
     "</Traceback>\n"
     "</Response>\n").encode("utf-8")
 
+# Cycle 53: the ELEVEN legacy plug-in agents a real PMS lists beside the modern four.
+# HANDOVER 8 has carried "legacy agents and the `/:/plugins` listing" as one inherited
+# bound since cycles 1-6, and cycle 52 retired the second half of it on the grounds that
+# the listing is a fixed table in the image rather than hosting. This is the same table:
+# kids, zen, plexscratch and plexscratch42 answer the identical eleven identifiers with
+# the identical attributes, so a settings page that reads `/system/agents` sees 15 rows on
+# a real 1.42.2 server and saw four here.
+#
+# Captured from plexscratch42 -- 1.42.2, the build plexsim reports. Two version and
+# server differences are deliberate: 1.43.4 adds an `id` to every legacy row (`-1` for a
+# non-primary and a negative code for a primary), which plexsim does not report; and the
+# ORDER of `lastfm` and `plexthememusic` is the server's own plug-in load order, where
+# three of the four instruments agree and zen alone differs.
+#
+# What plexsim still does not claim is the WORK: identifying with a legacy agent, its
+# contributor chain, and its per-agent preference pane beyond the document cycle 52 ships.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "legacy_agents.json"), encoding="utf-8") as _handle:
+    LEGACY_AGENTS = json.load(_handle)
+
 # Cycle 52: the seventeen plug-ins a real PMS hosts, in the order both references list
 # them. They are PMS's OWN bundled bundles -- the legacy agents, the framework, the media
 # flag resource and the web client -- so the list is a constant, not this account's or
@@ -17863,6 +17883,18 @@ class PlexSim:
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                    if name in by_id] if wanted else list(SYSTEM_AGENTS))
+        # Cycle 53: the eleven LEGACY agents come first, in both forms. In the bare form
+        # each carries `MediaType` rows and no `Language`; in the typed form the PRIMARY
+        # agents for that type carry their own `Language` CODES -- a bare `code`, no
+        # title, and a list per agent (one for Personal Media, 33 for the legacy IMDb
+        # agent, 26 for The Movie Database) -- which is the split cycle 44 measured from
+        # the other side.
+        if wanted:
+            legacy = [dict(row["attrs"], Language=row["Language"])
+                      for row in LEGACY_AGENTS["byType"].get(str(int(wanted)), [])]
+        else:
+            legacy = [dict(row["attrs"], MediaType=row["MediaType"]) if row["MediaType"]
+                      else dict(row["attrs"]) for row in LEGACY_AGENTS["bare"]]
         # Cycle 25: the list is per LANGUAGE -- titles and order both. All six modern
         # agents share one list, measured agent by agent in every language, so one
         # lookup answers them all. An unrecognised language takes the no-header list.
@@ -17886,6 +17918,7 @@ class PlexSim:
                      **({"default": True} if len(row) > 2 else {}))
                 for row in rows])
                 for agent in agents]
+        agents = legacy + agents
         return self.bare_container(size=len(agents), Agent=agents,
                                    _repeatKeys=True)
 
