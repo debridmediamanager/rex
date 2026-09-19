@@ -21483,6 +21483,18 @@ class Handler(BaseHTTPRequestHandler):
             out = dict(row)
             for name, private in (("Thumb", "_poster_url"), ("Art", "_art_url")):
                 url = stored.get(private)
+                # Cycle 53, measured on kids (episode 8, season 7) and zen (episode
+                # 19758), each twice: the inlined block is the row's OWN remote candidate
+                # list, so a row whose `/arts` answers `size 0` carries no `Art` key at
+                # all -- and zen's season 19757, whose `/arts` answers two, carries one.
+                # plexsim inlined the SHOW's candidate onto every episode and season,
+                # because `hierarchy` copies `_art_url` down and this read it without the
+                # ownership gate the candidate leaf applies. The server contradicted its
+                # own `/arts`.
+                if name == "Art" and stored.get("type") in ("season", "episode"):
+                    # `artwork_list` refuses the same pair: a season's and an episode's
+                    # background candidates are their own, never the show's.
+                    continue
                 if url:
                     out[name] = [{"key": url, "source": "tmdb"}]
             return out
