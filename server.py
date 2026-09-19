@@ -128,6 +128,26 @@ try:
 except (OSError, ValueError):
     SERVER_PREFS = []
 
+# Cycle 50 closed the retained-data gap behind regional Portuguese and Hungarian
+# settings.  These are the complete server-owned localisable cells from three
+# read-only `/:/prefs` captures, kept separate from `translations.json` because only
+# this endpoint was measured at the regional-tag granularity.  Values are deliberately
+# absent: they are installation/account state, not language data.
+_REGIONAL_SERVER_PREFS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "regional_server_prefs.json")
+try:
+    with open(_REGIONAL_SERVER_PREFS_PATH, encoding="utf-8") as _handle:
+        _regional_server_prefs_doc = json.load(_handle)
+except (OSError, ValueError):
+    _regional_server_prefs_doc = {"aliases": {}, "catalogues": {}}
+REGIONAL_SERVER_PREFS = {
+    language: {row["id"]: row for row in rows}
+    for language, rows in (_regional_server_prefs_doc.get("catalogues") or {}).items()
+}
+for _alias, _target in (_regional_server_prefs_doc.get("aliases") or {}).items():
+    if _target in REGIONAL_SERVER_PREFS:
+        REGIONAL_SERVER_PREFS[_alias] = REGIONAL_SERVER_PREFS[_target]
+
 # Cycle 39 reconstructed PMS 1.42.2's complete tag spellfix input table from a
 # retained read-only database copy.  All library-owned strings come from catalog
 # rows; these 28 distinct optimize/show-ordering values are the only server-owned
@@ -2264,6 +2284,22 @@ def request_language(query, headers):
         return exact[normalized]
     primary = normalized.split("-")[0]
     return primary or None
+
+
+def request_regional_server_prefs(query, headers):
+    """The exact regional settings catalogue selected by X-Plex-Language.
+
+    Cycle 50 measured complete `/:/prefs` documents for these three tags.  pt-BR and
+    pt-PT are the same Brazilian catalogue; hu-HU is distinct from retained bare hu.
+    This deliberately reads only X-Plex-Language (header or query): Accept-Language's
+    regional forms were previously measured to collapse to their primary subtag, and
+    no other endpoint was captured deeply enough to widen this exception safely.
+    """
+    query = query or {}
+    headers = headers or {}
+    wanted = query.get("X-Plex-Language") or headers.get("X-Plex-Language")
+    normalized = str(wanted or "").replace("_", "-").lower()
+    return {"pt-br": "pt-BR", "pt-pt": "pt-PT", "hu-hu": "hu-HU"}.get(normalized)
 
 
 def _with_stream_language(node, language):
@@ -19319,6 +19355,45 @@ class Handler(BaseHTTPRequestHandler):
                 _target_parts(self.path)[1], keep_blank_values=True))
         return request_language(query, self.headers)
 
+    def _regional_server_prefs_language(self):
+        """Return the measured regional catalogue for this prefs request, if any."""
+        route, raw_query = _target_parts(self.path)
+        if route not in ("/:/prefs", "/:/prefs/"):
+            return None
+        query = dict(urllib.parse.parse_qsl(raw_query, keep_blank_values=True))
+        return request_regional_server_prefs(query, self.headers)
+
+    @staticmethod
+    def _with_regional_server_prefs(container, language):
+        """Overlay the captured regional text by setting id, preserving all order."""
+        measured = REGIONAL_SERVER_PREFS.get(language)
+        if not measured or not isinstance(container, dict):
+            return container
+        body = container.get("MediaContainer")
+        if not isinstance(body, dict) or not isinstance(body.get("Setting"), list):
+            return container
+        rows = []
+        changed = False
+        for row in body["Setting"]:
+            exact = measured.get(row.get("id")) if isinstance(row, dict) else None
+            if exact is None:
+                rows.append(row)
+                continue
+            projected = dict(row)
+            for attribute in ("label", "summary", "enumValues"):
+                if attribute in exact:
+                    projected[attribute] = exact[attribute]
+                else:
+                    projected.pop(attribute, None)
+            rows.append(projected)
+            changed = changed or projected != row
+        if not changed:
+            return container
+        projected_body = dict(body)
+        projected_body["Setting"] = rows
+        return {key: projected_body if value is body else value
+                for key, value in container.items()}
+
     # The blocks inside a row that carry the SERVER's vocabulary rather than the
     # user's content, and are therefore translated there. Measured on kids over a
     # movie, a show, a season and an episode with every include option set.
@@ -19399,6 +19474,12 @@ class Handler(BaseHTTPRequestHandler):
             # all: the others title their rows with their own lowercase key names.
             if not (isinstance(body, dict) and "noHistory" in body):
                 container = self._localise(container, language)
+        # The complete regional catalogues were captured only for `/:/prefs`.
+        # Overlay them after the primary-language table so every unmeasured surface
+        # retains its already-proven primary-subtag behaviour.
+        regional = self._regional_server_prefs_language()
+        if regional:
+            container = self._with_regional_server_prefs(container, regional)
         # `_xml` names the element a container's rows render as where the rows
         # cannot name it themselves (an artwork list is <Photo>, a folder list
         # <Directory>). It is internal: it must never reach the JSON body.
