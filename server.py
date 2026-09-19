@@ -2276,9 +2276,9 @@ def request_language(query, headers):
     # Cycle 50 refuted the blanket primary-subtag rule for X-Plex-Language.
     # Both supported PMS versions route Traditional-Chinese regional tags to the
     # English catalogue, while bare `zh` and `zh-CN` select Simplified Chinese.
-    # The other measured exceptions (Brazilian Portuguese and hu-HU) require full
-    # locale catalogues that were not retained by the hunt; do not fabricate them
-    # from one sample string.
+    # Brazilian Portuguese and hu-HU are handled separately below for `/:/prefs`,
+    # the only endpoint whose complete regional catalogues were captured. Keep the
+    # primary-subtag rule everywhere else instead of extrapolating that one document.
     exact = {"zh-hk": "en", "zh-tw": "en"}
     if normalized in exact:
         return exact[normalized]
