@@ -157,6 +157,11 @@ FRAMEWORK_BARE_ERRORS = {
 # channel installed every one is the framework's EMPTY container -- 130 bytes, self-closed,
 # the single-quoted declaration. plexsim 404'd all ten.
 FRAMEWORK_PEER_DIRECTORIES = ("all", "music", "video", "photos", "applications")
+# Cycle 53: the five framework routes whose `Cache-Control` comes second. Measured on four
+# servers; `/system/channels/{name}` and `/system/plugins/{name}` are matched by prefix
+# because their five directory names are the same list `FRAMEWORK_PEER_DIRECTORIES` holds.
+CACHE_CONTROL_FIRST = ("/system/search", "/system/library/sections",
+                       "/system/notify/serverUpdated")
 FRAMEWORK_EMPTY_CONTAINER = (
     b"<?xml version='1.0' encoding='utf-8'?>\n"
     b'<MediaContainer noHistory="0" replaceParent="0" size="0" '
@@ -4749,6 +4754,12 @@ class PlexSim:
             # page; one TRAILING slash is normally harmless (`/library/sections/` is
             # the listing, which plexsim 404'd).
             if "//" in route:
+                # Cycle 53: under `/system` the empty segment is still the FRAMEWORK's
+                # 404 -- empty body, no `Content-Type` -- on kids, zen and both copies,
+                # where plexsim dropped the segment and left the `/system` envelope
+                # before the envelope's own refusal could apply.
+                if route.startswith("/system/"):
+                    return ("bare", 404)
                 return ("error", 404, "plexsim: not found")
             if len(route) > 1 and route.endswith("/"):
                 route = route[:-1]
@@ -19533,6 +19544,17 @@ class Handler(BaseHTTPRequestHandler):
                    "Content-Length", "Content-Type", "Set-Cookie",
                    "Connection", "Keep-Alive", "Cache-Control",
                    "Access-Control-Allow-Headers", "Access-Control-Allow-Origin", "Date"),
+        # Cycle 53, measured on kids, zen and both copies: five framework routes put
+        # `Cache-Control` SECOND, straight after `X-Plex-Protocol`, where every other
+        # `/system` response puts it last -- `/system/search`, `/system/library/sections`,
+        # `/system/channels/{name}`, `/system/plugins/{name}` and
+        # `/system/notify/serverUpdated`. The mechanism is not identified (they are the
+        # peer-service routes plus one), so the set is measured rather than derived.
+        "system-nocache-first": ("X-Plex-Protocol", "Access-Control-Expose-Headers",
+                                 "Vary", "Cache-Control", "Content-Length",
+                                 "Content-Type", "Set-Cookie", "Connection",
+                                 "Keep-Alive", "Access-Control-Allow-Headers",
+                                 "Access-Control-Allow-Origin", "Date"),
         # Cycle 40: `/system/services/url/lookup` is the one measured Framework
         # error with a gzip body. Unlike a plain `/system` response it moves the
         # length behind the encoding lengths; unlike a core gzip response it keeps
@@ -19622,6 +19644,9 @@ class Handler(BaseHTTPRequestHandler):
             # which is also why it carries no cookie.
             if path == "/system/services/url/lookup" and "content-encoding" in names:
                 return "system-gzip"
+            if path in CACHE_CONTROL_FIRST or (
+                    path.rsplit("/", 1)[0] in ("/system/channels", "/system/plugins")):
+                return "system-nocache-first"
             return "container" if path == "/system/agents" else "system"
         if "set-cookie" in names:
             return "system"
@@ -21016,10 +21041,17 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(result[1], result[3], result[2])
                 return
             if kind == "plugin-xml":
-                # The Framework closes its error response. GET still honours a
-                # literal gzip offer, but HEAD reports the uncompressed length and
-                # omits Content-Encoding on both reference versions.
-                self.close_connection = True
+                # GET still honours a literal gzip offer, but HEAD reports the
+                # uncompressed length and omits Content-Encoding on both versions.
+                #
+                # Cycle 53: the framework does NOT close its error response. Measured on
+                # kids, zen and plexscratch42 over all five of these paths -- each answers
+                # `Connection: Keep-Alive` with `Keep-Alive: timeout=20`, and a second
+                # request on the same socket is served. plexsim set `close_connection`
+                # here on a comment that was never measured, so a pipelining client lost
+                # its socket on every Agents-page probe. Cycle 45's rule says which way it
+                # goes: a refusal of the ENVELOPE closes and a refusal of the MEANING
+                # keeps alive, and a TypeError inside a plug-in is the latter.
                 no_head_gzip = (("Content-Encoding", None),) if method == "HEAD" else ()
                 self._send(result[1], "application/xml", result[2], no_head_gzip)
                 return

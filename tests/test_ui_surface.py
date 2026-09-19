@@ -29297,6 +29297,106 @@ def main():
           "%s | %s" % (sorted(k for k in plain_head_c53d if k.lower() == "content-type"),
                        xml_head_c53d.get("Content-Type")))
 
+    # Cycle 53, measured on kids (1.43.4), zen (1.42.2) and plexscratch42, three repeats each:
+    # three envelope rules under `/system`. The framework does NOT close its error response --
+    # all five `plugin-xml` paths answer `Connection: Keep-Alive` and a second request on the
+    # same socket is served, where plexsim closed on a comment nobody had measured. Five
+    # routes put `Cache-Control` SECOND rather than last. And `/system//` is the framework's
+    # empty-bodied 404, not the 85-byte document, where plexsim dropped the empty segment and
+    # left the envelope.
+    import socket as _socket_c53e
+    parsed_c53e = urllib.parse.urlparse(base)
+
+
+    def _raw_head_c53e(path_c53e):
+        connection = _socket_c53e.create_connection(
+            (parsed_c53e.hostname or "127.0.0.1", parsed_c53e.port or 32400), timeout=15)
+        try:
+            connection.sendall(("GET %s HTTP/1.1\r\nHost: x\r\n\r\n" % path_c53e).encode())
+            raw = b""
+            while b"\r\n\r\n" not in raw:
+                piece = connection.recv(4096)
+                if not piece:
+                    break
+                raw += piece
+            return raw.split(b"\r\n\r\n")[0]
+        except OSError as error:
+            return ("(%s)" % error).encode()
+        finally:
+            connection.close()
+
+
+    def _reuse_c53e():
+        """One socket, the framework's 500, then `/identity` on the same connection."""
+        connection = _socket_c53e.create_connection(
+            (parsed_c53e.hostname or "127.0.0.1", parsed_c53e.port or 32400), timeout=15)
+        try:
+            connection.sendall(b"GET /system/services/url/lookup HTTP/1.1\r\nHost: x\r\n\r\n")
+            raw = b""
+            while b"\r\n\r\n" not in raw:
+                piece = connection.recv(4096)
+                if not piece:
+                    return b"(closed before the headers)"
+                raw += piece
+            length = int([line.split(b":")[1] for line in raw.split(b"\r\n")
+                          if line.lower().startswith(b"content-length")][0])
+            body = raw.split(b"\r\n\r\n", 1)[1]
+            while len(body) < length:
+                more = connection.recv(4096)
+                if not more:
+                    return b"(closed mid-body)"
+                body += more
+            connection.sendall(b"GET /identity HTTP/1.1\r\nHost: x\r\n\r\n")
+            return connection.recv(200) or b"(closed)"
+        except OSError as error:
+            return ("(%s)" % error).encode()
+        finally:
+            connection.close()
+
+
+    second_c53e = _reuse_c53e()
+    # urllib sends `Connection: close`, so the header has to be read off a raw socket --
+    # cycle 44's rule: when the question is what the SERVER chose, do not tell it what you want.
+    check("a framework error keeps the connection alive",
+          b"Keep-Alive" in _raw_head_c53e("/system/services/url/lookup"),
+          repr(_raw_head_c53e("/system/services/url/lookup")[:120]))
+    check("and the socket really carries the next request",
+          second_c53e.startswith(b"HTTP/1.1 200"), repr(second_c53e[:24]))
+
+    def _header_order_c53e(path_c53e):
+        connection_c53e = _socket_c53e.create_connection(
+            (parsed_c53e.hostname or "127.0.0.1", parsed_c53e.port or 32400), timeout=15)
+        connection_c53e.sendall(
+            ("GET %s HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n" % path_c53e).encode())
+        raw_c53e = b""
+        while b"\r\n\r\n" not in raw_c53e:
+            piece_c53e = connection_c53e.recv(4096)
+            if not piece_c53e:
+                break
+            raw_c53e += piece_c53e
+        connection_c53e.close()
+        return [line_c53e.split(b":")[0].decode()
+                for line_c53e in raw_c53e.split(b"\r\n\r\n")[0].split(b"\r\n")[1:]
+                if line_c53e]
+
+    wrong_c53e = []
+    for path_c53e in ("/system/search", "/system/library/sections", "/system/channels/all",
+                      "/system/plugins/music", "/system/notify/serverUpdated"):
+        if _header_order_c53e(path_c53e)[1:2] != ["Cache-Control"]:
+            wrong_c53e.append("%s %s" % (path_c53e, _header_order_c53e(path_c53e)[:3]))
+    if _header_order_c53e("/system")[1:2] == ["Cache-Control"]:
+        wrong_c53e.append("/system should keep it last")
+    check("five framework routes put Cache-Control second",
+          not wrong_c53e, "; ".join(wrong_c53e)[:250])
+
+    status_c53e, body_slash_c53e, head_slash_c53e = request(base, "GET", "/system//",
+                                                            want_json=False)
+    check("an empty segment under /system is the framework's empty 404",
+          status_c53e == 404 and not body_slash_c53e
+          and not head_slash_c53e.get("Content-Type"),
+          "%s/%s/%s" % (status_c53e, len(body_slash_c53e),
+                        head_slash_c53e.get("Content-Type")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
