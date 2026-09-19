@@ -3013,6 +3013,10 @@ class PlexSim:
         # Images uploaded through `POST /library/metadata/{id}/{posters,arts}`, keyed by the
         # `upload://` id a real PMS mints from the bytes.
         self.uploads = {}
+        # Cycle 52: `/connections`' own bookkeeping.
+        self.connections = {}
+        self.connection_serial = 0
+        self.request_serial = 0
         # Cycle 45: the rows `/library/metadata/{id}/theme/{v}/metadata` MINTS, keyed by
         # both the request path and the minted ratingKey. Beside the catalog, not in it:
         # a real PMS's minted row carries no `librarySectionID` and is invisible in
@@ -6688,6 +6692,26 @@ class PlexSim:
             # Cycle 52: GET and HEAD answer the file; every other verb falls through to
             # the single-segment dispatcher below, which is what both references do.
             return ("file", STATIC_RESOURCES[route], STATIC_RESOURCE_BYTES[route])
+        if route == "/connections" and method in ("GET", "HEAD"):
+            # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): `/connections` is a
+            # real route and it answers **text/plain**, one line per connection slot:
+            #
+            #   1 ??? - Uninitialized
+            #   3 100.85.55.10:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)
+            #
+            # The trailing parenthesis is the client's `X-Plex-Device-Name, X-Plex-Product`
+            # when it sends them, its `User-Agent` when it does not, and absent when it
+            # sends neither. Every verb but GET and HEAD falls through to the legacy
+            # dispatcher's empty listing, and with no token the path is one of the 401s.
+            #
+            # plexsim answered the dispatcher's `content="plugins"` container -- the wrong
+            # media type and the wrong shape for a path a real PMS routes. What is NOT
+            # emulated, and stays recorded in HANDOVER 8 after cycle 50's 78-snapshot
+            # matrix: PMS's fixed acceptor POOL (its `??? - Uninitialized` rows), the
+            # ordinals, and the hexadecimal request allocator, none of which a server with
+            # a thread per connection has. These are plexsim's own live connections in the
+            # measured grammar.
+            return ("plain", self.connection_lines())
         if route in ("/dlna", "/dlna/"):
             # Cycle 49, measured on zen (1.42.2) and kids (1.43.4), identical in shape:
             # the DLNA server's own library list. The rows are the library `Directory`
@@ -8131,6 +8155,22 @@ class PlexSim:
         payload = (_jpeg if asset["type"] == "image/jpeg" else _png)(
             asset["width"], asset["height"], (32, 34, 38))
         return ("asset", asset["type"], payload)
+
+    def connection_lines(self):
+        """`/connections` -- plexsim's own live connections, in PMS's line grammar."""
+        with self.lock:
+            rows = sorted(self.connections.values(), key=lambda row: row["slot"])
+        lines = []
+        for index, row in enumerate(rows, 1):
+            if not row.get("request"):
+                lines.append("%d %s - Uninitialized" % (index, row["peer"]))
+                continue
+            label = " - Token (%s)" % self.owner_username if self.owner_username else ""
+            agent = row.get("agent")
+            lines.append("%d %s - Routing - %s #%x%s%s"
+                         % (index, row["peer"], row["request"], row["number"], label,
+                            " (%s)" % agent if agent else ""))
+        return "\n".join(lines) + ("\n" if lines else "")
 
     def _owns_artwork(self, row, leaf):
         """Does this row OWN the image behind `/library/metadata/{id}/{leaf}`?
@@ -18483,6 +18523,24 @@ class Handler(BaseHTTPRequestHandler):
         self.rfile = _RequestReader(self.rfile, self.connection, self.timeout)
         self._undrained = 0
         self._responses_sent = 0
+        # Cycle 52: `/connections` reports the server's own live connections, so the
+        # server has to know about them. Registered here and removed in `finish`.
+        sim = getattr(self.server, "sim", None)
+        self._connection_id = id(self)
+        if sim is not None:
+            with sim.lock:
+                sim.connection_serial += 1
+                sim.connections[self._connection_id] = {
+                    "slot": sim.connection_serial,
+                    "peer": "%s:%s" % (self.client_address[0], self.client_address[1]),
+                    "request": "", "number": 0, "agent": ""}
+
+    def finish(self):
+        sim = getattr(self.server, "sim", None)
+        if sim is not None:
+            with sim.lock:
+                sim.connections.pop(getattr(self, "_connection_id", None), None)
+        BaseHTTPRequestHandler.finish(self)
 
     def handle_one_request(self):
         """The stdlib's loop body, with the three things cycle 49 measured added.
@@ -20281,6 +20339,21 @@ class Handler(BaseHTTPRequestHandler):
         return False
 
     def _dispatch(self, method):
+        sim = getattr(self.server, "sim", None)
+        if sim is not None:
+            # The line `/connections` prints: the client names itself with
+            # `X-Plex-Device-Name, X-Plex-Product` when it sends them and with its
+            # `User-Agent` when it does not -- measured on both references.
+            device = self._header_value("X-Plex-Device-Name")
+            product = self._header_value("X-Plex-Product")
+            agent = ", ".join(part for part in (device, product) if part) \
+                or (self._header_value("User-Agent") or "")
+            with sim.lock:
+                sim.request_serial += 1
+                row = sim.connections.get(getattr(self, "_connection_id", None))
+                if row is not None:
+                    row.update(request="%s %s" % (method, self.path),
+                               number=sim.request_serial, agent=agent)
         sim = self.server.sim
         # Cycle 27, measured on kids and zen (GET) and on the writable copy (POST): an
         # unparseable `Content-Length` is IGNORED -- `abc` is a 200 on every one of them,
@@ -20553,6 +20626,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.close_connection = True
                 no_head_gzip = (("Content-Encoding", None),) if method == "HEAD" else ()
                 self._send(result[1], "application/xml", result[2], no_head_gzip)
+                return
+            if kind == "plain":
+                # Cycle 52: `/connections` is the one `text/plain` body on the surface.
+                self._send(200, "text/plain", result[1].encode("utf-8"))
                 return
             if kind == "text":
                 # A body that IS the answer: the artwork write returns the new
