@@ -6166,9 +6166,14 @@ class PlexSim:
                                            or (method == "DELETE" and not stream_id.isdigit())):
                     return ("error", 400, "plexsim: bad request")
                 return ("error", 404, "plexsim: not found")
-            if segments[3:] in (["levels"], ["loudness"]):
-                # Measured on both servers: the loudness levels of a stream the server
-                # has not analysed are a 404, where the stream itself is the 501.
+            if len(segments) > 3:
+                # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), three repeats
+                # each: ANY extra segment after the stream id is a 404 --
+                # `/library/streams/{id}/colors`, `/zzz` and `/loudness/1` alike -- where
+                # the two analysis leaves are the 404 cycle 16 already measured and the
+                # stream itself stays the 501. plexsim fell through to that 501 for every
+                # name it did not know, so a client probing a sub-path was told the
+                # endpoint exists and is unimplemented rather than that it is not there.
                 return ("error", 404, "plexsim: not found")
             if method == "PUT" and len(segments) == 3:
                 # Measured on a writable copy of the reference: a PUT to a stream it HAS
