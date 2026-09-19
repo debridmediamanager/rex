@@ -28999,6 +28999,32 @@ def main():
     check("every transcode prefix the route table names is routed",
           not wrong_c52q and video_c52q == 400, "; ".join(wrong_c52q)[:200])
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) with a one-byte Range, three
+    # repeats each: PMS's route table spells the part leaf
+    # `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra segment is a filename
+    # whatever it says -- `/library/parts/{id}/indexes`, `/abc` and `/12345678901` all serve
+    # the bytes -- and the digit rule only decides the changestamp when a filename follows.
+    # `/indexes/sd` and `/a/b` stay 404s. plexsim refused every non-digit first extra segment,
+    # so the part key with the filename suffix a client builds from `Part.file` was a 404 from
+    # a server that holds the part.
+    _, detail_c52r, _ = get(base, "/library/metadata/%s" % movie)
+    part_c52r = None
+    for media_c52r in ((detail_c52r.get("Metadata") or [{}])[0].get("Media") or []):
+        for candidate_c52r in media_c52r.get("Part") or []:
+            part_c52r = part_c52r or candidate_c52r.get("id")
+    wrong_c52r = []
+    for suffix_c52r, routed_c52r in (("/indexes", True), ("/abc", True), ("/1/file.mkv", True),
+                                     ("/12345678901", True), ("/indexes/sd", False),
+                                     ("/a/b", False), ("/1/2/3", False)):
+        status_c52r, _, _ = request(base, "GET", "/library/parts/%s%s" % (part_c52r, suffix_c52r),
+                                    want_json=False)
+        # The fixture's links are dead, so a routed read is plexsim's own 502 rather than the
+        # bytes; what discriminates is whether the path is routed at all.
+        if (status_c52r != 404) != routed_c52r:
+            wrong_c52r.append("%s -> %s" % (suffix_c52r, status_c52r))
+    check("the part path's changestamp/filename arity",
+          part_c52r and not wrong_c52r, "; ".join(wrong_c52r)[:200])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
