@@ -3541,7 +3541,21 @@ class PlexSim:
                     and str(pick.get("parentRatingKey")) != str(row.get("ratingKey"))):
                 pick = None
             if pick is not None:
-                detail["OnDeck"] = {"Metadata": _full(pick)}
+                projected = _full(pick)
+                # Cycle 50: detail options propagate into the one inline OnDeck row.
+                # With includeExtras=1 both supported PMS versions add an Extras
+                # object there (size zero in the measured episode cases), just as
+                # they do on the row's own detail response.
+                if _include_int(query.get("includeExtras")):
+                    extras = []
+                    for extra in self.catalog.extras(pick["ratingKey"]):
+                        expanded = _full(extra)
+                        expanded.pop("art", None)
+                        extras.append(expanded)
+                    projected["Extras"] = {"size": len(extras)}
+                    if extras:
+                        projected["Extras"]["Metadata"] = extras
+                detail["OnDeck"] = {"Metadata": projected}
 
         # A setting the client has written shows up on the row itself as well,
         # the way `episodeSort` does on a real show.
