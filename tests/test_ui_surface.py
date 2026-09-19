@@ -29457,6 +29457,39 @@ def main():
              [k_c53g for k_c53g in wanted_c53g if rows_c53g and k_c53g not in rows_c53g[0]],
              decoded_c53g[:1], extra_c53g))
 
+    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): a plug-in FRAMEWORK container
+    # pages without emitting an `offset` -- cycle 18 measured that on `/system` -- and it
+    # still answers both `X-Plex-Container-*` response headers. plexsim keyed those headers on
+    # the body's `offset`, so the one family that has none sent neither. And
+    # `/:/plugins/{id}/prefs` and `/system/library/sections` page too, where plexsim served
+    # the whole document.
+    def _paged_c53h(path_c53h):
+        request_c53h = urllib.request.Request(base.rstrip("/") + path_c53h, headers={
+            "User-Agent": UA, "X-Plex-Container-Start": "1", "X-Plex-Container-Size": "1"})
+        try:
+            with urllib.request.urlopen(request_c53h, timeout=20) as response_c53h:
+                return dict(response_c53h.headers), response_c53h.read()
+        except urllib.error.HTTPError as error_c53h:
+            return dict(error_c53h.headers), error_c53h.read()
+
+
+    wrong_c53h = []
+    for path_c53h, total_c53h in (("/system", "2"),
+                                  ("/:/plugins/com.plexapp.agents.themoviedb/prefs", "4"),
+                                  ("/system/library/sections", None)):
+        head_c53h, body_c53h = _paged_c53h(path_c53h)
+        if head_c53h.get("X-Plex-Container-Start") != "1":
+            wrong_c53h.append("%s no Start header" % path_c53h)
+        if total_c53h and head_c53h.get("X-Plex-Container-Total-Size") != total_c53h:
+            wrong_c53h.append("%s Total-Size=%s" % (path_c53h,
+                                                    head_c53h.get("X-Plex-Container-Total-Size")))
+        if b'size="1"' not in body_c53h:
+            wrong_c53h.append("%s not sliced" % path_c53h)
+        if b"offset=" in body_c53h:
+            wrong_c53h.append("%s emits an offset" % path_c53h)
+    check("a framework container pages and names its window in the headers",
+          not wrong_c53h, "; ".join(wrong_c53h)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
