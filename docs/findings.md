@@ -9857,12 +9857,18 @@ while the item path accepted it.
 
 **Measured and not acted on.**
 
-* **The framework's kwarg arithmetic.** `/system/agents/{action}` passes the query through
-  to PMS's own Python function, so the sentence moves with it: `?mediaType=1` makes
-  `media_get` "(2 given)", `?primaryAgent=x` makes it "got an unexpected keyword argument",
-  and `search` DROPS a name it does not know where the other three raise on it. The
-  recognised names and that split are implemented as measured; the general rule is the
-  signatures of functions inside the bundle and is not derivable from outside.
+* **The framework's kwarg arithmetic was first FITTED and then read.** `/system/agents/
+  {action}` passes the query through to PMS's own Python function, so the sentence moves
+  with it. Twelve measured cells gave a table with a per-action exception; then
+  `System.bundle/Contents/Code/agentservice.py` — which is plain Python in the image — gave
+  the rule the fit was approximating: `runtime.py:843` calls `f(**d)` with the whole query,
+  so `given` counts `self` plus every supplied name the function DECLARES, an undeclared
+  one is "got an unexpected keyword argument", and `search(self, identifier, mediaType,
+  lang, manual=False, **kwargs)` is why it alone swallows one. The fitted table had
+  `identifier` unknown to `search` (which really counts it) and known to `update` (which
+  really refuses it); both are corrected. What is still bounded is the fully-supplied call,
+  where the function does real agent work and answers a value-dependent traceback.
+  **That source is cycle 53's instrument**, found while closing this one.
 * **`/connections`' acceptor pool**, its ordinals and its request allocator — cycle 50's
   bound, unchanged.
 * **The pixels of the 68 bundled images.** The names, media types and geometries are
