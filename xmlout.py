@@ -612,6 +612,15 @@ def _split(name, row, container=False):
             # The alphabetical block, then the decision flags. See `_SESSION_TAIL`.
             attrs.sort(key=lambda key: (_SESSION_TAIL.get(key, 0), key))
             return attrs, children
+        if row.get("_pluginLibrary"):
+            # Cycle 50's exact legacy-prefix replay: the synthetic library plug-in
+            # Directory has its own six-attribute order, byte-identical on claimed
+            # 1.43.4 and the unclaimed 1.43.4/1.42.2 copies. It shares neither the
+            # ordinary key/title Directory order nor a section row's order.
+            order = {key: position for position, key in enumerate(
+                ("art", "thumb", "key", "title", "share", "identifier"))}
+            attrs.sort(key=lambda key: order.get(key, len(order)))
+            return attrs, children
         index = _ATTR_INDEX.get(_attr_bucket(name, row))
         if index:
             lead = _LIBRARY_SECTION_LEAD if row.get("allowSync") is not None else {}
