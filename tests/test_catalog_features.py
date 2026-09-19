@@ -955,6 +955,54 @@ def main():
           built[1].get("year") is None and built[1].get("parentYear") == 2008,
           "year=%r parentYear=%r" % (built[1].get("year"), built[1].get("parentYear")))
 
+    # Cycle 50 measured the GDM advertisement stamp as a library-lifecycle value,
+    # not a generic "anything advertised changed" clock.  Create, edit and delete a
+    # section each move it.  A FriendlyName write changes Name immediately without
+    # touching the stamp, and refresh, item edit, collection create and index delete
+    # are all non-events.  Exercise the server hooks directly so this regression does
+    # not need to bind the host's shared GDM ports or wait for integer-second ticks.
+    class _DiscoveryStamp:
+        def __init__(self):
+            self.name = "before"
+            self.touches = 0
+
+        def touch(self):
+            self.touches += 1
+
+    gdm_catalog = server.Catalog(fixture)
+    gdm_sim = server.PlexSim(gdm_catalog, Resolver(), assert_claimed=True)
+    gdm_stamp = _DiscoveryStamp()
+    gdm_sim.discovery = gdm_stamp
+    quiet_answers = [
+        gdm_sim.handle("PUT", "/:/prefs?FriendlyName=Cycle50GDM", b"", {}),
+        gdm_sim.handle("GET", "/library/sections/1/refresh", b"", {}),
+        gdm_sim.handle("PUT", "/library/metadata/101?type=1&id=101"
+                       "&title.value=Cycle50GDM", b"", {}),
+        gdm_sim.handle("POST", "/library/collections?type=1&sectionId=1"
+                       "&title=Cycle50GDM", b"", {}),
+        gdm_sim.handle("DELETE", "/library/sections/1/indexes", b"", {}),
+    ]
+    check("non-library-lifecycle writes leave GDM Updated-At untouched",
+          gdm_stamp.touches == 0 and gdm_stamp.name == "Cycle50GDM"
+          and all(answer is not None for answer in quiet_answers),
+          "touches=%d name=%r" % (gdm_stamp.touches, gdm_stamp.name))
+    created_gdm = gdm_sim.handle(
+        "POST", "/library/sections?name=Cycle50GDM&type=movie"
+        "&agent=tv.plex.agents.movie&scanner=Plex%20Movie&language=en-US"
+        "&location=%2Ftmp", b"", {})
+    created_row = ((created_gdm[1].get("MediaContainer") or {}).get("Directory")
+                   or [{}])[0]
+    created_key = str(created_row.get("key") or "")
+    edited_gdm = gdm_sim.handle(
+        "PUT", "/library/sections/%s?agent=tv.plex.agents.movie"
+        "&name=Cycle50GDM2" % created_key, b"", {})
+    deleted_gdm = gdm_sim.handle(
+        "DELETE", "/library/sections/%s" % created_key, b"", {})
+    check("library create, edit and delete each move GDM Updated-At",
+          created_key and gdm_stamp.touches == 3
+          and edited_gdm == ("empty", 200) and deleted_gdm == ("empty", 200),
+          "key=%r touches=%d" % (created_key, gdm_stamp.touches))
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
