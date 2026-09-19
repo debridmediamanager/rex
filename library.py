@@ -58,8 +58,22 @@ DATE_FIELDS = {"originallyAvailableAt"}
 # `sortTitle` (the field is `titleSort`) -- plexsim stored whatever it was sent,
 # so a client typo became a row attribute and a `Field` lock for a field that
 # does not exist.
+# Cycle 53, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), identical on
+# both: the ten columns cycle 53 read out of the database template are editable on the
+# ITEM path -- `<column>.value=` is a 200 and `.locked=1` records the lock -- where
+# plexsim answered 400 to nine of the ten. Only `isAdult` is READ BACK: exactly the
+# literal `1` stores it and every other value clears it, and the row then carries
+# `isAdult: true` between `originalTitle` and `summary` on every projection, the light
+# grid row included. The other nine store nothing visible, which is the `LOCK_ONLY_FIELDS`
+# shape.
+DATABASE_COLUMN_FIELDS = ("remote", "isAdult", "resourcesChangedAt", "userFields",
+                          "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt",
+                          "agent", "source")
+
 EDITABLE_FIELDS = {
     "title", "titleSort", "originalTitle", "studio", "tagline", "summary",
+    # Cycle 53: the one database column that reads back.
+    "isAdult",
     "contentRating", "originallyAvailableAt", "year", "index", "editionTitle",
     "userRating", "audienceRating", "rating", "duration",
     # Cycle 20: eleven more columns are edits too -- each a 200 on the item path with
@@ -90,6 +104,10 @@ IGNORED_EDIT_FIELDS = {"userRating"}
 # value, and cycle 20 read them as discarded because the rows it wrote to already owned a
 # poster. See ARTWORK_VALUE_FIELDS.
 IGNORED_VALUE_FIELDS = {"addedAt", "guid", "lastViewedAt", "viewCount",
+                        # Cycle 53: nine of the ten database columns take the write on the
+                        # ITEM path and store nothing; only `isAdult` reads back.
+                        "remote", "resourcesChangedAt", "userFields", "lastSkippedAt",
+                        "mediaAnalysisVersion", "beginsAt", "endsAt", "agent", "source",
                         "parentIndex",
                         # Cycle 20: ten more are accepted and discarded on the ITEM
                         # path -- 200 for a number and 200 for a word alike, and
@@ -140,6 +158,12 @@ SECTION_INTEGER_FIELDS = {"addedAt", "duration", "parentIndex", "ratingCount", "
                           "createdAt", "contentRatingAge"}
 SECTION_STORED_FIELDS = {"addedAt", "ratingCount", "updatedAt", "contentRatingAge"}
 SECTION_REFUSED_FIELDS = {"viewCount", "lastViewedAt", "skipCount", "viewOffset", "type",
+                          # Cycle 53: six of the ten database columns are a 500 on the
+                          # SECTION path where the item path takes them -- the same split
+                          # `lastRatedAt` already has. `remote`, `isAdult`,
+                          # `resourcesChangedAt` and `userFields` are 200s there.
+                          "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt",
+                          "agent", "source",
                           "viewedLeafCount", "mediaCount", "extraType",
                           # Cycle 31, re-measured on both writable copies over five values
                           # (`5`, `0`, `abc`, empty, a real epoch): `lastRatedAt.value=` is
@@ -193,6 +217,11 @@ FIELD_ORDER = ["title", "titleSort", "originalTitle", "studio", "rating", "tagli
 ARTWORK_VALUE_FIELDS = {"theme", "banner", "thumb", "art"}
 
 LOCK_ONLY_FIELDS = {"thumb", "art", "theme", "banner", "guid", "slug", "addedAt",
+                    # Cycle 53: nine of the ten database columns take the write and
+                    # store nothing; `isAdult` is the one that reads back, so it is an
+                    # EDITABLE field rather than a lock-only one.
+                    "remote", "resourcesChangedAt", "userFields", "lastSkippedAt",
+                    "mediaAnalysisVersion", "beginsAt", "endsAt", "agent",
                     "viewCount", "network", "parentIndex",
                     # Cycle 20: `lastViewedAt` records a lock as well -- plexsim
                     # accepted the write and left the `Field` list alone.
@@ -1121,6 +1150,12 @@ class Library:
         return False
 
     def _set_field(self, row, field, value, section=False):
+        if field == "isAdult":
+            if str(value) == "1":
+                row["isAdult"] = True
+            else:
+                row.pop("isAdult", None)
+            return
         """One scalar field, with the coercions a real PMS applies."""
         if section and field in SECTION_INTEGER_FIELDS:
             # Cycle 20: parsed as an integer -- a word is a 500 -- and then stored only
