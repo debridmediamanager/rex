@@ -445,6 +445,20 @@ def main():
           % (((season_one_row.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey"),
              ((season_two_row.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey")))
 
+    common_sense_row = catalog.items[108]
+    common_sense_row["CommonSenseMedia"] = [{"tag": "Age Twelve"}]
+    common_sense_detail = (get("/library/metadata/108").get("Metadata") or [{}])[0]
+    common_sense_grid = next(
+        row for row in get("/library/sections/2/all").get("Metadata") or []
+        if row.get("ratingKey") == "108")
+    common_sense_row.pop("CommonSenseMedia", None)
+    check("CommonSenseMedia is detail-only and absent from a light row",
+          common_sense_detail.get("CommonSenseMedia") == [{"tag": "Age Twelve"}]
+          and "CommonSenseMedia" not in common_sense_grid,
+          "detail=%s grid=%s"
+          % (common_sense_detail.get("CommonSenseMedia"),
+             common_sense_grid.get("CommonSenseMedia")))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []
