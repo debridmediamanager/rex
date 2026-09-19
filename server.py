@@ -922,6 +922,31 @@ for _source in list((TRANSLATIONS.get("enumValues") or {})):
             TRANSLATIONS["enumValues"][_source][_language] = _lead + "|" + _tail
 
 
+# Cycle 52, read out of PMS's own route table (`/:file(crossdomain.xml|
+# clientaccesspolicy.xml)`) and then measured: three STATIC files sit at the top level of
+# a real PMS, byte-identical on kids (1.43.4) and zen (1.42.2) -- the Flash and
+# Silverlight cross-domain policies PMS ships in `Resources/`, and its favicon. All three
+# answer **without a token**, which makes them the third, fourth and fifth exceptions to
+# "a real PMS 401s everything but `/identity` and `/web/*`"; all three carry
+# `Accept-Ranges: bytes` and really answer 206; none is ever gzipped, even when the
+# client offers it; and every verb other than GET and HEAD falls through to the legacy
+# dispatcher's empty listing, which is what a KNOWN single-segment path does.
+#
+# The two policy documents order their headers like artwork (type first) and the favicon
+# like a `/web` asset (length before type) -- the same two-order split cycle 33 measured
+# for the image pair. plexsim answered the dispatcher's empty container to all three.
+STATIC_RESOURCES = {
+    "/crossdomain.xml": "text/xml",
+    "/clientaccesspolicy.xml": "text/xml",
+    "/favicon.ico": "application/octet-stream",
+}
+STATIC_RESOURCE_BYTES = {}
+for _resource in STATIC_RESOURCES:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           _resource.lstrip("/")), "rb") as _handle:
+        STATIC_RESOURCE_BYTES[_resource] = _handle.read()
+
+
 # --------------------------------------------------------------------------
 # catalog
 # --------------------------------------------------------------------------
@@ -6427,6 +6452,10 @@ class PlexSim:
         # origin -- rather than discovering servers through plex.tv. That
         # sidesteps the resource `accessToken` entirely, which is the one thing
         # blocking app.plex.tv from connecting to plexsim.
+        if route in STATIC_RESOURCES and method in ("GET", "HEAD"):
+            # Cycle 52: GET and HEAD answer the file; every other verb falls through to
+            # the single-segment dispatcher below, which is what both references do.
+            return ("file", STATIC_RESOURCES[route], STATIC_RESOURCE_BYTES[route])
         if route in ("/dlna", "/dlna/"):
             # Cycle 49, measured on zen (1.42.2) and kids (1.43.4), identical in shape:
             # the DLNA server's own library list. The rows are the library `Directory`
@@ -18891,7 +18920,10 @@ class Handler(BaseHTTPRequestHandler):
         # error, and cycle 49 also found it names no connection state at all.
         if status < 400 and path.startswith("/photo/:/transcode"):
             return "photo"
-        if status < 400 and (path.startswith("/web") or path.startswith("/:/resources")):
+        if status < 400 and (path.startswith("/web") or path.startswith("/:/resources")
+                             or path == "/favicon.ico"):
+            # Cycle 52: the favicon orders like a `/web` asset and the two XML policies
+            # like artwork (type first), which the `accept-ranges` fallback below reaches.
             return "asset"
         if "content-encoding" in names:
             return "gzip"
@@ -19701,6 +19733,11 @@ class Handler(BaseHTTPRequestHandler):
         route, raw_query = _target_parts(path)
         if route == "/identity" or route.startswith("/web"):
             return True
+        if route in STATIC_RESOURCES and self.command in ("GET", "HEAD"):
+            # Cycle 52, measured on kids and zen with no token at all: the two
+            # cross-domain policies and the favicon answer 200, where every other
+            # single-segment path answers 403. A write verb on them is not exempt.
+            return True
         if route in ("/security", "/security/token"):
             # Measured: this one is NOT a 401 -- it answers its own 400 with no
             # parameters and 403 with a token that is not good enough, which is how
@@ -20148,6 +20185,13 @@ class Handler(BaseHTTPRequestHandler):
                 for key, value in self._cors_headers():
                     self.send_header(key, value)
                 self.end_headers()
+                return
+            if kind == "file":
+                # Cycle 52: a bundled static resource. Never gzipped, `Accept-Ranges`
+                # like every other body path, and `_send` applies the Range grammar.
+                self._send(200, result[1], result[2],
+                           [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
+                            ("Content-Encoding", None)])
                 return
             if kind == "static":
                 self._serve_static(result[1])

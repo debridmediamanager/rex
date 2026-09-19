@@ -28568,6 +28568,39 @@ def main():
     check("the dispatcher's prefix registry follows its own rule",
           not wrong_c52a, "; ".join(wrong_c52a)[:300])
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), byte-identical on both: PMS's own
+    # route table names `/:file(crossdomain.xml|clientaccesspolicy.xml)`, and those two plus
+    # `/favicon.ico` are real static resources. They answer with NO token -- the third,
+    # fourth and fifth exception to the 401 rule -- carry `Accept-Ranges: bytes`, are never
+    # gzipped, and fall through to the dispatcher for every verb but GET and HEAD. plexsim
+    # answered the dispatcher's empty 101-byte container to all three.
+    wrong_c52b = []
+    for path_c52b, want_type_c52b, want_len_c52b in (
+            ("/crossdomain.xml", "text/xml", 347),
+            ("/clientaccesspolicy.xml", "text/xml", 325),
+            ("/favicon.ico", "application/octet-stream", 5430)):
+        status_c52b, body_c52b, headers_c52b = request(base, "GET", path_c52b, want_json=False)
+        ctype_c52b = headers_c52b.get("Content-Type")
+        if (status_c52b, ctype_c52b, len(body_c52b)) != (200, want_type_c52b, want_len_c52b):
+            wrong_c52b.append("%s %s %s %s" % (path_c52b, status_c52b, ctype_c52b, len(body_c52b)))
+        if headers_c52b.get("Accept-Ranges") != "bytes":
+            wrong_c52b.append("%s no Accept-Ranges" % path_c52b)
+        # a write verb is not the file: it is the dispatcher's empty listing
+        status_c52b, body_c52b, _ = request(base, "POST", path_c52b, want_json=False)
+        if status_c52b != 200 or b"MediaContainer" not in body_c52b:
+            wrong_c52b.append("%s POST %s" % (path_c52b, status_c52b))
+    check("the three bundled static resources are served",
+          not wrong_c52b, "; ".join(wrong_c52b)[:300])
+
+    # The policy documents are the documents, not a container -- a Flash or Silverlight
+    # client parses the root element by name.
+    _, policy_c52b, _ = request(base, "GET", "/crossdomain.xml", want_json=False)
+    _, access_c52b, _ = request(base, "GET", "/clientaccesspolicy.xml", want_json=False)
+    check("the cross-domain policies are their own documents",
+          b"<cross-domain-policy>" in policy_c52b and b"<access-policy>" in access_c52b
+          and b"MediaContainer" not in policy_c52b,
+          "%d/%d bytes" % (len(policy_c52b), len(access_c52b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
