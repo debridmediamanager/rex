@@ -80,7 +80,7 @@ import metadata as metadata_module  # noqa: E402
 import spellfix as spellfix_module  # noqa: E402
 import gdm as gdm_module  # noqa: E402
 from debrid import Resolver, Unavailable as DebridUnavailable  # noqa: E402
-from xmlout import ordered as ordered_keys, to_xml  # noqa: E402
+from xmlout import ordered as ordered_keys, to_xml, to_system_xml  # noqa: E402
 
 logger = logging.getLogger("plexsim")
 
@@ -19151,7 +19151,17 @@ class Handler(BaseHTTPRequestHandler):
         elements = body_dict.pop("_xml", None) if isinstance(body_dict, dict) else None
         window = self._paging_headers(body_dict)
         if self._wants_xml():
-            self._send(200, "text/xml;charset=utf-8", to_xml(container, elements), window)
+            # Cycle 50: every path under `/system` but `/system/agents` is written by the
+            # plug-in framework's own serialiser and answers `application/xml` with no
+            # charset. See `xmlout.to_system_xml`.
+            route = (getattr(self, "path", "") or "").split("?")[0].rstrip("/")
+            if (route == "/system" or route.startswith("/system/")) \
+                    and not route.startswith("/system/agents"):
+                self._send(200, "application/xml",
+                           to_system_xml(container, elements), window)
+            else:
+                self._send(200, "text/xml;charset=utf-8",
+                           to_xml(container, elements), window)
         else:
             # Cycle 23: the `_xml` override has to reach the JSON writer too --
             # `_send_container` pops it before either writer runs, so without passing
