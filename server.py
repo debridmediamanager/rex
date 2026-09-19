@@ -494,17 +494,36 @@ except OSError:
 # What the Edit Library dialog is allowed to name. Measured: a real PMS answers
 # 400 for an agent, scanner or language it does not have, where plexsim accepted
 # anything with a 200 -- so a typo in the dialog looked saved and silently was not.
-# The `/:/resources/*` names plexsim's own containers reference. A real PMS 404s a
-# name it does not have; plexsim generated a tile for anything.
-# Cycle 29, measured on kids and zen, whose bytes for these are IDENTICAL (so they are
-# PMS's own bundled assets): there are SEVEN names, not nine. `library-art.png` and
-# `playlist.png` are 404s on both references -- plexsim's own `/library` container
-# advertises the first of them, exactly as a real PMS's does, and the path behind it is
-# a 404 there too. The four `.png` names are 300x300 and the three `-fanart.jpg` names
-# 1280x720, and `?width=`/`?height=` are IGNORED (a 100x100 request answers the same
-# 76,373 bytes).
-KNOWN_RESOURCES = {"movie.png", "show.png", "artist.png", "photo.png",
-                   "movie-fanart.jpg", "show-fanart.jpg", "artist-fanart.jpg"}
+# `/:/resources/*` is PMS's whole `Resources/Graphics` tree, and it is **70 names**, not
+# the seven cycle 29 measured from a ten-name sample. Read out of the reference image
+# (`ssh ben@kids docker exec plexlab-plex ...`) and then measured name by name: all 70 are
+# a 200 on kids (1.43.4) and on zen (1.42.2), with the same status, media type and byte
+# count on both, so they are PMS's own bundled files rather than anything a library owns.
+#
+# The grammar around them, identical on both references:
+#   * a DIRECTORY is an empty `application/octet-stream` 200 -- `/:/resources/`,
+#     `/:/resources/dvr`, `/:/resources/dvr/`, `/:/resources/category-art` and its
+#     trailing-slash form -- which is the rule cycle 29 measured under `/web/`;
+#   * `/:/resources` with no trailing slash is a 404;
+#   * matching is CASE-SENSITIVE (`movie.PNG` is a 404);
+#   * `?width=`/`?height=` are ignored.
+#
+# `library-art.png` and `playlist.png` stay 404s: they are not in the tree, although
+# plexsim's own `/library` container advertises the first exactly as a real PMS's does.
+#
+# plexsim answers the right NAME SET, the right media type and the right GEOMETRY, and
+# generates the pixels -- its placeholder tile in the file's own container and size. The
+# two files that are not images (`favicon.ico`, which is NOT the 5,430-byte one at the top
+# level, and the stray `sugar.cmake` the build leaves behind) are carried verbatim, being
+# 1.4 KB between them. Shipping 4.7 MB of a product's artwork to reproduce the pixels of
+# the other 68 is recorded in HANDOVER 8 rather than done.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "resource_assets.json"), encoding="utf-8") as _handle:
+    RESOURCE_ASSETS = json.load(_handle)
+
+# Every directory in that tree, in both spellings a real PMS answers.
+RESOURCE_DIRECTORIES = {""} | {name.rsplit("/", 1)[0]
+                               for name in RESOURCE_ASSETS if "/" in name}
 
 # Which verbs each section leaf accepts. Everything absent here is a 404 for POST,
 # PUT and DELETE -- measured leaf by leaf, and a real PMS never answers 405: that
@@ -2728,6 +2747,93 @@ def _part_file_state(row, checked, resolver=None):
 # --------------------------------------------------------------------------
 
 
+# A baseline JPEG of one solid colour, stdlib only -- the companion to `_png`.
+# Cycle 52: nine of the 70 bundled resources are `.jpg` and a real PMS answers
+# `image/jpeg` for them. plexsim sent PNG bytes under that media type for the three it
+# knew about, which is a container a strict decoder is entitled to refuse. Every MCU here
+# is DC-only with an immediate EOB, so the encoder is a few dozen lines and the output
+# decodes cleanly (verified with ffmpeg at three geometries).
+_JPEG_QUANT = bytes([1] * 64)
+_JPEG_DC_BITS = bytes([0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0])
+_JPEG_DC_VALS = bytes(range(12))
+_JPEG_AC_BITS = bytes([0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d])
+_JPEG_AC_VALS = bytes([
+    0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51,
+    0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23, 0x42, 0xb1, 0xc1,
+    0x15, 0x52, 0xd1, 0xf0, 0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0a, 0x16, 0x17, 0x18,
+    0x19, 0x1a, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+    0x3a, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57,
+    0x58, 0x59, 0x5a, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74, 0x75,
+    0x76, 0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a, 0x92,
+    0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+    0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xc2, 0xc3,
+    0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
+    0xd9, 0xda, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2,
+    0xf3, 0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa])
+
+
+def _huffman_codes(bits, values):
+    codes, code, index = {}, 0, 0
+    for length in range(1, 17):
+        for _ in range(bits[length - 1]):
+            codes[values[index]] = (code, length)
+            index += 1
+            code += 1
+        code <<= 1
+    return codes
+
+
+def _jpeg(width, height, rgb):
+    red, green, blue = rgb
+    luma = int(0.299 * red + 0.587 * green + 0.114 * blue)
+    chroma_b = int(128 - 0.168736 * red - 0.331264 * green + 0.5 * blue)
+    chroma_r = int(128 + 0.5 * red - 0.418688 * green - 0.081312 * blue)
+    dc_codes = _huffman_codes(_JPEG_DC_BITS, _JPEG_DC_VALS)
+    ac_codes = _huffman_codes(_JPEG_AC_BITS, _JPEG_AC_VALS)
+    out, accumulator, filled = bytearray(), 0, 0
+
+    def put(code, length):
+        nonlocal accumulator, filled
+        for shift in range(length - 1, -1, -1):
+            accumulator = (accumulator << 1) | ((code >> shift) & 1)
+            filled += 1
+            if filled == 8:
+                out.append(accumulator)
+                if accumulator == 0xFF:
+                    out.append(0x00)        # byte stuffing
+                accumulator = filled = 0
+
+    previous = [0, 0, 0]
+    for _ in range(((width + 7) // 8) * ((height + 7) // 8)):
+        for component, level in enumerate((luma, chroma_b, chroma_r)):
+            value = (level - 128) * 8
+            difference = value - previous[component]
+            previous[component] = value
+            size = abs(difference).bit_length()
+            code, length = dc_codes[size]
+            put(code, length)
+            if size:
+                put(difference if difference > 0 else difference + (1 << size) - 1, size)
+            put(*ac_codes[0x00])            # end of block
+    while filled:
+        put(1, 1)
+    scan = bytes(out)
+
+    document = bytearray(b"\xff\xd8")
+    for table in (0, 1):
+        document += b"\xff\xdb" + struct.pack(">HB", 67, table) + _JPEG_QUANT
+    document += b"\xff\xc0" + struct.pack(">HBHHB", 17, 8, height, width, 3)
+    document += bytes([1, 0x11, 0, 2, 0x11, 1, 3, 0x11, 1])
+    for kind, table, bits, values in ((0, 0, _JPEG_DC_BITS, _JPEG_DC_VALS),
+                                      (0, 1, _JPEG_DC_BITS, _JPEG_DC_VALS),
+                                      (1, 0, _JPEG_AC_BITS, _JPEG_AC_VALS),
+                                      (1, 1, _JPEG_AC_BITS, _JPEG_AC_VALS)):
+        document += b"\xff\xc4" + struct.pack(">HB", 19 + len(values),
+                                               (kind << 4) | table) + bits + values
+    document += b"\xff\xda" + struct.pack(">HB", 12, 3)
+    document += bytes([1, 0x00, 2, 0x11, 3, 0x11, 0, 63, 0])
+    return bytes(document) + scan + b"\xff\xd9"
+
 def _png(width, height, rgb):
     """A solid-colour PNG, built without a third-party imaging library.
 
@@ -4464,6 +4570,12 @@ class PlexSim:
                 "/servers//", "/channels//", "/resources//", "/:/plugins//",
                 "/:/prefs//",
             } or re.fullmatch(r"/library/metadata/[0-9]+//", route) is not None
+            if route == "/:/resources/":
+                # Cycle 52, measured on kids and zen: the bare `/:/resources` is a 404 and
+                # the trailing-slash form is the tree's own DIRECTORY -- an empty
+                # `application/octet-stream` 200. The normalisation below strips that
+                # slash, so the two forms have to be told apart before it runs.
+                return ("asset", "application/octet-stream", b"")
             if route == "/:/plugins/":
                 # The single trailing slash is the inverse exception: all four
                 # references 404 it although the bare path is the plug-in listing.
@@ -6509,9 +6621,7 @@ class PlexSim:
                 # the placeholder `thumb` on its own rows, so every placeholder tile Plex
                 # Web asked for through the transcoder was a 500.
                 if inner.startswith("/:/resources/"):
-                    if inner.split("/")[-1] not in KNOWN_RESOURCES:
-                        return ("error", 404, "plexsim: not found")
-                    return ("png", {})
+                    return self.bundled_resource(inner[len("/:/resources/"):])
                 owner = re.match(
                     r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)", inner)
                 if owner is not None:
@@ -6564,14 +6674,11 @@ class PlexSim:
                 return ("image", self._at_width(resolved, query.get("width")))
             return ("png", query)
         if route.startswith("/:/resources/"):
-            # Measured: a real PMS 404s a resource name it does not have -- plexsim
-            # generated a tile for ANY name, so a typo'd art path silently drew.
-            if route.split("/")[-1] not in KNOWN_RESOURCES:
-                return ("error", 404, "plexsim: not found")
-            # Cycle 29: these are fixed-size bundled assets and a real PMS ignores
-            # `width`/`height` here -- `movie.png?width=100&height=100` answers the same
-            # bytes as the bare path on both references, where plexsim resized its tile.
-            return ("png", {})
+            # Cycle 52: the whole `Resources/Graphics` tree, 70 names on both versions.
+            # A name it does not have is still a 404 -- plexsim generated a tile for ANY
+            # name once, so a typo'd art path silently drew -- and a DIRECTORY is the
+            # empty octet-stream 200 `/web/` answers.
+            return self.bundled_resource(route[len("/:/resources/"):])
         # A real PMS serves the official Plex Web client from /web, and that
         # client talks to the server it was loaded FROM -- window.location's
         # origin -- rather than discovering servers through plex.tv. That
@@ -8005,6 +8112,25 @@ class PlexSim:
         # A leaf a real PMS does not have is a 404 there, not an empty container.
         logger.warning("UNKNOWN section leaf %s on section %s", leaf, section_id)
         return ("error", 404, "plexsim: not found")
+
+    def bundled_resource(self, relative):
+        """`/:/resources/<relative>` -- one of PMS's own 70 bundled files.
+
+        The name set, the media type and the geometry are measured; the pixels are
+        plexsim's own placeholder in the file's container, which is the deviation
+        HANDOVER 8 records.
+        """
+        relative = relative.rstrip("/") if relative.endswith("/") else relative
+        if relative in RESOURCE_DIRECTORIES:
+            return ("asset", "application/octet-stream", b"")
+        asset = RESOURCE_ASSETS.get(relative)
+        if asset is None:
+            return ("error", 404, "plexsim: not found")
+        if "body" in asset:
+            return ("asset", asset["type"], base64.b64decode(asset["body"]))
+        payload = (_jpeg if asset["type"] == "image/jpeg" else _png)(
+            asset["width"], asset["height"], (32, 34, 38))
+        return ("asset", asset["type"], payload)
 
     def _owns_artwork(self, row, leaf):
         """Does this row OWN the image behind `/library/metadata/{id}/{leaf}`?
@@ -20333,6 +20459,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if kind == "image":
                 self._serve_image(result[1])
+                return
+            if kind == "asset":
+                # Cycle 52: one of PMS's 70 bundled resources, or the empty
+                # octet-stream 200 a directory in that tree answers.
+                self._send(200, result[1], result[2],
+                           [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
+                            ("Content-Encoding", None)])
                 return
             if kind == "png":
                 query = result[1]

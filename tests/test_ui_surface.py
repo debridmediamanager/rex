@@ -28815,6 +28815,54 @@ def main():
           and key_c52i.endswith("?width=400&height=600"),
           "key=%s" % key_c52i)
 
+    # Cycle 52, read out of the reference image's own `Resources/Graphics` tree and then
+    # measured name by name on kids (1.43.4) and zen (1.42.2), identical on both:
+    # `/:/resources/*` is **70 names**, not the seven cycle 29 measured from a ten-name
+    # sample. 59 are `image/png`, nine `image/jpeg` and two `application/octet-stream`; a
+    # DIRECTORY is an empty octet-stream 200 in both spellings; `/:/resources` with no
+    # trailing slash is a 404; and matching is case-sensitive. plexsim 404'd 63 of the 70,
+    # served the seven it knew at the wrong geometry, and sent PNG bytes under the
+    # `image/jpeg` name -- on paths its OWN rows point at.
+    wrong_c52j = []
+    for path_c52j, want_c52j, type_c52j in (
+            ("/:/resources/actor-icon.png", 200, "image/png"),
+            ("/:/resources/DefaultAlbumCover.png", 200, "image/png"),
+            ("/:/resources/video.png", 200, "image/png"),
+            ("/:/resources/dvr/dvr-news-icon.png", 200, "image/png"),
+            ("/:/resources/category-art/animation.png", 200, "image/png"),
+            ("/:/resources/movie-fanart.jpg", 200, "image/jpeg"),
+            ("/:/resources/iphoto-fanart.jpg", 200, "image/jpeg"),
+            ("/:/resources/sugar.cmake", 200, "application/octet-stream"),
+            ("/:/resources/favicon.ico", 200, "application/octet-stream"),
+            ("/:/resources/", 200, "application/octet-stream"),
+            ("/:/resources/dvr", 200, "application/octet-stream"),
+            ("/:/resources/dvr/", 200, "application/octet-stream"),
+            ("/:/resources/category-art", 200, "application/octet-stream"),
+            ("/:/resources/movie.PNG", 404, "text/html"),
+            ("/:/resources/library-art.png", 404, "text/html"),
+            ("/:/resources/nope.png", 404, "text/html")):
+        status_c52j, body_c52j, head_c52j = request(base, "GET", path_c52j, want_json=False)
+        if status_c52j != want_c52j or head_c52j.get("Content-Type") != type_c52j:
+            wrong_c52j.append("%s -> %s %s" % (path_c52j, status_c52j,
+                                               head_c52j.get("Content-Type")))
+        if path_c52j.rstrip("/").endswith(("dvr", "category-art", "resources")) \
+                and status_c52j == 200 and body_c52j:
+            wrong_c52j.append("%s directory has a body" % path_c52j)
+    check("/:/resources is PMS's whole bundled tree",
+          not wrong_c52j, "; ".join(wrong_c52j)[:300])
+
+    # The geometry is the file's own, and a `.jpg` name really is a JPEG.
+    _, fanart_c52j, _ = request(base, "GET", "/:/resources/movie-fanart.jpg", want_json=False)
+    _, icon_c52j, _ = request(base, "GET", "/:/resources/movie.png", want_json=False)
+    check("a bundled .jpg is a JPEG at the file's own geometry",
+          fanart_c52j[:2] == b"\xff\xd8" and b"\xff\xc0" in fanart_c52j[:600]
+          and icon_c52j[:8] == b"\x89PNG\r\n\x1a\n"
+          and int.from_bytes(icon_c52j[16:20], "big") == 300
+          and int.from_bytes(icon_c52j[20:24], "big") == 300,
+          "jpeg=%r png=%dx%d" % (fanart_c52j[:2],
+                                 int.from_bytes(icon_c52j[16:20], "big"),
+                                 int.from_bytes(icon_c52j[20:24], "big")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
