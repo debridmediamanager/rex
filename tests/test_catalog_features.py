@@ -236,6 +236,24 @@ def main():
           catalog.search_tier({"title": "The Train Job",
                                "titleSort": "Train Job"}, "train") == "anchored")
 
+    counted_tag = {"id": 777, "tag": "Gina Torres", "filter": "actor=777"}
+    counted_rows = (catalog.items[108], catalog.items[109])
+    old_roles = [row.get("Role") for row in counted_rows]
+    for row in counted_rows:
+        row["Role"] = [dict(counted_tag)]
+    counted_search = sim.library_search({"query": "Gina", "limit": "100"})[
+        "MediaContainer"]
+    counted_hit = next((result.get("Directory") for result in
+                        counted_search.get("SearchResult") or []
+                        if (result.get("Directory") or {}).get("tag") == "Gina Torres"), {})
+    for row, roles in zip(counted_rows, old_roles):
+        if roles is None:
+            row.pop("Role", None)
+        else:
+            row["Role"] = roles
+    check("a search tag count spans every row type in its tag table",
+          counted_hit.get("count") == 2, str(counted_hit))
+
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.

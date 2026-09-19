@@ -12591,16 +12591,14 @@ class PlexSim:
                                          "tier": tier})
                 entry["rows"].append(row)
             for entry in seen.values():
-                # Cycle 28: the `count` is the size of the listing the row's own `key`
-                # names -- the library's own top-level type -- not every row carrying
-                # the tag. Comedy's 590 is `/library/sections/1/all?genre=667`'s 590 and
-                # its 179 the show library's 179; kids' Drama is 1 and 1, on libraries
-                # whose episodes carry no genre at all. plexsim counted every row that
-                # carried the tag, so a catalog whose episodes carry one advertised a
-                # count its own link could not answer.
-                section = self.catalog.section(entry["row"].get("librarySectionID")) or {}
-                entry["count"] = len([r for r in entry["rows"]
-                                      if r.get("type") == section.get("type")])
+                # Cycle 50 corrected the earlier interpretation: this is the tag
+                # TABLE's cross-type counter, not the size of the section listing in
+                # `key`.  kids' Gina Torres row says 4 while that key lists one show;
+                # `/library/all?actor=...` finds the show and three episodes.  zen also
+                # proves the counter is stored and can be stale (5 against two live
+                # rows). plexsim has no persisted stale counter, so counting every
+                # current row type is the measured reproducible model.
+                entry["count"] = len(entry["rows"])
             if seen:
                 tags[hub] = [seen[key] for key in sorted(seen)][:limit]
 
