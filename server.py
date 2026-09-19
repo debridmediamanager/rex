@@ -18092,10 +18092,12 @@ class Handler(BaseHTTPRequestHandler):
                 # `-5` parses and is nonsense: both references answer and then close.
                 return "short", b""
             size = int(match.group(2), 16)
-            # Cycle 50: a size larger than the body is NOT a refusal. `FFFFFFFFFFFFFFFF`
-            # and every value above it are 200 + close on all four references -- the
-            # server simply runs out of body -- where cycle 49 read the pipelined
-            # request's own 400 as the size's.
+            # Cycle 50 rechecked the overflow cell with exact response draining on kids
+            # and both disposable versions: the size token is a SIGNED 64-bit value.
+            # `7FFFFFFFFFFFFFFF` parses and then runs out of body (200 + close), while
+            # `8000000000000000` and `FFFFFFFFFFFFFFFF` are envelope refusals (400).
+            if size > 0x7FFFFFFFFFFFFFFF:
+                return "bad", b""
             if size == 0:
                 # Only a bare CRLF ends it cleanly, and it is PEEKED at rather than read:
                 # a TRAILER has to stay in the stream, because it is read as the next
@@ -18109,8 +18111,8 @@ class Handler(BaseHTTPRequestHandler):
                     return "ok", b"".join(out)
                 return ("left" if ahead else "short"), b"".join(out)
             try:
-                # Capped: `FFFFFFFFFFFFFFFF` is a legal size token and asking the reader
-                # for 18 quintillion bytes raises before it can run out of body.
+                # Capped: signed-64 maximum is legal, but asking the reader for that many
+                # bytes raises before it can simply run out of body.
                 data = read_bytes(min(size, 1 << 24))
                 if len(data) < size:
                     return "short", b""
