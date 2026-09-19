@@ -7769,6 +7769,48 @@ def main():
           (repaired_c49q[0], get(base, "/devices")[0],
            get(base, "/statistics/bandwidth?timespan=6")[0]))
 
+    # Cycle 50, all four references: double trailing slashes are a finite per-route
+    # table, not a global normalisation rule. The report claimed 41 double-slash probes
+    # but retained 39 names; protect every retained name and do not invent the missing
+    # two. The single-slash plug-in and no-index config cells are separate findings.
+    double_200_c50g = (
+        "/library//", "/hubs//", "/status/sessions//",
+        "/library/sections/1//", "/media/providers//",
+        "/media/providers/metadata//", "/butler//", "/activities//",
+        "/devices//", "/clients//", "/accounts//", "/security//",
+        "/servers//", "/channels//", "/resources//", "/:/plugins//",
+        "/:/prefs//", "/library/metadata/%s//" % movie)
+    double_404_c50g = (
+        "/identity//", "/playlists//", "/library/sections//",
+        "/library/sections/1/all//", "/services//", "/system//", "/updater//",
+        "/transcode//", "/livetv//", "/statistics//", "/media//", "/plugins//",
+        "/sync//", "/library/metadata//", "/hubs/sections//",
+        "/hubs/sections/1//", "/status/sessions/history//",
+        "/status/sessions/history/all//", "/system/agents//", "/playlists/all//",
+        "/:/plugins///")
+    double_status_c50g = {path_c50g: request(base, "GET", path_c50g)[0]
+                          for path_c50g in double_200_c50g + double_404_c50g}
+    check("the enumerated double-slash pass-through routes return 200",
+          all(double_status_c50g[path_c50g] == 200 for path_c50g in double_200_c50g),
+          "%s" % {path: double_status_c50g[path] for path in double_200_c50g
+                    if double_status_c50g[path] != 200})
+    check("the enumerated double-slash refusal routes return 404",
+          all(double_status_c50g[path_c50g] == 404 for path_c50g in double_404_c50g),
+          "%s" % {path: double_status_c50g[path] for path in double_404_c50g
+                    if double_status_c50g[path] != 404})
+    check("/:/plugins/ is the measured single-trailing-slash exception",
+          request(base, "GET", "/:/plugins")[0] == 200
+          and request(base, "GET", "/:/plugins/")[0] == 404
+          and request(base, "GET", "/:/plugins//")[0] == 200, "")
+    _, agents_c50g, _ = get(base, "/system/agents")
+    agent_c50g = ((agents_c50g.get("Agent") or [{}])[0]).get("identifier")
+    config_status_c50g = (request(
+        base, "GET", "/system/agents/%s/config" % quote(agent_c50g))[0]
+        if agent_c50g else None)
+    check("an agent config path without its index is a 404",
+          agent_c50g and config_status_c50g == 404,
+          "agent=%r status=%r" % (agent_c50g, config_status_c50g))
+
     # Cycle 49, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie
     # MADE to carry the whole tag family at once -- a row shape no reference library holds,
     # which is why cycle 23's 2,994-path child-order sweep could not see any of this.
