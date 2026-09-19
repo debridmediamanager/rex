@@ -2231,6 +2231,19 @@ def _restamped(row, stamp):
     return row if changed is None else changed
 
 
+def _owned_artwork(row, field):
+    """Return an artwork path only when ``row`` owns it.
+
+    Borrowed hierarchy artwork retains the owner's ratingKey in its path.  Cycle 50
+    measured that distinction on the ``/children`` container: all eleven owning
+    seasons sampled on zen carried ``thumb`` and all four borrowing ones omitted it;
+    kids showed both cases too.
+    """
+    value = row.get(field)
+    prefix = "/library/metadata/%s/" % row.get("ratingKey")
+    return value if str(value or "").startswith(prefix) else None
+
+
 def _progress_time(value):
     """A `/:/progress?time=` as a real PMS reads it, or None when it refuses.
 
@@ -3828,7 +3841,7 @@ class PlexSim:
                     "parentTitle": ("" if parent.get("title") in ("", "Season %s" % parent.get("index"))
                                     else parent.get("title")),
                     "parentYear": parent.get("year"),
-                    "thumb": parent.get("thumb"),
+                    "thumb": _owned_artwork(parent, "thumb"),
                     "art": parent.get("art"),
                 }
             )
@@ -3852,7 +3865,7 @@ class PlexSim:
                     "parentIndex": parent.get("index") or 1,
                     "parentTitle": parent.get("title"),
                     "parentYear": parent.get("year"),
-                    "thumb": parent.get("thumb"),
+                    "thumb": _owned_artwork(parent, "thumb"),
                     "art": parent.get("art"),
                 }
             )

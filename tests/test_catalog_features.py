@@ -487,6 +487,28 @@ def main():
           section_stamp == 200 and promoted_stamp == 200,
           "section=%s promoted=%s" % (section_stamp, promoted_stamp))
 
+    thumb_rows = [
+        {"ratingKey": "45201", "key": "/library/metadata/45201/children",
+         "type": "show", "title": "Thumb Show", "librarySectionID": 2,
+         "thumb": "/library/metadata/45201/thumb/20"},
+        {"ratingKey": "45202", "key": "/library/metadata/45202/children",
+         "type": "season", "title": "Season 1", "index": 1,
+         "parentRatingKey": "45201", "librarySectionID": 2,
+         "thumb": "/library/metadata/45201/thumb/20"},
+        {"ratingKey": "45203", "key": "/library/metadata/45203", "type": "episode",
+         "title": "Episode", "index": 1, "parentRatingKey": "45202",
+         "grandparentRatingKey": "45201", "librarySectionID": 2},
+    ]
+    for synthetic in thumb_rows:
+        catalog.add(synthetic)
+    borrowed_thumb = get("/library/metadata/45202/children").get("thumb")
+    catalog.items[45202]["thumb"] = "/library/metadata/45202/thumb/21"
+    owned_thumb = get("/library/metadata/45202/children").get("thumb")
+    catalog.remove(45201)
+    check("a children container carries only artwork its parent owns",
+          borrowed_thumb is None and owned_thumb == "/library/metadata/45202/thumb/21",
+          "borrowed=%r owned=%r" % (borrowed_thumb, owned_thumb))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []
