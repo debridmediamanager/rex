@@ -49,6 +49,14 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+# The suite is invoked as ``python3 tests/test_ui_surface.py``.  In that form
+# Python puts ``tests/`` rather than the repository root on sys.path, so the
+# focused transport regression near the end could not import the server it is
+# exercising.  Resolve the sibling module independently of the caller's cwd.
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -445,13 +453,22 @@ def main():
             srow = (season_row.get("Metadata") or [{}])[0]
             season_prefs = [s.get("id")
                             for s in (srow.get("Preferences") or {}).get("Setting") or []]
-            # A season page had no episode to offer and an empty settings tab,
-            # because plexsim answered these for shows only.
-            check("a season carries OnDeck, Extras and its own settings",
-                  bool(srow.get("OnDeck")) and srow.get("Extras") is not None
+            # A season exposes OnDeck only when it owns the show's current
+            # candidate.  An unwatched show (or another season) legitimately
+            # leaves this block absent; the old assertion treated that as a
+            # rendering failure and contradicted the measured detail rows.
+            show_on_deck = (row.get("OnDeck") or {}).get("Metadata")
+            expected_season_on_deck = bool(
+                show_on_deck
+                and str(show_on_deck.get("parentRatingKey")) == str(season_key))
+            check("a season scopes OnDeck and carries Extras and its own settings",
+                  bool(srow.get("OnDeck")) == expected_season_on_deck
+                  and srow.get("Extras") is not None
                   and season_prefs == ["audioLanguage", "subtitleLanguage",
                                        "subtitleMode"],
-                  "OnDeck=%s prefs=%s" % (bool(srow.get("OnDeck")), season_prefs))
+                  "OnDeck=%s expected=%s prefs=%s"
+                  % (bool(srow.get("OnDeck")), expected_season_on_deck,
+                     season_prefs))
             _, leaves, _ = get(base, "/library/metadata/%s/children" % season_key)
             episode_key = ((leaves.get("Metadata") or [{}])[0]).get("ratingKey")
             if episode_key:
@@ -495,7 +512,8 @@ def main():
         check("turning flattenSeasons off clears it again",
               "skipChildren" not in (unflat.get("Metadata") or [{}])[0])
     else:
-        skip("a season carries OnDeck, Extras and its own settings", "no show section")
+        skip("a season scopes OnDeck and carries Extras and its own settings",
+             "no show section")
 
     # ------------------------------------------------------------------
     # 2. Mark as Played / Mark as Unplayed / rating
