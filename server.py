@@ -105,6 +105,45 @@ URL_LOOKUP_ERROR = (
     b"</Response>\n"
 )
 
+# Cycle 52: the plug-in framework's TypeError document, which cycle 40 shipped for
+# `/system/services/url/lookup` as one literal. The same template answers the four agent
+# actions, byte for byte on kids and zen once the bundle hash and line number are the
+# reported version's -- 462, 456, 456 and 478 bytes for the no-parameter forms.
+def _framework_traceback(sentence):
+    return (
+        "<?xml version='1.0' encoding='utf-8'?>\n"
+        '<Response code="2000" status="TypeError: %s">\n'
+        "  <Traceback>Traceback (most recent call last):\n"
+        '  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
+        'Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 843, '
+        "in handle_request\n"
+        "    result = f(**d)\n"
+        "TypeError: %s\n"
+        "</Traceback>\n"
+        "</Response>\n" % (sentence, sentence)).encode("utf-8")
+
+
+def framework_error(name, least, given=1):
+    return _framework_traceback("%s() takes at least %d arguments (%d given)"
+                                % (name, least, given))
+
+
+def framework_unexpected(name, keyword):
+    return _framework_traceback("%s() got an unexpected keyword argument '%s'"
+                                % (name, keyword))
+
+
+# The four actions: the Python function the framework dispatches to, how many arguments
+# it declares, which query names it recognises, and whether an unrecognised name raises.
+# `search` drops a name it does not know (`?query=x` is still "(1 given)") where the
+# other three raise on it -- measured, not derived.
+FRAMEWORK_AGENT_ACTIONS = {
+    "search": ("search", 4, ("mediaType",), False),
+    "update": ("update", 3, ("mediaType",), True),
+    "contributors": ("list_contributors", 3, ("mediaType", "primaryAgent"), True),
+    "media/get": ("media_get", 4, ("mediaType",), True),
+}
+
 # Upstream reads are issued with a browser-ish UA; RD's CDN is fine with
 # anything, but a bare urllib default is the kind of thing a CDN rate-limits.
 UPSTREAM_UA = "plexsim/0.1"
@@ -5173,6 +5212,43 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.bare_container(noHistory=0, replaceParent=0, size=0,
                                        identifier="com.plexapp.system")
+        if route.startswith("/system/agents/") and route != "/system/agents/":
+            # Cycle 52, swept over fifteen names on kids (1.43.4) and zen (1.42.2), which
+            # agree on every one: exactly FOUR actions live under `/system/agents`, and
+            # each answers the plug-in framework's own TypeError traceback with a 500 --
+            # `search`, `update`, `contributors` and `media/get`, at 456, 456, 478 and 462
+            # bytes. Every other name under it, `/system/agents/media` and
+            # `/system/agents/zzz` included, is a 404 with an EMPTY body, which is the
+            # `/system` subtree's shape.
+            #
+            # plexsim answered the AGENT CATALOGUE to `/system/agents/media/get` and to
+            # `/system/agents/media/zzz`, 404'd `search` and `update`, and sent its own
+            # text/html 500 where the framework sends its traceback.
+            #
+            # The framework hands the query through to its own Python function, so the
+            # sentence moves with the parameters -- `?mediaType=1` makes it "(2 given)"
+            # and a name the function does not declare makes it "got an unexpected
+            # keyword argument". The recognised names below are measured; the general
+            # rule is PMS's own signatures and is an explicit bound in HANDOVER 8.
+            action_c52 = route[len("/system/agents/"):].strip("/")
+            if action_c52 in FRAMEWORK_AGENT_ACTIONS:
+                name_c52, least_c52, known_c52, strict_c52 = \
+                    FRAMEWORK_AGENT_ACTIONS[action_c52]
+                supplied = [key for key in query
+                            if not key.startswith(("_", "X-Plex-"))]
+                if action_c52 == "contributors" and all(
+                        query.get(key) for key in known_c52):
+                    # Cycle 19's measurement, unchanged: with BOTH parameters a modern
+                    # primary agent has no contributor chain and says so with an empty
+                    # `com.plexapp.system` container.
+                    return self.bare_container(noHistory=0, replaceParent=0, size=0,
+                                               identifier="com.plexapp.system")
+                unexpected = [key for key in supplied if key not in known_c52]
+                if strict_c52 and unexpected:
+                    return ("plugin-xml", 500,
+                            framework_unexpected(name_c52, unexpected[0]))
+                given = 1 + sum(1 for key in known_c52 if key in supplied)
+                return ("plugin-xml", 500, framework_error(name_c52, least_c52, given))
         if route == "/system/agents/contributors":
             # Same measurement: empty for a modern primary agent, and a 500 when the
             # two parameters the plug-in framework needs are missing.
@@ -5197,7 +5273,12 @@ class PlexSim:
             # Cycle 50: configuration is indexed. Omitting that index is a 404 on all
             # four references, not the agent catalogue.
             return ("error", 404, "plexsim: not found")
-        if route.startswith("/system/agents"):
+        if route.startswith("/system/agents/") or route == "/system/agents/":
+            # Cycle 52: every other name under `/system/agents` -- `/media`, `/zzz`,
+            # `/media/zzz` -- is a 404 with an EMPTY body on both references, where
+            # plexsim answered the whole agent catalogue to anything it did not route.
+            return ("bare", 404)
+        if route == "/system/agents":
             return self.system_agents(query)
         if segments[:2] == ["system", "scanners"]:
             if len(segments) == 2:

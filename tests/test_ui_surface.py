@@ -28946,6 +28946,42 @@ def main():
     check("an extra segment after an account or device id is a 404",
           not wrong_c52n and control_c52n == 200, "; ".join(wrong_c52n)[:200])
 
+    # Cycle 52, swept over fifteen names on kids (1.43.4) and zen (1.42.2), which agree on
+    # every one: exactly four actions live under `/system/agents`, each answering the plug-in
+    # framework's own TypeError traceback with a 500 -- `search` (456 bytes), `update` (456),
+    # `contributors` (478) and `media/get` (462) -- and every other name is a 404 with an
+    # EMPTY body. plexsim answered the AGENT CATALOGUE to `/system/agents/media/get` and to
+    # `/system/agents/media/zzz`, 404'd `search` and `update`, and sent its own text/html 500
+    # for `contributors`.
+    wrong_c52o = []
+    for action_c52o, length_c52o in (("search", 456), ("update", 456),
+                                     ("contributors", 478), ("media/get", 462)):
+        status_c52o, body_c52o, head_c52o = request(
+            base, "GET", "/system/agents/%s" % action_c52o, want_json=False)
+        if (status_c52o != 500 or len(body_c52o) != length_c52o
+                or head_c52o.get("Content-Type") != "application/xml"
+                or b"handle_request" not in body_c52o):
+            wrong_c52o.append("%s -> %s/%s/%s" % (action_c52o, status_c52o, len(body_c52o),
+                                                  head_c52o.get("Content-Type")))
+    for absent_c52o in ("zzz", "media", "media/zzz", "get", "primary"):
+        status_c52o, body_c52o, head_c52o = request(
+            base, "GET", "/system/agents/%s" % absent_c52o, want_json=False)
+        if status_c52o != 404 or body_c52o or head_c52o.get("Content-Type"):
+            wrong_c52o.append("%s -> %s/%s" % (absent_c52o, status_c52o, len(body_c52o)))
+    for query_c52o, want_c52o in (
+            ("/system/agents/contributors?mediaType=1&primaryAgent=x", 200),
+            ("/system/agents/contributors?mediaType=1", 500),
+            ("/system/agents/media/get?zzz=1", 500)):
+        status_c52o, body_c52o, _ = request(base, "GET", query_c52o, want_json=False)
+        if status_c52o != want_c52o:
+            wrong_c52o.append("%s -> %s" % (query_c52o, status_c52o))
+        elif want_c52o == 500 and b"unexpected keyword" not in body_c52o \
+                and b"(2 given)" not in body_c52o:
+            wrong_c52o.append("%s wrong sentence" % query_c52o)
+    catalogue_c52o, _, _ = request(base, "GET", "/system/agents", want_json=False)
+    check("the four framework actions under /system/agents",
+          not wrong_c52o and catalogue_c52o == 200, "; ".join(wrong_c52o)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
