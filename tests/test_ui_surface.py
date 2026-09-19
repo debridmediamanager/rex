@@ -28682,6 +28682,40 @@ def main():
           not wrong_c52d and get_c52d.get("Set-Cookie") and put_c52d.get("Set-Cookie"),
           "; ".join(wrong_c52d)[:200] or "controls ok")
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), identical on both: the photo
+    # transcoder FETCHES the `url=` path, and its answer follows that fetch -- a url the
+    # server answers with anything but 200 is a 404 here (a missing section composite, an
+    # unknown item leaf, a row that borrows the field), and only a 200 whose bytes are not an
+    # image is the 500. plexsim matched four artwork names with one regex and 500'd
+    # everything else, its OWN section composite included: `/library/sections/{id}/composite/
+    # {v}` is a 200 jpeg on the direct path and was a 500 through the transcoder, which is
+    # the path Plex Web builds every library card from.
+    composite_c52e = "/library/sections/%s/composite/0" % movie_section
+    direct_c52e, body_c52e, headers_c52e = request(base, "GET", composite_c52e, want_json=False)
+    through_c52e, tbody_c52e, theaders_c52e = request(
+        base, "GET", "/photo/:/transcode?width=200&height=200&url="
+        + quote(composite_c52e), want_json=False)
+    check("the transcoder serves a section composite",
+          direct_c52e == 200 and through_c52e == 200
+          and (theaders_c52e.get("Content-Type") or "").startswith("image/"),
+          "direct %s through %s %s" % (direct_c52e, through_c52e,
+                                       theaders_c52e.get("Content-Type")))
+
+    wrong_c52e = []
+    for inner_c52e, want_c52e in (
+            ("/library/metadata/%s/zzz" % movie, 404),
+            ("/library/sections/999/composite/1", 404),
+            ("/library/metadata/999999/thumb", 404),
+            # a 200 that is not an image stays the 500 cycle 29 measured
+            ("/identity", 500),
+            ("/library/sections", 500)):
+        got_c52e, _, _ = request(base, "GET", "/photo/:/transcode?width=200&height=200&url="
+                                 + quote(inner_c52e), want_json=False)
+        if got_c52e != want_c52e:
+            wrong_c52e.append("%s -> %s want %s" % (inner_c52e, got_c52e, want_c52e))
+    check("the transcoder mirrors the direct path's refusal",
+          not wrong_c52e, "; ".join(wrong_c52e)[:300])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -4793,6 +4793,44 @@ class PlexSim:
             })
         return providers
 
+    # Cycle 52: the transcoder answers what the DIRECT path answers. Rather than model
+    # that with a second table that would drift, ask plexsim's own router -- which is the
+    # only thing that knows -- and read the kind it returns. `_inner_refuses` carries the
+    # two-way split back: a non-200 is a 404 here and a 200 that is not an image is a 500.
+    _inner_refuses = False
+
+    def _transcodable(self, inner, inner_query, headers, address):
+        """Would a GET of `inner` answer an IMAGE? Sets `_inner_refuses` when it 404s."""
+        self._inner_refuses = True
+        if getattr(self, "_in_transcode", False):
+            # A url naming the transcoder itself: one level only, and the reference
+            # answers its own refusal rather than recursing.
+            return False
+        segments = [piece for piece in inner.split("/") if piece]
+        # A GET that MINTS a row (cycle 45's theme sub-leaf) must not run from here.
+        if segments[-1:] == ["metadata"] and "theme" in segments:
+            self._inner_refuses = False
+            return False
+        self._in_transcode = True
+        try:
+            result = self._route("GET", inner, segments, inner_query, None, headers, address)
+        except Exception:
+            self._inner_refuses = False
+            return False
+        finally:
+            self._in_transcode = False
+        if isinstance(result, tuple) and result[:1] == ("error",):
+            # Every refusal the direct path makes -- 400, 404, 500 -- is a 404 here.
+            return False
+        kind = result[0] if isinstance(result, tuple) else ""
+        if kind in ("image", "png", "image-key", "composite"):
+            self._inner_refuses = False
+            return True
+        # A 200 whose body is not an image: the reference reads the bytes and fails to
+        # decode them, which is the 500.
+        self._inner_refuses = False
+        return False
+
     def _route(self, method, route, segments, query, body, headers, address=None):
         catalog = self.catalog
 
@@ -6474,25 +6512,38 @@ class PlexSim:
                     return ("png", {})
                 owner = re.match(
                     r"^/library/metadata/(\d+)/(thumb|art|poster|background)(/|$)", inner)
-                if owner is None:
-                    # A real server path that is not an item's artwork: the reference
-                    # reads the bytes and fails to decode them. (A `/library/parts/...`
-                    # url is the one shape the two references answer differently -- kids
-                    # 500, zen 404 -- so it is not a rule; this takes kids' answer, which
-                    # is also the general one.)
-                    return ("error", 500, "plexsim: server error")
-                row = catalog.items.get(int(owner.group(1)))
-                if row is None:
-                    return ("error", 404, "plexsim: no such item")
-                field = {"poster": "thumb", "background": "art"}.get(
-                    owner.group(2), owner.group(2))
-                if not self._owns(row, field):
-                    # The transcoder does not re-resolve: it answers what the direct path
-                    # answers, and a row that BORROWS this field 404s there (cycle 26).
-                    # plexsim resolved through `artwork_for`, which falls back to the
-                    # parent's image, so the transcoder served a picture the direct path
-                    # refuses.
-                    return ("error", 404, "plexsim: not found")
+                if owner is not None:
+                    row = catalog.items.get(int(owner.group(1)))
+                    if row is None:
+                        return ("error", 404, "plexsim: no such item")
+                    field = {"poster": "thumb", "background": "art"}.get(
+                        owner.group(2), owner.group(2))
+                    if not self._owns(row, field):
+                        # The transcoder does not re-resolve: it answers what the direct
+                        # path answers, and a row that BORROWS this field 404s there
+                        # (cycle 26). plexsim resolved through `artwork_for`, which falls
+                        # back to the parent's image, so the transcoder served a picture
+                        # the direct path refuses.
+                        return ("error", 404, "plexsim: not found")
+                # Cycle 52, measured on kids (1.43.4) and zen (1.42.2), which agree on
+                # every cell: the transcoder FETCHES the path, and its answer is decided
+                # by that fetch. A url the server answers with anything but 200 is a
+                # **404** here -- an unknown item leaf, a missing section composite, and
+                # `/library/metadata/{id}/children`, whose own direct answer is a 400 --
+                # and only a 200 whose bytes are not an image is the 500. So the section
+                # COMPOSITE, which both references serve as a jpeg, transcodes to a 200.
+                #
+                # plexsim matched one regex of four artwork names and answered 500 to
+                # everything else, its OWN section composite included: Plex Web builds a
+                # library card from `composite` and routes it through the transcoder when
+                # the provider advertises `imagetranscoder`, which plexsim does -- so
+                # every library tile the client asked for that way was a 500 where the
+                # direct path is a 200 image. And a 404 is what lets a client draw its own
+                # placeholder, where a 500 is an error it logs and retries.
+                elif not self._transcodable(
+                        inner, dict(urllib.parse.parse_qsl(parsed.query)), headers, address):
+                    return ("error", 404, "plexsim: not found") \
+                        if self._inner_refuses else ("error", 500, "plexsim: server error")
             # The client asks for artwork through the transcoder, passing the
             # real path in `url`. Resolve that to the row's TMDB image when
             # there is one; only fall back to a generated tile when there is not.
