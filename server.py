@@ -2005,7 +2005,11 @@ def client_profile(query, headers):
             return PROFILE_NAMES.get(value, value)
     return None
 
-CLIENT_PROFILES = frozenset([
+# Cycle 50: `/clients/profiles` is the profile RESOURCE order, not title order.
+# 1.42.2's deterministic file-name order is retained here; membership checks use the
+# companion set below.  A frozenset discarded this order and the route sorted titles,
+# moving 23 of 78 rows relative to both real-server catalogues.
+CLIENT_PROFILE_ORDER = (
     "Android", "Asus Transformer Prime TF201", "Chrome", "Chromecast", "Firefox",
     "Generic", "HTML TV App", "Internet Explorer", "Konvergo", "Microsoft Edge",
     "Mystery 3", "Mystery 4", "Mystery 5", "Opera TV App", "Opera",
@@ -2023,7 +2027,8 @@ CLIENT_PROFILES = frozenset([
     "iOS-iPad-1,1", "iOS-iPhone-1,1", "iOS-iPhone-1,2", "iOS-iPhone-2,1",
     "iOS-iPhone-3,1", "iOS-iPhone-3,2", "iOS-iPhone-3,3", "iOS-iPod-1,1",
     "iOS-iPod-2,1", "iOS-iPod-3,1", "iOS-iPod-4,1", "iOS", "tvOS",
-])
+)
+CLIENT_PROFILES = frozenset(CLIENT_PROFILE_ORDER)
 
 # The two-letter languages a subtitle search accepts. The rule is measured (`en`,
 # `de`, `en-US` search; `xx`, `zz`, `eng` are refused); the table is the system's
@@ -4968,7 +4973,7 @@ class PlexSim:
             if wanted is not None and not (wanted.isdigit() and int(wanted) in (0, 42)):
                 return ("error", 400, "plexsim: bad request")
             names = (LOCAL_CLIENT_PROFILES if wanted and int(wanted) == 42
-                     else sorted(CLIENT_PROFILES))
+                     else CLIENT_PROFILE_ORDER)
             rows = [{"title": name} for name in names]
             return self.bare_container(size=len(rows), Profile=rows)
         if route == "/clients":
