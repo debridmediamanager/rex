@@ -28795,6 +28795,26 @@ def main():
           "; ".join(wrong_c52h)[:250] or "collection %s playlist %s"
           % (collection_c52h, playlist_c52h))
 
+    # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a real PMS names
+    # `/playlists/{id}/composite/{updatedAt}` on the `default://` candidate of an EMPTY
+    # playlist, whose row carries neither `composite` nor `thumb`. plexsim built that key by
+    # concatenating those two absent fields, so a just-created playlist answered
+    # `key="?width=400&height=600"` -- a relative url that resolves to the page the client is
+    # already on.
+    _, empty_c52i, _ = request(
+        base, "POST", "/playlists?title=P52i&type=video&smart=0"
+        "&uri=server%%3A%%2F%%2F%s%%2Fcom.plexapp.plugins.library%%2Flibrary%%2Fmetadata%%2F999999"
+        % machine)
+    made_c52i = (json.loads(empty_c52i).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+    rk_c52i = made_c52i.get("ratingKey")
+    _, posters_c52i, _ = get(base, "/library/metadata/%s/posters" % rk_c52i)
+    key_c52i = ((posters_c52i.get("Metadata") or [{}])[0]).get("key") or ""
+    check("an empty playlist's poster candidate names its composite",
+          made_c52i.get("leafCount") == 0
+          and key_c52i.startswith("/playlists/%s/composite/" % rk_c52i)
+          and key_c52i.endswith("?width=400&height=600"),
+          "key=%s" % key_c52i)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
