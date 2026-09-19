@@ -731,6 +731,37 @@ def _render(name, row, out, overrides=None, container=False):
     out.append("</%s>\n" % name)
 
 
+def to_system_xml(container, elements=None):
+    """Write the plug-in framework's `/system` XML form.
+
+    Cycle 50 measured this byte-identically on kids, zen, and plexscratch42. It
+    differs from the core writer in its prologue, indentation, compact `/>`, and
+    self-closing empty root. The response's `application/xml` type is selected by
+    the caller.
+    """
+    root, body = next(iter(container.items()))
+    attrs, children = _split(root, body, container=True)
+
+    def _pair(name, row, key):
+        return " %s=%s" % (key, _escape(_attr(_format(key, row[key], row))))
+
+    text = "<?xml version='1.0' encoding='utf-8'?>\n<%s%s" % (
+        root, "".join(_pair(root, body, key) for key in attrs))
+    rows = []
+    for key in children:
+        value = body[key]
+        for row in (value if isinstance(value, list) else [value]):
+            if not isinstance(row, dict):
+                continue
+            name = (elements or {}).get(key) or _element_name(key, row)
+            row_attrs, _ = _split(name, row)
+            rows.append("  <%s%s/>" % (
+                name, "".join(_pair(name, row, attr) for attr in row_attrs)))
+    if not rows:
+        return (text + "/>\n").encode("utf-8")
+    return (text + ">\n" + "\n".join(rows) + "\n</%s>\n" % root).encode("utf-8")
+
+
 def to_xml(container, elements=None):
     """Serialize a {"MediaContainer": {...}} dict to a Plex XML document.
 

@@ -7930,6 +7930,34 @@ def main():
           and "(" in str(item_streams_c50g[0].get("displayTitle") or ""),
           "%r" % (item_streams_c50g[0].get("displayTitle") if item_streams_c50g else None))
 
+    # Cycle 50: the plug-in framework writes the `/system` family with a distinct XML
+    # serialiser. It does not include `/system/agents`, and it does not affect ordinary
+    # server containers.
+    status_c50h, body_c50h, headers_c50h = request(
+        base, "GET", "/system", want_json=False)
+    check("/system is written by the plug-in framework's own XML serialiser",
+          body_c50h.startswith(b"<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer ")
+          and b'\n  <Directory ' in body_c50h and b'/>' in body_c50h
+          and b' />' not in body_c50h.split(b"<Directory")[1].split(b">")[0] + b">",
+          "%r" % body_c50h[:70])
+    check("...and answers application/xml with no charset",
+          headers_c50h.get("Content-Type") == "application/xml",
+          "%r" % headers_c50h.get("Content-Type"))
+    _, empty_c50h, _ = request(base, "GET", "/system/search", want_json=False)
+    check("...and an EMPTY container there self-closes",
+          empty_c50h.rstrip().endswith(b"/>") and b"</MediaContainer>" not in empty_c50h,
+          "%r" % empty_c50h[-40:])
+    _, agents_c50h, agents_headers_c50h = request(
+        base, "GET", "/system/agents", want_json=False)
+    check("/system/agents is NOT in that family",
+          agents_c50h.startswith(b'<?xml version="1.0" encoding="UTF-8"?>')
+          and agents_headers_c50h.get("Content-Type") == "text/xml;charset=utf-8",
+          "%r %r" % (agents_c50h[:40], agents_headers_c50h.get("Content-Type")))
+    _, library_c50h, library_headers_c50h = request(base, "GET", "/library", want_json=False)
+    check("...and neither is the rest of the surface",
+          library_c50h.startswith(b'<?xml version="1.0" encoding="UTF-8"?>')
+          and library_headers_c50h.get("Content-Type") == "text/xml;charset=utf-8", "")
+
     # Cycle 50: `/library/all`'s recorded "the default order is the ratingKey" holds for
     # the UNTYPED form only. A typed `?type=N` uses that type's own default listing order
     # -- kids answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
