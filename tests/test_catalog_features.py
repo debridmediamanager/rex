@@ -627,6 +627,23 @@ def main():
                             get("/library/all").get("Metadata") or []]
     check("the untyped whole-library listing omits clips",
           "201" not in untyped_library_keys, str(untyped_library_keys))
+    stored_duration_row = catalog.items[101]
+    stored_duration_row["_libraryAllDuration"] = 888084
+    untyped_duration_rows = {row.get("ratingKey"): row for row in
+                             get("/library/all").get("Metadata") or []}
+    typed_duration_rows = {row.get("ratingKey"): row for row in
+                           get("/library/all?type=1").get("Metadata") or []}
+    stored_duration_row.pop("_libraryAllDuration", None)
+    check("untyped library durations use their stored metadata column",
+          untyped_duration_rows["101"].get("duration") == 888084
+          and "duration" not in untyped_duration_rows["102"]
+          and typed_duration_rows["101"].get("duration") == 333000
+          and typed_duration_rows["102"].get("duration") == 10000,
+          "untyped=%s typed=%s"
+          % ({key: row.get("duration") for key, row in untyped_duration_rows.items()
+              if key in ("101", "102")},
+             {key: row.get("duration") for key, row in typed_duration_rows.items()
+              if key in ("101", "102")}))
 
     clip = get("/library/metadata/201")
     clip_row = ((clip.get("Metadata") or [{}])[0]
