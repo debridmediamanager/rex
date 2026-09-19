@@ -8259,6 +8259,20 @@ def main():
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:5\r\n\r\nhello"
                     + FOLLOW50A) == OK2_50A, "")
 
+    # Re-swept after the first Cycle-50 parser patch: Content-Length joins
+    # Transfer-Encoding in taking the FIRST duplicate. Test both orders because taking
+    # the last one makes one request consume `ABCD` and lets the other desynchronise it.
+    duplicate_short_c50a = (
+        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n"
+        b"Content-Length: 9\r\n\r\nhelloABCD" + FOLLOW50A)
+    duplicate_long_c50a = (
+        b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length: 9\r\n"
+        b"Content-Length: 5\r\n\r\nhelloABCD" + FOLLOW50A)
+    check("duplicate Content-Length headers take the first value in both orders",
+          wire_c50a(duplicate_short_c50a)
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 500 Internal Serv"], False)
+          and wire_c50a(duplicate_long_c50a) == OK2_50A, "")
+
     # A whitespace-only obs-fold is a fold too.
     check("a whitespace-only continuation line is refused like any other fold",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nX-A: v\r\n \r\n\r\n")

@@ -18003,11 +18003,13 @@ class Handler(BaseHTTPRequestHandler):
         the TOKEN: `X-Plex-Token: <tok>` is a 200 on all four references and
         `X-Plex-Token:  <tok>` a **401**, where plexsim answered 200 -- so a token a real
         PMS rejects was opening the whole library. Returns the LAST occurrence, as the
-        surface's other repeated readers do, except where `Transfer-Encoding` asks for the
-        first (it is the only header measured to take it).
+        surface's other repeated readers do, except where `Transfer-Encoding` and
+        `Content-Length` ask for the FIRST. Cycle 50's first implementation covered only
+        the former; two duplicate-length permutations on kids and both retained reference
+        versions prove the body boundary follows the first length as well.
         """
         wanted = name.lower().encode("latin-1")
-        first = name.lower() == "transfer-encoding"
+        first = name.lower() in ("transfer-encoding", "content-length")
         found = None
         for line in getattr(self.rfile, "lines", ()) or ():
             if line[:1] in (b" ", b"\t"):
