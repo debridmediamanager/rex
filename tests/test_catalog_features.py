@@ -232,6 +232,10 @@ def main():
           == tier_scores
           and catalog.search_tier({"title": "Dream"}, "Ðre") == "prefix")
 
+    check("the anchored search tier reads titleSort",
+          catalog.search_tier({"title": "The Train Job",
+                               "titleSort": "Train Job"}, "train") == "anchored")
+
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.
