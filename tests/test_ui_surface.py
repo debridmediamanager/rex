@@ -29689,6 +29689,36 @@ def main():
     check("each legacy agent's attribution line and logo",
           not wrong_c53l, "; ".join(wrong_c53l)[:250])
 
+    # Cycle 53, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie and an
+    # episode, and corroborated on zen's own live next-up row: a `/hubs/continueWatching` row
+    # and a `/hubs/continueWatching/items` row carry an integer `includedAt` directly after
+    # `lastViewedAt` and before `year`, where `/hubs/home/continueWatching`,
+    # `/hubs/sections/{id}/continueWatching/items` and `/library/onDeck` carry none. Plex
+    # Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so plexsim's rows
+    # ordered by the view time instead of the hub's own inclusion stamp.
+    request(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=300000"
+            "&duration=900000&identifier=com.plexapp.plugins.library" % (movie, movie))
+    _, items_c53m, _ = get(base, "/hubs/continueWatching/items")
+    rows_c53m = items_c53m.get("Metadata") or []
+    _, hub_c53m, _ = get(base, "/hubs/continueWatching")
+    hub_rows_c53m = [row_c53m for hub_row_c53m in hub_c53m.get("Hub") or []
+                     for row_c53m in hub_row_c53m.get("Metadata") or []]
+    _, home_c53m, _ = get(base, "/hubs/home/continueWatching")
+    home_rows_c53m = home_c53m.get("Metadata") or []
+    _, deck_c53m, _ = get(base, "/library/onDeck")
+    deck_rows_c53m = deck_c53m.get("Metadata") or []
+    keys_c53m = list(rows_c53m[0]) if rows_c53m else []
+    check("a continue-watching row carries includedAt after lastViewedAt",
+          rows_c53m and hub_rows_c53m
+          and all(isinstance(row_c53m.get("includedAt"), int) for row_c53m in rows_c53m)
+          and all(isinstance(row_c53m.get("includedAt"), int) for row_c53m in hub_rows_c53m)
+          and "lastViewedAt" in keys_c53m
+          and keys_c53m[keys_c53m.index("lastViewedAt") + 1] == "includedAt"
+          and not any("includedAt" in row_c53m for row_c53m in home_rows_c53m)
+          and not any("includedAt" in row_c53m for row_c53m in deck_rows_c53m),
+          "items=%d hub=%d home=%d deck=%d"
+          % (len(rows_c53m), len(hub_rows_c53m), len(home_rows_c53m), len(deck_rows_c53m)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

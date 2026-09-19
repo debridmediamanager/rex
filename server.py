@@ -6725,7 +6725,7 @@ class PlexSim:
             # home screen's `home.continue`), its key is its OWN items endpoint,
             # and its style is `hero`. plexsim answered a bare hub whose key was
             # /library/all, so the shelf had nowhere to expand to.
-            rows = [_listing_row(r) for r in self.resuming()]
+            rows = [self._with_included_at(_listing_row(r)) for r in self.resuming()]
             return self.hub_container(Hub=[self.home_hub(
                 "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
                 rows, query, kind="mixed", style="hero")])
@@ -6738,7 +6738,7 @@ class PlexSim:
             for row in self.resuming():
                 entry = _listing_row(row)
                 entry.pop("Field", None)
-                rows.append(entry)
+                rows.append(self._with_included_at(entry))
             return self.hub_container(size=len(rows), Metadata=rows)
         if route == "/hubs/promoted":
             return self.promoted_hubs(query)
@@ -8721,6 +8721,30 @@ class PlexSim:
                          % (index, row["peer"], row["request"], row["number"], label,
                             " (%s)" % agent if agent else ""))
         return "\n".join(lines) + ("\n" if lines else "")
+
+    @staticmethod
+    def _with_included_at(row):
+        """Cycle 53: `/hubs/continueWatching` and its `/items` leaf, and only those two.
+
+        Measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a movie and an
+        episode, and on zen's own live next-up row: the row carries an integer
+        `includedAt` directly after `lastViewedAt` and before `year`, where
+        `/hubs/home/continueWatching`, `/hubs/sections/{id}/continueWatching/items`,
+        `/library/onDeck` and `/hubs/home/onDeck` carry none. In all five witnesses it
+        equals `lastViewedAt`; what makes the two differ is not measurable here, so
+        plexsim stamps the same value and records that.
+
+        Plex Web's continue-watching reducer reads `includedAt ?? lastViewedAt`, so the
+        shelf fell back to the view time instead of the hub's own inclusion stamp.
+        """
+        if "lastViewedAt" not in row:
+            return row
+        out = {}
+        for key, value in row.items():
+            out[key] = value
+            if key == "lastViewedAt":
+                out["includedAt"] = value
+        return out
 
     def _owns_artwork(self, row, leaf):
         """Does this row OWN the image behind `/library/metadata/{id}/{leaf}`?
