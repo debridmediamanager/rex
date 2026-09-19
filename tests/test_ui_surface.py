@@ -29761,6 +29761,67 @@ def main():
     check("includeAlternates inlines only the artwork the row owns",
           show and not wrong_c53n, "; ".join(wrong_c53n)[:200])
 
+    # Cycle 53, read out of PMS's own database template and then measured field by field on
+    # kids (1.43.4) and zen (1.42.2), which agree cell for cell: ten more columns are real
+    # query fields -- `remote`, `isAdult`, `resourcesChangedAt`, `userFields`,
+    # `lastSkippedAt`, `mediaAnalysisVersion`, `beginsAt`, `endsAt`, `agent` and `source`.
+    # plexsim knew none of them, and an UNKNOWN field answers every row, so a smart list built
+    # on one silently selected the whole library while `/query/parse` called the field
+    # unknown. Five refuse an unparseable value with a 500, `userFields` refuses every value,
+    # and all ten parse as a Rule with an empty `fieldTitle`.
+    _, all_c53o, _ = get(base, "/library/sections/%s/all?type=1" % movie_section)
+    total_c53o = len(all_c53o.get("Metadata") or [])
+    wrong_c53o = []
+    for column_c53o in ("remote", "isAdult", "resourcesChangedAt", "lastSkippedAt",
+                        "mediaAnalysisVersion", "beginsAt", "endsAt", "agent", "source"):
+        _, listed_c53o, _ = get(base, "/library/sections/%s/all?type=1&%s=1"
+                                % (movie_section, column_c53o))
+        if len(listed_c53o.get("Metadata") or []) == total_c53o and total_c53o:
+            wrong_c53o.append("%s=1 answers every row" % column_c53o)
+        status_c53o, _, _ = request(base, "GET", "/library/sections/%s/all?type=1&userFields=%s"
+                                    % (movie_section, column_c53o), want_json=False)
+        if status_c53o != 500:
+            wrong_c53o.append("userFields=%s -> %s" % (column_c53o, status_c53o))
+    for column_c53o in ("remote", "lastSkippedAt", "mediaAnalysisVersion", "beginsAt",
+                        "endsAt"):
+        status_c53o, _, _ = request(base, "GET", "/library/sections/%s/all?type=1&%s=zzzq"
+                                    % (movie_section, column_c53o), want_json=False)
+        if status_c53o != 500:
+            wrong_c53o.append("%s=zzzq -> %s" % (column_c53o, status_c53o))
+    # `/query/parse`'s root is `Query`, not `MediaContainer`, so it is read raw.
+    _, parse_body_c53o, _ = request(
+        base, "GET", "/library/sections/%s/query/parse?type=1&remote%%3E%%3E=1" % movie_section)
+    rule_c53o = json.loads(parse_body_c53o).get("Query", {}).get("Rule") or {}
+    if isinstance(rule_c53o, list):
+        rule_c53o = rule_c53o[0] if rule_c53o else {}
+    check("the ten database columns are real query fields",
+          not wrong_c53o and rule_c53o.get("field") == "remote"
+          and rule_c53o.get("fieldTitle") == "",
+          "; ".join(wrong_c53o)[:250] or "rule=%s" % rule_c53o)
+
+    # Seven of the ten sort and three group; the rest are 500s.
+    wrong_sort_c53o = []
+    for column_c53o in ("remote", "isAdult", "lastSkippedAt", "mediaAnalysisVersion",
+                        "beginsAt", "endsAt", "resourcesChangedAt"):
+        status_c53o, _, _ = request(base, "GET", "/library/sections/%s/all?type=1&sort=%s"
+                                    % (movie_section, column_c53o), want_json=False)
+        if status_c53o != 200:
+            wrong_sort_c53o.append("sort=%s -> %s" % (column_c53o, status_c53o))
+    for column_c53o in ("userFields", "agent", "source"):
+        status_c53o, _, _ = request(base, "GET", "/library/sections/%s/all?type=1&sort=%s"
+                                    % (movie_section, column_c53o), want_json=False)
+        if status_c53o != 500:
+            wrong_sort_c53o.append("sort=%s -> %s" % (column_c53o, status_c53o))
+    for column_c53o, want_c53o in (("remote", 200), ("isAdult", 200),
+                                   ("resourcesChangedAt", 200), ("agent", 500),
+                                   ("source", 500), ("lastSkippedAt", 500)):
+        status_c53o, _, _ = request(base, "GET", "/library/sections/%s/all?type=1&group=%s"
+                                    % (movie_section, column_c53o), want_json=False)
+        if status_c53o != want_c53o:
+            wrong_sort_c53o.append("group=%s -> %s" % (column_c53o, status_c53o))
+    check("seven of the ten sort and three group",
+          not wrong_sort_c53o, "; ".join(wrong_sort_c53o)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

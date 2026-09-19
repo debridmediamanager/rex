@@ -564,6 +564,27 @@ REFUSED_FILTER_FIELDS.add("slug")
 # columns beside it.
 REFUSED_FILTER_FIELDS.add("extraType")
 
+# Cycle 53, read out of PMS's own database TEMPLATE (`Resources/
+# com.plexapp.plugins.library.db`, whose schema names every column it can store) and then
+# measured field by field on kids (1.43.4) and zen (1.42.2), which agree cell for cell:
+# ten more columns are real query fields. They are `metadata_items.{remote, is_adult,
+# resources_changed_at, user_fields}`, `media_items.{begins_at, ends_at,
+# media_analysis_version, source}`, `metadata_item_settings.last_skipped_at` and
+# `library_sections.agent`, camel-cased -- the same family as the nine cycle 20 found and
+# the four cycle 26 found. plexsim knew none of them, and an unknown field answers EVERY
+# row, which is the worst outcome: a smart list built on one silently selected the whole
+# library and `/query/parse` told the builder the field did not exist.
+#
+# The types below are the ones that reproduce the measured grid. `userFields` is the
+# outlier: it is a **500 under every operator and every value**, so it refuses rather
+# than filters, like `parentIndex`.
+for _column in ("remote", "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt"):
+    FILTER_FIELD_TYPES.setdefault(_column, "integer")
+for _column in ("isAdult", "resourcesChangedAt", "agent", "source"):
+    FILTER_FIELD_TYPES.setdefault(_column, "string")
+PARSE_ONLY_FIELD_TYPES["userFields"] = "string"
+REFUSED_FILTER_FIELDS.add("userFields")
+
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
 # are not the same three -- plexsim invented a single `episodeSort` row.
@@ -9908,6 +9929,13 @@ class PlexSim:
                      # plexsim while its own Meta was about to offer them, which is
                      # an advertised control that breaks the grid when used.
                      "userRating", "mediaBitrate",
+                     # Cycle 53, measured twice on each reference: seven of the ten
+                     # database columns SORT and three are a 500 (`userFields`, `agent`
+                     # and `source`), where three GROUP and seven are a 500 -- so here
+                     # the sort surface is WIDER than the group surface, the other way
+                     # round from the columns cycle 26 added.
+                     "remote", "isAdult", "lastSkippedAt", "mediaAnalysisVersion",
+                     "beginsAt", "endsAt", "resourcesChangedAt",
                      # Cycle 14, measured key by key on kids (1.43.4) and zen (1.42.2),
                      # which agree exactly: thirteen MORE keys sort although
                      # `/sorts?includeAdvanced=1` advertises only fifteen, and none of
@@ -10132,7 +10160,9 @@ class PlexSim:
                  "rating", "editionTitle", "index", "summary", "tagline",
                  "contentRatingAge", "type", "guid", "id",
                  "originalTitle", "createdAt", "mediaCount", "ratingCount",
-                 "absoluteIndex"}
+                 "absoluteIndex",
+                 # Cycle 53: three of the ten database columns group and seven are a 500.
+                 "remote", "isAdult", "resourcesChangedAt"}
 
     def grouped(self, rows, field):
         """`group=<field>` -- one row per distinct value of that field.
