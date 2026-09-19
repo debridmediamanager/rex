@@ -265,6 +265,9 @@ def main():
           and profile_titles.index("Plex Desktop")
           < profile_titles.index("Plex Home Theater-RaspberryPi")
           < profile_titles.index("Plex Home Theater"))
+    check("Traditional Chinese request tags select the measured English catalogue",
+          server.request_language({"X-Plex-Language": "zh-HK"}, {}) == "en"
+          and server.request_language({}, {"X-Plex-Language": "zh-TW"}) == "en")
 
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
