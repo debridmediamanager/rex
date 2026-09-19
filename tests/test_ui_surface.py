@@ -29719,6 +29719,35 @@ def main():
           "items=%d hub=%d home=%d deck=%d"
           % (len(rows_c53m), len(hub_rows_c53m), len(home_rows_c53m), len(deck_rows_c53m)))
 
+    # Cycle 53, measured on kids (episode 8, season 7) and zen (episode 19758), each twice:
+    # `includeAlternates=1` inlines the row's OWN remote candidate list, so a row whose
+    # `/arts` answers `size 0` carries no `Art` key at all -- while zen's season 19757, whose
+    # `/arts` answers two, carries one. plexsim inlined the SHOW's candidate onto every
+    # episode and season, because `hierarchy` copies `_art_url` down and the option read it
+    # without the ownership gate the candidate leaf applies: the server contradicted its own
+    # `/arts`.
+    wrong_c53n = []
+    for rating_key_c53n in (episode_c53n for episode_c53n in ([show] if show else [])):
+        pass
+    for rating_key_c53n in ([show] if show else []):
+        _, children_c53n, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
+                                  % rating_key_c53n)
+        season_c53n = (children_c53n.get("Metadata") or [{}])[0].get("ratingKey")
+        _, leaves_c53n, _ = get(base, "/library/metadata/%s/children" % season_c53n)
+        leaf_c53n = (leaves_c53n.get("Metadata") or [{}])[0].get("ratingKey")
+        for row_key_c53n in (season_c53n, leaf_c53n, rating_key_c53n):
+            _, arts_c53n, _ = get(base, "/library/metadata/%s/arts" % row_key_c53n)
+            _, detail_c53n, _ = get(base, "/library/metadata/%s?includeAlternates=1"
+                                    % row_key_c53n)
+            row_c53n = (detail_c53n.get("Metadata") or [{}])[0]
+            has_c53n = "Art" in row_c53n
+            listed_c53n = bool(arts_c53n.get("size"))
+            if has_c53n != listed_c53n:
+                wrong_c53n.append("%s arts=%s inline=%s" % (row_key_c53n,
+                                                            arts_c53n.get("size"), has_c53n))
+    check("includeAlternates inlines only the artwork the row owns",
+          show and not wrong_c53n, "; ".join(wrong_c53n)[:200])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
