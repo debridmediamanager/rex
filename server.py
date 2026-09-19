@@ -18576,6 +18576,12 @@ class Handler(BaseHTTPRequestHandler):
                       "Connection", "Keep-Alive", "Cache-Control",
                       "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
                       "Date"),
+        # Cycle 50: the long-lived SSE handler writes its own header set, but it follows
+        # the same CORS placement as the rest of PMS. It has no Content-Length and closes
+        # explicitly, so Connection precedes Cache-Control and there is no Keep-Alive.
+        "eventsource": ("X-Plex-Protocol", "Access-Control-Expose-Headers", "Vary",
+                        "Content-Type", "Connection", "Cache-Control",
+                        "Access-Control-Allow-Origin", "Date"),
     }
 
     _range_error_container = False
@@ -18624,9 +18630,9 @@ class Handler(BaseHTTPRequestHandler):
             return "system"
         if "content-type" in names and names.get("content-type", "").startswith(
                 "text/event-stream"):
-            # Not measurable: a socket may never be opened on either reference, so the
-            # stream handshake keeps the order plexsim already sent, with Date last.
-            return None
+            # Measured twice on kids and zen, with and without Origin. This handler has
+            # its own family because it carries no length and deliberately stays open.
+            return "eventsource"
         if "x-plex-local-asset" in names:
             return "artwork"
         # Cycle 49, four refusal shapes on kids and zen, both identical: only the

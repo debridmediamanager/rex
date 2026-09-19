@@ -7958,6 +7958,37 @@ def main():
           library_c50h.startswith(b'<?xml version="1.0" encoding="UTF-8"?>')
           and library_headers_c50h.get("Content-Type") == "text/xml;charset=utf-8", "")
 
+    # Cycle 50: the eventsource endpoint bypasses `_send`, but its response still uses
+    # the measured family order and the universal Origin placement.
+    import socket as _s50i
+    _host_c50i, _, _port_c50i = base.split("//", 1)[1].partition(":")
+    _port_c50i = int(_port_c50i.split("/")[0])
+    def eventsource_headers_c50i(origin=None):
+        sock = _s50i.create_connection((_host_c50i, _port_c50i), timeout=3)
+        request_c50i = ("GET /:/eventsource/notifications HTTP/1.1\r\nHost: h\r\n"
+                        "Accept: text/event-stream\r\n"
+                        + ("Origin: %s\r\n" % origin if origin else "") + "\r\n")
+        try:
+            sock.sendall(request_c50i.encode("latin-1"))
+            sock.settimeout(3)
+            raw_c50i = b""
+            while b"\r\n\r\n" not in raw_c50i:
+                raw_c50i += sock.recv(65536)
+        finally:
+            sock.close()
+        return [line_c50i.split(b":", 1)[0].decode("latin-1")
+                for line_c50i in raw_c50i.split(b"\r\n")[1:] if b":" in line_c50i]
+    plain_headers_c50i = eventsource_headers_c50i()
+    origin_headers_c50i = eventsource_headers_c50i("https://app.plex.tv")
+    check("eventsource headers follow their measured no-Origin order",
+          plain_headers_c50i == ["X-Plex-Protocol", "Content-Type", "Connection",
+                                  "Cache-Control", "Date"], "%s" % plain_headers_c50i)
+    check("...and put the CORS trio in the universal measured positions",
+          origin_headers_c50i == ["X-Plex-Protocol", "Access-Control-Expose-Headers",
+                                   "Vary", "Content-Type", "Connection", "Cache-Control",
+                                   "Access-Control-Allow-Origin", "Date"],
+          "%s" % origin_headers_c50i)
+
     # Cycle 50: `/library/all`'s recorded "the default order is the ratingKey" holds for
     # the UNTYPED form only. A typed `?type=N` uses that type's own default listing order
     # -- kids answers 1, 18, 17, 3, 4 (titleSort) where untyped is 1, 3, 4, 6, 7, and
