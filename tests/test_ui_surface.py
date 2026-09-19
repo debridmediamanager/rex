@@ -2383,6 +2383,25 @@ def main():
           late.get("playbackState") == "progress" and late.get("viewCount") == stored_count,
           "%s viewCount=%s stored=%s" % (late.get("playbackState"), late.get("viewCount"),
                                          stored_count))
+    # Cycle 50, both writable PMS versions: crossing the minute gate latches
+    # `progress` on the X-Plex-Session-Identifier, not on the item or client.  The
+    # same session stays progress after seeking below a minute; a fresh session is
+    # ignore despite the row state written by the old one.
+    _, rewound_same_session_c50d, _ = beat("playing", 5000)
+    _, rewound_new_session_c50d, _ = container(
+        base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=5000"
+                     "&duration=600000&X-Plex-Client-Identifier=suite-probe"
+                     "&X-Plex-Session-Identifier=c50-f4-new"
+                     % (session_item, quote("/library/metadata/%s" % session_item)))
+    check("playbackState progress is sticky within the playback session only",
+          rewound_same_session_c50d.get("playbackState") == "progress"
+          and rewound_new_session_c50d.get("playbackState") == "ignore",
+          "same=%r new=%r" % (rewound_same_session_c50d.get("playbackState"),
+                               rewound_new_session_c50d.get("playbackState")))
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=5000"
+                           "&duration=600000&X-Plex-Client-Identifier=suite-probe"
+                           "&X-Plex-Session-Identifier=c50-f4-new"
+                           % (session_item, quote("/library/metadata/%s" % session_item)))
     # Re-measured, correcting the earlier note: `viewOffset` is the item's STORED
     # offset and is -1 only when it has none. plexsim always sent -1, so a client
     # reading its resume point off the timeline never found one.

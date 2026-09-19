@@ -14080,6 +14080,13 @@ class PlexSim:
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms,
                                         client_profile(query, headers))
+            # Cycle 50, separated on both writable versions: `progress` is sticky
+            # within the playback SESSION once one of that session's timeline beats
+            # passes the minute gate.  A later 9-second or stopped beat in the same
+            # X-Plex-Session-Identifier remains progress; a new session is ignore even
+            # when the row carries a 65-second offset, lastViewedAt, or viewCount.
+            if offset_ms > 60000:
+                entry["_playbackProgressed"] = True
             self.notify_playing(entry, row, state, offset_ms,
                                 self.playing_queue_fields(query))
             # Measured thresholds: nothing is reported back at or under a minute, on
@@ -14107,7 +14114,8 @@ class PlexSim:
             # and would need 60 001; at `duration=100000` the two forms agree, which is
             # why no earlier cycle could see the difference.
             if total:
-                playback_state = "progress" if offset_ms > 60000 else "ignore"
+                playback_state = ("progress" if entry.get("_playbackProgressed")
+                                  else "ignore")
                 if offset_ms >= (total * 9) // 10:
                     # Past 90% the answer is never `progress`: it is `complete` for the beat
                     # that completed the play and every one after it until a `stopped` closes
