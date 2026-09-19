@@ -29223,6 +29223,21 @@ def main():
           "disney=%d walt=%d dts=%d ac3=%d"
           % (len(disney_c53a), len(walt_c53a), len(dts_c53a), len(ac3_c53a)))
 
+    # Cycle 53, measured on kids and zen: a flag image is served by the plug-in framework, so
+    # its header block is the `/system` family's -- the length before the type, the framework
+    # cookie, `Cache-Control: no-cache` -- and it names NO range unit, where plexsim's asset
+    # handler added `Accept-Ranges: bytes`.
+    _, _, flag_head_c53b = request(
+        base, "GET", "/system/bundle/media/flags/videoResolution/1080", want_json=False)
+    _, _, asset_head_c53b = request(base, "GET", "/:/resources/movie.png", want_json=False)
+    check("a media flag names no range unit where a bundled asset does",
+          flag_head_c53b.get("Accept-Ranges") is None
+          and flag_head_c53b.get("Content-Type") == "image/png"
+          and flag_head_c53b.get("Set-Cookie")
+          and asset_head_c53b.get("Accept-Ranges") == "bytes",
+          "flag=%s asset=%s" % (flag_head_c53b.get("Accept-Ranges"),
+                                asset_head_c53b.get("Accept-Ranges")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

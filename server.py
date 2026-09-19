@@ -8408,8 +8408,8 @@ class PlexSim:
         size = table.get(name)
         if size is None:
             # Measured: an unknown VALUE is the bundle's own 32x32 blank, with a 200.
-            return ("asset", "image/png", MEDIA_FLAG_BLANK)
-        return ("asset", "image/png", _png(size[0], size[1], (32, 34, 38)))
+            return ("asset", "image/png", MEDIA_FLAG_BLANK, False)
+        return ("asset", "image/png", _png(size[0], size[1], (32, 34, 38)), False)
 
     def bundled_resource(self, relative):
         """`/:/resources/<relative>` -- one of PMS's own 70 bundled files.
@@ -20842,8 +20842,13 @@ class Handler(BaseHTTPRequestHandler):
             if kind == "asset":
                 # Cycle 52: one of PMS's 70 bundled resources, or the empty
                 # octet-stream 200 a directory in that tree answers.
+                # Cycle 53: a fourth element suppresses `Accept-Ranges`. The flag images
+                # under `/system` are served by the plug-in framework rather than by the
+                # asset handler, and neither reference names a range unit on them.
+                ranged = len(result) < 4 or result[3]
                 self._send(200, result[1], result[2],
-                           [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
+                           [("Cache-Control", "no-cache"),
+                            ("Accept-Ranges", "bytes" if ranged else None),
                             ("Content-Encoding", None)])
                 return
             if kind == "png":
