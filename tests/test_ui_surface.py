@@ -10475,6 +10475,97 @@ def main():
           "hubs %s, /library/people tagType %s" % (hubs_c12e, person_c12e))
 
 
+    # Cycle 50, separated by adding/removing one unique genre on both writable PMS
+    # versions: a search tag row is gated by a tagged TOP-LEVEL row in that library,
+    # while its count includes every tagged metadata row in the library.  Thus an
+    # episode alone is invisible; adding its show makes the show-library row say 2,
+    # even though the row's own key lists the one matching show.  Remove/re-add cycles
+    # returned 0/1/2 on both versions, proving current membership rather than a
+    # cumulative use counter.  Preserve and restore every touched row's genre list so
+    # this discriminator does not perturb the remaining surface checks.
+    episodes_c50f17 = ((get(base, "/library/sections/%s/all?type=4" % show_section)[1]
+                        .get("Metadata") or []) if show_section else [])
+    if not show or not episodes_c50f17:
+        skip("search tag count uses gated current library membership",
+             "the fixture needs a show and an episode")
+    else:
+        episode_c50f17 = episodes_c50f17[0]["ratingKey"]
+        tag_c50f17 = "C50F17Persist"
+        rows_c50f17 = (movie, show, episode_c50f17)
+
+        def genres_c50f17(rating_key_c50f17):
+            detail_c50f17 = (get(base, "/library/metadata/%s" % rating_key_c50f17)[1]
+                              .get("Metadata") or [{}])[0]
+            return [str(tag_c50f17.get("tag") or "")
+                    for tag_c50f17 in detail_c50f17.get("Genre") or []]
+
+        originals_c50f17 = {rating_key_c50f17: genres_c50f17(rating_key_c50f17)
+                            for rating_key_c50f17 in rows_c50f17}
+
+        def replace_genres_c50f17(rating_key_c50f17, names_c50f17):
+            if names_c50f17:
+                edits_c50f17 = "&".join(
+                    "genre[%d].tag.tag=%s" % (index_c50f17, quote(name_c50f17))
+                    for index_c50f17, name_c50f17 in enumerate(names_c50f17))
+            else:
+                # Any item-path tag removal clears the complete tag list.
+                edits_c50f17 = "genre[].tag.tag-=%s" % quote(tag_c50f17)
+            return request(base, "PUT", "/library/metadata/%s?%s"
+                           % (rating_key_c50f17, edits_c50f17))[0]
+
+        def tag_rows_c50f17():
+            results_c50f17 = (get(base, "/library/search?query=%s&limit=50"
+                                  % quote(tag_c50f17))[1].get("SearchResult") or [])
+            return {str(directory_c50f17.get("librarySectionID")): directory_c50f17
+                    for result_c50f17 in results_c50f17
+                    for directory_c50f17 in [result_c50f17.get("Directory") or {}]
+                    if directory_c50f17.get("tag") == tag_c50f17}
+
+        try:
+            replace_genres_c50f17(movie, [tag_c50f17])
+            replace_genres_c50f17(episode_c50f17, [tag_c50f17])
+            movie_and_episode_c50f17 = tag_rows_c50f17()
+            replace_genres_c50f17(show, [tag_c50f17])
+            all_three_c50f17 = tag_rows_c50f17()
+            show_tag_c50f17 = all_three_c50f17.get(str(show_section)) or {}
+            show_key_c50f17 = (get(base, show_tag_c50f17.get("key"))[1]
+                               if show_tag_c50f17.get("key") else {})
+            replace_genres_c50f17(movie, [])
+            replace_genres_c50f17(episode_c50f17, [])
+            show_only_c50f17 = tag_rows_c50f17()
+            replace_genres_c50f17(show, [])
+            zero_c50f17 = tag_rows_c50f17()
+            replace_genres_c50f17(episode_c50f17, [tag_c50f17])
+            episode_only_c50f17 = tag_rows_c50f17()
+            replace_genres_c50f17(show, [tag_c50f17])
+            readded_c50f17 = tag_rows_c50f17()
+            check("search tag count uses gated current library membership",
+                  set(movie_and_episode_c50f17) == {str(movie_section)}
+                  and movie_and_episode_c50f17[str(movie_section)].get("count") == 1
+                  and all_three_c50f17.get(str(movie_section), {}).get("count") == 1
+                  and show_tag_c50f17.get("count") == 2
+                  and show_key_c50f17.get("size") == 1
+                  and set(show_only_c50f17) == {str(show_section)}
+                  and show_only_c50f17[str(show_section)].get("count") == 1
+                  and not zero_c50f17 and not episode_only_c50f17
+                  and readded_c50f17.get(str(show_section), {}).get("count") == 2,
+                  "movie+episode=%s all=%s keySize=%s show=%s zero=%s episode=%s readd=%s"
+                  % ({key_c50f17: row_c50f17.get("count")
+                      for key_c50f17, row_c50f17 in movie_and_episode_c50f17.items()},
+                     {key_c50f17: row_c50f17.get("count")
+                      for key_c50f17, row_c50f17 in all_three_c50f17.items()},
+                     show_key_c50f17.get("size"),
+                     {key_c50f17: row_c50f17.get("count")
+                      for key_c50f17, row_c50f17 in show_only_c50f17.items()},
+                     zero_c50f17, episode_only_c50f17,
+                     {key_c50f17: row_c50f17.get("count")
+                      for key_c50f17, row_c50f17 in readded_c50f17.items()}))
+        finally:
+            for rating_key_c50f17 in rows_c50f17:
+                replace_genres_c50f17(rating_key_c50f17,
+                                      originals_c50f17[rating_key_c50f17])
+
+
     # Measured on kids (1.43.4) and zen (1.42.2): `group=type`, `group=guid` and
     # `group=id` all answer 200 where plexsim answered 500. Exercised against all 27
     # candidate fields -- the other 24 agree, including the 11 that are 500 everywhere.

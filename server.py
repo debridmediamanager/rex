@@ -12743,14 +12743,20 @@ class PlexSim:
                                         {"tag": tag, "rows": [], "row": row,
                                          "tier": tier})
                 entry["rows"].append(row)
-            for entry in seen.values():
-                # Cycle 50 corrected the earlier interpretation: this is the tag
-                # TABLE's cross-type counter, not the size of the section listing in
-                # `key`.  kids' Gina Torres row says 4 while that key lists one show;
-                # `/library/all?actor=...` finds the show and three episodes.  zen also
-                # proves the counter is stored and can be stale (5 against two live
-                # rows). plexsim has no persisted stale counter, so counting every
-                # current row type is the measured reproducible model.
+            for key, entry in list(seen.items()):
+                # Cycle 50 separated the two rules on both writable PMS versions.
+                # A tag-search row exists only when the library's TOP-LEVEL type carries
+                # the tag: an episode alone produces no row for a show library.  Once a
+                # tagged show opens that gate, however, `count` includes every tagged
+                # metadata row in that library, so one show plus one episode says 2 even
+                # though the row's own `?genre=<id>` key lists the one show.  Removing
+                # the show closes the row again; removing and re-adding rows proves the
+                # count is current membership, not the tag table's persistent usage.
+                section = self.catalog.section(entry["row"].get("librarySectionID")) or {}
+                if not any(r.get("type") == section.get("type")
+                           for r in entry["rows"]):
+                    del seen[key]
+                    continue
                 entry["count"] = len(entry["rows"])
             if seen:
                 tags[hub] = [seen[key] for key in sorted(seen)][:limit]
