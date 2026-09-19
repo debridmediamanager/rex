@@ -79,7 +79,17 @@ def main():
         check("leafCount matches episodes", row.get("leafCount") == show.get("leafCount"),
               "leafCount=%s" % row.get("leafCount"))
         on_deck = (row.get("OnDeck") or {}).get("Metadata")
-        check("OnDeck present", bool(on_deck),
+        episodes_for_show = sorted(
+            [item for item in document["items"]
+             if item.get("type") == "episode"
+             and str(item.get("grandparentRatingKey")) == str(show_key)],
+            key=lambda item: (item.get("parentIndex") or 0, item.get("index") or 0))
+        in_progress = [item for item in episodes_for_show if item.get("viewOffset")]
+        watched = [index for index, item in enumerate(episodes_for_show)
+                   if item.get("viewCount")]
+        expected_on_deck = bool(in_progress or (watched and any(
+            not item.get("viewCount") for item in episodes_for_show[watched[-1] + 1:])))
+        check("OnDeck follows the show's playback state", bool(on_deck) == expected_on_deck,
               "S%02dE%02d %s" % (on_deck.get("parentIndex") or 0, on_deck.get("index") or 0,
                                  on_deck.get("title")) if on_deck else "missing")
 
