@@ -1,0 +1,350 @@
+{
+ "DefaultAlbumCover.png": {
+  "height": 390,
+  "type": "image/png",
+  "width": 390
+ },
+ "actor-icon.png": {
+  "height": 512,
+  "type": "image/png",
+  "width": 341
+ },
+ "album-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1270
+ },
+ "aperture-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "aperture-icon.png": {
+  "height": 512,
+  "type": "image/png",
+  "width": 512
+ },
+ "artist-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1270
+ },
+ "artist.png": {
+  "height": 300,
+  "type": "image/png",
+  "width": 300
+ },
+ "category-art/action.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/animation.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/comedy.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/crime.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/documentary.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/drama.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-01.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-02.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-03.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-04.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-05.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-06.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-07.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-08.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-09.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-10.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/extra-11.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/history.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/horror.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/musical.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/romance.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/science-fiction.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/thriller.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "category-art/western.png": {
+  "height": 645,
+  "type": "image/png",
+  "width": 1140
+ },
+ "dlna-icon-260.jpg": {
+  "height": 260,
+  "type": "image/jpeg",
+  "width": 260
+ },
+ "dlna-icon-260.png": {
+  "height": 260,
+  "type": "image/png",
+  "width": 260
+ },
+ "dvr/device-generic-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-connect-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-connect-duo-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-connect-quatro-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-dual-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-expand-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-extend-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-prime-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-hdhomerun-single-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-network-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-pcie-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/device-usb-560.png": {
+  "height": 560,
+  "type": "image/png",
+  "width": 560
+ },
+ "dvr/dvr-allshows-icon.png": {
+  "height": 288,
+  "type": "image/png",
+  "width": 352
+ },
+ "dvr/dvr-movies-icon.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 320
+ },
+ "dvr/dvr-news-icon.png": {
+  "height": 272,
+  "type": "image/png",
+  "width": 368
+ },
+ "dvr/dvr-program-guide-icon.png": {
+  "height": 70,
+  "type": "image/png",
+  "width": 91
+ },
+ "dvr/dvr-schedule-icon.png": {
+  "height": 79,
+  "type": "image/png",
+  "width": 71
+ },
+ "dvr/dvr-sports-icon.png": {
+  "height": 336,
+  "type": "image/png",
+  "width": 256
+ },
+ "dvr/dvr-watchnow-icon.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 352
+ },
+ "favicon.ico": {
+  "body": "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAAAABMLAAATCwAAAAAAAAAAAAAAAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/CQoK/wkJCf8JCgr/DAkI/xc9Uv8SYZf/EmGX/xJhl/8bR2f/EggH/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CgsM/w0JCf8cO0//Is74/way//8Hsf//Drr//xg7W/8VBgD/CQkJ/wkJCf8JCQn/DQ4P/wkJCf8JCQr/CQkJ/wsMDP8PFBr/EQIC/zl1g/8gyv//AI7//wSs//8SnuX/IB0i/wAAAP8JCQn/CQkJ/wkJCf8JCQn/CQoK/wkJCf8LDAz/EBQY/xQbJP8eHSL/O6nY/wyu//8Fl///CcL//xlqkP8iFBL/CQkJ/wkJCf8JCQn/CQkJ/wkKCv8JCQn/CwwN/xAVGv8ZJjL/GBsm/zJRXP80xP//Cp3//xKs//8Ws/P/IzA1/wAAAP8JCQn/CQkJ/wkJCf8JCQr/CQkJ/wsMDf8RFhv/Gygy/yI7TP8gMkP/UKfM/0HI//8no///Kc7//ySIpP8XEBb/CQkJ/wkJCf8JCQn/CQkK/wkJCf8LDA3/EBYa/xsoNP8mP1T/IkNa/y1fdf9uyPn/WsL//zuw//8q1v//HF1x/wAAAP8JCQn/CQkJ/wkKCv8JCQn/DA0N/xMYHP8dKjX/Ij5T/yVRbf8OOlD/Y6TF/3zZ//8+qf//JdL//yKvvf8AAAD/AAAA/wkJCf8JCQr/CQkJ/wwNDv8VGh//Hi05/yZBVv8fPFH/O3WQ/2PN//9Ctf//MLD//yXM//8cU2P/AAAA/wAAAP8AAAD/CQkJ/wkJCf8MDQ7/FBof/x4rN/8mPVD/JTVE/0+x2v8uvv//HJ///x7N//8hh6H/Gg8U/wAAAP8AAAD/CQkJ/woKCv8JCQn/DA0O/xIXHP8aKDL/HBwl/zptgv8nwP//BZr//wyt//8Sqef/JjA0/wkJCf8JCQn/CQkJ/wkJCf8KCgv/CQkJ/woMDf8RGB3/FRce/y4vMf8+wvf/Bqb//wSV//8Gxf//HGqK/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CgoL/wkJCf8LDA3/ERMW/x4eKP8sp83/E9X//wGs//8Fw///FJTZ/wkJCf8JCQn/CQkJ/wkJCf8REhT/CQkJ/wsLC/8JCQn/CwwM/xEQEv8gMjn/HH+z/xx/s/8cf7P/HH+z/x8yQf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/CQkJ/wkJCf8JCQn/AABleQAACQkAAHN0AABuZwAAb20AAHBwAAAucAAAbnQAAG0uAABzdAAAcmkAADwvAAByaQAAPgoAAAk8AAB5Pg==",
+  "type": "application/octet-stream"
+ },
+ "iphoto-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "iphoto-icon.png": {
+  "height": 512,
+  "type": "image/png",
+  "width": 512
+ },
+ "itunes-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "itunes-icon.png": {
+  "height": 512,
+  "type": "image/png",
+  "width": 512
+ },
+ "movie-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "movie.png": {
+  "height": 300,
+  "type": "image/png",
+  "width": 300
+ },
+ "photo-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "photo.png": {
+  "height": 300,
+  "type": "image/png",
+  "width": 300
+ },
+ "show-fanart.jpg": {
+  "height": 720,
+  "type": "image/jpeg",
+  "width": 1280
+ },
+ "show.png": {
+  "height": 300,
+  "type": "image/png",
+  "width": 300
+ },
+ "sugar.cmake": {
+  "body": "IyBUaGlzIGZpbGUgZ2VuZXJhdGVkIGF1dG9tYXRpY2FsbHkgYnk6CiMgICBnZW5lcmF0ZV9zdWdhcl9maWxlcy5weQojIHNlZSB3aWtpIGZvciBtb3JlIGluZm86CiMgICBodHRwczovL2dpdGh1Yi5jb20vcnVzbG8vc3VnYXIvd2lraS9Db2xsZWN0aW5nLXNvdXJjZXMKCmlmKERFRklORUQgR1JBUEhJQ1NfU1VHQVJfQ01BS0VfKQogIHJldHVybigpCmVsc2UoKQogIHNldChHUkFQSElDU19TVUdBUl9DTUFLRV8gMSkKZW5kaWYoKQoK",
+  "type": "application/octet-stream"
+ },
+ "tag-auto-256.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 256
+ },
+ "tag-geo-256.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 266
+ },
+ "tag-people-256.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 256
+ },
+ "tag-similar-256.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 256
+ },
+ "tag-temporal-256.png": {
+  "height": 256,
+  "type": "image/png",
+  "width": 256
+ },
+ "video.png": {
+  "height": 300,
+  "type": "image/png",
+  "width": 300
+ }
+}
