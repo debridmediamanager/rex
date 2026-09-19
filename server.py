@@ -2441,7 +2441,7 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     # four through -- `Label` text-only through GRID_TAGS, the other three with their full
     # `id`/`filter`, which the light projection never carries.
     out = {k: v for k, v in row.items()
-           if k not in ("Rating", "Field", "Producer",
+           if k not in ("Rating", "Field", "Producer", "CommonSenseMedia",
                         "Label", "Style", "Similar", "Mood")
            and (k != "Location" or keep_location)
            and (k != "Guid" or keep_guid)}
