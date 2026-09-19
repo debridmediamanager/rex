@@ -540,6 +540,26 @@ def main():
           "fields=%r images=%s"
           % (restamped_leaf.get("grandparentThumb"), restamped_images))
 
+    inline_deck_leaf = catalog.items[109]
+    old_offset = inline_deck_leaf.get("viewOffset")
+    old_viewed = inline_deck_leaf.get("lastViewedAt")
+    inline_deck_leaf["viewOffset"] = 100
+    inline_deck_leaf["lastViewedAt"] = 100
+    inline_deck_show = (get("/library/metadata/108?includeOnDeck=1&includeExtras=1")
+                        .get("Metadata") or [{}])[0]
+    inline_deck_row = ((inline_deck_show.get("OnDeck") or {}).get("Metadata") or {})
+    if old_offset is None:
+        inline_deck_leaf.pop("viewOffset", None)
+    else:
+        inline_deck_leaf["viewOffset"] = old_offset
+    if old_viewed is None:
+        inline_deck_leaf.pop("lastViewedAt", None)
+    else:
+        inline_deck_leaf["lastViewedAt"] = old_viewed
+    check("includeExtras reaches the inline OnDeck row",
+          (inline_deck_row.get("Extras") or {}).get("size") == 0,
+          str(inline_deck_row.get("Extras")))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []
