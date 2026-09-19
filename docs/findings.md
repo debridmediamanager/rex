@@ -9705,7 +9705,9 @@ plexsim's route table out of what a CLIENT was seen to ask for — the web bundl
 builders, a captured session, python-plexapi, the servers' own advertised vocabulary. None
 of those can name an endpoint no client sends.
 
-**The Plex Media Server binary can.** It is 22 MB, it is readable on both references
+**The Plex Media Server binary can.** Cycle 45 read ONE string out of it — the log line
+behind `X-Plex-Container-Focus-Key` — and nobody went back for the rest. It is 22 MB, it is
+readable on both references
 (`docker exec plexlab-plex cat "/usr/lib/plexmediaserver/Plex Media Server"` on kids,
 `cat` over ssh on zen), and its string table carries PMS's own route templates with their
 parameter captures — `/:tagType/top`, `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`,
@@ -9871,6 +9873,12 @@ while the item path accepted it.
 * **`/library/parts/{id}/indexes/{sd|hd}[/{offset}]`**, the BIF seek-preview index, and
   `/library/media/{id}/chapterImages/{n}`: 404 on every instrument, because no instrument
   holds a generated index or a chapter.
+* **A correction to cycle 45's own prose, not to the code.** The line "`stations/
+  {genre|mood|style|decade}`, `/library/newReleases`, `/:/viewChange` and
+  `/services/codecs` are real routes" names `/library/newReleases`, which is a **404** on
+  kids and on zen — bare, and under a section. The real one is
+  `/hubs/sections/{id}/newReleases`, which plexsim already answers; nothing in the code
+  followed the wrong name, so this is the document being corrected rather than a defect.
 
 ### Emulation calibrated against the account's own claimed servers
 
