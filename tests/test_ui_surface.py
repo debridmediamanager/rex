@@ -29420,6 +29420,43 @@ def main():
           % (status_c53f, len(config_c53f), head_c53f.get("Set-Cookie") is not None,
              len(contrib_c53f), contrib_head_c53f.get("Set-Cookie") is not None))
 
+    # Cycle 53, measured on kids (1.43.4) and zen (1.42.2): `/system/library/sections` carries
+    # THIRTEEN attributes per row and plexsim emitted four of them plus an `agent` that no
+    # reference sends anywhere. The `key` is the URL-safe base64 of
+    # `http://{host}:{port}/library/sections/{id}`; `unique` marks a title that occurs once;
+    # the rows are sorted by the lower-cased title; the container carries the framework's
+    # `noHistory`/`replaceParent` pair. And an extra segment is a 404 where plexsim answered
+    # the whole listing again.
+    import base64 as _base64_c53g
+    status_c53g, systemlib_c53g, _ = get(base, "/system/library/sections")
+    rows_c53g = systemlib_c53g.get("Directory") or []
+    decoded_c53g = []
+    for row_c53g in rows_c53g:
+        raw_c53g = (row_c53g.get("key") or "").replace("_", "=")
+        try:
+            decoded_c53g.append(_base64_c53g.urlsafe_b64decode(
+                raw_c53g + "=" * (-len(raw_c53g) % 4)).decode())
+        except Exception:
+            decoded_c53g.append("(undecodable)")
+    wanted_c53g = ["key", "unique", "name", "title", "type", "serverVersion", "uuid", "host",
+                   "serverName", "path", "machineIdentifier", "local", "port"]
+    extra_c53g, _, extra_head_c53g = request(base, "GET", "/system/library/sections/1",
+                                             want_json=False)
+    check("the system view of the libraries carries its thirteen attributes",
+          status_c53g == 200 and rows_c53g
+          and all(key_c53g in rows_c53g[0] for key_c53g in wanted_c53g)
+          and "agent" not in rows_c53g[0]
+          and systemlib_c53g.get("noHistory") == 0
+          and all(text_c53g.startswith("http://") and "/library/sections/" in text_c53g
+                  for text_c53g in decoded_c53g)
+          and [str(r_c53g.get("title") or "").lower() for r_c53g in rows_c53g]
+          == sorted(str(r_c53g.get("title") or "").lower() for r_c53g in rows_c53g)
+          and extra_c53g == 404 and not extra_head_c53g.get("Content-Type"),
+          "rows=%d missing=%s key=%s extra=%s"
+          % (len(rows_c53g),
+             [k_c53g for k_c53g in wanted_c53g if rows_c53g and k_c53g not in rows_c53g[0]],
+             decoded_c53g[:1], extra_c53g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
