@@ -1089,6 +1089,49 @@ for _resource in STATIC_RESOURCES:
         STATIC_RESOURCE_BYTES[_resource] = _handle.read()
 
 
+# Cycle 53: what a hosted plug-in answers UNDER its identifier. Cycle 52 measured the
+# preference document and recorded everything else as an empty-bodied 404; five more
+# sub-paths are real on kids (1.43.4) and zen (1.42.2) alike:
+#
+#   `prefs/list`   byte-identical to `prefs`
+#   `plist`        the bundle's own `Info.plist`, `text/plain`
+#   `prefs/set`    an empty `text/plain` 200
+#   `messaging/wait`  a 16-byte `text/plain` constant, the same on every bundle
+#   `resources/{name}`  the bundle's own images; an unknown name is a 404
+#   `root`         a 302 to `/system` for `com.plexapp.system` and, for every other
+#                  RUNNING bundle, the framework's `IndexError` traceback
+#
+# The four bundles that are not running (`framework`, `mediaflags`, `system.scanners`,
+# `plugins.webclient`) answer the framework's 109-byte 500 to every one of them, which is
+# the branch plexsim already has. The pixels of a bundle's images are plexsim's
+# placeholder at the file's real geometry, as `/:/resources` and the media flags are.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "plugin_bundles.json"), encoding="utf-8") as _handle:
+    PLUGIN_BUNDLES = json.load(_handle)
+
+# The framework's own `messaging/wait` reply: an empty cerealizer dump, identical on every
+# bundle and both versions.
+PLUGIN_WAIT = b"Y2VyZWFsMQowCmIx"
+
+# `handlers/runtime.py:113` redirects `root` to the FIRST registered prefix, and a bundle
+# that registers none raises there -- which is every agent. Only `com.plexapp.system`
+# has a prefix, and it answers the 302.
+PLUGIN_ROOT_ERROR = (
+    "<?xml version='1.0' encoding='utf-8'?>\n"
+    '<Response code="2000" status="IndexError: list index out of range">\n'
+    "  <Traceback>Traceback (most recent call last):\n"
+    '  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
+    'Contents/Resources/Versions/2/Python/Framework/components/runtime.py", line 843, '
+    "in handle_request\n"
+    "    result = f(**d)\n"
+    '  File "/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/'
+    'Contents/Resources/Versions/2/Python/Framework/handlers/runtime.py", line 113, '
+    "in root\n"
+    "    return Framework.objects.Redirect(self._core, handlers[0].prefix)\n"
+    "IndexError: list index out of range\n"
+    "</Traceback>\n"
+    "</Response>\n").encode("utf-8")
+
 # Cycle 52: the seventeen plug-ins a real PMS hosts, in the order both references list
 # them. They are PMS's OWN bundled bundles -- the legacy agents, the framework, the media
 # flag resource and the web client -- so the list is a constant, not this account's or
@@ -5512,7 +5555,30 @@ class PlexSim:
             pieces = route.split("/")[3:]
             if not pieces or pieces[0] not in PLUGIN_LIST:
                 return ("error", 404, "plexsim: not found")
-            if pieces[1:] == ["prefs"]:
+            bundle = PLUGIN_BUNDLES.get(pieces[0]) or {}
+            if not bundle and len(pieces) > 1:
+                # A bundle the server hosts but does NOT run -- the framework, the media
+                # flags, the scanners and the web client -- answers the framework's
+                # 109-byte 500 to every sub-path, not only to `prefs`.
+                return ("error", 500, "plexsim: plug-in has no preferences")
+            if pieces[1:] == ["messaging", "wait"] and bundle:
+                return ("framework-plain", 200, PLUGIN_WAIT, "text/plain")
+            if pieces[1:] == ["prefs", "set"] and bundle:
+                return ("framework-plain", 200, b"", "text/plain")
+            if pieces[1:] == ["plist"] and bundle.get("plist"):
+                return ("framework-plain", 200,
+                        bundle["plist"].encode("utf-8"), "text/plain")
+            if pieces[1:] == ["root"] and bundle:
+                if pieces[0] == "com.plexapp.system":
+                    return ("redirect", "http://%s/system"
+                            % ((headers.get("Host") or "") if headers else ""))
+                return ("plugin-xml", 500, PLUGIN_ROOT_ERROR)
+            if len(pieces) == 3 and pieces[1] == "resources" and bundle:
+                size = (bundle.get("resources") or {}).get(pieces[2])
+                if size is None:
+                    return ("bare", 404)
+                return ("asset", "image/png", _png(size[0], size[1], (32, 34, 38)), False)
+            if pieces[1:] in (["prefs"], ["prefs", "list"]):
                 document = PLUGIN_PREFS.get(pieces[0])
                 if document is None:
                     # The framework's own failure for the four bundles that have no
