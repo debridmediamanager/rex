@@ -10400,6 +10400,19 @@ class PlexSim:
             row = (self.library._collection_row(collection) if collection is not None
                    else self.library._playlist_row(target))
             composite = (row.get("composite") or row.get("thumb") or "").split("?")[0]
+            if not composite:
+                # Cycle 52, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
+                # an EMPTY playlist carries neither `composite` nor `thumb` on its row --
+                # correctly, both references' empty playlists carry neither -- and a real
+                # PMS still names `/playlists/{id}/composite/{updatedAt}` on the candidate
+                # here. plexsim built the key by string concatenation from those two
+                # fields, so a just-created playlist answered `key="?width=400&height=600"`
+                # -- a relative url that resolves to the page the client is on, so Change
+                # Poster showed the app's own HTML as the candidate image and picking it
+                # stored that empty key.
+                composite = "/%s/%s/composite/%s" % (
+                    "library/collections" if collection is not None else "playlists",
+                    target.get("ratingKey"), target.get("updatedAt") or target.get("addedAt"))
             entries = []
             uploaded = target.get("_poster_url" if segments[3] == "posters" else "_art_url")
             if segments[3] == "posters":
