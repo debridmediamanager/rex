@@ -254,6 +254,18 @@ def main():
     check("a search tag count spans every row type in its tag table",
           counted_hit.get("count") == 2, str(counted_hit))
 
+    profile_rows = (sim.handle("GET", "/clients/profiles", b"", {})
+                    ["MediaContainer"].get("Profile") or [])
+    profile_titles = [row.get("title") for row in profile_rows]
+    check("client profiles preserve deterministic resource-file order",
+          profile_titles.index("Opera TV App") < profile_titles.index("Opera")
+          and profile_titles.index("Roku-3.1") < profile_titles.index("Roku")
+          and profile_titles.index("Samsung SmartTV") < profile_titles.index("Samsung")
+          and profile_titles.index("Sony Blu-ray 2013") < profile_titles.index("Sony Blu-ray")
+          and profile_titles.index("Plex Desktop")
+          < profile_titles.index("Plex Home Theater-RaspberryPi")
+          < profile_titles.index("Plex Home Theater"))
+
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
     # completion; ordinary title edits do not maintain it row by row.
