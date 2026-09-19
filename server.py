@@ -19644,7 +19644,10 @@ class Handler(BaseHTTPRequestHandler):
         # want is consumed AFTER the answer, like a `Content-Length` one: a GET carrying
         # `chunked` and no body at all is answered at once on every reference and waited
         # 20 s for by cycle 49's decoder.
-        encoding = (self._header_value("Transfer-Encoding") or "").strip().lower()
+        # `_header_value` has already removed the one optional separator space. Do not
+        # trim again: `:  chunked` and `: chunked ` are non-exact values which all four
+        # references ignore, leaving their would-be framing to become the next request.
+        encoding = (self._header_value("Transfer-Encoding") or "").lower()
         chunked = encoding == "chunked"
         self._undrained = 0
         self._undrained_chunked = False
