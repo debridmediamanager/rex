@@ -135,13 +135,32 @@ def framework_unexpected(name, keyword):
 
 # The four actions: the Python function the framework dispatches to, how many arguments
 # it declares, which query names it recognises, and whether an unrecognised name raises.
-# `search` drops a name it does not know (`?query=x` is still "(1 given)") where the
-# other three raise on it -- measured, not derived.
+# The four actions, their declared Python SIGNATURES, and whether the function ends in
+# `**kwargs`. Cycle 52 first fitted the recognised names to twelve measured cells; then
+# read the functions out of the image, which is the general rule the fit was approximating:
+#
+#   agentservice.py:203  search(self, identifier, mediaType, lang, manual=False, **kwargs)
+#   agentservice.py:297  update(self, mediaType, guid, id=None, parentGUID=None,
+#                               force=False, agent=None, async=True, parentID=None,
+#                               libraryAgent=None, periodic=False, respectTags=False)
+#   agentservice.py:878  list_contributors(self, mediaType, primaryAgent,
+#                                          primary_only=True)
+#   agentservice.py:1008 media_get(self, mediaType, guid, url, parentGUID=None)
+#
+# `runtime.py:843` calls `f(**d)` with the whole query, so Python 2's own message decides
+# the sentence: `given` counts `self` plus every supplied name the function DECLARES, a
+# name it does not declare is "got an unexpected keyword argument", and `search`'s
+# `**kwargs` is why it alone swallows one. That is why `?identifier=x` is "(2 given)" for
+# `search` and an unexpected keyword for `update`, which the fitted table had backwards.
 FRAMEWORK_AGENT_ACTIONS = {
-    "search": ("search", 4, ("mediaType",), False),
-    "update": ("update", 3, ("mediaType",), True),
-    "contributors": ("list_contributors", 3, ("mediaType", "primaryAgent"), True),
-    "media/get": ("media_get", 4, ("mediaType",), True),
+    "search": ("search", 4,
+               ("identifier", "mediaType", "lang", "manual"), False),
+    "update": ("update", 3,
+               ("mediaType", "guid", "id", "parentGUID", "force", "agent", "async",
+                "parentID", "libraryAgent", "periodic", "respectTags"), True),
+    "contributors": ("list_contributors", 3,
+                     ("mediaType", "primaryAgent", "primary_only"), True),
+    "media/get": ("media_get", 4, ("mediaType", "guid", "url", "parentGUID"), True),
 }
 
 # Upstream reads are issued with a browser-ish UA; RD's CDN is fine with
@@ -5262,7 +5281,7 @@ class PlexSim:
                 supplied = [key for key in query
                             if not key.startswith(("_", "X-Plex-"))]
                 if action_c52 == "contributors" and all(
-                        query.get(key) for key in known_c52):
+                        query.get(key) for key in ("mediaType", "primaryAgent")):
                     # Cycle 19's measurement, unchanged: with BOTH parameters a modern
                     # primary agent has no contributor chain and says so with an empty
                     # `com.plexapp.system` container.
