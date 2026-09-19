@@ -5729,6 +5729,17 @@ class PlexSim:
                 entry = _grid_row(_listing_row(row), keep_guid=query.get("includeGuids") == "1")
                 if not kinds:
                     entry.pop("Media", None)
+                    # Cycle 50: this legacy untyped query reads the metadata
+                    # database's stored runtime, not Media.duration.  Those columns
+                    # can disagree (kids 888084 vs 10031; zen's minute-rounded
+                    # runtimes), and a null stored value omits the field.  Catalogs
+                    # that mirror that otherwise-invisible column may carry it in the
+                    # private `_libraryAllDuration`; an ordinary media-only catalog
+                    # honestly omits what it cannot derive.
+                    if row.get("_libraryAllDuration") is not None:
+                        entry["duration"] = row["_libraryAllDuration"]
+                    else:
+                        entry.pop("duration", None)
                 rows.append(entry)
             return self.container(Metadata=rows)
 
