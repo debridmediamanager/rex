@@ -29647,6 +29647,40 @@ def main():
           "%d rows, %d legacy, imdb langs=%d"
           % (len(typed_rows_c53k), len(typed_legacy_c53k), len(imdb_langs_c53k)))
 
+    # Cycle 53, measured over all seventeen hosted identifiers on kids (1.43.4) and zen
+    # (1.42.2), identical on both: nine legacy agents answer an attribution TEXT and eight an
+    # IMAGE, `org.musicbrainz.agents.music` answers an empty text and no image, and every
+    # other identifier -- the four modern agents included -- is a 404 on both leaves. The
+    # bundle plexsim itself serves draws a 100x100 `<img>` per listed agent from the image
+    # leaf, and plexsim 404'd every one.
+    wrong_c53l = []
+    for identifier_c53l, text_c53l, image_c53l in (
+            ("com.plexapp.agents.themoviedb", 232, True),
+            ("com.plexapp.agents.imdb", 519, True),
+            ("com.plexapp.agents.thetvdb", 235, True),
+            ("com.plexapp.agents.lastfm", 84, True),
+            ("org.musicbrainz.agents.music", 0, False),
+            ("com.plexapp.agents.none", None, False),
+            ("tv.plex.agents.movie", None, False)):
+        status_c53l, body_c53l, head_c53l = request(
+            base, "GET", "/system/agents/attribution?identifier=%s" % identifier_c53l,
+            want_json=False)
+        if text_c53l is None:
+            if status_c53l != 404:
+                wrong_c53l.append("%s text %s" % (identifier_c53l, status_c53l))
+        elif (status_c53l, len(body_c53l)) != (200, text_c53l):
+            wrong_c53l.append("%s text %s/%s" % (identifier_c53l, status_c53l, len(body_c53l)))
+        status_c53l, body_c53l, head_c53l = request(
+            base, "GET", "/system/agents/attribution/image?identifier=%s" % identifier_c53l,
+            want_json=False)
+        if image_c53l:
+            if status_c53l != 200 or body_c53l[:8] != b"\x89PNG\r\n\x1a\n":
+                wrong_c53l.append("%s image %s" % (identifier_c53l, status_c53l))
+        elif status_c53l != 404:
+            wrong_c53l.append("%s image %s" % (identifier_c53l, status_c53l))
+    check("each legacy agent's attribution line and logo",
+          not wrong_c53l, "; ".join(wrong_c53l)[:250])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
