@@ -133,6 +133,51 @@ def framework_unexpected(name, keyword):
                                 % (name, keyword))
 
 
+def framework_exactly(name, count):
+    """The other half of the framework's TypeError: a function with no defaults."""
+    return _framework_traceback("%s() takes exactly %d arguments (1 given)"
+                                % (name, count))
+
+
+# Cycle 53, read out of `System.bundle/Contents/Code/` and then measured on kids (1.43.4)
+# and zen (1.42.2), which answer these byte for byte. Each is a framework route whose
+# Python function needs arguments the URL does not supply, so a bare GET is the
+# framework's own traceback with a 500 -- the shape cycle 40 shipped for
+# `/system/services/url/lookup` and cycle 52 for the four agent actions. plexsim 404'd the
+# first three and answered its own 109-byte HTML 500 to the two attribution leaves.
+FRAMEWORK_BARE_ERRORS = {
+    "/system/services/search": ("cs_search", 3, "least"),
+    "/system/services/searches": ("cs_searches", 2, "exactly"),
+    "/system/services/relatedcontent/lookup": ("cs_relatedcontent_lookup", 2, "exactly"),
+    "/system/agents/attribution": ("get_attribution_string", 2, "exactly"),
+    "/system/agents/attribution/image": ("get_attribution_image", 2, "exactly"),
+}
+
+# `peerservice.py` registers `("channels", "plugins")` x five directory names, and with no
+# channel installed every one is the framework's EMPTY container -- 130 bytes, self-closed,
+# the single-quoted declaration. plexsim 404'd all ten.
+FRAMEWORK_PEER_DIRECTORIES = ("all", "music", "video", "photos", "applications")
+FRAMEWORK_EMPTY_CONTAINER = (
+    b"<?xml version='1.0' encoding='utf-8'?>\n"
+    b'<MediaContainer noHistory="0" replaceParent="0" size="0" '
+    b'identifier="com.plexapp.system"/>\n')
+
+# `systemservice.py` and `messageservice.py`: three text/plain routes. The agent service's
+# status page is a fixed 229-byte report on an idle server, identical on both versions.
+FRAMEWORK_AGENT_STATUS = (
+    "AgentService Status\n"
+    "-------------------\n"
+    "Update queue size   : 0\n"
+    "Notify queue size   : 0\n"
+    "Update mutexes:     : 0\n"
+    "\n"
+    "Info lock state     : Unlocked\n"
+    "Update lock state   : Unlocked\n"
+    "\n"
+    "Processing updates  : {\n}\n"
+    "\n"
+    "Pending updates     : [\n]\n").encode("utf-8")
+
 # The four actions: the Python function the framework dispatches to, how many arguments
 # it declares, which query names it recognises, and whether an unrecognised name raises.
 # The four actions, their declared Python SIGNATURES, and whether the function ends in
@@ -5296,6 +5341,24 @@ class PlexSim:
                 return ("error", 404, "plexsim: not found")
             return self.bare_container(noHistory=0, replaceParent=0, size=0,
                                        identifier="com.plexapp.system")
+        if route in FRAMEWORK_BARE_ERRORS:
+            name, count, form = FRAMEWORK_BARE_ERRORS[route]
+            return ("plugin-xml", 500,
+                    (framework_error if form == "least" else framework_exactly)(name, count))
+        if (segments[:2] in (["system", "channels"], ["system", "plugins"])
+                and len(segments) == 3 and segments[2] in FRAMEWORK_PEER_DIRECTORIES):
+            return ("framework-plain", 200, FRAMEWORK_EMPTY_CONTAINER, "application/xml")
+        if route == "/system/notify/serverUpdated":
+            # Cycle 53: a 200 with an EMPTY body and `text/plain` -- and the framework
+            # spells that header `Content-type`, with a lower-case `t`, because
+            # `construct_response` writes it literally for a string result.
+            return ("framework-plain", 200, b"", "text/plain")
+        if route == "/system/debug/agentservice/status":
+            return ("framework-plain", 200, FRAMEWORK_AGENT_STATUS, "text/plain")
+        if (segments[:2] == ["system", "messaging"] and len(segments) >= 3
+                and segments[2] in ("clear_events", "register_for_event",
+                                    "broadcast_event")):
+            return ("framework-plain", 200, b"", "text/plain")
         if route.startswith("/system/agents/") and route != "/system/agents/":
             # Cycle 52, swept over fifteen names on kids (1.43.4) and zen (1.42.2), which
             # agree on every one: exactly FOUR actions live under `/system/agents`, and
@@ -5340,7 +5403,8 @@ class PlexSim:
                 return ("error", 500, "plexsim: internal error")
             return self.bare_container(noHistory=0, replaceParent=0, size=0,
                                        identifier="com.plexapp.system")
-        if route in ("/system/agents/attribution", "/system/agents/attribution/image"):
+        if route in ("/system/agents/attribution", "/system/agents/attribution/image") \
+                and query.get("identifier"):
             # Measured: a modern agent has no attribution, text or image, and says so
             # with a 404; with no identifier at all it is a 500. plexsim answered the
             # JSON agent list to both, which the Agents page fed to an <img>.
@@ -20939,6 +21003,17 @@ class Handler(BaseHTTPRequestHandler):
                 # Cycle 52: a plug-in's preference document, served verbatim. The
                 # framework writes `application/xml` and its own per-plug-in cookie.
                 self._send(200, "application/xml", result[1])
+                return
+            if kind == "framework-plain":
+                # Cycle 53: a framework route whose result is a STRING or a document the
+                # framework writes itself. `construct_response` sets the header literally
+                # as `Content-type` for a STRING result -- the one lower-case `t` on the
+                # surface -- where its XML results spell it `Content-Type`.
+                if result[3] == "text/plain":
+                    self._send(result[1], None, result[2],
+                               [("Content-type", "text/plain")])
+                else:
+                    self._send(result[1], result[3], result[2])
                 return
             if kind == "plugin-xml":
                 # The Framework closes its error response. GET still honours a

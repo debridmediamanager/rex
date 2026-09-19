@@ -29259,6 +29259,44 @@ def main():
     check("the flag service's ten types and its one country segment",
           not wrong_c53c, "; ".join(wrong_c53c)[:250])
 
+    # Cycle 53, read out of `System.bundle/Contents/Code/` and then measured on kids (1.43.4)
+    # and zen (1.42.2), byte-identical on both: eighteen more framework routes plexsim
+    # answered nothing for. `peerservice.py` registers channels and plugins over five
+    # directory names -- ten paths, each the framework's 130-byte EMPTY container with no
+    # channel installed; `systemservice.py` answers a 229-byte agent-service status report and
+    # an empty `serverUpdated`; `messageservice.py` three empty event routes; and three
+    # `/system/services` leaves plus the two `/system/agents/attribution` leaves answer the
+    # framework's own TypeError traceback, where plexsim 404'd most and sent its own 109-byte
+    # HTML 500 for the attribution pair.
+    wrong_c53d = []
+    for path_c53d, want_c53d, length_c53d in (
+            ("/system/channels/all", 200, 130), ("/system/channels/music", 200, 130),
+            ("/system/plugins/all", 200, 130), ("/system/plugins/applications", 200, 130),
+            ("/system/notify/serverUpdated", 200, 0),
+            ("/system/debug/agentservice/status", 200, 229),
+            ("/system/messaging/clear_events/x", 200, 0),
+            ("/system/services/search", 500, 462),
+            ("/system/services/searches", 500, 464),
+            ("/system/services/relatedcontent/lookup", 500, 490),
+            ("/system/agents/attribution", 500, 486),
+            ("/system/agents/attribution/image", 500, 484)):
+        status_c53d, body_c53d, head_c53d = request(base, "GET", path_c53d, want_json=False)
+        if (status_c53d, len(body_c53d)) != (want_c53d, length_c53d):
+            wrong_c53d.append("%s -> %s/%s" % (path_c53d, status_c53d, len(body_c53d)))
+    check("the framework routes System.bundle registers",
+          not wrong_c53d, "; ".join(wrong_c53d)[:300])
+
+    # A framework STRING result spells the header `Content-type`, with a lower-case `t` --
+    # `construct_response` writes it literally -- where its XML results spell it `Content-Type`.
+    _, _, plain_head_c53d = request(base, "GET", "/system/debug/agentservice/status",
+                                    want_json=False)
+    _, _, xml_head_c53d = request(base, "GET", "/system/channels/all", want_json=False)
+    check("a framework string result spells Content-type with a lower-case t",
+          "Content-type" in plain_head_c53d and "Content-Type" not in plain_head_c53d
+          and xml_head_c53d.get("Content-Type") == "application/xml",
+          "%s | %s" % (sorted(k for k in plain_head_c53d if k.lower() == "content-type"),
+                       xml_head_c53d.get("Content-Type")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
