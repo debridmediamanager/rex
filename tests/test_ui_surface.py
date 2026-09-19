@@ -28863,6 +28863,26 @@ def main():
                                  int.from_bytes(icon_c52j[16:20], "big"),
                                  int.from_bytes(icon_c52j[20:24], "big")))
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): `/connections` is a real route
+    # that answers **text/plain**, one line per connection --
+    # `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630) (curl/8.7.1)`
+    # -- where every verb but GET and HEAD falls through to the legacy dispatcher's empty
+    # listing. plexsim answered that dispatcher container to the GET as well, so a caller was
+    # handed an XML MediaContainer where a real PMS sends a plain-text report. (PMS's fixed
+    # acceptor pool, its ordinals and its hexadecimal request allocator are not emulated and
+    # stay recorded in HANDOVER 8; these are plexsim's own live connections.)
+    status_c52k, body_c52k, head_c52k = request(base, "GET", "/connections", want_json=False)
+    first_c52k = body_c52k.decode("utf-8", "replace").splitlines()[:1]
+    check("/connections is a plain-text connection report",
+          status_c52k == 200 and head_c52k.get("Content-Type") == "text/plain"
+          and b"MediaContainer" not in body_c52k
+          and first_c52k and " - Routing - GET /connections #" in first_c52k[0],
+          "%s %s %r" % (status_c52k, head_c52k.get("Content-Type"), first_c52k[:1]))
+    status_post_c52k, post_c52k, _ = request(base, "POST", "/connections", want_json=False)
+    check("/connections answers the dispatcher to a write verb",
+          status_post_c52k == 200 and b'content="plugins"' in post_c52k,
+          "HTTP %s" % status_post_c52k)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
