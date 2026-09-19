@@ -2680,6 +2680,82 @@ precisely how the Seasons bug survived a fix attempt.
   from timed out object`. Close the connection there; never let the handler traceback while the
   wire correctly reaches EOF.
 
+
+- **The server's own BINARY is a route table, and it names endpoints no client sends.** It
+  is 22 MB and readable on both references (`docker exec plexlab-plex cat "/usr/lib/
+  plexmediaserver/Plex Media Server"`; `cat` over ssh on zen), and its strings carry PMS's
+  route templates with their captures -- `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`,
+  `/:assetType(thumb|art|clearLogo|squareArt|banner|poster|theme)`,
+  `/:type(video|music|audio|subtitles)/:/transcode`. Diffing the two binaries splits the
+  vocabulary per version for free: 1.42.2 omits `squareArt` and keeps `clearLogo`.
+- **The legacy dispatcher's listing is a RULE**: the LAST SEGMENT of every registered legacy
+  prefix that begins with the requested path and is STRICTLY LONGER than it. `/statistic`
+  names `statistics` and `/statistics` is EMPTY; `/co` is empty because `/connections` is a
+  native route, not a registered prefix. Cycle 50's 58-path table was that rule sampled at
+  58 points and 119 other prefixes answered rows it had none for. 148 of the 154 listings
+  are in byte order of the row key, five put the built-in `library` row LAST, and `/l` is
+  recorded as measured.
+- **Three static files answer at the top level with NO token** -- `/crossdomain.xml` (347
+  bytes), `/clientaccesspolicy.xml` (325) and `/favicon.ico` (5,430), byte-identical on both
+  versions, `Accept-Ranges: bytes`, never gzipped, and the dispatcher's empty listing for
+  every verb but GET and HEAD. They are the third, fourth and fifth exception to "a real PMS
+  401s everything but `/identity` and `/web/*`", and the unauthenticated partition is wider
+  than cycle 16's eleven besides: `/connections` and `/dlna` are 401s, `/manage` is the
+  `/web` 302, and `/search`, `/downloadQueue` and `/player` answer their own refusal (400,
+  404 and, on 1.42.2, 400) before the gate.
+- **`/:/plugins` is SEVENTEEN constant rows** -- the bundles in the image, identical on four
+  servers, `state` 4 on all but `com.plexapp.system` -- and everything under it is a SECOND
+  plug-in framework subtree: thirteen of the seventeen answer a preference document at
+  `/{id}/prefs` (the other four the framework's 500), a bare identifier and any other path
+  under a hosted one are an EMPTY-bodied 404, the `/system` envelope applies (OPTIONS an
+  empty 200, the other verbs empty 404s, PATCH the version's own refusal), and the cookie is
+  NAMED AFTER THE PLUG-IN. So cycle 18's "PATCH is a 405, the only one on the surface" names
+  two subtrees. **The framework's cookie rides its own responses only**: neither the bare
+  OPTIONS 200 nor the PATCH refusal carries it, under either subtree.
+- **`/:/resources/*` is SEVENTY names**, PMS's whole `Resources/Graphics` tree, identical on
+  both versions -- 59 png, 9 jpeg, 2 octet-stream. A DIRECTORY is an empty
+  `application/octet-stream` 200 in both spellings, the bare `/:/resources` is a 404,
+  matching is case-SENSITIVE, and `?width=`/`?height=` are ignored. Cycle 29's "seven names"
+  was a ten-name sample. An ACTOR with no portrait carries `/:/resources/actor-icon.png?t=`
+  -- 479 of zen's 3,416 actor rows, and not one lacks a `thumb` -- where a director, writer
+  or producer with none carries no `thumb` at all.
+- **The photo transcoder FETCHES the `url=` path**: anything the server does not answer 200
+  is a **404** there (an unknown leaf, a missing composite, a borrowed field, and
+  `/children`, whose own answer is a 400), and only a 200 whose bytes are not an image is
+  the 500. So a section COMPOSITE transcodes to its own jpeg -- which is the path Plex Web
+  builds every library card from.
+- **An artwork READ leaf takes GET, HEAD, PUT and DELETE only**: POST and a bare OPTIONS are
+  the ordinary 404, and the VERSIONED path 404s the PUT. **A collection's and a playlist's
+  artwork leaves follow the item ownership rule** -- a list with nothing uploaded 404s
+  `/thumb`, `/art` and `/poster` and answers the empty candidate container at `/clearLogos`
+  and `/themes` -- and an EMPTY playlist's `default://` candidate still names
+  `/playlists/{id}/composite/{updatedAt}`.
+- **`/connections` is `text/plain`**, one line per connection slot
+  (`3 <peer> - Routing - GET /connections #<hex> - Token (<user>) (<agent>)`), where the
+  trailing parenthesis is `X-Plex-Device-Name, X-Plex-Product` or the `User-Agent`. PMS's
+  acceptor pool, its ordinals and its request allocator stay unmodelled.
+- **`/hubs/sections/{id}/popular` is real**: the library's SEASONS with a `viewCount` above
+  zero, most-watched first, in the full row projection. A movie library answers the empty
+  container on 1.42.2 (kids 500s it, unexplained).
+- **A Categories tile's `blendColor` is a TABLE** -- thirteen fixed genre names plus a
+  seven-colour cycle walked in TAG-ID order over the rest (22 of 22 across both references)
+  -- and the tile's `thumb` is the FIRST attribute of the row. The art is the highest-rated
+  item carrying that genre and an `art` no earlier genre has taken.
+- **Four refusal shapes, both versions**: an extra segment after a STREAM id, an ACCOUNT id
+  or a DEVICE id is a 404 (not the 501 or the row); `/library/metadata/augmentations/{x}`
+  parses its id first, so a non-number is a 400; all four `/:type(video|music|audio|
+  subtitles)/:/transcode` prefixes are routed; and the PART leaf's one extra segment is a
+  FILENAME whatever it says, the digit rule deciding the changestamp only when a filename
+  follows.
+- **Exactly four actions live under `/system/agents`** -- `search`, `update`, `contributors`
+  and `media/get` -- each the plug-in framework's own TypeError traceback with a 500, and
+  every other name an EMPTY-bodied 404. The framework passes the query through to its own
+  Python function, so the sentence moves with the parameters; the recognised names are
+  measured and the general rule is the bundle's signatures.
+- **On the SECTION save path an indexed tag parameter is a tag write whatever follows
+  `.tag.`** (`.role`, `.thumb`, `.id`, `.filter`, `.zzz` are all 200s and the role stores
+  empty), not a type-scoped filter.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

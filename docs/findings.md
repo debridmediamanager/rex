@@ -9697,6 +9697,181 @@ and four more findings came out of the tag-rich row it had to MAKE to be non-vac
   references were in that state, and it is damage this programme caused.
 
 
+#### The fifty-second pass — the server's own binary as the route table
+
+Cycle 51 was clean on every axis it repeated, so this cycle reopened the loop the way the
+loop has always been reopened: **by recognising an instrument.** Fifty-one cycles built
+plexsim's route table out of what a CLIENT was seen to ask for — the web bundle's request
+builders, a captured session, python-plexapi, the servers' own advertised vocabulary. None
+of those can name an endpoint no client sends.
+
+**The Plex Media Server binary can.** It is 22 MB, it is readable on both references
+(`docker exec plexlab-plex cat "/usr/lib/plexmediaserver/Plex Media Server"` on kids,
+`cat` over ssh on zen), and its string table carries PMS's own route templates with their
+parameter captures — `/:tagType/top`, `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`,
+`/:assetType(thumb|art|clearLogo|squareArt|banner|poster|theme)`,
+`/:type(video|music|audio|subtitles)/:/transcode`. Diffing the two binaries also splits the
+vocabulary per version for free: 1.42.2's copy of the artwork line omits `squareArt` and
+keeps `clearLogo`, which is exactly what the surface answers.
+
+**22 findings, 22 commits, every one proved fail-then-pass against its own parent.**
+
+**The legacy dispatcher's prefix listing is a RULE, not a table.** Cycle 50 captured 58
+paths from an executed request list and shipped them as a dictionary. A breadth-first walk
+of every prefix over the alphabet on plexscratch42 recovered 154 non-empty listings, and
+one rule reproduces all 154 with **zero membership mismatches**: the dispatcher answers the
+LAST SEGMENT of every registered legacy prefix that BEGINS WITH the requested path and is
+STRICTLY LONGER than it. The strictness is visible — `/statistic` names `statistics` and
+`/statistics` itself is empty, `/serve` names `server` and `servers` while `/server` names
+only `servers` — and `/co` is empty because `/connections` is a native route rather than a
+registered prefix, which is why the captured table looked like one with holes in it. The 45
+registered prefixes are now in `PLUGIN_REGISTRY`; 148 of the 154 listings come back in byte
+order of the row key, five put the built-in `library` row last, and `/l` is the one cell
+neither rule explains and is recorded as measured. Confirmed on kids, zen and plexscratch42
+over all 190 prefixes of the 31 first segments: **119 of them answered rows on all three
+references and an empty listing here.**
+
+**Three static files sit at the top of the surface and plexsim answered none of them.**
+`/crossdomain.xml` (347 bytes) and `/clientaccesspolicy.xml` (325) are the Flash and
+Silverlight policies PMS ships in `Resources/`; `/favicon.ico` is 5,430 bytes. All three
+are byte-identical on both versions, all three answer **with no token** — the third, fourth
+and fifth exception to "a real PMS 401s everything but `/identity` and `/web/*`" — all
+three carry `Accept-Ranges: bytes` and really answer 206, none is ever gzipped, and every
+verb other than GET and HEAD falls through to the dispatcher's empty listing. The two
+policies order their headers like artwork and the favicon like a `/web` asset, which is the
+two-order split cycle 33 measured for the image pair.
+
+**And the unauthenticated partition is wider than the eleven 401s cycle 16 recorded.**
+Swept over the whole single-segment vocabulary — 131 names taken from the two binaries —
+with no token: `/connections` and `/dlna`, both routes cycle 49 added after that list was
+written, are 401s; `/manage` answers its 302 to the web client like `/web`; and `/search`,
+`/downloadQueue` and `/player` answer their OWN refusal before the gate (400, 404 and, on
+1.42.2, 400 — kids answers 401 for `/player`, so that one is a version split). plexsim
+answered the generic 403 to all six.
+
+**`/:/plugins` is seventeen rows, and everything under it is a second plug-in framework
+subtree.** HANDOVER §8 has carried "legacy agents and the `/:/plugins` listing" as a
+deliberate bound since cycles 1–6, on the grounds that plexsim hosts no plug-ins. The
+listing is not hosting: kids, zen, plexscratch and plexscratch42 answer the identical
+seventeen identifiers in the identical order, with `state: 4` on every one but
+`com.plexapp.system`, which is 0 on all four. It is a fixed table in the image, like the
+profile files cycle 31 read out and shipped. Under it, thirteen of the seventeen answer a
+preference document at `/:/plugins/{id}/prefs`, byte-identical on both versions, and the
+other four answer the framework's 500; a bare identifier and any other path under a hosted
+one are an EMPTY-bodied 404; and the whole subtree carries the `/system` envelope — a bare
+OPTIONS is an empty 200, POST, PUT and DELETE are empty-bodied 404s, PATCH is the version's
+own refusal — with the framework's cookie NAMED AFTER THE PLUG-IN. So cycle 18's "PATCH is
+a 405, the only one on the surface" is two framework subtrees, not one.
+
+**And the framework's cookie rides its own responses only.** Neither the bare OPTIONS 200
+nor the PATCH refusal carries `Set-Cookie`, on either version, under `/system` or under
+`/:/plugins` — both are answered before the framework runs. plexsim attached it to every
+response under `/system`.
+
+**`/:/resources/*` is seventy names, not seven.** Cycle 29 fixed a ten-name sample and
+recorded the seven that answered; the tree is PMS's whole `Resources/Graphics` directory,
+and all 70 are 200s with the same media type and byte count on both versions. A DIRECTORY
+is an empty `application/octet-stream` 200 in both spellings, `/:/resources` with no
+trailing slash is a 404, matching is case-sensitive, and `?width=`/`?height=` are ignored.
+plexsim 404'd 63 of the 70, served the seven it knew at 342x513 rather than their own
+geometry, and sent PNG bytes under the three `image/jpeg` names — on paths its own rows
+point at. It now answers the name set, the media type and the file's geometry, with a
+minimal baseline JPEG encoder beside `_png` so a `.jpg` name really is a JPEG; the two
+files that are not images are carried verbatim.
+
+**The photo transcoder FETCHES the path it is given.** Measured on kids and zen, which
+agree on every cell: a `url=` the server answers with anything but 200 is a **404** here —
+an unknown item leaf, a missing section composite, a row that borrows the field, and
+`/library/metadata/{id}/children`, whose own direct answer is a 400 — and only a 200 whose
+bytes are not an image is the 500 cycle 29 measured. plexsim matched four artwork names
+with one regex and 500'd everything else, **its own section composite included**: Plex Web
+builds a library card from `composite` and routes it through the transcoder when the
+provider advertises `imagetranscoder`, which plexsim does, so every library tile the client
+asked for that way was a 500 where the direct path is a 200 image. The transcoder now asks
+plexsim's own router what the path answers and hands back those bytes.
+
+**The artwork read leaves took any verb.** `POST /library/metadata/{id}/thumb` and a bare
+`OPTIONS` each answered the whole JPEG, and so did the versioned path; a real PMS answers
+the ordinary 85-byte 404 to both and 404s a PUT to the versioned form. It is the class
+cycle 15 closed for twenty read-only routes and cycle 31 for ten more.
+
+**A collection's and a playlist's artwork leaves follow the item's ownership rule.** A
+collection with nothing uploaded carries `/library/collections/{id}/composite/{v}` in its
+`thumb` and a playlist carries none at all, so `/thumb`, `/art` and `/poster` are 404s until
+something is uploaded — where plexsim served its generated grey tile, with no
+`X-Plex-Local-Asset`, to a brand-new list. `/clearLogos` and `/themes` are the same empty
+candidate containers an item answers and plexsim 404'd them, which is what python-plexapi's
+`logos()` and `themes()` raise on. And an EMPTY playlist's `default://` poster candidate
+names `/playlists/{id}/composite/{updatedAt}` on a real PMS; plexsim built that key by
+concatenating two fields an empty playlist does not have, so the candidate's `key` was
+`?width=400&height=600` — a relative url that resolves to the page the client is on.
+
+**`/connections` is plain text.** A real PMS routes it and answers one line per connection
+slot — `3 10.0.0.1:61216 - Routing - GET /connections #4e445 - Token (plexa630)
+(curl/8.7.1)`, with the trailing parenthesis naming the client's
+`X-Plex-Device-Name, X-Plex-Product` or its `User-Agent` — where plexsim answered the
+dispatcher's XML container. Cycle 50's 78-snapshot matrix established that PMS's acceptor
+pool, its ordinals and its hexadecimal request allocator are not derivable from outside;
+those stay recorded, and plexsim now reports its OWN live connections in the measured
+grammar rather than the wrong document.
+
+**Seven refusals, each measured on both versions.** An extra segment after a stream id is a
+404 whatever it says (plexsim answered its 501 to every name it did not know); so is one
+after an account or a device id, where plexsim answered the account row and the whole
+device list. Exactly four actions live under `/system/agents` — `search`, `update`,
+`contributors` and `media/get` — and each answers the plug-in framework's own TypeError
+traceback with a 500, where every other name is an empty-bodied 404; plexsim answered the
+agent catalogue to two of them and 404'd two others. `/library/metadata/augmentations/{x}`
+parses its id before the lookup, so a non-number is a 400. All four transcode prefixes the
+route table names are routed, and plexsim 404'd three of them. And the part leaf's arity is
+the route template's: ONE extra segment is a filename whatever it says — `/library/parts/
+{id}/indexes`, `/abc` and `/12345678901` all serve the bytes — and the digit rule only
+decides the changestamp when a filename follows it.
+
+**`/hubs/sections/{id}/popular` is a real route**, and its rows are the library's SEASONS
+with a `viewCount` above zero, most-watched first, in the full row projection, with the
+librarySection triple on the container. zen's show library answers one season at
+`viewCount 73`; its movie libraries answer the empty container whatever their play counts.
+plexsim 404'd it on both library types.
+
+**A Categories tile carries a blend colour, and it is a table.** Thirteen genre names have
+a fixed colour and every other genre takes the next of a seven-colour cycle walked in
+TAG-ID order among the unknown ones — 19 of 19 on zen and 3 of 3 on kids. The colour is not
+derived from the artwork, which plexsim's own comment assumed; plexsim emitted no
+`blendColor` at all, so a TV client's Categories browse drew every tile untinted. The art
+each tile uses is the highest-rated item carrying that genre and an `art` that an earlier
+genre has not taken, ties by the lowest ratingKey — 38 of the 39 observed picks.
+
+**An actor with no portrait carries the bundled silhouette.** 479 of zen's 3,416 actor-axis
+rows carry `/:/resources/actor-icon.png?t=<stamp>` and not one lacks a `thumb`, while a
+director, writer or producer with no portrait carries none at all. plexsim left the
+attribute off, so Plex Web's Cast grid drew a broken image.
+
+**And an indexed tag write on the SECTION save path is a tag write whatever follows
+`.tag.`** — `.role`, `.thumb`, `.id`, `.filter` and even `.zzz` are 200s on both copies, and
+the role itself is stored empty. plexsim skipped only `.tag.tag`, so the Edit dialog's own
+Cast row, which sends the name and the role together, was refused from the section path
+while the item path accepted it.
+
+**Measured and not acted on.**
+
+* **The framework's kwarg arithmetic.** `/system/agents/{action}` passes the query through
+  to PMS's own Python function, so the sentence moves with it: `?mediaType=1` makes
+  `media_get` "(2 given)", `?primaryAgent=x` makes it "got an unexpected keyword argument",
+  and `search` DROPS a name it does not know where the other three raise on it. The
+  recognised names and that split are implemented as measured; the general rule is the
+  signatures of functions inside the bundle and is not derivable from outside.
+* **`/connections`' acceptor pool**, its ordinals and its request allocator — cycle 50's
+  bound, unchanged.
+* **The pixels of the 68 bundled images.** The names, media types and geometries are
+  measured; reproducing 4.7 MB of a product's artwork to reproduce the bytes is not done.
+* **A movie library's `/hubs/sections/{id}/popular`** is a 200 empty container on zen and a
+  **500** on kids, and the driver is not identified — not history, not watch state, not the
+  version, not the claim. plexsim answers zen's, being the version it reports.
+* **`/library/parts/{id}/indexes/{sd|hd}[/{offset}]`**, the BIF seek-preview index, and
+  `/library/media/{id}/chapterImages/{n}`: 404 on every instrument, because no instrument
+  holds a generated index or a chapter.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

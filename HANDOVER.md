@@ -3632,6 +3632,51 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 52 — the server's own binary as the route table
+
+Cycle 51 was clean, so cycle 52 reopened the loop the only way it has ever been reopened:
+**by recognising an instrument.** Fifty-one cycles built plexsim's route table out of what a
+CLIENT was seen to ask for. The **Plex Media Server binary** names the endpoints no client
+sends — it is 22 MB, readable on both references, and its string table carries PMS's own
+route templates with their parameter captures. Diffing the two binaries splits the
+vocabulary per version for free.
+
+**22 findings, 22 commits, every one proved fail-then-pass against its own parent.**
+
+The driver took the route table itself and found that **the legacy dispatcher's prefix
+listing is a rule, not a table**: a breadth-first walk over the alphabet recovered 154
+listings and one rule reproduces all 154 with zero membership mismatches, where cycle 50's
+captured 58 paths left 119 prefixes answering an empty listing. It also found **three static
+files at the top of the surface** (`/crossdomain.xml`, `/clientaccesspolicy.xml`,
+`/favicon.ico`) that answer **with no token** — the third, fourth and fifth exception to the
+401 rule — that **`/:/plugins` is seventeen constant rows** with a whole second plug-in
+framework subtree under it, that **the framework's cookie rides only its own responses**,
+that **`/connections` is `text/plain`**, and that **the unauthenticated partition is wider
+than cycle 16's eleven**.
+
+Two hunts ran beside it.
+
+* **Territory A, the artwork family** — five findings. `/:/resources/*` is **70 names**, PMS's
+  whole `Resources/Graphics` tree, where cycle 29 fixed a ten-name sample at seven; the
+  artwork read leaves answered **any verb**, including a bare OPTIONS returning 56 KB of
+  JPEG; the **photo transcoder** fetches the path it is given, so a section composite — the
+  path Plex Web builds every library card from — transcodes to its own jpeg where plexsim
+  500'd it; a collection's and a playlist's artwork leaves follow the item ownership rule;
+  and an empty playlist's poster candidate named a relative url.
+* **Territory B, the leaf vocabulary the binary names** — nine findings, six of them
+  refusal shapes measured on both versions (a stream, account or device id's extra segment;
+  the four plug-in framework actions under `/system/agents`; the augmentation id's parse;
+  all four transcode prefixes; the part leaf's changestamp/filename arity), plus
+  `/hubs/sections/{id}/popular`, the Categories tile's `blendColor` table, the actor axis's
+  silhouette, and the section save path reading `.tag.role` as a scoped filter.
+
+**Two recorded beliefs overturned.** Cycle 29's "`/:/resources/` is SEVEN names" was a
+ten-name sample; HANDOVER §8's inherited "legacy agents and the `/:/plugins` listing" was a
+bound on a fixed table in the image, which is the same class as the profile files cycle 31
+read out and shipped. Cycle 18's "PATCH is a 405, the only one on the surface" names two
+framework subtrees rather than one, and cycle 16's eleven 401 roots are thirteen plus three
+own-refusal paths and a redirect.
+
 ### Cycle 51 — clean stopping repeat over every Cycle-50 axis
 
 Cycle 51 froze behavior/test head `4069fd4` and assigned the recovered exact-request and
@@ -4495,6 +4540,28 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 52.**
+
+- **The plug-in framework's kwarg arithmetic.** `/system/agents/{action}` passes the query
+  through to PMS's own Python function, so the TypeError sentence moves with it:
+  `?mediaType=1` makes `media_get` "(2 given)", `?primaryAgent=x` makes it "got an
+  unexpected keyword argument", and `search` DROPS a name it does not know where the other
+  three raise on it. The recognised names and that split are implemented as measured over
+  twelve cells; the general rule is the signatures of functions inside
+  `Framework.bundle` and is not derivable from the API.
+- **The pixels of the 68 bundled `/:/resources/*` images.** Their names, media types and
+  geometries are measured and served; reproducing 4.7 MB of a product's artwork to
+  reproduce the bytes is not done. The two files that are not images are carried verbatim.
+- **A movie library's `/hubs/sections/{id}/popular`.** zen answers a 200 empty container and
+  kids a **500**, and the driver is not identified — not history, not watch state, not the
+  version, not the claim. plexsim answers zen's, being the version it reports.
+- **`/library/parts/{id}/indexes/{sd|hd}[/{offset}]`** (the BIF seek-preview index) and
+  **`/library/media/{id}/chapterImages/{n}`**: 404 on every instrument, because no
+  instrument holds a generated index or a chapter.
+- **`/connections`' acceptor pool, ordinals and request allocator** — cycle 50's bound,
+  unchanged. plexsim now answers the measured `text/plain` shape with its OWN live
+  connections; PMS's `??? - Uninitialized` slots are not modelled.
 
 **Cycles 50–51.**
 
