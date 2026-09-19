@@ -28601,6 +28601,67 @@ def main():
           and b"MediaContainer" not in policy_c52b,
           "%d/%d bytes" % (len(policy_c52b), len(access_c52b)))
 
+    # Cycle 52, measured on kids (1.43.4), zen (1.42.2), plexscratch and plexscratch42, which
+    # answer the identical seventeen rows in the identical order: `/:/plugins` lists the
+    # plug-ins PMS itself bundles. HANDOVER §8 carried "the `/:/plugins` listing" as a
+    # deliberate bound since cycles 1-6 on the grounds that plexsim hosts no plug-ins -- but
+    # the list is a fixed table in the image, like the profile files cycle 31 shipped, and
+    # plexsim answered `size 0` where a real server answers seventeen.
+    _, plugins_c52c, _ = get(base, "/:/plugins")
+    rows_c52c = plugins_c52c.get("Plugin") or []
+    check("/:/plugins lists the seventeen bundled plug-ins",
+          [row_c52c.get("identifier") for row_c52c in rows_c52c][:3]
+          == ["com.plexapp.agents.fanarttv", "com.plexapp.framework",
+              "com.plexapp.agents.htbackdrops"]
+          and len(rows_c52c) == 17
+          and all(row_c52c.get("state") == (0 if row_c52c.get("identifier")
+                                            == "com.plexapp.system" else 4)
+                  for row_c52c in rows_c52c),
+          "%d rows" % len(rows_c52c))
+
+    # `/:/plugins/{id}/prefs` is what a `prefsKey` opens, and plexsim advertises
+    # `prefsKey="/:/plugins/com.plexapp.system/prefs"` on its own search container while
+    # 404ing it. Thirteen of the seventeen answer a document, byte-identical on both
+    # versions; the other four answer the framework's 500.
+    status_c52c, body_c52c, headers_c52c = request(
+        base, "GET", "/:/plugins/com.plexapp.system/prefs", want_json=False)
+    status_imdb_c52c, imdb_c52c, _ = request(
+        base, "GET", "/:/plugins/com.plexapp.agents.imdb/prefs", want_json=False)
+    status_500_c52c, _, _ = request(
+        base, "GET", "/:/plugins/com.plexapp.framework/prefs", want_json=False)
+    check("a plug-in's preference document is served",
+          status_c52c == 200 and len(body_c52c) == 418
+          and b'id="PO_RGN"' in body_c52c
+          and headers_c52c.get("Content-Type") == "application/xml"
+          and (headers_c52c.get("Set-Cookie") or "").startswith("com.plexapp.system=")
+          and status_imdb_c52c == 200 and len(imdb_c52c) == 2224
+          and status_500_c52c == 500,
+          "system=%s/%s imdb=%s framework=%s"
+          % (status_c52c, len(body_c52c), status_imdb_c52c, status_500_c52c))
+
+    # The framework's envelope, the same table `/system` has had since cycle 18: a bare
+    # identifier is an EMPTY-bodied 404 with no Content-Type, a write verb the same, and a
+    # bare OPTIONS an empty 200. An identifier the server does not host stays the ordinary
+    # 404 document.
+    wrong_c52c = []
+    for method_c52c, path_c52c, want_c52c, want_len_c52c in (
+            ("GET", "/:/plugins/com.plexapp.agents.imdb", 404, 0),
+            ("POST", "/:/plugins/com.plexapp.agents.imdb/prefs", 404, 0),
+            ("PUT", "/:/plugins/com.plexapp.agents.imdb/prefs", 404, 0),
+            ("DELETE", "/:/plugins/com.plexapp.agents.imdb/prefs", 404, 0),
+            ("OPTIONS", "/:/plugins/com.plexapp.agents.imdb/prefs", 200, 0),
+            ("GET", "/:/plugins/com.plexapp.agents.imdb/zzz", 404, 0),
+            ("GET", "/:/plugins/zzz/prefs", 404, 85),
+            ("GET", "/:/plugins/", 404, 85)):
+        got_c52c, payload_c52c, head_c52c = request(base, method_c52c, path_c52c, want_json=False)
+        if (got_c52c, len(payload_c52c)) != (want_c52c, want_len_c52c):
+            wrong_c52c.append("%s %s -> %s/%s" % (method_c52c, path_c52c, got_c52c,
+                                                  len(payload_c52c)))
+        if want_len_c52c == 0 and head_c52c.get("Content-Type"):
+            wrong_c52c.append("%s %s carries a type" % (method_c52c, path_c52c))
+    check("the plug-in framework's envelope under /:/plugins",
+          not wrong_c52c, "; ".join(wrong_c52c)[:300])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
