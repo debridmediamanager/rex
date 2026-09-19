@@ -8300,6 +8300,18 @@ def main():
                            "get": [], "gET": [], "blah": [], "helloGET": []},
           "%s" % methods_c50a)
 
+    # That silence is position-dependent. After one successful request the same token
+    # reaches the unknown-method handler, which matters when an ignored Content-Length
+    # spelling leaves body bytes glued to the following `GET`.
+    check("a lower-case method after a successful response is a reusable 500",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n"
+                    b"helloGET /library/sections HTTP/1.1\r\nHost: h\r\n\r\n")
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 500 Internal Serv"], False), "")
+    check("an ignored length can expose that same second-request method",
+          wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\nContent-Length:  5\r\n\r\nhello"
+                    + FOLLOW50A)
+          == (["HTTP/1.1 200 OK", "HTTP/1.1 500 Internal Serv"], False), "")
+
     # A refusal that follows a successful response on one connection reaches the wire.
     check("a refusal written for a pipelined request is flushed, with its status line",
           wire_c50a(b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\nX-T: v\r\n\r\n")
