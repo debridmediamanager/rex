@@ -4230,10 +4230,28 @@ class PlexSim:
             return ("error", 404, "plexsim: not found")
         route, raw_query = _target_parts(path)
         if not route.startswith("/web"):
-            # Measured: an EMPTY interior segment (`//identity`, `/library//sections`)
-            # is a 404, where plexsim dropped it and served the page; one TRAILING
-            # slash is harmless (`/library/sections/` is the listing, which plexsim
-            # 404'd).
+            # Cycle 50 measured the exceptions to the empty-segment rule on kids, zen
+            # and both copies. These exact routes accept a second trailing slash and
+            # return their parent's own response; no algorithm explained the split, so
+            # keep it as the finite measured table.
+            double_trailing = route in {
+                "/library//", "/hubs//", "/status/sessions//",
+                "/library/sections/1//", "/media/providers//",
+                "/media/providers/metadata//", "/butler//", "/activities//",
+                "/devices//", "/clients//", "/accounts//", "/security//",
+                "/servers//", "/channels//", "/resources//", "/:/plugins//",
+                "/:/prefs//",
+            } or re.fullmatch(r"/library/metadata/[0-9]+//", route) is not None
+            if route == "/:/plugins/":
+                # The single trailing slash is the inverse exception: all four
+                # references 404 it although the bare path is the plug-in listing.
+                return ("error", 404, "plexsim: not found")
+            if double_trailing:
+                route = route[:-1]
+            # Measured: every other EMPTY interior segment (`//identity`,
+            # `/library//sections`) is a 404, where plexsim dropped it and served the
+            # page; one TRAILING slash is normally harmless (`/library/sections/` is
+            # the listing, which plexsim 404'd).
             if "//" in route:
                 return ("error", 404, "plexsim: not found")
             if len(route) > 1 and route.endswith("/"):
@@ -4783,6 +4801,11 @@ class PlexSim:
             # Measured on both servers: one agent by identifier -- a real one or
             # `nosuch.agent` -- is a 404 with an empty body. plexsim answered the whole
             # agent list to it, which reads as "this identifier names six agents".
+            return ("error", 404, "plexsim: not found")
+        if (segments[:2] == ["system", "agents"] and len(segments) == 4
+                and segments[3] == "config"):
+            # Cycle 50: configuration is indexed. Omitting that index is a 404 on all
+            # four references, not the agent catalogue.
             return ("error", 404, "plexsim: not found")
         if route.startswith("/system/agents"):
             return self.system_agents(query)
