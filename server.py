@@ -4658,8 +4658,18 @@ class PlexSim:
             # 200). Normalising every segment made `+1` name version 1 and serve the
             # bytes a real PMS refuses, so the two validated positions are checked on the
             # RAW segment, before the normalisation below.
-            if len(pieces) > 4 and pieces[1:3] == ["library", "parts"] \
+            if len(pieces) > 5 and pieces[1:3] == ["library", "parts"] \
                     and not pieces[4].isdigit():
+                # Cycle 52, measured on kids (1.43.4) and zen (1.42.2) with a one-byte
+                # Range, three repeats each: PMS's route table spells this leaf
+                # `/parts/:partID(\d+)/:changestamp(\d+)?/:filename?`, so ONE extra
+                # segment is the FILENAME and can be anything -- `/library/parts/{id}/
+                # indexes`, `/abc` and `/12345678901` all serve the bytes -- and the digit
+                # rule only decides the changestamp when a filename follows it.
+                # `/indexes/sd` and `/a/b` stay 404s because their first segment is not a
+                # changestamp. plexsim applied the digit rule to a single extra segment
+                # too, so the part key with the filename suffix a client builds from
+                # `Part.file` was refused.
                 return ("error", 404, "plexsim: not found")
             if len(pieces) > 5 and pieces[1:2] == ["library"] \
                     and pieces[2] == "sections" and pieces[4] == "composite" \
