@@ -145,13 +145,21 @@ def main():
     tls_proc = serve(tls_port, ["--tls-cert", pem])
     plain_proc = serve(plain_port, [])
     try:
+        # The system Python on macOS links LibreSSL 2.8.3 and cannot offer TLS 1.3 at
+        # all. Keep the handshake/SNI assertions live at its highest version and record
+        # the unobservable preference explicitly; an OpenSSL-3 Python still has to prove
+        # the measured TLS-1.3 selection.
+        negotiated = "TLSv1.3" if ssl.HAS_TLSv1_3 else "TLSv1.2"
+        if not ssl.HAS_TLSv1_3:
+            skip("TLS 1.3 is preferred", "%s cannot offer TLS 1.3" % ssl.OPENSSL_VERSION)
+
         # 1. The same port answers plain HTTP and TLS, and the API is the same on both.
         check("the TLS port still answers plain HTTP",
               first_bytes(tls_port, b"GET /identity HTTP/1.1\r\nHost: h\r\n\r\n"
                           ).partition(b"\r\n")[0], b"HTTP/1.1 200 OK")
         version, protocol, sock = handshake(tls_port)
         try:
-            check("the same port completes a TLS handshake", version, "TLSv1.3")
+            check("the same port completes a TLS handshake", version, negotiated)
             check("...and answers the same API over it", http_over(sock), "HTTP/1.1 200 OK")
             # Measured on both references: the server selects NO ALPN protocol, even when
             # the client offers only `h2` -- it does not negotiate the extension at all.
@@ -177,7 +185,7 @@ def main():
             version_sni, _, sock_sni = handshake(tls_port, sni=sni)
             if sock_sni:
                 sock_sni.close()
-            check("%s still completes the handshake" % label, version_sni, "TLSv1.3")
+            check("%s still completes the handshake" % label, version_sni, negotiated)
 
         # 5. Without a certificate the port is plain only -- which is what plexsim was.
         check("a server with no --tls-cert answers no TLS",
