@@ -28932,6 +28932,20 @@ def main():
           stream_c52m and not wrong_c52m and bare_c52m == 501,
           "; ".join(wrong_c52m)[:200] or "bare=%s" % bare_c52m)
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): an extra segment after an account
+    # or device id is a 404 -- `/accounts/1/history`, `/accounts/1/zzz`, `/devices/1/zzz`.
+    # plexsim's handlers read the id segment and ignored the rest, so `/accounts/1/history`
+    # answered the account row and `/devices/1/zzz` the whole device list.
+    wrong_c52n = []
+    for path_c52n in ("/accounts/1/history", "/accounts/1/zzz", "/devices/1/zzz",
+                      "/devices/1/history"):
+        status_c52n, body_c52n, _ = request(base, "GET", path_c52n, want_json=False)
+        if status_c52n != 404 or len(body_c52n) != 85:
+            wrong_c52n.append("%s -> %s/%s" % (path_c52n, status_c52n, len(body_c52n)))
+    control_c52n, _, _ = request(base, "GET", "/accounts/1", want_json=False)
+    check("an extra segment after an account or device id is a 404",
+          not wrong_c52n and control_c52n == 200, "; ".join(wrong_c52n)[:200])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
