@@ -17898,6 +17898,7 @@ class Handler(BaseHTTPRequestHandler):
         # request deadline absolute and the unterminated header block visible.
         self.rfile = _RequestReader(self.rfile, self.connection, self.timeout)
         self._undrained = 0
+        self._responses_sent = 0
 
     def handle_one_request(self):
         """The stdlib's loop body, with the three things cycle 49 measured added.
@@ -17909,6 +17910,7 @@ class Handler(BaseHTTPRequestHandler):
             self.rfile.begin()                                   # cycle 49
             self._undrained = 0
             self._close_after_response = False
+            self._status_sent = None
             # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
             # when the line finishes. `peek` blocks for the first byte, as this read
             # would anyway, and then hands back whatever the one raw read brought.
@@ -17992,6 +17994,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.connection.settimeout(self.timeout)
             except OSError:
                 pass
+            if self._status_sent is not None:
+                self._responses_sent += 1
 
     # A chunk size line, as a real PMS reads it. Cycle 49, 16 cells on both references:
     # the token parses like `strtol` in base 16 -- an optional sign, an optional `0x`
@@ -18355,7 +18359,7 @@ class Handler(BaseHTTPRequestHandler):
                 or not self._path_escapes_ok(target.split(b"?", 1)[0])):
             self.send_error(400)
             return False
-        if method[:1] != method[:1].upper():
+        if method[:1] != method[:1].upper() and self._responses_sent == 0:
             # Cycle 50: it is the FIRST BYTE, not the whole token. Measured on both
             # writable copies: `Get`, `Blah`, `HELLOGET` and `BLAH` are each the 500 an
             # unrecognised method gets, while `get`, `gET`, `blah` and `helloGET` draw
@@ -18363,6 +18367,11 @@ class Handler(BaseHTTPRequestHandler):
             # plexsim silenced anything that was not wholly upper-case, which is cycle
             # 27's rule read one step too wide; the cell that shows it is a leftover body
             # byte glued to the next request's `GET`.
+            # The silence applies only at the connection's first request. Re-sweeping
+            # exact-drained pipelines on kids and both disposable versions found that a
+            # lower-case token after a successful response reaches the ordinary unknown
+            # method handler: 500, with the socket still reusable. Let the base parser
+            # take that later line so `do_<token>` resolves to `_unknown_method`.
             self.close_connection = True
             return False
         if version not in (b"HTTP/1.0", b"HTTP/1.1"):
