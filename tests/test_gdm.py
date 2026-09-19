@@ -162,7 +162,9 @@ def main():
             print("SKIP a multicast search reaches the responder "
                   "(this host does not deliver multicast to itself)")
 
-        # 7. A rename re-stamps the advertisement, because Name is one of its fields.
+        # 7. The primitive used by the server's measured library-lifecycle hooks
+        # re-stamps explicitly. FriendlyName changes only `name`; the integration
+        # regression in test_catalog_features.py protects that distinction.
         before = disco.updated_at
         disco.name = "renamed"
         disco.touch()

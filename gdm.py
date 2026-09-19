@@ -81,9 +81,11 @@ did not move once in 86 samples over seventeen minutes.  It is the time the
 advertisement was last (re)generated.  The two ports can even disagree: plexscratch42
 answered 1789624280 on 32410 and 1789690002 on 32414 in the same second, and converged
 afterwards, so each socket carries its own last-regenerated stamp rather than reading
-one server-wide value.  plexsim stamps it when the advertised state is built and
-refreshes it when any advertised field changes; the exact event a real PMS refreshes it
-on is NOT measured (see HANDOVER 3.3).
+one server-wide value. Cycle 50 then sampled both disposable versions across the
+server's write surface: library create, edit and delete move the stamp; FriendlyName
+changes the advertised Name without moving it; refresh, item edit, collection create
+and index deletion also leave it alone. Plexsim therefore stamps at construction and
+touches only those three library-lifecycle hooks.
 """
 
 import logging
