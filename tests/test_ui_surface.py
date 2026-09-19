@@ -29038,6 +29038,39 @@ def main():
           and good_c52p == 404 and len(good_body_c52p) == 85,
           "bad=%s/%s good=%s" % (bad_c52p, len(body_c52p), good_c52p))
 
+    # Cycle 52, measured on zen (1.42.2, the build plexsim reports) and kids (1.43.4):
+    # `/hubs/sections/{id}/popular` is a real route plexsim 404'd. Its rows are the library's
+    # SEASONS with a `viewCount` above zero, most-watched first, in the full row projection,
+    # and its container carries `allowSync` and the librarySection triple with a NUMERIC id.
+    # A movie library answers the empty container on zen whatever its play counts.
+    _, before_c52s, _ = get(base, "/hubs/sections/%s/popular" % show_section)
+    episodes_c52s = []
+    for season_c52s in (get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+                        .get("Metadata") or []):
+        for leaf_c52s in (get(base, "/library/metadata/%s/children" % season_c52s["ratingKey"])[1]
+                          .get("Metadata") or []):
+            episodes_c52s.append((season_c52s["ratingKey"], leaf_c52s["ratingKey"]))
+    for _season_c52s, leaf_c52s in episodes_c52s[:1]:
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % leaf_c52s)
+    status_c52s, after_c52s, _ = get(base, "/hubs/sections/%s/popular" % show_section)
+    rows_c52s = after_c52s.get("Metadata") or []
+    movie_c52s, movie_body_c52s, _ = request(
+        base, "GET", "/hubs/sections/%s/popular" % movie_section)
+    extra_c52s, _, _ = request(base, "GET", "/hubs/sections/%s/popular/zzz" % show_section,
+                               want_json=False)
+    missing_c52s, _, _ = request(base, "GET", "/hubs/sections/999/popular", want_json=False)
+    check("a show library's popular hub lists its watched seasons",
+          status_c52s == 200 and rows_c52s
+          and all(row_c52s.get("type") == "season" for row_c52s in rows_c52s)
+          and after_c52s.get("allowSync") is True
+          and after_c52s.get("librarySectionID") == int(show_section)
+          and after_c52s.get("librarySectionUUID")
+          and movie_c52s == 200 and extra_c52s == 404 and missing_c52s == 404,
+          "before=%s after=%s movie=%s zzz=%s missing=%s"
+          % (len(before_c52s.get("Metadata") or []), len(rows_c52s), movie_c52s,
+             extra_c52s, missing_c52s))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
