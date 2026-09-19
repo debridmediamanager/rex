@@ -2220,6 +2220,7 @@ def _restamped(row, stamp):
     if stamp is None:
         return row
     changed = None
+    borrowed = {str(row.get(field)) for field in _BORROWED_ARTWORK if row.get(field)}
     for field in _BORROWED_ARTWORK:
         value = row.get(field)
         if not value:
@@ -2228,6 +2229,21 @@ def _restamped(row, stamp):
         if slash:
             changed = dict(row) if changed is None else changed
             changed[field] = "%s/%s" % (head, stamp)
+    images = row.get("Image")
+    if isinstance(images, list):
+        projected = []
+        image_changed = False
+        for image in images:
+            url = str(image.get("url") or "") if isinstance(image, dict) else ""
+            if url in borrowed and "/" in url:
+                head = url.rsplit("/", 1)[0]
+                projected.append(dict(image, url="%s/%s" % (head, stamp)))
+                image_changed = True
+            else:
+                projected.append(image)
+        if image_changed:
+            changed = dict(row) if changed is None else changed
+            changed["Image"] = projected
     return row if changed is None else changed
 
 

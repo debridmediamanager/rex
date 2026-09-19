@@ -509,6 +509,37 @@ def main():
           borrowed_thumb is None and owned_thumb == "/library/metadata/45202/thumb/21",
           "borrowed=%r owned=%r" % (borrowed_thumb, owned_thumb))
 
+    restamp_rows = [
+        {"ratingKey": "45301", "key": "/library/metadata/45301/children",
+         "type": "show", "title": "Restamp Show", "librarySectionID": 2,
+         "thumb": "/library/metadata/45301/thumb/999",
+         "art": "/library/metadata/45301/art/999"},
+        {"ratingKey": "45302", "key": "/library/metadata/45302/children",
+         "type": "season", "title": "Season 1", "index": 1,
+         "parentRatingKey": "45301", "librarySectionID": 2,
+         "thumb": "/library/metadata/45301/thumb/999",
+         "art": "/library/metadata/45301/art/999"},
+        {"ratingKey": "45303", "key": "/library/metadata/45303", "type": "episode",
+         "title": "Restamped Episode", "index": 1, "parentRatingKey": "45302",
+         "grandparentRatingKey": "45301", "librarySectionID": 2,
+         "addedAt": 123, "thumb": "/library/metadata/45303/thumb/456",
+         "grandparentThumb": "/library/metadata/45301/thumb/999",
+         "art": "/library/metadata/45301/art/999"},
+    ]
+    for synthetic in restamp_rows:
+        catalog.add(synthetic)
+    restamped_leaf = (get("/library/metadata/45301/allLeaves").get("Metadata") or [{}])[0]
+    restamped_images = {image.get("type"): image.get("url")
+                        for image in restamped_leaf.get("Image") or []}
+    catalog.remove(45301)
+    check("allLeaves restamps borrowed fields and their derived Image rows together",
+          restamped_leaf.get("grandparentThumb") == "/library/metadata/45301/thumb/123"
+          and restamped_images.get("coverPoster") == "/library/metadata/45301/thumb/123"
+          and restamped_images.get("background") == "/library/metadata/45301/art/123"
+          and restamped_images.get("snapshot") == "/library/metadata/45303/thumb/456",
+          "fields=%r images=%s"
+          % (restamped_leaf.get("grandparentThumb"), restamped_images))
+
     parent = get("/library/metadata/101?includeExtras=1")
     parent_row = (parent.get("Metadata") or [{}])[0]
     inline = (parent_row.get("Extras") or {}).get("Metadata") or []
