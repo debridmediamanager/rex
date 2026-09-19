@@ -29078,6 +29078,11 @@ def main():
     # is the FIRST attribute of the row, ahead of `type`. plexsim emitted no `blendColor` at
     # all, so a TV client's Categories browse drew every tile untinted, and its attribute
     # order was `type, key, title, thumb`.
+    # By the time this runs the suite has replaced the fixture's genre lists several times,
+    # so the check MAKES the state it needs rather than assuming the catalog's own genres:
+    # an indexed tag write replaces the list, and `Drama` is one of the thirteen names with
+    # a fixed colour.
+    request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=Drama" % movie)
     status_c52t, categories_c52t, _ = get(base, "/library/sections/%s/categories" % movie_section)
     rows_c52t = categories_c52t.get("Directory") or []
     wrong_c52t = []
@@ -29088,10 +29093,9 @@ def main():
         if list(row_c52t)[0] != "thumb":
             wrong_c52t.append("%s leads with %s" % (row_c52t.get("title"), list(row_c52t)[0]))
     known_c52t = [row_c52t for row_c52t in rows_c52t
-                  if str(row_c52t.get("title", "")).lower() in ("animation", "science fiction", "drama")]
+                  if str(row_c52t.get("title", "")).lower() == "drama"]
     for row_c52t in known_c52t:
-        want_c52t = {"animation": "347431", "science fiction": "673E8B",
-                     "drama": "846E49"}[str(row_c52t["title"]).lower()]
+        want_c52t = "846E49"
         if ("blendColor=%s&" % want_c52t) not in (row_c52t.get("thumb") or ""):
             wrong_c52t.append("%s wrong colour" % row_c52t.get("title"))
     check("a Categories tile carries its measured blend colour",
