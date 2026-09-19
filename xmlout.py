@@ -389,7 +389,8 @@ _ATTR_ORDER = {
     "Video[movie]": (
         "ratingKey", "key", "guid", "slug", "studio", "type", "title",
         "titleSort", "librarySectionTitle", "librarySectionID",
-        "librarySectionKey", "originalTitle", "contentRating", "contentRatingAge",
+        "librarySectionKey", "originalTitle", "isAdult", "contentRating",
+        "contentRatingAge",
         "summary", "rating", "audienceRating", "userRating", "viewCount",
         "lastViewedAt", "includedAt", "lastRatedAt", "year", "tagline", "thumb", "art",
         "duration", "originallyAvailableAt", "addedAt", "updatedAt", "deletedAt",

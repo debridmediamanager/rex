@@ -29822,6 +29822,58 @@ def main():
     check("seven of the ten sort and three group",
           not wrong_sort_c53o, "; ".join(wrong_sort_c53o)[:250])
 
+    # Cycle 53, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2), identical on
+    # both: the ten columns read out of the database template are editable on the ITEM path
+    # -- `<column>.value=` a 200 and `.locked=1` recording the lock -- where plexsim answered
+    # 400 to nine of the ten, and six of them are a 500 on the SECTION path, the split
+    # `lastRatedAt` already had. Only `isAdult` reads back: exactly the literal `1` stores it,
+    # every other value clears it, and the row then carries `isAdult: true` between
+    # `originalTitle` and `summary` -- which zen's row 631 shows on a real library.
+    wrong_c53p = []
+    for column_c53p in ("remote", "isAdult", "resourcesChangedAt", "userFields",
+                        "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt",
+                        "agent", "source"):
+        status_c53p, _, _ = request(base, "PUT", "/library/metadata/%s?%s.value=1"
+                                    % (movie, column_c53p))
+        if status_c53p != 200:
+            wrong_c53p.append("item %s.value -> %s" % (column_c53p, status_c53p))
+        status_c53p, _, _ = request(base, "PUT", "/library/metadata/%s?%s.locked=1"
+                                    % (movie, column_c53p))
+        if status_c53p != 200:
+            wrong_c53p.append("item %s.locked -> %s" % (column_c53p, status_c53p))
+    for column_c53p, want_c53p in (("remote", 200), ("isAdult", 200),
+                                   ("resourcesChangedAt", 200), ("userFields", 200),
+                                   ("lastSkippedAt", 500), ("agent", 500), ("source", 500)):
+        status_c53p, _, _ = request(
+            base, "PUT", "/library/sections/%s/all?type=1&id=%s&%s.value=1"
+            % (movie_section, movie, column_c53p))
+        if status_c53p != want_c53p:
+            wrong_c53p.append("section %s -> %s" % (column_c53p, status_c53p))
+    _, detail_c53p, _ = get(base, "/library/metadata/%s" % movie)
+    row_c53p = (detail_c53p.get("Metadata") or [{}])[0]
+    locks_c53p = {f_c53p.get("name") for f_c53p in row_c53p.get("Field") or []}
+    keys_c53p = list(row_c53p)
+    check("the ten database columns take an item edit and a lock",
+          not wrong_c53p and {"remote", "beginsAt", "agent"} <= locks_c53p,
+          "; ".join(wrong_c53p)[:220] or "locks=%d" % len(locks_c53p))
+
+    check("isAdult reads back as a boolean in its measured slot",
+          row_c53p.get("isAdult") is True and "isAdult" in keys_c53p
+          and keys_c53p.index("librarySectionKey") < keys_c53p.index("isAdult")
+          < keys_c53p.index("summary"),
+          "value=%r around=%s" % (row_c53p.get("isAdult"),
+                                  keys_c53p[max(0, keys_c53p.index("isAdult") - 2):
+                                            keys_c53p.index("isAdult") + 2]
+                                  if "isAdult" in keys_c53p else []))
+
+    # Only the literal 1 is true, on both copies.
+    request(base, "PUT", "/library/metadata/%s?isAdult.value=0" % movie)
+    _, cleared_c53p, _ = get(base, "/library/metadata/%s" % movie)
+    check("only the literal 1 makes a row adult",
+          "isAdult" not in (cleared_c53p.get("Metadata") or [{}])[0],
+          repr((cleared_c53p.get("Metadata") or [{}])[0].get("isAdult")))
+    request(base, "PUT", "/library/metadata/%s?isAdult.value=1" % movie)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
