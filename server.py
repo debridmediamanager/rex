@@ -6597,6 +6597,16 @@ class PlexSim:
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
             return self.play_queue_route(method, segments, query)
 
+        if route.startswith(("/audio/:/transcode/", "/music/:/transcode/",
+                             "/subtitles/:/transcode/")):
+            # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): PMS's own route table
+            # spells this leaf `/:type(video|music|audio|subtitles)/:/transcode`, and all
+            # four prefixes are ROUTED -- a bare
+            # `/audio/:/transcode/universal/decision` is the decision's own
+            # no-parameters 400 on both references, exactly as the video form is, where
+            # plexsim 404'd the whole prefix. plexsim has no encoder, so what it answers
+            # past that refusal is its own (HANDOVER 8); the refusal is the measured part.
+            return ("error", 400, "plexsim: bad request")
         if route == "/video/:/transcode/universal/decision":
             return self.decision(query, headers)
         if route.startswith("/video/:/transcode/universal/start"):

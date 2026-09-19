@@ -28982,6 +28982,23 @@ def main():
     check("the four framework actions under /system/agents",
           not wrong_c52o and catalogue_c52o == 200, "; ".join(wrong_c52o)[:250])
 
+    # Cycle 52, measured on kids (1.43.4) and zen (1.42.2): PMS's own route table spells the
+    # transcoder `/:type(video|music|audio|subtitles)/:/transcode`, and all four prefixes are
+    # routed -- a bare `/audio/:/transcode/universal/decision` is the decision's own
+    # no-parameters 400 on both references, like the video form. plexsim 404'd three of the
+    # four, so a music or subtitle client was told the endpoint does not exist rather than
+    # that it asked wrongly.
+    wrong_c52q = []
+    for prefix_c52q in ("/audio", "/music", "/subtitles"):
+        status_c52q, body_c52q, _ = request(
+            base, "GET", "%s/:/transcode/universal/decision" % prefix_c52q, want_json=False)
+        if status_c52q != 400 or len(body_c52q) != 89:
+            wrong_c52q.append("%s -> %s/%s" % (prefix_c52q, status_c52q, len(body_c52q)))
+    video_c52q, _, _ = request(base, "GET", "/video/:/transcode/universal/decision",
+                               want_json=False)
+    check("every transcode prefix the route table names is routed",
+          not wrong_c52q and video_c52q == 400, "; ".join(wrong_c52q)[:200])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
