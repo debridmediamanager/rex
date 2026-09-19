@@ -5482,9 +5482,12 @@ class PlexSim:
                     "local": 1,
                     "port": self.private_port or 32400,
                 })
-            return self.bare_container(noHistory=0, replaceParent=0, size=len(rows),
-                                       identifier="com.plexapp.system",
-                                       Directory=rows)
+            # Cycle 53: and it pages like `/system` -- `totalSize` first, no `offset`.
+            page, paged, _start, total = self.page_window(rows, query)
+            return self.bare_container(
+                noHistory=0, replaceParent=0, size=len(page),
+                identifier="com.plexapp.system", Directory=page,
+                **({"totalSize": total} if paged else {}))
         if route.startswith("/system/bundle/media/flags/"):
             # Cycle 53: the flag image family every row's `mediaTagPrefix` points at.
             return self.media_flag(route[len("/system/bundle/media/flags/"):])
@@ -20085,6 +20088,38 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Plex-Content-Compressed-Length", str(len(squeezed)))
         return squeezed
 
+    def _framework_document_window(self, document):
+        """The response headers a sliced framework document carries."""
+        start, _size = self._container_window()
+        match = re.search(r'totalSize="(\d+)"', document)
+        if start is None or match is None:
+            return ()
+        return (("X-Plex-Container-Start", str(start)),
+                ("X-Plex-Container-Total-Size", match.group(1)))
+
+    def _page_framework_document(self, document):
+        """Slice a captured framework document to the window the client asked for.
+
+        Cycle 53, measured on kids and zen: `/:/plugins/{id}/prefs` pages like every other
+        framework container -- `Start=1&Size=1` on themoviedb's four settings answers
+        `totalSize="4" ... size="1"` and one row, with both response headers -- where
+        plexsim served the whole captured document whatever was asked. The rows are the
+        document's own lines, so slicing them keeps every attribute byte for byte.
+        """
+        start, size = self._container_window()
+        if start is None:
+            return document
+        head, _, rest = document.partition("\n")
+        container, _, body = rest.partition("\n")
+        rows = [line for line in body.split("\n") if line.strip().startswith("<Setting")]
+        page = rows[start:start + size]
+        container = re.sub(r'size="\d+"', 'size="%d"' % len(page), container, count=1)
+        container = container.replace("<MediaContainer ",
+                                      '<MediaContainer totalSize="%d" ' % len(rows), 1)
+        if not page:
+            return "%s\n%s\n" % (head, container.replace(">", "/>", 1))
+        return "%s\n%s\n%s\n</MediaContainer>\n" % (head, container, "\n".join(page))
+
     def _paging_headers(self, body):
         """The window a paged container answers in its response HEADERS.
 
@@ -20093,10 +20128,34 @@ class Handler(BaseHTTPRequestHandler):
         own `offset`/`totalSize` -- `/identity` answers Total-Size 0 -- and an unpaged
         one carries neither. plexsim sent no such header at all.
         """
-        if not isinstance(body, dict) or "offset" not in body or "totalSize" not in body:
+        if not isinstance(body, dict) or "totalSize" not in body:
             return ()
-        return (("X-Plex-Container-Start", str(body["offset"])),
+        if "offset" in body:
+            return (("X-Plex-Container-Start", str(body["offset"])),
+                    ("X-Plex-Container-Total-Size", str(body["totalSize"])))
+        # Cycle 53: a plug-in FRAMEWORK container pages without emitting an `offset` --
+        # cycle 18 measured that on `/system` -- and it still answers both response
+        # headers, on kids and zen alike. plexsim keyed the headers on the body's
+        # `offset`, so the one family that has none sent neither.
+        if "noHistory" not in body:
+            return ()
+        start = self._container_window()[0]
+        if start is None:
+            return ()
+        return (("X-Plex-Container-Start", str(start)),
                 ("X-Plex-Container-Total-Size", str(body["totalSize"])))
+
+    def _container_window(self):
+        """The (start, size) the request asked for, header first, or (None, None)."""
+        _route, raw_query = _target_parts(getattr(self, "path", "") or "")
+        query = dict(urllib.parse.parse_qsl(raw_query, keep_blank_values=True))
+        values = []
+        for name in ("X-Plex-Container-Start", "X-Plex-Container-Size"):
+            value = self._header_value(name) or query.get(name)
+            if value is None or not str(value).lstrip("+").isdigit():
+                return (None, None)
+            values.append(int(str(value).lstrip("+")))
+        return (values[0], values[1])
 
     def _ranged(self, status, payload):
         """Apply a `Range` header to any body -> (payload, status, Content-Range).
@@ -21066,9 +21125,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(result[1], "text/html", b"")
                 return
             if kind == "framework-xml":
-                # Cycle 52: a plug-in's preference document, served verbatim. The
-                # framework writes `application/xml` and its own per-plug-in cookie.
-                self._send(200, "application/xml", result[1])
+                # Cycle 52: a plug-in's preference document. The framework writes
+                # `application/xml` and its own per-plug-in cookie.
+                # Cycle 53: and it PAGES like every other framework container.
+                document = self._page_framework_document(result[1].decode("utf-8"))
+                self._send(200, "application/xml", document.encode("utf-8"),
+                           self._framework_document_window(document))
                 return
             if kind == "framework-plain":
                 # Cycle 53: a framework route whose result is a STRING or a document the
