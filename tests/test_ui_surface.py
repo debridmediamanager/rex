@@ -29550,6 +29550,49 @@ def main():
           "same=%s root=%s %s" % (prefs_c53i == list_c53i, root_c53i,
                                   root_head_c53i.get("Location")))
 
+    # Cycle 53, measured on kids (1.43.4), zen (1.42.2) and both disposable copies: a
+    # framework route whose own state COOKIE the server cannot unpack answers a 200 with an
+    # EMPTY body, `Content-Type: text/html; charset=UTF-8` and `Server: TornadoServer/1.0` --
+    # the one `Server:` header on the surface, which cycle 33 recorded as never sent. It
+    # swallows the route's own status too, so `/system/zzz` becomes 200/0 instead of 404 and
+    # `/system/services/url/lookup` 200/0 instead of its 500. The cookie's NAME has to be the
+    # identifier serving the route, and PMS's own handlers under `/system` are untouched.
+    def _cookied_c53j(path_c53j, cookie_c53j):
+        request_c53j = urllib.request.Request(base.rstrip("/") + path_c53j, headers={
+            "User-Agent": UA, "Cookie": cookie_c53j})
+        try:
+            with urllib.request.urlopen(request_c53j, timeout=20) as response_c53j:
+                return response_c53j.status, response_c53j.read(), dict(response_c53j.headers)
+        except urllib.error.HTTPError as error_c53j:
+            return error_c53j.code, error_c53j.read(), dict(error_c53j.headers)
+
+
+    wrong_c53j = []
+    for path_c53j in ("/system", "/system/zzz", "/system/services/url/lookup",
+                      "/:/plugins/com.plexapp.agents.themoviedb/prefs"):
+        owner_c53j = ("com.plexapp.agents.themoviedb" if "/:/plugins/" in path_c53j
+                      else "com.plexapp.system")
+        status_c53j, body_c53j, head_c53j = _cookied_c53j(
+            path_c53j, "%s=garbage" % owner_c53j)
+        if (status_c53j, len(body_c53j)) != (200, 0) \
+                or head_c53j.get("Server") != "TornadoServer/1.0" \
+                or head_c53j.get("Set-Cookie"):
+            wrong_c53j.append("%s -> %s/%s server=%s"
+                              % (path_c53j, status_c53j, len(body_c53j),
+                                 head_c53j.get("Server")))
+    # the controls: a cookie for another plug-in, a well-formed blob, and PMS's own handlers
+    for path_c53j, cookie_c53j in (
+            ("/system", "com.plexapp.agents.themoviedb=garbage"),
+            ("/system", "com.plexapp.system=Y2VyZWFsMQowCmIx"),
+            ("/system/agents", "com.plexapp.system=garbage"),
+            ("/system/scanners/1", "com.plexapp.system=garbage")):
+        status_c53j, body_c53j, head_c53j = _cookied_c53j(path_c53j, cookie_c53j)
+        if head_c53j.get("Server") or not body_c53j:
+            wrong_c53j.append("control %s %s -> %s/%s" % (path_c53j, cookie_c53j[:22],
+                                                          status_c53j, len(body_c53j)))
+    check("a framework route with an unreadable state cookie answers Tornado's empty 200",
+          not wrong_c53j, "; ".join(wrong_c53j)[:280])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
