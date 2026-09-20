@@ -29734,14 +29734,19 @@ def main():
 
     # Cycle 53, measured on kids (episode 8, season 7) and zen (episode 19758), each twice:
     # `includeAlternates=1` inlines the row's OWN remote candidate list, so a row whose
-    # `/arts` answers `size 0` carries no `Art` key at all -- while zen's season 19757, whose
-    # `/arts` answers two, carries one. plexsim inlined the SHOW's candidate onto every
-    # episode and season, because `hierarchy` copies `_art_url` down and the option read it
-    # without the ownership gate the candidate leaf applies: the server contradicted its own
-    # `/arts`.
+    # `/arts` offers no AGENT candidate carries no `Art` key at all -- while zen's season
+    # 19757, whose `/arts` answers two, carries one. plexsim inlined the SHOW's candidate
+    # onto every episode and season, because `hierarchy` copies `_art_url` down and the
+    # option read it without the ownership gate the candidate leaf applies: the server
+    # contradicted its own `/arts`.
+    #
+    # The comparison is against the AGENT's candidate and not the container's `size`. By
+    # the time the whole suite reaches this point the fixture's show has been cleared and
+    # uploaded to, so its `/arts` answers ten rows -- nine uploads and the generated
+    # placeholder -- and not one of them is an agent candidate. Keying on `size` made this
+    # check pass its own fail-then-pass proof on a fresh server and fail inside the suite,
+    # which is the trap the handover names: a check must survive the whole suite.
     wrong_c53n = []
-    for rating_key_c53n in (episode_c53n for episode_c53n in ([show] if show else [])):
-        pass
     for rating_key_c53n in ([show] if show else []):
         _, children_c53n, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1"
                                   % rating_key_c53n)
@@ -29754,10 +29759,11 @@ def main():
                                     % row_key_c53n)
             row_c53n = (detail_c53n.get("Metadata") or [{}])[0]
             has_c53n = "Art" in row_c53n
-            listed_c53n = bool(arts_c53n.get("size"))
+            listed_c53n = any(candidate_c53n.get("provider") not in (None, "local")
+                              for candidate_c53n in (arts_c53n.get("Metadata") or []))
             if has_c53n != listed_c53n:
-                wrong_c53n.append("%s arts=%s inline=%s" % (row_key_c53n,
-                                                            arts_c53n.get("size"), has_c53n))
+                wrong_c53n.append("%s agent-candidate=%s inline=%s"
+                                  % (row_key_c53n, listed_c53n, has_c53n))
     check("includeAlternates inlines only the artwork the row owns",
           show and not wrong_c53n, "; ".join(wrong_c53n)[:200])
 
