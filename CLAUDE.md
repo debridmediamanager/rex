@@ -48,12 +48,20 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `probes/` | One-off measurement scripts that produced findings |
 | `docs/findings.md` | Everything measured. Read before changing behaviour. |
 
-Sidecar fixtures (`server_prefs.json`, `section_prefs.json`,
-`section_meta.json`, `section_meta_show.json`, `item_prefs.json`, `section_prefs_new.json`,
-`section_filters.json`, `section_sorts.json`, `system_agents.json`, `languages.json`,
-`client_profiles.json`) are captured from a real PMS -- the last read out of its image -- and
-loaded relative to `server.py`. Keep the layout flat — the code resolves them
-with `dirname(__file__)`. A movie library and a show library have **different**
+Sidecar fixtures are captured from a real PMS -- the later ones read straight out of its
+image -- and loaded relative to `server.py`. Keep the layout flat — the code resolves them
+with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server_prefs.json`,
+`section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `item_prefs.json`,
+`section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
+`legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`,
+`client_profiles.json`, `spellfix_static_tags.json`); the image's own tables
+(`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
+`media_flags.json`); and three files served verbatim at the top of the surface with no token
+(`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
+exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
+**catalog**, not beside `server.py`, because they are state rather than measurement.
+
+A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other
 gives the client a grid whose filter bar can only talk about the wrong type.
 
