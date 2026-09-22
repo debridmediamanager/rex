@@ -29965,6 +29965,25 @@ def main():
           "got %s want %s" % (got_c54b, (want_unwatched_c54b, want_viewed_c54b,
                                          want_seasons_c54b)))
 
+    # Cycle 54, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) on a row that
+    # carried no rating at all: `rating=-5` clears the stars and STAMPS `lastRatedAt` with
+    # the current time, where only -1 clears both. Cycle 9's "keeps lastRatedAt" was a row
+    # rated seconds earlier, whose old stamp and the new one are indistinguishable.
+    import time as time_c54c
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+            % movie)
+    since_c54c = int(time_c54c.time())
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-5"
+            % movie)
+    _, rated_c54c, _ = get(base, "/library/metadata/%s" % movie)
+    row_c54c = (rated_c54c.get("Metadata") or [{}])[0]
+    check("a negative rating other than -1 stamps lastRatedAt",
+          "userRating" not in row_c54c and int(row_c54c.get("lastRatedAt") or 0) >= since_c54c,
+          "userRating=%r lastRatedAt=%r" % (row_c54c.get("userRating"),
+                                            row_c54c.get("lastRatedAt")))
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+            % movie)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
