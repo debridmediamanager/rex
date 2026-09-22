@@ -29984,6 +29984,19 @@ def main():
     request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
             % movie)
 
+    # Cycle 54, measured on zen (1.42.2) and kids (1.43.4): three of cycle 53's ten schema
+    # columns are DATES, not integers. `lastSkippedAt`, `beginsAt` and `endsAt` each take
+    # `-5y` and `2020-01-01` and refuse `1.5` with a 500 -- the grammar of `lastRatedAt`.
+    wrong_c54e = []
+    for column_c54e in ("lastSkippedAt", "beginsAt", "endsAt"):
+        for value_c54e, want_c54e in (("-5y", 200), ("2020-01-01", 200), ("1.5", 500)):
+            status_c54e, _, _ = request(base, "GET", "/library/sections/%s/all?%s%%3E%%3E=%s"
+                                        % (movie_section, column_c54e, value_c54e))
+            if status_c54e != want_c54e:
+                wrong_c54e.append("%s>>=%s -> %s" % (column_c54e, value_c54e, status_c54e))
+    check("lastSkippedAt, beginsAt and endsAt are date columns", not wrong_c54e,
+          "; ".join(wrong_c54e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
