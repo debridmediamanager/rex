@@ -578,8 +578,12 @@ REFUSED_FILTER_FIELDS.add("extraType")
 # The types below are the ones that reproduce the measured grid. `userFields` is the
 # outlier: it is a **500 under every operator and every value**, so it refuses rather
 # than filters, like `parentIndex`.
-for _column in ("remote", "lastSkippedAt", "mediaAnalysisVersion", "beginsAt", "endsAt"):
+for _column in ("remote", "mediaAnalysisVersion"):
     FILTER_FIELD_TYPES.setdefault(_column, "integer")
+# Cycle 54 corrected three of them, measured on zen (1.42.2) and kids (1.43.4): the time
+# columns take a relative or an ISO date and refuse a fraction, like `lastRatedAt`.
+for _column in ("lastSkippedAt", "beginsAt", "endsAt"):
+    FILTER_FIELD_TYPES.setdefault(_column, "date")
 for _column in ("isAdult", "resourcesChangedAt", "agent", "source"):
     FILTER_FIELD_TYPES.setdefault(_column, "string")
 PARSE_ONLY_FIELD_TYPES["userFields"] = "string"
