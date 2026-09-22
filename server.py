@@ -584,6 +584,14 @@ for _column in ("isAdult", "resourcesChangedAt", "agent", "source"):
     FILTER_FIELD_TYPES.setdefault(_column, "string")
 PARSE_ONLY_FIELD_TYPES["userFields"] = "string"
 REFUSED_FILTER_FIELDS.add("userFields")
+# Cycle 54, read out of the binary's own SQL -- `viewUpdatedAt` is in the projection PMS
+# reads a row's view state with, and Plex Web asks `/library/all?type=1&userRating=10&
+# sort=viewUpdatedAt:desc` -- and measured on zen (1.42.2), kids (1.43.4) and
+# plexscratch42: it is the time the row's per-user view state was last WRITTEN, a DATE
+# column (a word, a fraction and an empty value are 500s, `-5y` and an ISO date parse)
+# whose null matches nothing, and a real sort key. It is never on a row. plexsim knew
+# none of it: the filter answered every row and the sort a 500.
+FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
@@ -10043,6 +10051,12 @@ class PlexSim:
         if key == "createdAt":
             # Measured on zen: `sort=createdAt` comes back in addedAt order.
             return lambda r: (r.get("addedAt") is not None, r.get("addedAt") or 0)
+        if key == "viewUpdatedAt":
+            # Cycle 54: the view-state write time, which no row carries -- see
+            # FILTER_FIELD_TYPES. zen's `sort=viewUpdatedAt:desc` opens on its most
+            # recently rated rows and ends on the 3,463 never written.
+            return lambda r: (r.get("_viewUpdatedAt") is not None,
+                              r.get("_viewUpdatedAt") or 0)
         if key == "mediaCount":
             # Cycle 20: a real ordering on both references, at every row type -- zen's
             # `sort=mediaCount:desc` opens on the movie with 59 versions. plexsim
@@ -10364,6 +10378,8 @@ class PlexSim:
             return (int(year) // 10 * 10) if year else None
         if field == "unwatched":
             return 0 if row.get("viewCount") else 1
+        if field == "viewUpdatedAt":
+            return row.get("_viewUpdatedAt")
         if field == "inProgress":
             return 1 if row.get("viewOffset") else 0
         if field == "unmatched":

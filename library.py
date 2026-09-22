@@ -410,6 +410,33 @@ class Library:
         self.recount(row)
         return True
 
+    def _stamp_view(self, *rows):
+        """Cycle 54: `viewUpdatedAt`, the time a row's per-user view state was written.
+
+        Measured on plexscratch42 (1.42.2), one write at a time with every row's value
+        bisected through `viewUpdatedAt>>=`: a rating (any value, -1 included), a
+        scrobble, an unscrobble -- even of a row with nothing to clear -- a `/:/progress`
+        that stores a position and a Remove from Continue Watching each stamp it, and an
+        edit or a sub-minute progress does not. It is stamped on exactly the rows whose
+        stored view state the write touches: a rating on the rated row alone, a scrobble
+        of a season or a show on it and everything beneath it, and an EPISODE scrobble or
+        progress on its season and show as well, whose own counter and `lastViewedAt` it
+        writes. The stamp outlives the state it recorded.
+        """
+        now = _now()
+        for row in rows:
+            key = str((row or {}).get("ratingKey") or "")
+            # Catalog rows only: a list's state row is minted per read.
+            if key.isdigit() and self.catalog.items.get(int(key)) is row:
+                row["_viewUpdatedAt"] = now
+
+    def _descendants(self, row):
+        out = []
+        for child in self.catalog.children(row.get("ratingKey")):
+            out.append(child)
+            out.extend(self._descendants(child))
+        return out
+
     def scrobble(self, rating_key, watched, account_id=1, device_id=1):
         """Mark played/unplayed. A show or season marks every episode beneath it.
 
@@ -474,6 +501,10 @@ class Library:
         elif not watched and row.get("type") in ("show", "season"):
             row.pop("viewCount", None)
             row.pop("lastViewedAt", None)
+        if targets:
+            self._stamp_view(row, *self._descendants(row))
+            if watched and row.get("type") == "episode":
+                self._stamp_view(*self._parents(row))
         self.recount(row)
         return targets
 
@@ -492,11 +523,17 @@ class Library:
             row = self.collection(rating_key) or self.playlist(rating_key)
         return row
 
+    def _parents(self, row):
+        return [self.catalog.items.get(int(row[key]))
+                for key in ("parentRatingKey", "grandparentRatingKey")
+                if str(row.get(key) or "").isdigit()]
+
     def rate(self, rating_key, rating):
         """`/:/rate?key=&rating=` -- the star rating. -1 clears it."""
         row = self.state_row(rating_key)
         if row is None:
             return None
+        self._stamp_view(row)
         if rating is None or rating == -1:
             row.pop("userRating", None)
             row.pop("lastRatedAt", None)
@@ -562,6 +599,7 @@ class Library:
             if (total or not completes) and int(offset) > 60000 and not near_end:
                 row["viewOffset"] = int(offset)
                 row["lastViewedAt"] = _now()
+                self._stamp_view(row, *self._parents(row))
                 # Measured: a progress beat stamps `lastViewedAt` on the SEASON and the SHOW
                 # as well, before anything is watched -- plexsim touched the parents only on
                 # a completion, so a show part-way through an episode sorted as never played.
@@ -620,6 +658,7 @@ class Library:
                 # reaches `/recentlyViewed` and cannot win On Deck's most-recently-viewed
                 # rule.
                 row["lastViewedAt"] = _now()
+                self._stamp_view(row, *self._parents(row))
                 self.record_view(row, device_id=device_id)
                 # A completed play bumps the parents' own counters too.
                 for key in ("parentRatingKey", "grandparentRatingKey"):
@@ -648,6 +687,13 @@ class Library:
         if row is None:
             return None
         row["_hiddenFromContinueWatching"] = True
+        # Cycle 54: the write lands on the Continue Watching ROW, which for an episode is
+        # its SHOW's -- measured, the show's `viewUpdatedAt` moves and the episode's does
+        # not.
+        if row.get("type") == "episode" and str(row.get("grandparentRatingKey") or "").isdigit():
+            self._stamp_view(self.catalog.items.get(int(row["grandparentRatingKey"])))
+        else:
+            self._stamp_view(row)
         return row
 
     def recount(self, row):
