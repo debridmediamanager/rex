@@ -56,6 +56,13 @@ _CONTAINER_ALIASES = {
 }
 
 
+def _container_for(container, extension):
+    """A `.mov` is `mov`; every other member of the QuickTime family stays `mp4`."""
+    if container == "mp4" and str(extension or "").lower().lstrip(".") == "mov":
+        return "mov"
+    return container
+
+
 def _frame_rate_token(rate):
     try:
         value = Fraction(rate)
@@ -800,7 +807,15 @@ def build_media(probe, *, media_id, part_id, part_key, file_path, size, containe
     # either way; the one cell that moves is `Sony Bravia 2013`, which direct-plays the
     # row as `mkv` and is refused as `webm`. So the override cost a direct play rather
     # than buying one.
-    del container_hint
+    #
+    # Cycle 54: the QuickTime family is the one place the EXTENSION does decide. ffprobe
+    # names one demuxer for `.mov`, `.mp4`, `.m4v` and `.3gp`, and a real PMS answers
+    # `mov` for a `.mov` and `mp4` for the rest -- measured on plexscratch42 (1.42.2) with
+    # the brand crossed against the extension: a `.mov` written by the MP4 muxer (brand
+    # `isom`) is still `mov`, and an `.mp4` written by the QuickTime muxer (brand `qt  `)
+    # is still `mp4`. zen's one real `.mov` part is `mov` too. plexsim answered `mp4` for
+    # every file of the family.
+    container = _container_for(container, container_hint)
     video_profile = _video_profile(video.get("profile")) if video else None
 
     part = {
@@ -872,6 +887,10 @@ def normalize_media(media):
         if _name.lower().rsplit(".", 1)[-1] == "webm":
             media["container"] = "mkv"
             _part["container"] = "mkv"
+        # Cycle 54, the same load-time correction for a `.mov` a catalog stored as `mp4`.
+        if _name.lower().rsplit(".", 1)[-1] == "mov" and media.get("container") == "mp4":
+            media["container"] = "mov"
+            _part["container"] = "mov"
     container = str(media.get("container") or "").lower()
     parts = media.get("Part") or []
     media.pop("optimizedForStreaming", None)

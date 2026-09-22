@@ -7,6 +7,14 @@ production fun (1.42.2) for real releases, the plexlab reference (1.43.4) for it
 synthetic clips -- both recorded on 2026-09-13, the probe over the server's own part
 URL. `webDisplayTitles` is the same row read with `X-Plex-Product: Plex Web`.
 
+The `s42-*` fixtures are SHALLOW: cycle 54 made one small file per container on the
+1.42.2 disposable copy (plexscratch42), because no real library holds a `.ts`, `.m4v`,
+`.wmv`, `.mpg`, `.flv`, `.ogv`, `.3gp` or `.divx` part. That copy's analysis is the
+scanner's quick pass -- even an explicit analyze leaves its streams without `bitDepth`,
+colour or `codecID`, all of which zen writes for the same containers -- so its STREAM
+fields are not a witness. Only the checks registered `shallow=True`, which read what the
+container decides, run on them.
+
 Each check converts every probe with `mediainfo.build_media` exactly as
 build_catalog.py does and compares the attributes one rule governs with the real
 server's, presence and value. No server and no network.
@@ -30,9 +38,12 @@ FIXTURES = os.path.join(HERE, "fixtures", "media")
 CHECKS = []
 
 
-def check(name, once=False):
-    """Register a check. A `once` check is called once, not per fixture."""
+def check(name, once=False, shallow=False):
+    """Register a check. A `once` check is called once, not per fixture.
+
+    `shallow` checks also run on the SHALLOW fixtures (see the module docstring)."""
     def register(function):
+        function.shallow = shallow
         CHECKS.append((name, function, once))
         return function
     return register
@@ -244,7 +255,7 @@ def _baseline(fixture):
     return out
 
 
-@check("container")
+@check("container", shallow=True)
 def _container(fixture):
     """The Media's and the Part's `container`, against what the real PMS wrote.
 
@@ -537,7 +548,9 @@ def main():
             if once:
                 rows = function(**extra)
             else:
-                rows = [row for fixture in corpus for row in function(fixture, **extra)]
+                rows = [row for fixture in corpus
+                        if getattr(function, "shallow", False) or not fixture.get("shallow")
+                        for row in function(fixture, **extra)]
         except Exception as error:  # a check that cannot run on a tree fails there
             print("FAIL %s: raised %s: %s" % (name, type(error).__name__, error))
             continue
