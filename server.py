@@ -711,13 +711,29 @@ MEDIA_GRABBERS = [
 # Keyed by the stored FILE's extension (cycle 44). Every value below is what zen
 # answers for a part whose file carries that extension; `.m2ts` is deliberately absent,
 # because a real PMS answers `application/octet-stream` for it.
+#
+# Cycle 54 widened it past the six extensions zen's library happens to hold. One small
+# file per container was made on plexscratch42 (1.42.2, the build plexsim reports) and
+# its part read: `.ts` is `video/MP2T` -- in that capitalisation, the binary's own string
+# -- `.m4v` `video/mp4`, `.mpg` and `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv`
+# `video/x-ms-wmv`, `.asf` `video/x-ms-asf` and `.divx` `video/x-msvideo` (an AVI by
+# another name), while `.mts`, `.m2ts`, `.ogv` and `.3gp` stay `application/octet-stream`.
+# The six zen witnesses agree with the copy. plexsim sent octet-stream for all eight, and
+# its `mpegts` key was a container name that no file extension ever matches.
 CONTENT_TYPES = {
     "mkv": "video/x-matroska",
     "mp4": "video/mp4",
+    "m4v": "video/mp4",
     "webm": "video/webm",
     "avi": "video/x-msvideo",
+    "divx": "video/x-msvideo",
     "mov": "video/quicktime",
-    "mpegts": "video/mp2t",
+    "ts": "video/MP2T",
+    "mpg": "video/mpeg",
+    "mpeg": "video/mpeg",
+    "flv": "video/x-flv",
+    "wmv": "video/x-ms-wmv",
+    "asf": "video/x-ms-asf",
 }
 
 # The secondary filter axes a section offers, and where each one reads from. A

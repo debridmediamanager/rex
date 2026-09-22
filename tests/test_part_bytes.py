@@ -312,6 +312,27 @@ def main():
         check("the Content-Type follows the file's extension",
               values.get("content-type") == "video/mp4", values.get("content-type"))
 
+        # Cycle 54: every extension a real PMS names, measured on plexscratch42 (1.42.2)
+        # by reading one part of each container, and the four it leaves as a byte stream.
+        sys.path.insert(0, ROOT)
+        import server as server_module_c54
+        measured_c54 = {"mkv": "video/x-matroska", "mp4": "video/mp4", "m4v": "video/mp4",
+                        "webm": "video/webm", "avi": "video/x-msvideo",
+                        "divx": "video/x-msvideo", "mov": "video/quicktime",
+                        "ts": "video/MP2T", "mpg": "video/mpeg", "mpeg": "video/mpeg",
+                        "flv": "video/x-flv", "wmv": "video/x-ms-wmv",
+                        "asf": "video/x-ms-asf", "mts": "application/octet-stream",
+                        "m2ts": "application/octet-stream",
+                        "ogv": "application/octet-stream",
+                        "3gp": "application/octet-stream",
+                        "mpegts": "application/octet-stream"}
+        wrong_c54 = ["%s -> %s" % (ext, server_module_c54._part_content_type(
+            {"file": "/x/movie.%s" % ext}, None)) for ext, want in measured_c54.items()
+            if server_module_c54._part_content_type({"file": "/x/movie.%s" % ext}, None)
+            != want]
+        check("the part Content-Type of every measured extension", not wrong_c54,
+              "; ".join(wrong_c54))
+
         # -- the 3-segment media path is READ-ONLY ---------------------------------
         codes = {}
         for method in ("GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"):
