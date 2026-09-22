@@ -29997,6 +29997,25 @@ def main():
     check("lastSkippedAt, beginsAt and endsAt are date columns", not wrong_c54e,
           "; ".join(wrong_c54e))
 
+    # Cycle 54, measured on zen (1.42.2) and kids (1.43.4): `lastViewedAt`, `lastRatedAt`
+    # and `lastSkippedAt` join `viewCount`/`viewOffset` -- a row with NO stored value is read
+    # as BELOW every value and equal to 0. zen's `lastRatedAt=0`, `<<=1`, `<=1` and
+    # `<<=2020-01-01` are all the 3,465 unrated movies and `!=5` is the 422 rated ones.
+    # Cycle 20's "a NULL date matches nothing" holds for every OTHER date column.
+    request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+            % movie)
+    wrong_c54d = []
+    for column_c54d in ("lastViewedAt", "lastRatedAt", "lastSkippedAt"):
+        for filter_c54d, want_c54d in (("=0", True), ("%3C%3C=1", True),
+                                       ("%3C%3C=2020-01-01", True), ("!=5", False),
+                                       ("%3E%3E=0", False)):
+            _, found_c54d, _ = get(base, "/library/sections/%s/all?id=%s&%s%s"
+                                   % (movie_section, movie, column_c54d, filter_c54d))
+            if bool(found_c54d.get("Metadata")) != want_c54d:
+                wrong_c54d.append("%s%s" % (column_c54d, filter_c54d))
+    check("an unset per-user date reads as zero", not wrong_c54d, "; ".join(wrong_c54d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
