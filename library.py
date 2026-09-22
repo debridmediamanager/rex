@@ -539,8 +539,12 @@ class Library:
             row.pop("lastRatedAt", None)
         elif rating < 0:
             # Measured on a writable copy of the reference: any OTHER negative rating
-            # clears the stars and KEEPS `lastRatedAt`; only -1 clears both.
+            # clears the stars; only -1 clears both. Cycle 54 re-measured it on both
+            # copies from a row with NO rating: `-5` STAMPS `lastRatedAt` with the
+            # current time. "Keeps" was a row rated seconds before, where the two
+            # stamps cannot be told apart.
             row.pop("userRating", None)
+            row["lastRatedAt"] = _now()
         else:
             row["userRating"] = float(rating)
             row["lastRatedAt"] = _now()
