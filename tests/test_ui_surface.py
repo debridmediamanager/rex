@@ -29880,6 +29880,63 @@ def main():
           repr((cleared_c53p.get("Metadata") or [{}])[0].get("isAdult")))
     request(base, "PUT", "/library/metadata/%s?isAdult.value=1" % movie)
 
+    # Cycle 54, read out of the server binary's own SQL (the settings-column projection
+    # `lastViewedAt,viewCount,viewUpdatedAt,viewOffset,guid` and Plex Web's own hub query
+    # `sort=viewUpdatedAt:desc`) and measured on zen (1.42.2), kids (1.43.4) and
+    # plexscratch42: `viewUpdatedAt` is a real sort key and a real DATE filter column --
+    # the time the row's view state was last written. zen's `>>=1` is 424 of 3,887 and
+    # `>>=9999999999` none, a word is a 500, and a row never written matches nothing.
+    import time as time_c54a
+    status_c54a, _, _ = request(base, "GET", "/library/sections/%s/all?sort=viewUpdatedAt:desc"
+                                % movie_section)
+    _, none_c54a, _ = get(base, "/library/sections/%s/all?viewUpdatedAt%%3E%%3E=9999999999"
+                          % movie_section)
+    word_c54a, _, _ = request(base, "GET", "/library/sections/%s/all?viewUpdatedAt=abc"
+                              % movie_section)
+    check("viewUpdatedAt sorts, and is a date column that refuses a word",
+          status_c54a == 200 and not (none_c54a.get("Metadata") or []) and word_c54a == 500,
+          "sort %s, far future %d rows, word %s" % (
+              status_c54a, len(none_c54a.get("Metadata") or []), word_c54a))
+
+    # A rating stamps it and an edit does not.
+    def stamped_c54a(section_c54a, type_c54a, key_c54a, since_c54a):
+        _, found_c54a, _ = get(base, "/library/sections/%s/all?type=%s&id=%s"
+                               "&viewUpdatedAt%%3E%%3E=%d"
+                               % (section_c54a, type_c54a, key_c54a, since_c54a))
+        return bool(found_c54a.get("Metadata"))
+    since_c54a = int(time_c54a.time())
+    time_c54a.sleep(1.2)
+    request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=6"
+            % movie)
+    rated_c54a = stamped_c54a(movie_section, 1, movie, since_c54a)
+    time_c54a.sleep(1.2)
+    since_c54a = int(time_c54a.time())
+    time_c54a.sleep(1.2)
+    _, detail_c54a, _ = get(base, "/library/metadata/%s" % movie)
+    tagline_c54a = ((detail_c54a.get("Metadata") or [{}])[0].get("tagline") or "c54")
+    request(base, "PUT", "/library/metadata/%s?tagline.value=%s" % (movie, quote(tagline_c54a)))
+    edited_c54a = stamped_c54a(movie_section, 1, movie, since_c54a)
+    check("a rating stamps viewUpdatedAt and an edit does not",
+          rated_c54a and not edited_c54a, "rated %s edited %s" % (rated_c54a, edited_c54a))
+
+    # An episode scrobble stamps the episode, its season and its show.
+    if show:
+        _, leaves_c54a, _ = get(base, "/library/metadata/%s/allLeaves" % show)
+        episode_c54a = (leaves_c54a.get("Metadata") or [{}])[0]
+        time_c54a.sleep(1.2)
+        since_c54a = int(time_c54a.time())
+        time_c54a.sleep(1.2)
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % episode_c54a.get("ratingKey"))
+        chain_c54a = [stamped_c54a(show_section, 4, episode_c54a.get("ratingKey"), since_c54a),
+                      stamped_c54a(show_section, 3, episode_c54a.get("parentRatingKey"),
+                                   since_c54a),
+                      stamped_c54a(show_section, 2, show, since_c54a)]
+        request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % episode_c54a.get("ratingKey"))
+        check("an episode scrobble stamps viewUpdatedAt up the tree", all(chain_c54a),
+              "episode/season/show %s" % chain_c54a)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
