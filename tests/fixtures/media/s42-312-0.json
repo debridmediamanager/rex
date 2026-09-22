@@ -1,0 +1,190 @@
+{
+ "source": "plexscratch42, Plex Media Server 1.42.2, ratingKey 312, Media 0; a synthetic mkv file made in cycle 54 (Container Probe C54 Mkvwebmcodecs); probed with ffprobe 8.1.2 over the server's own part URL, 2026-09-22",
+ "extension": "mkv",
+ "probe": {
+  "streams": [
+   {
+    "index": 0,
+    "codec_name": "vp8",
+    "codec_long_name": "On2 VP8",
+    "profile": "0",
+    "codec_type": "video",
+    "codec_tag_string": "[0][0][0][0]",
+    "codec_tag": "0x0000",
+    "mime_codec_string": "vp8",
+    "width": 1280,
+    "height": 720,
+    "coded_width": 1280,
+    "coded_height": 720,
+    "has_b_frames": 0,
+    "sample_aspect_ratio": "1:1",
+    "display_aspect_ratio": "16:9",
+    "pix_fmt": "yuv420p",
+    "level": -99,
+    "chroma_location": "left",
+    "field_order": "progressive",
+    "r_frame_rate": "24/1",
+    "avg_frame_rate": "24/1",
+    "time_base": "1/1000",
+    "start_pts": 3,
+    "start_time": "0.003000",
+    "disposition": {
+     "default": 1,
+     "dub": 0,
+     "original": 0,
+     "comment": 0,
+     "lyrics": 0,
+     "karaoke": 0,
+     "forced": 0,
+     "hearing_impaired": 0,
+     "visual_impaired": 0,
+     "clean_effects": 0,
+     "attached_pic": 0,
+     "timed_thumbnails": 0,
+     "non_diegetic": 0,
+     "captions": 0,
+     "descriptions": 0,
+     "metadata": 0,
+     "dependent": 0,
+     "still_image": 0,
+     "multilayer": 0
+    },
+    "tags": {
+     "HANDLER_NAME": "VideoHandler",
+     "VENDOR_ID": "[0][0][0][0]",
+     "ENCODER": "Lavc58.134.100 libvpx",
+     "DURATION": "00:00:20.003000000"
+    }
+   },
+   {
+    "index": 1,
+    "codec_name": "vorbis",
+    "codec_long_name": "Vorbis",
+    "codec_type": "audio",
+    "codec_tag_string": "[0][0][0][0]",
+    "codec_tag": "0x0000",
+    "mime_codec_string": "vorbis",
+    "sample_fmt": "fltp",
+    "sample_rate": "48000",
+    "channels": 2,
+    "channel_layout": "stereo",
+    "bits_per_sample": 0,
+    "initial_padding": 0,
+    "r_frame_rate": "0/0",
+    "avg_frame_rate": "0/0",
+    "time_base": "1/1000",
+    "start_pts": 0,
+    "start_time": "0.000000",
+    "extradata_size": 3959,
+    "disposition": {
+     "default": 1,
+     "dub": 0,
+     "original": 0,
+     "comment": 0,
+     "lyrics": 0,
+     "karaoke": 0,
+     "forced": 0,
+     "hearing_impaired": 0,
+     "visual_impaired": 0,
+     "clean_effects": 0,
+     "attached_pic": 0,
+     "timed_thumbnails": 0,
+     "non_diegetic": 0,
+     "captions": 0,
+     "descriptions": 0,
+     "metadata": 0,
+     "dependent": 0,
+     "still_image": 0,
+     "multilayer": 0
+    },
+    "tags": {
+     "HANDLER_NAME": "SoundHandler",
+     "VENDOR_ID": "[0][0][0][0]",
+     "ENCODER": "Lavc58.134.100 libvorbis",
+     "DURATION": "00:00:20.014000000"
+    }
+   }
+  ],
+  "format": {
+   "filename": "file.mkv",
+   "nb_streams": 2,
+   "nb_programs": 0,
+   "nb_stream_groups": 0,
+   "format_name": "matroska,webm",
+   "format_long_name": "Matroska / WebM",
+   "start_time": "0.000000",
+   "duration": "20.014000",
+   "size": "2587246",
+   "bit_rate": "1034174",
+   "probe_score": 100,
+   "tags": {
+    "COMPATIBLE_BRANDS": "isomiso2avc1mp41",
+    "MAJOR_BRAND": "isom",
+    "MINOR_VERSION": "512",
+    "ENCODER": "Lavf58.76.100"
+   }
+  }
+ },
+ "Media": {
+  "id": 145,
+  "duration": 20014,
+  "bitrate": 1034,
+  "width": 1280,
+  "height": 720,
+  "aspectRatio": 1.78,
+  "audioChannels": 2,
+  "audioCodec": "vorbis",
+  "videoCodec": "vp8",
+  "videoResolution": "720",
+  "container": "mkv",
+  "videoFrameRate": "24p",
+  "Part": [
+   {
+    "id": 145,
+    "key": "/library/parts/145/1790113758/file.mkv",
+    "duration": 20014,
+    "file": "/data/movies/Container Probe C54 mkvwebmcodecs (2020)/Container Probe C54 mkvwebmcodecs (2020).mkv",
+    "size": 2587246,
+    "container": "mkv",
+    "Stream": [
+     {
+      "id": 190,
+      "streamType": 1,
+      "default": true,
+      "codec": "vp8",
+      "index": 0,
+      "bitrate": 1034,
+      "chromaLocation": "left",
+      "codedHeight": 720,
+      "codedWidth": 1280,
+      "frameRate": 24.0,
+      "height": 720,
+      "refFrames": 1,
+      "scanType": "progressive",
+      "width": 1280,
+      "displayTitle": "720p",
+      "extendedDisplayTitle": "720p (VP8)"
+     },
+     {
+      "id": 191,
+      "streamType": 2,
+      "selected": true,
+      "default": true,
+      "codec": "vorbis",
+      "index": 1,
+      "channels": 2,
+      "audioChannelLayout": "stereo",
+      "samplingRate": 48000,
+      "displayTitle": "Unknown (VORBIS Stereo)",
+      "extendedDisplayTitle": "Unknown (VORBIS Stereo)"
+     }
+    ]
+   }
+  ]
+ },
+ "webDisplayTitles": {
+  "0": "720p (VP8)",
+  "1": "Unknown (VORBIS Stereo)"
+ },
+ "shallow": true
+}
