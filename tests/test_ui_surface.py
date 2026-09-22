@@ -29937,6 +29937,34 @@ def main():
         check("an episode scrobble stamps viewUpdatedAt up the tree", all(chain_c54a),
               "episode/season/show %s" % chain_c54a)
 
+    # Cycle 54, found through the binary's SQL and fitted exactly on zen (16 of 16 cells over
+    # 9,287 episodes and 741 seasons) and kids: on an EPISODE listing, and for
+    # `unwatchedLeaves` on a season listing too, every leaf-count filter reads the SHOW's
+    # counts -- cycle 14's season rule, one level further down. plexsim read the leaf's own
+    # counts, which it does not have, so every unwatched episode fell in `unwatchedLeaves=0`.
+    _, shows_c54b, _ = get(base, "/library/sections/%s/all?type=2" % show_section)
+    def unviewed_c54b(one):
+        return int(one.get("leafCount") or 0) - int(one.get("viewedLeafCount") or 0)
+    want_unwatched_c54b = sum(int(s.get("leafCount") or 0)
+                              for s in shows_c54b.get("Metadata") or [] if unviewed_c54b(s) > 0)
+    want_viewed_c54b = sum(int(s.get("leafCount") or 0)
+                           for s in shows_c54b.get("Metadata") or []
+                           if int(s.get("viewedLeafCount") or 0) > 0)
+    want_seasons_c54b = sum(int(s.get("childCount") or 0)
+                            for s in shows_c54b.get("Metadata") or [] if unviewed_c54b(s) > 0)
+    _, eps_c54b, _ = get(base, "/library/sections/%s/all?type=4&unwatchedLeaves=1" % show_section)
+    _, viewed_c54b, _ = get(base, "/library/sections/%s/all?type=4&viewedLeafCount%%3E%%3E=0"
+                            % show_section)
+    _, seasons_c54b, _ = get(base, "/library/sections/%s/all?type=3&unwatchedLeaves=1"
+                             % show_section)
+    got_c54b = (len(eps_c54b.get("Metadata") or []), len(viewed_c54b.get("Metadata") or []),
+                len(seasons_c54b.get("Metadata") or []))
+    check("an episode's leaf-count filters read its show",
+          got_c54b == (want_unwatched_c54b, want_viewed_c54b, want_seasons_c54b)
+          and want_unwatched_c54b > 0,
+          "got %s want %s" % (got_c54b, (want_unwatched_c54b, want_viewed_c54b,
+                                         want_seasons_c54b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

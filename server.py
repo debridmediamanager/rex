@@ -10385,7 +10385,13 @@ class PlexSim:
         if field == "unmatched":
             guid = str(row.get("guid") or "")
             return 1 if (guid.startswith("local://") or "none://" in guid) else 0
-        if field in LEAF_COUNT_FILTERS and row.get("type") == "season":
+        if (field in LEAF_COUNT_FILTERS or field == "unwatchedLeaves") \
+                and row.get("type") in ("season", "episode"):
+            # Cycle 54, fitted on zen over every leaf-count cell of 9,287 episodes and 741
+            # seasons (16 of 16 exact, where the leaf's own and the season's counts miss
+            # every one): an EPISODE reads its show's counts as well, and so does
+            # `unwatchedLeaves` on a season -- zen's `type=3&unwatchedLeaves=0` is the 2
+            # seasons of its fully watched shows, not the 5 fully watched seasons.
             # Cycle 14, measured on zen: on a SEASON listing these three read the
             # SHOW's counts, not the season's. `type=3&viewedLeafCount>>0` answers 48
             # seasons -- every season of the eight shows that have a watched leaf --
