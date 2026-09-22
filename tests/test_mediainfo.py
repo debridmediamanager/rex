@@ -275,6 +275,21 @@ def _container(fixture):
     return out
 
 
+@check("packet-length", shallow=True)
+def _packet_length(fixture):
+    """Cycle 54: an MPEG-TS Part carries `packetLength: 188` and no other Part does.
+
+    Measured on all seventeen containers on plexscratch42, on zen's fourteen real `.m2ts`
+    parts, and in `fun-1073414-1` -- which has recorded it since cycle 10 without any check
+    reading it. It is 188 on a Blu-ray `.m2ts` too, whose packets are really 192 bytes, so
+    it is a constant of the container and not a measurement of the file.
+    """
+    real = (fixture["Media"].get("Part") or [{}])[0]
+    sim = (fixture["sim"].get("Part") or [{}])[0]
+    return [("%s Part packetLength" % fixture["name"], real.get("packetLength"),
+             sim.get("packetLength"))]
+
+
 @check("subtitle-codec-names")
 def _subtitle_codec_names(fixture):
     return per_stream(3, ("codec",))(fixture)

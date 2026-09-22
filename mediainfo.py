@@ -918,6 +918,14 @@ def normalize_media(media):
     for part in parts:
         part.pop("optimizedForStreaming", None)
         part.pop("has64bitOffsets", None)
+        # Cycle 54: every MPEG-TS Part carries `packetLength: 188` -- a Blu-ray `.m2ts`,
+        # whose packets are really 192 bytes, included -- and no other container's does.
+        # Measured on zen's fourteen `.m2ts` parts and on plexscratch42's `.ts`, `.mts` and
+        # `.m2ts`; plexsim never sent it.
+        if container == "mpegts":
+            part["packetLength"] = 188
+        else:
+            part.pop("packetLength", None)
         if container in MP4_FAMILY:
             part["optimizedForStreaming"] = False
             part["has64bitOffsets"] = int(part.get("size") or 0) > 2 ** 32
