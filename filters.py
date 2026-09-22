@@ -265,6 +265,11 @@ FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 # whatever the value, and nothing else. `skipCount` looks identical on a row and is
 # not in the family.
 NULL_IS_ZERO_FIELDS = {"viewCount", "viewOffset"}
+# Cycle 54, measured on zen (1.42.2) and kids (1.43.4): the three per-user DATE columns,
+# read from the same settings row, behave the same way -- `lastRatedAt=0`, `<<=1` and
+# `<<=2020-01-01` are every unrated row, `!=5` and `>>=0` none of them. `viewUpdatedAt`
+# is not in the family: its nulls match nothing.
+NULL_IS_ZERO_DATES = {"lastViewedAt", "lastRatedAt", "lastSkippedAt"}
 
 # The boolean-looking column whose OPERATOR a real PMS ignores: cycle 20, measured on
 # both references. Only the value decides, and only the literal `1` is true.
@@ -620,6 +625,11 @@ def compare(kind, operator, actual, wanted, field=""):
         # `lastRatedAt`, `createdAt`, `lastViewedAt` on most of them -- an
         # unparseable value was never refused at all. Both references 500 it.
         moment = as_epoch(wanted)
+        if actual is None and field in NULL_IS_ZERO_DATES:
+            # Cycle 54, measured on zen and kids: the three per-user DATES are the
+            # `viewCount` family, not this one -- an unset value is below every value and
+            # equal to 0. zen's `lastRatedAt<<=2020-01-01` is the 3,465 unrated movies.
+            return operator in ("<=", "<<=") or (operator == "=" and moment == 0)
         if actual is None:
             # Cycle 20, re-measured on zen (1.42.2) and kids (1.43.4): a NULL date
             # matches NOTHING, on every operator. Of zen's 3,887 movies exactly 1,518
