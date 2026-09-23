@@ -30399,6 +30399,36 @@ def main():
                   [r.get("ratingKey") for r in none_c55a.get("Metadata") or []],
                   [r.get("ratingKey") for r in one_c55a.get("Metadata") or []]))
 
+    # Cycle 55, from the binary's SQL (the show's most recent view, `group by grandparents.id
+    # order by viewed_at desc`, then the first unwatched episode after it) and measured on
+    # plexscratch42: On Deck's next-up follows the MOST RECENTLY VIEWED watched episode, not
+    # the highest-numbered one, and the row carries that view's `lastViewedAt`. Scrobbling
+    # episode 10 and then 8 puts 9 on deck; plexsim put 11 there.
+    import time as time_c55b
+    if show:
+        _, seasons_c55b, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
+        episodes_c55b = []
+        for season_c55b in sorted(seasons_c55b.get("Metadata") or [],
+                                  key=lambda r: int(r.get("index") or 0)):
+            _, eps_c55b, _ = get(base, "/library/metadata/%s/children" % season_c55b.get("ratingKey"))
+            episodes_c55b += [e.get("ratingKey") for e in sorted(
+                eps_c55b.get("Metadata") or [], key=lambda r: int(r.get("index") or 0))]
+        if len(episodes_c55b) >= 4:
+            request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
+            request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % episodes_c55b[2])
+            time_c55b.sleep(1.2)
+            request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                    % episodes_c55b[0])
+            _, deck_c55b, _ = get(base, "/library/onDeck")
+            row_c55b = next((r for r in deck_c55b.get("Metadata") or []
+                             if r.get("ratingKey") in episodes_c55b), {})
+            request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % show)
+            check("On Deck's next-up follows the most recent view",
+                  row_c55b.get("ratingKey") == episodes_c55b[1] and row_c55b.get("lastViewedAt"),
+                  "on deck %s (want %s) lastViewedAt %s" % (
+                      row_c55b.get("ratingKey"), episodes_c55b[1], row_c55b.get("lastViewedAt")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
