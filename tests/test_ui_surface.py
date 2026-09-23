@@ -30928,6 +30928,26 @@ def main():
     check("mediaType=-1 is the bare agent list", bare_c55f19 == minus_c55f19,
           "%d vs %d bytes" % (len(bare_c55f19), len(minus_c55f19)))
 
+    # Cycle 55, measured on zen and kids on the related hub: `count` is a strict signed
+    # 32-bit integer -- `+1` is one row, ` 1` and `-2147483649` the default. plexsim
+    # stripped the value (` 1` was one row), refused `+1` and read `-2147483649` as none.
+    _, grid_c55f20, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c55f20 = [r.get("ratingKey") for r in grid_c55f20.get("Metadata") or []][:3]
+    if len(pair_c55f20) == 3:
+        for key_c55f20 in pair_c55f20:
+            request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=F20a&genre[1].tag.tag=F20b"
+                    % key_c55f20)
+        def sizes_c55f20(q):
+            return [h.get("size") for h in get(base, "/hubs/metadata/%s/related%s"
+                                               % (pair_c55f20[0], q))[1].get("Hub") or []]
+        base_c55f20 = sizes_c55f20("")
+        got_c55f20 = [sizes_c55f20(q) for q in ("?count=%201", "?count=%2B1",
+                                                "?count=-2147483649")]
+        check("A shelf's count is a strict signed int32",
+              base_c55f20 and base_c55f20[0] >= 2
+              and got_c55f20 == [base_c55f20, [1] * len(base_c55f20), base_c55f20],
+              "default %s, got %s" % (base_c55f20, got_c55f20))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
