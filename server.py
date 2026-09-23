@@ -2365,6 +2365,20 @@ def _bool_option(value):
     return bool(text) and text.isdigit() and int(text) in (0, 1)
 
 
+def _option_on(query, name):
+    """Cycle 55: whether a 0/1 option is ON, read with `_bool_option`'s `+?0*[01]` grammar.
+
+    Measured on zen and kids: `includePreferences=01` and `includeSummary=+1` on
+    `/library/sections`, `includeDetails=01` on a section, `includeAdvanced=01` on `/sorts`
+    and `/filters`, `includePreferences`/`includeStorage=01` on `/media/providers`,
+    `includeStorage=+1` on a grid, `includeLibraryPlaylists=+1` on a section's hubs and
+    `asyncCheckFiles=01` on an item each change the answer exactly as `1` does. plexsim
+    compared the raw string with `"1"` at every one of those readers.
+    """
+    value = (query or {}).get(name)
+    return value is not None and _bool_option(value) and int(str(value).lstrip("+")) == 1
+
+
 def _int_param(value, bits=32):
     """Cycle 54: an integer query parameter as a real PMS parses it -- an optional sign
     and digits, nothing else (no space, no `0x`, no fraction), inside the signed range of
@@ -6375,7 +6389,7 @@ class PlexSim:
             if method == "POST":
                 return self.create_section(query)
             rows = [self.section_directory(s) for s in catalog.sections]
-            if query.get("includePreferences") == "1":
+            if _option_on(query, "includePreferences"):
                 # Measured on both servers: every row gains its library's settings,
                 # the same list /library/sections/{id}/prefs answers -- except that a
                 # show library's `episodeSort` is the per-SHOW variant, with "Library
@@ -6385,7 +6399,7 @@ class PlexSim:
                 for section, row in zip(catalog.sections, rows):
                     row["Preferences"] = {
                         "Setting": self.section_preference_rows(section)}
-            if query.get("includeSummary") == "1":
+            if _option_on(query, "includeSummary"):
                 # Cycle 45, measured on kids and zen: each library `Directory` gains a
                 # `Summary` block -- the library's total duration and one `Type` row per
                 # metadata type it contains. A show library therefore carries show,
@@ -7178,7 +7192,7 @@ class PlexSim:
                 if refusal:
                     return refusal
             return self.section_hubs(segments[2], query.get("count"),
-                                     query.get("includeLibraryPlaylists") == "1",
+                                     _option_on(query, "includeLibraryPlaylists"),
                                      query=query)
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
@@ -7687,7 +7701,7 @@ class PlexSim:
         container = self.bare_container(size=1,
                                         MediaProvider=self.media_provider_rows(),
                                         **self.server_info())
-        if (query or {}).get("includePreferences") == "1":
+        if _option_on(query, "includePreferences"):
             # Cycle 25, measured on kids and zen: this option reaches HERE too, and the
             # block it adds is BYTE-IDENTICAL to the one `/library/sections?include
             # Preferences=1` answers -- the per-SHOW `episodeSort` variant with `Library
@@ -7706,7 +7720,7 @@ class PlexSim:
                             continue
                         row["Preferences"] = {
                             "Setting": self.section_preference_rows(section)}
-        if (query or {}).get("includeStorage") == "1":
+        if _option_on(query, "includeStorage"):
             # Cycle 46, measured on kids and zen -- and OVERTURNING cycle 44's recorded
             # "no effect on `/media/providers`", which was a re-measurement that missed
             # it. Each library `Directory` gains its own `durationTotal`/`storageTotal`
@@ -8594,7 +8608,7 @@ class PlexSim:
                 wanted = str(int(raw))
             else:
                 return ("error", 400, "plexsim: bad request")
-            variant = "advanced" if query.get("includeAdvanced") == "1" else "plain"
+            variant = "advanced" if _option_on(query, "includeAdvanced") else "plain"
             sorts = json.loads(json.dumps(SECTION_SORTS[variant].get(wanted) or [])
                                .replace("{section}", str(section_id)))
             return self.secondary_container(section_id, section, None,
@@ -8612,7 +8626,7 @@ class PlexSim:
             else:
                 return ("error", 400, "plexsim: bad request")
             entries = list(SECTION_FILTERS["plain"].get(wanted) or [])
-            if query.get("includeAdvanced") == "1":
+            if _option_on(query, "includeAdvanced"):
                 entries += SECTION_FILTERS["advanced"].get(wanted) or []
             filters = json.loads(json.dumps(entries).replace("{section}", str(section_id)))
             return self.secondary_container(section_id, section, None,
@@ -9466,7 +9480,7 @@ class PlexSim:
                   else section_id,
                   "Directory": [dict(p) for p in pivots]}
         size = len(pivots)
-        if query.get("includeDetails") == "1":
+        if _option_on(query, "includeDetails"):
             # Cycle 19: this form honours `includeAdvanced=1` like every other. Both
             # references answer 9 Sorts and 22 filters (zen; kids 28) to a movie
             # library's bare `?includeDetails=1` and 15 and 23 once the flag is set --
@@ -9525,7 +9539,7 @@ class PlexSim:
         # one sequence"; `_page_container` reads it and `_drop_private` takes it off.
         body = self.secondary_container(section_id, section, None, **fields)
         body["MediaContainer"]["size"] = size
-        if query.get("includeDetails") == "1":
+        if _option_on(query, "includeDetails"):
             body["MediaContainer"]["_pageflat"] = ["Directory", "Type", "FieldType"]
         body["MediaContainer"].pop("title2", None)
         return body
@@ -9630,7 +9644,7 @@ class PlexSim:
             source = self.grouped(source, query.get("group"))
         source = self._limited(source, query)
         rows = self._excluded_elements([_listing_row(r) for r in source], query)
-        if query.get("includeStorage") == "1" and str(query.get("type") or "") in (
+        if _option_on(query, "includeStorage") and str(query.get("type") or "") in (
                 "", str(TYPE_NUMBERS.get(section.get("type") or "movie", 1))):
             # Measured: the pair is on the library's OWN top-level type only -- a show
             # library's `?type=3` and `?type=4` listings carry neither.
@@ -12365,8 +12379,8 @@ class PlexSim:
                 fields.update(librarySectionID=row["librarySectionID"],
                               librarySectionTitle=section.get("title"),
                               librarySectionUUID=section.get("uuid"))
-            if query.get("asyncCheckFiles") == "1" \
-                    or query.get("asyncRefreshLocalMediaAgent") == "1":
+            if _option_on(query, "asyncCheckFiles") \
+                    or _option_on(query, "asyncRefreshLocalMediaAgent"):
                 # Measured, and not guessable: either `async*` flag makes the
                 # container DROP identifier and the media-tag pair. The response
                 # is the same row, described by a container that can no longer
@@ -13323,7 +13337,8 @@ class PlexSim:
         `home.continue`, and ignored the parameter entirely on `/hubs`.
         """
         raw = str(query.get("excludeContinueWatching") or "")
-        return raw.isdigit() and int(raw) == 1
+        # Cycle 55: `+1` is the integer 1 too, on zen and kids.
+        return _int_param(raw, None) and not raw.startswith("-") and int(raw) == 1
 
     @staticmethod
     def content_directories(query):
