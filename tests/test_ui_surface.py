@@ -30725,6 +30725,29 @@ def main():
     check("An empty contentDirectoryID is accepted on continue watching",
           got_c55f16 == [200, 200] and bad_c55f16 == 404, "%s, abc %s" % (got_c55f16, bad_c55f16))
 
+    # Cycle 55, measured on zen and kids: `01` and `+1` switch an option on exactly as
+    # `1` does at every reader -- `/library/sections?includePreferences=01`,
+    # `includeSummary=+1`, a section's `includeDetails=01`, `/sorts?includeAdvanced=01`,
+    # a grid's `includeStorage=+1`, `/hubs?excludeContinueWatching=+1` and an item's
+    # `asyncCheckFiles=01`. plexsim compared the raw string with "1" at each of them.
+    def same_c55f4(path, name, value):
+        return (get(base, "%s%s%s=%s" % (path, "&" if "?" in path else "?", name, value))[:2]
+                == get(base, "%s%s%s=1" % (path, "&" if "?" in path else "?", name))[:2])
+    cells_c55f4 = [("/library/sections", "includePreferences", "01"),
+                   ("/library/sections", "includeSummary", "%2B1"),
+                   ("/library/sections/%s" % movie_section, "includeDetails", "01"),
+                   ("/library/sections/%s/sorts" % movie_section, "includeAdvanced", "01"),
+                   ("/library/sections/%s/filters" % movie_section, "includeAdvanced", "%2B1"),
+                   ("/library/sections/%s/all" % movie_section, "includeStorage", "%2B1"),
+                   ("/media/providers", "includeStorage", "01"),
+                   ("/hubs", "excludeContinueWatching", "%2B1"),
+                   ("/library/metadata/%s" % movie, "asyncCheckFiles", "01")]
+    got_c55f4 = [same_c55f4(*cell_c55f4) for cell_c55f4 in cells_c55f4]
+    differs_c55f4 = get(base, "/library/sections?includePreferences=01")[1] \
+        != get(base, "/library/sections")[1]
+    check("01 and +1 switch every include and async option on", all(got_c55f4) and differs_c55f4,
+          "%s, differs %s" % (got_c55f4, differs_c55f4))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
