@@ -30836,6 +30836,24 @@ def main():
     check("decade, viewCount and viewOffset are strict int32",
           got_c55f11 == [500, 500, 500, 500, 200, 200], "%s" % got_c55f11)
 
+    # Cycle 55, measured on zen (1.42.2), kids and plexscratch42: `parent=` is a number
+    # column -- `parent=+<show>` is that show's seasons and `parent=1.5` an empty 200 --
+    # and only a word or an empty value is the 500. plexsim 500'd the first two.
+    if show:
+        seasons_c55f12 = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)[1]
+        want_c55f12 = len(seasons_c55f12.get("Metadata") or [])
+        typed_c55f12 = "/library/sections/%s/all?type=3&parent=" % show_section
+        plus_c55f12 = get(base, typed_c55f12 + "%%2B%s" % show)
+        half_c55f12 = get(base, typed_c55f12 + "1.5")
+        word_c55f12 = get(base, typed_c55f12 + "abc")[0]
+        check("parent= is read as a number",
+              plus_c55f12[0] == 200 and len(plus_c55f12[1].get("Metadata") or []) == want_c55f12
+              and half_c55f12[0] == 200 and not half_c55f12[1].get("Metadata")
+              and word_c55f12 == 500,
+              "+show %s/%s, 1.5 %s, abc %s" % (plus_c55f12[0],
+                                              len(plus_c55f12[1].get("Metadata") or []),
+                                              half_c55f12[0], word_c55f12))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

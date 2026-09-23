@@ -2393,6 +2393,17 @@ def _int_param(value, bits=32):
     return bits is None or -(2 ** (bits - 1)) <= int(text) < 2 ** (bits - 1)
 
 
+def _number_param(value):
+    """Cycle 55: a number-column filter value as 1.42.2 reads it -- `float()` after a
+    surrounding space comes off, so `+6`, `6.0`, `1.5` and ` 6` parse and a word or an
+    empty value does not."""
+    try:
+        float(str(value).strip())
+        return True
+    except ValueError:
+        return False
+
+
 def _float_param(value):
     """Cycle 54: `maxDistance` parses like `strtod` -- `1.5` and `0x1` pass, an empty
     value, a word and a surrounding space refuse."""
@@ -21724,9 +21735,13 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 55, measured on zen and kids: a leading `+` is part of the number --
         # `limit=+1` is one row on a section grid, `/playlists` and a show's
         # `/children` -- so `limit` takes the shared integer grammar.
+        # Cycle 55, measured on zen (1.42.2), kids and plexscratch42: `parent` is an
+        # ordinary number column -- `parent=+6` is show 6's seasons, `parent=6.0` the same
+        # and `parent=1.5` an empty 200, and 1.42.2 also takes `parent= 6` (kids 500s it,
+        # a version split). Only a value that is not a number (`abc`, empty) refuses.
         bad = [name for name in ("limit", "parent")
                if name in query and not (_int_param(query[name], None) if name == "limit"
-                                         else str(query[name]).lstrip("-").isdigit())]
+                                         else _number_param(query[name]))]
         if not bad:
             return 0
         if route == "/status/sessions/history/all":
