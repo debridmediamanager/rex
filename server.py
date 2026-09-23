@@ -12784,7 +12784,12 @@ class PlexSim:
                 and self.catalog.section(tail) is not None:
             built = self.section_hubs(tail, count)
         elif identifier.startswith("home."):
-            built = self.hubs({"identifier": identifier, "count": count})
+            # Cycle 54, measured on kids, zen and both copies: `contentDirectoryID`
+            # scopes the shelf here as it does on `/hubs`.
+            scoped = {"identifier": identifier, "count": count}
+            if query.get("contentDirectoryID"):
+                scoped["contentDirectoryID"] = query["contentDirectoryID"]
+            built = self.hubs(scoped)
         hubs = ((built or {}).get("MediaContainer") or {}).get("Hub") or [] \
             if isinstance(built, dict) else []
         hub = next((h for h in hubs if h.get("hubIdentifier") == identifier), None)
