@@ -30140,6 +30140,39 @@ def main():
     check("unwatched and recentlyViewedShows take the listing's filters", not wrong_c54j,
           "; ".join(wrong_c54j))
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): the MEDIA axes (`resolution`,
+    # `audioLanguage`, `subtitleLanguage`), the Edit dialog's `/autocomplete` and `/common`
+    # with an `id=` list all run the listing's filters -- `year=1` leaves no bucket and no
+    # suggestion, `year=abc` is a 500, and `/common?id=A&genre=zzzq` is the EMPTY Common,
+    # `{mixedFields: "", guid: "", type: "common", titleSort: ""}`, written as a paired
+    # element like every Common on both references.
+    wrong_c54k = []
+    for path_c54k in ("resolution?year=1", "audioLanguage?year=1",
+                      "autocomplete?type=1&title.query=t&year=1"):
+        _, found_c54k, _ = get(base, "/library/sections/%s/%s" % (movie_section, path_c54k))
+        if found_c54k.get("Metadata") or found_c54k.get("Directory"):
+            wrong_c54k.append(path_c54k)
+    status_c54k, _, _ = request(base, "GET", "/library/sections/%s/resolution?year=abc"
+                                % movie_section)
+    if status_c54k != 500:
+        wrong_c54k.append("resolution?year=abc -> %s" % status_c54k)
+    # ...while the axis stays blind to `type=` itself, `abc` included.
+    _, bare_c54k, _ = get(base, "/library/sections/%s/resolution" % movie_section)
+    _, typed_c54k, _ = get(base, "/library/sections/%s/resolution?type=abc" % movie_section)
+    if len(bare_c54k.get("Directory") or []) != len(typed_c54k.get("Directory") or []):
+        wrong_c54k.append("resolution?type=abc changed the axis")
+    _, common_c54k, _ = get(base, "/library/sections/%s/common?type=1&id=%s&genre=zzzq"
+                            % (movie_section, movie))
+    if (common_c54k.get("Metadata") or [{}])[0] != {"mixedFields": "", "guid": "",
+                                                    "type": "common", "titleSort": ""}:
+        wrong_c54k.append("common %r" % (common_c54k.get("Metadata") or [{}])[0])
+    _, xml_c54k, _ = request(base, "GET", "/library/sections/%s/common?type=1&id=%s&genre=zzzq"
+                             % (movie_section, movie), want_json=False)
+    if b"</Common>" not in xml_c54k:
+        wrong_c54k.append("the empty Common self-closes")
+    check("the media axes, autocomplete and common take the listing's filters",
+          not wrong_c54k, "; ".join(wrong_c54k)[:240])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

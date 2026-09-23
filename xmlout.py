@@ -697,7 +697,10 @@ def ordered(container, overrides=None):
 # `/playlists` and the background-processing row alike -- where plexsim self-closed it.
 # `PlayQueue`, in the same container family, self-closes on every one of them.
 _ALWAYS_PAIRED = ("Feature", "MediaContainer", "Stream", "Extras", "Media",
-                  "Activity", "Type", "Related", "Playlist")
+                  "Activity", "Type", "Related", "Playlist",
+                  # Cycle 54: a `Common` is paired on both references even when it
+                  # carries no child element -- a mixed set, an empty one.
+                  "Common")
 _PAIRED_WITH_EMPTY_CHILDREN = ("Hub",)
 
 # Cycle 27: and the `/media/providers` provider rows are paired even when they carry no

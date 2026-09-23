@@ -8566,7 +8566,7 @@ class PlexSim:
             # And the MEDIA axes ignore `type=` completely -- the same list for every
             # value including `abc`, on a movie library and a show library alike --
             # so they neither validate it nor scope by it.
-            return self.media_axis(section_id, section, leaf)
+            return self.media_axis(section_id, section, leaf, query)
         if leaf == "location":
             return self.location_axis(section_id, section)
         if leaf in ("userRating", "rating"):
@@ -9855,6 +9855,9 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         kind = {"1": "movie", "2": "show", "4": "episode"}.get(query["type"])
         rows = self.typed_rows(section_id, {"type": query["type"]}) if kind else []
+        # Cycle 54, measured on kids and zen: the suggestions come from the rows the
+        # listing's filters leave -- `year=1` suggests nothing.
+        rows, _ = self.apply_filters(list(rows), query, section)
         wanted = wanted.lower()
         if field in self.AUTOCOMPLETE_TAGS:
             element, tag_type = self.AUTOCOMPLETE_TAGS[field]
@@ -11126,7 +11129,14 @@ class PlexSim:
         follows the lab, which is the designated reference.
         """
         seen = {}
-        for row in self.typed_rows(section_id, query or {}):
+        # Cycle 54, measured on kids and zen: the media axes run the listing's filters,
+        # as the tag and field axes already did -- `year=1` leaves no bucket, `year=abc`
+        # is a 500.
+        # The ROWS stay type-blind (every value of `type=`, `abc` included, answers the
+        # same list); only the filters narrow them.
+        rows, _ = self.apply_filters(list(self.typed_rows(section_id, {})),
+                                     query or {}, section)
+        for row in rows:
             media_rows = row.get("Media") or []
             if not media_rows and row.get("type") in ("show", "season"):
                 # Cycle 20, measured on kids and zen: a SHOW library's media axes are
@@ -11716,6 +11726,9 @@ class PlexSim:
             # Measured: an id of the wrong TYPE is simply not part of the set.
             rows = [self.catalog.items[k] for k in keys if k in self.catalog.items
                     and self.catalog.items[k].get("type") == wanted]
+            # Cycle 54, measured on kids and zen: the id list is filtered too --
+            # `id=4,18&year=2012` computes the Common of movie 4 alone.
+            rows, _ = self.apply_filters(rows, query, section)
         else:
             # Measured: with no `id` the dialog is editing EVERYTHING the filter
             # selects -- the select-all edit, whose save already edits the whole
@@ -11754,7 +11767,10 @@ class PlexSim:
         # MIXED titleSort is present as "" rather than absent; and a season's or an
         # episode's titleSort is reported only ever as "".
         common["guid"] = ""
-        if "titleSort" in mixed:
+        if "titleSort" in mixed or not rows:
+            # Cycle 54: and so is the titleSort of an EMPTY set -- measured on kids and
+            # zen, a filter that leaves no row answers exactly `mixedFields`, `guid`,
+            # `type` and `titleSort`, all but `type` empty.
             # Re-measured: only a MIXED titleSort is reported as "". A single season
             # answers its own sort title (`Season 1`) and a single episode the sort form
             # of its title (`The Train Job` -> `Train Job`), derived where the row stores
