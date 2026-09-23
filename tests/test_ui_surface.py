@@ -31466,6 +31466,55 @@ def main():
     else:
         skip("a pristine show carries its first episode as OnDeck", "need two episodes")
 
+    # Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a member of a
+    # collection with at least two members answers the `collection.related.{section}.1`
+    # hub on every Related read path -- `/library/metadata/{id}/related`,
+    # `/hubs/metadata/{id}/related` and the inline block -- titled "<title> Collection",
+    # context `hub.collection.related`, keyed on the collection's tag, and it REPLACES
+    # `movie.similar` there (re-measured with shared genres: the similar hub comes back
+    # the moment the collection drops to one member). plexsim never drew the shelf.
+    _, grid_c57h, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c57h = [str(r.get("ratingKey")) for r in grid_c57h.get("Metadata") or []][:2]
+    if len(pair_c57h) == 2:
+        uri_c57h = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(pair_c57h)))
+        _, made_c57h, _ = container(
+            base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+            % (quote("C57h Rel"), movie_section, uri_c57h))
+        coll_c57h = (made_c57h.get("Metadata") or [{}])[0]
+        def hubs_c57h():
+            one_c57h = get(base, "/library/metadata/%s/related?includeAugmentations=1"
+                           "&includeExternalMetadata=1&includeMeta=1" % pair_c57h[0])[1]
+            two_c57h = get(base, "/hubs/metadata/%s/related" % pair_c57h[0])[1]
+            row_c57h = (get(base, "/library/metadata/%s?includeRelated=1" % pair_c57h[0])[1]
+                        .get("Metadata") or [{}])[0]
+            return [one_c57h.get("Hub") or [], two_c57h.get("Hub") or [],
+                    (row_c57h.get("Related") or {}).get("Hub") or []]
+        both_c57h = hubs_c57h()
+        request(base, "DELETE", "/library/collections/%s/items/%s"
+                % (coll_c57h.get("ratingKey"), pair_c57h[1]))
+        one_left_c57h = hubs_c57h()
+        request(base, "DELETE", "/library/collections/%s" % coll_c57h.get("ratingKey"))
+        want_c57h = {
+            "hubIdentifier": "collection.related.%s.1" % movie_section,
+            "title": "C57h Rel Collection", "type": "movie",
+            "context": "hub.collection.related",
+            "hubKey": "/library/metadata/%s" % ",".join(pair_c57h),
+            "key": "/library/sections/%s/all?type=1&tagId=%s"
+                   "&sort=originallyAvailableAt,year:nullsLast"
+                   % (movie_section, coll_c57h.get("index")),
+            "size": 2}
+        got_c57h = [[{k: h.get(k) for k in want_c57h} for h in path_c57h]
+                    for path_c57h in both_c57h]
+        check("a collection member's Related is the collection's shelf",
+              got_c57h == [[want_c57h]] * 3
+              and not any(h.get("hubIdentifier", "").startswith("collection.")
+                          for path_c57h in one_left_c57h for h in path_c57h),
+              "two members %s; one member %s" % (
+                  got_c57h, [[h.get("hubIdentifier") for h in p] for p in one_left_c57h]))
+    else:
+        skip("a collection member's Related is the collection's shelf", "need two movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
