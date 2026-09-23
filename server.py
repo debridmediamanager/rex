@@ -6860,7 +6860,13 @@ class PlexSim:
                 # `?sectionID=1` alone is empty and `?type=2` alone answers for
                 # every show library. plexsim had it the other way round, so the
                 # TV shelf's "see all" opened an empty page.
-                rows = self.recently_added_rows(query.get("type"), query.get("sectionID"))
+                if str(query.get("type") or "") == "2":
+                    # Cycle 54: the TV list refuses the per-user keys as the hub pages do.
+                    refusal = hub_refusal(query)
+                    if refusal:
+                        return refusal
+                rows = self.recently_added_rows(query.get("type"), query.get("sectionID"),
+                                                query)
                 rows = (None if rows is None
                         else self.in_directories(rows, self.content_directories(query)))
                 meta = (HOME_RECENT_META.get(str(query.get("type") or ""))
@@ -6989,7 +6995,8 @@ class PlexSim:
                 if refusal:
                     return refusal
             return self.section_hubs(segments[2], query.get("count"),
-                                     query.get("includeLibraryPlaylists") == "1")
+                                     query.get("includeLibraryPlaylists") == "1",
+                                     query=query)
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
             # The Continue Watching shelf's own "see all" list.
@@ -12663,6 +12670,11 @@ class PlexSim:
                 continue
             is_show = section.get("type") == "show"
             rows = self.section_recently_added_rows(section)
+            if is_show and self.apply_filters([], query)[1] is not None:
+                # Cycle 54: with a filter in the request the library's TV shelf is the
+                # roll-up of the episodes that pass it, as on `/hubs` -- measured on
+                # kids, `title=Train` answers the episode here too.
+                rows = self.recently_added_tv(section["key"], query)
             # Measured: a SHOW library's Recently Added shelf is typed `mixed` and
             # its key goes to /hubs/home/recentlyAdded; a movie library's is typed
             # `movie` and goes straight to the section listing.
@@ -12889,7 +12901,7 @@ class PlexSim:
             return rows
         return [r for r in rows if str(r.get("librarySectionID")) in wanted]
 
-    def recently_added_rows(self, type_id, section_id=None):
+    def recently_added_rows(self, type_id, section_id=None, query=None):
         """Newest first, by TYPE (1 movies, 2 shows, 4 episodes); None for others."""
         # Cycle 21, swept over nine `type=` values on kids and zen: this shelf is
         # populated at `type=1` and `type=2` ONLY. Both references answer `size 0` to
@@ -12902,7 +12914,7 @@ class PlexSim:
         if wanted is None:
             return None
         if wanted == "show":
-            return self.recently_added_tv(section_id)
+            return self.recently_added_tv(section_id, query)
         rows = [r for r in self.catalog.items.values() if r.get("type") == wanted]
         if section_id:
             rows = [r for r in rows if str(r.get("librarySectionID")) == str(section_id)]
@@ -12935,7 +12947,7 @@ class PlexSim:
     # big enough to reach it -- and nothing on the surface explains the number.
     TV_RECENT_CAP = 50
 
-    def recently_added_tv(self, section_id=None):
+    def recently_added_tv(self, section_id=None, query=None):
         """`/hubs/home/recentlyAdded?type=2` -- a MIXED, rolled-up list.
 
         Cycle 28, measured on zen (50 rows: 12 shows, 31 seasons, 7 episodes) and
@@ -12975,6 +12987,13 @@ class PlexSim:
         if section_id:
             leaves = [r for r in leaves
                       if str(r.get("librarySectionID")) == str(section_id)]
+        if query:
+            # Cycle 54, measured on kids and zen: the request's listing FILTERS run over
+            # the EPISODES before the roll-up -- `title=Train` answers the one episode,
+            # `title=Firefly` nothing (the show's title is not an episode's), and
+            # `show.title=Firefly` or `year=2002` the show again, rolled up from every
+            # leaf that passed.
+            leaves, _ = self.apply_filters(leaves, query)
         by_season, by_show = {}, {}
         for leaf in leaves:
             by_season.setdefault(str(leaf.get("parentRatingKey")), []).append(leaf)
@@ -13062,7 +13081,8 @@ class PlexSim:
                 self.in_directories(self.recently_added_rows("1"), directories)],
             "home.television.recent": [
                 _listing_row(r) for r in
-                self.in_directories(self.recently_added_rows("2"), directories)],
+                self.in_directories(self.recently_added_rows("2", query=query),
+                                    directories)],
             # Cycle 25: the shelf is populated -- see `recent_playlists`.
             "home.playlists": self.recent_playlists(),
         }
@@ -13155,7 +13175,7 @@ class PlexSim:
                         projected["Guid"] = [{"id": stored["guid"]}]
         return self.hub_container(Hub=hubs)
 
-    def section_hubs(self, section_id, count=None, library_playlists=False):
+    def section_hubs(self, section_id, count=None, library_playlists=False, query=None):
         """`/hubs/sections/{id}` -- the library's Recommended tab.
 
         Five shelves, measured hub for hub against the reference: identifier,
@@ -13199,6 +13219,15 @@ class PlexSim:
                           key=lambda r: str(r.get("originallyAvailableAt") or ""),
                           reverse=True)
         added = self.section_recently_added_rows(section)
+        if is_show and query:
+            # Cycle 54, measured on kids and zen: the TV shelf here runs the request's
+            # filters over the episodes, and `contentDirectoryID` naming another library
+            # empties it -- the other shelves on the page keep their rows.
+            if self.apply_filters([], query)[1] is not None:
+                added = self.recently_added_tv(section_id, query)
+            wanted = self.content_directories(query)
+            if wanted is not None and str(section_id) not in wanted:
+                added = []
         # Each of the three shelves added below is built from its own key, which is
         # the listing its "see all" opens: Top Unwatched is unwatched films rated 7.0
         # or better, best first; Start Watching is the shows with no episode watched or
