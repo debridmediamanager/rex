@@ -666,6 +666,14 @@ def compare(kind, operator, actual, wanted, field=""):
         # `lastRatedAt`, `createdAt`, `lastViewedAt` on most of them -- an
         # unparseable value was never refused at all. Both references 500 it.
         moment = as_epoch(wanted)
+        if field in NULL_IS_ZERO_DATES and operator == "=" and not (
+                re.fullmatch(r"[+-]?[0-9]+", str(wanted))
+                and -2 ** 31 <= int(wanted) < 2 ** 31):
+            # Cycle 55, measured on zen and kids: under a bare `=` the three per-user
+            # dates take a SIGNED 32-BIT integer and nothing else -- `-5y`, `2020-01-01`,
+            # `2147483648`, `-2147483649` and `9999999999` are 500s -- while the other
+            # seven operators still read a date (`lastViewedAt<<=-5y` is zen's 3,866).
+            raise FilterError(500, "bad %s %r" % (field, wanted))
         if actual is None and field in NULL_IS_ZERO_DATES:
             # Cycle 54, measured on zen and kids: the three per-user DATES are the
             # `viewCount` family, not this one -- an unset value is below every value and
