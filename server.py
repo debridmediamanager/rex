@@ -8872,8 +8872,11 @@ class PlexSim:
                 if str(projected.get("key") or "").endswith("/children"):
                     projected["key"] = projected["key"] + "?unwatched=1"
                 listed.append(projected)
+            # Cycle 55, measured on zen and kids: `includeGuids=1` puts `Guid` on these
+            # rows as on every other listing. plexsim handed the container no query, so
+            # the gate stripped it.
             return self.listing_container(
-                section_id, section, listed,
+                section_id, section, listed, query=query,
                 title2=SECONDARY_TITLES["unwatched"], **extra)
         if leaf == "search":
             # Measured again, more carefully than the first time: only the form
