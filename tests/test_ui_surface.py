@@ -31912,6 +31912,52 @@ def main():
           and off_search_c58["scoped"] == 404 and back_c58 == shown_c58,
           "hidden=2 %s back %s" % (off_search_c58, back_c58))
 
+    # Cycle 59, measured on zen (1.42.2), kids (1.43.4) and both copies: under
+    # `X-Plex-Language: en` -- python-plexapi's default header, Plex Web's query parameter --
+    # an item's Advanced enums stay English. plexsim replaced every `Library default` enum
+    # with the 46-language list, so a show's Seasons dropdown offered languages and
+    # python-plexapi's `editAdvanced(flattenSeasons=1)` refused its own value. And an item's
+    # own language enum (its stream languages, then the regional list) is localised piece by
+    # piece: the head by tag (read off zen), the tail from the table in its own order, the
+    # inherit option on its own.
+    import html as html_c59a
+    def enums_c59a(rk_c59a, language_c59a, how_c59a="query"):
+        path_c59a = "/library/metadata/%s?includePreferences=1" % rk_c59a
+        headers_c59a = {"User-Agent": UA, "Accept": "application/xml"}
+        if how_c59a == "query":
+            path_c59a += "&X-Plex-Language=%s" % language_c59a
+        else:
+            headers_c59a["X-Plex-Language"] = language_c59a
+        req_c59a = urllib.request.Request(base + path_c59a, headers=headers_c59a)
+        body_c59a = urllib.request.urlopen(req_c59a, timeout=30).read().decode()
+        return {m.group(1): html_c59a.unescape(m.group(2)) for m in re.finditer(
+            r'<Setting id="([^"]+)"[^>]*?enumValues="([^"]*)"', body_c59a)}
+    _, seasons_c59a, _ = get(base, "/library/metadata/%s/children" % show)
+    season_c59a = ((seasons_c59a.get("Metadata") or [{}])[0]).get("ratingKey")
+    en_c59a = enums_c59a(show, "en")
+    check("an item's Library-default enums stay English under X-Plex-Language=en",
+          en_c59a.get("flattenSeasons") == "-1:Library default|0:Show|1:Hide"
+          and en_c59a.get("episodeSort") == "-1:Library default|0:Oldest first|1:Newest first"
+          and enums_c59a(show, "en-US", "header").get("subtitleMode")
+          == "-1:Account default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
+          and enums_c59a(movie, "en").get("useOriginalTitle") == "-1:Library default|0:No|1:Yes",
+          str({k: v[:60] for k, v in en_c59a.items()}))
+    audio_c59a = en_c59a.get("audioLanguage") or ""
+    check("a show's own language enum is named in English under en",
+          audio_c59a.startswith(":Account default|en:English|")
+          and "|ca-ES:Catalan|" in audio_c59a and "Français" not in audio_c59a
+          and "català" not in audio_c59a, audio_c59a[:120])
+    de_c59a = enums_c59a(show, "de").get("audioLanguage") or ""
+    check("the inherit option and the head are localised on their own (German)",
+          de_c59a.startswith(":Benutzer-Standard|en:Englisch|") and "|ca-ES:Katalanisch|" in de_c59a,
+          de_c59a[:120])
+    da_c59a = enums_c59a(show, "da").get("audioLanguage") or ""
+    check("the Danish inherit option is zen's, not the table list's lead",
+          da_c59a.startswith(":Kontomenu|"), da_c59a[:60])
+    season_en_c59a = enums_c59a(season_c59a, "en").get("audioLanguage") or ""
+    check("a season's language enum keeps its own head under en",
+          season_en_c59a.startswith(":Series default|en:English|"), season_en_c59a[:80])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
