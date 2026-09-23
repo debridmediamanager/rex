@@ -31250,6 +31250,43 @@ def main():
         request(base, "DELETE", "/playlists/%s" % lists_c57b[1])
     check("a list's history is an empty 200", statuses_c57b == [200, 200], str(statuses_c57b))
 
+    def make_list_c57(kind_c57, title_c57):
+        """Create a collection or playlist on the first movie; return its ratingKey."""
+        _, grid_c57, _ = get(base, "/library/sections/%s/all" % movie_section)
+        first_c57 = ((grid_c57.get("Metadata") or [{}])[0]).get("ratingKey")
+        uri_c57 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                        % (machine, first_c57))
+        if kind_c57 == "collection":
+            status_c57, body_c57, _ = request(
+                base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (quote(title_c57), movie_section, uri_c57))
+        else:
+            status_c57, body_c57, _ = request(
+                base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                % (quote(title_c57), uri_c57))
+        try:
+            return ((json.loads(body_c57).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+                    .get("ratingKey"))
+        except ValueError:
+            return None
+    # Cycle 57, measured on plexscratch42 and plexscratch: a PLAYLIST's search ladder is one
+    # step below a movie's -- 0.92 exact, 0.72 from the first word, 0.52 a prefix, 0.32 a
+    # later word. plexsim scored it at the movie's 0.93 base.
+    pl_c57c = make_list_c57("playlist", "Rg57 Quasar Mix")
+    def score_c57c(query_c57c):
+        _, found_c57c, _ = get(base, "/hubs/search?query=%s" % quote(query_c57c))
+        for hub_c57c in found_c57c.get("Hub") or []:
+            for row_c57c in hub_c57c.get("Metadata") or []:
+                if row_c57c.get("title") == "Rg57 Quasar Mix":
+                    return str(row_c57c.get("score"))
+        return None
+    cells_c57c = {q: score_c57c(q) for q in ("Rg57 Quasar Mix", "Rg57", "Quasar")}
+    if pl_c57c:
+        request(base, "DELETE", "/playlists/%s" % pl_c57c)
+    check("a playlist's search ladder is one step below a movie's",
+          cells_c57c == {"Rg57 Quasar Mix": "0.92000", "Rg57": "0.72000", "Quasar": "0.32000"},
+          str(cells_c57c))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
