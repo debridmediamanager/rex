@@ -175,6 +175,28 @@ def remap(path):
                   % IDS.get(m.group(1), m.group(1)), path)
 
 
+# Cycle 60: the paths cycle 59's hunts found the table never held -- the Related and
+# post-play shelves and the Manage Recommendations titles.
+PATHS += [
+    '/hubs/metadata/1/related',
+    '/hubs/metadata/1/postplay',
+    '/library/metadata/1?includeRelated=1',
+    '/hubs/sections/1/manage',
+    '/hubs/sections/2/manage',
+]
+# Cycle 60: `I18N_ONLY` narrows the run to paths containing any of its comma-separated
+# words -- plexscratch42 is captured for `/:/prefs` and `/media/providers` alone, which
+# zen's token cannot read in full and whose playlist pivot zen does not hold.
+if os.environ.get('I18N_ONLY'):
+    PATHS = [p for p in PATHS
+             if any(word in p for word in os.environ['I18N_ONLY'].split(','))]
+# Cycle 60: with `I18N_KEEP_SAME=1` a cell the target language leaves in ENGLISH is
+# recorded too, as English -- the table's own "no translation" -- so a merge can remove a
+# translation the other version carries. Cycle 59 merged only the changed cells, and 591
+# cells kept 1.43.4's translation where 1.42.2 answers English.
+KEEP_SAME = os.environ.get('I18N_KEEP_SAME') == '1'
+
+
 def fetch(path, language=None):
     import time
     time.sleep(float(os.environ.get('I18N_DELAY', '0')))
@@ -255,7 +277,7 @@ for language in LANGUAGES:
                     if repeat.get(key) == value}
         for key, value in stable.items():
             seen = seen_all.get(key)
-            if seen is None or seen == value:
+            if seen is None or (seen == value and not KEEP_SAME):
                 continue
             # Keyed by the ATTRIBUTE as well as the string: the reference translates
             # "By Genre" as a section PIVOT's `title` and leaves the same words alone

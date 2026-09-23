@@ -32445,6 +32445,31 @@ def main():
                   if str(k).startswith("movie.genre")),
           str((de_c60d, ja_c60d.get("movie.recentlyadded.%s" % movie_section))))
 
+    # Cycle 60, re-captured off zen (every path) and plexscratch42 (the settings documents)
+    # recording the cells a language leaves in ENGLISH too: `translations.json` is 1.42.2's.
+    # Cycle 59 overlaid only the cells zen translated, so where 1.42.2 answers English plexsim
+    # still answered 1.43.4's translation (414 cells), and the Related, post-play and Manage
+    # Recommendations titles were never in the table at all.
+    def loc_c60e(path_c60e, language_c60e):
+        return json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + path_c60e, headers={"User-Agent": UA, "Accept": "application/json",
+                                       "X-Plex-Language": language_c60e}), timeout=30).read())["MediaContainer"]
+    prefs_c60e = {s.get("id"): s for s in loc_c60e("/library/sections/%s/prefs" % show_section, "de").get("Setting") or []}
+    _, grid_c60e, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c60e = ((grid_c60e.get("Metadata") or [{}])[0]).get("ratingKey")
+    related_c60e = [h.get("title") for h in loc_c60e("/hubs/metadata/%s/related" % first_c60e, "de").get("Hub") or []
+                    if str(h.get("hubIdentifier")).startswith("movie.similar")]
+    manage_c60e = {h.get("identifier"): h.get("title")
+                   for h in loc_c60e("/hubs/sections/%s/manage" % movie_section, "de").get("Hub") or []}
+    check("the localised strings are 1.42.2's, and the table holds the Related and manage titles",
+          (prefs_c60e.get("episodeSort") or {}).get("summary") == "How to sort the episodes for shows."
+          and related_c60e in ([], ["Ähnliche Filme"])
+          and manage_c60e.get("recent.library.playlists") == "Mediathek-Wiedergabelisten"
+          and manage_c60e.get("movie.genre") == "Top-Filme in (Genre)",
+          str(((prefs_c60e.get("episodeSort") or {}).get("summary"), related_c60e, manage_c60e)))
+    postplay_c60e = [h.get("title") for h in loc_c60e("/hubs/metadata/%s/postplay" % first_c60e, "de").get("Hub") or []]
+    check("the post-play Related shelf is localised", "Related Movies" not in postplay_c60e, str(postplay_c60e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
