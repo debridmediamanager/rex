@@ -30695,6 +30695,28 @@ def main():
               by_id_c55f2 == ids_c55f2 and plain_c55f2 != ids_c55f2 and bad_c55f2 == [500, 500],
               "sourceType=0 %s, =1 %s, bad %s" % (by_id_c55f2, plain_c55f2, bad_c55f2))
 
+    # Cycle 55, measured on zen and kids: an integer parameter takes an optional `+` and
+    # leading zeros -- `limit=+1` is one row, `mediaType=+1` the typed agent list,
+    # `accountID=+1` and `librarySectionID=+1` filter history and Top Played (where
+    # `1.5` matches nothing with a 200), `contentDirectoryID=01` scopes a search, and
+    # `type=01` is the `type=1` axis. plexsim refused or string-compared every one.
+    cells_c55f3 = ["/library/sections/%s/all?limit=%%2B1" % movie_section,
+                   "/playlists?limit=%2B1", "/system/agents?mediaType=%2B1",
+                   "/library/all/top?type=1&accountID=1.5",
+                   "/library/all/top?type=1&librarySectionID=%2B1",
+                   "/status/sessions/history/all?type=1&accountID=%2B1",
+                   "/hubs/search?query=the&contentDirectoryID=01",
+                   "/hubs/continueWatching?contentDirectoryID=%2B1"]
+    got_c55f3 = [get(base, cell_c55f3)[0] for cell_c55f3 in cells_c55f3]
+    one_c55f3 = get(base, cells_c55f3[0])[1].get("Metadata") or []
+    axis_c55f3 = [get(base, "/library/sections/%s/genre?type=%s" % (movie_section, t))[:2]
+                  for t in ("1", "01", "%2B1")]
+    check("A leading plus or zero is part of an integer parameter",
+          got_c55f3 == [200] * len(cells_c55f3) and len(one_c55f3) == 1
+          and axis_c55f3[0] == axis_c55f3[1] == axis_c55f3[2],
+          "%s, limit=+1 rows %s, axis %s" % (got_c55f3, len(one_c55f3),
+                                             [a[0] for a in axis_c55f3]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
