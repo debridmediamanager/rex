@@ -30905,6 +30905,22 @@ def main():
           "subsets %s, onDeck %s, allLeaves %s" % ([s[0] for s in subset_c55f17],
                                                    deck_c55f17, leaves_c55f17))
 
+    # Cycle 55, measured on zen and kids: `/hubs/sections/{id}/manage?metadataItemId=` has
+    # three answers -- `-1` is the bare hub list, a number naming no item an EMPTY 200, and
+    # an item the server holds (or a value that is not an int32) the 400. plexsim 400'd all.
+    manage_c55f18 = "/hubs/sections/%s/manage" % movie_section
+    bare_c55f18 = get(base, manage_c55f18)
+    minus_c55f18 = get(base, manage_c55f18 + "?metadataItemId=-1")
+    none_c55f18 = get(base, manage_c55f18 + "?metadataItemId=999999")
+    item_c55f18 = get(base, manage_c55f18 + "?metadataItemId=%s" % movie)[0]
+    word_c55f18 = get(base, manage_c55f18 + "?metadataItemId=abc")[0]
+    check("Manage recommendations answers metadataItemId three ways",
+          minus_c55f18[:2] == bare_c55f18[:2] and none_c55f18[0] == 200
+          and not none_c55f18[1].get("Hub") and item_c55f18 == 400 and word_c55f18 == 400,
+          "-1 %s, none %s/%s, item %s, word %s" % (minus_c55f18[0], none_c55f18[0],
+                                                  none_c55f18[1].get("size"), item_c55f18,
+                                                  word_c55f18))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
