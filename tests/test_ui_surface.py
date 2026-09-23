@@ -30016,6 +30016,39 @@ def main():
                 wrong_c54d.append("%s%s" % (column_c54d, filter_c54d))
     check("an unset per-user date reads as zero", not wrong_c54d, "; ".join(wrong_c54d))
 
+    # Cycle 54, from the parameter names the server binary reads, measured on zen (1.42.2),
+    # kids (1.43.4) and plexscratch42: six MEDIA columns filter a listing. The three numbers
+    # (`mediaHeight`, `mediaWidth`, `mediaAudioChannels`) refuse a word or an empty value
+    # with a 500; the three names (`mediaVideoCodec`, `mediaAudioCodec`, `mediaContainer`)
+    # compare case-sensitively -- zen's `mediaVideoCodec=h264` is 1,816 of 3,887 and `=H264`
+    # and `==H264` none. plexsim did not know them, and an unknown field answers every row.
+    _, grid_c54f = get(base, "/library/sections/%s/all" % movie_section)[:2]
+    codecs_c54f = {m.get("videoCodec") for r in grid_c54f.get("Metadata") or []
+                   for m in r.get("Media") or []}
+    wrong_c54f = []
+    for query_c54f, want_c54f in (("mediaHeight=zzzq", 500), ("mediaHeight=", 500),
+                                  ("mediaAudioChannels=abc", 500)):
+        status_c54f, _, _ = request(base, "GET", "/library/sections/%s/all?%s"
+                                    % (movie_section, query_c54f))
+        if status_c54f != want_c54f:
+            wrong_c54f.append("%s -> %s" % (query_c54f, status_c54f))
+    _, none_c54f, _ = get(base, "/library/sections/%s/all?mediaVideoCodec=zzzq" % movie_section)
+    if none_c54f.get("Metadata"):
+        wrong_c54f.append("mediaVideoCodec=zzzq kept rows")
+    some_c54f = sorted(c for c in codecs_c54f if c)[:1]
+    if some_c54f:
+        _, hit_c54f, _ = get(base, "/library/sections/%s/all?mediaVideoCodec=%s"
+                             % (movie_section, some_c54f[0]))
+        _, upper_c54f, _ = get(base, "/library/sections/%s/all?mediaVideoCodec=%s"
+                               % (movie_section, some_c54f[0].upper()))
+        if not hit_c54f.get("Metadata") or upper_c54f.get("Metadata"):
+            wrong_c54f.append("mediaVideoCodec=%s not exact" % some_c54f[0])
+    status_c54f, parsed_c54f, _ = request(base, "GET", "/library/sections/%s/query/parse"
+                                          "?mediaHeight=1" % movie_section)
+    if b"Rule" not in parsed_c54f:
+        wrong_c54f.append("query/parse has no Rule")
+    check("the six media columns filter a listing", not wrong_c54f, "; ".join(wrong_c54f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
