@@ -4327,8 +4327,16 @@ class PlexSim:
                     pick = min(leaves, key=lambda leaf: (
                         (leaf.get("parentIndex") or 0) == 0,
                         leaf.get("parentIndex") or 0, leaf.get("index") or 0))
+            # The OWNING season is a fact of the hierarchy, not of the row: under
+            # `flattenSeasons=1` an episode row loses `parentRatingKey` (the season is kept
+            # privately as `_parentRatingKey`), and reading the public field alone left the
+            # owning season of a flattened show with no OnDeck block at all. Cycle 57's
+            # full suite reached exactly that state. How a real PMS answers a flattened
+            # show's season here is not measured; ownership itself does not change.
+            owner = pick.get("parentRatingKey") or pick.get("_parentRatingKey") \
+                if pick is not None else None
             if (pick is not None and row.get("type") == "season"
-                    and str(pick.get("parentRatingKey")) != str(row.get("ratingKey"))):
+                    and str(owner) != str(row.get("ratingKey"))):
                 pick = None
             if pick is not None:
                 projected = _full(pick)
