@@ -30483,6 +30483,23 @@ def main():
               section_keys_c55d[:1] == pair_c55d[:1] and library_keys_c55d[:1] == pair_c55d[1:],
               "section %s library %s" % (section_keys_c55d, library_keys_c55d))
 
+    # Cycle 55, from the binary's SQL (`group by parent_id order by count(*) desc limit`) and
+    # measured on plexscratch42: `/hubs/sections/{id}/popular` ranks SEASONS by their
+    # HISTORY rows, so unscrobbling a season -- which removes its `viewCount` and no history
+    # -- leaves it on the list. Cycle 52 read the season's `viewCount` instead.
+    if show:
+        _, seasons_c55e, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
+        season_c55e = ((seasons_c55e.get("Metadata") or [{}])[0]).get("ratingKey")
+        _, eps_c55e, _ = get(base, "/library/metadata/%s/children" % season_c55e)
+        episode_c55e = ((eps_c55e.get("Metadata") or [{}])[0]).get("ratingKey")
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % episode_c55e)
+        request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % season_c55e)
+        _, popular_c55e, _ = get(base, "/hubs/sections/%s/popular" % show_section)
+        check("popular ranks seasons by their history",
+              season_c55e in [r.get("ratingKey") for r in popular_c55e.get("Metadata") or []],
+              "season %s in %s" % (season_c55e, [r.get("ratingKey")
+                                                 for r in popular_c55e.get("Metadata") or []]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

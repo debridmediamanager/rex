@@ -7098,12 +7098,22 @@ class PlexSim:
             section = catalog.section(segments[2])
             if section is None or method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
+            # Cycle 55 REFUTED cycle 52's "a season row with `viewCount` above zero":
+            # from `group by parent_id order by count(*) desc limit` and measured on
+            # plexscratch42, the rank is the season's HISTORY rows, and a season whose
+            # `viewCount` an unscrobble removed stays on the list.
+            plays = {}
+            for entry in self.library.history():
+                key = str(entry.get("ratingKey") or "")
+                leaf = catalog.items.get(int(key)) if key.isdigit() else None
+                parent = str((leaf or {}).get("parentRatingKey")
+                             or (leaf or {}).get("_parentRatingKey") or "")
+                if leaf is not None and leaf.get("type") == "episode" and parent.isdigit():
+                    plays[int(parent)] = plays.get(int(parent), 0) + 1
             seasons = sorted(
-                (row for row in catalog.items.values()
-                 if row.get("type") == "season"
-                 and str(row.get("librarySectionID")) == str(section["key"])
-                 and (row.get("viewCount") or 0) > 0),
-                key=lambda row: (-(row.get("viewCount") or 0), int(row["ratingKey"])))
+                (catalog.items[key] for key in plays if key in catalog.items
+                 and str(catalog.items[key].get("librarySectionID")) == str(section["key"])),
+                key=lambda row: (-plays[int(row["ratingKey"])], int(row["ratingKey"])))
             return self.bare_container(
                 size=len(seasons), allowSync=True,
                 identifier="com.plexapp.plugins.library",
