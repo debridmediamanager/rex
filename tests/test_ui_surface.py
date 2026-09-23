@@ -30863,6 +30863,16 @@ def main():
     check("A hub search refuses a sectionId naming no section",
           got_c55f13 == [400, 400, 400, 200, 200, 200, 200], "%s" % got_c55f13)
 
+    # Cycle 55, measured on zen and kids: `personal=1` empties the MOVIE Recently Added
+    # list and leaves the TV one (`type=2`) exactly as it was -- zen 50 rows, kids 1.
+    # plexsim emptied both.
+    tv_c55f14 = [get(base, "/hubs/home/recentlyAdded?type=2%s" % q)[1].get("size")
+                 for q in ("", "&personal=1")]
+    movie_c55f14 = get(base, "/hubs/home/recentlyAdded?type=1&personal=1")[1].get("size")
+    check("personal=1 keeps the TV recently added list",
+          tv_c55f14[0] and tv_c55f14[0] == tv_c55f14[1] and not movie_c55f14,
+          "tv %s, movie %s" % (tv_c55f14, movie_c55f14))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

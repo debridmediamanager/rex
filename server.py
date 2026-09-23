@@ -7066,7 +7066,11 @@ class PlexSim:
                     # server holds none of.
                     if not _bool_option(query["personal"]):
                         return ("error", 400, "plexsim: bad request")
-                    if int(str(query["personal"]).lstrip("+")) == 1:
+                    # Cycle 55, measured on zen (50 rows either way) and kids (1): the TV
+                    # list at `type=2` is UNCHANGED by `personal=1`; only the movie list
+                    # (and the always-empty `type=4`) empties. plexsim emptied every type.
+                    if int(str(query["personal"]).lstrip("+")) == 1 \
+                            and str(query.get("type") or "") != "2":
                         rows = [] if rows is not None else rows
                 rows = (None if rows is None
                         else self.in_directories(rows, self.content_directories(query)))
