@@ -30948,6 +30948,29 @@ def main():
               and got_c55f20 == [base_c55f20, [1] * len(base_c55f20), base_c55f20],
               "default %s, got %s" % (base_c55f20, got_c55f20))
 
+    # Cycle 55, measured on zen and kids: for the client-title rule the X-Plex-Product
+    # HEADER beats the query parameter -- header `abc` with query `Plex Web` prints the
+    # plain `1080p`, header `Plex Web` with query `abc` prints the codec. plexsim read the
+    # query first.
+    def video_title_c55f21(path, product):
+        req_c55f21 = urllib.request.Request(base + path, headers={
+            "Accept": "application/json", "User-Agent": UA, "X-Plex-Product": product,
+            "X-Plex-Client-Identifier": "plexsim-ui-test", "X-Plex-Platform": "Chrome"})
+        with urllib.request.urlopen(req_c55f21, timeout=30) as resp_c55f21:
+            doc_c55f21 = json.loads(resp_c55f21.read())
+        for media_c55f21 in (doc_c55f21["MediaContainer"].get("Metadata") or [{}])[0].get("Media") or []:
+            for part_c55f21 in media_c55f21.get("Part") or []:
+                for stream_c55f21 in part_c55f21.get("Stream") or []:
+                    if stream_c55f21.get("streamType") == 1:
+                        return stream_c55f21.get("displayTitle") or ""
+        return None
+    header_web_c55f21 = video_title_c55f21("/library/metadata/%s?X-Plex-Product=abc" % movie, "Plex Web")
+    header_abc_c55f21 = video_title_c55f21("/library/metadata/%s?X-Plex-Product=Plex%%20Web" % movie, "abc")
+    if header_web_c55f21 is not None:
+        check("The X-Plex-Product header beats the query for client titles",
+              "(" in header_web_c55f21 and "(" not in (header_abc_c55f21 or "("),
+              "header Plex Web %r, header abc %r" % (header_web_c55f21, header_abc_c55f21))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
