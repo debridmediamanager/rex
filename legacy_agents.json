@@ -17,23 +17,177 @@
    "MediaType": [
     {
      "name": "Personal Media",
-     "mediaType": "1"
+     "mediaType": "1",
+     "Language": [
+      {
+       "code": "xn"
+      }
+     ]
     },
     {
      "name": "Personal Media Shows",
-     "mediaType": "2"
+     "mediaType": "2",
+     "Language": [
+      {
+       "code": "xn"
+      }
+     ]
     },
     {
      "name": "Personal Media Artists",
-     "mediaType": "8"
+     "mediaType": "8",
+     "Language": [
+      {
+       "code": "xn"
+      }
+     ]
     },
     {
      "name": "Personal Media Albums",
-     "mediaType": "9"
+     "mediaType": "9",
+     "Language": [
+      {
+       "code": "xn"
+      }
+     ]
     },
     {
      "name": "Photos",
-     "mediaType": "13"
+     "mediaType": "13",
+     "Language": [
+      {
+       "code": "ar"
+      },
+      {
+       "code": "bg"
+      },
+      {
+       "code": "ca"
+      },
+      {
+       "code": "cs"
+      },
+      {
+       "code": "cy"
+      },
+      {
+       "code": "da"
+      },
+      {
+       "code": "de"
+      },
+      {
+       "code": "el"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "et"
+      },
+      {
+       "code": "fa"
+      },
+      {
+       "code": "fi"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "he"
+      },
+      {
+       "code": "hi"
+      },
+      {
+       "code": "hr"
+      },
+      {
+       "code": "ht"
+      },
+      {
+       "code": "hu"
+      },
+      {
+       "code": "id"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "ko"
+      },
+      {
+       "code": "lt"
+      },
+      {
+       "code": "lv"
+      },
+      {
+       "code": "ms"
+      },
+      {
+       "code": "mt"
+      },
+      {
+       "code": "nl"
+      },
+      {
+       "code": "no"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ro"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sk"
+      },
+      {
+       "code": "sl"
+      },
+      {
+       "code": "sr"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "th"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "uk"
+      },
+      {
+       "code": "ur"
+      },
+      {
+       "code": "vi"
+      },
+      {
+       "code": "xn"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     }
    ]
   },
@@ -54,7 +208,108 @@
    "MediaType": [
     {
      "name": "Plex Movie (Legacy)",
-     "mediaType": "1"
+     "mediaType": "1",
+     "Language": [
+      {
+       "code": "ar"
+      },
+      {
+       "code": "ca"
+      },
+      {
+       "code": "cs"
+      },
+      {
+       "code": "da"
+      },
+      {
+       "code": "de"
+      },
+      {
+       "code": "el"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "et"
+      },
+      {
+       "code": "fa"
+      },
+      {
+       "code": "fi"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "he"
+      },
+      {
+       "code": "hi"
+      },
+      {
+       "code": "hu"
+      },
+      {
+       "code": "id"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "ko"
+      },
+      {
+       "code": "lv"
+      },
+      {
+       "code": "nl"
+      },
+      {
+       "code": "no"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ro"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sk"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "th"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "uk"
+      },
+      {
+       "code": "vi"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     }
    ]
   },
@@ -75,7 +330,78 @@
    "MediaType": [
     {
      "name": "TheTVDB",
-     "mediaType": "2"
+     "mediaType": "2",
+     "Language": [
+      {
+       "code": "cs"
+      },
+      {
+       "code": "da"
+      },
+      {
+       "code": "de"
+      },
+      {
+       "code": "el"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fi"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "he"
+      },
+      {
+       "code": "hr"
+      },
+      {
+       "code": "hu"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "ko"
+      },
+      {
+       "code": "nl"
+      },
+      {
+       "code": "no"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sl"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     }
    ]
   },
@@ -96,11 +422,171 @@
    "MediaType": [
     {
      "name": "The Movie Database",
-     "mediaType": "1"
+     "mediaType": "1",
+     "Language": [
+      {
+       "code": "cs"
+      },
+      {
+       "code": "da"
+      },
+      {
+       "code": "de"
+      },
+      {
+       "code": "el"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fi"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "he"
+      },
+      {
+       "code": "hr"
+      },
+      {
+       "code": "hu"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ko"
+      },
+      {
+       "code": "lt"
+      },
+      {
+       "code": "lv"
+      },
+      {
+       "code": "nl"
+      },
+      {
+       "code": "no"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sk"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "th"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "vi"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     },
     {
      "name": "The Movie Database",
-     "mediaType": "2"
+     "mediaType": "2",
+     "Language": [
+      {
+       "code": "cs"
+      },
+      {
+       "code": "da"
+      },
+      {
+       "code": "de"
+      },
+      {
+       "code": "el"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fi"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "he"
+      },
+      {
+       "code": "hr"
+      },
+      {
+       "code": "hu"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ko"
+      },
+      {
+       "code": "lt"
+      },
+      {
+       "code": "lv"
+      },
+      {
+       "code": "nl"
+      },
+      {
+       "code": "no"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sk"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "th"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "vi"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     }
    ]
   },
@@ -129,11 +615,87 @@
    "MediaType": [
     {
      "name": "Last.fm",
-     "mediaType": "8"
+     "mediaType": "8",
+     "Language": [
+      {
+       "code": "de"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     },
     {
      "name": "Last.fm",
-     "mediaType": "9"
+     "mediaType": "9",
+     "Language": [
+      {
+       "code": "de"
+      },
+      {
+       "code": "en"
+      },
+      {
+       "code": "es"
+      },
+      {
+       "code": "fr"
+      },
+      {
+       "code": "it"
+      },
+      {
+       "code": "ja"
+      },
+      {
+       "code": "pl"
+      },
+      {
+       "code": "pt"
+      },
+      {
+       "code": "ru"
+      },
+      {
+       "code": "sv"
+      },
+      {
+       "code": "tr"
+      },
+      {
+       "code": "zh"
+      }
+     ]
     }
    ]
   }

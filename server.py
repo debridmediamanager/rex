@@ -18820,7 +18820,9 @@ class PlexSim:
         agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                    if name in by_id] if wanted else list(SYSTEM_AGENTS))
         # Cycle 53: the eleven LEGACY agents come first, in both forms. In the bare form
-        # each carries `MediaType` rows and no `Language`; in the typed form the PRIMARY
+        # each carries `MediaType` rows and no `Language` of its own (cycle 56: each
+        # MediaType carries ITS languages, 33 for the legacy IMDb movies -- captured into
+        # `legacy_agents.json` from zen, identical on all four instruments); in the typed form the PRIMARY
         # agents for that type carry their own `Language` CODES -- a bare `code`, no
         # title, and a list per agent (one for Personal Media, 33 for the legacy IMDb
         # agent, 26 for The Movie Database) -- which is the split cycle 44 measured from
