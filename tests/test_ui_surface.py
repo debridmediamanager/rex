@@ -6222,8 +6222,27 @@ def main():
     check("a session's playback flags stay on the session row, not in the catalog",
           sessions8 and not leaked8, "%d session(s), leaked %s" % (len(sessions8), sorted(leaked8)))
 
+    # Cycle 55: Related is the measured shared-tag score (two of the item's first three
+    # genres and first four roles), so the fixture holds no related pair of its own. Make
+    # one -- two shared genres at the FRONT of this movie's list and at the end of another's
+    # -- and put both lists back after the read.
+    def genres_c55r(key_c55r):
+        return [t.get("tag") for t in detail_of(key_c55r).get("Genre") or [] if t.get("tag")]
+    def set_genres_c55r(key_c55r, tags_c55r):
+        request(base, "PUT", "/library/metadata/%s?%s" % (key_c55r, "&".join(
+            "genre[%d].tag.tag=%s" % (n_c55r, quote(t_c55r))
+            for n_c55r, t_c55r in enumerate(tags_c55r))))
+    other_c55r = next((r.get("ratingKey") for r in get(base, "/library/sections/%s/all"
+                                                           % movie_section)[1].get("Metadata") or []
+                       if str(r.get("ratingKey")) != str(c5_movie)), None)
+    saved_c55r = {key: genres_c55r(key) for key in (c5_movie, other_c55r) if key}
+    if other_c55r:
+        set_genres_c55r(c5_movie, ["Related One", "Related Two"] + saved_c55r[c5_movie])
+        set_genres_c55r(other_c55r, saved_c55r[other_c55r] + ["Related One", "Related Two"])
     related8 = [r for hub in get(base, "/hubs/metadata/%s/related" % c5_movie)[1].get("Hub") or []
                 for r in hub.get("Metadata") or []]
+    for key_c55r, tags_c55r in saved_c55r.items():
+        set_genres_c55r(key_c55r, tags_c55r)
     first_related = related8[0] if related8 else {}
     check("a Related shelf carries the full row: tag ids, streams and its library",
           first_related and "librarySectionID" in first_related
