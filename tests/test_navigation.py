@@ -87,8 +87,16 @@ def main():
         in_progress = [item for item in episodes_for_show if item.get("viewOffset")]
         watched = [index for index, item in enumerate(episodes_for_show)
                    if item.get("viewCount")]
-        expected_on_deck = bool(in_progress or (watched and any(
+        # Cycle 57 re-measured the pristine case on kids and zen: a show nothing of which
+        # has been watched or started carries its FIRST episode as OnDeck (kids' show 6
+        # carries episode 8), refuting cycle 41's "a pristine unwatched show omits it".
+        pristine = not in_progress and not watched
+        expected_on_deck = bool(pristine or in_progress or (watched and any(
             not item.get("viewCount") for item in episodes_for_show[watched[-1] + 1:])))
+        if pristine and on_deck and episodes_for_show:
+            check("a never-watched show's OnDeck is its first episode",
+                  str(on_deck.get("ratingKey")) == str(episodes_for_show[0].get("ratingKey")),
+                  "%s vs %s" % (on_deck.get("ratingKey"), episodes_for_show[0].get("ratingKey")))
         check("OnDeck follows the show's playback state", bool(on_deck) == expected_on_deck,
               "S%02dE%02d %s" % (on_deck.get("parentIndex") or 0, on_deck.get("index") or 0,
                                  on_deck.get("title")) if on_deck else "missing")
