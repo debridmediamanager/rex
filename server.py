@@ -10944,6 +10944,40 @@ class PlexSim:
         if segments == ["playlists", "all"] and "limit" in query \
                 and not _int_param(query["limit"]):
             return ("error", 500, "plexsim: bad limit")
+        if segments == ["library", "all", "top"] and ("group" in query or "sort" in query):
+            # Cycle 55, measured on zen and kids: Top Played refuses ANY `group=` or
+            # `sort=` -- `group=title`, `sort=titleSort`, an empty `group=` -- with a 400,
+            # and an item's `/users/top` refuses the same two with a 404.
+            return ("error", 400, "plexsim: bad request")
+        if segments[:2] == ["library", "metadata"] and segments[3:] == ["users", "top"] \
+                and len(segments) == 5 and ("group" in query or "sort" in query):
+            return ("error", 404, "plexsim: not found")
+        hub_page = (segments in (["hubs"], ["hubs", "promoted"])
+                    or segments[:2] == ["hubs", "sections"] and len(segments) == 3
+                    and (self.catalog.section(segments[2]) or {}).get("type") == "show")
+        if hub_page:
+            # Cycle 55, measured on zen (1.42.2) and kids: a hub PAGE whose TV shelf runs
+            # the listing query parses `sourceType` (`abc` is a 500) and `/hubs/promoted`
+            # refuses a `group=` as `/hubs` already did. An EMPTY value is dropped before
+            # the page parses anything (cycle 54) -- zen answers 200 to `group=` and
+            # `sourceType=` there, where kids (1.43.4) answers 500.
+            if str(query.get("sourceType") or ""):
+                refusal = self._structural_parse_refusal(
+                    query, sort=False, group=False, limit=False)
+                if refusal:
+                    return refusal
+            if segments == ["hubs", "promoted"] and str(query.get("group") or ""):
+                return ("error", 500, "plexsim: cannot group a hub")
+        if segments == ["hubs", "home", "recentlyAdded"] \
+                and _int_param(query.get("type", "")) and int(query["type"]) == 2:
+            # ...and the TV Recently Added list parses both with the empty value
+            # included: `group=` and `sourceType=abc` are 500s on zen and kids alike.
+            if "group" in query:
+                return ("error", 500, "plexsim: cannot group a hub")
+            refusal = self._structural_parse_refusal(query, sort=False, group=False,
+                                                     limit=False)
+            if refusal:
+                return refusal
         if segments == ["library", "all", "top"] and "limit" in query \
                 and not _int_param(query["limit"]):
             # Cycle 55: an EMPTY `limit=` is a 500 here as well as `abc`.
