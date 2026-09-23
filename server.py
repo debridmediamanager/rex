@@ -7352,9 +7352,7 @@ class PlexSim:
                 # Cycle 36: the see-all leaf 404s an unknown section like the shelf it
                 # sits behind -- measured on both references, and they always agree.
                 return ("error", 404, "plexsim: no such section")
-            rows = [_listing_row(r) for r in
-                    self.continue_watching(include_hidden=section.get("type") == "show")
-                    if str(r.get("librarySectionID")) == str(segments[2])]
+            rows = [_listing_row(r) for r in self.section_continue_watching(section)]
             return self.bare_container(size=len(rows), allowSync=True,
                                        identifier="com.plexapp.plugins.library",
                                        Metadata=rows)
@@ -13904,8 +13902,9 @@ class PlexSim:
         # Cycle 26: the section's own Continue Watching SHELF follows its see-all list,
         # and both follow the LIBRARY TYPE -- a show library keeps a hidden row, a movie
         # library drops it. See the `continueWatching/items` leaf for the measurement.
-        in_progress = [r for r in self.continue_watching(include_hidden=is_show)
-                       if str(r.get("librarySectionID")) == str(section_id)]
+        # Cycle 57: and neither lists a next-up whose anchor was only scrobbled -- see
+        # `section_continue_watching`.
+        in_progress = self.section_continue_watching(dict(section, key=section_id))
         # Cycle 28, measured on zen and kids: a non-`random` shelf's rows are exactly
         # the head of its OWN `key` listing, in that listing's order -- 29 of 32
         # non-empty shelves matched byte for byte at `count=40`, the three that did not
@@ -16375,6 +16374,29 @@ class PlexSim:
         """
         return sorted(self.continue_watching(), key=lambda r: -(r.get("lastViewedAt") or 0))
 
+    def section_continue_watching(self, section):
+        """A SECTION's Continue Watching shelf and its see-all leaf.
+
+        Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) at t+0 and
+        t+25 s: after Mark Played on episode 8, `/hubs/home/onDeck`,
+        `/library/sections/{id}/onDeck` and the merged `/hubs/continueWatching` all list
+        episode 9 while `tv.inprogress.{id}` and `/hubs/sections/{id}/continueWatching/
+        items` are EMPTY on both; after a real play of episode 8 to completion the leaf
+        lists 9, and zen's play-derived next-up is on its own section shelf. So these two
+        lists take a next-up only when the episode it follows was completed in a PLAYBACK
+        SESSION -- a timeline crossing 90% -- and not after a scrobble. The copies write no
+        history row for a timeline completion (their recorded limit), so the provenance is
+        the play itself, which plexsim now records on the leaf. plexsim listed the
+        scrobble-derived next-up, so Mark Played filled the library's shelf.
+
+        The per-library-type Remove from Continue Watching rule stands: a show library
+        keeps a hidden row, a movie library drops it (cycle 26).
+        """
+        is_show = section.get("type") == "show"
+        return [r for r in self.continue_watching(include_hidden=is_show)
+                if str(r.get("librarySectionID")) == str(section.get("key"))
+                and not r.get("_nextUpFromScrobble")]
+
     def resuming(self):
         """Rows for CONTINUE WATCHING, which is not On Deck.
 
@@ -16438,6 +16460,7 @@ class PlexSim:
             chosen = max(in_progress, key=lambda e: e.get("lastViewedAt") or 0) \
                 if in_progress else None
             anchor_stamp = None
+            scrobbled = False
             if chosen is None:
                 # Cycle 55, from the binary's SQL (`... max(viewed_at) ... group by
                 # grandparents.id order by viewed_at desc`, then `(parents.index=? and
@@ -16451,6 +16474,7 @@ class PlexSim:
                 if watched:
                     anchor = max(watched, key=lambda n: (episodes[n].get("lastViewedAt") or 0))
                     anchor_stamp = episodes[anchor].get("lastViewedAt")
+                    scrobbled = not episodes[anchor].get("_viewedInSession")
                     chosen = next((e for e in episodes[anchor + 1:]
                                    if not e.get("viewCount") and not e.get("viewOffset")
                                    and (e.get("parentIndex") == episodes[anchor].get("parentIndex")
@@ -16458,6 +16482,11 @@ class PlexSim:
             if chosen is not None:
                 if anchor_stamp:
                     chosen = dict(chosen, lastViewedAt=anchor_stamp)
+                if scrobbled and chosen.get("viewOffset") is None:
+                    # Cycle 57: a next-up whose anchor was SCROBBLED rather than played.
+                    # Private, so no response carries it; `section_continue_watching`
+                    # reads it.
+                    chosen = dict(chosen, _nextUpFromScrobble=True)
                 rows.append(chosen)
                 stamps[id(chosen)] = max(e.get("lastViewedAt") or 0 for e in episodes)
         return sorted(rows, key=lambda r: -stamps.get(id(r), r.get("lastViewedAt") or 0))
