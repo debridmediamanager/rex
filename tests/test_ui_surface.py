@@ -30212,6 +30212,20 @@ def main():
     check("the TV Recently Added shelves take the request's filters", not wrong_c54l,
           "; ".join(wrong_c54l))
 
+    # Cycle 54, measured on kids, zen and both copies: `/hubs/items?identifier=` for a Home
+    # shelf honours `contentDirectoryID` as `/hubs` does -- `home.movies.recent` scoped to
+    # another library, or to `abc`, is empty.
+    _, scoped_c54m, _ = get(base, "/hubs/items?identifier=home.movies.recent"
+                                  "&contentDirectoryID=%s" % show_section)
+    _, word_c54m, _ = get(base, "/hubs/items?identifier=home.movies.recent&contentDirectoryID=abc")
+    _, plain_c54m, _ = get(base, "/hubs/items?identifier=home.movies.recent")
+    check("hub items honour contentDirectoryID",
+          not scoped_c54m.get("Metadata") and not word_c54m.get("Metadata")
+          and plain_c54m.get("Metadata"),
+          "scoped %d, abc %d, plain %d" % (len(scoped_c54m.get("Metadata") or []),
+                                           len(word_c54m.get("Metadata") or []),
+                                           len(plain_c54m.get("Metadata") or [])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
