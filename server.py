@@ -2424,6 +2424,18 @@ def _history_time_filter(query, date):
     return lambda viewed: all(test(viewed, moment) for test, moment in tests)
 
 
+def _hub_page_filters(query):
+    """Cycle 54: the filters a hub PAGE runs over its TV shelf. Measured on kids and zen,
+    `/hubs`, `/hubs/promoted` and `/hubs/sections/{id}` DROP a pair with an empty value --
+    `duration=`, `year=`, even `genre=` leave the shelf as it was, all 200s -- where
+    `/hubs/home/recentlyAdded?type=2` parses it (an empty number is a 500 there)."""
+    pairs = [(name, value) for name, value in query.get("_pairs") or [] if value != ""]
+    kept = {key: value for key, value in query.items()
+            if key == "_pairs" or not isinstance(value, str) or value != ""}
+    kept["_pairs"] = pairs
+    return kept
+
+
 def _section_number(value):
     """Cycle 54: `sectionID` on the Recently Added list is a NUMBER, measured on kids and
     zen -- `01` is section 1 and `0` selects nothing, while a value that is not an int32,
@@ -12846,11 +12858,11 @@ class PlexSim:
                 continue
             is_show = section.get("type") == "show"
             rows = self.section_recently_added_rows(section)
-            if is_show and self.apply_filters([], query)[1] is not None:
+            if is_show and self.apply_filters([], _hub_page_filters(query))[1] is not None:
                 # Cycle 54: with a filter in the request the library's TV shelf is the
                 # roll-up of the episodes that pass it, as on `/hubs` -- measured on
                 # kids, `title=Train` answers the episode here too.
-                rows = self.recently_added_tv(section["key"], query)
+                rows = self.recently_added_tv(section["key"], _hub_page_filters(query))
             # Measured: a SHOW library's Recently Added shelf is typed `mixed` and
             # its key goes to /hubs/home/recentlyAdded; a movie library's is typed
             # `movie` and goes straight to the section listing.
@@ -13264,7 +13276,7 @@ class PlexSim:
                 self.in_directories(self.recently_added_rows("1"), directories)],
             "home.television.recent": [
                 _listing_row(r) for r in
-                self.in_directories(self.recently_added_rows("2", query=query),
+                self.in_directories(self.recently_added_rows("2", query=_hub_page_filters(query)),
                                     directories)],
             # Cycle 25: the shelf is populated -- see `recent_playlists`.
             "home.playlists": self.recent_playlists(),
@@ -13406,8 +13418,8 @@ class PlexSim:
             # Cycle 54, measured on kids and zen: the TV shelf here runs the request's
             # filters over the episodes, and `contentDirectoryID` naming another library
             # empties it -- the other shelves on the page keep their rows.
-            if self.apply_filters([], query)[1] is not None:
-                added = self.recently_added_tv(section_id, query)
+            if self.apply_filters([], _hub_page_filters(query))[1] is not None:
+                added = self.recently_added_tv(section_id, _hub_page_filters(query))
             wanted = self.content_directories(query)
             if wanted is not None and str(section_id) not in wanted:
                 added = []

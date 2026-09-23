@@ -29921,8 +29921,12 @@ def main():
 
     # An episode scrobble stamps the episode, its season and its show.
     if show:
-        _, leaves_c54a, _ = get(base, "/library/metadata/%s/allLeaves" % show)
-        episode_c54a = (leaves_c54a.get("Metadata") or [{}])[0]
+        # The season is read from the show's own children, not off the episode row: by
+        # this point the suite has flattened the seasons, which drops `parentRatingKey`.
+        _, seasons_c54a, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
+        season_c54a = (seasons_c54a.get("Metadata") or [{}])[0].get("ratingKey")
+        _, leaves_c54a, _ = get(base, "/library/metadata/%s/children" % season_c54a)
+        episode_c54a = dict((leaves_c54a.get("Metadata") or [{}])[0], parentRatingKey=season_c54a)
         time_c54a.sleep(1.2)
         since_c54a = int(time_c54a.time())
         time_c54a.sleep(1.2)
@@ -30198,6 +30202,11 @@ def main():
     status_c54l, _, _ = request(base, "GET", "/hubs/home/recentlyAdded?type=1&year=abc")
     if status_c54l != 200:
         wrong_c54l.append("type=1&year=abc -> %s" % status_c54l)
+    # ...and a hub PAGE drops an empty-valued pair instead of parsing it.
+    for query_c54l in ("duration=", "genre=", "year="):
+        if shelf_c54l("/hubs?%s" % query_c54l, "home.television.recent") != shelf_c54l(
+                "/hubs", "home.television.recent"):
+            wrong_c54l.append("/hubs?%s changed the shelf" % query_c54l)
     movies_before_c54l = shelf_c54l("/hubs", "home.movies.recent")[1]
     if shelf_c54l("/hubs?genre=zzzq", "home.television.recent")[1] or (
             shelf_c54l("/hubs?genre=zzzq", "home.movies.recent")[1] != movies_before_c54l):
