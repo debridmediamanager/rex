@@ -7389,8 +7389,15 @@ class PlexSim:
                     if int(str(query["personal"]).lstrip("+")) == 1 \
                             and str(query.get("type") or "") != "2":
                         rows = [] if rows is not None else rows
-                rows = (None if rows is None
-                        else self.in_directories(rows, self.content_directories(query)))
+                # Cycle 59, measured on zen: a non-empty `pinnedContentDirectoryID` is the
+                # scope here and REPLACES `contentDirectoryID` (`type=1&contentDirectoryID=2
+                # &pinnedContentDirectoryID=1` answers library 1's movies); an empty one
+                # scopes nothing. It is what the merged shelf's See All sends.
+                scope = self.content_directories(query)
+                if query.get("pinnedContentDirectoryID"):
+                    scope = {value for value in
+                             str(query["pinnedContentDirectoryID"]).split(",") if value}
+                rows = (None if rows is None else self.in_directories(rows, scope))
                 meta = (HOME_RECENT_META.get(str(query.get("type") or ""))
                         if query.get("includeMeta") == "1" else None)
                 if rows is None:
@@ -13570,9 +13577,27 @@ class PlexSim:
         # compared the whole string with one section key, so `contentDirectoryID=1,2`
         # answered no library shelf at all.
         wanted = self.content_directories(query)
+        # Cycle 59, measured on zen (1.42.2, claimed; kids ignores the parameter): with
+        # `pinnedContentDirectoryID` -- which Plex Web always sends -- only the FIRST
+        # pinned library of each type carries a Recently Added shelf, it merges every
+        # pinned library of that type, and its key repeats the pinned list as sent. A
+        # library not pinned, a later one of the same type and an EMPTY pinned list get
+        # no shelf. plexsim drew one shelf per library, so two pinned TV libraries gave
+        # Home two "Recently Added TV" shelves, each See All naming one library.
+        pinned = None
+        if "pinnedContentDirectoryID" in query:
+            pinned = [value for value in str(query["pinnedContentDirectoryID"]).split(",")
+                      if value]
         for section in self.catalog.sections:
             if wanted is not None and str(section["key"]) not in wanted:
                 continue
+            same_type = []
+            if pinned is not None:
+                kinds = {str(s["key"]): s.get("type") for s in self.catalog.sections}
+                same_type = [value for value in pinned
+                             if kinds.get(value) == section.get("type")]
+                if not same_type or same_type[0] != str(section["key"]):
+                    continue
             if self.section_visibility(section["key"]) >= 1:
                 # Cycle 58, plexscratch42: a library kept off Home has NO shelf here --
                 # the element, not an empty one -- where `/hubs` keeps its empty shelf.
@@ -13584,6 +13609,10 @@ class PlexSim:
                 # roll-up of the episodes that pass it, as on `/hubs` -- measured on
                 # kids, `title=Train` answers the episode here too.
                 rows = self.recently_added_tv(section["key"], _hub_page_filters(query))
+            if pinned is not None:
+                merged = (self.recently_added_tv(None, _hub_page_filters(query)) if is_show
+                          else self.recently_added_rows("1"))
+                rows = self.in_directories(merged, set(same_type))
             # Measured: a SHOW library's Recently Added shelf is typed `mixed` and
             # its key goes to /hubs/home/recentlyAdded; a movie library's is typed
             # `movie` and goes straight to the section listing.
@@ -13593,7 +13622,7 @@ class PlexSim:
             identifier = "%s.recentlyadded.%s" % ("tv" if is_show else "movie",
                                                   section["key"])
             shelf_title = "Recently Added in %s" % (section.get("title") or "")
-            if query.get("pinnedContentDirectoryID"):
+            if pinned is not None:
                 # Measured on zen, the 1.42.2 build plexsim reports: when the client
                 # sends `pinnedContentDirectoryID` beside `contentDirectoryID` -- and
                 # Plex Web always does, its Promoted fetch builds both -- this shelf
@@ -13607,7 +13636,7 @@ class PlexSim:
                                                     section["key"])
                 shelf_title = "Recently Added %s" % ("TV" if is_show else "Movies")
                 key = ("/hubs/home/recentlyAdded?type=%s&pinnedContentDirectoryID=%s"
-                       % (2 if is_show else 1, section["key"]))
+                       % (2 if is_show else 1, query["pinnedContentDirectoryID"]))
             hubs.append(self.home_hub(
                 identifier, shelf_title, key,
                 [_listing_row(r) for r in rows], query,

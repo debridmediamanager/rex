@@ -32133,6 +32133,32 @@ def main():
           parents_c59h == {"Rg59 Renamed"} and grands_c59h == {"Rg59 Renamed"},
           str((parents_c59h, grands_c59h)))
 
+    # Cycle 59, measured on zen (1.42.2, claimed): Plex Web asks `/hubs/promoted` once per
+    # pinned library WITH the pinned list, and only the FIRST pinned library of each type
+    # carries a Recently Added shelf -- merging every pinned library of that type, keyed on
+    # the pinned list as sent. A library that is not pinned, or an EMPTY pinned list, gets
+    # none; and the See All leaf takes a non-empty pinned list as its scope over
+    # `contentDirectoryID`.
+    def shelves_c59i(cdi_c59i, pinned_c59i):
+        _, hubs_c59i, _ = get(base, "/hubs/promoted?contentDirectoryID=%s&pinnedContentDirectoryID=%s"
+                              "&excludeContinueWatching=1" % (cdi_c59i, pinned_c59i))
+        return [(h.get("hubIdentifier"), h.get("key")) for h in hubs_c59i.get("Hub") or []
+                if ".recent" in str(h.get("hubIdentifier"))]
+    kept_c59i = shelves_c59i(movie_section, "%s%%2C%s" % (movie_section, show_section))
+    unpinned_c59i = shelves_c59i(movie_section, show_section)
+    empty_c59i = shelves_c59i(movie_section, "")
+    _, leaf_c59i, _ = get(base, "/hubs/home/recentlyAdded?type=1&contentDirectoryID=%s"
+                          "&pinnedContentDirectoryID=%s" % (show_section, movie_section))
+    _, none_c59i, _ = get(base, "/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=%s"
+                          % show_section)
+    check("Home's Recently Added follows the pinned list",
+          kept_c59i == [("home.movies.recent.%s" % movie_section,
+                         "/hubs/home/recentlyAdded?type=1&pinnedContentDirectoryID=%s,%s"
+                         % (movie_section, show_section))]
+          and unpinned_c59i == [] and empty_c59i == []
+          and leaf_c59i.get("size", 0) > 0 and none_c59i.get("size") == 0,
+          str((kept_c59i, unpinned_c59i, empty_c59i, leaf_c59i.get("size"), none_c59i.get("size"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
