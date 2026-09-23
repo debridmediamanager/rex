@@ -9682,6 +9682,13 @@ class PlexSim:
                 rows = [r for r in self.continue_watching()
                         if str(r.get("librarySectionID")) == str(section_id)
                         and r.get("type") == kind]
+                # Cycle 55, from `order by metadata_item_settings.updated_at desc,index,id`
+                # and measured on plexscratch42: THIS leaf orders by the view-state write
+                # time (a rating moves a row to the front) where every other resume list
+                # keeps the view time. Single witness, an unclaimed copy (HANDOVER 3.3).
+                rows = sorted(rows, key=lambda r: (
+                    -(r.get("_viewUpdatedAt") or r.get("lastViewedAt") or 0),
+                    int(r.get("index") or 0), int(r.get("ratingKey") or 0)))
                 # Cycle 30: the same two removals as `/library/onDeck` -- the copy's
                 # section leaf carries neither `Field` nor `librarySectionKey` on the row.
                 full_rows = []

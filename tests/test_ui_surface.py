@@ -30453,6 +30453,36 @@ def main():
         check("recentlyViewed is ordered by the view-state write time",
               first_c55c == pair_c55c[0], "first %s want %s" % (first_c55c, pair_c55c[0]))
 
+    # Cycle 55, measured on plexscratch42 with two movies in progress: a section's own
+    # `/onDeck` leaf is ordered by the VIEW-STATE WRITE time (a rating moves a row to the
+    # front), while `/library/onDeck`, Home's Continue Watching and the section's own
+    # continue-watching list keep the view time. Single witness, an unclaimed copy.
+    import time as time_c55d
+    _, grid_c55d, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c55d = [r.get("ratingKey") for r in grid_c55d.get("Metadata") or []][:2]
+    if len(pair_c55d) == 2:
+        request(base, "PUT", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                "&time=300000&state=stopped" % pair_c55d[0])
+        time_c55d.sleep(1.2)
+        request(base, "PUT", "/:/progress?key=%s&identifier=com.plexapp.plugins.library"
+                "&time=300000&state=stopped" % pair_c55d[1])
+        time_c55d.sleep(1.2)
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=6"
+                % pair_c55d[0])
+        _, section_c55d, _ = get(base, "/library/sections/%s/onDeck" % movie_section)
+        _, library_c55d, _ = get(base, "/library/onDeck")
+        section_keys_c55d = [r.get("ratingKey") for r in section_c55d.get("Metadata") or []
+                             if r.get("ratingKey") in pair_c55d]
+        library_keys_c55d = [r.get("ratingKey") for r in library_c55d.get("Metadata") or []
+                             if r.get("ratingKey") in pair_c55d]
+        for key_c55d in pair_c55d:
+            request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % key_c55d)
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+                % pair_c55d[0])
+        check("the section onDeck leaf follows the write time, /library/onDeck the view time",
+              section_keys_c55d[:1] == pair_c55d[:1] and library_keys_c55d[:1] == pair_c55d[1:],
+              "section %s library %s" % (section_keys_c55d, library_keys_c55d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
