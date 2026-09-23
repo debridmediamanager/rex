@@ -502,6 +502,8 @@ def main():
     old_leaf_added = recent_leaf.get("addedAt")
     recent_show["addedAt"] = 300
     recent_leaf["addedAt"] = 200
+    # Cycle 55: the shelf is the section's roll-up, so this one-episode show is its
+    # EPISODE there; either row carries the newest leaf's stamp.
     section_hubs = sim.section_hubs("2")["MediaContainer"].get("Hub") or []
     section_recent = next(h for h in section_hubs
                           if h.get("hubIdentifier") == "tv.recentlyadded.2")
@@ -509,9 +511,9 @@ def main():
     promoted_recent = next(h for h in promoted_hubs
                            if h.get("hubIdentifier") == "tv.recentlyadded.2")
     section_stamp = next(r.get("addedAt") for r in section_recent.get("Metadata") or []
-                         if r.get("ratingKey") == "108")
+                         if r.get("ratingKey") in ("108", "109"))
     promoted_stamp = next(r.get("addedAt") for r in promoted_recent.get("Metadata") or []
-                          if r.get("ratingKey") == "108")
+                          if r.get("ratingKey") in ("108", "109"))
     if old_show_added is None:
         recent_show.pop("addedAt", None)
     else:
@@ -523,6 +525,14 @@ def main():
     check("the TV Recently Added shelves date a show by its newest leaf",
           section_stamp == 200 and promoted_stamp == 200,
           "section=%s promoted=%s" % (section_stamp, promoted_stamp))
+    # Cycle 55, measured on zen (twelve of twelve rows): the library's TV shelf IS the
+    # section's mixed roll-up -- a one-episode show is its EPISODE there, exactly as on
+    # `/hubs/home/recentlyAdded?type=2&sectionID=2` -- not a list of top-level shows.
+    rolled = [r.get("ratingKey") for r in sim.recently_added_tv("2")]
+    shelf_keys = [r.get("ratingKey") for r in section_recent.get("Metadata") or []]
+    check("the library's TV shelf is the section's roll-up",
+          shelf_keys == rolled[:len(shelf_keys)] and shelf_keys,
+          "shelf=%s rollup=%s" % (shelf_keys[:6], rolled[:6]))
 
     thumb_rows = [
         {"ratingKey": "45201", "key": "/library/metadata/45201/children",
