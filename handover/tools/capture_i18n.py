@@ -28,7 +28,13 @@ import sys
 import urllib.request
 
 BASE = os.environ.get("I18N_BASE", "http://kids:32400")
-TOKEN = os.environ["PLEXLAB_TOKEN"]
+TOKEN = os.environ.get("I18N_TOKEN") or os.environ["PLEXLAB_TOKEN"]
+# Cycle 59: the table is PER VERSION. It was captured off kids (1.43.4) and plexsim reports
+# 1.42.2, whose catalogues word a few strings differently (Danish "Bibliotekets standard",
+# Serbian, Ukrainian, Hebrew and Portuguese enum rows), so it is re-captured off zen and
+# overlaid. zen holds different items, so the kids ratingKeys the paths name are REMAPPED:
+# I18N_IDS='{"6": "11113", ...}' maps each kids id to the zen row of the same kind.
+IDS = json.loads(os.environ.get("I18N_IDS") or "{}")
 
 LANGUAGES = ['ar', 'ca', 'cs', 'da', 'de', 'es', 'et', 'fi', 'fr', 'he', 'hr', 'hu',
              'it', 'ja', 'ko', 'lt', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl',
@@ -163,9 +169,20 @@ PATHS += [
 ]
 
 
+def remap(path):
+    import re
+    return re.sub(r'/library/metadata/(\d+)', lambda m: '/library/metadata/%s'
+                  % IDS.get(m.group(1), m.group(1)), path)
+
+
 def fetch(path, language=None):
+    import time
+    time.sleep(float(os.environ.get('I18N_DELAY', '0')))
+    path = remap(path)
+    # zen is production with a real library: every listing is paged.
     headers = {'X-Plex-Token': TOKEN, 'Accept': 'application/json',
-               'User-Agent': 'curl/8'}
+               'User-Agent': 'curl/8', 'X-Plex-Container-Start': '0',
+               'X-Plex-Container-Size': '20'}
     if language:
         headers['X-Plex-Language'] = language
     request = urllib.request.Request(BASE + path, headers=headers, method='GET')
@@ -252,7 +269,7 @@ for language in LANGUAGES:
 
 out = sys.argv[1] if len(sys.argv) > 1 else 'translations.json'
 payload = {
-    '_provenance': ('Captured from the plexlab reference (Plex 1.43.4) by fetching each '
+    '_provenance': ('Captured from ' + os.environ.get('I18N_WHO', 'the plexlab reference (Plex 1.43.4)') + ' by fetching each '
                     'endpoint in English and in each language the server answers '
                     'differently, then diffing the two documents string by string at the '
                     'same structural path. English key -> language code -> the '
