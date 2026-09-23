@@ -6956,8 +6956,10 @@ class PlexSim:
             # checked. CLAUDE.md said `contentDirectoryID` "scopes and VALIDATES
             # `/hubs/search` alone"; this is the second path that validates it.
             raw = query.get("contentDirectoryID")
-            # Cycle 55: `+1` is a positive integer too (200 on zen and kids).
-            if raw is not None and not any(
+            # Cycle 55: `+1` is a positive integer too (200 on zen and kids), and an EMPTY
+            # value is accepted -- a 200 on both references, on both paths, where
+            # plexsim 404'd it.
+            if raw not in (None, "") and not any(
                     _int_param(part, None) and int(part) > 0 for part in str(raw).split(",")):
                 return ("error", 404, "plexsim: not found")
         if route == "/hubs/continueWatching":

@@ -30717,6 +30717,14 @@ def main():
           "%s, limit=+1 rows %s, axis %s" % (got_c55f3, len(one_c55f3),
                                              [a[0] for a in axis_c55f3]))
 
+    # Cycle 55, measured on zen and kids: `/hubs/continueWatching` and its `/items` leaf
+    # answer 200 to an EMPTY `contentDirectoryID=`; plexsim 404'd both.
+    got_c55f16 = [get(base, p_c55f16 + "?contentDirectoryID=")[0]
+                  for p_c55f16 in ("/hubs/continueWatching", "/hubs/continueWatching/items")]
+    bad_c55f16 = get(base, "/hubs/continueWatching?contentDirectoryID=abc")[0]
+    check("An empty contentDirectoryID is accepted on continue watching",
+          got_c55f16 == [200, 200] and bad_c55f16 == 404, "%s, abc %s" % (got_c55f16, bad_c55f16))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
