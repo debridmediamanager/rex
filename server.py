@@ -2424,6 +2424,16 @@ def _history_time_filter(query, date):
     return lambda viewed: all(test(viewed, moment) for test, moment in tests)
 
 
+def _section_number(value):
+    """Cycle 54: `sectionID` on the Recently Added list is a NUMBER, measured on kids and
+    zen -- `01` is section 1 and `0` selects nothing, while a value that is not an int32,
+    and a negative one, is ignored. Returns the section number, 0, or None (ignored)."""
+    if value is None or not _int_param(value):
+        return None
+    number = int(value)
+    return None if number < 0 else number
+
+
 def _watched_leaf(row):
     """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
     or an episode with a play recorded. A parent row is never dropped for it."""
@@ -13087,7 +13097,8 @@ class PlexSim:
         if wanted == "show":
             return self.recently_added_tv(section_id, query)
         rows = [r for r in self.catalog.items.values() if r.get("type") == wanted]
-        if section_id:
+        section_id = _section_number(section_id)
+        if section_id is not None:
             rows = [r for r in rows if str(r.get("librarySectionID")) == str(section_id)]
         rows.sort(key=lambda r: -(r.get("addedAt") or 0))
         return rows
@@ -13155,7 +13166,8 @@ class PlexSim:
                        or [int(row.get("addedAt") or 0)])
 
         leaves = [r for r in self.catalog.items.values() if r.get("type") == "episode"]
-        if section_id:
+        section_id = _section_number(section_id)
+        if section_id is not None:
             leaves = [r for r in leaves
                       if str(r.get("librarySectionID")) == str(section_id)]
         if query:

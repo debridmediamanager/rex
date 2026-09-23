@@ -30344,6 +30344,22 @@ def main():
     check("thirteen parameters refuse what their grammar does not parse", not wrong_c54p,
           "; ".join(wrong_c54p)[:240])
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `sectionID` on
+    # `/hubs/home/recentlyAdded` is a NUMBER. `01` is section 1 (kids 5 rows, zen 3,887),
+    # `0` answers nothing, and `abc`, `-1`, `1.5` and 2147483648 are IGNORED -- the whole
+    # list -- where plexsim compared strings and answered none to all of them.
+    _, all_c54q, _ = get(base, "/hubs/home/recentlyAdded?type=1")
+    every_c54q = len(all_c54q.get("Metadata") or [])
+    wrong_c54q = []
+    for value_c54q, want_c54q in (("0%s" % movie_section, every_c54q), ("0", 0),
+                                  ("abc", every_c54q), ("-1", every_c54q),
+                                  ("1.5", every_c54q), ("2147483648", every_c54q)):
+        _, found_c54q, _ = get(base, "/hubs/home/recentlyAdded?type=1&sectionID=%s" % value_c54q)
+        if len(found_c54q.get("Metadata") or []) != want_c54q:
+            wrong_c54q.append("%s -> %d" % (value_c54q, len(found_c54q.get("Metadata") or [])))
+    check("recentlyAdded reads sectionID as a number", not wrong_c54q and every_c54q,
+          "; ".join(wrong_c54q))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
