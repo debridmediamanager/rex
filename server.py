@@ -316,6 +316,48 @@ for _enum, _translated in (TRANSLATIONS.get("enumValues") or {}).items():
             if _key and _names.get(_key):
                 LANGUAGE_NAMES.setdefault(_code, {}).setdefault(_name, _names[_key])
 
+# Cycle 59: an item's own `audioLanguage`/`subtitleLanguage` enum is built at READ time
+# -- its stream languages as bare tags, then the generic regional list (cycle 18) -- so
+# the localiser never found the whole string in the table and a show's language pickers
+# stayed in each language's own name under `X-Plex-Language: en` (and every other
+# language), where zen answers `fr:French|...|fr-FR:French`. The head's names and the
+# inherit option are read off zen per language (`item_language_names.json`); the tail is
+# the table's own translated list, in its own order.
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "item_language_names.json"), encoding="utf-8") as _handle:
+        _ITEM_LANGUAGE_TABLE = json.load(_handle)
+        ITEM_LANGUAGE_NAMES = _ITEM_LANGUAGE_TABLE["names"]
+        ITEM_LANGUAGE_LEADS = _ITEM_LANGUAGE_TABLE["leads"]
+except (OSError, ValueError, KeyError):
+    ITEM_LANGUAGE_NAMES, ITEM_LANGUAGE_LEADS = {}, {}
+
+
+def _localise_item_language_enum(value, language):
+    """Translate a read-time `:Account default|...` / `:Series default|...` enum."""
+    lead, _, rest = value.partition("|")
+    if lead not in (":Account default", ":Series default") or not rest:
+        return None
+    source = next((key for key in (TRANSLATIONS.get("enumValues") or {})
+                   if key.startswith(lead + "|en:English|")), None)
+    translated = (TRANSLATIONS.get("enumValues") or {}).get(source, {}).get(language)
+    if not translated:
+        return None
+    head = ITEM_LANGUAGE_NAMES.get(language) or {}
+    pieces = []
+    for pair in rest.split("|"):
+        code, sep, name = pair.partition(":")
+        if "-" in code:
+            break
+        pieces.append(code + sep + (head.get(code) or name))
+    # The regional tail is the table's own list in its own ORDER: cycle 45 measured that
+    # the order moves with the names, so re-spelling the English order would misplace it.
+    pieces += [pair for pair in translated.split("|")[1:]
+               if "-" in pair.partition(":")[0]]
+    # The inherit option is translated on its own, and in da, he, pt and sr it is not
+    # the lead of the table's list.
+    return "|".join([(ITEM_LANGUAGE_LEADS.get(language) or {}).get(lead, lead)] + pieces)
+
 _SECTION_PREFS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "section_prefs.json")
 try:
     with open(_SECTION_PREFS_PATH) as _handle:
@@ -1157,9 +1199,19 @@ except (OSError, ValueError, KeyError):
 # already in `agent_languages.json`; aligning it here by CODE invents nothing. Every other
 # language the reference answers and `translations.json` lacks (tr, th, and the regional
 # catalogues) is recorded in HANDOVER 3.3 rather than guessed at.
+# Cycle 59: only a LANGUAGE-LIST enum -- one whose first row after the default is a
+# language code. Keyed on the default's label alone, the injection also caught
+# `-1:Library default|0:Show|1:Hide`, `showOrdering`'s agent list and every other
+# library-default enum, so under `X-Plex-Language: en` (python-plexapi's default header,
+# Plex Web's query) a show's Seasons dropdown offered 46 languages and
+# `editAdvanced(flattenSeasons=1)` refused its own value. zen, kids and both copies
+# answer each of those enums verbatim in English.
+_LANGUAGE_CODES = {"en"} | {_row[0] for _rows in AGENT_LANGUAGES.values() for _row in _rows}
 for _source in list((TRANSLATIONS.get("enumValues") or {})):
     if ":Library default|" not in _source and ":Account default|" not in _source \
             and ":Series default|" not in _source:
+        continue
+    if _source.split("|")[1].partition(":")[0] not in _LANGUAGE_CODES:
         continue
     for _language, _rows in AGENT_LANGUAGES.items():
         if not _language or _language in TRANSLATIONS["enumValues"][_source]:
@@ -21898,6 +21950,13 @@ class Handler(BaseHTTPRequestHandler):
             return [self._localise(value, language, attribute, in_row) for value in node]
         if isinstance(node, str) and attribute:
             if not in_row:
+                # An item's own language enum is rebuilt piece by piece even when the
+                # whole string happens to be in the table: the table's entry is the
+                # captured item's, and its head is not this item's.
+                if attribute == "enumValues":
+                    rebuilt = _localise_item_language_enum(node, language)
+                    if rebuilt is not None:
+                        return rebuilt
                 found = (TRANSLATIONS.get(attribute) or {}).get(node)
                 if found and language in found:
                     return found[language]
