@@ -15907,11 +15907,27 @@ class PlexSim:
             in_progress = [e for e in episodes if e.get("viewOffset")]
             chosen = max(in_progress, key=lambda e: e.get("lastViewedAt") or 0) \
                 if in_progress else None
+            anchor_stamp = None
             if chosen is None:
+                # Cycle 55, from the binary's SQL (`... max(viewed_at) ... group by
+                # grandparents.id order by viewed_at desc`, then `(parents.index=? and
+                # index>=?) or (parents.index>? and index>0) ... view_count is null or 0
+                # ... view_offset is null`) and measured on plexscratch42: the next-up
+                # follows the MOST RECENTLY VIEWED watched episode, not the highest-numbered
+                # one -- scrobbling 10 and then 8 puts 9 on deck, and unscrobbling 8 moves
+                # it to the episode after 10 -- and the row carries that view's time as its
+                # `lastViewedAt`. plexsim anchored on the highest-numbered watched episode.
                 watched = [n for n, e in enumerate(episodes) if e.get("viewCount")]
-                chosen = next((e for e in episodes[watched[-1] + 1:] if not e.get("viewCount")),
-                              None) if watched else None
+                if watched:
+                    anchor = max(watched, key=lambda n: (episodes[n].get("lastViewedAt") or 0))
+                    anchor_stamp = episodes[anchor].get("lastViewedAt")
+                    chosen = next((e for e in episodes[anchor + 1:]
+                                   if not e.get("viewCount") and not e.get("viewOffset")
+                                   and (e.get("parentIndex") == episodes[anchor].get("parentIndex")
+                                        or (e.get("index") or 0) > 0)), None)
             if chosen is not None:
+                if anchor_stamp:
+                    chosen = dict(chosen, lastViewedAt=anchor_stamp)
                 rows.append(chosen)
                 stamps[id(chosen)] = max(e.get("lastViewedAt") or 0 for e in episodes)
         return sorted(rows, key=lambda r: -stamps.get(id(r), r.get("lastViewedAt") or 0))
