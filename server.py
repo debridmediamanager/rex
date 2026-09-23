@@ -8396,6 +8396,17 @@ class PlexSim:
                 self.library_section(["library", "sections", str(directory["key"]), "refresh"],
                                      query, method)
             return ("empty", 200)
+        if section_id == "all" and list(segments[3:]) == ["refresh"] and method == "DELETE":
+            # Cycle 59, measured on plexscratch42 and plexscratch: the library-wide cancel
+            # -- python-plexapi's `Library.cancelUpdate()` -- is a 200 with an empty body,
+            # idle or mid-scan, and pushes ONE status frame, "Library scan canceled"; a
+            # SECTION's cancel pushes none. plexsim routed the section form only and
+            # 404'd this one as an unknown section.
+            for directory in list(self.catalog.sections):
+                self.refreshing.discard(str(directory["key"]))
+            self.library.clear_activities()
+            self.notify_status("Library scan canceled")
+            return ("empty", 200)
         section = self.catalog.section(section_id)
         if section is None:
             # Measured: every leaf of a section the server does not have is a 404.

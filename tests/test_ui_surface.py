@@ -32015,6 +32015,22 @@ def main():
           and emptied_c59c == ("", None) and plain_status_c59c == 400,
           str((status_c59c, stored_c59c, emptied_c59c, plain_status_c59c)))
 
+    # Cycle 59, measured on plexscratch42 and plexscratch: `DELETE
+    # /library/sections/all/refresh` -- python-plexapi's `Library.cancelUpdate()` -- is a 200
+    # with an empty body, idle or mid-scan, and pushes ONE status frame, "Library scan
+    # canceled"; a section's own cancel pushes none. PUT there stays a 404.
+    status_c59d, frames_c59d = notifications(base, lambda: request(
+        base, "DELETE", "/library/sections/all/refresh"), seconds=3)
+    status_rows_c59d = [n for f in frames_c59d for n in
+                        f.get("NotificationContainer", {}).get("StatusNotification") or []]
+    put_c59d, _, _ = request(base, "PUT", "/library/sections/all/refresh")
+    plain_c59d, body_c59d, _ = request(base, "DELETE", "/library/sections/all/refresh?force=1")
+    check("cancelling every library's scan is a 200 that says so",
+          plain_c59d == 200 and body_c59d == b"" and put_c59d == 404
+          and [(n.get("title"), n.get("notificationName")) for n in status_rows_c59d]
+          == [("Library scan canceled", "LIBRARY_UPDATE")],
+          str((plain_c59d, put_c59d, status_rows_c59d)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
