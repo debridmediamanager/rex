@@ -823,8 +823,9 @@ def main():
                              "/actions/removeFromContinueWatching?ratingKey=999999")
     check("removing an unknown item from Continue Watching is a 404", status == 404,
           "HTTP %s" % status)
-    # And the next timeline puts it back.
-    request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=90000"
+    # And the next timeline puts it back -- one that MOVES the position: cycle 58 measured
+    # a beat at exactly the stored offset leaving the row removed.
+    request(base, "GET", "/:/timeline?ratingKey=%s&state=playing&time=91000"
                          "&duration=600000" % movie)
     _, hubs, _ = get(base, "/hubs/continueWatching")
     rows = [r for hub in hubs.get("Hub") or [] for r in hub.get("Metadata") or []]
