@@ -2512,6 +2512,14 @@ def _playlist_meta(query, listing_all):
     return meta
 
 
+def _has_settings(row):
+    """Cycle 56: whether a row carries a per-user settings record -- any view-state
+    write stamps `_viewUpdatedAt`, and a catalog row may arrive with state already."""
+    return any(row.get(name) not in (None, "") for name in (
+        "_viewUpdatedAt", "viewCount", "viewOffset", "lastViewedAt", "userRating",
+        "lastRatedAt", "skipCount"))
+
+
 def _watched_leaf(row):
     """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
     or an episode with a play recorded. A parent row is never dropped for it."""
@@ -10801,6 +10809,17 @@ class PlexSim:
             return 0 if row.get("viewCount") else 1
         if field == "viewUpdatedAt":
             return row.get("_viewUpdatedAt")
+        if field in ("viewCount", "skipCount"):
+            # Cycle 56, measured on plexscratch42 with known provenance and on zen and
+            # kids: ANY per-user write creates the row's settings record with both
+            # counters at 0 -- a rating, a stored progress, an unscrobble -- and the
+            # counter filters read it: zen's `viewCount>=0` and `skipCount=0` are both
+            # exactly its 424 rows with any state. A row never written has no record,
+            # which is `viewCount`'s null-as-zero half (filters.py) and a null
+            # `skipCount` that matches nothing.
+            if row.get(field) is not None:
+                return row.get(field)
+            return 0 if _has_settings(row) else None
         if field == "trash":
             return 0
         if field in ("cluster", "clusterStartsAt", "clusterZoomLevel", "clustering"):
