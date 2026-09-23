@@ -18370,12 +18370,19 @@ class PlexSim:
                 if was_selected:
                     following = items[index] if index < len(items) else (items[-1] if items else None)
                     queue["selected"] = following["id"] if following else None
+                # Cycle 57: a delete re-anchors the marker to the block's new tail -- and
+                # answers the old one, as it answers the old version.
+                was_marker = queue.get("last_added")
+                if was_marker is not None:
+                    queue["last_added"] = self._queue_block_tail(queue)
                 answer = self.play_queue_container(queue_id, query, locked=True)
                 remaining = len(items)
             if isinstance(answer, dict):
                 body = answer["MediaContainer"]
                 body["playQueueVersion"] -= 1
                 body["playQueueTotalCount"] = remaining + 1
+                if was_marker is not None:
+                    body["playQueueLastAddedItemID"] = was_marker
                 if was_selected:
                     body.pop("Metadata", None)
                     body["size"] = 0
@@ -18437,11 +18444,15 @@ class PlexSim:
                     item["added"] = True
                 items[at:at] = new
                 queue["version"] += 1
-                if new and query.get("next") != "1":
-                    # Measured: this tracks PLAIN adds only -- a next=1 add leaves
-                    # it where it was. The client disables the Up Next shuffle
-                    # button once it is present.
-                    queue["last_added"] = new[-1]["id"]
+                if new:
+                    # Cycle 57, measured on plexscratch42 and plexscratch: the marker is
+                    # the tail of the Up Next BLOCK (`_queue_block_tail`), and ANY add
+                    # opens it -- a first Play Next answers its own new item, where cycle
+                    # 4 recorded "plain adds only". A Play Next into an open block goes in
+                    # front of it and so leaves the tail where it was, which is what that
+                    # older note saw. The client disables the Up Next shuffle button once
+                    # the marker is present.
+                    queue["last_added"] = self._queue_block_tail(queue)
                 # Cycle 32, measured on both writable copies: two concurrent adds to one
                 # queue each answer the queue AS THAT ADD LEFT IT -- versions 2 and 3, and
                 # each its own `playQueueLastAddedItemID` -- in 110 of 110 pairs. plexsim
@@ -18461,6 +18472,38 @@ class PlexSim:
         if len(segments) == 2:
             return self.play_queue_container(queue_id, query)
         return ("error", 404, "plexsim: not found")
+
+    @staticmethod
+    def _queue_block_tail(queue):
+        """`playQueueLastAddedItemID`: the last item of the Up Next block.
+
+        Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), step for
+        step identical over a show queue (orig), three adds and five reorders:
+
+            play next m1 (a1)                     a1
+            add m2 (a2)                           a2
+            play next m3 (a3)                     a2
+            move the last original after sel      a2    (it joins the block's head)
+            move a1 to the end                    a2    (it leaves the block)
+            move a2 after sel                     a3
+            delete a3, then GET                   orig[-1]
+            delete a2, then GET                   orig[-1]
+            queue 2: add b1, play next            b1
+            move orig[1] to the end               b1
+            move b1 after sel                     the play-next
+
+        The block is the selected item followed by the contiguous run of ADDED items --
+        added by any add, or moved in behind the selection or a block member -- and the
+        marker names its last item. The `added` flag is the same one a plain add skips
+        past to find its insertion point.
+        """
+        items = queue["items"]
+        if not items:
+            return None
+        at = next((i for i, e in enumerate(items) if e["id"] == queue["selected"]), 0)
+        while at + 1 < len(items) and items[at + 1].get("added"):
+            at += 1
+        return items[at]["id"]
 
     def drop_from_queues(self, rating_key):
         """Take a removed row out of every play queue, moving the selection with it.
@@ -18516,14 +18559,23 @@ class PlexSim:
                 # not hold -- `0`, an unknown id -- moves the item to the FRONT, as `-1`
                 # does. plexsim answered 404 and left it where it was.
                 items.insert(0 if target is None else target + 1, moving)
-            # Cycle 41, measured on both writable PMS copies with the exact
-            # create-one -> plain-add-one -> move-the-added-tail-to-front sequence:
-            # the add answers ids [A, B] with lastAdded=B, while the move answers
-            # [B, A] with lastAdded=A.  A move therefore re-anchors an existing
-            # plain-add marker to the queue's new tail; it does not create the marker
-            # on a queue that has never had a plain add.
+            # Cycle 41 measured create-one -> plain-add-one -> move-the-added-tail-to-
+            # front ([A, B] lastAdded=B, then [B, A] lastAdded=A) and read it as "the
+            # queue's new tail". Cycle 57 drove eleven steps on both writable copies and
+            # it is the tail of the Up Next BLOCK -- the selected item and the contiguous
+            # run of added or moved-in items behind it -- which for cycle 41's queue is A,
+            # the selected item itself. A move to just behind the selected item or a
+            # block member JOINS the block (the last original moved behind the selection
+            # became the block's head); a move anywhere else leaves it. With the old
+            # rule every reorder pointed the marker at the queue's last item. A move
+            # still never creates the marker on a queue that has had no add.
+            if moving["id"] != queue["selected"]:
+                spot = items.index(moving)
+                before = items[spot - 1] if spot > 0 else None
+                moving["added"] = before is not None and (
+                    before["id"] == queue["selected"] or bool(before.get("added")))
             if queue.get("last_added") is not None:
-                queue["last_added"] = items[-1]["id"] if items else None
+                queue["last_added"] = self._queue_block_tail(queue)
             queue["version"] += 1
             return self.play_queue_container(queue_id, query, locked=True)
 
