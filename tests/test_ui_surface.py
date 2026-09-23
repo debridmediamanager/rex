@@ -31515,6 +31515,68 @@ def main():
     else:
         skip("a collection member's Related is the collection's shelf", "need two movies")
 
+    # Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), one sequence
+    # identical on both: `playQueueLastAddedItemID` is the TAIL of the contiguous block
+    # after the selected item made of added items and items moved in behind it. A first
+    # Play Next opens it, a move into or out of the block or a delete re-anchors it, and a
+    # delete answers the marker as it stood. plexsim left it unset after a Play Next and
+    # after any move pointed it at the whole queue's last item -- and the player disables
+    # Shuffle while it is set.
+    def pq_c57i(method_c57i, path_c57i):
+        return container(base, method_c57i, path_c57i)[1]
+    def u_c57i(key_c57i):
+        return quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                     % (machine, key_c57i))
+    def ids_c57i(box_c57i):
+        return [m.get("playQueueItemID") for m in box_c57i.get("Metadata") or []]
+    def fresh_c57i(new_c57i, known_c57i):
+        return [i for i in ids_c57i(new_c57i) if i not in known_c57i][0]
+    q_c57i = pq_c57i("POST", "/playQueues?type=video&uri=%s&continuous=1" % u_c57i(show))
+    pq_id_c57i, orig_c57i = q_c57i.get("playQueueID"), ids_c57i(q_c57i)
+    sel_c57i = q_c57i.get("playQueueSelectedItemID")
+    marks_c57i, want_c57i = [], []
+    if len(orig_c57i) >= 4 and spare:
+        box_c57i = pq_c57i("PUT", "/playQueues/%s?uri=%s&next=1" % (pq_id_c57i, u_c57i(movie)))
+        a1_c57i = fresh_c57i(box_c57i, orig_c57i)
+        marks_c57i.append(box_c57i.get("playQueueLastAddedItemID"))
+        box_c57i = pq_c57i("PUT", "/playQueues/%s?uri=%s" % (pq_id_c57i, u_c57i(spare)))
+        a2_c57i = fresh_c57i(box_c57i, orig_c57i + [a1_c57i])
+        marks_c57i.append(box_c57i.get("playQueueLastAddedItemID"))
+        box_c57i = pq_c57i("PUT", "/playQueues/%s?uri=%s&next=1" % (pq_id_c57i, u_c57i(movie)))
+        a3_c57i = fresh_c57i(box_c57i, orig_c57i + [a1_c57i, a2_c57i])
+        marks_c57i.append(box_c57i.get("playQueueLastAddedItemID"))
+        for item_c57i, after_c57i in ((orig_c57i[-1], sel_c57i), (a1_c57i, orig_c57i[-2]),
+                                      (a2_c57i, sel_c57i)):
+            marks_c57i.append(pq_c57i("PUT", "/playQueues/%s/items/%s/move?after=%s"
+                                      % (pq_id_c57i, item_c57i, after_c57i))
+                              .get("playQueueLastAddedItemID"))
+        for item_c57i in (a3_c57i, a2_c57i):
+            marks_c57i.append(pq_c57i("DELETE", "/playQueues/%s/items/%s"
+                                      % (pq_id_c57i, item_c57i)).get("playQueueLastAddedItemID"))
+            marks_c57i.append(pq_c57i("GET", "/playQueues/%s" % pq_id_c57i)
+                              .get("playQueueLastAddedItemID"))
+        want_c57i = [a1_c57i, a2_c57i, a2_c57i, a2_c57i, a2_c57i, a3_c57i,
+                     a3_c57i, orig_c57i[-1], orig_c57i[-1], orig_c57i[-1]]
+        # The second queue: a plain add first, then a Play Next.
+        q_c57i = pq_c57i("POST", "/playQueues?type=video&uri=%s&continuous=1" % u_c57i(show))
+        pq_id_c57i, orig_c57i = q_c57i.get("playQueueID"), ids_c57i(q_c57i)
+        sel_c57i = q_c57i.get("playQueueSelectedItemID")
+        box_c57i = pq_c57i("PUT", "/playQueues/%s?uri=%s" % (pq_id_c57i, u_c57i(spare)))
+        b1_c57i = fresh_c57i(box_c57i, orig_c57i)
+        box_c57i = pq_c57i("PUT", "/playQueues/%s?uri=%s&next=1" % (pq_id_c57i, u_c57i(movie)))
+        n1_c57i = fresh_c57i(box_c57i, orig_c57i + [b1_c57i])
+        marks_c57i.append(box_c57i.get("playQueueLastAddedItemID"))
+        for item_c57i, after_c57i in ((orig_c57i[1], orig_c57i[-1]), (b1_c57i, sel_c57i)):
+            marks_c57i.append(pq_c57i("PUT", "/playQueues/%s/items/%s/move?after=%s"
+                                      % (pq_id_c57i, item_c57i, after_c57i))
+                              .get("playQueueLastAddedItemID"))
+        want_c57i += [b1_c57i, b1_c57i, n1_c57i]
+        check("playQueueLastAddedItemID is the tail of the Up Next block",
+              marks_c57i == want_c57i, "got %s want %s" % (marks_c57i, want_c57i))
+    else:
+        skip("playQueueLastAddedItemID is the tail of the Up Next block",
+             "need a show of four episodes and two movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
