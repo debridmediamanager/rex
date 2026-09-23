@@ -7809,7 +7809,16 @@ class PlexSim:
                         # `Media` and contribute nothing, which is the same rule
                         # `_with_storage` follows on a grid row.
                         own_duration = own_storage = 0
+                        # Cycle 56, measured on kids, zen and plexscratch42: a SHOW
+                        # library's totals are its EPISODES' (kids' TV Shows 60186 ms,
+                        # 37683488 bytes), so a top-level row that owns no Media is read
+                        # through its leaves. plexsim skipped it and answered 0, which is
+                        # what python-plexapi's `totalDuration`/`totalStorage` then report.
+                        owners = []
                         for item in self.catalog.section_items(section["key"]):
+                            owners.extend([item] if item.get("Media")
+                                          else self.catalog.leaves(item.get("ratingKey")))
+                        for item in owners:
                             if not item.get("Media"):
                                 continue
                             own_duration += int(item.get("duration") or 0)
