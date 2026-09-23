@@ -31377,6 +31377,55 @@ def main():
     else:
         skip("the merged Continue Watching hub holds On Deck's next-up", "need three episodes")
 
+    I_c57f = "identifier=com.plexapp.plugins.library"
+    leaves_c57f = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+    keys_c57f = [str(r.get("ratingKey")) for r in leaves_c57f]
+    watched_c57f = [k for k, r in zip(keys_c57f, leaves_c57f) if r.get("viewCount")]
+    def pristine_c57f():
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (show, I_c57f))
+        # A progress write under a minute stores nothing and un-hides the show's row.
+        request(base, "GET", "/:/progress?key=%s&%s&time=1000" % (keys_c57f[0], I_c57f))
+    def restore_c57f():
+        pristine_c57f()
+        for key_c57f in watched_c57f:
+            request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57f, I_c57f))
+    # Cycle 57, measured on plexscratch42 and plexscratch at t+0 and t+25 s, and on zen for
+    # the positive half: a SECTION's Continue Watching shelf (`tv.inprogress.{id}`) and its
+    # see-all leaf list a next-up only when the episode before it was completed in a
+    # PLAYBACK SESSION -- a scrobble puts the next episode on deck everywhere else and
+    # leaves this list empty. plexsim listed the scrobble-derived next-up here too.
+    def section_cw_c57f():
+        leaf_c57f = [str(r.get("ratingKey")) for r in
+                     get(base, "/hubs/sections/%s/continueWatching/items?contentDirectoryID=%s"
+                         % (show_section, show_section))[1].get("Metadata") or []]
+        hubs_c57f = get(base, "/hubs/sections/%s?count=12&includeMeta=1&excludeFields=summary"
+                        % show_section)[1].get("Hub") or []
+        shelf_c57f = next((h for h in hubs_c57f if str(h.get("hubIdentifier") or "")
+                           .startswith("tv.inprogress.")), {})
+        return leaf_c57f, [str(r.get("ratingKey")) for r in shelf_c57f.get("Metadata") or []]
+    if len(keys_c57f) >= 3:
+        pristine_c57f()
+        request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c57f[1], I_c57f))
+        deck_c57f = [str(r.get("ratingKey")) for r in
+                     get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]
+        scrobbled_c57f = section_cw_c57f()
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (keys_c57f[1], I_c57f))
+        for state_c57f, time_c57f in (("playing", 61000), ("playing", 95000),
+                                      ("stopped", 95000)):
+            request(base, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
+                    "&state=%s&time=%d&duration=100000"
+                    % (keys_c57f[1], keys_c57f[1], state_c57f, time_c57f))
+        played_c57f = section_cw_c57f()
+        restore_c57f()
+        check("a section's Continue Watching lists a next-up only after a real play",
+              keys_c57f[2] in deck_c57f
+              and scrobbled_c57f == ([], [])
+              and keys_c57f[2] in played_c57f[0] and keys_c57f[2] in played_c57f[1],
+              "on deck %s, scrobbled %s, played %s" % (deck_c57f, scrobbled_c57f, played_c57f))
+    else:
+        skip("a section's Continue Watching lists a next-up only after a real play",
+             "need three episodes")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
