@@ -30049,6 +30049,21 @@ def main():
         wrong_c54f.append("query/parse has no Rule")
     check("the six media columns filter a listing", not wrong_c54f, "; ".join(wrong_c54f))
 
+    # Cycle 54, from the binary's parameter names, measured on zen (1.42.2) and kids
+    # (1.43.4): eighteen more TAG-TABLE fields filter a listing although no Meta advertises
+    # them. `=` with any value matches only rows carrying that tag -- none on either
+    # reference -- `!=` every row, and any other operator is an unknown key (every row).
+    wrong_c54g = []
+    for field_c54g in ("similar", "mood", "style", "format", "tag", "place", "sharedWith"):
+        _, eq_c54g, _ = get(base, "/library/sections/%s/all?%s=1" % (movie_section, field_c54g))
+        _, ne_c54g, _ = get(base, "/library/sections/%s/all?%s!=1" % (movie_section, field_c54g))
+        _, all_c54g, _ = get(base, "/library/sections/%s/all" % movie_section)
+        if eq_c54g.get("Metadata") or len(ne_c54g.get("Metadata") or []) != len(
+                all_c54g.get("Metadata") or []):
+            wrong_c54g.append(field_c54g)
+    check("eighteen more tag-table fields filter a listing", not wrong_c54g,
+          ", ".join(wrong_c54g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

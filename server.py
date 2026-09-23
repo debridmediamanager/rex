@@ -596,6 +596,13 @@ REFUSED_FILTER_FIELDS.add("userFields")
 # whose null matches nothing, and a real sort key. It is never on a row. plexsim knew
 # none of it: the filter answered every row and the sort a 500.
 FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
+# Cycle 54, from the binary's parameter names and measured on zen (1.42.2) and kids (1.43.4):
+# eighteen TAG-TABLE fields filter although no Meta advertises them. `similar` was already
+# a tag-table field in filters.py and was still ignored, because nothing typed it.
+for _column in ("similar", "mood", "style", "format", "subformat", "tag", "make", "model",
+                "lens", "aperture", "exposure", "iso", "device", "autotag", "place",
+                "channel", "mediaProcessingTarget", "sharedWith"):
+    FILTER_FIELD_TYPES.setdefault(_column, "tag")
 # Cycle 54, from the parameter names the binary reads and measured on zen (1.42.2) and
 # kids (1.43.4): six MEDIA columns filter every listing, read from each of the row's
 # Media -- a show's or a season's from its leaves -- and matching when ANY Media does.
@@ -10271,7 +10278,16 @@ class PlexSim:
                          "director": "Director", "writer": "Writer",
                          "producer": "Producer", "country": "Country",
                          "actor": "Role", "label": "Label",
-                         "contentRating": "contentRating", "studio": "studio"}
+                         "contentRating": "contentRating", "studio": "studio",
+                         # Cycle 54: the tag-table fields read off the binary.
+                         "similar": "Similar", "mood": "Mood", "style": "Style",
+                         "format": "Format", "subformat": "Subformat", "tag": "Tag",
+                         "make": "Make", "model": "Model", "lens": "Lens",
+                         "aperture": "Aperture", "exposure": "Exposure", "iso": "ISO",
+                         "device": "Device", "autotag": "Autotag", "place": "Place",
+                         "channel": "Channel",
+                         "mediaProcessingTarget": "MediaProcessingTarget",
+                         "sharedWith": "SharedWith"}
 
     SCOPE_TYPES = ("movie", "show", "season", "episode")
 
@@ -10661,7 +10677,7 @@ class PlexSim:
             return None
         for row in self.catalog.items.values():
             for key in ("Genre", "Collection", "Director", "Writer", "Producer",
-                        "Role", "Country", "Label", "Similar", "Network"):
+                        "Role", "Country", "Label", "Similar", "Network", "Mood", "Style"):
                 for tag in row.get(key) or []:
                     if str(tag.get("id")) == str(value):
                         return tag.get("tag")

@@ -86,7 +86,11 @@ IGNORED_PREFIXES = ("X-Plex-", "include", "exclude")
 # NOT in this set: measured, they accept every operator key and get no
 # `valueTitle`, because they are enum columns rather than tag rows.
 TAG_TABLE_FIELDS = {"genre", "collection", "director", "writer", "producer",
-                    "actor", "country", "label", "network", "similar"}
+                    "actor", "country", "label", "network", "similar",
+                    # Cycle 54: seventeen more, from the binary's parameter names.
+                    "mood", "style", "format", "subformat", "tag", "make", "model", "lens",
+                    "aperture", "exposure", "iso", "device", "autotag", "place", "channel",
+                    "mediaProcessingTarget", "sharedWith"}
 
 # A string field has no ordering, so `<<` and `>>` are unknown keys on it and it
 # keeps exactly the six the FieldType block advertises. Every OTHER type takes
