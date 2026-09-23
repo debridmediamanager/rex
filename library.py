@@ -524,9 +524,12 @@ class Library:
         return row
 
     def _parents(self, row):
-        return [self.catalog.items.get(int(row[key]))
-                for key in ("parentRatingKey", "grandparentRatingKey")
-                if str(row.get(key) or "").isdigit()]
+        # A flattened show's episodes keep their season only privately (see
+        # `apply_flatten`): the ROW must not name it, but the season is still the parent
+        # a write stamps -- the suite reads it at the end, after a flatten.
+        keys = [row.get("parentRatingKey") or row.get("_parentRatingKey"),
+                row.get("grandparentRatingKey")]
+        return [self.catalog.items.get(int(key)) for key in keys if str(key or "").isdigit()]
 
     def rate(self, rating_key, rating):
         """`/:/rate?key=&rating=` -- the star rating. -1 clears it."""
