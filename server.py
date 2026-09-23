@@ -596,6 +596,14 @@ REFUSED_FILTER_FIELDS.add("userFields")
 # whose null matches nothing, and a real sort key. It is never on a row. plexsim knew
 # none of it: the filter answered every row and the sort a 500.
 FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
+# Cycle 54, from the parameter names the binary reads and measured on zen (1.42.2) and
+# kids (1.43.4): six MEDIA columns filter every listing, read from each of the row's
+# Media -- a show's or a season's from its leaves -- and matching when ANY Media does.
+# The numbers take the integer grammar; the names are `media_string` (filters.py).
+for _column in ("mediaHeight", "mediaWidth", "mediaAudioChannels"):
+    FILTER_FIELD_TYPES.setdefault(_column, "integer")
+for _column in ("mediaVideoCodec", "mediaAudioCodec", "mediaContainer"):
+    FILTER_FIELD_TYPES.setdefault(_column, "media_string")
 
 # Per-item Preferences: the Setting list an item's own settings tab reads,
 # captured from a real PMS. A show has eleven and a season has three, and they
@@ -10454,6 +10462,14 @@ class PlexSim:
                           for m in (leaf.get("Media") or [])]
         media = (media_rows or [{}])[0]
         parts = media.get("Part") or [{}]
+        if field in ("mediaHeight", "mediaWidth", "mediaAudioChannels"):
+            # Cycle 54: zen's `mediaHeight=1080` is 3,262 of 3,887, `!=1080` 629 -- every
+            # row with some OTHER height, the multi-version movies in both halves.
+            return [m.get({"mediaHeight": "height", "mediaWidth": "width",
+                           "mediaAudioChannels": "audioChannels"}[field]) for m in media_rows]
+        if field in ("mediaVideoCodec", "mediaAudioCodec", "mediaContainer"):
+            return [m.get({"mediaVideoCodec": "videoCodec", "mediaAudioCodec": "audioCodec",
+                           "mediaContainer": "container"}[field]) for m in media_rows]
         if field == "duration":
             # ...and `duration` is one of them: zen answers `duration=5700000` with 0
             # rows although a movie's own `duration` column is exactly that, because the

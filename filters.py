@@ -611,6 +611,23 @@ def compare(kind, operator, actual, wanted, field=""):
 
         return not any(holds(v) for v in values)
 
+    if kind == "media_string":
+        # Cycle 54, fitted exactly on zen's 3,887 movies: `mediaVideoCodec`,
+        # `mediaAudioCodec` and `mediaContainer` compare EACH Media's value and match
+        # when ANY does, under every operator, with a Media that names none counting as
+        # the empty string. `=h264` 1,816; `!=h264` 2,120 (every row with some OTHER
+        # codec, not the 2,071 a negated membership gives); `=` 23 (a Media with no
+        # codec); `>>=h` 3,685 and `<<=h` 222, both ANY; and `==H264` 0 -- the exact
+        # pair is case-SENSITIVE here, unlike `contentRating`'s.
+        values = [str(v or "") for v in (actual if isinstance(actual, (list, tuple))
+                                           else [actual])]
+        wanted = str(wanted)
+        tests = {"=": lambda v: v == wanted, "==": lambda v: v == wanted,
+                 "!=": lambda v: v != wanted, "!==": lambda v: v != wanted,
+                 "<=": lambda v: v <= wanted, "<<=": lambda v: v < wanted,
+                 ">=": lambda v: v >= wanted, ">>=": lambda v: v > wanted}
+        return any(tests.get(operator, lambda v: False)(v) for v in values)
+
     if kind == "tag":
         if field not in TAG_TABLE_FIELDS and operator not in TAG_OPERATORS:
             # A tag-typed COLUMN, not a join against the tag table: it takes all eight
