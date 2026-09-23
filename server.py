@@ -4669,6 +4669,10 @@ class PlexSim:
         # a filter constrains it, `sort=` orders it, and an unknown key or a bad value is
         # a 500.
         rows, _ = self.apply_filters(rows, query, section)
+        if _int_param(query.get("type", "")):
+            # Cycle 55, measured on kids' show 6: `type=` SCOPES this list -- `type=1`
+            # answers none of its six episodes and `type=+4` all six.
+            rows = [r for r in rows if TYPE_NUMBERS.get(r.get("type")) == int(query["type"])]
         if query.get("sort"):
             rows, unsupported = self._sorted(rows, query["sort"])
             if unsupported:
@@ -10897,6 +10901,29 @@ class PlexSim:
             if leaf in self.STRUCTURAL_SECTION_LEAVES and (
                     len(segments) == 4 or leaf == "firstCharacter"):
                 return self._structural_parse_refusal(query)
+            # Cycle 55, measured on kids and zen: the in-library autocomplete, `/common`
+            # and the section's `/extras/all` parse the same four -- `group=abc`,
+            # `sourceType=abc`, `limit=2147483648` and `sort=abc` are 500s -- where a good
+            # `group=title` changes nothing.
+            if leaf in ("autocomplete", "common") and len(segments) == 4 \
+                    or segments[3:] == ["extras", "all"]:
+                return self._structural_parse_refusal(query)
+        if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
+                and segments[3] in ("children", "grandchildren") \
+                and segments[2].isdigit():
+            row = self.catalog.items.get(int(segments[2]))
+            if row is not None and row.get("type") in ("show", "season"):
+                # ...and so do a parent's `/children` and `/grandchildren`, whose
+                # `type=` has to parse as well (`/grandchildren?type=abc` and an empty
+                # `type=` are 500s on kids and zen).
+                if segments[3] == "grandchildren" and "type" in query \
+                        and not _int_param(query["type"]):
+                    return ("error", 500, "plexsim: bad type")
+                return self._structural_parse_refusal(query)
+        if segments[:2] == ["library", "people"] and segments[3:] == ["media"] \
+                and len(segments) == 4:
+            # ...and a person's filmography, `limit=abc` included.
+            return self._structural_parse_refusal(query)
         return None
 
     def _listing_refusals(self, query, allow=()):

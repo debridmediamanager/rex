@@ -30600,6 +30600,34 @@ def main():
           "bad %s, good %s, unwatched %s, grid %s" % (
               bad_c55a1, [g[0] for g in good_c55a1], order_c55a1, grid_c55a1))
 
+    # Cycle 55, measured on zen and kids: a parent's `/children` and `/grandchildren`, a
+    # person's `/media`, the in-library autocomplete, `/common` and the section's
+    # `/extras/all` parse `group`, `sourceType`, `limit` and `sort` -- a bad one is a 500 --
+    # and `/grandchildren` parses and applies its `type=` (`abc` a 500, `1` no episodes).
+    # plexsim answered 200 to every one of them.
+    if show:
+        _, detail_c55a2, _ = get(base, "/library/metadata/%s" % movie)
+        roles_c55a2 = ((detail_c55a2.get("Metadata") or [{}])[0].get("Role") or [])
+        cells_c55a2 = [
+            "/library/metadata/%s/children?group=abc" % show,
+            "/library/metadata/%s/children?sourceType=abc" % show,
+            "/library/metadata/%s/grandchildren?limit=2147483648" % show,
+            "/library/metadata/%s/grandchildren?type=abc" % show,
+            "/library/sections/%s/autocomplete?type=1&title.query=t&sort=abc" % movie_section,
+            "/library/sections/%s/common?type=1&id=%s&group=abc" % (movie_section, movie),
+            "/library/sections/%s/extras/all?limit=2147483648" % movie_section]
+        if roles_c55a2:
+            cells_c55a2.append("/library/people/%s/media?limit=abc" % roles_c55a2[0].get("id"))
+        got_c55a2 = [get(base, cell_c55a2)[0] for cell_c55a2 in cells_c55a2]
+        typed_c55a2 = get(base, "/library/metadata/%s/grandchildren?type=1" % show)[1]
+        kept_c55a2 = [get(base, "/library/metadata/%s/children%s" % (show, q))[1].get("size")
+                      for q in ("", "?group=title")]
+        check("Children, people, autocomplete, common and extras parse the grammar",
+              got_c55a2 == [500] * len(cells_c55a2) and not typed_c55a2.get("Metadata")
+              and kept_c55a2[0] == kept_c55a2[1],
+              "statuses %s, type=1 rows %s, group=title %s" % (
+                  got_c55a2, len(typed_c55a2.get("Metadata") or []), kept_c55a2))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
