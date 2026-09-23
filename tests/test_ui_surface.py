@@ -32326,6 +32326,37 @@ def main():
           and str(cells_c59n[2]).startswith("-1:Account default|0:Selecionado manualmente|"),
           str(cells_c59n))
 
+    # Cycle 60, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): creating a
+    # collection and adding an item to one each LOCK the member's `collection` field, and
+    # the lock survives removing the member and deleting the collection. Plex Web's Edit
+    # dialog draws that lock and sends it back on the next save; python-plexapi's
+    # `isLocked('collection')` reads it. plexsim locked nothing.
+    _, grid_c60a, _ = get(base, "/library/sections/%s/all" % movie_section)
+    keys_c60a = [r.get("ratingKey") for r in grid_c60a.get("Metadata") or []]
+    one_c60a, two_c60a = keys_c60a[0], keys_c60a[-1]
+    def lock_c60a(rk_c60a):
+        _, detail_c60a, _ = get(base, "/library/metadata/%s" % rk_c60a)
+        return any(f.get("name") == "collection" and f.get("locked")
+                   for f in ((detail_c60a.get("Metadata") or [{}])[0]).get("Field") or [])
+    for rk_c60a in (one_c60a, two_c60a):
+        request(base, "PUT", "/library/metadata/%s?collection.locked=0" % rk_c60a)
+    uri_c60a = lambda rk: quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                % (machine, rk))
+    _, made_c60a, _ = container(base, "POST", "/library/collections?type=1&title=Rg60%%20Lock"
+                                "&smart=0&sectionId=%s&uri=%s" % (movie_section, uri_c60a(one_c60a)))
+    coll_c60a = ((made_c60a.get("Metadata") or [{}])[0]).get("ratingKey")
+    created_c60a = (lock_c60a(one_c60a), lock_c60a(two_c60a))
+    request(base, "PUT", "/library/collections/%s/items?uri=%s" % (coll_c60a, uri_c60a(two_c60a)))
+    added_c60a = lock_c60a(two_c60a)
+    request(base, "DELETE", "/library/collections/%s/items/%s" % (coll_c60a, two_c60a))
+    request(base, "DELETE", "/library/collections/%s" % coll_c60a)
+    kept_c60a = (lock_c60a(one_c60a), lock_c60a(two_c60a))
+    for rk_c60a in (one_c60a, two_c60a):
+        request(base, "PUT", "/library/metadata/%s?collection.locked=0" % rk_c60a)
+    check("adding to a collection locks the member's collection field, and the lock stays",
+          created_c60a == (True, False) and added_c60a and kept_c60a == (True, True),
+          str((created_c60a, added_c60a, kept_c60a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -2364,6 +2364,12 @@ class Library:
             # A collection is a tag on its members, and the item detail page
             # reads it from the row rather than from /library/collections.
             self._add_tag(row, "collection", collection.get("tag", collection["title"]))
+            # Cycle 60, measured on plexscratch42 and plexscratch: joining a collection --
+            # its create or an items add -- LOCKS the member's `collection` field, and
+            # neither removing the member nor deleting the collection unlocks it. A
+            # `collection[0].tag.tag` edit on the item locks nothing (the dialog sends its
+            # own `collection.locked`).
+            self._set_lock(row, "collection", True)
             added += 1
         if added:
             collection["updatedAt"] = _now()
