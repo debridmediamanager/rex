@@ -14524,8 +14524,13 @@ class PlexSim:
             # on either server); what fills it is not recorded, so it stays empty.
             position = next((index + 1 for index, hub in enumerate(hubs)
                              if ".recentlyadded." in hub["hubIdentifier"]), len(hubs))
+            # Cycle 59, measured on plexscratch42 and plexscratch: it is the head of its
+            # own key -- this library's video playlists, newest viewed first.
+            recent_lists, _ = self._sorted(
+                self._in_library(self.library.playlists("video"), section_id),
+                "lastViewedAt:desc")
             hubs.insert(position, shelf(
-                "recent.library.playlists.%s" % section_id, "Recent Playlists", [],
+                "recent.library.playlists.%s" % section_id, "Recent Playlists", recent_lists,
                 "playlist",
                 "/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc"
                 "&sectionID=%s" % section_id, "hub.recent.library.playlists"))
@@ -18357,6 +18362,15 @@ class PlexSim:
              "active": False},
         ]}
 
+    def _in_library(self, rows, section_id):
+        """Playlist rows that answer `sectionID=`.
+
+        Cycle 59, measured on plexscratch42 and plexscratch: an EMPTY playlist answers to
+        every library, beside the lists whose members live in it.
+        """
+        return [r for r in rows
+                if not self._playlist_sections(r) or str(section_id) in self._playlist_sections(r)]
+
     def _playlist_sections(self, row):
         """Every librarySectionID a playlist's members live in -- measured.
 
@@ -18496,8 +18510,7 @@ class PlexSim:
             if query.get("title") is not None:
                 rows = [r for r in rows if r.get("title") == query["title"]]
             if query.get("sectionID") is not None:
-                rows = [r for r in rows
-                        if str(query["sectionID"]) in self._playlist_sections(r)]
+                rows = self._in_library(rows, query["sectionID"])
             if query.get("type") is not None:
                 # A playlist is type 15; every other number selects none, and one that
                 # does not parse is a 500 like any listing's.
