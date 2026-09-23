@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 57 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **57. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 58 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 58 | **58 — the flows repeated, and the owner's screens: 9 CLIENT-VISIBLE findings (all built) and 5 recorded.** Territory A repeated cycles 56-57's client read and write flows (every fix held) with sequences no earlier cycle ran, and found four about playback state: a library's Continue Watching shelf gates on the SHOW's play history rather than on how the next-up arose; a new session's sub-minute beats keep the resume point; a beat at exactly the stored position writes nothing; and a collection rename onto a taken collection tag is a 409. Its fifth, the section shelf's per-URL cache, is recorded. Territory B drove the owner-facing screens -- Settings, library Add/Edit/Manage, Manage Recommendations, the Dashboard, activities and console -- and found four: the legacy agents' combination chain and its order save, Top Played rolling an episode up to its show and season (plus a flattened-season follow-up), statistics buckets aligned to local calendar boundaries, and a hidden library kept off Home and out of global search. The session that ran the hunts ended mid-cycle; the next session rebuilt the implementation pass from the surviving worktree and hunt outputs |
 | Cycle 57 | **57 — lists, and what every screen shows after a user acts: 9 CLIENT-VISIBLE findings (all built) and 8 recorded.** Territory A repeated cycle 56's client inventory (every fix held) and drove python-plexapi's whole read surface (108 classes, 646 members, 1,018 probes a server); neither reference holds a list, so its four findings -- collection search ladder, a list's history, a playlist's score base, the sync flag -- were measured on the two writable copies, which agree across versions. Territory B drove every client write on plexscratch42 and plexsim with 41 redraw reads after each, and found five: the merged Continue Watching hub holding the next-up rows, the section shelf's play-only next-up, a pristine show's OnDeck (refuting cycle 41), the collection Related shelf, and the play-queue marker's block rule. Territory B's implementation was delegated to an agent under sdrive, as cycle 55's was |
 | Cycle 56 | **56 — the first cycle under the client-impact stopping rule: 6 CLIENT-VISIBLE findings (all built) and 18 MALFORMED-ONLY (recorded in §8).** Territory A started from the clients -- recorded Plex Web sessions, the reference walk, python-plexapi's templates and 1,455 probes through it, the bundle's path families, every published hub key, and the client's writes driven on plexscratch42 -- and found three (a show library's provider storage totals, the playlist Meta's Type key and active flags, the legacy agents' per-MediaType languages). Territory B repeated cycles 54 and 55 (every fix held, `regress55.py` 123/123) and widened them, finding three (`decade` ignoring its operator, the per-user counters reading 0 once any state is written, `includeGuids` on a library's hub page). **The rule is working: every client-visible finding had a named call site, and the malformed-only count (18) is three times the client-visible one** |
 | Cycle 55 | **55 — cycle 54's two instruments at full resolution: 37 findings in 37 fix commits.** Territory B gave every one of the binary's 366 non-maintenance SQL reads a verdict and found eight: Related is a server-side TAG SCORE (first three genres and four roles, two shared, 59 of 59 zen rows exact), On Deck's next-up anchors on the most recent view, `recentlyViewed` and a section's `/onDeck` order by the view-state write time, `popular` counts history rows, a playlist's duration sums whole seconds, the genre shelf is the head of its own key, and a season's generated title follows its index. Territory A repeated cycle 54's parameter sweep (every fix held) and widened it to eighteen values and eight operators: 26 rules, most of them the listing's structural parameters being PARSED wherever they are read, the integer and option grammars, and the filter value grammar -- built as 27 commits by an implementation agent against the hunter's 123-check regression script. The driver found that a library's TV Recently Added shelf IS the section's roll-up, and the implementation pass that `/hubs/promoted` refuses the hub keys when a show library is in scope. **Five recorded beliefs overturned**; **two §3.3 entries CLOSED**; **one reference crash** (kids' PMS, from a search `limit` of 4294967296, restarted in seconds) |
@@ -3696,6 +3697,48 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 58 — the flows repeated, and the owner's screens
+
+Territory A re-ran cycles 56-57's client flows against the new code, and every earlier fix held.
+It then ran sequences no cycle had tried: a real play followed by later Mark Played, a new
+playback session that stops under a minute, a beat at exactly the stored position, and
+re-reading Continue Watching at the same URL. Four findings were built:
+
+* **The library's Continue Watching gate is the show's play history.** Once any episode has
+  been completed in a playback session, the shelf lists the On Deck episode however it became
+  next. This holds after the played episode is unscrobbled, and after Mark Played on a later
+  episode or on the season. Cycle 57's never-played control still holds, and now runs at the
+  head of the UI suite, before the suite plays that show.
+* **A new session's sub-minute beats keep the resume point.** The deletion happens only inside a
+  session that has already reported more than a minute.
+* **A beat at exactly the stored position writes nothing.** `lastViewedAt` does not move, and a
+  row the user removed from Continue Watching stays removed.
+* **A section-path collection rename onto a collection tag already in use is a 409.** The match
+  ignores case. The driver measured one more cell on plexscratch42: renaming a collection to its
+  own current title in any case is a 200, so the rule compares against the collection's current
+  TITLE.
+
+Territory B drove the owner-facing screens: Settings, a library's Add/Edit/Manage dialogs,
+Manage Recommendations, the Dashboard, and the activity and console panels. It read on zen and
+kids and wrote on the copies, and four findings were built:
+
+* the legacy agents' `config/{mediaType}` chain, `contributors`, and the order save with its
+  framework refusals;
+* `/library/all/top?type=2|3` rolling an episode play up to its show and season, and a
+  follow-up that finds a flattened episode's owning season;
+* statistics `at` buckets aligned to local midnight, local Monday, the 1st and 1 January;
+* `hidden=1`/`2` on a library: kept off Home and `/library/recentlyAdded`, and at 2 also out of
+  both searches, with the Home shelf kept and emptied.
+
+**Process.** The session that ran the hunts ended before the implementation pass. Hunt A's report
+was on disk; hunt B's findings were rebuilt from its regression script and verbatim reads. Hunt B
+was built by a forked agent in a second worktree and cherry-picked onto the cycle branch. Two UI
+checks written earlier had to be re-based on the new rules, as test changes rather than
+behaviour changes: the restore beat sent exactly the stored offset, and cycle 57's no-play control
+ran after the suite had played the show. Run the UI suite with `RD_TOKEN=dummy`. With a real key,
+Real-Debrid answers the fixture's placeholder link with `unavailable_file`, which plexsim turns
+into a 404, so the two part-path arity checks fail.
+
 ### Cycle 57 — lists, and what every screen shows after a user acts
 
 Neither kids nor zen holds a playlist or a collection, so every list rule this project had came
@@ -4763,6 +4806,24 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 58** (recorded, not built):
+
+- **The section Continue Watching answer is cached per exact URL** on plexscratch42 (CLIENT-VISIBLE,
+  deliberately not built). `/hubs/sections/{id}/continueWatching/items?contentDirectoryID=` and
+  the exact `/hubs/sections/{id}?count=12&...` page serve a stale list while any variant URL
+  answers the current one. A timeline beat and a season scrobble refresh it; an episode
+  scrobble or unscrobble, a rating and a season unscrobble do not. Only 11 write types were
+  sampled, so the refresh rule is incomplete; build it only once that rule is.
+- Under `X-Plex-Sync-Version: 2`, the optimized-versions playlist (`type=42`) row and its items
+  container carry `allowSync="1"` (an over-reach of cycle 57's fix), and `GET /playlists/{id}` for
+  that playlist is a 404 where zen and kids answer 200. No client reads either.
+- A collection renamed through the ITEM path and then deleted leaves its members tagged on s42;
+  plexsim removes the tag. No client renames a collection that way.
+- `PUT /library/collections/{id}/children` is a 400 on s42 and a 200 with an empty container on
+  plexsim. The client's inline field edit is not shown to reach a collection.
+- `/statistics/media`'s `Device` rows are exactly the devices its rows name on the references;
+  plexsim lists every device.
 
 **Cycle 57** (malformed-only, or invisible to a client):
 
