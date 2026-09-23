@@ -7022,7 +7022,8 @@ class PlexSim:
             raw = query.get("type")
             if raw is None or not str(raw).lstrip("+-").isdigit():
                 return ("error", 400, "plexsim: bad request")
-            wanted = {"1": "movie", "2": "show", "4": "episode"}.get(str(int(raw)))
+            wanted = {"1": "movie", "2": "show", "3": "season",
+                      "4": "episode"}.get(str(int(raw)))
             # Cycle 54, measured on kids and zen: the Dashboard builds this with
             # `accountID`, `librarySectionID` and `viewedAt>`, and they filter the HISTORY
             # rows before the plays are counted (zen's top episode goes from 12 plays to
@@ -7044,8 +7045,22 @@ class PlexSim:
             for entry in (self.library.history() if wanted else ()):
                 key = entry.get("ratingKey")
                 row = catalog.items.get(int(key)) if str(key).isdigit() else None
-                if row is None or row.get("type") != wanted:
+                if row is None:
                     continue
+                if row.get("type") != wanted:
+                    # Cycle 58, measured on zen: a play is counted on the episode's SEASON
+                    # at `type=3` and its SHOW at `type=2` -- zen's one show answers
+                    # `globalViewCount: 73`, the sum of its episodes' history rows -- and
+                    # the Dashboard's Top Played TV column asks for `type=2`. plexsim
+                    # matched the history row's own type, so no show ever had a play and
+                    # the TV column was empty on every server.
+                    parent = {"show": "grandparentRatingKey",
+                              "season": "parentRatingKey"}.get(wanted)
+                    if row.get("type") != "episode" or not parent \
+                            or not str(row.get(parent) or "").isdigit() \
+                            or int(row[parent]) not in catalog.items:
+                        continue
+                    key = str(row[parent])
                 if not passes(int(entry.get("viewedAt") or 0)):
                     continue
                 if "accountID" in ids and int(entry.get("accountID") or 1) != ids["accountID"]:

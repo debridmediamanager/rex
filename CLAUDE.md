@@ -2937,6 +2937,9 @@ precisely how the Seasons bug survived a fix attempt.
   missing one its TypeError; mediaType 8/9 is a `KeyError` for a non-legacy agent and 20 an
   AttributeError for every one; a non-integer type is a ValueError. Both answer XML whatever
   `Accept` asks. See `legacy_agent_config.json`, zen's 192 cells byte for byte.
+- **Top Played counts an episode's play on its SHOW at `type=2` and its SEASON at `type=3`** --
+  zen's one show answers `globalViewCount: 73`, its episodes' history rows. The Dashboard's TV
+  column asks `type=2`, which never matched a history row's own type.
 
 - **A sub-minute beat deletes the resume point only inside a session that has passed the
   minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped
