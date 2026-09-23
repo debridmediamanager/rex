@@ -14321,7 +14321,9 @@ def main():
         return [row_c16o for provider_c16o in body_c16o.get("MediaProvider") or []
                 for feature_c16o in provider_c16o.get("Feature") or []
                 for row_c16o in feature_c16o.get("Directory") or []
-                if row_c16o.get("key")]
+                # Cycle 59: the LIBRARY rows. A server holding a video playlist also lists
+                # a Playlists source, which Roku leaves its `id` (measured on plexscratch42).
+                if str(row_c16o.get("key") or "").startswith("/library/sections/")]
 
     roku_c16o = library_rows_c16o("Roku")
     chrome_c16o = library_rows_c16o("Chrome")
@@ -19580,8 +19582,10 @@ def main():
                        for feature_c25h in (provider_c25h.get("Feature") or [])
                        for row_c25h in (feature_c25h.get("Directory") or [])]
     check("/media/providers?includePreferences=1 carries every library's Preferences",
+          # Cycle 59: every LIBRARY row -- the Playlists source names no library either.
           len(with_prefs_c25h) == len([r_c25h for r_c25h in dirs_c25h
-                                       if r_c25h.get("key")]) > 0,
+                                       if str(r_c25h.get("key") or "").startswith(
+                                           "/library/sections/")]) > 0,
           "%d of %d Directory rows" % (len(with_prefs_c25h), len(dirs_c25h)))
     check("the Home row, which names no library, carries none",
           home_c25h and not any(row_c25h.get("Preferences") for row_c25h in home_c25h),
@@ -31940,7 +31944,12 @@ def main():
           and en_c59a.get("episodeSort") == "-1:Library default|0:Oldest first|1:Newest first"
           and enums_c59a(show, "en-US", "header").get("subtitleMode")
           == "-1:Account default|0:Manually selected|1:Shown with foreign audio|2:Always enabled"
-          and enums_c59a(movie, "en").get("useOriginalTitle") == "-1:Library default|0:No|1:Yes",
+          # Any movie still carrying the setting: by here the suite has unmatched the first,
+          # and an unmatched movie carries no Preferences block at all.
+          and all(value_c59a == "-1:Library default|0:No|1:Yes" for value_c59a in [
+              enums_c59a(r_c59a.get("ratingKey"), "en").get("useOriginalTitle")
+              for r_c59a in get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []]
+              if value_c59a is not None),
           str({k: v[:60] for k, v in en_c59a.items()}))
     audio_c59a = en_c59a.get("audioLanguage") or ""
     check("a show's own language enum is named in English under en",
