@@ -288,7 +288,7 @@ def _extended_title(title, parts, keep=()):
     return "%s (%s)" % (title, " ".join(left)) if left else title
 
 
-def _subtitle_codec_label(row):
+def _subtitle_codec_label(row, external="External"):
     """The codec part of a subtitle's titles.
 
     Measured on a writable copy of the reference: a SIDECAR subtitle -- one uploaded
@@ -309,11 +309,13 @@ def _subtitle_codec_label(row):
         # fallback -- zen's 11 sidecars carry none and read `(SRT External)`, while the
         # recorded corpus has one carrying `OpenSubtitles` and reading `(English SRT
         # OpenSubtitles)`. Cycle 17 measured the fallback alone, on one server.
-        return "%s %s" % (codec, row.get("providerTitle") or "External")
+        # Cycle 60: the fallback word is localised (zen's sidecar reads `SRT Extern` in
+        # German); a `providerTitle` is a name and stays as it is.
+        return "%s %s" % (codec, row.get("providerTitle") or external)
     return codec
 
 
-def stream_titles(row, stand_in=None):
+def stream_titles(row, stand_in=None, words=None):
     """Set `displayTitle` and `extendedDisplayTitle` on one Stream row, from its own fields.
 
     Called when a stream is built and again when a catalog loads, so a catalog built before
@@ -323,7 +325,15 @@ def stream_titles(row, stand_in=None):
     Measured in cycle 17: the reference decides whether the extended title CARRIES the
     language part on the ENGLISH name and then renders the localised one, so a track
     titled "English" keeps `English (SRT)` in German while its plain title moves.
+
+    Cycle 60, measured on zen's forced (1924) and SDH (2925) tracks in 28 languages: the
+    part that IS carried is rendered in the LOCALISED name (`www.TamilRockers.com
+    (Englisch Erzwungen SRT)`), and `words` localises `Unknown`, `Forced` and `SDH`
+    wherever they are composed -- plexsim decided the omission on the localised name and
+    rendered the English one, the other way round.
     """
+    words = words or {}
+    unknown = words.get("Unknown") or "Unknown"
     kind = row.get("streamType")
     title = row.get("title")
     if kind == 1:
@@ -347,7 +357,7 @@ def stream_titles(row, stand_in=None):
         language = row.get("language")
         codec = _audio_codec_label(row)
         channels = _channel_label(row)
-        row["displayTitle"] = "%s (%s)" % (language or "Unknown",
+        row["displayTitle"] = "%s (%s)" % (language or unknown,
                                            " ".join(part for part in (codec, channels) if part))
         if title is not None:
             # Cycle 24: `1.0` stands in for Mono as `2.0` does for Stereo, and the audio
@@ -356,28 +366,30 @@ def stream_titles(row, stand_in=None):
                 ("1.0",) if channels == "Mono" else ()
             parts = [(codec, (), (row.get("codec") or "",)), (channels, stereo, ())]
             language_part = ()
-            if language and not _language_carried(title, language,
+            if language and not _language_carried(title, stand_in or language,
                                                   row.get("languageTag") or ""):
-                language_part = (stand_in or language,)
+                language_part = (language,)
                 parts.insert(0, (language_part[0], (), ()))
             row["extendedDisplayTitle"] = _extended_title(title, parts, keep=language_part)
         else:
             row["extendedDisplayTitle"] = row["displayTitle"]
     elif kind == 3:
         language = row.get("language")
-        forced = "Forced" if row.get("forced") else None
-        sdh = "SDH" if row.get("hearingImpaired") else None
-        codec = _subtitle_codec_label(row)
-        plain = " ".join(part for part in (language or "Unknown", forced, sdh) if part)
+        forced = (words.get("Forced") or "Forced") if row.get("forced") else None
+        sdh = (words.get("SDH") or "SDH") if row.get("hearingImpaired") else None
+        codec = _subtitle_codec_label(row, words.get("External") or "External")
+        plain = " ".join(part for part in (language or unknown, forced, sdh) if part)
         row["displayTitle"] = plain
         if title is not None:
             # Cycle 24: `Signs`/`Songs` stand in for Forced and `CC`/`HI` for SDH.
-            parts = [(forced, ("Signs", "Songs"), ()), (sdh, ("CC", "HI"), ()),
+            # The English word stands in for a localised one: the omission is decided on
+            # the English, as the language part's is.
+            parts = [(forced, ("Forced", "Signs", "Songs"), ()), (sdh, ("SDH", "CC", "HI"), ()),
                      (codec, (), (row.get("codec") or "",))]
             language_part = ()
-            if language and not _language_carried(title, language,
+            if language and not _language_carried(title, stand_in or language,
                                                   row.get("languageTag") or ""):
-                language_part = (stand_in or language,)
+                language_part = (language,)
                 parts.insert(0, (language_part[0], (), ()))
             row["extendedDisplayTitle"] = _extended_title(title, parts, keep=language_part)
         else:
