@@ -31126,6 +31126,35 @@ def main():
               "= %d, != %d, >> %d" % (len(keys_c56d(eq_c56d)), len(keys_c56d(ne_c56d)),
                                      len(keys_c56d(gt_c56d))))
 
+    # Cycle 56, measured on plexscratch42 with known provenance and on zen and kids: ANY
+    # per-user write -- a rating, a progress, an unscrobble -- creates the row's settings
+    # record with `viewCount` and `skipCount` 0, and the counter filters read it: after a
+    # rating, `viewCount!=1` and `skipCount=0` find the row and `viewCount<<=0` does not.
+    # zen's `viewCount>=0` is exactly its 424 rows with any state. Plex Web's "Plays is not 1".
+    _, grid_c56e, _ = get(base, "/library/sections/%s/all" % movie_section)
+    keys_c56e = [r.get("ratingKey") for r in grid_c56e.get("Metadata") or []]
+    target_c56e = next((k for k in keys_c56e
+                        if not (detail_of(k).get("viewCount") or detail_of(k).get("skipCount"))), None) \
+        if "detail_of" in dir() else None
+    if target_c56e is None and keys_c56e:
+        target_c56e = keys_c56e[-1]
+        request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % target_c56e)
+    if target_c56e:
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=6"
+                % target_c56e)
+        def has_c56e(query_c56e):
+            _, found_c56e, _ = get(base, "/library/sections/%s/all?id=%s&%s"
+                                   % (movie_section, target_c56e, query_c56e))
+            return bool(found_c56e.get("Metadata"))
+        cells_c56e = {q: has_c56e(q) for q in ("viewCount!=1", "viewCount%3E=0", "skipCount=0",
+                                               "viewCount%3C%3C=0")}
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+                % target_c56e)
+        check("a per-user write makes the counters read 0",
+              cells_c56e["viewCount!=1"] and cells_c56e["viewCount%3E=0"]
+              and cells_c56e["skipCount=0"] and not cells_c56e["viewCount%3C%3C=0"],
+              str(cells_c56e))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
