@@ -123,6 +123,15 @@ def _framework_traceback(sentence):
         "</Response>\n" % (sentence, sentence)).encode("utf-8")
 
 
+def _xml_text(value):
+    return (str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+def _xml_quote(value):
+    return '"%s"' % _xml_text(value)
+
+
 def framework_error(name, least, given=1):
     return _framework_traceback("%s() takes at least %d arguments (%d given)"
                                 % (name, least, given))
@@ -1108,6 +1117,21 @@ except (OSError, ValueError):
     _SYSTEM_AGENTS_DOC = {"agents": [], "mediaTypes": {}}
 SYSTEM_AGENTS = _SYSTEM_AGENTS_DOC["agents"]
 AGENT_MEDIA_TYPES = _SYSTEM_AGENTS_DOC["mediaTypes"]
+# Cycle 58: the LEGACY agents' combination chain -- what the Agents settings page draws
+# under each primary agent and what its drag-to-reorder saves. Swept on zen (1.42.2) over
+# all fifteen listed agents x the six media types `agentservice.py` knows; kids agrees on
+# every row but the contributor order of two TV cells, which is its own load order.
+_LEGACY_AGENT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "legacy_agent_config.json")
+try:
+    with open(_LEGACY_AGENT_CONFIG_PATH, encoding="utf-8") as _handle:
+        LEGACY_AGENT_CONFIG = json.load(_handle)
+except (OSError, ValueError):
+    LEGACY_AGENT_CONFIG = {"config": {}, "contributors": {}, "errors": {}}
+# `agentservice.py`'s `media_types`: the class each mediaType combines under. Anything
+# else is the function returning None, which the framework answers with a 404.
+LEGACY_MEDIA_CLASSES = {1: "Movie", 2: "TV_Show", 8: "Artist", 9: "Album", 13: "Photo",
+                        20: "Plex_Personal_Media"}
 # Cycle 25, measured on kids and confirmed identical on zen: a modern agent's `Language`
 # rows are TITLED and ORDERED in the client's language, and `system_agents.json` was
 # captured with no `X-Plex-Language` at all -- class A, the failure this project's one
@@ -3439,6 +3463,9 @@ class PlexSim:
                  assert_claimed=False, owner_email=None, tmdb=None, token=None):
         self.catalog = catalog
         self.resolver = resolver
+        # Cycle 58: the saved legacy agent order per (primary agent, media class), as
+        # `PUT /system/agents/{id}/config/{N}?order=` writes it.
+        self.agent_orders = {}
         self.part_mode = part_mode
         self.public_url = public_url
         # A server is claimed BY ONE OWNER account; every other user reaches it
@@ -4204,6 +4231,111 @@ class PlexSim:
             if key in body and isinstance(body[key], list) and not body[key]:
                 del body[key]
         return body
+
+    # -- legacy agent combination (cycle 58) -------------------------------
+
+    @staticmethod
+    def _legacy_agent_document(rows):
+        """The framework's container of `Agent` rows, as `agentservice.py` writes it."""
+        head = ("<?xml version='1.0' encoding='utf-8'?>\n<MediaContainer noHistory=\"0\" "
+                "replaceParent=\"0\" size=\"%d\" identifier=\"com.plexapp.system\"" % len(rows))
+        if not rows:
+            return head + "/>\n"
+        lines = []
+        for row in rows:
+            lines.append('  <Agent name=%s%s hasPrefs="%d" identifier=%s/>' % (
+                _xml_quote(row["name"]), ' enabled="1"' if row.get("enabled") else "",
+                1 if row.get("hasPrefs") else 0, _xml_quote(row["identifier"])))
+        return head + ">\n" + "\n".join(lines) + "\n</MediaContainer>\n"
+
+    @staticmethod
+    def _legacy_agent_error(key, **values):
+        body = LEGACY_AGENT_CONFIG["errors"][key]
+        for name, value in values.items():
+            body = body.replace("{%s}" % name, _xml_text(value))
+        return ("plugin-xml", 500, body.encode("utf-8"))
+
+    def legacy_agent_config(self, method, identifier, media_type, query):
+        """`/system/agents/{identifier}/config/{mediaType}`, GET and PUT.
+
+        Cycle 58, read out of `agentservice.py` and swept on zen (1.42.2) and kids
+        (1.43.4) over fifteen agents x six media types. A LEGACY primary agent lists every
+        agent that serves the type: the ones in its saved (or default) order first with
+        `enabled="1"`, the primary appended if the order left it out, then the rest by
+        identifier. The Agents settings page draws exactly that and saves a drag with
+        `PUT ?order=`, which answers the `<combine>` document it wrote. A modern or unknown
+        agent has no chain -- an empty container -- except that at mediaType 8 and 9 it is
+        a `KeyError` (the music classes look the agent's version up) and at 20 every
+        identifier is an `AttributeError`, the model having no personal-media class.
+        plexsim answered an empty container to every GET and 404'd every PUT, so the page
+        showed no agents to order and nothing it saved stuck.
+        """
+        try:
+            number = int(media_type.strip())
+        except ValueError:
+            return self._legacy_agent_error(
+                "valueerror_put" if method == "PUT" else "valueerror_config",
+                value=repr(media_type))
+        media_class = LEGACY_MEDIA_CLASSES.get(number)
+        if media_class is None:
+            return ("bare", 404)
+        if method == "PUT":
+            # `set_agent_configuration(self, mediaType, identifier, order)` -- no default,
+            # and the framework hands an EMPTY value over as None.
+            if "order" not in query:
+                return ("plugin-xml", 500, _framework_traceback(
+                    "set_agent_configuration() takes exactly 4 arguments (3 given)"))
+            if not query["order"]:
+                return ("plugin-xml", 500,
+                        LEGACY_AGENT_CONFIG["errors"]["order_empty"].encode("utf-8"))
+            order = query["order"].split(",")
+            self.agent_orders[(identifier, media_class)] = order
+            sources = "".join("    <agent>%s</agent>\n" % _xml_text(ident)
+                              for ident in order)
+            document = ("<?xml version='1.0' encoding='utf-8'?>\n<combine class=%s>\n"
+                        "  <sources>\n%s  </sources>\n</combine>\n"
+                        % (_xml_quote(media_class), sources))
+            return ("framework-plain", 200, document.encode("utf-8"), "application/xml",
+                    "Content-type")
+        if number == 20:
+            return ("plugin-xml", 500,
+                    LEGACY_AGENT_CONFIG["errors"]["personal_media"].encode("utf-8"))
+        default = LEGACY_AGENT_CONFIG["config"].get("%s|%d" % (identifier, number))
+        if default is None:
+            if number in (8, 9) and not identifier.startswith("com.plexapp.agents."):
+                return self._legacy_agent_error("keyerror_%d" % number,
+                                                identifier=identifier)
+            return ("framework-plain", 200,
+                    self._legacy_agent_document([]).encode("utf-8"), "application/xml")
+        agents = {row["identifier"]: row for row in default}
+        order = self.agent_orders.get((identifier, media_class))
+        if order is None:
+            order = [row["identifier"] for row in default if row.get("enabled")]
+        order = list(order)
+        if identifier not in order:
+            order.append(identifier)
+        rows = []
+        for ident in order:
+            if ident in agents:
+                rows.append(dict(agents.pop(ident), enabled=True))
+        for ident in sorted(agents):
+            row = dict(agents[ident])
+            row.pop("enabled", None)
+            rows.append(row)
+        return ("framework-plain", 200,
+                self._legacy_agent_document(rows).encode("utf-8"), "application/xml")
+
+    def legacy_agent_contributors(self, media_type, primary):
+        """`/system/agents/contributors?mediaType=&primaryAgent=` -- cycle 58, zen."""
+        try:
+            number = int(media_type.strip())
+        except ValueError:
+            return self._legacy_agent_error("valueerror_contributors",
+                                            value=repr(media_type))
+        if number not in LEGACY_MEDIA_CLASSES:
+            return ("bare", 404)
+        rows = LEGACY_AGENT_CONFIG["contributors"].get("%s|%d" % (primary, number)) or []
+        return ("framework-xml", self._legacy_agent_document(rows).encode("utf-8"))
 
     def bare_container(self, **fields):
         """A MediaContainer with no library-container defaults.
@@ -5299,10 +5431,13 @@ class PlexSim:
                 # all three references answer here -- cycle 18 measured the empty body
                 # and implemented it as an empty `text/html`.
                 return ("bare", 200)
-            if method in ("POST", "PUT", "DELETE"):
+            if method in ("POST", "PUT", "DELETE") and not (
+                    method == "PUT" and len(segments) == 5
+                    and segments[1] == "agents" and segments[3] == "config"):
                 # The same envelope: an empty body, not plexsim's text/plain refusal --
                 # and it has to come BEFORE the `/system` routes, which answered their
-                # own GET to a PUT.
+                # own GET to a PUT. Cycle 58: the one framework WRITER under it is the
+                # legacy agent order's PUT.
                 return ("bare", 404)
 
         # Cycle 22, measured on plexscratch: `PATCH` had never been swept on the paths
@@ -5781,24 +5916,7 @@ class PlexSim:
         # -- system ------------------------------------------------------
         if (segments[:2] == ["system", "agents"] and len(segments) == 5
                 and segments[3] == "config"):
-            # `/system/agents/{identifier}/config/{mediaType}` -- the contributor
-            # chain the Agents page shows under a primary agent. Measured on BOTH
-            # real servers: for a modern agent (and for an unknown one) it is an
-            # EMPTY `com.plexapp.system` container -- only the legacy plug-ins have
-            # a chain. A mediaType no agent serves is a 404 and a non-number a 500.
-            if method == "PUT":
-                rows = [{"name": agent.get("name"), "enabled": True, "hasPrefs": False,
-                         "identifier": agent.get("identifier")}
-                        for agent in SYSTEM_AGENTS
-                        if agent.get("identifier") in AGENT_MEDIA_TYPES.get(segments[4], [])]
-                return self.bare_container(size=len(rows), noHistory=0, replaceParent=0,
-                                           identifier="com.plexapp.system", Agent=rows)
-            if not segments[4].lstrip("-").isdigit():
-                return ("error", 500, "plexsim: internal error")
-            if str(int(segments[4])) not in AGENT_MEDIA_TYPES:
-                return ("error", 404, "plexsim: not found")
-            return self.bare_container(noHistory=0, replaceParent=0, size=0,
-                                       identifier="com.plexapp.system")
+            return self.legacy_agent_config(method, segments[2], segments[4], query)
         if route in FRAMEWORK_BARE_ERRORS and not (
             route.startswith("/system/agents/attribution") and query.get("identifier")):
             # Cycle 53: the two attribution leaves are the framework's traceback only
@@ -5847,11 +5965,11 @@ class PlexSim:
                             if not key.startswith(("_", "X-Plex-"))]
                 if action_c52 == "contributors" and all(
                         query.get(key) for key in ("mediaType", "primaryAgent")):
-                    # Cycle 19's measurement, unchanged: with BOTH parameters a modern
-                    # primary agent has no contributor chain and says so with an empty
-                    # `com.plexapp.system` container.
-                    return self.bare_container(noHistory=0, replaceParent=0, size=0,
-                                               identifier="com.plexapp.system")
+                    # Cycle 19: with BOTH parameters a modern primary agent has no
+                    # contributor chain and says so with an empty container. Cycle 58: a
+                    # LEGACY one has one, which is what the Agents page lists under it.
+                    return self.legacy_agent_contributors(query["mediaType"],
+                                                          query["primaryAgent"])
                 unexpected = [key for key in supplied if key not in known_c52]
                 if strict_c52 and unexpected:
                     return ("plugin-xml", 500,
@@ -21322,6 +21440,16 @@ class Handler(BaseHTTPRequestHandler):
             # Cycle 53: `/system/agents/{id}/config/{N}` is the one framework document
             # that carries NO cookie, on kids and zen alike, where its sibling
             # `/system/agents/contributors` carries one. plexsim sent it on both.
+            # Cycle 58, raw sockets on zen and plexscratch42: that is the READ's rule.
+            # The order-saving PUT carries the cookie on every answer, its 404 included,
+            # and so does a GET whose mediaType does not parse as an integer -- the one
+            # read that fails before the agent service is consulted.
+            if self.command not in ("GET", "HEAD"):
+                return self.FRAMEWORK_COOKIE
+            try:
+                int(pieces_config[5])
+            except ValueError:
+                return self.FRAMEWORK_COOKIE
             return None
         pieces = path.split("/")
         if len(pieces) == 4 and pieces[2] == "scanners" and pieces[3].isdigit():
@@ -21511,7 +21639,11 @@ class Handler(BaseHTTPRequestHandler):
             return document
         head, _, rest = document.partition("\n")
         container, _, body = rest.partition("\n")
-        rows = [line for line in body.split("\n") if line.strip().startswith("<Setting")]
+        # Cycle 58: the legacy agent contributor list pages the same way.
+        rows = [line for line in body.split("\n")
+                if line.strip().startswith(("<Setting", "<Agent"))]
+        if container.endswith("/>"):
+            container = container[:-2] + ">"
         page = rows[start:start + size]
         container = re.sub(r'size="\d+"', 'size="%d"' % len(page), container, count=1)
         container = container.replace("<MediaContainer ",
@@ -22553,9 +22685,11 @@ class Handler(BaseHTTPRequestHandler):
                 # framework writes itself. `construct_response` sets the header literally
                 # as `Content-type` for a STRING result -- the one lower-case `t` on the
                 # surface -- where its XML results spell it `Content-Type`.
-                if result[3] == "text/plain":
+                if result[3] == "text/plain" or len(result) > 4:
+                    # Cycle 58: the legacy agent order's PUT returns an XML ELEMENT
+                    # rather than a container, and the same literal spelling carries it.
                     self._send(result[1], None, result[2],
-                               [("Content-type", "text/plain")])
+                               [("Content-type", result[3])])
                 else:
                     self._send(result[1], result[3], result[2])
                 return

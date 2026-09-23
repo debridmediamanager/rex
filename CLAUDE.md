@@ -54,7 +54,7 @@ with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server
 `section_prefs.json`, `section_meta.json`, `section_meta_show.json`, `item_prefs.json`,
 `section_prefs_new.json`, `section_filters.json`, `section_sorts.json`, `system_agents.json`,
 `legacy_agents.json`, `agent_languages.json`, `languages.json`, `translations.json`,
-`client_profiles.json`, `spellfix_static_tags.json`); the image's own tables
+`client_profiles.json`, `spellfix_static_tags.json`, `legacy_agent_config.json`); the image's own tables
 (`plugin_bundles.json`, `plugin_prefs.json`, `attributions.json`, `resource_assets.json`,
 `media_flags.json`); and three files served verbatim at the top of the surface with no token
 (`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
@@ -2929,6 +2929,14 @@ precisely how the Seasons bug survived a fix attempt.
   a collection of two or more adds a `collection.related` shelf to its members' Related, whose key
   filters on `tagId=` (exact `=` only); `playQueueLastAddedItemID` is the tail of the Up Next
   block after the selection.
+- **A LEGACY agent has a combination chain, and the Agents page saves it.**
+  `/system/agents/{id}/config/{N}` lists every agent serving the type -- the saved (or
+  default) order first with `enabled="1"`, the primary appended if the order omits it, then
+  the rest by identifier -- and `PUT ?order=` answers the `<combine>` document (`Content-type`,
+  lower-case `t`, with the cookie). An empty order is the framework's `split` AttributeError, a
+  missing one its TypeError; mediaType 8/9 is a `KeyError` for a non-legacy agent and 20 an
+  AttributeError for every one; a non-integer type is a ValueError. Both answer XML whatever
+  `Accept` asks. See `legacy_agent_config.json`, zen's 192 cells byte for byte.
 
 - **A sub-minute beat deletes the resume point only inside a session that has passed the
   minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped

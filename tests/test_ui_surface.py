@@ -3271,13 +3271,13 @@ def main():
           "%d agent(s)" % len(agents.get("Agent") or []))
     # The agent CHAIN the page edits lives one path deeper, and plexsim answered
     # the plain agent list to every /system/agents* path.
-    status, chain, _ = get(base, "/system/agents/tv.plex.agents.movie/config/1")
-    rows = chain.get("Agent") or []
-    # Re-measured on both real servers: for a modern agent the chain is EMPTY.
+    # Re-measured on both real servers: for a modern agent the chain is EMPTY. Cycle 58:
+    # and it is the framework's XML whatever the Accept header asks for.
+    status, chain, _ = request(base, "GET", "/system/agents/tv.plex.agents.movie/config/1")
     check("the agent chain for a media type is its own container",
-          status == 200 and chain.get("identifier") == "com.plexapp.system"
-          and chain.get("size") == 0 and not rows,
-          "%d agent(s): %s" % (len(rows), [a.get("identifier") for a in rows]))
+          status == 200 and b'identifier="com.plexapp.system"' in chain
+          and b'size="0"' in chain and b"<Agent" not in chain,
+          "HTTP %s %r" % (status, chain[:120]))
     # Measured: the element is `Scanner` with nothing but a `name`, and the
     # container's identifier is com.plexapp.system rather than the library's.
     # plexsim answered `Directory` rows with a key and a title, which the Edit
@@ -5068,10 +5068,50 @@ def main():
         "/:/plugins/tv.plex.agents.movie/prefs")]
     check("agent config, attribution and plug-in prefs refuse like a real PMS",
           statuses == [404, 404, 404, 500, 404], str(statuses))
-    status, chain, _ = get(base, "/system/agents/tv.plex.agents.movie/config/1")
+    status, chain, _ = request(base, "GET", "/system/agents/tv.plex.agents.movie/config/1")
     check("a modern agent's contributor chain is an empty container",
-          status == 200 and chain.get("size") == 0 and not chain.get("Agent"),
-          "HTTP %s size=%s" % (status, chain.get("size")))
+          status == 200 and b'size="0"' in chain and b"<Agent" not in chain,
+          "HTTP %s %r" % (status, chain[:120]))
+
+    # Cycle 58, swept on zen (1.42.2) over fifteen agents x six media types and on kids
+    # (1.43.4), and the write on plexscratch42: a LEGACY primary agent has a chain. The
+    # Agents settings page lists every agent serving the type -- the enabled ones first, in
+    # the saved order -- and its reorder saves `PUT ?order=`, answering the `<combine>`
+    # document. plexsim answered an empty container to every read and 404'd the save.
+    legacy_c58 = "/system/agents/com.plexapp.agents.none/config/1"
+    ids_c58 = lambda body: re.findall(r'identifier="([^"]+)"/>', body.decode())
+    on_c58 = lambda body: re.findall(r'enabled="1" hasPrefs="\d" identifier="([^"]+)"',
+                                     body.decode())
+    status, chain_c58, head_c58 = request(base, "GET", legacy_c58)
+    check("a legacy agent's chain lists every agent serving the type, enabled first",
+          status == 200 and ids_c58(chain_c58) == [
+              "com.plexapp.agents.none", "com.plexapp.agents.localmedia",
+              "com.plexapp.agents.fanarttv", "com.plexapp.agents.imdb",
+              "com.plexapp.agents.movieposterdb", "com.plexapp.agents.themoviedb"]
+          and on_c58(chain_c58) == ["com.plexapp.agents.none", "com.plexapp.agents.localmedia"]
+          and len(chain_c58) == 709 and head_c58.get("Set-Cookie") is None,
+          "HTTP %s %s enabled=%s" % (status, ids_c58(chain_c58), on_c58(chain_c58)))
+    status, contrib_c58, _ = request(
+        base, "GET", "/system/agents/contributors?mediaType=1&primaryAgent=com.plexapp.agents.none")
+    check("a legacy agent's contributors are listed",
+          status == 200 and ids_c58(contrib_c58) == ["com.plexapp.agents.localmedia"],
+          "HTTP %s %s" % (status, ids_c58(contrib_c58)))
+    status, saved_c58, head_c58 = request(
+        base, "PUT", legacy_c58 + "?order=com.plexapp.agents.fanarttv,com.plexapp.agents.none")
+    _, after_c58, _ = request(base, "GET", legacy_c58)
+    check("the Agents page's reorder saves and answers the combine document",
+          status == 200 and saved_c58.startswith(
+              b"<?xml version='1.0' encoding='utf-8'?>\n<combine class=\"Movie\">")
+          and head_c58.get("Content-type") == "application/xml"
+          and on_c58(after_c58) == ["com.plexapp.agents.fanarttv", "com.plexapp.agents.none"],
+          "HTTP %s enabled=%s" % (status, on_c58(after_c58)))
+    request(base, "PUT", legacy_c58 + "?order=com.plexapp.agents.none,com.plexapp.agents.localmedia")
+    refusals_c58 = [request(base, "PUT", legacy_c58 + suffix)[:2] for suffix in ("?order=", "")]
+    check("an empty or missing order is the framework's own 500",
+          [r[0] for r in refusals_c58] == [500, 500]
+          and b"'NoneType' object has no attribute 'split'" in refusals_c58[0][1]
+          and b"takes exactly 4 arguments (3 given)" in refusals_c58[1][1],
+          str([r[0] for r in refusals_c58]))
     status, scanners, _ = get(base, "/system/scanners/13")
     status_bad, _, _ = get(base, "/system/scanners/99")
     check("scanners are listed per library TYPE",
