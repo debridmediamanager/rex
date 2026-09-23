@@ -274,6 +274,12 @@ def _to_epoch(text, form):
 # `absoluteIndex` and `userRating` take it and answer no rows.
 FRACTIONAL_REFUSED = {"viewCount", "viewOffset"}
 
+# Cycle 55, measured on zen (1.42.2) and kids (1.43.4): three integer columns take a
+# STRICT signed 32-bit integer -- `decade=1.5`, `decade=2147483648`, `viewCount=2147483648`
+# and `viewOffset= 1` are 500s on both, although 1.42.2 accepts a surrounding space on a
+# plain integer column and both accept `0x1` there. `+1990` and `01990` are 1990.
+STRICT_INT32_FIELDS = {"decade", "viewCount", "viewOffset"}
+
 # The two columns whose ABSENCE is read as a value: cycle 20, measured on both
 # references. A row with no stored view state matches `=0` and every `<=`/`<<=`
 # whatever the value, and nothing else. `skipCount` looks identical on a row and is
@@ -791,6 +797,10 @@ def compare(kind, operator, actual, wanted, field=""):
         return actual == target
 
     if kind == "integer":
+        if field in STRICT_INT32_FIELDS and not (
+                re.fullmatch(r"[+-]?[0-9]+", str(wanted))
+                and -2 ** 31 <= int(wanted) < 2 ** 31):
+            raise FilterError(500, "bad %s %r" % (field, wanted))
         if field in FRACTIONAL_REFUSED and "." in str(wanted):
             # Cycle 15: a fractional value is a 500 on the per-user-state columns and
             # NOT on `year`, `duration`, `index` and the rest -- so it is the family,
