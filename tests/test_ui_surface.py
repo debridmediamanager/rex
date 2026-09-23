@@ -782,6 +782,38 @@ def main():
     check("rating -1 clears it",
           "userRating" not in (detail.get("Metadata") or [{}])[0])
 
+    # Cycle 57's control, moved here by cycle 58: a show NEVER played in a session keeps a
+    # scrobble-derived next-up off its section's Continue Watching shelf. It has to run
+    # before the suite plays any episode -- cycle 58 measured that one playback completion
+    # anywhere in the show lifts the gate for good, and the suite plays this show below.
+    leaves_c58h = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [] \
+        if show else []
+    keys_c58h = [str(r.get("ratingKey")) for r in leaves_c58h]
+    if len(keys_c58h) >= 3 and show_section:
+        watched_c58h = [k for k, r in zip(keys_c58h, leaves_c58h) if r.get("viewCount")]
+        I_c58h = "identifier=com.plexapp.plugins.library"
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (show, I_c58h))
+        request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c58h[1], I_c58h))
+        deck_c58h = [str(r.get("ratingKey")) for r in
+                     get(base, "/hubs/home/onDeck")[1].get("Metadata") or []]
+        leaf_c58h = [str(r.get("ratingKey")) for r in
+                     get(base, "/hubs/sections/%s/continueWatching/items?contentDirectoryID=%s"
+                         % (show_section, show_section))[1].get("Metadata") or []]
+        shelf_c58h = next((h for h in get(base, "/hubs/sections/%s?count=12&includeMeta=1"
+                                          % show_section)[1].get("Hub") or []
+                           if str(h.get("hubIdentifier") or "").startswith("tv.inprogress.")), {})
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (show, I_c58h))
+        for key_c58h in watched_c58h:
+            request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c58h, I_c58h))
+        check("a never-played show's shelf keeps a scrobbled next-up off",
+              keys_c58h[2] in deck_c58h and leaf_c58h == []
+              and not shelf_c58h.get("Metadata"),
+              "on deck %s, leaf %s, shelf %s" % (deck_c58h, leaf_c58h,
+                                                 [r.get("ratingKey") for r in
+                                                  shelf_c58h.get("Metadata") or []]))
+    else:
+        skip("a never-played show's shelf keeps a scrobbled next-up off", "need three episodes")
+
     # ------------------------------------------------------------------
     # 3. Continue Watching, and its own menu entry
     # ------------------------------------------------------------------
@@ -31420,12 +31452,32 @@ def main():
         restore_c57f()
         check("a section's Continue Watching lists a next-up only after a real play",
               keys_c57f[2] in deck_c57f
-              and scrobbled_c57f == ([], [])
               and keys_c57f[2] in played_c57f[0] and keys_c57f[2] in played_c57f[1],
               "on deck %s, scrobbled %s, played %s" % (deck_c57f, scrobbled_c57f, played_c57f))
     else:
         skip("a section's Continue Watching lists a next-up only after a real play",
              "need three episodes")
+    # Cycle 58, measured on plexscratch42 and plexscratch over ten steps: the gate is the
+    # SHOW's play history. Once one of its episodes was completed in a playback session the
+    # shelf lists the On Deck episode however it became next -- here after that episode is
+    # unscrobbled and a LATER one is marked played -- where plexsim kept dropping every
+    # scrobble-derived next-up and the library page showed nothing.
+    if len(keys_c57f) >= 3:
+        pristine_c57f()
+        for state_c58f, time_c58f in (("playing", 61000), ("playing", 95000),
+                                      ("stopped", 95000)):
+            request(base, "GET", "/:/timeline?ratingKey=%s&key=%%2Flibrary%%2Fmetadata%%2F%s"
+                    "&state=%s&time=%d&duration=100000"
+                    % (keys_c57f[0], keys_c57f[0], state_c58f, time_c58f))
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (keys_c57f[0], I_c57f))
+        request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c57f[1], I_c57f))
+        marked_c58f = section_cw_c57f()
+        restore_c57f()
+        check("a played show's shelf lists a next-up that a scrobble made",
+              keys_c57f[2] in marked_c58f[0] and keys_c57f[2] in marked_c58f[1],
+              "after a play, an unscrobble and Mark Played on %s: %s" % (keys_c57f[1], marked_c58f))
+    else:
+        skip("a played show's shelf lists a next-up that a scrobble made", "need three episodes")
 
     I_c57g = "identifier=com.plexapp.plugins.library"
     leaves_c57g = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []

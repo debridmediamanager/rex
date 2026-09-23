@@ -383,10 +383,6 @@ class Library:
             row["viewCount"] = max(1, int(row.get("viewCount") or 0))
             row["lastViewedAt"] = viewed_at // 1000
             row.pop("viewOffset", None)
-            # Cycle 57: an imported view is not a session on THIS server. Unmeasured
-            # which way a real PMS reads a cloud-synced view; not a local play is the
-            # reading that invents nothing.
-            row.pop("_viewedInSession", None)
         elif view_state == "unplayed":
             row.pop("viewCount", None)
             row.pop("lastViewedAt", None)
@@ -468,8 +464,6 @@ class Library:
                 leaf["viewCount"] = int(leaf.get("viewCount", 0)) + 1
                 leaf["lastViewedAt"] = _now()
                 leaf.pop("viewOffset", None)
-                # Cycle 57: a scrobble is not a play -- see `_viewedInSession`.
-                leaf.pop("_viewedInSession", None)
                 # Cycle 25, re-measured on plexscratch and OVERTURNING cycle 9's rule
                 # above: a scrobble writes one history row per LEAF it marks. A movie
                 # scrobbled twice adds two rows; a SEASON adds one per episode (9 rows
@@ -486,7 +480,6 @@ class Library:
                 leaf.pop("viewCount", None)
                 leaf.pop("viewOffset", None)
                 leaf.pop("lastViewedAt", None)
-                leaf.pop("_viewedInSession", None)
         # A show or season keeps its OWN play counter, independent of its leaves:
         # measured, scrobbling one episode twice took the show to `viewCount 2`,
         # unscrobbling that episode left it at 2 (it increments, it does not
@@ -682,7 +675,9 @@ class Library:
                 row.pop("_completionStopped", None)
                 row["viewCount"] = int(row.get("viewCount", 0)) + 1
                 # Cycle 57: the view came from a PLAYBACK SESSION -- a section's own
-                # Continue Watching shelf lists the next episode only after one of these.
+                # Continue Watching shelf lists a show's next episode only once one of
+                # these exists. Cycle 58: it is HISTORY, not view state -- a later
+                # scrobble or unscrobble of the same leaf leaves it standing.
                 row["_viewedInSession"] = True
                 row.pop("viewOffset", None)
                 # Cycle 45: the completion stamps the ROW's own `lastViewedAt`, which
