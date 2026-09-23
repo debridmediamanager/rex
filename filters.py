@@ -583,6 +583,13 @@ def compare(kind, operator, actual, wanted, field=""):
     The surprise is `string` with a bare `=`: it is a substring match, not
     equality, and `==` is the exact one.
     """
+    if field == "decade":
+        # Cycle 56, measured on zen and kids: `decade` IGNORES its operator, like
+        # `unmatched` and `resolution` -- `!=2010`, `>>=2000`, `<<=2020` answer the
+        # `=2010`, `=2000` and `=2020` buckets (zen 349, 252, 790). It is a bucket, not
+        # an ordering; plexsim compared, so "Decade is not 2010s" showed the complement.
+        operator = "="
+
     if field == "location":
         # Declared `tag` in the Meta, but the value is a section Location ID, not
         # a path: measured, `location=1` returns the whole of section 1 and
