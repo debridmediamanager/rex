@@ -2922,6 +2922,30 @@ def request_regional_server_prefs(query, headers):
 
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "title_templates.json"), encoding="utf-8") as _handle:
+        TITLE_TEMPLATES = json.load(_handle)["templates"]
+except (OSError, ValueError, KeyError):
+    TITLE_TEMPLATES = {}
+
+
+def _localise_hub_title(title, language):
+    """A hub title with a name inserted, in `language` -- or None.
+
+    Cycle 60, measured on zen and plexscratch42: `Recently Added in <library>`, `Top
+    Movies in <genre>` and `<collection> Collection` are localised around the name
+    (`Zuletzt in Zen Movies hinzugefügt`), which a table of whole English strings can
+    never match. The name itself is content and stays as it is.
+    """
+    for template, languages in TITLE_TEMPLATES.items():
+        head, _, tail = template.partition("%s")
+        if len(title) > len(head) + len(tail) and title.startswith(head) \
+                and title.endswith(tail) and languages.get(language):
+            return languages[language].replace("%s", title[len(head):len(title) - len(tail)])
+    return None
+
+
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "stream_words.json"), encoding="utf-8") as _handle:
         STREAM_WORDS = json.load(_handle)["words"]
 except (OSError, ValueError, KeyError):
@@ -22155,6 +22179,10 @@ class Handler(BaseHTTPRequestHandler):
             # translated, which is the reference's own behaviour (an episode's
             # `parentTitle` is the only `parentTitle` the capture ever saw change).
             row = "ratingKey" in node or attribute in self._ROW_BLOCKS
+            if "hubIdentifier" in node and isinstance(node.get("title"), str):
+                localised = _localise_hub_title(node["title"], language)
+                if localised is not None:
+                    node = dict(node, title=localised)
             # Cycle 17, mapped by diffing a whole item document against itself in
             # German: the `Preferences` block inside a row IS translated -- every
             # `label`, `summary` and `enumValues` of it, on a movie, a show and a

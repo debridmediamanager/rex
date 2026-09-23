@@ -32422,6 +32422,29 @@ def main():
           str((en_c60c.get("displayTitle"), de_c60c.get("displayTitle"),
                (unknown_c60c or {}).get("displayTitle"), axis_c60c("de").get("fr"))))
 
+    # Cycle 60, measured on zen and plexscratch42 in 28 languages: a hub title with a name
+    # inserted -- `Recently Added in <library>`, `Top Movies in <genre>`, `<collection>
+    # Collection` -- is localised around the name. The table holds whole English strings and
+    # never matched them, so a German library page read "Recently Added in Debrid Movies".
+    def hub_titles_c60d(section_c60d, language_c60d):
+        body_c60d = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/hubs/sections/%s?count=12" % section_c60d,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c60d}), timeout=30).read())
+        return {h.get("hubIdentifier"): h.get("title") for h in body_c60d["MediaContainer"].get("Hub") or []}
+    _, sections_c60d, _ = get(base, "/library/sections")
+    movie_title_c60d = next((d.get("title") for d in sections_c60d.get("Directory") or []
+                             if str(d.get("key")) == str(movie_section)), "")
+    de_c60d = hub_titles_c60d(movie_section, "de")
+    ja_c60d = hub_titles_c60d(movie_section, "ja")
+    check("a hub title with a name inserted is localised around the name",
+          de_c60d.get("movie.recentlyadded.%s" % movie_section)
+          == "Zuletzt in %s hinzugefügt" % movie_title_c60d
+          and ja_c60d.get("movie.recentlyadded.%s" % movie_section) == "最近追加した%s" % movie_title_c60d
+          and all(t.startswith("Top-Filme in ") for k, t in de_c60d.items()
+                  if str(k).startswith("movie.genre")),
+          str((de_c60d, ja_c60d.get("movie.recentlyadded.%s" % movie_section))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
