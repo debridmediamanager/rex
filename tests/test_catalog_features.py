@@ -902,6 +902,43 @@ def main():
           == [("season", "Season 1", "Rollup Show", 1789800002)],
           "one %r two %r" % (one_sibling, two_siblings))
 
+    # Cycle 59, measured on plexscratch42 with a second show added to the Threefold library:
+    # a library's Continue Watching lists a SCROBBLED next-up once ANY show in that library
+    # has an episode completed in a playback session -- Twofold's scrobble-only next-up sat
+    # beside Threefold's played one -- so cycle 58's gate is the LIBRARY's play history, not
+    # the show's. A show in a library with no session play keeps its scrobble mark.
+    gate_catalog = server.Catalog(fixture)
+    gate_sim = server.PlexSim(gate_catalog, Resolver(), assert_claimed=True)
+    def gate_show(show_key, season_key, first_key, section, title):
+        rows = [{"ratingKey": show_key, "key": "/library/metadata/%s" % show_key,
+                 "type": "show", "title": title, "librarySectionID": section},
+                {"ratingKey": season_key, "key": "/library/metadata/%s" % season_key,
+                 "type": "season", "title": "Season 1", "index": 1,
+                 "parentRatingKey": show_key, "librarySectionID": section}]
+        for offset in (0, 1):
+            rows.append({"ratingKey": str(int(first_key) + offset),
+                         "key": "/library/metadata/%d" % (int(first_key) + offset),
+                         "type": "episode", "title": "Episode %d" % (offset + 1),
+                         "index": offset + 1, "parentIndex": 1,
+                         "parentRatingKey": season_key, "grandparentRatingKey": show_key,
+                         "grandparentTitle": title, "librarySectionID": section})
+        for row in rows:
+            gate_catalog.add(row)
+        return rows[2], rows[3]
+    played_first, _ = gate_show("25901", "35901", "15901", 97, "Played Show")
+    scrobbled_first, scrobbled_next = gate_show("25902", "35902", "15911", 97, "Scrobbled Show")
+    alone_first, alone_next = gate_show("25903", "35903", "15921", 96, "Alone Show")
+    played_first.update(viewCount=1, lastViewedAt=1789900000, _viewedInSession=True)
+    scrobbled_first.update(viewCount=1, lastViewedAt=1789900001)
+    alone_first.update(viewCount=1, lastViewedAt=1789900002)
+    gate_rows = {row.get("ratingKey"): row for row in gate_sim.continue_watching()}
+    check("a library's play history opens the scrobbled next-up gate for every show in it",
+          scrobbled_next["ratingKey"] in gate_rows
+          and not gate_rows[scrobbled_next["ratingKey"]].get("_nextUpFromScrobble")
+          and gate_rows.get(alone_next["ratingKey"], {}).get("_nextUpFromScrobble") is True,
+          str({k: v.get("_nextUpFromScrobble") for k, v in gate_rows.items()
+               if k in (scrobbled_next["ratingKey"], alone_next["ratingKey"])}))
+
     # Cycle 44: the TMDB pipeline's own output, driven through `metadata.identify` with
     # a stubbed TMDB client. Two things it got wrong, both measured on the references:
     #

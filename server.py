@@ -16936,6 +16936,12 @@ class PlexSim:
         for row in self.catalog.items.values():
             if row.get("type") == "episode":
                 shows.setdefault(str(row.get("grandparentRatingKey")), []).append(row)
+        # Cycle 59, measured on plexscratch42 with a second show added to one library: the
+        # scrobbled-next-up gate is the LIBRARY's play history -- once any show in it has an
+        # episode completed in a playback session, another show's scrobble-only next-up is
+        # listed too. Cycle 58 had one show per library and could not tell the two apart.
+        played_libraries = {str(e.get("librarySectionID")) for episodes in shows.values()
+                            for e in episodes if e.get("_viewedInSession")}
         stamps = {}
         for episodes in shows.values():
             if not include_hidden and any(e.get("_hiddenFromContinueWatching")
@@ -16971,7 +16977,8 @@ class PlexSim:
                     # lists the On Deck episode however it became next -- Mark Played on
                     # a later episode or the season, and after the played episode is
                     # unscrobbled -- while a show never played keeps it off (cycle 57).
-                    scrobbled = not any(e.get("_viewedInSession") for e in episodes)
+                    scrobbled = (str(episodes[anchor].get("librarySectionID"))
+                                 not in played_libraries)
                     chosen = next((e for e in episodes[anchor + 1:]
                                    if not e.get("viewCount") and not e.get("viewOffset")
                                    and (e.get("parentIndex") == episodes[anchor].get("parentIndex")
