@@ -31057,6 +31057,25 @@ def main():
     check("promoted hubs refuse the hub keys when a show library is in scope", not wrong_c55p,
           "; ".join(wrong_c55p))
 
+    # Cycle 56, measured on kids (1.43.4), zen (1.42.2) and plexscratch42: a SHOW library's
+    # `durationTotal`/`storageTotal` on `/media/providers?includeStorage=1` is the sum of its
+    # episodes (kids' TV Shows 60186 ms / 37683488 bytes), where plexsim summed only rows that
+    # own a Media -- none, in a show library -- and answered 0. python-plexapi's
+    # `LibrarySection.totalDuration` and `totalStorage` read exactly this attribute.
+    _, providers_c56a, _ = get(base, "/media/providers?includeStorage=1")
+    _, grid_c56a, _ = get(base, "/library/sections/%s/all?includeStorage=1" % show_section)
+    want_c56a = (sum(int(r.get("durationTotal") or 0) for r in grid_c56a.get("Metadata") or []),
+                 sum(int(r.get("storageTotal") or 0) for r in grid_c56a.get("Metadata") or []))
+    got_c56a = None
+    for provider_c56a in providers_c56a.get("MediaProvider") or []:
+        for feature_c56a in provider_c56a.get("Feature") or []:
+            for row_c56a in feature_c56a.get("Directory") or []:
+                if row_c56a.get("key") == "/library/sections/%s" % show_section:
+                    got_c56a = (int(row_c56a.get("durationTotal") or 0),
+                                int(row_c56a.get("storageTotal") or 0))
+    check("a show library's provider storage totals are its episodes'",
+          got_c56a == want_c56a and want_c56a[0] > 0, "%s want %s" % (got_c56a, want_c56a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
