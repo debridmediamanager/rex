@@ -4573,6 +4573,14 @@ class PlexSim:
             rows = []
         section = self.catalog.section(row.get("librarySectionID")) or {}
         is_show = section.get("type") == "show"
+        # Cycle 54, measured on kids and zen: the listing query reaches this list too --
+        # a filter constrains it, `sort=` orders it, and an unknown key or a bad value is
+        # a 500.
+        rows, _ = self.apply_filters(rows, query, section)
+        if query.get("sort"):
+            rows, unsupported = self._sorted(rows, query["sort"])
+            if unsupported:
+                return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
         page, paged, start, total = self.page_window(rows, query)
         fields = {
             "art": "/:/resources/show-fanart.jpg" if is_show else "/:/resources/movie-fanart.jpg",
@@ -12032,12 +12040,19 @@ class PlexSim:
                 rows = []
             else:
                 rows = self.catalog.leaves(rating_key)
-            if leaf == "children" and row.get("type") == "season":
-                # A season's children consume the ordinary row-filter grammar. A
-                # show's season list does not: both references leave it unchanged by
-                # `skipCount=`, so this gate deliberately stays on the episode list.
+            if leaf == "children" and row.get("type") in ("season", "show"):
+                # A season's children consume the ordinary row-filter grammar, and so
+                # does a show's season list. Cycle 54 REFUTED "a show's season list
+                # ignores `skipCount=`": measured on kids and on a 25-season zen show,
+                # `skipCount=0`, `title=zzzq` and `year=2002` all constrain it, a word is
+                # a 500, and `sort=` orders it (`index:desc` answers the seasons last
+                # first) with an unknown key a 500. `/allLeaves` ignores both.
                 section = self.catalog.section(row.get("librarySectionID")) or {}
                 rows, _ = self.apply_filters(rows, query, section)
+                if query.get("sort"):
+                    rows, unsupported = self._sorted(rows, query["sort"])
+                    if unsupported:
+                        return ("error", 500, "plexsim: unsupported sort key %s" % unsupported)
             extra = {}
             page, paged, start, _ = self.page_window(rows, query)
             # Re-measured on zen against a 24-season show, which is the first show this
@@ -12047,7 +12062,10 @@ class PlexSim:
             # page's own length and has nothing to do with the offset. Cycle 8 read
             # kids as dropping it past Start=0, but kids has two seasons, so every page
             # past the first there IS a one-row page.
-            short_page = paged and len(page) < 2
+            # Cycle 54: and it is the ANSWER's row count, paged or not -- a filter that
+            # leaves one season, or a show that has only one, carries no "All episodes"
+            # row on kids or zen. plexsim added it to every unpaged list.
+            short_page = len(page) < 2
             if (leaf == "children" and row.get("type") == "show"
                     and query.get("excludeAllLeaves") != "1" and rows
                     and not short_page):
