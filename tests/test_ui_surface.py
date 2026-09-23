@@ -30674,6 +30674,27 @@ def main():
     check("Top Played and the hub pages refuse group, sort and sourceType",
           got_c55a4 == [want for _, want in cells_c55a4], "%s" % got_c55a4)
 
+    # Cycle 55, measured on zen (`sourceType=0` answers `126, 380, 395...` where 1
+    # answers the titleSort page) and kids (`1, 3, 4, 17, 18`): a `sourceType` other than
+    # 1 ORDERS the grid by id, and `2147483648` and ` 1` are 500s. plexsim kept the
+    # titleSort order and parsed the value with `int(value.strip())`.
+    grid_c55f2 = "/library/sections/%s/all" % movie_section
+    ids_c55f2 = sorted(int(r.get("ratingKey")) for r in get(base, grid_c55f2)[1].get("Metadata") or [])
+    if len(ids_c55f2) >= 2:
+        first_c55f2 = ids_c55f2[0]
+        request(base, "PUT", "/library/metadata/%s?titleSort.value=Zzzz&titleSort.locked=1"
+                % first_c55f2)
+        by_id_c55f2 = [int(r.get("ratingKey")) for r in
+                       get(base, grid_c55f2 + "?sourceType=0")[1].get("Metadata") or []]
+        plain_c55f2 = [int(r.get("ratingKey")) for r in
+                       get(base, grid_c55f2 + "?sourceType=1")[1].get("Metadata") or []]
+        request(base, "PUT", "/library/metadata/%s?titleSort.locked=0" % first_c55f2)
+        bad_c55f2 = [get(base, grid_c55f2 + q)[0] for q in ("?sourceType=2147483648",
+                                                           "?sourceType=%201")]
+        check("sourceType other than 1 orders the grid by id",
+              by_id_c55f2 == ids_c55f2 and plain_c55f2 != ids_c55f2 and bad_c55f2 == [500, 500],
+              "sourceType=0 %s, =1 %s, bad %s" % (by_id_c55f2, plain_c55f2, bad_c55f2))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

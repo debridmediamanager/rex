@@ -8879,6 +8879,10 @@ class PlexSim:
                 rows = [r for r in rows
                         if text in hierarchy_module.stored_title(r).lower()]
             rows, _ = self.apply_filters(rows, query, section)
+            if filters_module.source_order(query.get("sourceType")):
+                # Cycle 55: `sourceType=0` orders the search box by id too -- kids'
+                # `query=e` is `17, 3, 4` bare and `3, 4, 17` with it.
+                rows, _ = self._sorted(rows, "id")
             # Cycle 15, measured on kids and zen: this row is the LIGHT grid
             # projection, like every other listing's -- no `Guid`, no `Rating`, no
             # tag ids and no `Stream`. Both references answer a search row that is
@@ -9594,6 +9598,13 @@ class PlexSim:
         default_sort = ("" if (section.get("type") == "show"
                                and str(query.get("type") or "") in ("3", "4"))
                         else "titleSort")
+        if filters_module.source_order(query.get("sourceType")):
+            # Cycle 55, measured on zen (`sourceType=0` answers `126, 380, 395...`,
+            # `sourceType=1` the titleSort page `17360, 2161, 380...`) and kids (`1, 3, 4,
+            # 17, 18` against `1, 18, 17, 3, 4`): a source other than the library's own
+            # really ORDERS the grid by id -- the `Order: id ascending` block cycle 20 read
+            # off `/query/parse` is what the listing runs. An explicit `sort=` still wins.
+            default_sort = "id"
         source, unsupported = self._sorted(source, query.get("sort") or default_sort)
         if unsupported:
             # Measured: a real PMS answers an unknown sort key with a 500 rather
