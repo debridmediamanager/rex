@@ -30921,6 +30921,13 @@ def main():
                                                   none_c55f18[1].get("size"), item_c55f18,
                                                   word_c55f18))
 
+    # Cycle 55, measured on zen and kids: `/system/agents?mediaType=-1` is identical to the
+    # bare `/system/agents`. plexsim answered the typed form, an empty agent list.
+    bare_c55f19 = request(base, "GET", "/system/agents")[1]
+    minus_c55f19 = request(base, "GET", "/system/agents?mediaType=-1")[1]
+    check("mediaType=-1 is the bare agent list", bare_c55f19 == minus_c55f19,
+          "%d vs %d bytes" % (len(bare_c55f19), len(minus_c55f19)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

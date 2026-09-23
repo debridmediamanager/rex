@@ -18737,6 +18737,10 @@ class PlexSim:
         # Cycle 55, measured on zen and kids: `mediaType=+1` is the typed movie list.
         if wanted and not _int_param(wanted, None):
             return ("error", 400, "plexsim: bad request")
+        if wanted and int(wanted) == -1:
+            # Cycle 55, measured on zen and kids: `mediaType=-1` answers byte for byte
+            # what the bare request answers -- it is "no type", not the empty type list.
+            wanted = None
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
                    if name in by_id] if wanted else list(SYSTEM_AGENTS))
