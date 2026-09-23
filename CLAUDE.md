@@ -2940,6 +2940,9 @@ precisely how the Seasons bug survived a fix attempt.
 - **Top Played counts an episode's play on its SHOW at `type=2` and its SEASON at `type=3`** --
   zen's one show answers `globalViewCount: 73`, its episodes' history rows. The Dashboard's TV
   column asks `type=2`, which never matched a history row's own type.
+- **Statistics buckets are CALENDAR buckets in local time**: a day at local midnight, a week on
+  a Monday, a month on the 1st, a year on January 1st (zen UTC, kids Europe/Berlin). Flooring
+  the epoch to fixed widths put every week on a Thursday. See `sessions.bucket_start`.
 
 - **A sub-minute beat deletes the resume point only inside a session that has passed the
   minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped
