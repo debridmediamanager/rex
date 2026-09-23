@@ -1,5 +1,37 @@
 {
- "_provenance": "Cycle 60. Hub titles with a name inserted, per X-Plex-Language, with %s where the name goes: `Recently Added in %s` off zen's movie and TV library hub pages (identical for both), `Top Movies in %s` off zen's genre shelf with the genre resolved from the shelf's own key, `%s Collection` off plexscratch42's collection.related hub (1.42.2). Applied to a Hub's own title only.",
+ "_provenance": "Cycle 60. Hub titles with a name inserted, per X-Plex-Language, with %s where the name goes: `Recently Added in %s` off zen's movie and TV library hub pages (identical for both), `Top Movies in %s` off zen's genre shelf with the genre resolved from the shelf's own key, `%s Collection` off plexscratch42's collection.related hub (1.42.2). Applied to a Hub's own title only. `enum_leads` are the lead rows of an enum built from the HOST (PreferredNetworkInterface lists the machine's own interfaces after `:Any`), identical on zen and plexscratch42.",
+ "enum_leads": {
+  ":Any": {
+   "ar": ":أي",
+   "ca": ":Cualquiera",
+   "cs": ":Jakékoli",
+   "da": ":Enhver",
+   "de": ":Alle",
+   "es": ":Cualquiera",
+   "et": ":Mistahes",
+   "fi": ":Mikä tahansa",
+   "fr": ":Tout",
+   "he": ":הכל",
+   "hr": ":bilo koji",
+   "hu": ":Bármilyen",
+   "it": ":Qualsiasi",
+   "ja": ":全て",
+   "ko": ":상관없음",
+   "lt": ":Bet koks",
+   "nb": ":Alle",
+   "nl": ":Alle",
+   "pl": ":Dowolny",
+   "pt": ":Qualquer",
+   "ro": ":Orice",
+   "ru": ":Любые",
+   "sk": ":Akékoľvek",
+   "sl": ":Katerokoli",
+   "sr": ":Било који",
+   "sv": ":Valfritt",
+   "uk": ":Будь-який",
+   "zh": ":任何"
+  }
+ },
  "templates": {
   "%s Collection": {
    "ar": "%s المجموعة",

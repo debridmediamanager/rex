@@ -32470,6 +32470,16 @@ def main():
     postplay_c60e = [h.get("title") for h in loc_c60e("/hubs/metadata/%s/postplay" % first_c60e, "de").get("Hub") or []]
     check("the post-play Related shelf is localised", "Related Movies" not in postplay_c60e, str(postplay_c60e))
 
+    # Cycle 60, measured on zen and plexscratch42 in 28 languages: Settings > Network's
+    # "Preferred network interface" lists the HOST's interfaces after `:Any`, so the enum is
+    # never in the table whole -- and its lead is translated (`:Alle`, `:全て`).
+    body_c60f = json.loads(urllib.request.urlopen(urllib.request.Request(
+        base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
+                                    "X-Plex-Language": "ja"}), timeout=30).read())["MediaContainer"]
+    iface_c60f = {s.get("id"): s for s in body_c60f.get("Setting") or []}.get("PreferredNetworkInterface") or {}
+    check("the network interface picker's lead is localised",
+          str(iface_c60f.get("enumValues", "")).startswith(":全て"), str(iface_c60f.get("enumValues"))[:40])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

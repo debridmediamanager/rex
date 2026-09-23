@@ -2923,9 +2923,11 @@ def request_regional_server_prefs(query, headers):
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "title_templates.json"), encoding="utf-8") as _handle:
-        TITLE_TEMPLATES = json.load(_handle)["templates"]
+        _TEMPLATE_TABLE = json.load(_handle)
+        TITLE_TEMPLATES = _TEMPLATE_TABLE["templates"]
+        ENUM_LEADS = _TEMPLATE_TABLE.get("enum_leads") or {}
 except (OSError, ValueError, KeyError):
-    TITLE_TEMPLATES = {}
+    TITLE_TEMPLATES, ENUM_LEADS = {}, {}
 
 
 def _localise_hub_title(title, language):
@@ -22208,6 +22210,14 @@ class Handler(BaseHTTPRequestHandler):
                 found = (TRANSLATIONS.get(attribute) or {}).get(node)
                 if found and language in found:
                     return found[language]
+                if attribute == "enumValues" and not found:
+                    # Cycle 60, measured on zen and plexscratch42: an enum built from the
+                    # HOST (`PreferredNetworkInterface`: `:Any` then the machine's own
+                    # interfaces) can never be in the table whole; its lead is translated.
+                    lead, bar, rest = node.partition("|")
+                    translated_lead = (ENUM_LEADS.get(lead) or {}).get(language)
+                    if bar and translated_lead:
+                        return translated_lead + "|" + rest
             # A GENERATED title carries a number: `Season 1` is in the table and
             # `Season 19` is not, so the word is taken from the numbered form the
             # reference did translate and the row's own number kept.
