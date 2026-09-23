@@ -14855,8 +14855,12 @@ class PlexSim:
         either a `Metadata` row or a `Directory` tag row.
         """
         text = query.get("query")
-        if not text:
+        if text is None:
             return ("error", 400, "plexsim: bad request")
+        if text == "":
+            # Cycle 55, measured on zen and kids: an EMPTY `query=` is an empty 200 --
+            # `size 0` and nothing else -- and only a MISSING one is the 400.
+            return self.bare_container(size=0)
         # Cycle 28, measured on kids and zen, identically: `limit=` here caps the WHOLE
         # result list and not each hub -- `limit=3` answers three rows of the ten a bare
         # zen query answers, and kids' `firefly` answers the show and two of its three
