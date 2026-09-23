@@ -52,6 +52,15 @@ taken from what a reference PMS answers *for the client's exact request*, never 
 hand. The loop stops only when every finite territory in a repeat cycle returns `no findings` and
 every remaining cell is an explicit capability, state, external-service or safety bound.
 
+**The stopping rule since cycle 56, set by the user:** the loop stops when a cycle finds
+**nothing a real client would notice**. Every hunt finding is tagged CLIENT-VISIBLE -- an
+official client or python-plexapi builds that request shape in ordinary use and the difference
+changes what it renders, plays or does, with the call site cited -- or MALFORMED-ONLY, reachable
+only with input no client sends. Client-visible findings are built; malformed-only ones are
+recorded in §8. The hunt preamble carries the rule and the sentence "no client-visible
+findings". This is the reading the note below arrived at, made operational after cycle 55's 37
+findings turned out to be mostly refusal grammar for malformed input.
+
 A note on that stopping condition, recorded in the eleventh cycle: it is probably not reachable
 as literally stated. The PMS surface is large enough that a determined hunter always finds
 another attribute, and some of what is left changes nothing for any client — cycle 11's gzip
