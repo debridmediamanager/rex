@@ -31330,6 +31330,53 @@ def main():
           all(bare in (None, "absent") and synced in (True, 1, "1") for bare, synced in cells_c57d),
           str(cells_c57d))
 
+    I_c57e = "identifier=com.plexapp.plugins.library"
+    leaves_c57e = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+    keys_c57e = [str(r.get("ratingKey")) for r in leaves_c57e]
+    watched_c57e = [k for k, r in zip(keys_c57e, leaves_c57e) if r.get("viewCount")]
+    def pristine_c57e():
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (show, I_c57e))
+        # A progress write under a minute stores nothing and un-hides the show's row.
+        request(base, "GET", "/:/progress?key=%s&%s&time=1000" % (keys_c57e[0], I_c57e))
+    def restore_c57e():
+        pristine_c57e()
+        for key_c57e in watched_c57e:
+            request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57e, I_c57e))
+    # Cycle 57, measured on zen (its live next-up, Bosch S1E9, no offset and no viewCount)
+    # and driven on plexscratch42 and plexscratch: the MERGED `/hubs/continueWatching` hub
+    # Plex Web's Home is built from -- and its `/items` leaf -- holds the On Deck NEXT-UP
+    # rows as well as the in-progress ones, each stamped `includedAt`, newest first, while
+    # `/hubs/home/continueWatching` stays in-progress only. plexsim held the offsets alone,
+    # so Home never offered the next episode after one was finished.
+    if len(keys_c57e) >= 3:
+        pristine_c57e()
+        request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c57e[1], I_c57e))
+        items_c57e = get(base, "/hubs/continueWatching/items?contentDirectoryID=%s"
+                         % show_section)[1].get("Metadata") or []
+        hub_c57e = (get(base, "/hubs/continueWatching?contentDirectoryID=%s,%s&includeMeta=1"
+                        "&excludeFields=summary" % (movie_section, show_section))[1]
+                    .get("Hub") or [{}])[0]
+        home_c57e = [str(r.get("ratingKey")) for r in
+                     get(base, "/hubs/home/continueWatching")[1].get("Metadata") or []]
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (keys_c57e[1], I_c57e))
+        after_c57e = [str(r.get("ratingKey")) for r in
+                      get(base, "/hubs/continueWatching/items?contentDirectoryID=%s"
+                          % show_section)[1].get("Metadata") or []]
+        restore_c57e()
+        row_c57e = next((r for r in items_c57e if str(r.get("ratingKey")) == keys_c57e[2]), {})
+        stamps_c57e = [r.get("includedAt") or 0 for r in items_c57e]
+        check("the merged Continue Watching hub holds On Deck's next-up",
+              isinstance(row_c57e.get("includedAt"), int)
+              and keys_c57e[2] in [str(r.get("ratingKey")) for r in hub_c57e.get("Metadata") or []]
+              and keys_c57e[2] not in home_c57e and keys_c57e[2] not in after_c57e
+              and stamps_c57e == sorted(stamps_c57e, reverse=True),
+              "items %s hub %s home %s after %s" % (
+                  [(r.get("ratingKey"), r.get("includedAt")) for r in items_c57e],
+                  [r.get("ratingKey") for r in hub_c57e.get("Metadata") or []],
+                  home_c57e, after_c57e))
+    else:
+        skip("the merged Continue Watching hub holds On Deck's next-up", "need three episodes")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
