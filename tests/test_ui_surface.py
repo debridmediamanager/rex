@@ -2565,6 +2565,29 @@ def main():
     check("media statistics count a completed play",
           bool(media_stats.get("StatisticsMedia")),
           "%d row(s)" % len(media_stats.get("StatisticsMedia") or []))
+    # Cycle 58, measured on zen (UTC) and kids (Europe/Berlin): the coarse buckets are
+    # CALENDAR buckets in the server's local time -- a day starts at local midnight, a
+    # week on a Monday, a month on the 1st and a year on January 1st. plexsim floored
+    # the epoch to fixed widths, so every week began on a Thursday and every "month" on
+    # whatever day thirty-day steps reached. The suite runs on the server's host.
+    def aligned_c58(at, span):
+        local = time.localtime(at)
+        midnight = (local.tm_hour, local.tm_min, local.tm_sec) == (0, 0, 0)
+        return midnight and {3: True, 2: local.tm_wday == 0, 1: local.tm_mday == 1,
+                             0: local.tm_yday == 1}[span]
+    misaligned_c58 = []
+    for which_c58 in ("media", "bandwidth"):
+        for span_c58 in (0, 1, 2, 3):
+            _, stats_c58, _ = get(base, "/statistics/%s?timespan=%d" % (which_c58, span_c58))
+            series_c58 = (stats_c58.get("StatisticsMedia")
+                          or stats_c58.get("StatisticsBandwidth") or [])
+            if not series_c58:
+                misaligned_c58.append((which_c58, span_c58, "no rows"))
+            misaligned_c58 += [(which_c58, span_c58, time.strftime(
+                "%a %Y-%m-%d %H:%M", time.localtime(r["at"])))
+                for r in series_c58 if not aligned_c58(r["at"], span_c58)]
+    check("statistics buckets are calendar days, Monday weeks, months and years, local time",
+          not misaligned_c58, str(misaligned_c58[:4]))
     # Re-measured against BOTH reference servers: /statistics/resources answers
     # 200 with a StatisticsResources series, and only timespan=6 has samples --
     # every coarser bucket is an empty 200, and so is a request with no timespan.

@@ -75,6 +75,33 @@ SESSION_REAP_INTERVAL = 30
 # live Dashboard graph and coarser ones for the history.
 TIMESPANS = {6: 1, 5: 60, 4: 3600, 3: 86400, 2: 604800, 1: 2592000, 0: 31536000}
 
+
+def bucket_start(second, timespan):
+    """The `at` of the statistics bucket holding `second`.
+
+    Cycle 58, measured on zen (UTC) and kids (Europe/Berlin): the buckets are CALENDAR
+    buckets in the server's LOCAL time, not fixed widths from the epoch. The same plays
+    land at a local midnight (kids' day bucket is 22:00 UTC), a Monday (zen's week bucket
+    1787529600), the 1st of the month and January 1st. `second % 604800` puts every week
+    on a Thursday and `% 2592000` a "month" on whatever day thirty-day steps reach, so the
+    Dashboard's history graph labelled every bar with the wrong date.
+    """
+    span = int(timespan)
+    if span >= 5:
+        width = TIMESPANS.get(span, 1)
+        return second - (second % width)
+    local = time.localtime(second)
+    year, month, day, hour = local.tm_year, local.tm_mon, local.tm_mday, local.tm_hour
+    if span <= 0:
+        month, day, hour = 1, 1, 0
+    elif span == 1:
+        day, hour = 1, 0
+    elif span == 2:
+        day, hour = day - local.tm_wday, 0
+    elif span == 3:
+        hour = 0
+    return int(time.mktime((year, month, day, hour, 0, 0, 0, 0, -1)))
+
 # `Player` is an echo. Header (or query parameter -- Plex Web sends every
 # X-Plex-* value in the query string) -> the field it lands in.
 PLAYER_FROM = {
@@ -311,13 +338,12 @@ class Sessions:
         """Rows for `/statistics/bandwidth`, rolled into the asked-for bucket."""
         if timespan is None:
             return [row for span in self.ROLLUPS for row in self.bandwidth(span, since)]
-        width = TIMESPANS.get(int(timespan), 1)
         rows = {}
         for (device, lan), buckets in self._bytes.items():
             for second, count in buckets.items():
                 if not count:
                     continue
-                at = second - (second % width)
+                at = bucket_start(second, timespan)
                 if since is not None and at < since:
                     continue
                 key = (device, lan, at)
@@ -336,11 +362,10 @@ class Sessions:
         """
         if timespan is None:
             return [row for span in self.ROLLUPS for row in self.media_statistics(span)]
-        width = TIMESPANS.get(int(timespan), 3600)
         kinds = {"movie": 1, "show": 2, "season": 3, "episode": 4}
         rows = {}
         for play in self._plays:
-            at = play["at"] - (play["at"] % width)
+            at = bucket_start(play["at"], timespan)
             key = (at, kinds.get(play["type"], 1), play.get("device", 1))
             count, seconds = rows.get(key, (0, 0))
             rows[key] = (count + 1, seconds + play["seconds"])
