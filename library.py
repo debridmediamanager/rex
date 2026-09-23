@@ -1136,7 +1136,19 @@ class Library:
             self._empty_title(row, old_title)
         elif sort_touched:
             self._derive_title_sort(row)
-        if "index" in written and row.get("_generatedTitle"):
+        if "index" in written and row.get("type") == "season" and "title" not in written \
+                and GENERATED_SEASON_TITLE.match(str(old_title or "")):
+            # Cycle 55, measured on plexscratch42: a season's title is GENERATED unless
+            # the user wrote one (cycle 31 read `title = ''` for every season out of the
+            # database), so it follows an index edit -- `index.value=0` is `Specials` and
+            # putting the index back is `Season N` again. plexsim re-titled only rows it
+            # had itself generated, so a catalog season kept `Season 20` at index 0.
+            index = row.get("index")
+            row["title"] = ("Specials" if str(index) == "0"
+                            else "Season %s" % index if index is not None
+                            else "[Unknown Season]")
+            written = written | {"title"}
+        elif "index" in written and row.get("_generatedTitle"):
             # Measured: a generated title follows the index -- `Episode 2` is
             # `Episode 7` after `index.value=7`.
             row["title"] = "%s %s" % ("Season" if row.get("type") == "season" else "Episode",
