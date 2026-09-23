@@ -16307,6 +16307,15 @@ class PlexSim:
         # refusal caught it as a 400.
         total_ms = int(duration) if str(duration).isdigit() and int(duration) else None
         row = self.catalog.items.get(int(rating_key)) if rating_key.isdigit() else None
+        # Cycle 59, measured on plexscratch42 and plexscratch: a PLAYLIST's ratingKey is a
+        # timeline row too -- python-plexapi's `Playlist.updateTimeline()`. It runs the
+        # item's own machine (ignore under a minute, progress, complete past 90% with the
+        # list's `viewCount` stepping, the offset stored on the list), opens a Now Playing
+        # session and pushes a `playing` frame keyed `/playlists/{id}`. plexsim 404'd it.
+        listed = None
+        if row is None and rating_key.isdigit():
+            listed = self.library.playlist(int(rating_key))
+            row = listed
         if rating_key and row is None:
             # Measured: a ratingKey the server does not have is a 404, not a 200
             # with an empty container.
@@ -16347,6 +16356,7 @@ class PlexSim:
             entry = self.sessions.touch(row, query, headers, address, state,
                                         offset_ms, total_ms,
                                         client_profile(query, headers))
+            entry["_list"] = listed is not None
             # Cycle 50, separated on both writable versions: `progress` is sticky
             # within the playback SESSION once one of that session's timeline beats
             # passes the minute gate.  A later 9-second or stopped beat in the same
@@ -16355,7 +16365,9 @@ class PlexSim:
             if offset_ms > 60000:
                 entry["_playbackProgressed"] = True
             self.notify_playing(entry, row, state, offset_ms,
-                                self.playing_queue_fields(query))
+                                dict(self.playing_queue_fields(query),
+                                     **({"key": "/playlists/%s" % rating_key}
+                                        if listed is not None else {})))
             # Measured thresholds: nothing is reported back at or under a minute, on
             # ANY state, and past 90% the play is `complete` on any state too.
             # `viewCount` is the item's own count -- 0 on a first play in progress,
@@ -16393,7 +16405,7 @@ class PlexSim:
                     finished = row.get("_completed") == (playing_session or True)
                     playback_state = "complete" if finished and not already else "ignore"
             view_count = int(row.get("viewCount") or 0)
-            if state == "stopped":
+            if state == "stopped" and listed is None:
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0,
                                           device_id=device)
             media = (row.get("Media") or [{}])[0]
@@ -16491,6 +16503,18 @@ class PlexSim:
         rows = []
         for entry in self.sessions.live():
             row = entry.get("row") or {}
+            if entry.get("_list"):
+                # Cycle 59, measured on plexscratch42: a playlist's session row is the
+                # LISTING row -- its state block included, no `summary` -- with the
+                # session's `sessionKey` and `viewOffset`, and only `User` and `Player`
+                # under it.
+                item = self.library._playlist_row(row)
+                if not item.get("summary"):
+                    item.pop("summary", None)
+                item.update(sessionKey=entry["sessionKey"], viewOffset=entry["viewOffset"],
+                            User={"id": "1"}, Player=entry.get("Player"), _session=True)
+                rows.append(item)
+                continue
             item = _full(row)
             for name in self.sessions.SESSION_ROW_DROPS:
                 item.pop(name, None)
