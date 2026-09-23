@@ -19589,8 +19589,12 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         if "metadataItemID" in query:
             wanted = str(query["metadataItemID"])
+            # Cycle 57, measured on plexscratch42 and plexscratch: a COLLECTION's or a
+            # PLAYLIST's id is an empty 200 here, not a 404 -- python-plexapi's
+            # `Collection.history()` and `Playlist.history()` read it.
             if not any(str(r.get("ratingKey")) == wanted for r in rows) \
-                    and self.catalog.items.get(int(wanted)) is None:
+                    and self.catalog.items.get(int(wanted)) is None \
+                    and self.library.state_row(int(wanted)) is None:
                 return ("error", 404, "plexsim: not found")
         # Cycle 54 corrected the keys, measured on kids and zen with the client's own
         # encoding: `viewedAt%3E=` is the key `viewedAt>` and it is INCLUSIVE (zen's

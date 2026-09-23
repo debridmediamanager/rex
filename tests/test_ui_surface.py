@@ -31218,6 +31218,38 @@ def main():
           and cells_c57a["Rg57 Neb"] == [("Rg57 Nebula Arc", "0.52000")]
           and cells_c57a["Nebula"] == [("Rg57 Nebula Arc", "0.32000")], str(cells_c57a))
 
+    def make_list_c57(kind_c57, title_c57):
+        """Create a collection or playlist on the first movie; return its ratingKey."""
+        _, grid_c57, _ = get(base, "/library/sections/%s/all" % movie_section)
+        first_c57 = ((grid_c57.get("Metadata") or [{}])[0]).get("ratingKey")
+        uri_c57 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                        % (machine, first_c57))
+        if kind_c57 == "collection":
+            status_c57, body_c57, _ = request(
+                base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (quote(title_c57), movie_section, uri_c57))
+        else:
+            status_c57, body_c57, _ = request(
+                base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                % (quote(title_c57), uri_c57))
+        try:
+            return ((json.loads(body_c57).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+                    .get("ratingKey"))
+        except ValueError:
+            return None
+    # Cycle 57, measured on plexscratch42 and plexscratch: the history page answers an empty
+    # 200 for a COLLECTION's or a PLAYLIST's id (python-plexapi's `Collection.history()` and
+    # `Playlist.history()`), and 404 only for an id naming nothing. plexsim 404'd both.
+    lists_c57b = [make_list_c57("collection", "Rg57 Hist Coll"),
+                  make_list_c57("playlist", "Rg57 Hist Mix")]
+    statuses_c57b = [request(base, "GET", "/status/sessions/history/all?metadataItemID=%s"
+                             "&sort=viewedAt%%3Adesc" % key_c57b)[0] for key_c57b in lists_c57b]
+    if lists_c57b[0]:
+        request(base, "DELETE", "/library/collections/%s" % lists_c57b[0])
+    if lists_c57b[1]:
+        request(base, "DELETE", "/playlists/%s" % lists_c57b[1])
+    check("a list's history is an empty 200", statuses_c57b == [200, 200], str(statuses_c57b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
