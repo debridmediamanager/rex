@@ -30087,6 +30087,42 @@ def main():
     check("the cluster columns match nothing and trash is an integer", not wrong_c54h,
           "; ".join(wrong_c54h))
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2, on a 25-season show): a show's
+    # `/children` and `/grandchildren` run the listing QUERY -- filters constrain them,
+    # `sort=` orders them and an unknown key or an unparseable value is a 500 -- and the
+    # "All episodes" row is there only when MORE THAN ONE season row is answered, paged or
+    # not. plexsim ignored all of it on both paths, and cycle 46's "a show's season list
+    # ignores skipCount" is refuted: `skipCount=0` answers no season on either reference.
+    if show:
+        _, seasons_c54i, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
+        rows_c54i = seasons_c54i.get("Metadata") or []
+        wrong_c54i = []
+        _, none_c54i, _ = get(base, "/library/metadata/%s/children?title=zzzq" % show)
+        if none_c54i.get("Metadata") or none_c54i.get("Directory"):
+            wrong_c54i.append("children title=zzzq kept rows")
+        if len(rows_c54i) > 1:
+            last_c54i = max(rows_c54i, key=lambda r: int(r.get("index") or 0))
+            _, desc_c54i, _ = get(base, "/library/metadata/%s/children?sort=index:desc" % show)
+            if ((desc_c54i.get("Metadata") or [{}])[0].get("ratingKey")
+                    != last_c54i.get("ratingKey")):
+                wrong_c54i.append("children sort=index:desc did not reverse")
+            _, one_c54i, _ = get(base, "/library/metadata/%s/children?index=%s"
+                                 % (show, last_c54i.get("index")))
+            if len(one_c54i.get("Metadata") or []) != 1 or one_c54i.get("Directory"):
+                wrong_c54i.append("children index= kept %d rows and %d directories"
+                                  % (len(one_c54i.get("Metadata") or []),
+                                     len(one_c54i.get("Directory") or [])))
+        for path_c54i in ("children?sort=zzz", "children?year=abc", "grandchildren?sort=zzz",
+                          "grandchildren?year=abc"):
+            status_c54i, _, _ = request(base, "GET", "/library/metadata/%s/%s" % (show, path_c54i))
+            if status_c54i != 500:
+                wrong_c54i.append("%s -> %s" % (path_c54i, status_c54i))
+        _, gnone_c54i, _ = get(base, "/library/metadata/%s/grandchildren?title=zzzq" % show)
+        if gnone_c54i.get("Metadata"):
+            wrong_c54i.append("grandchildren title=zzzq kept rows")
+        check("a show's children and grandchildren run the listing query", not wrong_c54i,
+              "; ".join(wrong_c54i))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
