@@ -30429,6 +30429,30 @@ def main():
                   "on deck %s (want %s) lastViewedAt %s" % (
                       row_c55b.get("ratingKey"), episodes_c55b[1], row_c55b.get("lastViewedAt")))
 
+    # Cycle 55, from the binary's SQL (`order by metadata_item_settings.updated_at desc`)
+    # and measured on zen (21 rows, exactly `viewUpdatedAt` descending with ties by
+    # ratingKey) and on plexscratch42: a section's `recentlyViewed` is ordered by the
+    # VIEW-STATE WRITE time, so rating a watched row moves it to the front although it was
+    # not viewed again. plexsim ordered by `lastViewedAt`.
+    import time as time_c55c
+    _, grid_c55c, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c55c = [r.get("ratingKey") for r in grid_c55c.get("Metadata") or []][:2]
+    if len(pair_c55c) == 2:
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % pair_c55c[0])
+        time_c55c.sleep(1.2)
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % pair_c55c[1])
+        time_c55c.sleep(1.2)
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=6"
+                % pair_c55c[0])
+        _, recent_c55c, _ = get(base, "/library/sections/%s/recentlyViewed" % movie_section)
+        first_c55c = ((recent_c55c.get("Metadata") or [{}])[0]).get("ratingKey")
+        for key_c55c in pair_c55c:
+            request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % key_c55c)
+        request(base, "PUT", "/:/rate?key=%s&identifier=com.plexapp.plugins.library&rating=-1"
+                % pair_c55c[0])
+        check("recentlyViewed is ordered by the view-state write time",
+              first_c55c == pair_c55c[0], "first %s want %s" % (first_c55c, pair_c55c[0]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

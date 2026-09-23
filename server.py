@@ -9694,8 +9694,13 @@ class PlexSim:
                     section_id, section, full_rows,
                     view_group=view_group, query=query, full_rows=True, **extra)
             elif leaf == "recentlyViewed":
+                # Cycle 55, from `order by metadata_item_settings.updated_at desc` and
+                # measured on zen (21 rows, `viewUpdatedAt` descending, ties by ratingKey)
+                # and plexscratch42: the ORDER is the view-state write time. A row whose
+                # stamp predates this process falls back to its view time.
                 rows = sorted([r for r in rows if r.get("lastViewedAt")],
-                              key=lambda r: -r["lastViewedAt"])[:100]
+                              key=lambda r: (-(r.get("_viewUpdatedAt") or r["lastViewedAt"]),
+                                             int(r.get("ratingKey") or 0)))[:100]
             elif leaf == "recentlyAdded":
                 # Cycle 54, measured on kids and zen: only the LITERAL `unwatched=1`
                 # drops the watched rows here -- `01`, `+1`, `2`, `abc` and an empty
