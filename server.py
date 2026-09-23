@@ -2365,6 +2365,36 @@ def _bool_option(value):
     return bool(text) and text.isdigit() and int(text) in (0, 1)
 
 
+def _int_param(value, bits=32):
+    """Cycle 54: an integer query parameter as a real PMS parses it -- an optional sign
+    and digits, nothing else (no space, no `0x`, no fraction), inside the signed range of
+    `bits`; `bits=None` takes any size. Measured on kids and zen over fifteen values."""
+    text = str(value)
+    if not re.fullmatch(r"[+-]?[0-9]+", text):
+        return False
+    return bits is None or -(2 ** (bits - 1)) <= int(text) < 2 ** (bits - 1)
+
+
+def _float_param(value):
+    """Cycle 54: `maxDistance` parses like `strtod` -- `1.5` and `0x1` pass, an empty
+    value, a word and a surrounding space refuse."""
+    text = str(value)
+    if not text or text != text.strip():
+        return False
+    try:
+        float(text)
+        return True
+    except ValueError:
+        pass
+    if not re.fullmatch(r"[+-]?0[xX][0-9a-fA-F.]+(p[+-]?[0-9]+)?", text):
+        return False
+    try:
+        float.fromhex(text)
+        return True
+    except ValueError:
+        return False
+
+
 def _history_time_filter(query, date):
     """The Dashboard's view-time keys, as a predicate over a history row's `viewedAt`.
 
@@ -5497,6 +5527,18 @@ class PlexSim:
             # one `MetadataType` child per media type the provider serves, and a group
             # row per provider naming it by `primaryIdentifier`.
             rows = self.metadata_provider_rows(group=route.endswith("/group"))
+            if not route.endswith("/group") and query.get("metadataTypes"):
+                # Cycle 54, measured on kids and zen: a comma list of int32 media types
+                # (a 400 otherwise), keeping the providers that serve EVERY one of them
+                # -- `0` answers none, `1` the movie agent and the no-op agent, `1,2`
+                # the no-op agent alone. An empty value is every provider.
+                wanted = str(query["metadataTypes"]).split(",")
+                if not all(_int_param(one) for one in wanted):
+                    return ("error", 400, "plexsim: bad request")
+                wanted = {int(one) for one in wanted}
+                rows = [row for row in rows
+                        if wanted <= {int(t.get("type") or 0)
+                                      for t in row.get("MetadataType") or []}]
             if route.endswith("/group"):
                 return self.bare_container(size=len(rows),
                                            MetadataAgentProviderGroup=rows)
@@ -6836,6 +6878,11 @@ class PlexSim:
             return self.library_search(query)
         if route == "/search":
             # The legacy search endpoint, which also lists the search PROVIDERS.
+            # Cycle 54, measured on kids and zen: `count` is an int32 (a 400 otherwise).
+            # What it does to the result is not one rule -- `count=2` answers 10 rows on
+            # zen and `-1` lifts a cap -- and is not modelled.
+            if "count" in query and not _int_param(query["count"]):
+                return ("error", 400, "plexsim: bad request")
             return self.legacy_search(query)
 
         # -- hubs --------------------------------------------------------
@@ -6931,6 +6978,14 @@ class PlexSim:
                         return refusal
                 rows = self.recently_added_rows(query.get("type"), query.get("sectionID"),
                                                 query)
+                if "personal" in query:
+                    # Cycle 54, measured on kids and zen: the 0/1 option, a 400 for
+                    # anything else, and at 1 the list of PERSONAL media -- which this
+                    # server holds none of.
+                    if not _bool_option(query["personal"]):
+                        return ("error", 400, "plexsim: bad request")
+                    if int(str(query["personal"]).lstrip("+")) == 1:
+                        rows = [] if rows is not None else rows
                 rows = (None if rows is None
                         else self.in_directories(rows, self.content_directories(query)))
                 meta = (HOME_RECENT_META.get(str(query.get("type") or ""))
@@ -7009,6 +7064,10 @@ class PlexSim:
             # container; the driver is not identified (not history, not watch state, not
             # the version, not the claim), so plexsim takes zen's, being the version it
             # reports. `/popular/zzz` and a section the server does not hold are 404s.
+            # Cycle 54, measured on kids and zen: `monthsAgo` is a whole number of any
+            # size, and a 400 otherwise -- checked BEFORE the section is looked up.
+            if "monthsAgo" in query and not _int_param(query["monthsAgo"], bits=None):
+                return ("error", 400, "plexsim: bad request")
             section = catalog.section(segments[2])
             if section is None or method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
@@ -7095,6 +7154,11 @@ class PlexSim:
                                        identifier="com.plexapp.plugins.library",
                                        Metadata=rows)
         if route == "/hubs/search":
+            # Cycle 54, measured on kids and zen: `sectionId` refuses two values, `0`
+            # and 2147483647, with a 400, and ignores everything else -- `abc`, `-1`,
+            # `1.5` and an empty value alike.
+            if str(query.get("sectionId")) in ("0", "2147483647"):
+                return ("error", 400, "plexsim: bad request")
             return self.search(query)
         if route == "/hubs/search/voice":
             return self.voice_search(query)
@@ -11974,6 +12038,11 @@ class PlexSim:
             return self.library_list_item(rating_key, segments, query, method, body)
 
         if len(segments) == 3:
+            if method in ("GET", "HEAD") and "augmentCount" in query \
+                    and not _int_param(query["augmentCount"]):
+                # Cycle 54, measured on kids and zen: an int32, and a 400 otherwise --
+                # after the row is looked up, since an unknown id is still a 404.
+                return ("error", 400, "plexsim: bad request")
             if method == "PUT":
                 # The Edit dialog, and "Add to Collection": the client PUTs
                 # `<field>.value`, `<field>.locked` and `<tag>[N].tag.tag` to
@@ -12476,12 +12545,21 @@ class PlexSim:
             # never appear; the rows come from `similar_rows()` now.
             if row.get("type") in ("season", "episode"):
                 return ("error", 404, "plexsim: not found")
+            if "count" in query and not _int_param(query["count"]):
+                # Cycle 54, measured on kids and zen: `count` is an int32 here.
+                return ("error", 400, "plexsim: bad request")
             rows = [_listing_row(r) for r in self.similar_rows(row)]
             return self.tag_container(size=len(rows), Metadata=rows)
         if leaf == "nearest":
             # Measured: an empty library container for every item the reference
             # holds -- movie, show, season and episode alike, whatever `sort` says --
             # and a 404 only for an id it does not. plexsim 404'd it for all of them.
+            # Cycle 54, measured on kids and zen: `excludeParentID` is an int32 and
+            # `maxDistance` a float, and each refuses what it cannot parse with a 400.
+            if "excludeParentID" in query and not _int_param(query["excludeParentID"]):
+                return ("error", 400, "plexsim: bad request")
+            if "maxDistance" in query and not _float_param(query["maxDistance"]):
+                return ("error", 400, "plexsim: bad request")
             return self.tag_container(size=0)
         if leaf == "users" and len(segments) == 5 and segments[4] == "top":
             # "Top users" of an item: one Account row per account that has
@@ -18361,6 +18439,13 @@ class PlexSim:
         """
         if which not in ("bandwidth", "media", "resources"):
             return ("error", 404, "plexsim: not found")
+        # Cycle 54, measured on kids and zen: `/statistics/media` parses `count` and
+        # `offset` as int32 and `/statistics/bandwidth` parses `bytes` as int64, each a
+        # 400 otherwise.
+        for name, bits in ((("count", 32), ("offset", 32)) if which == "media" else
+                           (("bytes", 64),) if which == "bandwidth" else ()):
+            if name in (query or {}) and not _int_param(query[name], bits):
+                return ("error", 400, "plexsim: bad request")
         if which == "bandwidth" and self.sessions.has_numeric_platform():
             # This family serialises the Device block even when the direct row can
             # still be read, and hits the same measured bad cast as `/devices`.
@@ -18914,6 +18999,9 @@ class PlexSim:
             value = str(query.get(name) or "")
             if not (value.lstrip("-").isdigit() and value.lstrip("-")):
                 return ("error", 400, "plexsim: bad request")
+        # Cycle 54, measured on kids and zen: `offset` is an int32 here.
+        if "offset" in query and not _int_param(query["offset"]):
+            return ("error", 400, "plexsim: bad request")
         if "metadataItemID" in query:
             wanted = str(query["metadataItemID"])
             if not any(str(r.get("ratingKey")) == wanted for r in rows) \
