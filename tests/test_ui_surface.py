@@ -31670,6 +31670,45 @@ def main():
     else:
         skip("tagId filters a listing by any tag's id", "need two movies")
 
+    # Cycle 58, measured on plexscratch42 (1.42.2): renaming a collection through the
+    # SECTION path to a name a row of the library already carries as a `Collection` tag is a
+    # 409 that changes nothing, ignoring case; its own title in another case is a 200.
+    # python-plexapi's `editTitle()` and the Edit dialog save here, and plexsim renamed the
+    # collection and left its member carrying two tags of one name.
+    rows_c58k = [str(r.get("ratingKey")) for r in
+                 get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata") or []]
+    if len(rows_c58k) >= 2:
+        def tags_c58k(key_c58k):
+            return sorted(str(t.get("tag")) for t in (get(base, "/library/metadata/%s" % key_c58k)[1]
+                          .get("Metadata") or [{}])[0].get("Collection") or [])
+        request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&collection%%5B0%%5D.tag.tag=%s"
+                % (movie_section, rows_c58k[0], quote("C58k A")))
+        uri_c58k = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, rows_c58k[1]))
+        _, made_c58k, _ = container(
+            base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+            % (quote("C58k B"), movie_section, uri_c58k))
+        coll_c58k = str((made_c58k.get("Metadata") or [{}])[0].get("ratingKey"))
+        def rename_c58k(title_c58k):
+            status_c58k, _, _ = request(
+                base, "PUT", "/library/sections/%s/all?type=18&id=%s&title.value=%s&title.locked=1"
+                % (movie_section, coll_c58k, quote(title_c58k)))
+            return status_c58k, (get(base, "/library/metadata/%s" % coll_c58k)[1]
+                                 .get("Metadata") or [{}])[0].get("title")
+        refused_c58k = rename_c58k("c58k a")
+        member_c58k = tags_c58k(rows_c58k[1])
+        own_c58k = rename_c58k("c58k b")
+        request(base, "DELETE", "/library/collections/%s" % coll_c58k)
+        request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&collection%%5B%%5D.tag.tag-=%s"
+                % (movie_section, rows_c58k[0], quote("C58k A")))
+        check("a collection rename to a name already a collection tag is a 409",
+              refused_c58k == (409, "C58k B")
+              and [t for t in member_c58k if t.lower().startswith("c58k")] == ["C58k B"]
+              and own_c58k == (200, "c58k b"),
+              "taken %s, member tags %s, own title %s" % (refused_c58k, member_c58k, own_c58k))
+    else:
+        skip("a collection rename to a name already a collection tag is a 409", "need two movies")
+
     # Cycle 58, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a beat at or
     # under a minute deletes the stored resume point only inside a playback SESSION that has
     # already reported a position past the minute. A NEW session's sub-minute beats -- "Play

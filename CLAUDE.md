@@ -2938,6 +2938,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **A section's Continue Watching gate is the SHOW's play history**: once any episode was
   completed in a playback session, the shelf lists the On Deck episode however it became next
   (Mark Played on a later episode or the season, and after the played one is unscrobbled).
+- **A collection rename to a name a row of the library carries as a `Collection` tag is a
+  409** on the section path, ignoring case, and changes nothing; its own title in any case is a 200.
 
 ## Conventions
 
