@@ -1801,6 +1801,10 @@ class Library:
                 row["year"] = int(year)
             except (TypeError, ValueError):
                 pass
+        # Cycle 59: a rename here reaches the children as an edit's does -- a real PMS
+        # reads a child's `parentTitle`/`grandparentTitle` off the parent row -- where
+        # plexsim renamed the show and left every season and episode on the old name.
+        self._follow_parent(row, {"title", "studio"})
         row["updatedAt"] = _now()
         # No activity here: the server runs the measured refresh sequence around this call,
         # which starts one and ENDS it. The activity added here was never finished, so

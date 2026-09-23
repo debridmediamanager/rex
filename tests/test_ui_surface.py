@@ -32115,6 +32115,24 @@ def main():
           [c[1] for c in cands_c59g(one_c59g, "clearLogos")] == [True]
           and len(logos_c59g) == 1 and logo_status_c59g == 200, str((logos_c59g, logo_status_c59g)))
 
+    # Cycle 59: a match that RENAMES a show or a season -- Fix Match with a name,
+    # python-plexapi's `fixMatch(name=)` -- reaches the rows beneath it, as an edit does
+    # (cycle 9, measured on the copy). A real PMS reads `parentTitle`/`grandparentTitle`
+    # off the parent row, so nothing below can keep the old name; plexsim's match path
+    # renamed the show and left every season and episode on the old title.
+    _, show_row_c59h, _ = get(base, "/library/metadata/%s" % show)
+    old_c59h = ((show_row_c59h.get("Metadata") or [{}])[0]).get("title")
+    request(base, "PUT", "/library/metadata/%s/match?guid=&name=Rg59%%20Renamed" % show)
+    _, seasons_c59h, _ = get(base, "/library/metadata/%s/children" % show)
+    _, leaves_c59h, _ = get(base, "/library/metadata/%s/allLeaves" % show)
+    parents_c59h = {r.get("parentTitle") for r in seasons_c59h.get("Metadata") or []
+                    if r.get("type") == "season"}
+    grands_c59h = {r.get("grandparentTitle") for r in leaves_c59h.get("Metadata") or []}
+    request(base, "PUT", "/library/metadata/%s/match?guid=&name=%s" % (show, quote(old_c59h or "")))
+    check("a match that renames a show reaches its seasons and episodes",
+          parents_c59h == {"Rg59 Renamed"} and grands_c59h == {"Rg59 Renamed"},
+          str((parents_c59h, grands_c59h)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
