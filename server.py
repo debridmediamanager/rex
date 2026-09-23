@@ -13648,6 +13648,9 @@ class PlexSim:
         tag, members = best[1]
         members = [r for r in members
                    if not r.get("viewCount") and (r.get("audienceRating") or 0) >= 7.0]
+        # Cycle 55, re-measured on zen: the shelf is the HEAD of its own key listing, so
+        # its rows come in that listing's default order (titleSort).
+        members, _ = self._sorted(members, "titleSort")
         return tag, members
 
     # The seventeen typed hubs /hubs/search answers with, in the reference's order
