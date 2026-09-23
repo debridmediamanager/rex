@@ -10191,6 +10191,114 @@ with `_`, which plexsim already does. `includedAt` stays open: `/:/progress` sta
 * The copies' `/statistics/*` and `/library/all/top` answer 404 (class E), so those
   refusals rest on zen and kids.
 
+#### The fifty-fifth pass — the SQL read by read, and the vocabulary at every value
+
+Cycle 54 opened two instruments out of the binary -- its parameter names and its SQL -- and
+sampled each: four values per name, and two findings from 707 statements. Cycle 55 is the
+repeat that asks whether either axis is finished, and neither was. **37 findings in 37 fix
+commits**, every one proved fail-then-pass against its own parent.
+
+**Every client-reachable SQL read, one verdict each (Territory B).** Cycle 54 extracted the
+statements and reported two findings; cycle 55 gave each of the 366 non-maintenance reads a
+verdict -- identical, finding or explicit bound -- with the request that decides it, making
+state on plexscratch42 where neither read-only reference held it.
+
+* **Related is a TAG SCORE, not agent data.** `select metadata_items.id,count(*) as cnt ...
+  where tags.id in (...) group by metadata_items.id order by cnt desc,
+  originally_available_at desc limit ?`: the item's FIRST THREE genres and FIRST FOUR roles are
+  counted against each candidate, a candidate needs AT LEAST TWO in common, and the list is
+  shared-count then release date descending, capped at 200. It reproduces zen's movie 19770
+  exactly (59 rows, in order) and all four tagged kids movies; a fourth genre, a seventh role or
+  the country breaks the zen fit. plexsim took any one shared genre, ordered by `addedAt`,
+  stopped at 12, and its docstring said the reference "fills this from its metadata agent".
+* **On Deck's next-up anchors on the MOST RECENTLY VIEWED watched episode**, not the
+  highest-numbered one, and the row carries that view's `lastViewedAt`: on plexscratch42,
+  scrobbling episode 10 and then 8 puts 9 on deck; unscrobbling 8 moves it to the episode after
+  10. A later season's episode 0 is never the next-up (`parents.index>? and index>0`).
+* **A section's `recentlyViewed` is ordered by the VIEW-STATE WRITE time** (`order by
+  metadata_item_settings.updated_at desc`, ties by ratingKey): zen's 21 rows are exactly
+  `viewUpdatedAt` descending and not `lastViewedAt`, and a rating moves a watched row to the
+  front on the copy. **A section's `/onDeck` leaf follows the same stamp** while
+  `/library/onDeck`, Home's Continue Watching and the section's continue-watching list keep the
+  view time -- single witness, the unclaimed copy.
+* **`/hubs/sections/{id}/popular` ranks seasons by their HISTORY rows** (`group by parent_id
+  order by count(*) desc`), so a season an unscrobble stripped of its `viewCount` stays on it.
+  Cycle 52's "seasons with a `viewCount` above zero" is refuted.
+* **A playlist's `duration` is 1000 x the sum of each item's whole seconds** over its longest
+  Media (`sum(round(duration/1000, 0))`, integer division): 1800689 + 1800689 + 20032 ms is
+  3620000 on the copy.
+* **The genre shelf is the head of its own key listing**, in that listing's default order
+  (zen's `movie.genre.1.241` is exactly the head of `?unwatched=1&genre=241&audienceRating>=7.0`).
+  WHICH genre is a random pick per request query string (`?x=1` twice is one genre, `?x=2`
+  another), with the actor/director shelf moving beside it -- HANDOVER 8's random shelf.
+* **A season's generated title follows an index edit** -- `index.value=0` is `Specials`, the
+  old index back is `Season N` again -- because a season's title is generated unless the user
+  wrote one.
+
+**A library's TV Recently Added shelf is the section's roll-up (the driver).** zen's
+`tv.recentlyadded.2`, on `/hubs/sections/2` and `/hubs/promoted` alike, is row for row
+`/hubs/home/recentlyAdded?type=2&sectionID=2` -- the show `One Piece`, the episode `Facts of
+Life`, a season, three episodes ... twelve of twelve. Cycle 50's "keeps its top-level show row"
+held only where the roll-up IS the show, as on kids, whose one show is all its roll-up holds.
+Found revalidating cycle 54's §3.3 entry on the filtered form, which it closes.
+
+**The parameter vocabulary, repeated and widened (Territory A).** Cycle 54's sweep sent four
+values per name. Cycle 55 repeated it (every cycle-54 fix holds; 220 names move a zen response,
+as before) and widened it to eighteen values per option name (147,384 name-level cells) and all
+eight operators per filter field (7,008 cells a server). Twenty-six rules came out, every one of
+them 1.42.2's as well:
+
+* **The listing's structural parameters are PARSED wherever they are read.** `sort`, `group`,
+  `sourceType`, `limit`, `index` and `type` refuse on every tag, field and media axis, on
+  `/unwatched`, `/onDeck`, the section search, `/collections`, a show's children, the people
+  lists, autocomplete, `/common` and the extras listing (`/genre?sort=abc` is a 500 on both
+  references and was a 200 here). A GROUP there is a parse, not an apply: a known field name
+  passes and the refused fields are 500s. `/unwatched` validates `sort` and then ignores it.
+  `sourceType` other than 1 ORDERS a listing by id, where cycle 20 recorded only the parse block.
+* **An integer is `[+-]?digits`**: `type=+1`, `type=01` and `limit=+1` are the number on both
+  references, where plexsim refused a sign in a dozen readers; **every include/async option
+  takes the `+?0*[01]` grammar**, and **the `include*` blocks reach the full rows of every hub
+  and related list**, not only `/hubs`.
+* **The filter VALUE grammar.** `=-1` means "has no value" on `rating`, `audienceRating`,
+  `userRating`, `absoluteIndex` and `parent` (`=` only; zen's `userRating=-1` is its 3,465
+  unrated movies); a date column's epoch is a strict int64 with no surrounding space; under a
+  bare `=` the three per-user dates take an int32 only (`lastRatedAt=-5y` is a 500 where
+  `<<=-5y` is fine); `clusterStartsAt` is a date; `decade`, `viewCount` and `viewOffset` are
+  int32; `parent=+6` is show 6's seasons and `parent=1.5` an empty 200.
+* **Endpoint rules.** `/hubs/search?sectionId=` refuses ANY id that names no section (cycle 54's
+  `0` and 2147483647 were two samples of it); `personal=1` empties only the MOVIE Recently Added
+  list; an empty `title=` matches every row, generated season titles included; an empty
+  `contentDirectoryID` is accepted on `/hubs/continueWatching`; a bad `type` on `/newest` and
+  `/recentlyAdded` and a bad `limit` on `/allLeaves` are ignored; `manage?metadataItemId=` has
+  three answers (`-1` the bare list, an id naming no item an empty 200, an item a 400);
+  `/system/agents?mediaType=-1` is the bare form; a shelf's `count` is a strict int32;
+  `X-Plex-Product` in the HEADER beats the query for the client-title rule; every statistics
+  endpoint parses `offset`, `limit`, `timespan`, `group` and its ids; an empty
+  `/library/search?query=` is an empty 200; and a separator-led `X-Plex-Language` (`-de`,
+  `_fr`) is that language after one leading separator, English otherwise.
+* **`/hubs/promoted` refuses the fifteen hub-refused keys whenever a show library's shelf is in
+  scope** -- unscoped, or `contentDirectoryID` naming the show library -- and answers 200 when
+  scoped to the movie library alone (found by the implementation pass; `hub_refusal`'s note had
+  it applying to `/hubs` and a show library's section page only).
+
+**Measured and not acted on.**
+
+* **The tagging join**, still (HANDOVER 8, cycle 54) -- its refusal half is measurable, but
+  building a refusal for columns whose rows plexsim cannot compute was left with the match.
+* **How `/hubs/search?sectionId=` REORDERS its hubs** when the id names a section (that
+  section's own types first, rows unchanged). The refusal is built; the order is not worked out.
+* **`/library/search` and `/hubs/search` `limit` at the int32 boundary.** kids 500s `2147483647`
+  and `9223372036854775807` while answering `2147483648`, and `4294967296` CRASHED kids' PMS
+  (it restarted in about five seconds; HANDOVER 9). Only "outside int64 is a 500" is built.
+* **WHICH genre the genre shelf picks** is random per request query string, with the actor and
+  director shelf moving beside it (HANDOVER 8's random shelf); plexsim's most-common genre is one
+  admissible sample. The ORDER of the shelf's rows is built.
+* **A parent's `lastViewedAt` as `max(children)`** where its own state is absent is read by the
+  binary's SQL; zen's section 2 displays it on rows no filter can see, the trace of state written
+  without the cascade (cloud sync). Not reproducible here.
+* **1.43.4 refuses an empty `group=`/`sourceType=` on a hub page** where 1.42.2 drops it;
+  plexsim follows 1.42.2.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
