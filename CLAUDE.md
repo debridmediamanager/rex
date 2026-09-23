@@ -2930,6 +2930,10 @@ precisely how the Seasons bug survived a fix attempt.
   filters on `tagId=` (exact `=` only); `playQueueLastAddedItemID` is the tail of the Up Next
   block after the selection.
 
+- **A sub-minute beat deletes the resume point only inside a session that has passed the
+  minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped
+  within a minute -- answer `ignore` with the STORED offset and keep it, on both versions.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

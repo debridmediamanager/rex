@@ -563,6 +563,9 @@ class Library:
     # What each playback session last reported for an item, keyed (session, ratingKey).
     # A completion is a CROSSING, so the previous position is the whole state it needs.
     _reported = {}
+    # The (session, ratingKey) pairs whose session has reported a position past the minute:
+    # only those delete the resume point with a later sub-minute beat.
+    _progressed = set()
 
     def progress(self, rating_key, offset, state=None, duration=None, device_id=1,
                  session="", completes=True):
@@ -584,6 +587,7 @@ class Library:
         # included. plexsim fell back to the row's duration, so a player that omits it (and
         # `/:/progress` never sends one) drove the whole watched-state machine.
         total = int(duration) if duration else 0
+        key = (session or "", int(rating_key))
         if offset is not None:
             # A timeline puts the row back in Continue Watching, whatever the menu
             # entry did before -- measured on the reference. For an episode that row is
@@ -622,11 +626,14 @@ class Library:
                         if str(row.get(name) or "").isdigit() else None
                     if parent is not None:
                         parent["lastViewedAt"] = row["lastViewedAt"]
-            elif total and int(offset) <= 60000:
+            elif total and int(offset) <= 60000 and key in self._progressed:
                 # Measured: a beat at or under a minute DELETES the stored resume point,
-                # rather than being ignored -- starting a title again from the beginning is
-                # exactly this sequence, and plexsim kept the old position in Continue
-                # Watching. `lastViewedAt` is left alone.
+                # rather than being ignored -- but only inside a playback SESSION that has
+                # already reported a position past the minute (cycle 58, both copies). A
+                # NEW session's sub-minute beats leave the stored offset alone and answer
+                # `ignore` with it, which is "Play from beginning, stop within a minute":
+                # a real PMS keeps the old resume point in Continue Watching and plexsim
+                # deleted it. `lastViewedAt` is left alone either way.
                 row.pop("viewOffset", None)
         # A play COMPLETES past 90% on any state -- measured: a `playing` beat at 95%
         # answers `complete` and sets viewCount, and the `stopped` beat after it
@@ -641,9 +648,11 @@ class Library:
         # from 95% record nothing either; another client's earlier position does not count,
         # and neither does an offset stored by `/:/progress`. plexsim completed on the
         # position alone.
-        seen = self._reported.get((session or "", int(rating_key)))
+        seen = self._reported.get(key)
         if offset is not None and total:
-            self._reported[(session or "", int(rating_key))] = position
+            self._reported[key] = position
+            if position > 60000:
+                self._progressed.add(key)
         crossed = seen is not None and total and seen < total * 0.9
         # Cycle 45 REFUTED the `position > 60000` gate that used to stand here. The
         # minute rule is real for the RESUME POINT -- a beat at or under 60 000 ms
