@@ -2446,6 +2446,11 @@ def _section_number(value):
     return None if number < 0 else number
 
 
+def _descending(text):
+    """A sort key that orders strings DESCENDING inside an ascending sort, empty last."""
+    return (text == "", [-ord(c) for c in text])
+
+
 def _watched_leaf(row):
     """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
     or an episode with a play recorded. A parent row is never dropped for it."""
@@ -12898,29 +12903,42 @@ class PlexSim:
                 self.recent_playlists(), query, kind="playlist", promoted=True))
         return self.hub_container(Hub=hubs)
 
+    # Cycle 55: the Related list's cap, measured on zen (movie 3729 answers exactly 200).
+    SIMILAR_CAP = 200
+
     def similar_rows(self, row):
         """Rows a client should offer as "Related".
 
-        The reference fills this from its metadata agent, which plexsim has no
-        equivalent of -- and the reference's own list is EMPTY for some items
-        (`/library/metadata/1/similar` is `size 0` on the lab while its
-        neighbours answer 2 to 4 rows), so an empty answer is a correct answer.
-        Rather than leave it always empty, plexsim computes its own: other rows in
-        the same library that share a genre. The SHAPE is measured; the source is
-        plexsim's own and says so.
+        Cycle 55 REFUTED "the reference fills this from its metadata agent". The binary
+        computes it from TAGS -- `select metadata_items.id,count(*) as cnt ... where
+        tags.id in (...) group by metadata_items.id order by cnt desc,
+        originally_available_at desc limit ?` -- and the rule reproduces zen's movie 19770
+        exactly (59 rows, in order) and all four tagged kids movies: the item's FIRST
+        THREE genres and FIRST FOUR roles are counted against each candidate's tags, a
+        candidate needs AT LEAST TWO in common, and the list is shared-count descending
+        then release date descending, capped at 200. Adding a fourth genre, a seventh role
+        or the country breaks the zen fit; dropping the third genre breaks it too. The
+        roles' cap could be 4 to 6 (zen's roles 5 and 6 occur once); 4 is the fitted value.
+        plexsim took any single shared genre, ordered by addedAt, and stopped at 12.
         """
-        tags = {str(t.get("id")) for t in row.get("Genre") or [] if t.get("id")}
-        if not tags:
+        def names(tags, limit=None):
+            return {str(t.get("tag") or "").lower() for t in (tags or [])[:limit]
+                    if t.get("tag")}
+        genres = names(row.get("Genre"), 3)
+        roles = names(row.get("Role"), 4)
+        if not genres and not roles:
             return []
         scored = []
         for other in self.catalog.section_items(row.get("librarySectionID")):
-            if str(other.get("ratingKey")) == str(row.get("ratingKey")):
+            if str(other.get("ratingKey")) == str(row.get("ratingKey")) \
+                    or other.get("type") != row.get("type"):
                 continue
-            shared = len(tags & {str(t.get("id")) for t in other.get("Genre") or []})
-            if shared:
-                scored.append((-shared, -(other.get("addedAt") or 0), other))
-        scored.sort(key=lambda entry: entry[:2])
-        return [entry[2] for entry in scored[:self.HUB_COUNT]]
+            shared = len(genres & names(other.get("Genre"))) + len(roles & names(other.get("Role")))
+            if shared >= 2:
+                released = str(other.get("originallyAvailableAt") or "")
+                scored.append((shared, released, other))
+        scored.sort(key=lambda entry: (-entry[0], _descending(entry[1])))
+        return [entry[2] for entry in scored[:self.SIMILAR_CAP]]
 
     # `/hubs/metadata/{id}`'s four shelves: (key template, title, type, identifier).
     ITEM_MUSIC_HUBS = (
