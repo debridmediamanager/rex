@@ -1,0 +1,506 @@
+{
+ "_source": "zen (1.42.2) GET /system/agents/{id}/config/{N} and /system/agents/contributors over all 15 agents x mediaType 1,2,8,9,13,20, cycle 58; kids (1.43.4) agrees on every 200 but the contributor ORDER of thetvdb|2 and themoviedb|2 (its load order).",
+ "config": {
+  "com.plexapp.agents.none|1": [
+   {
+    "name": "Personal Media",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Local Media Assets (Movies)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Plex Movie (Legacy)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.imdb"
+   },
+   {
+    "name": "CineMaterial",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.movieposterdb"
+   },
+   {
+    "name": "The Movie Database",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   }
+  ],
+  "com.plexapp.agents.none|2": [
+   {
+    "name": "Personal Media Shows",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Local Media Assets (TV)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Plex Theme Music",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic"
+   },
+   {
+    "name": "The Movie Database",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   },
+   {
+    "name": "TheTVDB",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.thetvdb"
+   }
+  ],
+  "com.plexapp.agents.none|8": [
+   {
+    "name": "Personal Media Artists",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Local Media Assets (Artists)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Home Theater Backdrops",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.htbackdrops"
+   },
+   {
+    "name": "Last.fm",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.lastfm"
+   },
+   {
+    "name": "Musicbrainz",
+    "hasPrefs": true,
+    "identifier": "org.musicbrainz.agents.music"
+   }
+  ],
+  "com.plexapp.agents.none|9": [
+   {
+    "name": "Personal Media Albums",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Local Media Assets (Albums)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Last.fm",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.lastfm"
+   },
+   {
+    "name": "LyricFind",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.lyricfind"
+   },
+   {
+    "name": "Musicbrainz",
+    "hasPrefs": true,
+    "identifier": "org.musicbrainz.agents.music"
+   }
+  ],
+  "com.plexapp.agents.none|13": [
+   {
+    "name": "Photos",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   }
+  ],
+  "com.plexapp.agents.imdb|1": [
+   {
+    "name": "Local Media Assets (Movies)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Plex Movie (Legacy)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.imdb"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "CineMaterial",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.movieposterdb"
+   },
+   {
+    "name": "Personal Media",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "The Movie Database",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   }
+  ],
+  "com.plexapp.agents.thetvdb|2": [
+   {
+    "name": "Local Media Assets (TV)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "TheTVDB",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.thetvdb"
+   },
+   {
+    "name": "Plex Theme Music",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Personal Media Shows",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "The Movie Database",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   }
+  ],
+  "com.plexapp.agents.lastfm|8": [
+   {
+    "name": "Local Media Assets (Artists)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Last.fm",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.lastfm"
+   },
+   {
+    "name": "Home Theater Backdrops",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.htbackdrops"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Personal Media Artists",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Musicbrainz",
+    "hasPrefs": true,
+    "identifier": "org.musicbrainz.agents.music"
+   }
+  ],
+  "com.plexapp.agents.lastfm|9": [
+   {
+    "name": "Local Media Assets (Albums)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Last.fm",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.lastfm"
+   },
+   {
+    "name": "LyricFind",
+    "enabled": true,
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.lyricfind"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Personal Media Albums",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Musicbrainz",
+    "hasPrefs": true,
+    "identifier": "org.musicbrainz.agents.music"
+   }
+  ],
+  "com.plexapp.agents.themoviedb|1": [
+   {
+    "name": "Local Media Assets (Movies)",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "The Movie Database",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Plex Movie (Legacy)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.imdb"
+   },
+   {
+    "name": "CineMaterial",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.movieposterdb"
+   },
+   {
+    "name": "Personal Media",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   }
+  ],
+  "com.plexapp.agents.themoviedb|2": [
+   {
+    "name": "The Movie Database",
+    "enabled": true,
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   },
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Local Media Assets (TV)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Personal Media Shows",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.none"
+   },
+   {
+    "name": "Plex Theme Music",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic"
+   },
+   {
+    "name": "TheTVDB",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.thetvdb"
+   }
+  ]
+ },
+ "contributors": {
+  "com.plexapp.agents.none|1": [
+   {
+    "name": "Local Media Assets (Movies)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.none|2": [
+   {
+    "name": "Local Media Assets (TV)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.none|8": [
+   {
+    "name": "Local Media Assets (Artists)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.none|9": [
+   {
+    "name": "Local Media Assets (Albums)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.imdb|1": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "CineMaterial",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.movieposterdb"
+   },
+   {
+    "name": "Local Media Assets (Movies)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.thetvdb|2": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "The Movie Database",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.themoviedb"
+   },
+   {
+    "name": "Local Media Assets (TV)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Plex Theme Music",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic"
+   }
+  ],
+  "com.plexapp.agents.lastfm|8": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Home Theater Backdrops",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.htbackdrops"
+   },
+   {
+    "name": "Local Media Assets (Artists)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.lastfm|9": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "LyricFind",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.lyricfind"
+   },
+   {
+    "name": "Local Media Assets (Albums)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.themoviedb|1": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "Plex Movie (Legacy)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.imdb"
+   },
+   {
+    "name": "Local Media Assets (Movies)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   }
+  ],
+  "com.plexapp.agents.themoviedb|2": [
+   {
+    "name": "Fanart.tv",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.fanarttv"
+   },
+   {
+    "name": "TheTVDB",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.thetvdb"
+   },
+   {
+    "name": "Local Media Assets (TV)",
+    "hasPrefs": true,
+    "identifier": "com.plexapp.agents.localmedia"
+   },
+   {
+    "name": "Plex Theme Music",
+    "hasPrefs": false,
+    "identifier": "com.plexapp.agents.plexthememusic"
+   }
+  ]
+ },
+ "errors": {
+  "personal_media": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"AttributeError: 'ModelAccessPoint' object has no attribute 'Plex_Personal_Media'\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 912, in get_agent_configuration\n    primary_metadata_cls = getattr(primary_access_point, self.agent_model_name(identifier, media_type))\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/modelling/accessor.py\", line 26, in __getattribute__\n    return object.__getattribute__(self, name)\nAttributeError: 'ModelAccessPoint' object has no attribute 'Plex_Personal_Media'\n</Traceback>\n</Response>\n",
+  "valueerror_config": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"ValueError: invalid literal for int() with base 10: {value}\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 897, in get_agent_configuration\n    if int(mediaType) not in self.media_types: return\nValueError: invalid literal for int() with base 10: {value}\n</Traceback>\n</Response>\n",
+  "valueerror_contributors": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"ValueError: invalid literal for int() with base 10: {value}\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 872, in list_contributors\n    if int(mediaType) not in self.media_types: return\nValueError: invalid literal for int() with base 10: {value}\n</Traceback>\n</Response>\n",
+  "valueerror_put": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"ValueError: invalid literal for int() with base 10: {value}\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 942, in set_agent_configuration\n    if int(mediaType) not in self.media_types: return\nValueError: invalid literal for int() with base 10: {value}\n</Traceback>\n</Response>\n",
+  "order_empty": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"AttributeError: 'NoneType' object has no attribute 'split'\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 945, in set_agent_configuration\n    agent_list = order.split(',')\nAttributeError: 'NoneType' object has no attribute 'split'\n</Traceback>\n</Response>\n",
+  "keyerror_9": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"KeyError: {identifier}\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 912, in get_agent_configuration\n    primary_metadata_cls = getattr(primary_access_point, self.agent_model_name(identifier, media_type))\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1170, in agent_model_name\n    return None if self.agent_get_version(library_agent or identifier, media_type) &gt;= 2 else 'LegacyAlbum'\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1230, in agent_get_version\n    for agent in self.agent_info[identifier]:\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/code/sandbox.py\", line 108, in &lt;lambda&gt;\n    _getitem_           = lambda x, y: x.__getitem__(y),\nKeyError: u'{identifier}'\n</Traceback>\n</Response>\n",
+  "keyerror_8": "<?xml version='1.0' encoding='utf-8'?>\n<Response code=\"2000\" status=\"KeyError: {identifier}\">\n  <Traceback>Traceback (most recent call last):\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/components/runtime.py\", line 843, in handle_request\n    result = f(**d)\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 912, in get_agent_configuration\n    primary_metadata_cls = getattr(primary_access_point, self.agent_model_name(identifier, media_type))\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1168, in agent_model_name\n    return 'ModernArtist' if self.agent_get_version(library_agent or identifier, media_type) &gt;= 2 else 'LegacyArtist'\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/System.bundle/Contents/Code/agentservice.py\", line 1230, in agent_get_version\n    for agent in self.agent_info[identifier]:\n  File \"/usr/lib/plexmediaserver/Resources/Plug-ins-f737b826c/Framework.bundle/Contents/Resources/Versions/2/Python/Framework/code/sandbox.py\", line 108, in &lt;lambda&gt;\n    _getitem_           = lambda x, y: x.__getitem__(y),\nKeyError: u'{identifier}'\n</Traceback>\n</Response>\n"
+ }
+}
