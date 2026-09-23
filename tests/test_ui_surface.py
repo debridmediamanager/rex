@@ -31287,6 +31287,49 @@ def main():
           cells_c57c == {"Rg57 Quasar Mix": "0.92000", "Rg57": "0.72000", "Quasar": "0.32000"},
           str(cells_c57c))
 
+    def make_list_c57(kind_c57, title_c57):
+        """Create a collection or playlist on the first movie; return its ratingKey."""
+        _, grid_c57, _ = get(base, "/library/sections/%s/all" % movie_section)
+        first_c57 = ((grid_c57.get("Metadata") or [{}])[0]).get("ratingKey")
+        uri_c57 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                        % (machine, first_c57))
+        if kind_c57 == "collection":
+            status_c57, body_c57, _ = request(
+                base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (quote(title_c57), movie_section, uri_c57))
+        else:
+            status_c57, body_c57, _ = request(
+                base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                % (quote(title_c57), uri_c57))
+        try:
+            return ((json.loads(body_c57).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+                    .get("ratingKey"))
+        except ValueError:
+            return None
+    # Cycle 57, measured on plexscratch42 and plexscratch: under `X-Plex-Sync-Version: 2` --
+    # which python-plexapi sends on every request -- a playlist row on `/playlists` and
+    # `/playlists/{id}`, and the `/playlists/{id}/items` container, carry `allowSync="1"`;
+    # without it none does. `Playlist.sync()` reads it first. Nothing else moves.
+    pl_c57d = make_list_c57("playlist", "Rg57 Sync Mix")
+    def flag_c57d(path_c57d, synced_c57d):
+        req_c57d = urllib.request.Request(base + path_c57d, headers=dict(
+            {"Accept": "application/json", "User-Agent": UA},
+            **({"X-Plex-Sync-Version": "2"} if synced_c57d else {})))
+        with urllib.request.urlopen(req_c57d, timeout=30) as resp_c57d:
+            box_c57d = json.load(resp_c57d)["MediaContainer"]
+        if path_c57d.endswith("/items"):
+            return box_c57d.get("allowSync")
+        return next((r.get("allowSync") for r in box_c57d.get("Metadata") or []
+                     if str(r.get("ratingKey")) == str(pl_c57d)), "absent")
+    cells_c57d = [(flag_c57d(p_c57d, False), flag_c57d(p_c57d, True))
+                  for p_c57d in ("/playlists", "/playlists/%s" % pl_c57d,
+                                 "/playlists/%s/items" % pl_c57d)]
+    if pl_c57d:
+        request(base, "DELETE", "/playlists/%s" % pl_c57d)
+    check("X-Plex-Sync-Version marks a playlist syncable",
+          all(bare in (None, "absent") and synced in (True, 1, "1") for bare, synced in cells_c57d),
+          str(cells_c57d))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

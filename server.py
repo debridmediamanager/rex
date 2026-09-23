@@ -6560,7 +6560,23 @@ class PlexSim:
         if segments[:2] == ["library", "collections"]:
             return self.collections_route(method, segments, query)
         if segments[:1] == ["playlists"]:
-            return self.playlists_route(method, segments, query)
+            answer = self.playlists_route(method, segments, query)
+            # Cycle 57, measured on plexscratch42 and plexscratch: under
+            # `X-Plex-Sync-Version` (python-plexapi sends it on every request) a playlist
+            # row on `/playlists` and `/playlists/{id}`, and the `/playlists/{id}/items`
+            # container, carry `allowSync` 1 -- though the server's own root says 0.
+            # Nothing else on the surface moves with the header.
+            synced = (headers or {}).get("X-Plex-Sync-Version") or query.get("X-Plex-Sync-Version")
+            if synced and method in ("GET", "HEAD") and isinstance(answer, dict) \
+                    and isinstance(answer.get("MediaContainer"), dict):
+                box = answer["MediaContainer"]
+                if segments[2:3] == ["items"] and len(segments) == 3:
+                    box["allowSync"] = True
+                elif len(segments) <= 2:
+                    box["Metadata"] = [dict([("allowSync", True)] + list(row.items()))
+                                       if row.get("type") == "playlist" else row
+                                       for row in box.get("Metadata") or []]
+            return answer
 
         if segments[:2] == ["library", "sections"] and len(segments) >= 3:
             if not segments[2].isdigit():
