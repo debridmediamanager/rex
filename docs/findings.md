@@ -10054,6 +10054,143 @@ re-measurement, content or state or already in HANDOVER 8.
 * **The legacy agents' WORK.** Listing them is a fixed table; identifying with one, its
   contributor chain and its preference pane beyond the captured document are not claimed.
 
+#### The fifty-fourth pass — the binary's own parameter names and its own SQL
+
+Cycle 52 read PMS's route templates out of the server binary and cycle 53 read the Python
+and the database template shipped beside it. Cycle 54 went back to the binary for the two
+vocabularies neither had used: **the query-parameter names the server reads** (1,018 names
+derived mechanically from both string tables, where cycle 46 had swept only the seven
+prefixed families) and **the SQL it runs** (707 statements naming a PMS table, 374 of them
+reads). The driver added a third instrument: one small file per CONTAINER, made on kids'
+host and scanned into plexscratch42, because no library this project reads holds a `.ts`,
+`.m4v`, `.wmv`, `.mpg`, `.flv`, `.ogv`, `.3gp` or `.divx` part.
+
+**Containers.** Measured on plexscratch42 (1.42.2) over seventeen files and corroborated
+on zen wherever its library holds the extension:
+
+* **The part `Content-Type` is keyed by extension over a wider table than zen's six.**
+  `.ts` answers `video/MP2T` (the binary's own capitalisation), `.m4v` `video/mp4`, `.mpg`
+  and `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv` `video/x-ms-wmv`, `.asf`
+  `video/x-ms-asf` and `.divx` `video/x-msvideo`; `.mts`, `.m2ts`, `.ogv` and `.3gp` stay
+  `application/octet-stream`. plexsim sent octet-stream for all eight named ones, and its
+  table carried a `mpegts` key that no file extension can match.
+* **Inside the QuickTime family the EXTENSION decides the container.** A `.mov` is `mov` and
+  every other member (`.mp4`, `.m4v`, `.3gp`) is `mp4` -- with the brand crossed against
+  the extension both ways: a `.mov` written by the MP4 muxer (`isom`) is still `mov`, an
+  `.mp4` written by the QuickTime muxer (`qt  `) still `mp4`. zen's one real `.mov` agrees.
+  plexsim answered `mp4` for the whole family.
+* **Every MPEG-TS Part carries `packetLength: 188`** and no other Part does -- a Blu-ray
+  `.m2ts`, whose packets are really 192 bytes, included (zen's fourteen `.m2ts` parts all
+  say 188). `fun-1073414-1` had recorded it since cycle 10 and no check read it.
+* The scanner ignores `.vob`, `.f4v` and `.mp4v`. The copy's analysis is SHALLOW -- no
+  `bitDepth`, colour or `codecID`, even after an explicit analyze, where zen writes all of
+  them for the same containers -- so the seventeen `s42-*` fixtures are marked `shallow`
+  and only the container-level checks read them.
+
+**The per-user-state columns.**
+
+* **`viewUpdatedAt` is a real sort key and a DATE filter column** on both versions -- the
+  time the row's view state was last WRITTEN. It is in the projection the binary reads view
+  state with, and Plex Web's own hub query is `sort=viewUpdatedAt:desc`, which plexsim
+  answered with a 500. Driven write by write on plexscratch42 with every value bisected: a
+  rating (any value, `-1` included), a scrobble, an unscrobble (even of a row with nothing
+  to clear), a `/:/progress` that stores a position and a Remove from Continue Watching
+  each stamp it; an edit and a sub-minute progress do not. It lands on exactly the rows
+  whose view state the write touches -- a rating on the rated row alone; a season or show
+  scrobble on it and everything below; an EPISODE scrobble or progress on its season and
+  show too; an episode's Remove from Continue Watching on its SHOW, which is the Continue
+  Watching row. The stamp outlives the state.
+* **`lastViewedAt`, `lastRatedAt` and `lastSkippedAt` read an unset value as 0**, the
+  `viewCount` family: zen's `lastRatedAt=0`, `<<=1` and `<<=2020-01-01` are its 3,465
+  unrated movies and `!=5` the 422 rated ones. Cycle 20's "a NULL date matches nothing"
+  holds for every other date column, `viewUpdatedAt` included.
+* **`lastSkippedAt`, `beginsAt` and `endsAt` are DATE columns** (a relative or ISO value
+  parses, `1.5` is a 500); cycle 53 typed them as integers.
+* **A negative rating other than `-1` STAMPS `lastRatedAt`** with the current time, on both
+  copies, from a row with no rating at all. Cycle 9's "keeps `lastRatedAt`" was a row rated
+  seconds before.
+
+**The listing query, and where it reaches.**
+
+* **Six MEDIA columns filter**: `mediaHeight`, `mediaWidth` and `mediaAudioChannels`
+  (integers; a word or an empty value is a 500) and `mediaVideoCodec`, `mediaAudioCodec`
+  and `mediaContainer`. The names compare EACH Media's value and match when ANY does,
+  under every operator, with a Media naming none counting as `""` -- fitted exactly on
+  zen: `=h264` 1,816, `!=h264` 2,120 (not the 2,071 a negated membership gives), `=` 23,
+  `>>=h` 3,685, `<<=h` 222, and `==H264` 0 (the exact pair is case-SENSITIVE here).
+* **Eighteen more TAG-TABLE fields** (`similar`, `mood`, `style`, `format`, `subformat`,
+  `tag`, `make`, `model`, `lens`, `aperture`, `exposure`, `iso`, `device`, `autotag`,
+  `place`, `channel`, `mediaProcessingTarget`, `sharedWith`): `=` matches only rows carrying
+  the tag, `!=` every row, any other operator is an unknown key. `similar` was already a
+  tag-table field and still ignored, because nothing typed it.
+* **The four photo-cluster columns parse as integers and match nothing**; **`trash` is an
+  integer column**, not the boolean the Meta advertises (`trash=01` is the `=1` set, `=2`
+  none, `abc` a 500).
+* **On an EPISODE listing every leaf-count filter reads the SHOW's counts** -- cycle 14's
+  season rule one level down, fitted 16 of 16 on zen's 9,287 episodes -- and so does
+  `unwatchedLeaves` on a season (the 2 seasons of fully watched shows, not the 5 fully
+  watched seasons).
+* **A show's `/children` and `/grandchildren` run the listing query** -- filters, `sort=`,
+  a 500 for an unknown key or value -- and the "All episodes" row is there only when MORE
+  THAN ONE season row is answered, paged or not. **Cycle 46's "a show's season list ignores
+  `skipCount`" is refuted** on kids and a 25-season zen show.
+* **`/unwatched` and `/recentlyViewedShows` run the listing's filters**, as do the media
+  axes (`resolution`, `audioLanguage`, `subtitleLanguage` -- still blind to `type=`),
+  `/autocomplete` and `/common` with an `id=` list. An empty `/common` is exactly
+  `{mixedFields, guid, type: "common", titleSort}` and a `Common` is always a paired element.
+* **Every TV Recently Added shelf runs the request's filters over the EPISODES before it
+  rolls them up** -- `title=Train` is the episode, `title=Firefly` nothing, `show.title=`
+  the show -- on `/hubs`, `/hubs/promoted`, `/hubs/sections/{id}` and
+  `/hubs/home/recentlyAdded?type=2`. A hub PAGE drops an empty-valued pair first; the
+  `type=2` list parses it and refuses the per-user keys. `contentDirectoryID` naming another
+  library empties the section page's TV shelf, and `/hubs/items` for a Home shelf honours it.
+* **`unwatched=1` drops the watched leaf rows** of `/library/recentlyAdded` and an item's
+  `/allLeaves` (the `+?0*[01]` option grammar, a 400 otherwise) and of a section's
+  `recentlyAdded` (the literal `1` only, nothing refused), before each list's cap.
+* **The Dashboard's view-time keys are `viewedAt>` (INCLUSIVE), `viewedAt<` (inclusive) and a
+  bare `viewedAt` (exact)**; `viewedAt>=` and `viewedAt<=` are unknown keys, ignored and not
+  validated. Top Played filters its HISTORY rows by them and by `accountID` and
+  `librarySectionID` and counts what is left (zen's top episode goes from 12 plays to 5); a
+  bad value there is a 500. `users/top` takes the three view-time keys. The history page
+  takes them as integers (400 otherwise). Cycle 14's "`viewedAt>=abc` is a 400" was the
+  `viewedAt>` key read through a raw `>=` -- the cycle-22 encoding trap.
+* **Thirteen parameters are parsed and refused**: int32 for `augmentCount`, `similar`'s
+  `count`, `/search`'s `count`, `/statistics/media`'s `count` and `offset`,
+  `excludeParentID` and the history page's `offset`; any-size for `monthsAgo` (checked
+  before the section); int64 for `bytes`; a `strtod` float for `maxDistance`; the 0/1 option
+  for `personal`, which at 1 empties the list; `metadataTypes` an int32 comma list that
+  keeps the providers serving EVERY listed type; and `sectionId` refusing exactly `0` and
+  2147483647.
+* **`sectionID` on `/hubs/home/recentlyAdded` is a number**: `01` is section 1, `0` nothing,
+  and a value that is not a non-negative int32 is ignored.
+
+**Revalidated from HANDOVER 3.3.** The legacy agents' LOAD ORDER follows the filesystem:
+zen's `Plug-ins` directory is btrfs (`ls -U` alphabetical) and the three docker instruments
+share one overlayfs order, plexscratch42 -- the same 1.42.2 build as zen -- included; it is
+environment, not version. `/system/library/sections`' `key` ignores `Host` entirely (seven
+spellings on both copies) and encodes the server's own interface address and port, padding
+with `_`, which plexsim already does. `includedAt` stays open: `/:/progress` stamps it and
+`lastViewedAt` identically too.
+
+**Measured and not acted on.**
+
+* **The tagging join** -- `tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt` -- is real
+  on both references (a word is a 500) but every kids movie, Big Buck Bunny with no visible
+  tag included, carries hidden `tagType=318` taggings that `taggingIndex` matches on.
+  plexsim holds no such rows; modelling the match would be a guess.
+* **1.42.2 accepts a `YYYY-MM-DD` value on an INTEGER column** where 1.43.4 refuses it;
+  `2/3`, `0x1` and `1e3` pass, `5d` and `1abc` refuse, and the date form's meaning shifts per
+  column. Not one grammar, and no client sends it.
+* **`/search`'s `count` and `/statistics/bandwidth`'s `bytes`** are refused as measured;
+  what either does to the rows is not one rule (`count=2` answers ten rows on zen,
+  `bytes=N` ten rows where three carry `N`).
+* **`pinnedContentDirectoryID` scopes the hubs on zen alone**, where plexscratch42 (1.42.2,
+  unclaimed) and kids ignore it -- a claim candidate no instrument can separate.
+* **zen's section `recentlyAdded?unwatched=1` keeps its `totalSize` at 98** where kids drops
+  5 to 4. Recorded, not explained.
+* The copies' `/statistics/*` and `/library/all/top` answer 404 (class E), so those
+  refusals rest on zen and kids.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
