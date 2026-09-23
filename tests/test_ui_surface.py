@@ -30226,6 +30226,46 @@ def main():
                                            len(word_c54m.get("Metadata") or []),
                                            len(plain_c54m.get("Metadata") or [])))
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `unwatched=1` is a FLAG on
+    # three lists that otherwise ignore the listing's filters. It drops the WATCHED leaf
+    # rows before the list's cap (kids 7 -> 6; zen stays at 50 because the 51st moves up).
+    # On `/library/recentlyAdded` and an item's `/allLeaves` it takes the `+?0*[01]` option
+    # grammar -- `2`, `abc`, an empty value are 400s -- and on a section's `recentlyAdded`
+    # only the literal `1` counts and nothing is refused.
+    _, leaves_c54n, _ = get(base, "/library/metadata/%s/allLeaves" % show) if show else (0, {}, 0)
+    episode_c54n = ((leaves_c54n.get("Metadata") or [{}])[0]).get("ratingKey")
+    request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    if episode_c54n:
+        request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % episode_c54n)
+    wrong_c54n = []
+    def keys_c54n(path_c54n):
+        return [r.get("ratingKey") for r in get(base, path_c54n)[1].get("Metadata") or []]
+    for path_c54n, flag_c54n in (("/library/recentlyAdded", "unwatched=01"),
+                                 ("/library/sections/%s/recentlyAdded" % movie_section,
+                                  "unwatched=1")):
+        if str(movie) in keys_c54n(path_c54n + "?" + flag_c54n) or str(movie) not in keys_c54n(path_c54n):
+            wrong_c54n.append("%s?%s kept the watched movie" % (path_c54n, flag_c54n))
+    if str(movie) not in keys_c54n("/library/sections/%s/recentlyAdded?unwatched=01" % movie_section):
+        wrong_c54n.append("section recentlyAdded read 01 as the flag")
+    if episode_c54n and str(episode_c54n) in keys_c54n("/library/metadata/%s/allLeaves?unwatched=%%2B1"
+                                                       % show):
+        wrong_c54n.append("allLeaves?unwatched=%2B1 kept the watched episode")
+    for path_c54n, want_c54n in (("/library/recentlyAdded?unwatched=2", 400),
+                                 ("/library/recentlyAdded?unwatched=abc", 400),
+                                 ("/library/metadata/%s/allLeaves?unwatched=" % show, 400),
+                                 ("/library/sections/%s/recentlyAdded?unwatched=abc"
+                                  % movie_section, 200)):
+        status_c54n = request(base, "GET", path_c54n)[0]
+        if status_c54n != want_c54n:
+            wrong_c54n.append("%s -> %s" % (path_c54n, status_c54n))
+    request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    if episode_c54n:
+        request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % episode_c54n)
+    check("unwatched=1 drops the watched rows of three lists", not wrong_c54n,
+          "; ".join(wrong_c54n)[:240])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -2365,6 +2365,12 @@ def _bool_option(value):
     return bool(text) and text.isdigit() and int(text) in (0, 1)
 
 
+def _watched_leaf(row):
+    """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
+    or an episode with a play recorded. A parent row is never dropped for it."""
+    return row.get("type") in ("movie", "episode") and bool(row.get("viewCount"))
+
+
 def _download_disposition(filename):
     """The two filename forms PMS writes on a download response.
 
@@ -6450,6 +6456,14 @@ class PlexSim:
             dated += [(added, catalog.items[key]) for key, added in seasons.items()]
             dated.sort(key=lambda pair: (-pair[0], str(pair[1].get("titleSort")
                                                        or pair[1].get("title") or "").lower()))
+            # Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 OPTION here (the
+            # `+?0*[01]` grammar, anything else a 400), and at 1 it drops the watched LEAF
+            # rows before the cap -- kids 7 -> 6, zen still 50 because the 51st moves up.
+            if "unwatched" in query:
+                if not _bool_option(query["unwatched"]):
+                    return ("error", 400, "plexsim: bad request")
+                if int(str(query["unwatched"]).lstrip("+")) == 1:
+                    dated = [pair for pair in dated if not _watched_leaf(pair[1])]
             # Measured on both servers: these rows are the light projection (text
             # tags, no Guid, no Rating), and each names its section by ID, title and
             # UUID -- not by key -- and carries `allowSync`.
@@ -9542,6 +9556,12 @@ class PlexSim:
                 rows = sorted([r for r in rows if r.get("lastViewedAt")],
                               key=lambda r: -r["lastViewedAt"])[:100]
             elif leaf == "recentlyAdded":
+                # Cycle 54, measured on kids and zen: only the LITERAL `unwatched=1`
+                # drops the watched rows here -- `01`, `+1`, `2`, `abc` and an empty
+                # value change nothing and nothing is refused -- and it drops them before
+                # the cap.
+                if (query or {}).get("unwatched") == "1":
+                    rows = [r for r in rows if not _watched_leaf(r)]
                 rows = sorted(rows, key=lambda r: -(r.get("addedAt") or 0))[:100]
             else:
                 rows = sorted(rows, key=lambda r: str(r.get("originallyAvailableAt") or ""),
@@ -12069,6 +12089,15 @@ class PlexSim:
                 rows = []
             else:
                 rows = self.catalog.leaves(rating_key)
+                # Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 option on
+                # `/allLeaves` too -- the `+?0*[01]` grammar, anything else a 400 -- and
+                # at 1 it drops the watched episodes (zen 10 -> 8). The listing's other
+                # filters are still ignored here.
+                if "unwatched" in query:
+                    if not _bool_option(query["unwatched"]):
+                        return ("error", 400, "plexsim: bad request")
+                    if int(str(query["unwatched"]).lstrip("+")) == 1:
+                        rows = [r for r in rows if not _watched_leaf(r)]
             if leaf == "children" and row.get("type") in ("season", "show"):
                 # A season's children consume the ordinary row-filter grammar, and so
                 # does a show's season list. Cycle 54 REFUTED "a show's season list
