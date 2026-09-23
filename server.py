@@ -2410,6 +2410,9 @@ def _public_row(row):
     # carry exactly the clip's own coverPoster.
     if out.get("art") and out.get("type") != "clip":
         images.append({"alt": title, "type": "background", "url": out["art"]})
+    if row.get("_clearLogo"):
+        # Cycle 59: an uploaded logo is an `Image` and not an attribute.
+        images.append({"alt": title, "type": "clearLogo", "url": row["_clearLogo"]})
     if images:
         out["Image"] = images
     return out
@@ -13310,12 +13313,24 @@ class PlexSim:
             # item with none (every season and episode, a movie with no theme).
             # plexsim has neither, so both are empty; it 404'd them, which
             # python-plexapi's `logos()` and `themes()` raise on.
+            # Cycle 59: an UPLOAD is a candidate here, selected while the row carries it.
+            field = "clearLogo" if leaf == "clearLogos" else "theme"
+            current = row.get("_%s_url" % field) if (
+                row.get("_clearLogo") if field == "clearLogo" else self._owns(row, "theme")) else None
+            entries = [{"key": _candidate_path(row["ratingKey"], key), "ratingKey": key,
+                        "thumb": _candidate_path(row["ratingKey"], key),
+                        "selected": key == current}
+                       for key in (row.get("_uploads") or {}).get(field) or []]
             return self.tag_container(
-                size=0, _xml={"Metadata": "Photo" if leaf == "clearLogos" else "Track"})
-        if leaf == "theme":
-            # No theme audio; answer empty rather than falling through to the
-            # unknown-route handler.
-            return ("error", 404, "plexsim: no theme")
+                size=len(entries), Metadata=entries,
+                _xml={"Metadata": "Photo" if leaf == "clearLogos" else "Track"})
+        if leaf in ("theme", "clearLogo"):
+            # No theme audio of plexsim's own; an UPLOADED theme or logo is served from
+            # the row that owns it (cycle 59), and anything else is the 404 it was.
+            owned = row.get("_clearLogo") if leaf == "clearLogo" else self._owns(row, "theme")
+            if owned and row.get("_%s_url" % leaf) in self.uploads:
+                return ("image", row["_%s_url" % leaf])
+            return ("error", 404, "plexsim: no %s" % leaf)
         if leaf in ("thumb", "art", "poster"):
             # Cycle 14: `background` and `composite` used to be served here too, and
             # both are a **404** on kids and zen alike, on a movie, a show, a season
@@ -17521,9 +17536,7 @@ class PlexSim:
         stored = row.get("_poster_url") if kind == "posters" else row.get("_art_url")
         # An uploaded image is a candidate of its own, and stays one after something else
         # is picked -- measured: the copy's list keeps every upload it has been given.
-        uploads = [key for key in self.uploads
-                   if key.startswith("upload://posters" if kind == "posters" else "upload://art")
-                   and (row.get("type") not in ("season", "episode") or str(row.get("index")) in key)]
+        uploads = list((row.get("_uploads") or {}).get(field) or [])
         for key in uploads:
             # Cycle 17, measured on kids and zen over 13 and 97 candidates: a LOCAL
             # candidate's `ratingKey` is the bare uri and its `key` and `thumb` are a
@@ -17536,18 +17549,23 @@ class PlexSim:
                             "ratingKey": key,
                             "thumb": _candidate_path(row["ratingKey"], key),
                             "selected": stored == key})
-        if stored in uploads:
-            stored = None
+        agent = row.get("_poster_agent" if kind == "posters" else "_art_agent")
+        chose_upload = stored in uploads
+        picked = stored
+        if chose_upload or not stored:
+            stored = agent
         current = row.get(field)
         # `selected` is whichever candidate the row's artwork actually POINTS AT: a
         # versioned `/library/metadata/{id}/thumb/{ver}` means the remote one, a bare
         # `/thumb/1` the generated placeholder. plexsim keyed it on "is there any
         # artwork at all", so after picking the placeholder NOTHING came back selected
         # and the picker showed no current choice.
-        chose_remote = bool(stored)
+        chose_remote = bool(stored) and picked == stored
         placeholder = "/library/metadata/%s/%s/1" % (row["ratingKey"], field)
         if stored:
-            entries.append({
+            # Measured on plexscratch after an upload: the agent's row first, then the
+            # uploads, then the local one.
+            entries.insert(0, {
                 "key": stored,
                 "ratingKey": stored,
                 "thumb": stored,
@@ -17558,7 +17576,7 @@ class PlexSim:
             "key": placeholder,
             "ratingKey": placeholder,
             "thumb": placeholder,
-            "selected": not chose_remote and bool(current),
+            "selected": not chose_remote and not chose_upload and bool(current),
             "provider": "local",
         })
         # Measured: an artwork list renders as <Photo> in XML while its JSON
@@ -17744,17 +17762,39 @@ class PlexSim:
         """
         if not body:
             return ("error", 400, "plexsim: bad request")
-        prefix = "upload://posters" if kind == "posters" else "upload://art"
+        # Cycle 59, measured on plexscratch42 and plexscratch: a THEME and a clear LOGO
+        # upload are stored the way a poster is -- a selected `upload://themes/<sha1>` /
+        # `upload://clearLogos/<sha1>` candidate, and the row gains its own versioned
+        # `theme` (served `audio/mpeg3`) or a `clearLogo` `Image` (served `image/jpeg`),
+        # every artwork it owns re-versioning onto the same stamp. plexsim answered 200,
+        # pushed its frame and kept nothing -- and filed both as an `art` upload, so a
+        # theme changed the row's backdrop.
+        field, prefix, served = {
+            "posters": ("thumb", "upload://posters", None),
+            "themes": ("theme", "upload://themes", "audio/mpeg3"),
+            "clearLogos": ("clearLogo", "upload://clearLogos", "image/jpeg"),
+        }.get(kind, ("art", "upload://art", None))
         if row.get("type") == "season":
             prefix += "/seasons/%s" % row.get("index")
         elif row.get("type") == "episode":
             prefix += "/seasons/%s/episodes/%s" % (row.get("parentIndex"), row.get("index"))
         key = "%s/%s" % (prefix, hashlib.sha1(body).hexdigest())
-        self.uploads[key] = (body, _image_type(body))
-        field = "thumb" if kind == "posters" else "art"
-        row["_poster_url" if kind == "posters" else "_art_url"] = key
+        self.uploads[key] = (body, served or _image_type(body))
+        # Cycle 59, measured on both copies: an upload is a candidate of the row it was
+        # posted to and of no other. plexsim listed every upload the server held on every
+        # row's picker, keyed by the bytes' hash alone.
+        mine = row.setdefault("_uploads", {}).setdefault(field, [])
+        if key not in mine:
+            mine.append(key)
+        private = "_%s_url" % {"thumb": "poster"}.get(field, field)
+        # Cycle 59, measured on plexscratch: the agent's candidate stays in the picker,
+        # unselected, after an upload. plexsim kept it only in the selection slot the
+        # upload overwrote, so Change Poster could never go back to it.
+        if row.get(private) and not str(row[private]).startswith("upload://"):
+            row.setdefault(private.replace("_url", "_agent"), row[private])
+        row[private] = key
         stamp = int(time.time())
-        for name in ("thumb", "art"):
+        for name in ("thumb", "art", "theme"):
             # Cycle 29, measured on plexscratch by uploading a POSTER to a season that
             # borrowed both fields from its show: only the field the upload WROTE becomes
             # the row's own. Its `thumb` became `/library/metadata/11/thumb/<stamp>` and
@@ -17765,7 +17805,12 @@ class PlexSim:
             # path has read it this way since cycle 27; the upload path never did.
             if row.get(name) and (name == field or self._owns(row, name)):
                 row[name] = "/library/metadata/%s/%s/%d" % (row["ratingKey"], name, stamp)
-        row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
+        if field == "clearLogo" or row.get("_clearLogo"):
+            # A logo is not an attribute of the row: it is an `Image` of type
+            # `clearLogo`, re-versioned with the rest.
+            row["_clearLogo"] = "/library/metadata/%s/clearLogo/%d" % (row["ratingKey"], stamp)
+        else:
+            row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
         # Cycle 17, measured on plexscratch: the upload moves `updatedAt` onto the SAME
         # stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15
         # measured that for the pick and plexsim implemented it there only, so a client

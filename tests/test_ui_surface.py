@@ -32061,6 +32061,60 @@ def main():
           and "playlist" not in [r.get("type") for r in after_c59f.get("Metadata") or []],
           str((cells_c59f, types_c59f)))
 
+    # Cycle 59, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) through
+    # python-plexapi's upload methods and Plex Web's Change Artwork dialog:
+    #  * an upload is a candidate of the row it was posted to and of no other;
+    #  * after a poster upload the agent's candidate stays, unselected, and exactly one
+    #    candidate is selected (plexsim dropped the agent's and ticked the local one too);
+    #  * a THEME and a LOGO upload are stored: a selected `upload://themes/...` /
+    #    `upload://clearLogos/...` candidate, and the row gains its own versioned `theme`
+    #    (served audio) or a `clearLogo` Image -- where plexsim kept nothing and filed a
+    #    theme as an `art` upload.
+    png_c59g = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+                                "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    mp3_c59g = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\xff\xfb\x90\x00" * 64
+    _, grid_c59g, _ = get(base, "/library/sections/%s/all" % movie_section)
+    keys_c59g = [r.get("ratingKey") for r in grid_c59g.get("Metadata") or []]
+    one_c59g, two_c59g = keys_c59g[0], keys_c59g[-1]
+    def cands_c59g(rk_c59g, leaf_c59g):
+        _, body_c59g, _ = get(base, "/library/metadata/%s/%s" % (rk_c59g, leaf_c59g))
+        return [(c.get("ratingKey"), bool(c.get("selected")), c.get("provider"))
+                for c in body_c59g.get("Metadata") or []]
+    before_c59g = cands_c59g(one_c59g, "posters")
+    request(base, "POST", "/library/metadata/%s/posters" % one_c59g, body=png_c59g)
+    after_c59g = cands_c59g(one_c59g, "posters")
+    other_c59g = cands_c59g(two_c59g, "posters")
+    agents_before_c59g = [c for c in before_c59g if c[2] == "tmdb"]
+    check("a poster upload keeps the agent candidate and selects exactly one",
+          len(agents_before_c59g) == len([c for c in after_c59g if c[2] == "tmdb"])
+          and sum(1 for c in after_c59g if c[1]) == 1
+          and any(c[0].startswith("upload://posters/") and c[1] for c in after_c59g),
+          str((before_c59g, after_c59g)))
+    check("an upload is not a candidate on another row",
+          not any(str(c[0]).startswith("upload://") for c in other_c59g), str(other_c59g))
+    arts_before_c59g = cands_c59g(one_c59g, "arts")
+    status_c59g, _, _ = request(base, "POST", "/library/metadata/%s/themes" % one_c59g, body=mp3_c59g)
+    _, detail_c59g, _ = get(base, "/library/metadata/%s" % one_c59g)
+    row_c59g = (detail_c59g.get("Metadata") or [{}])[0]
+    themes_c59g = cands_c59g(one_c59g, "themes")
+    theme_status_c59g, theme_body_c59g, theme_headers_c59g = request(
+        base, "GET", str(row_c59g.get("theme") or "/none"), want_json=False)
+    check("a theme upload is stored and served, and leaves the backdrop alone",
+          status_c59g == 200 and themes_c59g and themes_c59g[0][0].startswith("upload://themes/")
+          and themes_c59g[0][1] and str(row_c59g.get("theme") or "").startswith(
+              "/library/metadata/%s/theme/" % one_c59g)
+          and theme_status_c59g == 200 and theme_body_c59g == mp3_c59g
+          and cands_c59g(one_c59g, "arts") == arts_before_c59g,
+          str((status_c59g, themes_c59g, row_c59g.get("theme"), theme_status_c59g)))
+    request(base, "POST", "/library/metadata/%s/clearLogos" % one_c59g, body=png_c59g)
+    _, detail_c59g, _ = get(base, "/library/metadata/%s" % one_c59g)
+    logos_c59g = [i.get("url") for i in (detail_c59g.get("Metadata") or [{}])[0].get("Image") or []
+                  if i.get("type") == "clearLogo"]
+    logo_status_c59g = request(base, "GET", logos_c59g[0] if logos_c59g else "/none", want_json=False)[0]
+    check("a logo upload is a selected candidate and a clearLogo Image",
+          [c[1] for c in cands_c59g(one_c59g, "clearLogos")] == [True]
+          and len(logos_c59g) == 1 and logo_status_c59g == 200, str((logos_c59g, logo_status_c59g)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
