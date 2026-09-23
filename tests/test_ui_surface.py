@@ -30064,6 +30064,29 @@ def main():
     check("eighteen more tag-table fields filter a listing", not wrong_c54g,
           ", ".join(wrong_c54g))
 
+    # Cycle 54, from the binary's parameter names, measured on zen (1.42.2) and kids
+    # (1.43.4): the four photo-cluster columns parse as integers -- a word or an empty value
+    # is a 500 -- and match NO row under any operator; and `trash` is an INTEGER column, not
+    # a boolean (`trash=abc` and `trash=` are 500s, `=01` is 1). plexsim holds no trashed
+    # row, so its `trash` is 0 everywhere, as kids' is: `=0` every row, `!=0` none.
+    wrong_c54h = []
+    for query_c54h, want_c54h in (("cluster=abc", 500), ("clusterZoomLevel=", 500),
+                                  ("clustering=abc", 500), ("trash=abc", 500), ("trash=", 500)):
+        status_c54h, _, _ = request(base, "GET", "/library/sections/%s/all?%s"
+                                    % (movie_section, query_c54h))
+        if status_c54h != want_c54h:
+            wrong_c54h.append("%s -> %s" % (query_c54h, status_c54h))
+    _, all_c54h, _ = get(base, "/library/sections/%s/all" % movie_section)
+    every_c54h = len(all_c54h.get("Metadata") or [])
+    for query_c54h, want_c54h in (("cluster!=1", 0), ("clusterStartsAt%3C%3C=99", 0),
+                                  ("trash=01", 0), ("trash=0", every_c54h), ("trash!=0", 0)):
+        _, found_c54h, _ = get(base, "/library/sections/%s/all?%s" % (movie_section, query_c54h))
+        if len(found_c54h.get("Metadata") or []) != want_c54h:
+            wrong_c54h.append("%s -> %d rows" % (query_c54h,
+                                                 len(found_c54h.get("Metadata") or [])))
+    check("the cluster columns match nothing and trash is an integer", not wrong_c54h,
+          "; ".join(wrong_c54h))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

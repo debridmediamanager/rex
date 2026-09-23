@@ -597,6 +597,15 @@ REFUSED_FILTER_FIELDS.add("userFields")
 # none of it: the filter answered every row and the sort a 500.
 FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
 # Cycle 54, from the binary's parameter names and measured on zen (1.42.2) and kids (1.43.4):
+# the photo CLUSTER columns parse as integers and match no row of a video library under any
+# operator, and `trash` is an integer column whose value plexsim, holding no trashed row,
+# answers as 0 everywhere -- kids' own answer.
+for _column in ("cluster", "clusterStartsAt", "clusterZoomLevel", "clustering"):
+    FILTER_FIELD_TYPES.setdefault(_column, "integer")
+# The movie Meta advertises `trash` as a boolean; the grammar both references answer is the
+# integer one (`trash=01` is the `=1` set, `trash=2` none, `trash=abc` a 500).
+FILTER_FIELD_TYPES["trash"] = "integer"
+# Cycle 54, from the binary's parameter names and measured on zen (1.42.2) and kids (1.43.4):
 # eighteen TAG-TABLE fields filter although no Meta advertises them. `similar` was already
 # a tag-table field in filters.py and was still ignored, because nothing typed it.
 for _column in ("similar", "mood", "style", "format", "subformat", "tag", "make", "model",
@@ -10408,6 +10417,10 @@ class PlexSim:
             return 0 if row.get("viewCount") else 1
         if field == "viewUpdatedAt":
             return row.get("_viewUpdatedAt")
+        if field == "trash":
+            return 0
+        if field in ("cluster", "clusterStartsAt", "clusterZoomLevel", "clustering"):
+            return None
         if field == "inProgress":
             return 1 if row.get("viewOffset") else 0
         if field == "unmatched":
