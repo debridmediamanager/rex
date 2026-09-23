@@ -30301,6 +30301,49 @@ def main():
     check("the Dashboard's viewedAt, accountID and section filters", not wrong_c54o,
           "; ".join(wrong_c54o)[:240])
 
+    # Cycle 54, from the binary's parameter names, measured on kids (1.43.4), zen (1.42.2)
+    # and plexscratch42: thirteen parameters are PARSED -- a value the grammar refuses is a
+    # 400 -- where plexsim answered 200. Most are int32 (`1.5`, empty and 2147483648
+    # refuse), `monthsAgo` any-size integer, `bytes` int64, `maxDistance` a float and
+    # `personal` the 0/1 option, which at 1 empties the list; `metadataTypes` also
+    # FILTERS the providers (a provider must serve every listed type; empty is all).
+    wrong_c54p = []
+    for path_c54p in ("/library/metadata/%s?augmentCount=abc" % movie,
+                      "/library/metadata/%s?augmentCount=2147483648" % movie,
+                      "/library/metadata/%s/similar?count=1.5" % movie,
+                      "/search?query=the&count=abc",
+                      "/statistics/media?count=abc", "/statistics/media?offset=",
+                      "/library/metadata/%s/nearest?excludeParentID=abc" % movie,
+                      "/library/metadata/%s/nearest?maxDistance=abc" % movie,
+                      "/media/providers/metadata?metadataTypes=abc",
+                      "/hubs/sections/%s/popular?monthsAgo=1.5" % show_section,
+                      "/status/sessions/history/all?type=1&offset=abc",
+                      "/hubs/home/recentlyAdded?type=1&personal=2",
+                      "/hubs/search?query=the&sectionId=0",
+                      "/statistics/bandwidth?bytes=abc"):
+        status_c54p = request(base, "GET", path_c54p)[0]
+        if status_c54p != 400:
+            wrong_c54p.append("%s -> %s" % (path_c54p.rsplit("/", 1)[-1], status_c54p))
+    for path_c54p in ("/library/metadata/%s?augmentCount=-1" % movie,
+                      "/library/metadata/%s/nearest?maxDistance=1.5" % movie,
+                      "/hubs/sections/%s/popular?monthsAgo=9223372036854775808" % show_section,
+                      "/media/providers/metadata?metadataTypes=",
+                      "/hubs/search?query=the&sectionId=abc"):
+        status_c54p = request(base, "GET", path_c54p)[0]
+        if status_c54p != 200:
+            wrong_c54p.append("%s -> %s" % (path_c54p.rsplit("/", 1)[-1], status_c54p))
+    _, none_c54p, _ = get(base, "/media/providers/metadata?metadataTypes=0")
+    _, one_c54p, _ = get(base, "/media/providers/metadata?metadataTypes=1")
+    if none_c54p.get("MetadataAgentProvider") or not one_c54p.get("MetadataAgentProvider") or any(
+            1 not in [t.get("type") for t in p.get("MetadataType") or []]
+            for p in one_c54p.get("MetadataAgentProvider") or []):
+        wrong_c54p.append("metadataTypes does not filter")
+    _, personal_c54p, _ = get(base, "/hubs/home/recentlyAdded?type=1&personal=01")
+    if personal_c54p.get("Metadata"):
+        wrong_c54p.append("personal=01 kept rows")
+    check("thirteen parameters refuse what their grammar does not parse", not wrong_c54p,
+          "; ".join(wrong_c54p)[:240])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
