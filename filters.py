@@ -275,6 +275,16 @@ NULL_IS_ZERO_FIELDS = {"viewCount", "viewOffset"}
 # is not in the family: its nulls match nothing.
 NULL_IS_ZERO_DATES = {"lastViewedAt", "lastRatedAt", "lastSkippedAt"}
 
+# Cycle 55, measured on zen (1.42.2), kids (1.43.4) and plexscratch42 (23 of 24 cells): on
+# these five columns `field=-1` is "HAS NO VALUE". zen's `userRating=-1` is the 3,465
+# unrated movies (`userRating!=-1` the other 422), `rating=-1` is 3,144 (3,887 - 743), and
+# `absoluteIndex=-1` and `parent=-1` are all 3,887 movies; kids answers 3, 5, 5 and 5. The
+# rule is narrow: bare `=` only (`<=-1`, `<<=-1` and `>=0` match nothing), `-01` counts and
+# `-1.0` does not, a comma list ORs it (`rating=-1,7` is 3,150), and `year`, `duration`,
+# `viewCount`, `index`, `contentRatingAge`, `mediaSize`, `mediaBitrate`, `skipCount`,
+# `mediaCount` and `ratingCount` answer 0 to it. plexsim answered 0 on all five.
+NULL_SENTINEL_FIELDS = {"rating", "audienceRating", "userRating", "absoluteIndex", "parent"}
+
 # The boolean-looking column whose OPERATOR a real PMS ignores: cycle 20, measured on
 # both references. Only the value decides, and only the literal `1` is true.
 OPERATOR_BLIND_BOOLEANS = {"unmatched"}
@@ -769,6 +779,9 @@ def compare(kind, operator, actual, wanted, field=""):
             # not the python type. Measured on both references.
             raise FilterError(500, "fractional value %r on %s" % (wanted, field))
         target = as_number(wanted)
+        if field in NULL_SENTINEL_FIELDS and operator == "=" \
+                and re.fullmatch(r"-0*1", str(wanted)):
+            return actual is None or actual == ""
         if isinstance(actual, (list, tuple)):
             # Cycle 19: a MEDIA column can hold several values -- one per Media on the
             # row, or one per Media of every leaf on a show or a season -- and a real
