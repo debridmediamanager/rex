@@ -6606,6 +6606,15 @@ class PlexSim:
             # Player commands go to a PLAYER, not to a server: a real PMS answers
             # 400 for every one of them. plexsim answered 200 with a container,
             # which tells a companion client the command was accepted.
+            #
+            # Cycle 59, measured on zen, kids and both copies: WITH an
+            # `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
+            # `PlexClient.sendCommand()` -- the server looks for that player to proxy to
+            # and answers 404, for an unknown id, a listed device and an empty value
+            # alike. plexsim answered 400, so a controller catching `NotFound` took the
+            # wrong branch.
+            if headers is not None and headers.get("X-Plex-Target-Client-Identifier") is not None:
+                return ("error", 404, "plexsim: no such player")
             return ("error", 400, "plexsim: bad request")
         if route in ("/livetv/epg/lineup", "/livetv/epg/channelmap",
                      "/livetv/epg/lineupchannels"):

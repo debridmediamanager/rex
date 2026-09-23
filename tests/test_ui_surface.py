@@ -31958,6 +31958,26 @@ def main():
     check("a season's language enum keeps its own head under en",
           season_en_c59a.startswith(":Series default|en:English|"), season_en_c59a[:80])
 
+    # Cycle 59, measured on zen, kids and both copies: a `/player/*` command carrying an
+    # `X-Plex-Target-Client-Identifier` header -- python-plexapi's proxied
+    # `PlexClient.sendCommand()` -- is a 404 (no such player to proxy to), for an unknown
+    # id, a listed device and an empty value alike; only a bare command is the 400.
+    def player_c59b(path_c59b, target_c59b):
+        headers_c59b = {"User-Agent": UA}
+        if target_c59b is not None:
+            headers_c59b["X-Plex-Target-Client-Identifier"] = target_c59b
+        try:
+            return urllib.request.urlopen(urllib.request.Request(
+                base + path_c59b, headers=headers_c59b), timeout=30).status
+        except urllib.error.HTTPError as error_c59b:
+            return error_c59b.code
+    cells_c59b = [player_c59b(p, t) for p in ("/player/playback/play?commandID=1",
+                                              "/player/timeline/poll?wait=0&commandID=1")
+                  for t in ("c59-unknown", "")]
+    bare_c59b = player_c59b("/player/playback/play?commandID=1", None)
+    check("a proxied /player command is a 404; a bare one stays 400",
+          cells_c59b == [404, 404, 404, 404] and bare_c59b == 400, str((cells_c59b, bare_c59b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
