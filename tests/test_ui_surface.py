@@ -31577,6 +31577,36 @@ def main():
         skip("playQueueLastAddedItemID is the tail of the Up Next block",
              "need a show of four episodes and two movies")
 
+    # Cycle 57, measured on zen (1.42.2): `tagId=<id>` is a real listing filter -- the
+    # rows carrying that tag in ANY tag table (`tagId=1033` is the same 152 movies as
+    # `genre=1033`, and a director, a country and an actor id each match their own
+    # filter), an unknown id is none and `abc` or an empty value a 500. It is what the
+    # collection Related shelf's own `key` filters on, and plexsim ignored it, so that
+    # shelf's See All opened the whole library.
+    _, grid_c57j, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c57j = [str(r.get("ratingKey")) for r in grid_c57j.get("Metadata") or []][:2]
+    if len(pair_c57j) == 2 and len(grid_c57j.get("Metadata") or []) > 2:
+        uri_c57j = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                         % (machine, ",".join(pair_c57j)))
+        _, made_c57j, _ = container(
+            base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+            % (quote("C57j See All"), movie_section, uri_c57j))
+        coll_c57j = (made_c57j.get("Metadata") or [{}])[0]
+        listed_c57j = sorted(str(r.get("ratingKey")) for r in get(
+            base, "/library/sections/%s/all?type=1&tagId=%s" % (movie_section, coll_c57j.get("index"))
+        )[1].get("Metadata") or [])
+        none_c57j = get(base, "/library/sections/%s/all?type=1&tagId=999999999"
+                        % movie_section)[1].get("size")
+        bad_c57j = [request(base, "GET", "/library/sections/%s/all?type=1&tagId=%s"
+                            % (movie_section, v))[0] for v in ("abc", "")]
+        request(base, "DELETE", "/library/collections/%s" % coll_c57j.get("ratingKey"))
+        check("tagId filters a listing by any tag's id",
+              listed_c57j == sorted(pair_c57j) and none_c57j == 0 and bad_c57j == [500, 500],
+              "listed %s (want %s), unknown %s, refusals %s"
+              % (listed_c57j, sorted(pair_c57j), none_c57j, bad_c57j))
+    else:
+        skip("tagId filters a listing by any tag's id", "need three movies")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

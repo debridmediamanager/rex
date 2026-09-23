@@ -503,6 +503,14 @@ for _bare in ("updatedAt", "createdAt", "lastRatedAt"):
     FILTER_FIELD_TYPES.setdefault(_bare, "date")
 FILTER_FIELD_TYPES.setdefault("mediaCount", "integer")
 FILTER_FIELD_TYPES.setdefault("originalTitle", "string")
+# Cycle 57, measured on zen (1.42.2): `tagId=<id>` filters on a tag of ANY table --
+# `tagId=1033` is the 152 movies `genre=1033` is, a director's, a country's and an
+# actor's id match exactly their own filter's rows, a show genre's too -- an unknown id
+# matches nothing, and `abc` or an empty value is a 500. A real PMS writes it into the
+# collection Related shelf's `key`, so plexsim, which ignored it, sent that shelf's See
+# All to the whole library. Only `=` is modelled: `tagId!=1033` answers 3,084 of 3,887,
+# which is neither the complement (3,735) nor anything else measured here.
+FILTER_FIELD_TYPES.setdefault("tagId", "tagId")
 # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: four MORE
 # columns filter, and none of them appears in any Meta either. `parent=<ratingKey>`
 # is the row's immediate `parentRatingKey` -- kids' `type=4` goes 6 -> 3 for a season
@@ -10797,6 +10805,10 @@ class PlexSim:
             # the row prints. `group=type` reads the same value and is unaffected --
             # one group per distinct type either way.
             return TYPE_NUMBERS.get(row.get("type"), row.get("type"))
+        if field == "tagId":
+            # Cycle 57: the ids of every tag the row carries, in every table.
+            return [tag.get("id") for key in self.catalog.TAG_FIELDS
+                    for tag in row.get(key) or [] if isinstance(tag, dict)]
         if field == "parent":
             # Cycle 15: the row's IMMEDIATE parent, so `type=4&parent=<season>` is that
             # season's episodes and `parent=<show>` is none of them -- measured 6 -> 3
