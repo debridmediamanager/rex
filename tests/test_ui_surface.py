@@ -31097,6 +31097,18 @@ def main():
           "all key=%s active=%s; plain sorts %s" % (type_c56b.get("key"), type_c56b.get("active"),
                                                   active_c56b))
 
+    # Cycle 56, measured on kids, zen, plexscratch and plexscratch42 (identical): in the BARE
+    # `/system/agents` each legacy agent's `MediaType` carries its own `Language` rows -- 33
+    # for the legacy IMDb agent's movies, 26 each for The Movie Database, 44 for Photos.
+    # python-plexapi's `agents()` reads them as `AgentMediaType.languageCodes`; plexsim sent
+    # none. Cycle 53's "no Language" is the AGENT row's, not its MediaType's.
+    _, agents_c56c, _ = request(base, "GET", "/system/agents", want_json=False)
+    text_c56c = agents_c56c.decode("utf-8", "replace")
+    start_c56c = text_c56c.find('identifier="com.plexapp.agents.imdb"')
+    block_c56c = text_c56c[start_c56c:text_c56c.find("</Agent>", start_c56c)]
+    check("a legacy agent's MediaType carries its languages",
+          block_c56c.count("<Language ") == 33, "%d rows" % block_c56c.count("<Language "))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
