@@ -13481,7 +13481,7 @@ class PlexSim:
                 # endpoint that does not exist rather than a shelf with nothing on it.
                 return self.hub_container()
             return ("error", 404, "plexsim: no such item")
-        hubs = self.related_hubs(row, query)
+        hubs = self.related_hubs(row, query, collections=leaf == "related")
         if leaf == "postplay":
             return self.hub_container(Hub=hubs, allowSync=False)
         section = self.catalog.section(row["librarySectionID"]) or {}
@@ -13491,13 +13491,72 @@ class PlexSim:
             librarySectionTitle=section.get("title"),
             librarySectionUUID=section.get("uuid"))
 
-    def related_hubs(self, row, query):
+    def collection_related_hub(self, row, query):
+        """The `collection.related.{section}.1` shelf of a collection member, or None.
+
+        Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) -- kids and
+        zen hold no collection -- on all three Related read paths:
+
+            hubKey=/library/metadata/3,4  key=/library/sections/1/all?type=1&tagId=60
+                &sort=originallyAvailableAt,year:nullsLast  title="C57Z One Collection"
+            type=movie  hubIdentifier=collection.related.1.1
+            context=hub.collection.related  size=2  more=false   (no style)
+
+        The rows are the members in that key's order -- release date, then year with
+        nulls last (3, 1, 4 for 2006, 2008, 2010) -- in the full row projection, the item
+        itself included. It exists only while the collection has TWO members or more (it
+        appeared on the second member's add and went on its removal), and while it exists
+        it REPLACES `movie.similar` on these paths: with shared genres the similar hub was
+        there, the collection took its place, and it came back when the collection fell to
+        one member. `/library/metadata/{id}/similar` is untouched. An item in two such
+        collections answers ONE hub, the earlier-created collection's, still numbered `.1`.
+
+        Not measured, and chosen: a SMART collection (whose membership is a query, not a
+        tag) contributes no shelf, and postplay is left as it was.
+        """
+        key = int(row["ratingKey"])
+        for collection in sorted(self.library._collections.values(),
+                                 key=lambda c: int(c["ratingKey"])):
+            if collection.get("smart"):
+                continue
+            members = [int(k) for k in collection.get("items") or []]
+            if key not in members:
+                continue
+            rows = [self.catalog.items.get(k) for k in members]
+            rows = [r for r in rows if r is not None]
+            if len(rows) < 2:
+                continue
+            rows.sort(key=lambda r: (bool(r.get("originallyAvailableAt")),
+                                     str(r.get("originallyAvailableAt") or ""),
+                                     r.get("year") is None, r.get("year") or 0,
+                                     str(r.get("titleSort") or r.get("title") or "").lower()))
+            section = collection["librarySectionID"]
+            kind = collection.get("subtype") or "movie"
+            tag = (collection.get("tagID")
+                   or self.catalog.tag_id("Collection", collection.get("tag", collection["title"])))
+            built = self.hub(
+                "collection.related.%s.1" % section, "%s Collection" % collection["title"],
+                [_listing_row(r) for r in rows], count=query.get("count"), type=kind,
+                key="/library/sections/%s/all?type=%s&tagId=%s"
+                    "&sort=originallyAvailableAt,year:nullsLast"
+                    % (section, TYPE_NUMBERS.get(kind, 1), tag),
+                context="hub.collection.related", full=True)
+            built["hubKey"] = "/library/metadata/" + ",".join(
+                str(r.get("ratingKey")) for r in built.get("Metadata") or [])
+            return built
+        return None
+
+    def related_hubs(self, row, query, collections=True):
         """An item's related shelves, shared by every endpoint that carries them.
 
         Measured: `/hubs/metadata/{id}/related`, `/library/metadata/{id}/related`
         and a detail read's `includeRelated=1` all carry the SAME `movie.similar`
         hub; the latter two carried nothing on plexsim.
         """
+        if collections:
+            shelf = self.collection_related_hub(row, query)
+            if shelf is not None:
+                return [shelf]
         rows = [_listing_row(r) for r in self.similar_rows(row)]
         if not rows:
             return []
