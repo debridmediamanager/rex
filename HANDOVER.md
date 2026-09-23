@@ -65,8 +65,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 54 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **54. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 55 merged, equal to `origin/main`, clean tree |
+| Cycles complete | **55. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 55 | **55 — cycle 54's two instruments at full resolution: 37 findings in 37 fix commits.** Territory B gave every one of the binary's 366 non-maintenance SQL reads a verdict and found eight: Related is a server-side TAG SCORE (first three genres and four roles, two shared, 59 of 59 zen rows exact), On Deck's next-up anchors on the most recent view, `recentlyViewed` and a section's `/onDeck` order by the view-state write time, `popular` counts history rows, a playlist's duration sums whole seconds, the genre shelf is the head of its own key, and a season's generated title follows its index. Territory A repeated cycle 54's parameter sweep (every fix held) and widened it to eighteen values and eight operators: 26 rules, most of them the listing's structural parameters being PARSED wherever they are read, the integer and option grammars, and the filter value grammar -- built as 27 commits by an implementation agent against the hunter's 123-check regression script. The driver found that a library's TV Recently Added shelf IS the section's roll-up, and the implementation pass that `/hubs/promoted` refuses the hub keys when a show library is in scope. **Five recorded beliefs overturned**; **two §3.3 entries CLOSED**; **one reference crash** (kids' PMS, from a search `limit` of 4294967296, restarted in seconds) |
 | Cycle 54 | **54 — the binary's own parameter names and its own SQL, and containers made one at a time: 22 findings in 22 commits.** Territory A derived 1,018 query-parameter names mechanically from both binaries' string tables (cycle 46 had swept only the seven prefixed families) and crossed them with 94 safe families -- 332,304 cells on zen -- finding nine: six media filter columns, eighteen more tag-table fields, the cluster columns and `trash`, the listing query reaching seven more families, the TV Recently Added shelves filtering their EPISODES before the roll-up, `/hubs/items` scoping, `unwatched=1` as a flag with two grammars, the Dashboard's view-time keys, thirteen parameter refusals and `sectionID` as a number. Territory B read 707 SQL statements out of the binary and found `viewUpdatedAt` (Plex Web's own `sort=viewUpdatedAt:desc` answered 500 here) and the episode listing's leaf-count filters reading the SHOW. The driver made seventeen containers on plexscratch42 and found the part `Content-Type` table, `.mov` as `mov`, and `packetLength: 188`, and in re-measuring the hunts found the per-user date family, three date-typed columns and the negative-rating stamp. **Four recorded beliefs overturned** (cycle 9's "a negative rating keeps `lastRatedAt`", cycle 14's "`viewedAt>=abc` is a 400", cycle 20's "a NULL date matches nothing" for the three per-user dates, cycle 46's "a show's season list ignores `skipCount`") and **two §3.3 entries CLOSED** |
 | Cycle 53 | **53 — the framework's own source, and the database's own schema: 19 findings.** Cycle 52's instrument was the binary; cycle 53's is what ships beside it. The plug-in framework is uncompiled **Python** — 289 files plus `System.bundle/Contents/Code/*.py`, which IS the `/system` surface, so every `@route` is an endpoint and "which endpoints exist" became a read rather than a sweep — and `Resources/com.plexapp.plugins.library.db` is an empty database TEMPLATE whose schema names every column PMS can store. The driver found the media flag image family (`mediaTagPrefix` points every client at it and every URL under it was a 404); Territory A enumerated the framework and found thirteen (eighteen more routes, five more plug-in sub-paths, the eleven legacy agents and their attributions, four envelope rules, two writer corrections, and the state cookie that makes every framework route answer Tornado's empty 200 with the one `Server:` banner on the surface); Territory B held the schema and the binary's attribute vocabulary against the surface and found four (ten more real query columns where an unknown field answers EVERY row, `isAdult`, `includedAt`, and `includeAlternates` inlining artwork the row does not own) plus the census negative — 130 request families, three servers, zero JSON scalar-type differences. **One inherited §8 bound retired** (the legacy agents, whose sibling half cycle 52 had already retired, leaving the split as drift) and **two recorded beliefs corrected** (cycle 33's "no `Server:` banner", cycle 18's "the only 405 on the surface"). **Six existing checks re-measured** where they encoded plexsim's own four-agent catalogue |
 | Cycle 52 | **52 — the loop reopened on a new instrument, and 24 findings came out of it.** Cycle 51 was clean, so cycle 52 did what cycles 44, 45 and 49 did: it recognised an instrument nobody had used. Fifty-one cycles built plexsim's route table out of what a CLIENT was seen to ask for; the **Plex Media Server binary** names the endpoints no client sends, and it is readable on both references. Its string table carries PMS's own route templates with their parameter captures, and diffing the two binaries splits the vocabulary per version for free. The driver took the route table (the dispatcher's prefix listing as a RULE where cycle 50 had 58 captured points, three static files that answer with NO token, `/:/plugins`' seventeen rows and the second framework subtree under it, the cookie, `/connections` as text/plain, the widened 401 partition); Territory A took the artwork family (`/:/resources/*` as 70 names, the read leaves' verb table, the photo transcoder fetching the path it is given, list artwork ownership, the empty playlist's candidate); Territory B took the leaf vocabulary the binary names (six refusal shapes, `/hubs/sections/{id}/popular`, the Categories `blendColor` table, the actor silhouette, the part leaf's arity, `.tag.role` on the section save). **Two recorded beliefs overturned** and one §8 bound retired. Closing the cycle found cycle 53's instrument: PMS ships the plug-in framework as 289 readable Python files, and one grep of `agentservice.py` replaced a model this cycle had fitted to twelve cells |
@@ -79,12 +80,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-54 finding is implemented and proved fail-then-pass; every remaining bound is explicit in §8** |
+| Work half-done | **none — every Cycle-55 finding is implemented and proved fail-then-pass; every remaining bound is explicit in §8** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 55 | UI **1,863/1,863** with 15 fixture skips (after one repair: the Related projection check now builds the shared tags the measured rule needs); catalog **all pass**; regional **3/3**; decisions **2,340/2,340**; mediainfo **36/36**; GDM **103/103**; prefix **58/58**; part bytes **12/12**; TLS **10/10**; heartbeat **13/13**; account state **15/15**; sessions all pass; hunt A's `regress55.py` **123/123**; LIVE catalog navigation **24/24**, python-plexapi **38/38**, byte/decode **5/5** | 23,586 | **37** in **37 fix commits** plus 2 test commits, every fix proved fail-then-pass. **5 recorded beliefs overturned**, **2 §3.3 entries CLOSED** (the per-library TV shelf's filtered form; `sectionId`'s two values), **1 reference crash** recorded in §9. Denominators: 366 SQL reads with a verdict each, 147,384 name-level value cells, 7,008 operator cells a server, the 13,616-cell repeat of cycle 54's sweep. The implementation of Territory A was DELEGATED to an agent working in the cycle worktree under sdrive, then re-verified by the driver |
 | 54 | UI **1,830/1,830** with 14 fixture skips (after two repairs of this cycle's own); catalog **all pass**; regional prefs **3/3, 1,122/1,122**; decisions **2,340/2,340**; mediainfo **36/36** (+17 shallow fixtures); GDM **103/103**; prefix **58/58**; part bytes **12/12**; TLS **10/10**; heartbeat **13/13**; account state **15/15**; sessions all pass; LIVE catalog navigation **24/24**, python-plexapi **38/38**, byte/decode **5/5** | 23,094 | **22** in **22 commits**, every one proved fail-then-pass. **4 recorded beliefs overturned**, **2 §3.3 entries CLOSED** (the legacy agents' load order is the filesystem's; the section key ignores `Host`), **1 regression the cycle caught in its own patch** (the media axes lost their `type=` blindness) and **1 check of its own starved by the suite** (the season read off a flattened episode). Denominators: 1,018 parameter names x 94 families (332,304 cells on zen), 707 SQL statements, 17 containers, 9,287 episodes and 3,887 movies fitted cell by cell. **1 hunter family bounded** (the tagging join) |
 | 53 | UI **1,811/1,811** with 14 fixture skips; catalog **all pass**; regional prefs **3/3, 1,122/1,122**; decisions **2,340/2,340**; mediainfo **35/35**; GDM **103/103**; prefix **58/58**; part bytes **11/11**; heartbeat **13/13**; account state **15/15**; sessions all pass | 22,733 | **19** in **21 commits**, every one proved fail-then-pass. **2 recorded beliefs corrected** (cycle 33's "no `Server:` banner anywhere on the surface" — the framework's own error page carries one; cycle 18's "the only 405 on the surface", which names two subtrees) and **1 inherited §8 bound retired** (the legacy agents, whose sibling half cycle 52 had already retired). Denominators: 289 framework source files and 71 schema tables read out of the image, 130 request families x 3 servers in the JSON scalar-type census (zero differences), 742 media-flag PNGs, 624 substitution regexes, 11 legacy agents x 2 references. **6 existing checks re-measured** where they encoded plexsim's own four-agent catalogue, and **1 check of the cycle's own starved by the suite** and repaired — it keyed on the candidate list's `size` where the measured rule is the AGENT's candidate |
 | 52 | UI **1,785/1,785** with 14 fixture skips; catalog **54/54**; regional prefs **3/3, 1,122/1,122**; decisions **2,340/2,340**; mediainfo **35/35**; GDM **103/103**; prefix **58/58**; part bytes **11/11**; heartbeat **13/13**; account state **15/15**; sessions all pass | 22,208 | **24** in **26 commits**, every one proved fail-then-pass. **2 recorded beliefs overturned** (cycle 29's seven `/:/resources` names; §8's inherited `/:/plugins` bound) and cycle 18's "the only 405 on the surface" widened to two framework subtrees. Denominators: 190 single-segment dispatcher prefixes x 4 hosts, 131 names swept unauthenticated, 70 bundled resources x 3 hosts, 658 route templates x 3 hosts, 39 Categories tiles, 12 framework kwarg cells. **1 check of the cycle's own starved by the suite** and repaired; **1 model fitted and then corrected from the reference's own Python** |
@@ -491,6 +493,11 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **A library's TV Recently Added shelf keeps its top-level show rows** (cycle 50) | It IS the section's mixed roll-up -- zen's `tv.recentlyadded.2` is row for row `/hubs/home/recentlyAdded?type=2&sectionID=2`, show, episode, season, episodes. kids' whole roll-up is its one show, so kids could not tell the two apart | A | cycle 55 |
+| **`popular` lists the seasons with a `viewCount` above zero** (cycle 52) | It ranks seasons by their HISTORY rows (`group by parent_id order by count(*)`); a season an unscrobble stripped of its `viewCount` stays | D | cycle 55 |
+| **Related "is filled by the metadata agent"** (plexsim's own docstring since cycle 4) | The server computes it from tags: first three genres and four roles, two shared, count then release date, cap 200 -- zen's 59 rows exact | C | cycle 55 |
+| **`/hubs/search?sectionId=` refuses `0` and 2147483647** (cycle 54) | It refuses ANY id naming no section; the two were samples of that rule | D | cycle 55 |
+| **The hub-refused keys are refused on `/hubs` and a show library's section page** (cycle 18) | And on `/hubs/promoted` whenever a show library's shelf is in scope | D | cycle 55 |
 | **A negative rating other than -1 clears the stars and KEEPS `lastRatedAt`** (cycle 9) | It STAMPS `lastRatedAt` with the current time -- measured on both copies from a row with no rating at all, where the "kept" value would have been none. Cycle 9 rated the row seconds before, so the old and the new stamp were indistinguishable | A | cycle 54 |
 | **`viewedAt>=abc` is a 400 on the history page** (cycle 14) | The key is `viewedAt>`, which is INCLUSIVE; a raw `>=` in a URL IS that key. The client's own encoding (`viewedAt%3E%3D=`) is the key `viewedAt>=`, which is unknown -- ignored and not validated. plexsim validated and filtered both and read `viewedAt>` as strict | B | cycle 54 |
 | **A NULL date matches NOTHING, on every operator** (cycle 20) | True of every date column EXCEPT the three per-user ones: `lastViewedAt`, `lastRatedAt` and `lastSkippedAt` read an unset value as 0, the `viewCount` family -- zen's `lastRatedAt<<=2020-01-01` is its 3,465 unrated movies. Cycle 20 measured `originallyAvailableAt` and generalised | D | cycle 54 |
@@ -811,8 +818,10 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | Item | Why it is thin | How to settle it |
 |---|---|---|
 | **`viewUpdatedAt`'s stamping rules** | Driven write by write on plexscratch42, which is UNCLAIMED (class E, cycle 49). The column's existence and grammar rest on zen and kids; which rows each write stamps rests on the copy alone, because a read-only reference cannot be written | The same writes on a claimed disposable 1.42.2 server |
-| **The per-library TV shelf's filtered form** | With a filter, `tv.recentlyadded.N` answers the roll-up of the filtered episodes (an EPISODE for `title=Train`) where unfiltered it answers top-level shows (cycle 50). Measured on kids; zen's filtered cells were only empty/non-empty | A zen show whose episodes a filter can split |
-| **`sectionId` on `/hubs/search` refuses `0` and 2147483647 only** | Both references agree on fifteen values and nothing on the surface explains INT_MAX; plexsim transcribes the two values | A reason read out of the binary, or a third value that refuses |
+| **A section's `/onDeck` leaf is ordered by the view-state write time** | Measured on plexscratch42 alone (unclaimed, class E); zen and kids hold no two in-progress rows to show it | Two in-progress rows on a claimed reference, one then rated |
+| **The client-language rule for a separator-led `X-Plex-Language`** | One fitted rule (drop one leading `-`, `_` or space; otherwise English) reproduces all sixteen measured values; nothing on the surface names it | A value outside the sixteen that the rule mispredicts |
+| ~~**The per-library TV shelf's filtered form**~~ | **CLOSED in cycle 55.** The shelf IS the section's roll-up, filtered or not. | — |
+| ~~**`sectionId` on `/hubs/search` refuses `0` and 2147483647 only**~~ | **CLOSED in cycle 55**: any id naming no section refuses | — |
 | **What `unwatched=1` drops from a PARENT row** | On `/library/recentlyAdded` only watched MOVIES were witnessed; a season row there carried no `viewCount` on either reference, so plexsim drops leaf rows only | A season row whose episodes are all watched, on a list that shows it |
 | **`includedAt` is stamped equal to `lastViewedAt`** | Cycle 53 measured the attribute on `/hubs/continueWatching` and its `/items` leaf on both references, and in all five witnesses the two values are EQUAL. Cycle 54 drove `/:/progress` on plexscratch42 twice and both moved to the same second each time. plexsim therefore stamps one from the other. Nothing on any instrument makes a hub's inclusion stamp diverge from the view time, so "they are the same field" and "they happen to agree here" are the same measurement | A row whose Continue Watching membership was changed without a view — a client action no instrument here can drive |
 | ~~**The legacy agents' LOAD ORDER**~~ | **CLOSED in cycle 54.** zen's `Resources/Plug-ins-*` sits on btrfs, whose `ls -U` order is alphabetical, and kids, plexscratch and plexscratch42 are overlayfs with one shared order -- plexscratch42 is the SAME 1.42.2 build as zen and answers kids' order. The swap follows the filesystem's readdir order, not the version; plexsim keeps the docker-install order | — |
@@ -1157,6 +1166,11 @@ RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --asse
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
 `RD_TOKEN` must be set or startup fails.
+
+**Ports (cycle 55).** Hunters on `32587`/`32588` (frozen `158f836`); proofs `32592`/`32593`;
+the implementation agent `32597`/`32598`; serial UI `32595`; live catalog `32596`. All stopped
+and the processes listed. plexscratch42's Firefly carries no net state from the hunts (every
+write undone), except `viewUpdatedAt` stamps, which outlive their undo by measurement.
 
 **Ports (cycle 54).** The hunters had `32587` (A) and `32588` (B) on frozen `f551bf7`; the
 proof driver used `32592`/`32593`, the hunt-A regression cross-check `32594`, the serial UI
@@ -3663,6 +3677,37 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 55 — cycle 54's instruments at full resolution
+
+Cycle 54 sampled both of its new instruments: four values per parameter name, and two findings
+out of 707 SQL statements with no verdict for the rest. Cycle 55 asked whether either axis was
+finished. **Neither was: 37 findings in 37 fix commits**, each proved against its own parent.
+
+* **Territory B (fable) gave every client-reachable SQL read a verdict** -- 366 of 438 re-extracted
+  reads, each identical, a finding or a named bound -- and found eight, making state on
+  plexscratch42 where no read-only reference held it: Related is a server-side tag score (59 of
+  59 zen rows exact), On Deck's next-up anchors on the most recent view, `recentlyViewed` and a
+  section's `/onDeck` order by the view-state write time, `popular` counts history rows, a
+  playlist sums whole seconds, the genre shelf is its key's head, and a season's generated title
+  follows its index.
+* **Territory A (opus) repeated cycle 54's sweep and widened it** to eighteen values per option
+  and eight operators per filter field. Every cycle-54 fix held. Twenty-six rules came out --
+  structural parameters parsed wherever they are read, the `[+-]?digits` integer, the
+  `+?0*[01]` option at every reader, include blocks on every hub's full rows, the filter value
+  grammar, and a dozen endpoint rules.
+* **The implementation of Territory A was delegated** to an opus agent working in the cycle
+  worktree under `sdrive.py`, one commit per finding, with the hunter's `regress55.py` (123
+  checks) as its acceptance test. The driver re-measured a cross-section of fourteen cells before
+  delegating and re-ran every suite afterwards. It found one more rule on its own
+  (`/hubs/promoted` refusing the hub keys when a show library is in scope), which the driver
+  measured and built.
+* **The driver** found, revalidating cycle 54's §3.3 entry, that a library's TV Recently Added
+  shelf IS the section's roll-up -- cycle 50's "top-level shows" was kids' one show.
+
+**One reference crash.** The implementation agent's probe `/library/search?query=the&limit=
+4294967296` took kids' PMS down; it restarted in about five seconds, claimed, with its state
+snapshot byte-identical. §9 records it. **Five beliefs overturned**, two §3.3 entries closed.
+
 ### Cycle 54 — the binary's parameter names, its SQL, and containers made one at a time
 
 Cycle 53 closed by reading what ships beside the binary. Cycle 54 went back into the binary
@@ -4666,6 +4711,19 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 55.**
+
+- **How `/hubs/search?sectionId=` reorders its hubs** for an id naming a section (its own types
+  first, rows unchanged). The refusal is built.
+- **Search `limit` at the int32 boundary**: kids 500s `2147483647` and `9223372036854775807`
+  and answers `2147483648`, and `4294967296` crashed it. Only "outside int64 is a 500" is built.
+- **Which genre the genre shelf picks** (random per request query string); the rows' order is
+  built.
+- **A parent's `lastViewedAt` derived as `max(children)`** when its own state is absent -- state
+  written without the cascade, which this server never has.
+- **1.43.4's refusal of an empty `group=`/`sourceType=` on a hub page**; 1.42.2 drops it and
+  plexsim follows 1.42.2.
+
 **Cycle 54.**
 
 - **The tagging join** (`tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt`). Real query
@@ -5447,6 +5505,12 @@ a plexsim on `catalog.example.json`; `32595`/`32596` plexsims of unverified orig
 
 ---
 
+**Cycle 55: a search `limit` crashed kids.** `/library/search?query=the&limit=4294967296`,
+sent by the implementation agent while settling the limit grammar, dropped kids' PMS; the
+process restarted within about five seconds, `/identity` came back `claimed="1"` and the
+refcheck snapshot was byte-identical. Treat a search `limit` past int32 as crash-shaped on a
+reference, like cycle 45's empty `sort=` on `/library/shared`.
+
 ## 10. Tooling and environment gotchas
 
 **Cycle 45 added these.**
@@ -5890,6 +5954,7 @@ Per-cycle scratch directories are ephemeral. Each holds the hunt prompts, the re
 clients, the patch module, the frozen trees and the suite logs. The transcripts are the
 authoritative record of a hunt's reasoning:
 
+- cycle 55: session scratch `.../scratchpad/c55/`: `A/` (hunt A's sweeps, `regress55.py`, `FINDINGS.md` -- the hunter's report, recovered from its transcript because the harness refused the file), `B/` (hunt B's `REPORT.md`, the numbered SQL reads and every request), `patches55*.py` and `pA/` (the implementation agent's diffs), `impl_A.md` (its brief), `D/notes.md`.
 - cycle 54: session scratch `-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54/`. It holds both PMS binaries and their strings (`pms_kids.bin`, `pms_zen.bin`, `*_strings.txt`), the parameter vocabulary and every sweep file of hunt A (`A/`, including `regress.py`, 53 checks of which 52 pass on the merged tree -- the one left is the bounded tagging join), zen's full TV and movie row dumps used for the fits (`D/zen_tv.json`, `D/zen_movies.json`), the container probe fixtures before they were marked shallow (`D/fixtures/`), the four patch files (`patches54{m,s,t,u}.py`) and the driver's notes (`D/notes.md`). Hunt B's report is in this file's §7 and in `docs/findings.md`; the harness refused its report file. The binaries and tokens are private scratch and never committed.
 - cycles 52–53: session scratch `-Users-bensarmiento-debridmediamanager-plexsim/35af8374-d9d9-4580-b895-2a28f3d0fd9d/scratchpad/{c52,c53}/`, transcript `~/.claude/projects/-Users-bensarmiento-debridmediamanager-plexsim/35af8374-….jsonl`. `c52/` holds the two PMS binaries and their strings (`pms_kids.bin`, `pms_zen.bin`, `kids_strings.txt`, `zen_strings.txt`), the extracted route templates (`kids_routes.txt`), the 146-name single-segment vocabulary (`segs.txt`) and the 658-path route sweep. `c53/` holds a read-only copy of kids' live database and its 71-table schema (`kids_live.db`, `kids_live_schema.sql`), the 130-family JSON scalar census of three servers (`census_{kids,zen,sim}.json`), the media-flag file and geometry listings, and both hunt reports (`huntA.md`, `huntB.md`). The binaries, the database copy and the tokens are private scratch material and must never be committed; what is durable is in the checked-in fixtures (`media_flags.json`, `legacy_agents.json`, `attributions.json`, `plugin_bundles.json`, `plugin_prefs.json`, `resource_assets.json`) and in the rules in this file and `docs/findings.md`.
 - cycles 50–51: `/private/tmp/plexsim-c50.58ZRIO/`. `A/REPORT.md` reconstructs the recovered

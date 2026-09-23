@@ -2887,6 +2887,31 @@ precisely how the Seasons bug survived a fix attempt.
   filters) and `sectionId` (`0` and 2147483647 only) -- and an unknown item id still 404s
   first. **`sectionID` on Recently Added is a number** (`01` is section 1).
 
+- **Related is a TAG SCORE computed by the server**: the item's first three genres and first
+  four roles, a candidate needs two in common, shared-count then release date descending, cap
+  200 -- zen's 59 rows and kids' four lists exactly. It is not agent data.
+- **On Deck's next-up anchors on the MOST RECENTLY VIEWED watched episode** (and the row carries
+  that view's `lastViewedAt`); **`recentlyViewed` and a section's `/onDeck` leaf order by the
+  view-state WRITE time** (`viewUpdatedAt`); **`popular` counts HISTORY rows**, so an unscrobbled
+  season stays; a playlist's `duration` sums whole seconds; the genre shelf is the head of its
+  own key; a season's generated title follows an index edit (`0` is `Specials`).
+- **A library's TV Recently Added shelf IS the section's mixed roll-up** (zen 12 of 12) -- a
+  one-episode show is its episode there. Cycle 50's "top-level shows" was kids' one show.
+- **Structural parameters are parsed wherever they are read**: `sort`, `group`, `sourceType`,
+  `limit`, `index`, `type` refuse on every axis, subset, children list, people list,
+  autocomplete, `/common` and extras listing; `sourceType` other than 1 ORDERS by id. **An
+  integer is `[+-]?digits`** (`+1` and `01` are 1) and every include/async option takes
+  `+?0*[01]`; the include blocks reach every hub's full rows.
+- **Filter values**: `=-1` is "no value" on `rating`, `audienceRating`, `userRating`,
+  `absoluteIndex`, `parent`; a date epoch is a strict int64 with no spaces; a bare `=` on the
+  per-user dates takes an int32 only; `clusterStartsAt` is a date; `decade`/`viewCount`/
+  `viewOffset` are int32. An empty `title=` matches everything, generated titles included.
+- **`/hubs/search?sectionId=` refuses any id naming no section**; `personal=1` empties only the
+  MOVIE Recently Added list; `/hubs/promoted` refuses the fifteen hub keys whenever a show
+  library's shelf is in scope; the `X-Plex-Product` HEADER beats the query for client titles.
+- **`/library/search?limit=4294967296` crashed kids' PMS.** Treat search limits past int32 as
+  crash-shaped on a reference, like `/library/shared/all?sort=`.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

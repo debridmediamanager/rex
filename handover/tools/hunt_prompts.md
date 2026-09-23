@@ -3271,3 +3271,278 @@ the tagging join (bounded: hidden tagType 318 taggings). Territory B: 707 statem
 reads, two findings (`viewUpdatedAt`, the episode leaf counts) and the tagging-created bound.
 The driver's container probes added three findings and its re-measurements five more. 22 in
 22 commits; four recorded beliefs overturned; two §3.3 entries closed. ====
+
+
+==== Cycle 55 (2026-09-23). Frozen commit `158f836` on 32587 (A, opus) and 32588 (B, fable);
+the preamble is cycle 54's with the cycle, commit, paths and an already-fixed paragraph updated.
+Then an IMPLEMENTATION brief (impl_A.md) was given to a third agent to build Territory A's
+findings in the worktree under sdrive. All three follow. ====
+
+# Cycle 55 | shared preamble (both hunters)
+
+You are hunting for UNIMPLEMENTED or WRONGLY-IMPLEMENTED server behaviour in plexsim, a Plex Media
+Server emulator at `/Users/bensarmiento/debridmediamanager/plexsim`. This is **cycle 55** of a hunt
+that stops only when a cycle reports no findings. "no findings" is a valid, useful result — do not
+manufacture findings, and never report a difference you have not measured yourself.
+
+Read `CLAUDE.md` first (its one rule: **every emulated response is a measurement, not a guess**).
+Then skim `HANDOVER.md` §3.1 (the seven ways a measurement goes wrong), §3.3, §8 (measured and
+deliberately NOT implemented — do not re-report those) and §7's cycles 52 and 53. `CLAUDE.md`'s
+"Traps" bullets and `docs/findings.md` are the **already-fixed list**: search both (with python, not
+grep — see below) before reporting anything. Verify against the CURRENT plexsim, not the docs.
+
+## What cycle 54 did (already fixed -- read HANDOVER §7 "Cycle 54" and the fifty-fourth pass in docs/findings.md)
+
+Cycle 54 read the binary's query-parameter names and SQL and fixed 22 findings: six media
+filter columns, eighteen tag-table fields, the cluster columns and `trash`, `viewUpdatedAt`,
+the per-user null-as-zero dates, three date-typed columns, the negative-rating stamp, the
+episode leaf-count rule, the listing query on children/grandchildren/unwatched/
+recentlyViewedShows/media axes/autocomplete/common, the TV Recently Added shelves filtering
+episodes before the roll-up, a hub page dropping empty pairs, `/hubs/items` scoping,
+`unwatched=1` on three lists, the Dashboard's `viewedAt>`/`viewedAt<`/`viewedAt` keys, thirteen
+parameter refusals, `sectionID` as a number, the part Content-Type table, `.mov`, and
+`packetLength`. The tagging join (`tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt`) is a
+recorded bound. Do not re-report any of it unless the CURRENT frozen tree gets it wrong.
+
+## The instruments this cycle builds on
+
+Cycle 52 read PMS's **route table** out of the server binary; cycle 53 read the plug-in framework's
+Python source and the database template's schema. Both references' server binaries are already
+copied to the cycle scratch, with their strings extracted:
+
+- `$C54/pms_kids.bin` + `$C54/kids_strings.txt` — Plex 1.43.4 (kids)
+- `$C54/pms_zen.bin` + `$C54/zen_strings.txt` — Plex 1.42.2 (zen — **the build plexsim reports**)
+- `$C54/param_like.txt` — 412 names that appear in the kids strings followed by `=` (a first cut)
+- `$C54/camel.txt` — 8,374 camelCase identifiers in the kids strings (a first cut)
+
+where `C54=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54` holds the binaries and every cycle-54 sweep artifact (`$C54/A/` is hunt A's whole sweep: `vocab.json`, `sweep.py`, `fam.py`, `bis.py`, `regress.py`, the jsonl results). Your own directory is `C=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c55`, and the tokens file is `$C/tokens.env`.
+Those files are private scratch material. Never copy them, or any part of the binary, into the repo.
+
+## Instruments
+
+- **Tokens:** `set -a; . $C/tokens.env; set +a` in each Bash call that needs them. It exports
+  `PLEXLAB_TOKEN` (kids), `ZEN_TOKEN` (zen), `SCRATCH_TOKEN` (plexscratch) and `S42_TOKEN`
+  (plexscratch42). **Never print a token**, never write one into any file under the repo, never
+  put one in your report — say `$PLEXLAB_TOKEN`.
+- **kids** — `http://100.85.222.1:32400`, Plex **1.43.4**, the shape authority. **GET and HEAD only.**
+  Section 1 "Movies": ratingKeys 1, 18, 17, 3, 4. Section 2 "TV Shows": Firefly 6; season 7
+  (episodes 8–10), season 11 (episodes 12–14, unmatched). Download queue 1 exists; leave it.
+- **zen** — `http://zen:32400`, Plex **1.42.2**, production, the version oracle and the only real
+  library (3,887 movies in section 1, shows in 2, "Bench TV" 4). **GET and HEAD only, ever, and
+  always send `X-Plex-Container-Start: 0` / `X-Plex-Container-Size: 20` headers on listings.**
+- **plexscratch** — `http://100.85.222.1:32410`, 1.43.4, UNCLAIMED disposable copy of kids. Writes
+  allowed. Token `$SCRATCH_TOKEN` (it changes if the copy restarts: re-read with
+  `ssh ben@kids /home/ben/plexscratch/scratch.sh token | tail -1`). Do not `reset` it without saying so.
+- **plexscratch42** — `http://100.85.222.1:32411`, fresh **1.42.2** install, UNCLAIMED, every item
+  unmatched. Writes allowed. Grammar only, never a count. Token `$S42_TOKEN`.
+- **A difference only an unclaimed copy shows may be the CLAIM (class E)** — check a claimed server.
+- **plexsim under test** — a FROZEN export of `main` at `158f836` (cycle 54 merged), at the port your territory names,
+  on `tests/catalog_ui.json`, no token gate. Movies 1007 (Tears of Steel), 1008, 1009; show 20001;
+  seasons 30001, 30002; episodes 1001–1003; sections 1 movie and 2 show. Writing to it is fine; to
+  restart it, kill ONLY the listener on your own port and start
+  `cd $C/head55 && RD_TOKEN=dummy python3 server.py --port <PORT> --catalog tests/catalog_ui.json --assert-claimed`
+  detached (Python `subprocess.Popen(..., start_new_session=True)`; `nohup … &` dies with the call).
+  Do not touch any other port: 32400, 32410, 32411, 32502, 8787, and the other hunter's port.
+- **Tools** in `handover/tools/` (read before use): `probe.py` holds the `WRITE_GET` guard regex;
+  `cmp.py`, `xdiff.py`, `fsweep.py`, `hsweep.py`, `envelope.py` are earlier sweep drivers. Write
+  your own scripts and all outputs under your territory directory `$C/<A|B>/`, never in the repo.
+  **`grep` in this shell is aliased through a filter that can mangle or truncate output**: use
+  `rtk proxy grep` or python for searching. Set `User-Agent: curl/8` on every request.
+- **Do not modify plexsim's tracked files, and do not commit anything.** You are measuring.
+
+## SAFETY — the references are shared, and hunts have damaged them before
+
+Cycle 4 deleted kids' Movies library; cycle 5 re-matched a show; cycle 6 left an undeletable
+download queue; cycle 45 minted orphan rows with a GET. So:
+
+1. **kids and zen: GET and HEAD only**, through a guard in YOUR client that refuses any other
+   method to those hosts and refuses every path matching `probe.py`'s `WRITE_GET` regex, plus:
+   `/library/metadata/*/theme/*/metadata` (a GET that MINTS a row), `/library/shared/*?sort=` with
+   an empty value (crashes a real PMS), anything under `/:/websockets`, `/:/eventsource`, any part/
+   media byte read or transcode, any artwork `?url=` setter, anything that leaves the host. Never
+   open a notification channel on kids or zen. Nothing under plex.tv.
+2. **Writes go to plexscratch, plexscratch42 or your own plexsim only.** Before any write, write
+   down the request and its undo. Never send `DELETE /library/sections/*`, merge/split/match/
+   unmatch on a whole library, maintenance endpoints, network/auth/claim prefs, `scratch.sh make`,
+   or anything that changes a compose file, mount or permission. Put that guard in your harness,
+   not only in your head: a sentence in a prompt has failed twice.
+3. Before your first request and after your last, run
+   `set -a; . $C/tokens.env; set +a; cd /Users/bensarmiento/debridmediamanager/plexsim/handover/tools && python3 refcheck7.py ref_cycle5_before.json`
+   and compare the two outputs; they must be identical. Report the result.
+4. zen is production with a real library: keep your request rate modest (a few per second at most)
+   and page every listing.
+
+## What counts as a finding
+
+A rule is a finding when a real PMS (zen for 1.42.2, backed by kids unless the difference is a
+version split) answers a request one way and the frozen plexsim answers it differently, and the
+difference is not catalog content. **A field only 1.43.4 sends is not a finding** (plexsim reports
+1.42.2) — but a 1.42.2 behaviour plexsim lacks IS, even when kids lacks it too. A difference
+explained by claim state, by catalog content (titles, counts, ids, dates, artwork URLs) or by an
+entry in HANDOVER §8 is not a finding. Re-issue every candidate by hand on each server before you
+report it.
+
+## Report format
+
+Write the report to `$C/<A|B>/REPORT.md` and return it as your final message. Most important
+first. For each finding: the exact request(s); zen's and kids' verbatim responses (trimmed but
+real); plexsim's verbatim response; the client impact (what breaks, for whom); and the minimal
+regression check that would fail on the frozen tree. Then the DENOMINATOR: how many names/requests
+/cells you swept and how each was partitioned — (a) identical, (b) catalog content / version / claim,
+(c) already recorded, (d) real behavioural difference (the findings), (e) explicit bound (write,
+private, unsafe, instrument limit). **If (d) is empty, say exactly "no findings"** and list what
+you compared. End with the snapshot comparison result.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c55/preamble.md` first and follow it. Your territory, port and directory:
+
+# Cycle 55 | Territory A | the parameter vocabulary, repeated and widened | frozen plexsim 32587 | `$C/A/`
+
+**The axis.** Cycle 54's hunt A swept 903 binary-derived parameter names over 92 safe families
+at FOUR values each (`1`, `0`, `abc`, a ratingKey) and found nine families of movers. Four
+values is a sample: a name that only moves at `-1`, `01`, an empty value, `1.5`, 2147483648 or
+a relative date, or only under an operator other than `=`, was invisible to it. This cycle is
+the repeat that decides whether that axis is finished.
+
+**What to do.**
+
+1. **Repeat cycle 54's sweep against the new head.** Reuse `$C54/A/` (`vocab.json`,
+   `sweep.py`, `fam.py`, `bis.py`) -- read them first -- against zen and the frozen plexsim at
+   `http://127.0.0.1:32587`. Every cycle-54 mover must now match; any that does not is a
+   finding (a fix that regressed or was incomplete). Report the cell count.
+2. **Widen the VALUE axis.** For every name that moved ANY reference family in cycle 54's
+   sweep or in yours, and for every parameter plexsim now parses, run the full grid -- `1`,
+   `-1`, `+1` (sent as `%2B1`), `01`, `0`, `1.5`, empty, `abc`, `2147483647`, `2147483648`,
+   `-2147483649`, `9223372036854775808`, a leading and a trailing space (`%201`, `1%20`),
+   `0x1`, `-5y`, `2020-01-01` -- on every family where it moves, on zen, kids and plexsim.
+3. **Widen the OPERATOR axis** for every FILTER field (the listing grammar: `=`, `!=`, `==`,
+   `!==`, `<=`, `<<=`, `>=`, `>>=`, each sent in the client's encoding -- `%3E%3E=` is the key
+   `field>>`), on the section grid of both library types and at `type=1/2/3/4`, for the names
+   cycle 54 added (the six media columns, the eighteen tag fields, cluster, trash,
+   `viewUpdatedAt`, `lastSkippedAt`, `beginsAt`, `endsAt`) and for the null-as-zero dates.
+4. **Triage** every difference as the preamble says, re-issued by hand on each server.
+
+Report the three denominators (repeat cells, value-grid cells, operator-grid cells), the
+partition, and every finding with its fail-on-parent regression.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c55/preamble.md` first and follow it. Your territory, port and directory:
+
+# Cycle 55 | Territory B | every client-reachable SQL read, one verdict each | frozen plexsim 32588 | `$C/B/`
+
+**The axis.** Cycle 54's Territory B extracted 707 SQL statements from the zen binary (374
+reads), classified about 55 as client-reachable, and reported two findings. It did not give a
+verdict per statement. This cycle closes that denominator: **every client-reachable read gets
+an explicit verdict** -- identical, finding, or bound -- with the request that decides it.
+
+**What to do.**
+
+1. Re-extract the statements from `$C54/zen_strings.txt` and `$C54/kids_strings.txt` (read
+   them; do not trust a count), and list every read a client GET can reach: listings and
+   their clauses, every section hub and Home hub the binary selects rows for (zen answers 101
+   distinct `hubIdentifier`s -- enumerate them from zen's own `/hubs`, `/hubs/promoted` and
+   `/hubs/sections/{1,2,4}`), subsets, On Deck / Continue Watching / Up Next, related and
+   similar, statistics and history rollups, leaf counts, search.
+2. For each, state the rule the SQL encodes -- membership (which rows), order (every sort
+   key and tiebreak), cap, window, and aggregation -- and a request that discriminates it.
+3. Where the rule depends on STATE neither read-only reference holds (a watched episode, an
+   in-progress offset, a rating, a recently viewed show), MAKE that state on plexscratch42
+   (1.42.2) with a written undo, and make the analogous state on your own plexsim. Remember
+   plexscratch42 is UNCLAIMED (class E): a rule only it shows must say so.
+4. Hold plexsim's implementation against each rule and report every disagreement. Where the
+   rows cannot be compared because the libraries differ, compare the RULE: construct inputs on
+   both sides that the rule decides.
+
+Report a table with one row per client-reachable read: the statement (abbreviated), the rule,
+the deciding request, the zen/kids/copy result, plexsim's result, and the verdict. Then the
+findings. "no findings" only if every row is identical or an explicit bound.
+# Cycle 55 | implement Territory A's findings in the cycle worktree
+
+You are implementing measured findings in plexsim, a Plex Media Server emulator. Read
+`/Users/bensarmiento/debridmediamanager/plexsim/CLAUDE.md` first (the one rule: every emulated
+response is a measurement). You are NOT measuring references -- the findings below were
+measured on zen (1.42.2) and kids (1.43.4) and re-measured by the driver. Do not contact kids,
+zen, fun or the plexscratch copies at all, except that you MAY send GET/HEAD to zen/kids through
+`$C/D/g.py` (read its guard) if a detail of a rule is ambiguous, paging every zen listing.
+
+`C=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c55`
+
+## Where to work
+
+- The worktree is `$C/wt55` on branch `cycle55`. It already carries nine cycle-55 commits.
+  Work ONLY there. Never touch `/Users/bensarmiento/debridmediamanager/plexsim` (the shared
+  checkout holds the user's own uncommitted edit). Do not push, do not merge, do not edit
+  `HANDOVER.md`, `CLAUDE.md`, `docs/findings.md` or `handover/tools/hunt_prompts.md` -- the driver
+  documents the cycle.
+- `grep` in this shell is aliased through a filter that mangles output: use `rtk proxy grep` or
+  python.
+- Ports: you may use 32592 and 32593 (sdrive's defaults) and 32597/32598. Leave every other
+  port alone (32599 is reserved for the suite's own
+  gate checks).
+
+## The findings
+
+The full report, with every measured cell, is `$C/A/FINDINGS.md`. The acceptance test is
+`$C/A/regress55.py BASE` (123 checks; on the frozen tree 117 fail and 6 pass as controls). Read
+both before writing code. Group the work into ATOMIC commits, one per finding (F1..F24 as
+numbered in the report; F25/F26 are part of F1). Where a finding spans many readers, one
+commit may cover the finding across all its readers.
+
+**Findings the driver has decided NOT to build** (record nothing, just skip):
+- The rows `/hubs/search?sectionId=` REORDERS by type (F13's second half) -- only the refusal
+  is built.
+- F24 (`X-Plex-Language` with a leading separator) -- build only if a single rule reproduces
+  the whole measured table in the report; otherwise skip it and say so.
+- The tagging join (`tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt`) stays a bound
+  entirely -- its refusal and its match -- so `regress.py`'s `tagType=abc` check stays failing.
+
+## How to commit each one: fail-then-pass, against its own parent
+
+Use `handover/tools/sdrive.py` (read it): write a patches file `$C/patches55a.py` in the same
+shape as `$C/patches55.py` (read it -- `PATCHES = {name: {"apply", "block", "message"}}`, and
+`add_block` inserts the check right before the `Delete Version` check in
+`tests/test_ui_surface.py`). Each block is a suite check using the suite's own helpers (`get`,
+`request`, `check`, `quote`) and the names runblock provides (`base`, `movie`, `spare`, `show`,
+`movie_section`, `show_section`, `machine`); suffix every variable with a unique `_c55x` tag.
+Run:
+
+    WT=$C/wt55 WORK=$C python3 /Users/bensarmiento/debridmediamanager/plexsim/handover/tools/sdrive.py $C/patches55a.py NAME [NAME...]
+
+It commits only on fail-then-pass (verdicts [False, True]) as Ben Adrian Sarmiento
+<me@bensarmiento.com> with the patch's message. Messages are semantic, single-line, lower case
+after the prefix (`fix: parse sort and group on every axis`), no attribution lines. If a patch
+does not prove out, sdrive leaves it uncommitted: fix it, `git -C $C/wt55 checkout -- .`, rerun.
+
+A check must survive the END of the suite (other checks edit, merge and delete fixture rows
+before the anchor): count rows live, make the state you need, restore it.
+
+## Code conventions
+
+- Comments explain WHAT WAS MEASURED and why the obvious thing is wrong, in the file's own
+  voice (read the neighbouring comments); cite "Cycle 55" and the reference counts.
+- Stdlib only on the server path. Reuse the helpers already there: `_int_param(value, bits)`,
+  `_float_param`, `_bool_option` (the `+?0*[01]` grammar), `_history_time_filter`,
+  `filters_module.as_epoch`, `apply_filters`, `_sorted`. Prefer ONE shared parser over 28
+  copies of `.lstrip("-").isdigit()` when fixing F3 -- but change behaviour only where the
+  report measured it.
+- A refusal a real PMS answers is `("error", status, "plexsim: ...")`; a `FilterError(status,
+  detail)` raised inside the listing engine is turned into that status by the dispatcher.
+
+## When you are done
+
+1. Run `python3 $C/A/regress55.py http://127.0.0.1:32598` against a FRESH server of the final
+   tree (`cd $C/wt55 && RD_TOKEN=dummy python3 server.py --port 32598 --catalog
+   tests/catalog_ui.json --assert-claimed`, started detached with `subprocess.Popen(...,
+   start_new_session=True)`), and report which checks still fail and why (deliberate skips
+   must be explained).
+2. Run the offline suites: `for t in test_decision test_mediainfo test_catalog_features
+   test_gdm test_heartbeat test_accountstate test_sessions test_part_bytes test_prefix_registry
+   test_regional_prefs; do python3 tests/$t.py | tail -1; done` from `$C/wt55`.
+3. Stop every server you started (kill by the pids you started; then list `pgrep -af
+   "server.py --port"` and confirm none of yours remain).
+4. Your final message: the list of commits (hash + message + which finding), what you skipped
+   and why, the regress55 result, the offline-suite results, and any rule you had to decide
+   that the report did not settle.
+
+
+==== Cycle 55 result. Territory A: every cycle-54 fix held on the repeat; 26 rules from the
+value and operator grids, built as 27 commits by the implementation agent (regress55 123/123).
+Territory B: 366 SQL reads with a verdict each, eight findings, all built. The driver: the
+per-library TV shelf is the section's roll-up; the implementation pass: `/hubs/promoted`
+refuses the hub keys with a show library in scope. 37 findings in 37 fix commits. ====
