@@ -7030,6 +7030,16 @@ class PlexSim:
                 rows.append(self._with_included_at(entry))
             return self.hub_container(size=len(rows), Metadata=rows)
         if route == "/hubs/promoted":
+            # Cycle 55, measured on zen and kids: the fifteen hub-refused keys are a 500 here
+            # whenever a SHOW library's shelf is in scope -- unscoped, or `contentDirectoryID`
+            # naming a show library -- and a 200 when only a movie library is.
+            wanted = self.content_directories(query)
+            if any(section.get("type") == "show"
+                   and (wanted is None or str(section["key"]) in wanted)
+                   for section in self.catalog.sections):
+                refusal = hub_refusal(query)
+                if refusal:
+                    return refusal
             return self.promoted_hubs(query)
         if route.startswith("/hubs/home"):
             if route == "/hubs/home/continueWatching":
