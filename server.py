@@ -7127,7 +7127,18 @@ class PlexSim:
             if "metadataItemId" in query:
                 # Measured on both servers: naming an item -- even with an empty id --
                 # is a 400 on a read.
-                return ("error", 400, "plexsim: bad request")
+                # Cycle 55 refined it on zen and kids: the id is a signed 32-bit integer
+                # and there are THREE answers. `-1` (and `-01`) is the bare hub list, a
+                # number naming NO item (`0`, `-2`, `999999`, `+999999`) is an EMPTY 200,
+                # and an item the server holds -- in any library -- is the 400, as are an
+                # empty value, a word, `1.5`, ` 1` and `2147483648`.
+                raw_item = str(query.get("metadataItemId") or "")
+                if not _int_param(raw_item):
+                    return ("error", 400, "plexsim: bad request")
+                if int(raw_item) != -1:
+                    if catalog.items.get(int(raw_item)) is not None:
+                        return ("error", 400, "plexsim: bad request")
+                    return self.bare_container(size=0)
             kind = "show" if section.get("type") == "show" else "movie"
             rows = [{"identifier": identifier, "title": title,
                      "recommendationsVisibility": "all",
