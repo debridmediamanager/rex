@@ -31426,6 +31426,46 @@ def main():
         skip("a section's Continue Watching lists a next-up only after a real play",
              "need three episodes")
 
+    I_c57g = "identifier=com.plexapp.plugins.library"
+    leaves_c57g = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+    keys_c57g = [str(r.get("ratingKey")) for r in leaves_c57g]
+    watched_c57g = [k for k, r in zip(keys_c57g, leaves_c57g) if r.get("viewCount")]
+    def pristine_c57g():
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (show, I_c57g))
+        # A progress write under a minute stores nothing and un-hides the show's row.
+        request(base, "GET", "/:/progress?key=%s&%s&time=1000" % (keys_c57g[0], I_c57g))
+    def restore_c57g():
+        pristine_c57g()
+        for key_c57g in watched_c57g:
+            request(base, "GET", "/:/scrobble?key=%s&%s" % (key_c57g, I_c57g))
+    # Cycle 57, measured on kids (1.43.4, Firefly with nothing watched), on zen (19 of its
+    # first 20 shows, with no view state at all) and on both writable copies: a PRISTINE
+    # show carries an inline `OnDeck` -- the first episode the library holds -- and so does
+    # the season that owns it, while every other season omits the block. Cycle 41's "a
+    # pristine unwatched show omits it" is refuted; plexsim drew no Play target for every
+    # untouched show, and python-plexapi's `Show.onDeck()` answered None.
+    def deck_c57g(key_c57g):
+        row_c57g = (get(base, "/library/metadata/%s?includeOnDeck=1" % key_c57g)[1]
+                    .get("Metadata") or [{}])[0]
+        return str(((row_c57g.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey")
+                   or "") or None
+    if len(keys_c57g) >= 2:
+        seasons_c57g = [str(r.get("parentRatingKey")) for r in leaves_c57g]
+        other_c57g = next((s for s in seasons_c57g if s != seasons_c57g[0]), None)
+        pristine_c57g()
+        cells_c57g = [deck_c57g(show), deck_c57g(seasons_c57g[0]),
+                      deck_c57g(other_c57g) if other_c57g else None]
+        request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c57g[0], I_c57g))
+        request(base, "GET", "/:/unscrobble?key=%s&%s" % (keys_c57g[0], I_c57g))
+        cells_c57g.append(deck_c57g(show))
+        restore_c57g()
+        check("a pristine show carries its first episode as OnDeck",
+              cells_c57g == [keys_c57g[0], keys_c57g[0], None, keys_c57g[0]],
+              "show, owning season, other season, after an unscrobble: %s (first %s)"
+              % (cells_c57g, keys_c57g[0]))
+    else:
+        skip("a pristine show carries its first episode as OnDeck", "need two episodes")
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

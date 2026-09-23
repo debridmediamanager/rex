@@ -4302,6 +4302,23 @@ class PlexSim:
                          if candidate.get("type") == "episode"
                          and str(candidate.get("grandparentRatingKey")) == str(show_key)),
                         None)
+            if pick is None:
+                # Cycle 57, measured on kids (1.43.4, Firefly: no leaf carries viewCount,
+                # viewOffset or lastViewedAt), on zen (1.42.2: 19 of its first 20 shows,
+                # every one with no view state) and on both writable copies: a PRISTINE
+                # show carries the first episode the library holds -- kids' show 6 and
+                # season 7 carry episode 8, zen's 5189 carries 5191 and 6558 its S8 E12 --
+                # and only the season owning it does. Cycle 41 recorded the opposite.
+                # Only a show with NO view state is measured, so a show whose watched
+                # episodes leave no next-up still omits it. Specials sort last: a
+                # choice, since no witness held a season 0.
+                leaves = [leaf for leaf in self.catalog.leaves(show_key)
+                          if leaf.get("type") == "episode"]
+                if leaves and not any(leaf.get("viewCount") or leaf.get("viewOffset")
+                                      for leaf in leaves):
+                    pick = min(leaves, key=lambda leaf: (
+                        (leaf.get("parentIndex") or 0) == 0,
+                        leaf.get("parentIndex") or 0, leaf.get("index") or 0))
             if (pick is not None and row.get("type") == "season"
                     and str(pick.get("parentRatingKey")) != str(row.get("ratingKey"))):
                 pick = None
