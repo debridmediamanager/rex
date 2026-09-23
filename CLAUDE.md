@@ -2943,6 +2943,11 @@ precisely how the Seasons bug survived a fix attempt.
 - **Statistics buckets are CALENDAR buckets in local time**: a day at local midnight, a week on
   a Monday, a month on the 1st, a year on January 1st (zen UTC, kids Europe/Berlin). Flooring
   the epoch to fixed widths put every week on a Thursday. See `sessions.bucket_start`.
+- **Edit Library > Visibility (`hidden`) is a real filter.** At 1 the library leaves every Home
+  shelf, `/hubs/continueWatching`, `/library/recentlyAdded` and `/library/onDeck`; `/hubs`
+  keeps its shelf EMPTY and `/hubs/promoted` drops that library's shelf outright; its own page,
+  section hubs and On Deck are unchanged. At 2 it also leaves `/hubs/search` and
+  `/library/search`, and a search scoped to it is a 404. The `/library/sections` row reports it.
 
 - **A sub-minute beat deletes the resume point only inside a session that has passed the
   minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped
