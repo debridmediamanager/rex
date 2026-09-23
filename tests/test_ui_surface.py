@@ -17341,14 +17341,29 @@ def main():
                       get(base, "/library/sections/%s/all?type=4&%s"
                           % (show_section, spec_c20s))[1].get("Metadata") or [])
 
+    # Cycle 56 re-measured the null half on plexscratch42 with known provenance: ANY
+    # per-user write creates the settings record with both counters 0, so the "below
+    # every value" reading belongs only to rows NEVER written -- which by this point in the
+    # suite are few, since a show-level unscrobble writes every episode. A row's record is
+    # readable through `viewUpdatedAt` (every write stamps it) and its own state fields.
+    written_c20s = set(keys_c20s("viewUpdatedAt%3E%3E=0"))
+    def has_record_c20s(r_c20s):
+        return (str(r_c20s.get("ratingKey")) in written_c20s
+                or any(r_c20s.get(name) for name in ("viewCount", "viewOffset", "lastViewedAt",
+                                                     "userRating", "lastRatedAt", "skipCount")))
+    unwritten_c20s = sorted(str(r_c20s.get("ratingKey")) for r_c20s in leaves_c20s
+                            if not has_record_c20s(r_c20s))
+    zero_skip_c20s = sorted(str(r_c20s.get("ratingKey")) for r_c20s in leaves_c20s
+                            if has_record_c20s(r_c20s) and not r_c20s.get("skipCount"))
+
     check("viewCount and viewOffset read a missing value as below every value",
           bool(leaves_c20s)
           and keys_c20s("viewCount=0") == never_c20s
-          and keys_c20s("viewCount%3C%3C=0") == never_c20s
+          and keys_c20s("viewCount%3C%3C=0") == unwritten_c20s
           and keys_c20s("viewCount%21=0") == played_c20s
           and keys_c20s("viewOffset=0") == no_offset_c20s
           and keys_c20s("viewOffset%3C=0") == no_offset_c20s
-          and keys_c20s("skipCount=0") == [],
+          and keys_c20s("skipCount=0") == zero_skip_c20s,
           "never=%s played=%s | =0 %s <<=0 %s !=0 %s | skipCount=0 %s"
           % (never_c20s, played_c20s, keys_c20s("viewCount=0"),
              keys_c20s("viewCount%3C%3C=0"), keys_c20s("viewCount%21=0"),
