@@ -2751,7 +2751,19 @@ def request_language(query, headers):
                 # A malformed header falls back to English rather than to the next
                 # source: `de;q=abc` is not "no Accept-Language".
                 return None
-    normalized = str(wanted or "").replace("_", "-").lower()
+    text = str(wanted or "")
+    if text and not text[0].isalnum():
+        # Cycle 55, measured on zen and kids on `/system/agents?mediaType=1` and on a
+        # stream's language name: a value LED by a separator is not "no language". One
+        # leading `-`, `_` or space is dropped and the rest read as usual -- `-de`, `_de`
+        # and `-de-` are German, ` fr` French, `-pt-BR` Portuguese -- and anything that
+        # then names no language, or is led by another character, is ENGLISH: `-`, `-1`,
+        # `-xx`, `--de`, `-zz-de` and `.fr`. A bare unknown value (`xx`) keeps the
+        # no-language default. plexsim read every separator-led value as that default.
+        rest = text[1:] if text[0] in "-_ " else ""
+        primary = rest.replace("_", "-").lower().split("-")[0]
+        return primary if primary in TRANSLATED_LANGUAGES else "en"
+    normalized = text.replace("_", "-").lower()
     # Cycle 50 refuted the blanket primary-subtag rule for X-Plex-Language.
     # Both supported PMS versions route Traditional-Chinese regional tags to the
     # English catalogue, while bare `zh` and `zh-CN` select Simplified Chinese.

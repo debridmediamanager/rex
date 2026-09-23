@@ -30999,6 +30999,28 @@ def main():
           and empty_c55f23[1].get("size") == 0 and missing_c55f23 == 400,
           "empty %s, missing %s" % (empty_c55f23[0], missing_c55f23))
 
+    # Cycle 55, measured on zen and kids on `/system/agents?mediaType=1`: a value led by a
+    # separator is not "no language" -- `-de` is German and `-1`, `-xx` and `.fr` are
+    # English, where a bare `xx` keeps the no-language default. plexsim answered that
+    # default to every separator-led value.
+    def langs_c55f24(value):
+        doc_c55f24 = get(base, "/system/agents?mediaType=1&X-Plex-Language=" + value)[1]
+        for agent_c55f24 in doc_c55f24.get("Agent") or []:
+            if agent_c55f24.get("identifier") == "tv.plex.agents.movie":
+                rows_c55f24 = agent_c55f24.get("Language")
+                rows_c55f24 = rows_c55f24 if isinstance(rows_c55f24, list) else [rows_c55f24]
+                return [r.get("title") for r in rows_c55f24 if r]
+        return None
+    german_c55f24, english_c55f24, default_c55f24 = (langs_c55f24("de"), langs_c55f24("en"),
+                                                     langs_c55f24(""))
+    check("A separator-led X-Plex-Language is a language or English",
+          german_c55f24 != english_c55f24 and english_c55f24 != default_c55f24
+          and langs_c55f24("-de") == german_c55f24 and langs_c55f24("-1") == english_c55f24
+          and langs_c55f24(".fr") == english_c55f24 and langs_c55f24("xx") == default_c55f24,
+          "-de %s, -1 %s, .fr %s" % (langs_c55f24("-de") == german_c55f24,
+                                     langs_c55f24("-1") == english_c55f24,
+                                     langs_c55f24(".fr") == english_c55f24))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
