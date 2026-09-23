@@ -30825,6 +30825,17 @@ def main():
         "?clusterStartsAt=-5y", "?clusterStartsAt=2020-01-01", "?clusterStartsAt=1.5")]
     check("clusterStartsAt is a date column", got_c55f10 == [200, 200, 500], "%s" % got_c55f10)
 
+    # Cycle 55, measured on zen and kids: `decade`, `viewCount` and `viewOffset` take a
+    # strict signed 32-bit integer -- `decade=1.5`, `decade=2147483648`,
+    # `viewCount=2147483648` and `viewOffset= 1` are 500s -- where `decade=+1990` is
+    # 1990. plexsim answered 200 to all four.
+    grid_c55f11 = "/library/sections/%s/all" % movie_section
+    got_c55f11 = [get(base, grid_c55f11 + q)[0] for q in (
+        "?decade=1.5", "?decade=2147483648", "?viewCount=2147483648", "?viewOffset=%201",
+        "?decade=%2B1990", "?viewCount=0")]
+    check("decade, viewCount and viewOffset are strict int32",
+          got_c55f11 == [500, 500, 500, 500, 200, 200], "%s" % got_c55f11)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
