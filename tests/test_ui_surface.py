@@ -32357,6 +32357,25 @@ def main():
           created_c60a == (True, False) and added_c60a and kept_c60a == (True, True),
           str((created_c60a, added_c60a, kept_c60a)))
 
+    # Cycle 60, measured on plexscratch42 (1.42.2): with a theme and a logo UPLOADED,
+    # `DELETE /library/metadata/{id}/theme` and `/clearLogo` stay 404s and the theme stays --
+    # 1.42.2 has no artwork DELETE leaf at all (cycle 31). Cycle 59's upload store answered
+    # those DELETEs 200 with the file's own bytes, so python-plexapi's `deleteTheme()` raised
+    # a ParseError where a real server raises NotFound.
+    _, grid_c60b, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rk_c60b = ((grid_c60b.get("Metadata") or [{}])[-1]).get("ratingKey")
+    mp3_c60b = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\xff\xfb\x90\x00" * 32
+    png_c60b = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+                                "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    request(base, "POST", "/library/metadata/%s/themes" % rk_c60b, body=mp3_c60b)
+    request(base, "POST", "/library/metadata/%s/clearLogos" % rk_c60b, body=png_c60b)
+    theme_c60b = request(base, "DELETE", "/library/metadata/%s/theme" % rk_c60b, want_json=False)[0]
+    logo_c60b = request(base, "DELETE", "/library/metadata/%s/clearLogo" % rk_c60b, want_json=False)[0]
+    _, after_c60b, _ = get(base, "/library/metadata/%s" % rk_c60b)
+    kept_c60b = ((after_c60b.get("Metadata") or [{}])[0]).get("theme")
+    check("an uploaded theme or logo is not deleted by a DELETE, which stays a 404",
+          theme_c60b == 404 and logo_c60b == 404 and kept_c60b, str((theme_c60b, logo_c60b, kept_c60b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

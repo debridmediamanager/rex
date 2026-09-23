@@ -13363,7 +13363,10 @@ class PlexSim:
             # No theme audio of plexsim's own; an UPLOADED theme or logo is served from
             # the row that owns it (cycle 59), and anything else is the 404 it was.
             owned = row.get("_clearLogo") if leaf == "clearLogo" else self._owns(row, "theme")
-            if owned and row.get("_%s_url" % leaf) in self.uploads:
+            # Cycle 60, measured on plexscratch42: only a READ serves it. A DELETE stays the
+            # 404 1.42.2 answers every artwork DELETE leaf, upload or none.
+            if owned and row.get("_%s_url" % leaf) in self.uploads \
+                    and method in ("GET", "HEAD"):
                 return ("image", row["_%s_url" % leaf])
             return ("error", 404, "plexsim: no %s" % leaf)
         if leaf in ("thumb", "art", "poster"):
