@@ -1150,12 +1150,14 @@ def source_order(value):
     """The Order block a `sourceType=` value implies. Raises for one that cannot parse."""
     if value is None:
         return None
-    try:
-        number = int(str(value).strip())
-    except ValueError:
-        # Measured: an empty value, `1.5` and `abc` are each a 500, on a listing and
-        # at /query/parse alike.
+    # Measured: an empty value, `1.5` and `abc` are each a 500, on a listing and at
+    # /query/parse alike. Cycle 55, measured on zen, kids and plexscratch42: so are a
+    # value past the signed 32-bit range (`2147483648`) and a surrounding space (`%201`),
+    # which `int(value.strip())` accepted; `+1` and `01` are the library's own source.
+    text = str(value)
+    if not re.fullmatch(r"[+-]?[0-9]+", text) or not -2 ** 31 <= int(text) < 2 ** 31:
         raise FilterError(500, "bad sourceType %r" % value)
+    number = int(text)
     return None if number == 1 else list(SOURCE_DEFAULT_ORDER)
 
 
