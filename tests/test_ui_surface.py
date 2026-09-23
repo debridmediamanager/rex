@@ -30808,6 +30808,16 @@ def main():
           got_c55f8 == [500, 500, 500, 200, 200] and top_c55f8 == 500,
           "%s, users/top %s" % (got_c55f8, top_c55f8))
 
+    # Cycle 55, measured on zen and kids: under a bare `=`, `lastViewedAt`, `lastRatedAt`
+    # and `lastSkippedAt` take a signed 32-bit integer only -- `-5y`, `2020-01-01` and
+    # `2147483648` are 500s -- where `<<=-5y` still reads a date. plexsim answered 200.
+    grid_c55f9 = "/library/sections/%s/all" % movie_section
+    got_c55f9 = [get(base, grid_c55f9 + q)[0] for q in (
+        "?lastViewedAt=-5y", "?lastRatedAt=2020-01-01", "?lastSkippedAt=2147483648",
+        "?lastViewedAt=0", "?lastViewedAt%3C%3C=-5y")]
+    check("A per-user date under a bare = is an int32",
+          got_c55f9 == [500, 500, 500, 200, 200], "%s" % got_c55f9)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
