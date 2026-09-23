@@ -31843,14 +31843,15 @@ def main():
         for type_c58 in (2, 3):
             rows_c58 = get(base, "/library/all/top?type=%d&limit=50" % type_c58)[1].get(
                 "Metadata") or []
-            tops_c58[type_c58] = {str(r.get("ratingKey")): (r.get("type"), r.get("userCount"),
-                                                            bool(r.get("globalViewCount")))
-                                  for r in rows_c58}
+            # Keyed by the row's parent, because a flattened show's episode rows (the
+            # suite leaves one flattened) carry no `parentRatingKey` to name the season by.
+            tops_c58[type_c58] = {str(r.get("parentRatingKey") or r.get("ratingKey")): (
+                r.get("type"), r.get("userCount"), bool(r.get("globalViewCount")))
+                for r in rows_c58}
         show_c58 = str(leaf_c58.get("grandparentRatingKey"))
-        season_c58 = str(leaf_c58.get("parentRatingKey"))
         check("Top Played counts an episode's play on its show and its season",
               tops_c58[2].get(show_c58) == ("show", 1, True)
-              and tops_c58[3].get(season_c58) == ("season", 1, True),
+              and tops_c58[3].get(show_c58) == ("season", 1, True),
               "type=2 %s, type=3 %s" % (tops_c58[2], tops_c58[3]))
         request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
                 % leaf_c58["ratingKey"])

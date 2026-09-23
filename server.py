@@ -7056,13 +7056,15 @@ class PlexSim:
                     # the Dashboard's Top Played TV column asks for `type=2`. plexsim
                     # matched the history row's own type, so no show ever had a play and
                     # the TV column was empty on every server.
-                    parent = {"show": "grandparentRatingKey",
-                              "season": "parentRatingKey"}.get(wanted)
-                    if row.get("type") != "episode" or not parent \
-                            or not str(row.get(parent) or "").isdigit() \
-                            or int(row[parent]) not in catalog.items:
+                    # Under `flattenSeasons=1` an episode keeps its season privately as
+                    # `_parentRatingKey`; the play still belongs to that season.
+                    parent = {"show": row.get("grandparentRatingKey"),
+                              "season": row.get("parentRatingKey")
+                              or row.get("_parentRatingKey")}.get(wanted)
+                    if row.get("type") != "episode" or not str(parent or "").isdigit() \
+                            or int(parent) not in catalog.items:
                         continue
-                    key = str(row[parent])
+                    key = str(parent)
                 if not passes(int(entry.get("viewedAt") or 0)):
                     continue
                 if "accountID" in ids and int(entry.get("accountID") or 1) != ids["accountID"]:
