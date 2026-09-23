@@ -7249,7 +7249,15 @@ class PlexSim:
             # Cycle 54, measured on kids and zen: `sectionId` refuses two values, `0`
             # and 2147483647, with a 400, and ignores everything else -- `abc`, `-1`,
             # `1.5` and an empty value alike.
-            if str(query.get("sectionId")) in ("0", "2147483647"):
+            # Cycle 55 widened it: those were two ids that name no section. `3`, `03`, `+3`,
+            # `490` and `999` are 400s on zen and kids -- `4` too on kids, which has no
+            # section 4 where zen does -- while `abc`, `-1`, `1.5`, `3x`, ` 3`, an empty
+            # value and `2147483648` are still ignored. So an id that PARSES as a signed
+            # 32-bit integer and names no section is refused. (A negative id other than
+            # `-1` was not sent; it is read as ignored like `-1`.)
+            wanted_section = str(query.get("sectionId") or "")
+            if _int_param(wanted_section) and int(wanted_section) >= 0 \
+                    and self.catalog.section(str(int(wanted_section))) is None:
                 return ("error", 400, "plexsim: bad request")
             return self.search(query)
         if route == "/hubs/search/voice":

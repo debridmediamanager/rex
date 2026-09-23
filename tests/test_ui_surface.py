@@ -30854,6 +30854,15 @@ def main():
                                               len(plus_c55f12[1].get("Metadata") or []),
                                               half_c55f12[0], word_c55f12))
 
+    # Cycle 55, measured on zen and kids: `/hubs/search?sectionId=` refuses ANY integer id
+    # that names no section (`999`, `03`, `+3` are 400s; cycle 54's `0` and 2147483647 were
+    # two of them) and ignores what does not parse (`abc`, `-1`, `1.5`, `2147483648`).
+    # plexsim refused only the two recorded values.
+    got_c55f13 = [get(base, "/hubs/search?query=the&sectionId=%s" % v)[0]
+                  for v in ("999", "0999", "%2B999", movie_section, "abc", "-1", "2147483648")]
+    check("A hub search refuses a sectionId naming no section",
+          got_c55f13 == [400, 400, 400, 200, 200, 200, 200], "%s" % got_c55f13)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
