@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 59 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 60 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 60 | **60 — localisation as an axis, and the first three-hunter repeat: 7 CLIENT-VISIBLE findings in 6 fix commits.** Three hunters on the axis ledger. A (opus) repeated the rendered client clean in English and walked it in de, da, ja and pt: five, all localisation -- stream language names by TAG (under `en` too) and the words titles are composed from, hub titles around the name they carry, the Related/post-play/manage titles the table never held, and `translations.json` still carrying 1.43.4's translation in 414 cells where 1.42.2 answers English (cycle 59 overlaid changed cells only; the capture now records unchanged ones). B (fable) repeated python-plexapi's writes (every cycle-59 fix held) and drove playback as 15 client identities (Player blocks, timelines, queues, stream selection and the profile model all identical): one client-visible, a regression cycle 59's upload store introduced (a DELETE of an uploaded theme answered its bytes). C (opus) repeated axes 1, 2, 3, 4, 7 and 10: one client-visible (joining a collection locks the member's `collection` field) and one unmeasurable bound (Manage Recommendations' writes need a claimed writable 1.42.2). Axes 1, 2, 7 and 10 are clean |
 | Cycle 59 | **59 — the rendered client, and python-plexapi's writes: 16 CLIENT-VISIBLE findings in 14 fix commits, 7 recorded.** Two axes no client-impact cycle had taken. Territory A (opus) drove the REAL Plex Web app in a browser -- kids' 9223 Chromium, the bundle plexsim serves, plex.tv answered by `page.route` so the app saw exactly one server -- against plexscratch42, kids and plexsim, page by page: five, all built (the `en` enum injection, the Collections tab, the Playlists source and its Home shelf, a library's Recent Playlists shelf, and 1.42.2's pinned-list Recently Added). Territory B (fable) drove python-plexapi's whole write and playback surface -- 182 methods, 291 steps a server -- and found nine client-visible: the same `en` enums, the proxied `/player` 404, a smart collection's user filter, the library-wide scan cancel, a playlist's timeline, three upload rules, and a match's rename cascade; its Optimize cell stays the recorded bound. Re-measuring them the driver found three more: an item's own language enum was never localised (fixed from a zen capture), `translations.json` is per VERSION (405 cells re-captured off zen), and cycle 58's Continue Watching gate is the LIBRARY's play history, not the show's |
 | Cycle 58 | **58 — the flows repeated, and the owner's screens: 9 CLIENT-VISIBLE findings (all built) and 5 recorded.** Territory A repeated cycles 56-57's client read and write flows (every fix held) with sequences no earlier cycle ran, and found four about playback state: a library's Continue Watching shelf gates on the SHOW's play history rather than on how the next-up arose; a new session's sub-minute beats keep the resume point; a beat at exactly the stored position writes nothing; and a collection rename onto a taken collection tag is a 409. Its fifth, the section shelf's per-URL cache, is recorded. Territory B drove the owner-facing screens -- Settings, library Add/Edit/Manage, Manage Recommendations, the Dashboard, activities and console -- and found four: the legacy agents' combination chain and its order save, Top Played rolling an episode up to its show and season (plus a flattened-season follow-up), statistics buckets aligned to local calendar boundaries, and a hidden library kept off Home and out of global search. The session that ran the hunts ended mid-cycle; the next session rebuilt the implementation pass from the surviving worktree and hunt outputs |
 | Cycle 57 | **57 — lists, and what every screen shows after a user acts: 9 CLIENT-VISIBLE findings (all built) and 8 recorded.** Territory A repeated cycle 56's client inventory (every fix held) and drove python-plexapi's whole read surface (108 classes, 646 members, 1,018 probes a server); neither reference holds a list, so its four findings -- collection search ladder, a list's history, a playlist's score base, the sync flag -- were measured on the two writable copies, which agree across versions. Territory B drove every client write on plexscratch42 and plexsim with 41 redraw reads after each, and found five: the merged Continue Watching hub holding the next-up rows, the section shelf's play-only next-up, a pristine show's OnDeck (refuting cycle 41), the collection Related shelf, and the play-queue marker's block rule. Territory B's implementation was delegated to an agent under sdrive, as cycle 55's was |
@@ -93,13 +94,14 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 59" names what it must cover** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 60" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
-| 59 | UI **see §7** (serial run on the final tree, `RD_TOKEN=dummy`); decisions **2,340/2,340**, mediainfo **36/36**, catalog features, GDM **103/103**, heartbeat **13/13**, account state **15/15**, sessions, part bytes **12/12**, prefix **58/58**, regional **3/3** all pass | 24,348 | **16 client-visible** in **14 fix commits**, every one proved fail-then-pass against its own parent (13 by `sdrive.py`, the library gate by hand in the offline suite); **7 recorded** in §8. **3 recorded beliefs refined** (cycle 50's language-list injection, cycle 58's per-show gate, the translation table's version) |
+| 60 | UI **1,921/1,921** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (the placeholder-link baseline) | 24,434 | **7 client-visible** in **6 fix commits**, every one proved fail-then-pass by `sdrive.py`; **12 recorded** in §8. **2 recorded beliefs refined** (cycle 17's stand-in rule, cycle 59's overlay) |
+| 59 | UI **1,914/1,914** with 12 fixture skips (serial run on the final tree, `RD_TOKEN=dummy`); decisions **2,340/2,340**, mediainfo **36/36**, catalog features, GDM **103/103**, heartbeat **13/13**, account state **15/15**, sessions, part bytes **12/12**, prefix **58/58**, regional **3/3** all pass | 24,348 | **16 client-visible** in **14 fix commits**, every one proved fail-then-pass against its own parent (13 by `sdrive.py`, the library gate by hand in the offline suite); **7 recorded** in §8. **3 recorded beliefs refined** (cycle 50's language-list injection, cycle 58's per-show gate, the translation table's version) |
 | 58 | UI **1,894/1,894** with 12 fixture skips (the driver's serial run on the merged tree, `RD_TOKEN=dummy`); catalog, decisions, mediainfo, GDM, prefix, part bytes, TLS, heartbeat, account state, sessions and regional all pass; LIVE navigation **25/25**; python-plexapi **29/38**, the recorded placeholder-link baseline under `RD_TOKEN=dummy` (§4.5); `test_all.py` not run (its CLI takes no `--base`) | 24,117 | **9 client-visible** in **9 fix commits** (hunt B's Top Played fix plus a flattened-season follow-up) and 1 test commit; **5 recorded** in §8. **2 recorded beliefs refined** (the sub-minute resume delete, cycle 57's play-only shelf gate) |
 | 57 | UI **1,881/1,881** with 12 fixture skips (the implementation agent's final run); catalog, decisions 2,340, mediainfo 36, GDM 103, prefix 58, part bytes 12, TLS 10, heartbeat 13, account state 15, sessions and regional all pass; LIVE navigation **25/25** (one check re-based: a never-watched show's OnDeck), python-plexapi **38/38**, byte/decode **5/5** | 23,886 | **9 client-visible** in **10 fix commits** (plus a `tagId` filter the collection shelf's key needs, and a flattened-season follow-up) and 2 test commits; **8 recorded** in §8. **1 recorded belief overturned** (cycle 41's pristine OnDeck) |
 | 56 | UI **1,868/1,868** with 15 fixture skips (after one re-based check: cycle 20's null half now reads the rows never written); catalog **all pass**; regional **3/3**; decisions **2,340/2,340**; mediainfo **36/36**; GDM **103/103**; prefix **58/58**; part bytes **12/12**; TLS **10/10**; heartbeat **13/13**; account state **15/15**; sessions all pass; LIVE navigation **24/24**, python-plexapi **38/38**, byte/decode **5/5** | 23,664 | **6 client-visible** in **6 fix commits**, every one proved fail-then-pass; **18 malformed-only** recorded in §8. Denominators: 80 recorded client request shapes, 178 GET templates x 3 servers x 2 formats, 1,455 python-plexapi probes, 22 client writes with 336 reads each side; the repeat of cycles 54-55 (13,912 + 150,588 + 6,970 + 7,008 plexsim cells) and three widening grids (7,264 operator cells, 8,085 hub-page cells, 3,564 post-write cells a server) |
@@ -511,6 +513,8 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
 | **An item's Advanced language enums are translated for every language `translations.json` lacks** (cycle 50) | Only the three LANGUAGE-LIST enums are; the injection keyed on the default's label caught `-1:Library default|0:Show|1:Hide`, `showOrdering` and every other library-default enum, so under `en` a show's Seasons dropdown offered 46 languages | C | cycle 59 |
+| **A stream's extended title decides the language part's omission on the ENGLISH name and renders the English one** (cycle 17) | It decides on the STORED name and renders the LOCALISED one: zen's track titled "French" reads `French (French SRT)` under `en` and `www.TamilRockers.com (Englisch Erzwungen SRT)` under `de`. Held out over 23,832 cells | B | cycle 60 |
+| **Overlaying the other version's changed cells makes the table 1.42.2's** (cycle 59) | Where 1.42.2 answers ENGLISH the old translation stayed -- 414 cells. The capture has to record unchanged cells too | C | cycle 60 |
 | **A section's Continue Watching gate is the SHOW's play history** (cycle 58) | It is the LIBRARY's: with a second show added to one library on plexscratch42, a session completion on one show lists the other's scrobble-only next-up. Cycle 58's copies held one show per library | B | cycle 59 |
 | **`translations.json` is version-neutral** (cycles 16-25) | It is 1.43.4's: zen words 405 cells differently (Danish `Bibliotekets standard`, Serbian, Ukrainian, Hebrew and Portuguese enum rows among them). The seventh per-version fixture | A | cycle 59 |
 | **A playlist timeline stores nothing** (cycle 59's hunt B) | With a session identifier the beat runs the item machine: `progress` stores the offset on the list, a crossing completes it with `viewCount` 1 -> 2, and Now Playing shows a `Playlist` row | F | cycle 59 (driver) |
@@ -845,6 +849,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
+| **Manage Recommendations' writes** | Plex Web's promote, reorder, remove, reset and publish (`PUT/DELETE /hubs/sections/{id}/manage[/{identifier}[/move]]`, `POST ...manage?metadataItemId=`) are 404s on plexsim and the route exists in 1.42.2's binary (`HubManagementRequestHandler`), but both writable copies 404 the whole manage leaf (unclaimed) and kids and zen are read-only. CLIENT-VISIBLE: the dialog's checkboxes snap back | A claimed, writable 1.42.2 server |
 | **The ORDER of an item language enum's head** | Language-independent on zen and fitting neither tag order nor English-name order over 507 shows (many heads need five or more sorted runs); plexsim orders by tag within the audio and subtitle groups (cycle 18). The NAMES are exact in 30 language forms | Read the stream table order out of a zen show whose head plexsim would order differently, or the binary's SQL |
 | **Plex Web against plexsim in a real browser** | Cycle 59 is the first render diff and ran on kids' 9223 Chromium, because the Windows CDP machine was unreachable; Playwright's `connect_over_cdp` hangs there, so hunt A wrote a raw-CDP driver. The claimed-account panels (Dashboard upsell, Watch Together, Trending) and anything needing a media read were bounds | Repeat on the Windows browser with a media-reading play, and drive the Dashboard with the account's feature ids |
 | **`viewUpdatedAt`'s stamping rules** | Driven write by write on plexscratch42, which is UNCLAIMED (class E, cycle 49). The column's existence and grammar rest on zen and kids; which rows each write stamps rests on the copy alone, because a read-only reference cannot be written | The same writes on a claimed disposable 1.42.2 server |
@@ -3712,6 +3717,41 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 60 — localisation as an axis, and the first three-hunter repeat
+
+Laid out on the axis ledger: A (opus) the rendered client repeated plus localisation (axes 5, 9),
+B (fable) python-plexapi's writes repeated plus playback per client identity (axes 6, 8), C (opus)
+axes 1, 2, 3, 4, 7 and 10 repeated with the tooling that last took each. The copies were shared by
+writing only to disjoint content (A movies 1-5 and Firefly, B section 3, C the probe movies).
+
+* **A** walked 34 captures a run in en, de, da, ja and pt on plexsim and plexscratch42 and found
+  five localisation findings, all built -- by capture, never by hand: stream language names by
+  TAG from zen's axes and show heads (83 tags), the title words (`stream_words.json`), hub title
+  templates (`title_templates.json`), and a re-captured 1.42.2 table (`capture_i18n.py` with
+  `I18N_KEEP_SAME=1`, zen every path, plexscratch42 the settings documents). Held out on zen the
+  stream pass is exact on 23,820 of 23,832 cells. Its English walk was clean.
+* **B**: every cycle-59 fix held; fifteen client identities agree on Player blocks, timelines, queues,
+  stream selection and the profile model (15/15); one client-visible regression of cycle 59's own.
+  Its section-3 scan re-homed the symlinked `Twofold` into Threefold -- rebuilt from re-muxed files
+  (show 391, episodes 393-395), and Threefold gained its own Season 1 (386-388, 396).
+* **C**: axes 1, 2, 7 and 10 clean; axis 3 one client-visible (the collection lock, which cycles
+  57 and 58 had both seen in their diffs and taken for undo residue); axis 4 one bound.
+
+**The axis ledger after cycle 60.**
+
+| # | Axis | Last taken | Status |
+|---|---|---|---|
+| 1 | Plex Web's request inventory, JSON and XML | 60 C | **clean** |
+| 2 | python-plexapi's read surface | 60 C | **clean** |
+| 3 | Client write flows, the redraw reads, the frames | 60 C | found 1; repeat |
+| 4 | The owner's screens | 60 C | clean but for one unmeasurable bound (§3.3) |
+| 5 | The RENDERED client | 60 A | **clean** in English |
+| 6 | python-plexapi's write and playback surface | 60 B | found 1 (a regression); repeat |
+| 7 | Server vocabulary under client tags | 60 C | **clean** |
+| 8 | Playback per client profile and identity | 60 B | **clean** on the client side |
+| 9 | Localisation of everything the client draws, per version | 60 A | found 5; repeat |
+| 10 | Discovery, claim and connection | 60 C | **clean** |
+
 ### Cycle 59 — the rendered client, and python-plexapi's writes
 
 Cycles 56-58 compared the RESPONSES to the requests a client builds. Cycle 59 took two axes none
@@ -4879,6 +4919,21 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 60** (recorded, not built):
+
+- Manage Recommendations' writes: unmeasurable, see §3.3.
+- `X-Plex-Client-Profile-Extra` on a PLAIN-form decision is honoured by a real PMS (1,018 of 1,027
+  cells identical across versions; limitations, added direct-play profiles and transcode targets)
+  and ignored by plexsim. Every official client that sends it sends `hasMDE=1`, where it changes
+  nothing plexsim could answer differently. hunt B's scratch `regress60b.py` F2 is written for the day a
+  plain-form client is seen.
+- A beat whose `playQueueItemID` names no live item is echoed in its `playing` frame.
+- A session row's `User` carries only `id` on the unclaimed copy (claim).
+- `/system/scanners/{N}` answers XML whatever `Accept` says; the `playbackState` latch after a
+  stopped beat; `/hubs/promoted?includeGuids=1`; the `tagId` value grammar (`-1`, `1.5`, `+1`,
+  `/library/all`, `/hubs`); `/query/parse` `fieldTitle`s in 932 cells; `/library`'s three Directory
+  titles in sl/sr/da/uk; `/butler`'s `Backup Database` in sr.
 
 **Cycle 59** (recorded, not built):
 

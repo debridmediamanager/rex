@@ -10485,6 +10485,42 @@ smart playlist's `content` on `/library/metadata/{id}`; the unpause `queueRefres
 split row's media delete. The ORDER of an item language enum's head is language-independent and
 fits neither tag order nor English-name order over zen's 507 shows (§3.3).
 
+#### The sixtieth pass — localisation as an axis, and the first three-hunter repeat
+
+Cycle 60 ran three hunters against the axis ledger (HANDOVER §7 "Cycle 59"). A repeated the
+rendered client and walked it again in de, da, ja and pt; B repeated python-plexapi's writes and
+drove playback as fifteen client identities; C repeated axes 1, 2, 3, 4, 7 and 10.
+
+**Client-visible, all built.**
+
+* **Joining a collection locks the member's `collection` field** (create and items add, both
+  copies), and removal and deletion leave the lock; the Edit dialog draws it and sends it back.
+* **An uploaded theme or logo is served to a read only**: `DELETE .../theme` and `.../clearLogo`
+  stay the 404 1.42.2 answers every artwork DELETE -- cycle 59's upload store answered them 200
+  with the file's bytes, which python-plexapi's `deleteTheme()` failed to parse.
+* **A stream's language NAME follows the client's language by TAG, `en` included** -- `fr` is
+  `French` under `en` and `Französisch` under `de` -- and so do the language axes; the words a
+  title is composed from (`Unknown`, `Forced`, `SDH`, a sidecar's `External`) are localised
+  (`stream_words.json`), and the extended title's language part is rendered LOCALISED while its
+  omission is decided on the STORED name (zen: a track titled "French" reads `French (French SRT)`
+  under `en`). Held out on zen: 23,820 of 23,832 stream cells exact over 102 rows in 12 languages,
+  the 12 left being the recorded AC-3 case.
+* **Hub titles with a name inserted are localised around it** (`title_templates.json`): `Recently
+  Added in <library>`, `Top Movies in <genre>`, `<collection> Collection` -- on a Hub's own title
+  only, so a collection TAG called "... Collection" stays as it is.
+* **`translations.json` is 1.42.2's.** The capture now records the cells a language leaves in
+  English, and zen (every path) and plexscratch42 (the settings documents) were captured that way:
+  414 translations 1.42.2 does not have were removed, 59 reworded, and the Related, post-play and
+  Manage Recommendations titles added. The host-built `PreferredNetworkInterface` enum has its
+  `:Any` lead translated.
+
+**Recorded, not built.** Manage Recommendations' writes (both copies 404 the whole manage leaf,
+unclaimed); `X-Plex-Client-Profile-Extra` on a PLAIN-form decision (every official client that
+sends one sends `hasMDE=1`); a beat's stale `playQueueItemID` echoed in its frame; the session
+`User` block (claim); `/system/scanners/{N}` under `Accept: application/json`; the playbackState
+latch after a stopped beat; `/hubs/promoted?includeGuids=1`; the `tagId` value grammar;
+`/query/parse` `fieldTitle`s; `/library`'s Directory titles in sl/sr; `/butler` in sr.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
