@@ -5359,7 +5359,10 @@ class PlexSim:
                 # Before the client titles, not after: a real PMS composes the
                 # codec suffix onto the already-localised title.
                 result = _with_stream_language(result, language)
-            product = query.get("X-Plex-Product") or (headers or {}).get("X-Plex-Product")
+            # Cycle 55, measured on zen and kids: the HEADER beats the query here, as it
+            # does for `Samsung` -- header `Plex Web` with query `abc` prints
+            # `1080p (H.264)`, header `abc` with query `Plex Web` prints `1080p`.
+            product = (headers or {}).get("X-Plex-Product") or query.get("X-Plex-Product")
             if isinstance(result, dict) and product in mediainfo_module.CODEC_TITLE_PRODUCTS:
                 result = _with_client_titles(result, product)
             return result
