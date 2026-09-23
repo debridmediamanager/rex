@@ -2998,6 +2998,18 @@ precisely how the Seasons bug survived a fix attempt.
   plex.tv, and found four surfaces no request replay had: a response is only half of what the
   client shows, and whether a tab EXISTS is decided by another endpoint entirely.
 
+- **Localisation is an AXIS, not a table lookup.** A real PMS localises a stream's language by
+  its TAG (under `en` too), the WORDS a title is composed from, a hub title AROUND the name it
+  carries, and the lead of an enum built from the host -- none of which a table of whole English
+  strings can hold. And the table itself is per version: capture it with `I18N_KEEP_SAME=1` so
+  the cells a language leaves in ENGLISH remove the other version's translation.
+- **Joining a collection LOCKS the member's `collection` field**, and nothing unlocks it but an
+  explicit `collection.locked=0`. A check that adds to a collection must unlock afterwards.
+- **An artwork leaf's upload is served to GET and HEAD only**; every DELETE on 1.42.2 is a 404.
+- **A symlinked media file is re-homed by the next scan**: PMS resolves the link and the rows
+  follow the TARGET. Make a test show from re-muxed copies with their own bytes (cycle 60 lost
+  cycle 59's `Twofold` that way).
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
