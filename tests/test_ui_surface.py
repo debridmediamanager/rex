@@ -31155,6 +31155,16 @@ def main():
               and cells_c56e["skipCount=0"] and not cells_c56e["viewCount%3C%3C=0"],
               str(cells_c56e))
 
+    # Cycle 56, measured on zen and kids: `/hubs/sections/{id}?includeGuids=1` carries `Guid`
+    # on its rows (kids 5 of 5 on Recently Added), and python-plexapi's `section.hubs()`
+    # always sends it (`_buildQueryKey` prepends `includeGuids=1`). plexsim sent none.
+    _, hubs_c56f, _ = get(base, "/hubs/sections/%s?includeGuids=1" % movie_section)
+    rows_c56f = [m for h in hubs_c56f.get("Hub") or [] for m in h.get("Metadata") or []
+                 if not str(m.get("guid") or "").startswith("local://")]
+    check("a library hub page honours includeGuids",
+          rows_c56f and all(m.get("Guid") for m in rows_c56f),
+          "%d of %d rows carry Guid" % (sum(1 for m in rows_c56f if m.get("Guid")), len(rows_c56f)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

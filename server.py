@@ -7289,9 +7289,24 @@ class PlexSim:
                 refusal = hub_refusal(query)
                 if refusal:
                     return refusal
-            return self.section_hubs(segments[2], query.get("count"),
-                                     _option_on(query, "includeLibraryPlaylists"),
-                                     query=query)
+            answer = self.section_hubs(segments[2], query.get("count"),
+                                       _option_on(query, "includeLibraryPlaylists"),
+                                       query=query)
+            if query.get("includeGuids") == "1" and isinstance(answer, dict):
+                # Cycle 56, measured on zen and kids: the section hub page honours
+                # `includeGuids=1` as `/hubs` does -- python-plexapi's `section.hubs()`
+                # always sends it -- except on a `local://` row, which has no Guid list.
+                for hub in answer["MediaContainer"].get("Hub") or []:
+                    for projected in hub.get("Metadata") or []:
+                        key = str(projected.get("ratingKey") or "")
+                        stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+                        if stored is None or projected.get("Guid"):
+                            continue
+                        if stored.get("Guid"):
+                            projected["Guid"] = stored["Guid"]
+                        elif stored.get("guid") and not str(stored["guid"]).startswith("local://"):
+                            projected["Guid"] = [{"id": stored["guid"]}]
+            return answer
         if (segments[:2] == ["hubs", "sections"] and len(segments) == 5
                 and segments[3] == "continueWatching"):
             # The Continue Watching shelf's own "see all" list.
