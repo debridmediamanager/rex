@@ -32159,6 +32159,43 @@ def main():
           and leaf_c59i.get("size", 0) > 0 and none_c59i.get("size") == 0,
           str((kept_c59i, unpinned_c59i, empty_c59i, leaf_c59i.get("size"), none_c59i.get("size"))))
 
+    def provider_directories_c59(path_c59="/media/providers"):
+        _, providers_c59, _ = get(base, path_c59)
+        found_c59 = {}
+        for provider_c59 in providers_c59.get("MediaProvider") or []:
+            for feature_c59 in provider_c59.get("Feature") or []:
+                if feature_c59.get("type") == "content":
+                    for directory_c59 in feature_c59.get("Directory") or []:
+                        found_c59[directory_c59.get("id")] = directory_c59
+        return found_c59
+    # Cycle 59, measured on fun (1.42.2, claimed: `recommended, library, collections,
+    # categories` where the library holds collections, no `collections` where it holds none)
+    # and on both copies: a library's tab bar gains a Collections pivot while it holds a
+    # collection -- the tab Plex Web draws its Collections page from. plexsim hard-coded
+    # three pivots, so a library's collections had no tab.
+    _, grid_c59j, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59j = ((grid_c59j.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, have_c59j, _ = get(base, "/library/sections/%s/collections" % movie_section)
+    for existing_c59j in have_c59j.get("Metadata") or []:
+        pass
+    _, made_c59j, _ = container(base, "POST", "/library/collections?type=1&title=Rg59%%20Tab&smart=0"
+                                "&sectionId=%s&uri=%s" % (movie_section, quote(
+                                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                    % (machine, first_c59j))))
+    coll_c59j = ((made_c59j.get("Metadata") or [{}])[0]).get("ratingKey")
+    with_c59j = [p.get("id") for p in provider_directories_c59()[str(movie_section)].get("Pivot") or []]
+    pivot_c59j = next((p for p in provider_directories_c59()[str(movie_section)].get("Pivot") or []
+                       if p.get("id") == "collections"), {})
+    request(base, "DELETE", "/library/collections/%s" % coll_c59j)
+    left_c59j = len((get(base, "/library/sections/%s/collections" % movie_section)[1]).get("Metadata") or [])
+    without_c59j = [p.get("id") for p in provider_directories_c59()[str(movie_section)].get("Pivot") or []]
+    check("a library holding a collection has a Collections tab",
+          with_c59j == ["recommended", "library", "collections", "categories"]
+          and pivot_c59j.get("key") == "/library/sections/%s/collections" % movie_section
+          and pivot_c59j.get("context") == "content.collections" and pivot_c59j.get("symbol") == "stack"
+          and (left_c59j > 0 or without_c59j == ["recommended", "library", "categories"]),
+          str((with_c59j, without_c59j, left_c59j)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

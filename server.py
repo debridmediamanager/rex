@@ -8325,6 +8325,19 @@ class PlexSim:
                             "context": "content.library",
                             "symbol": "library",
                         },
+                    ] + ([
+                        # Cycle 59, measured on fun (1.42.2, claimed) and both copies:
+                        # a library that HOLDS a collection gains this tab after
+                        # Library; one that holds none does not have it.
+                        {
+                            "id": "collections",
+                            "key": "/library/sections/%s/collections" % key,
+                            "type": "list",
+                            "title": "Collections",
+                            "context": "content.collections",
+                            "symbol": "stack",
+                        },
+                    ] if self.library.collections(key) else []) + [
                         # The Categories tab. plexsim can answer it now that the
                         # secondary axes are real, and a real PMS advertises it
                         # as the third pivot on every content directory.
