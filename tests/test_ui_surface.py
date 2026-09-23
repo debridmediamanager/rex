@@ -31450,10 +31450,18 @@ def main():
         return str(((row_c57g.get("OnDeck") or {}).get("Metadata") or {}).get("ratingKey")
                    or "") or None
     if len(keys_c57g) >= 2:
-        seasons_c57g = [str(r.get("parentRatingKey")) for r in leaves_c57g]
-        other_c57g = next((s for s in seasons_c57g if s != seasons_c57g[0]), None)
+        # The owning season is found through the SEASONS' own children: under
+        # `flattenSeasons` -- which the suite writes earlier -- an episode row carries no
+        # `parentRatingKey` to read it from.
+        seasons_c57g = [str(r.get("ratingKey")) for r in
+                        get(base, "/library/metadata/%s/children" % show)[1].get("Metadata") or []
+                        if r.get("type") == "season"]
+        owner_c57g = next((s for s in seasons_c57g if keys_c57g[0] in [
+            str(r.get("ratingKey")) for r in
+            get(base, "/library/metadata/%s/children" % s)[1].get("Metadata") or []]), None)
+        other_c57g = next((s for s in seasons_c57g if s != owner_c57g), None)
         pristine_c57g()
-        cells_c57g = [deck_c57g(show), deck_c57g(seasons_c57g[0]),
+        cells_c57g = [deck_c57g(show), deck_c57g(owner_c57g) if owner_c57g else "no owner",
                       deck_c57g(other_c57g) if other_c57g else None]
         request(base, "GET", "/:/scrobble?key=%s&%s" % (keys_c57g[0], I_c57g))
         request(base, "GET", "/:/unscrobble?key=%s&%s" % (keys_c57g[0], I_c57g))
@@ -31584,8 +31592,10 @@ def main():
     # collection Related shelf's own `key` filters on, and plexsim ignored it, so that
     # shelf's See All opened the whole library.
     _, grid_c57j, _ = get(base, "/library/sections/%s/all" % movie_section)
-    pair_c57j = [str(r.get("ratingKey")) for r in grid_c57j.get("Metadata") or []][:2]
-    if len(pair_c57j) == 2 and len(grid_c57j.get("Metadata") or []) > 2:
+    # One member is enough: the grid has to hold a row the tag does NOT reach, which the
+    # suite leaves with only two movies by this point.
+    pair_c57j = [str(r.get("ratingKey")) for r in grid_c57j.get("Metadata") or []][:1]
+    if len(pair_c57j) == 1 and len(grid_c57j.get("Metadata") or []) > 1:
         uri_c57j = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
                          % (machine, ",".join(pair_c57j)))
         _, made_c57j, _ = container(
@@ -31605,7 +31615,7 @@ def main():
               "listed %s (want %s), unknown %s, refusals %s"
               % (listed_c57j, sorted(pair_c57j), none_c57j, bad_c57j))
     else:
-        skip("tagId filters a listing by any tag's id", "need three movies")
+        skip("tagId filters a listing by any tag's id", "need two movies")
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
