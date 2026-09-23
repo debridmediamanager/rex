@@ -31042,6 +31042,21 @@ def main():
                                      langs_c55f24("-1") == english_c55f24,
                                      langs_c55f24(".fr") == english_c55f24))
 
+    # Cycle 55, measured on zen (1.42.2) and kids (1.43.4): `/hubs/promoted` refuses the
+    # fifteen hub-refused keys with a 500 whenever a SHOW library's shelf is in scope -- the
+    # unscoped call, or `contentDirectoryID` naming the show library -- and answers 200 when
+    # it is scoped to the movie library alone, the rule `/hubs/sections/{show}` already had.
+    wrong_c55p = []
+    for path_c55p, want_c55p in (("/hubs/promoted?duration=1", 500),
+                                 ("/hubs/promoted?contentDirectoryID=%s&viewCount=1" % show_section, 500),
+                                 ("/hubs/promoted?contentDirectoryID=%s&duration=1" % movie_section, 200),
+                                 ("/hubs/promoted?year=1", 200)):
+        status_c55p = request(base, "GET", path_c55p)[0]
+        if status_c55p != want_c55p:
+            wrong_c55p.append("%s -> %s" % (path_c55p, status_c55p))
+    check("promoted hubs refuse the hub keys when a show library is in scope", not wrong_c55p,
+          "; ".join(wrong_c55p))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
