@@ -5075,7 +5075,8 @@ class PlexSim:
             "allowSync": False,
             "content": True,
             "directory": True,
-            "hidden": 0,
+            # Cycle 58: the Visibility setting, which plexsim stored and reported as 0.
+            "hidden": self.section_visibility(key),
         }
         # The id is the section's own key, because "Folder Location" filters by
         # this id (`?location=1`) and a shared id would make every section's
@@ -6754,7 +6755,7 @@ class PlexSim:
             # catalog rows with no view state at all, which is what every non-web
             # client's On Deck reads (plexapi, Kodi/PKC, the legacy apps).
             rows = []
-            for row in self.continue_watching():
+            for row in self.on_home(self.continue_watching()):
                 # Cycle 28, measured on zen -- which, unlike either reference in cycle
                 # 21, actually has a row on deck: all three On Deck paths
                 # (`/library/onDeck`, `/library/sections/{id}/onDeck` and
@@ -6823,6 +6824,7 @@ class PlexSim:
             dated = [(r.get("addedAt") or 0, r) for r in catalog.items.values()
                      if r.get("type") == "movie"]
             dated += [(added, catalog.items[key]) for key, added in seasons.items()]
+            dated = [pair for pair in dated if self.on_home([pair[1]])]
             dated.sort(key=lambda pair: (-pair[0], str(pair[1].get("titleSort")
                                                        or pair[1].get("title") or "").lower()))
             # Cycle 54, measured on kids and zen: `unwatched=` is a 0/1 OPTION here (the
@@ -7238,7 +7240,7 @@ class PlexSim:
             # /library/all, so the shelf had nowhere to expand to.
             # Cycle 57: the rows are `merged_continue_watching()`, not `resuming()`.
             rows = [self._with_included_at(_listing_row(r))
-                    for r in self.merged_continue_watching()]
+                    for r in self.on_home(self.merged_continue_watching())]
             return self.hub_container(Hub=[self.home_hub(
                 "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
                 rows, query, kind="mixed", style="hero")])
@@ -7248,7 +7250,7 @@ class PlexSim:
             # on `/library/metadata/{id}` and none on any of the five resume paths, this
             # one included -- so the lock list is the one block the full row loses here.
             rows = []
-            for row in self.merged_continue_watching():
+            for row in self.on_home(self.merged_continue_watching()):
                 entry = _listing_row(row)
                 entry.pop("Field", None)
                 rows.append(self._with_included_at(entry))
@@ -13456,13 +13458,13 @@ class PlexSim:
         if not excluded:
             hubs.append(self.home_hub(
                 "home.continue", "Continue Watching", "/hubs/home/continueWatching",
-                [_listing_row(r) for r in self.resuming()], query,
+                [_listing_row(r) for r in self.on_home(self.resuming())], query,
                 style="hero", promoted=True))
         if not excluded and not self.ondeck_shelf_hidden():
             # Measured: this shelf is dropped here on the same terms as on `/hubs`.
             hubs.append(self.home_hub(
                 "home.ondeck", "On Deck", "/hubs/home/onDeck",
-                [_listing_row(r) for r in self.continue_watching()
+                [_listing_row(r) for r in self.on_home(self.continue_watching())
                  if r.get("type") == "episode"], query, kind="episode", promoted=True))
         # Cycle 28: a COMMA LIST selects several libraries here, which is the form the
         # web client's Home saga sends (it joins an array of pinned ids). plexsim
@@ -13471,6 +13473,10 @@ class PlexSim:
         wanted = self.content_directories(query)
         for section in self.catalog.sections:
             if wanted is not None and str(section["key"]) not in wanted:
+                continue
+            if self.section_visibility(section["key"]) >= 1:
+                # Cycle 58, plexscratch42: a library kept off Home has NO shelf here --
+                # the element, not an empty one -- where `/hubs` keeps its empty shelf.
                 continue
             is_show = section.get("type") == "show"
             rows = self.section_recently_added_rows(section)
@@ -13842,9 +13848,30 @@ class PlexSim:
             return None
         return {value for value in str(raw).split(",") if value}
 
-    @classmethod
-    def in_directories(cls, rows, wanted):
-        """`rows` narrowed to the libraries `contentDirectoryID` named."""
+    def section_visibility(self, section_id):
+        """The library's Visibility setting: 0 everywhere, 1 off Home, 2 off search too."""
+        raw = self.section_pref_overrides.get((str(section_id), "hidden"), 0)
+        try:
+            return int(str(raw).strip() or 0)
+        except ValueError:
+            return 0
+
+    def on_home(self, rows):
+        """`rows` without the libraries Edit Library > Visibility keeps off Home.
+
+        Cycle 58, measured on plexscratch42 (1.42.2) over the reads Plex Web's Home makes:
+        `hidden=1` and `2` empty every Home shelf of that library -- Continue Watching, On
+        Deck, Recently Added, the merged `/hubs/continueWatching` -- and drop it from
+        `/library/recentlyAdded` and `/library/onDeck`, while `/hubs` KEEPS the shelf
+        (empty) and the library's own page, its section hubs and its own On Deck are
+        unchanged. plexsim stored the setting and filtered nothing, so a hidden library
+        stayed on Home.
+        """
+        return [r for r in rows if self.section_visibility(r.get("librarySectionID")) < 1]
+
+    def in_directories(self, rows, wanted):
+        """`rows` narrowed to the libraries `contentDirectoryID` named, off Home's hidden."""
+        rows = self.on_home(rows)
         if wanted is None:
             return rows
         return [r for r in rows if str(r.get("librarySectionID")) in wanted]
@@ -14876,6 +14903,27 @@ class PlexSim:
             typed[kind] = candidates[:limit]
         return typed, tags
 
+    def searchable(self, typed, tags):
+        """Search matches without the libraries Visibility excludes from global search.
+
+        Cycle 58, measured on plexscratch42 (1.42.2): `hidden=2` ("Exclude from home screen
+        and global search") takes a library's rows out of `/hubs/search` and
+        `/library/search`, while `hidden=1` leaves both alone and the legacy `/search`
+        and the library's own search box answer as before. plexsim searched it anyway.
+        """
+        hidden = {str(section["key"]) for section in self.catalog.sections
+                  if self.section_visibility(section["key"]) >= 2}
+        if not hidden:
+            return typed, tags
+        typed = {kind: [r for r in rows
+                        if not (self.search_row_sections(kind, r)
+                                and set(self.search_row_sections(kind, r)) <= hidden)]
+                 for kind, rows in typed.items()}
+        tags = {hub: [t for t in rows
+                      if str(t["row"].get("librarySectionID")) not in hidden]
+                for hub, rows in tags.items()}
+        return typed, tags
+
     def search_row_sections(self, kind, row):
         """The library ids a search hit belongs to, for `contentDirectoryID`.
 
@@ -14955,7 +15003,10 @@ class PlexSim:
             # `01` scope the search to section 1 (17 hubs, 200) where plexsim 404'd both.
             if _int_param(wanted_section, None):
                 wanted_section = str(int(wanted_section))
-            if self.catalog.section(wanted_section) is None:
+            if self.catalog.section(wanted_section) is None \
+                    or self.section_visibility(wanted_section) >= 2:
+                # Cycle 58, plexscratch42: a library excluded from global search is a
+                # section this endpoint does not know.
                 return ("error", 404, "plexsim: not found")
         else:
             wanted_section = None
@@ -14979,7 +15030,7 @@ class PlexSim:
                 # range (`9223372036854775808`) is the same 500 as a non-positive one.
                 return ("error", 500, "plexsim: internal error")
         limit = int(query.get("limit", 3) or 3)
-        typed, tags = self.search_matches(text, limit, tagged_items=True)
+        typed, tags = self.searchable(*self.search_matches(text, limit, tagged_items=True))
         if wanted_section is not None:
             # Cycle 28, measured on kids, zen and plexscratch: `contentDirectoryID`
             # scopes EVERY row family, each by its own library. kids' `drama` keeps one
@@ -15254,7 +15305,7 @@ class PlexSim:
         # rows of the type it names where the bare form's 100 are mostly movies.
         wanted = query.get("searchTypes")
         tokens = set(str(wanted).split(",")) if wanted else None
-        typed, tags = self.search_matches(text, limit)
+        typed, tags = self.searchable(*self.search_matches(text, limit))
         score_query = text.strip()
         needle = score_query.lower()
         results = []

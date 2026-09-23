@@ -31858,6 +31858,59 @@ def main():
         skip("Top Played counts an episode's play on its show and its season",
              "no episode in the fixture")
 
+    # Cycle 58, measured on plexscratch42 (1.42.2): Edit Library > Visibility. `hidden=1`
+    # keeps the library off Home -- every Home shelf and `/hubs/continueWatching`,
+    # `/library/recentlyAdded` and `/library/onDeck` drop its rows, `/hubs` keeps its shelf
+    # empty and `/hubs/promoted` drops that library's shelf outright -- while its own page
+    # and search still answer. `hidden=2` takes it out of `/hubs/search` and
+    # `/library/search` too, and scoping a search to it is a 404. plexsim stored the setting,
+    # reported `hidden: 0` and filtered nothing.
+    def movie_ids_c58(rows):
+        return [r for r in rows or [] if str(r.get("librarySectionID")) == str(movie_section)]
+
+    def home_c58():
+        hubs = {h.get("hubIdentifier"): h for h in get(base, "/hubs?count=50")[1].get("Hub") or []}
+        promoted = [h.get("hubIdentifier") for h in get(
+            base, "/hubs/promoted?contentDirectoryID=%s&count=50" % movie_section)[1].get("Hub") or []]
+        return {
+            "row": next((d.get("hidden") for d in get(base, "/library/sections")[1].get(
+                "Directory") or [] if str(d.get("key")) == str(movie_section)), None),
+            "home_recent": len(movie_ids_c58(get(base, "/hubs/home/recentlyAdded?type=1")[1].get(
+                "Metadata"))),
+            "shelf": ("home.movies.recent" in hubs,
+                      len(movie_ids_c58((hubs.get("home.movies.recent") or {}).get("Metadata")))),
+            "recent": len(movie_ids_c58(get(base, "/library/recentlyAdded")[1].get("Metadata"))),
+            "promoted": "movie.recentlyadded.%s" % movie_section in promoted,
+            "own": get(base, "/library/sections/%s/all" % movie_section)[1].get("size"),
+            # A search hit names its library by title only, and the movies are this one's.
+            "search": len([r for r in get(
+                base, "/library/search?query=%s" % quote(title_c58))[1].get("SearchResult") or []
+                if (r.get("Metadata") or {}).get("type") == "movie"]),
+            "scoped": request(base, "GET", "/hubs/search?query=%s&contentDirectoryID=%s"
+                              % (quote(title_c58), movie_section))[0],
+        }
+    title_c58 = ((get(base, "/library/sections/%s/all" % movie_section)[1].get("Metadata")
+                  or [{}])[0].get("title") or "x").split()[0]
+    shown_c58 = home_c58()
+    request(base, "PUT", "/library/sections/%s/prefs?hidden=1" % movie_section)
+    off_home_c58 = home_c58()
+    request(base, "PUT", "/library/sections/%s/prefs?hidden=2" % movie_section)
+    off_search_c58 = home_c58()
+    request(base, "PUT", "/library/sections/%s/prefs?hidden=0" % movie_section)
+    back_c58 = home_c58()
+    check("Visibility 1 keeps a library off Home but not off its own page or search",
+          shown_c58["home_recent"] and shown_c58["promoted"] and shown_c58["search"]
+          and off_home_c58["row"] == 1 and off_home_c58["home_recent"] == 0
+          and off_home_c58["shelf"] == (True, 0) and off_home_c58["recent"] == 0
+          and not off_home_c58["promoted"] and off_home_c58["own"] == shown_c58["own"]
+          and off_home_c58["search"] == shown_c58["search"]
+          and off_home_c58["scoped"] == 200,
+          "before %s hidden=1 %s" % (shown_c58, off_home_c58))
+    check("Visibility 2 takes it out of global search as well",
+          off_search_c58["row"] == 2 and off_search_c58["search"] == 0
+          and off_search_c58["scoped"] == 404 and back_c58 == shown_c58,
+          "hidden=2 %s back %s" % (off_search_c58, back_c58))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
