@@ -30782,6 +30782,19 @@ def main():
               and not any("Guid" in r for r in plain_c55f6.get("Metadata") or []),
               "%s" % [sorted(k for k in r if k[:1].isupper()) for r in rows_c55f6])
 
+    # Cycle 55, measured on zen, kids and plexscratch42: `field=-1` is "has no value" on
+    # `rating`, `audienceRating`, `userRating`, `absoluteIndex` and `parent` -- zen's
+    # `absoluteIndex=-1` and `parent=-1` are every movie -- under the bare `=` alone
+    # (`-01` counts, `-1.0` and `<=-1` do not). plexsim answered no rows.
+    grid_c55f7 = "/library/sections/%s/all" % movie_section
+    every_c55f7 = get(base, grid_c55f7)[1].get("size")
+    got_c55f7 = [get(base, grid_c55f7 + q)[1].get("size") for q in (
+        "?absoluteIndex=-1", "?parent=-1", "?parent=-01", "?absoluteIndex=-1.0",
+        "?absoluteIndex%3C=-1")]
+    check("=-1 is has-no-value on the nullable number columns",
+          every_c55f7 and got_c55f7 == [every_c55f7, every_c55f7, every_c55f7, 0, 0],
+          "all %s, got %s" % (every_c55f7, got_c55f7))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
