@@ -5198,6 +5198,11 @@ class PlexSim:
         if method == "POST" and segments[:1] == ["accounts"] and len(segments) == 2:
             return ("error", 404, "plexsim: not found")
 
+        if method in ("GET", "HEAD"):
+            refusal = self.structural_refusal(segments, query)
+            if refusal:
+                return refusal
+
         # Cycle 18, measured on plexscratch with every verb tried (GET, HEAD, POST,
         # PUT, DELETE, PATCH, OPTIONS) on sixteen single-segment paths: a KNOWN
         # single-segment path falls through to the legacy plug-in dispatcher for every
@@ -8804,7 +8809,11 @@ class PlexSim:
             # page is byte-identical in order to `/library/sections/1/all` over 3,887
             # rows: this subset is ordered like every other listing, by `titleSort`.
             # plexsim answered it in catalog order.
-            rows, _ = self._sorted(rows, query.get("sort") or "titleSort")
+            # Cycle 55, measured on zen (`sort=titleSort:desc` and `sort=year:desc` answer
+            # `17360, 2161, 380...`, the unsorted page) and kids (`1, 17, 3, 4` to every
+            # sort): the leaf VALIDATES `sort=` -- an unknown key is a 500 -- and then
+            # IGNORES it. plexsim reversed the list for `titleSort:desc`.
+            rows, _ = self._sorted(rows, "titleSort")
             # Cycle 16, measured on kids and zen: like every other container a SHOW
             # library answers, this one carries `nocache`; a movie library's does not.
             # plexsim already had the rule on /all and the five subsets and had missed
@@ -10832,6 +10841,64 @@ class PlexSim:
             return ("error", 500, "plexsim: cannot filter the whole library on unmatched")
         return None
 
+    # Cycle 55, measured on zen (1.42.2) and kids (1.43.4), identical: every one of these
+    # section leaves PARSES the listing query's structural parameters and refuses a bad
+    # one with a 500 -- `sort=abc`, `group=abc` or an empty `group=`, `sourceType=abc` and
+    # `limit=2147483648` -- while answering exactly the same body to a GOOD one
+    # (`/genre?sort=titleSort:desc`, `?group=title`, `?limit=1` and `?sourceType=2` leave
+    # the axis as it was). The axes answer secondary rows no query reaches, so the values
+    # are validated and then thrown away. plexsim read none of them and answered 200.
+    # `userRating`, `rating`, `location`, `categories`, `folder` and the subsets
+    # (`recentlyAdded`, `newest`, `recentlyViewed`) answer 200 to all four on both
+    # references and are deliberately absent.
+    STRUCTURAL_SECTION_LEAVES = (set(SECONDARY_TAGS) | set(SECONDARY_FIELDS)
+                                 | {"resolution", "audioLanguage", "subtitleLanguage",
+                                    "firstCharacter", "unwatched", "onDeck", "search",
+                                    "collections"}
+                                 | set(CROSS_TYPE_AXES))
+    # Cycle 55: a `group=` that PARSES is a known field name -- `title`, `genre`,
+    # `duration`, `viewCount`, `file`, `random`, a type-prefixed `zzz.title` -- whether
+    # or not the listing could then group by it (`/all?group=genre` is a 500 at the
+    # grouping, `/genre?group=genre` a 200). These four fields, the refused filter
+    # fields and `leafCount` are 500s at the parse on both references.
+    UNGROUPABLE_NAMES = {"hdr", "duplicate", "unmatched", "inProgress", "leafCount"}
+
+    def _group_parses(self, field):
+        """Whether a `group=` value names a field a real PMS will parse. Cycle 55."""
+        bare = self.group_field(field)
+        if not bare or bare in REFUSED_FILTER_FIELDS or bare in self.UNGROUPABLE_NAMES:
+            return False
+        return (bare in self.GROUPABLE or bare in FILTER_FIELD_TYPES
+                or self._sortable(bare))
+
+    def _structural_parse_refusal(self, query, sort=True, group=True, source=True,
+                                  limit=True, status=500):
+        """The refusal a malformed structural parameter gets where it is only PARSED."""
+        if sort and query.get("sort"):
+            _unused, unsupported = self._sorted([], query["sort"])
+            if unsupported:
+                return ("error", status, "plexsim: unsupported sort key %s" % unsupported)
+        if group and "group" in query and not self._group_parses(query["group"]):
+            return ("error", status, "plexsim: cannot group by %r" % query["group"])
+        if source and "sourceType" in query:
+            try:
+                filters_module.source_order(query["sourceType"])
+            except filters_module.FilterError:
+                return ("error", status, "plexsim: bad sourceType")
+        if limit and "limit" in query and not _int_param(query["limit"]):
+            return ("error", status, "plexsim: bad limit")
+        return None
+
+    def structural_refusal(self, segments, query):
+        """Cycle 55: the listing grammar's structural parameters, refused where READ."""
+        if segments[:2] == ["library", "sections"] and len(segments) in (4, 5) \
+                and self.catalog.section(segments[2]):
+            leaf = segments[3]
+            if leaf in self.STRUCTURAL_SECTION_LEAVES and (
+                    len(segments) == 4 or leaf == "firstCharacter"):
+                return self._structural_parse_refusal(query)
+        return None
+
     def _listing_refusals(self, query, allow=()):
         """The refusals a listing answers wherever it consumes a query.
 
@@ -11037,7 +11104,13 @@ class PlexSim:
         """
         if not query or "limit" not in query:
             return rows
-        count = int(filters_module.as_number(query["limit"]))
+        # Cycle 55, measured on zen and kids: the value is a SIGNED 32-BIT integer with an
+        # optional sign and nothing else -- `limit=+1` is one row, `2147483647` the whole
+        # grid, and `2147483648`, `-2147483649`, `1.5`, ` 1` and an empty value are 500s.
+        # plexsim read it as any number and capped a grid at `1.5`.
+        if not _int_param(query["limit"]):
+            raise filters_module.FilterError(500, "bad limit %r" % query["limit"])
+        count = int(query["limit"])
         if count < 0:
             return rows
         return rows[:max(count, 1)]

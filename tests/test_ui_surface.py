@@ -30579,6 +30579,27 @@ def main():
                   "%s then %s" % ((zero_c55h.get("Metadata") or [{}])[0].get("title"),
                                   (back_c55h.get("Metadata") or [{}])[0].get("title")))
 
+    # Cycle 55, measured on zen (1.42.2) and kids (1.43.4): an axis, `/unwatched` and
+    # `/onDeck` PARSE the listing's structural parameters -- `sort=abc`, `group=abc`,
+    # `sourceType=abc` and `limit=2147483648` are 500s -- and ignore a good one:
+    # `/genre?group=title` is the axis unchanged and `/unwatched?sort=titleSort:desc` is
+    # the unsorted list. plexsim answered 200 to every refusal and reversed `/unwatched`.
+    genre_c55a1 = "/library/sections/%s/genre" % movie_section
+    base_c55a1 = get(base, genre_c55a1)
+    bad_c55a1 = [get(base, genre_c55a1 + q)[0] for q in (
+        "?sort=abc", "?group=abc", "?group=", "?sourceType=abc", "?limit=2147483648")]
+    good_c55a1 = [get(base, genre_c55a1 + q)[:2] for q in (
+        "?group=title", "?sort=titleSort:desc", "?limit=1", "?sourceType=2")]
+    unw_c55a1 = "/library/sections/%s/unwatched" % movie_section
+    order_c55a1 = [[r.get("ratingKey") for r in get(base, unw_c55a1 + q)[1].get("Metadata") or []]
+                   for q in ("", "?sort=titleSort:desc")]
+    grid_c55a1 = get(base, "/library/sections/%s/all?limit=2147483648" % movie_section)[0]
+    check("An axis parses sort, group, sourceType and limit and ignores good ones",
+          bad_c55a1 == [500] * 5 and all(g == base_c55a1[:2] for g in good_c55a1)
+          and order_c55a1[0] == order_c55a1[1] and grid_c55a1 == 500,
+          "bad %s, good %s, unwatched %s, grid %s" % (
+              bad_c55a1, [g[0] for g in good_c55a1], order_c55a1, grid_c55a1))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
