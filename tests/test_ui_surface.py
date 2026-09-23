@@ -32231,6 +32231,34 @@ def main():
           and shelves_c59k and shelves_c59k[0][0] == "home.playlists" and shelves_c59k[0][1] >= 1,
           str((source_c59k, shelves_c59k)))
 
+    def provider_directories_c59(path_c59="/media/providers"):
+        _, providers_c59, _ = get(base, path_c59)
+        found_c59 = {}
+        for provider_c59 in providers_c59.get("MediaProvider") or []:
+            for feature_c59 in provider_c59.get("Feature") or []:
+                if feature_c59.get("type") == "content":
+                    for directory_c59 in feature_c59.get("Directory") or []:
+                        found_c59[directory_c59.get("id")] = directory_c59
+        return found_c59
+    # Cycle 59, measured on plexscratch42: under `X-Plex-Platform: Roku` the Playlists
+    # source keeps its `id` and loses its `Pivot`, where a library row loses both.
+    _, grid_c59l, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59l = ((grid_c59l.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, made_c59l, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Roku&smart=0&uri=%s"
+                                % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                        % (machine, first_c59l)))
+    pl_c59l = ((made_c59l.get("Metadata") or [{}])[0]).get("ratingKey")
+    roku_body_c59l = json.loads(urllib.request.urlopen(urllib.request.Request(
+        base + "/media/providers", headers={"User-Agent": UA, "Accept": "application/json",
+                                             "X-Plex-Platform": "Roku"}), timeout=30).read())
+    roku_c59l = {d.get("id"): d for p in roku_body_c59l["MediaContainer"].get("MediaProvider") or []
+                 for f in p.get("Feature") or [] if f.get("type") == "content"
+                 for d in f.get("Directory") or []}
+    request(base, "DELETE", "/playlists/%s" % pl_c59l)
+    check("Roku keeps the Playlists source's id and drops its pivot",
+          "playlists" in roku_c59l and "Pivot" not in roku_c59l["playlists"]
+          and None in roku_c59l, str(sorted(map(str, roku_c59l))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -8150,8 +8150,12 @@ class PlexSim:
             for provider in container["MediaContainer"].get("MediaProvider") or []:
                 for feature in provider.get("Feature") or []:
                     for row in feature.get("Directory") or []:
-                        if row.get("key"):
+                        if str(row.get("key") or "").startswith("/library/sections/"):
                             row.pop("id", None)
+                            row.pop("Pivot", None)
+                        elif row.get("key") == "/playlists":
+                            # Cycle 59, measured on plexscratch42: the Playlists source
+                            # keeps its `id` and loses only its pivot.
                             row.pop("Pivot", None)
         return container
 
