@@ -31617,6 +31617,35 @@ def main():
     else:
         skip("tagId filters a listing by any tag's id", "need two movies")
 
+    # Cycle 58, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a beat at or
+    # under a minute deletes the stored resume point only inside a playback SESSION that has
+    # already reported a position past the minute. A NEW session's sub-minute beats -- "Play
+    # from beginning", stopped within a minute -- answer `ignore` with the stored offset and
+    # keep it, where plexsim deleted it and the title left Continue Watching.
+    I_c58t = "identifier=com.plexapp.plugins.library"
+    def offset_c58t():
+        return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0] \
+            .get("viewOffset")
+    request(base, "GET", "/:/unscrobble?key=%s&%s" % (movie, I_c58t))
+    beat_c45s(movie, "playing", 200000, 1000000, "c58t-a")
+    beat_c45s(movie, "stopped", 300000, 1000000, "c58t-a")
+    stored_c58t = offset_c58t()
+    beat_c45s(movie, "playing", 30000, 1000000, "c58t-b")
+    answer_c58t = beat_c45s(movie, "stopped", 30000, 1000000, "c58t-b")
+    kept_c58t = offset_c58t()
+    beat_c45s(movie, "playing", 110000, 1000000, "c58t-c")
+    beat_c45s(movie, "stopped", 30000, 1000000, "c58t-c")
+    dropped_c58t = offset_c58t()
+    check("a new session's sub-minute beats keep the stored resume point",
+          stored_c58t == 300000 and answer_c58t.get("playbackState") == "ignore"
+          and answer_c58t.get("viewOffset") == 300000 and kept_c58t == 300000
+          and dropped_c58t is None,
+          "stored %s, new session answered %s/%s and left %s, a progressed session left %s"
+          % (stored_c58t, answer_c58t.get("playbackState"), answer_c58t.get("viewOffset"),
+             kept_c58t, dropped_c58t))
+
+    request(base, "GET", "/:/unscrobble?key=%s&%s" % (movie, I_c58t))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
