@@ -8622,6 +8622,25 @@ class PlexSim:
                     edits = {k: v for k, v in query.items() if k not in ("type", "id")}
                     edits["_pairs"] = [(k, v) for k, v in query.get("_pairs") or []
                                        if k not in ("type", "id")]
+                    # Cycle 58, measured on plexscratch42: a rename to a name some row of
+                    # THIS library already carries as a `Collection` tag -- matched
+                    # ignoring case, the collection's own old tag included -- is a 409 that
+                    # changes nothing, while its own current title in any case, an unused
+                    # collection's title and a genre's name are 200s. python-plexapi's
+                    # `editTitle()` and the Edit dialog save here; plexsim renamed, and left
+                    # a member carrying two tags of the same name.
+                    wanted_title = edits.get("title.value", edits.get("title"))
+                    if wanted_title:
+                        taken = {str(t.get("tag") or "").lower()
+                                 for r in self.catalog.items.values()
+                                 if str(r.get("librarySectionID")) == str(section.get("key"))
+                                 for t in r.get("Collection") or []}
+                        for key in (query.get("id") or "").split(","):
+                            stored = self.library.collection(key.strip()) \
+                                if key.strip().isdigit() else None
+                            if stored is not None and wanted_title.lower() in taken \
+                                    and wanted_title.lower() != str(stored.get("title") or "").lower():
+                                return ("error", 409, "plexsim: a collection has that name")
                     for key in (query.get("id") or "").split(","):
                         if key.strip().isdigit() and self.library.collection(key.strip()):
                             # Cycle 15, measured on the copy: the SECTION path renames
