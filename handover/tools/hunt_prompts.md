@@ -4778,3 +4778,288 @@ fail-on-frozen regression check. If an axis has no client-visible findings say s
 
 
 ==== Cycle 60 result. A: 5 client-visible (localisation), 3 malformed-only. B: 1 client-visible (a cycle-59 regression), 2 malformed-only, 1 claim. C: 1 client-visible, 4 malformed-only, 1 unmeasurable bound (Manage Recommendations writes). Six fix commits. ====
+
+
+==== Cycle 61 (2026-09-24). Frozen `c0bf5b8`; the same three territories as cycle 60, meant as the stopping
+cycle: every axis of the ledger repeated, reported per axis. ====
+
+# Cycle 61 | shared preamble (both hunters)
+
+You are hunting for UNIMPLEMENTED or WRONGLY-IMPLEMENTED server behaviour in plexsim, a Plex Media
+Server emulator at `/Users/bensarmiento/debridmediamanager/plexsim`. This is **cycle 61** of a hunt
+that stops only when a cycle reports no findings. "no findings" is a valid, useful result — do not
+manufacture findings, and never report a difference you have not measured yourself.
+
+Read `CLAUDE.md` first (its one rule: **every emulated response is a measurement, not a guess**).
+Then skim `HANDOVER.md` §3.1 (the seven ways a measurement goes wrong), §3.3, §8 (measured and
+deliberately NOT implemented — do not re-report those) and §7's cycles 52 and 53. `CLAUDE.md`'s
+"Traps" bullets and `docs/findings.md` are the **already-fixed list**: search both (with python, not
+grep — see below) before reporting anything. Verify against the CURRENT plexsim, not the docs.
+
+## What cycle 54 did (already fixed -- read HANDOVER §7 "Cycle 54" and the fifty-fourth pass in docs/findings.md)
+
+Cycle 54 read the binary's query-parameter names and SQL and fixed 22 findings: six media
+filter columns, eighteen tag-table fields, the cluster columns and `trash`, `viewUpdatedAt`,
+the per-user null-as-zero dates, three date-typed columns, the negative-rating stamp, the
+episode leaf-count rule, the listing query on children/grandchildren/unwatched/
+recentlyViewedShows/media axes/autocomplete/common, the TV Recently Added shelves filtering
+episodes before the roll-up, a hub page dropping empty pairs, `/hubs/items` scoping,
+`unwatched=1` on three lists, the Dashboard's `viewedAt>`/`viewedAt<`/`viewedAt` keys, thirteen
+parameter refusals, `sectionID` as a number, the part Content-Type table, `.mov`, and
+`packetLength`. The tagging join (`tagId`, `tagType`, `taggingIndex`, `taggingCreatedAt`) is a
+recorded bound. Do not re-report any of it unless the CURRENT frozen tree gets it wrong.
+
+Cycle 55 (read HANDOVER §7 "Cycle 55" and the fifty-fifth pass) fixed 37 more: Related as a
+server-side tag score, On Deck's next-up anchor, `recentlyViewed`/section `/onDeck` ordered by
+the view-state write time, `popular` by history, playlist duration in whole seconds, the genre
+shelf's order, season titles following an index edit, the per-library TV shelf as the section's
+roll-up, `/hubs/promoted`'s refusals, and 26 grammar rules (structural parameters parsed
+wherever read, `[+-]?digits` integers, `+?0*[01]` options, include blocks on every hub, the
+filter value grammar, and a dozen endpoint rules). Do not re-report any of it unless the
+CURRENT frozen tree gets it wrong.
+
+Cycle 56 (HANDOVER §7 "Cycle 56", the fifty-sixth pass, §8's cycle-56 list) built six
+client-visible fixes -- a show library's provider storage totals, the playlist Meta's Type key
+and active flags, the legacy agents' per-MediaType languages, `decade` ignoring its operator,
+the per-user counters reading 0 once any state is written, `includeGuids` on a library's hub
+page -- and RECORDED eighteen malformed-only differences in §8. Do not re-report any of them.
+
+Cycle 57 (HANDOVER §7 "Cycle 57", the fifty-seventh pass) built nine more: collection search on
+the tag ladder, a list's history, a playlist's score base, the sync flag, the merged Continue
+Watching hub holding next-up rows, the section shelf's play-only next-up, a pristine show's
+OnDeck, the collection Related shelf (with a `tagId=` filter), and the play-queue marker's block
+rule. Do not re-report any of it or anything in §8.
+
+Cycle 58 (HANDOVER §7 "Cycle 58", the fifty-eighth pass, §8's cycle-58 list) built nine more: a
+library's Continue Watching shelf gated on the SHOW's play history, a new session's sub-minute
+beats keeping the resume point, a beat at exactly the stored position writing nothing, a
+section-path collection rename onto a taken collection tag as a 409, the legacy agents'
+`config/{mediaType}` chain / `contributors` / order save, `/library/all/top?type=2|3` rolling an
+episode play up to its show and season (flattened seasons too), statistics `at` buckets aligned to
+local calendar boundaries, and `hidden=1|2` keeping a library off Home, `/library/recentlyAdded`
+and (at 2) search. §8 records five more (the section Continue Watching per-URL cache among them).
+Do not re-report any of it.
+
+Cycle 59 (HANDOVER §7 "Cycle 59", the fifty-ninth pass, §8's cycle-59 list) built sixteen more:
+item Advanced enums English under `X-Plex-Language: en` and an item's own language enum localised
+piece by piece; a proxied `/player` command as a 404; a smart collection's
+`collectionFilterBasedOnUser`; `DELETE /library/sections/all/refresh`; a playlist's timeline beats;
+uploads per row with the agent candidate kept, theme and logo uploads stored and served; a match's
+rename cascade; 1.42.2's pinned-list Recently Added; the Collections tab; the Playlists source and
+`home.playlists` on `contentDirectoryID=playlists`; a library's Recent Playlists shelf; 1.42.2's
+translations (405 cells, from zen); and the Continue Watching gate as the LIBRARY's play history.
+plexscratch42 now also holds a second show, `Twofold`, in the Threefold library (section 3).
+Do not re-report any of it or anything in §8.
+
+Cycle 60 (HANDOVER §7 "Cycle 60", the sixtieth pass, §8's cycle-60 list) built seven more: joining a
+collection locks the member's `collection` field; an uploaded theme/logo is served to a read only
+(DELETE stays 404); a stream's language name follows the client's language by TAG (under `en`
+too) and the words titles are composed from are localised; hub titles are localised around the
+name they carry; `translations.json` is rebuilt as 1.42.2's (with the Related, post-play and
+Manage Recommendations titles); the host-built network-interface enum's lead is localised.
+plexscratch42's `Twofold` show is now show 391 (episodes 393-395), built from re-muxed files --
+never symlink media into a copy. Manage Recommendations' writes are an unmeasurable bound (§3.3).
+Do not re-report any of it or anything in §8.
+
+**This is meant to be the STOPPING cycle.** The loop stops when one cycle is clean on all ten axes of
+the ledger (HANDOVER §7 "Cycle 60"). Report per axis. A finding you cannot tag CLIENT-VISIBLE with a
+call site is not one.
+
+## CLIENT IMPACT -- the stopping rule this cycle runs under
+
+The user has set the stopping rule: **the loop stops when a cycle finds nothing a real client
+would notice.** So EVERY finding you report must carry one of two tags, with the evidence:
+
+* **CLIENT-VISIBLE** -- an official Plex client (Plex Web: its bundle is on disk at
+  `/Users/bensarmiento/debridmediamanager/plexsim/webclient/js/`; Plex for Android/iOS/TV as far
+  as recorded corpora show) or python-plexapi builds this exact request shape (path, parameter,
+  value class) in ordinary use, and the difference changes what it renders, plays, or does.
+  Cite the call site (bundle file + snippet, python-plexapi function, or a recorded corpus
+  line in `tests/fixtures/reference-walk.jsonl` / `harness/` captures).
+* **MALFORMED-ONLY** -- reachable only with a parameter, value or operator no client sends
+  (a word where a number goes, an out-of-range integer, an operator no UI builds), or a
+  difference no client reads.
+
+Tag honestly: a finding tagged client-visible without a call site will be re-tagged. Report
+the counts of each. **If you find no CLIENT-VISIBLE differences, say exactly "no
+client-visible findings"** (and still list the malformed-only ones).
+
+## The instruments this cycle builds on
+
+Cycle 52 read PMS's **route table** out of the server binary; cycle 53 read the plug-in framework's
+Python source and the database template's schema. Both references' server binaries are already
+copied to the cycle scratch, with their strings extracted:
+
+- `$C54/pms_kids.bin` + `$C54/kids_strings.txt` — Plex 1.43.4 (kids)
+- `$C54/pms_zen.bin` + `$C54/zen_strings.txt` — Plex 1.42.2 (zen — **the build plexsim reports**)
+- `$C54/param_like.txt` — 412 names that appear in the kids strings followed by `=` (a first cut)
+- `$C54/camel.txt` — 8,374 camelCase identifiers in the kids strings (a first cut)
+
+where `C54=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54` holds the binaries and every cycle-54 sweep artifact (`$C54/A/` is hunt A's whole sweep: `vocab.json`, `sweep.py`, `fam.py`, `bis.py`, `regress.py`, the jsonl results). Your own directory is `C=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c61`, and the tokens file is `$C/tokens.env`.
+Those files are private scratch material. Never copy them, or any part of the binary, into the repo.
+
+## Instruments
+
+- **Tokens:** `set -a; . $C/tokens.env; set +a` in each Bash call that needs them. It exports
+  `PLEXLAB_TOKEN` (kids), `ZEN_TOKEN` (zen), `SCRATCH_TOKEN` (plexscratch) and `S42_TOKEN`
+  (plexscratch42). **Never print a token**, never write one into any file under the repo, never
+  put one in your report — say `$PLEXLAB_TOKEN`.
+- **kids** — `http://100.85.222.1:32400`, Plex **1.43.4**, the shape authority. **GET and HEAD only.**
+  Section 1 "Movies": ratingKeys 1, 18, 17, 3, 4. Section 2 "TV Shows": Firefly 6; season 7
+  (episodes 8–10), season 11 (episodes 12–14, unmatched). Download queue 1 exists; leave it.
+- **zen** — `http://zen:32400`, Plex **1.42.2**, production, the version oracle and the only real
+  library (3,887 movies in section 1, shows in 2, "Bench TV" 4). **GET and HEAD only, ever, and
+  always send `X-Plex-Container-Start: 0` / `X-Plex-Container-Size: 20` headers on listings.**
+- **plexscratch** — `http://100.85.222.1:32410`, 1.43.4, UNCLAIMED disposable copy of kids. Writes
+  allowed. Token `$SCRATCH_TOKEN` (it changes if the copy restarts: re-read with
+  `ssh ben@kids /home/ben/plexscratch/scratch.sh token | tail -1`). Do not `reset` it without saying so.
+- **plexscratch42** — `http://100.85.222.1:32411`, fresh **1.42.2** install, UNCLAIMED, every item
+  unmatched. Writes allowed. Grammar only, never a count. Token `$S42_TOKEN`.
+- **A difference only an unclaimed copy shows may be the CLAIM (class E)** — check a claimed server.
+- **plexsim under test** — a FROZEN export of `main` at `c0bf5b8` (cycle 60 merged), at the port your territory names,
+  on `tests/catalog_ui.json`, no token gate. Movies 1007 (Tears of Steel), 1008, 1009; show 20001;
+  seasons 30001, 30002; episodes 1001–1003; sections 1 movie and 2 show. Writing to it is fine; to
+  restart it, kill ONLY the listener on your own port and start
+  `cd $C/head61 && RD_TOKEN=dummy python3 server.py --port <PORT> --catalog tests/catalog_ui.json --assert-claimed`
+  detached (Python `subprocess.Popen(..., start_new_session=True)`; `nohup … &` dies with the call).
+  Do not touch any other port: 32400, 32410, 32411, 32502, 8787, and the other hunter's port.
+- **Tools** in `handover/tools/` (read before use): `probe.py` holds the `WRITE_GET` guard regex;
+  `cmp.py`, `xdiff.py`, `fsweep.py`, `hsweep.py`, `envelope.py` are earlier sweep drivers. Write
+  your own scripts and all outputs under your territory directory `$C/<A|B>/`, never in the repo.
+  **`grep` in this shell is aliased through a filter that can mangle or truncate output**: use
+  `rtk proxy grep` or python for searching. Set `User-Agent: curl/8` on every request.
+- **Do not modify plexsim's tracked files, and do not commit anything.** You are measuring.
+
+## SAFETY — the references are shared, and hunts have damaged them before
+
+Cycle 4 deleted kids' Movies library; cycle 5 re-matched a show; cycle 6 left an undeletable
+download queue; cycle 45 minted orphan rows with a GET. So:
+
+1. **kids and zen: GET and HEAD only**, through a guard in YOUR client that refuses any other
+   method to those hosts and refuses every path matching `probe.py`'s `WRITE_GET` regex, plus:
+   `/library/metadata/*/theme/*/metadata` (a GET that MINTS a row), `/library/shared/*?sort=` with
+   an empty value (crashes a real PMS), anything under `/:/websockets`, `/:/eventsource`, any part/
+   media byte read or transcode, any artwork `?url=` setter, anything that leaves the host. Never
+   open a notification channel on kids or zen. Nothing under plex.tv.
+2. **Writes go to plexscratch, plexscratch42 or your own plexsim only.** Before any write, write
+   down the request and its undo. Never send `DELETE /library/sections/*`, merge/split/match/
+   unmatch on a whole library, maintenance endpoints, network/auth/claim prefs, `scratch.sh make`,
+   or anything that changes a compose file, mount or permission. Put that guard in your harness,
+   not only in your head: a sentence in a prompt has failed twice.
+3. Before your first request and after your last, run
+   `set -a; . $C/tokens.env; set +a; cd /Users/bensarmiento/debridmediamanager/plexsim/handover/tools && python3 refcheck7.py ref_cycle5_before.json`
+   and compare the two outputs; they must be identical. Report the result.
+4. zen is production with a real library: keep your request rate modest (a few per second at most)
+   and page every listing.
+
+## What counts as a finding
+
+A rule is a finding when a real PMS (zen for 1.42.2, backed by kids unless the difference is a
+version split) answers a request one way and the frozen plexsim answers it differently, and the
+difference is not catalog content. **A field only 1.43.4 sends is not a finding** (plexsim reports
+1.42.2) — but a 1.42.2 behaviour plexsim lacks IS, even when kids lacks it too. A difference
+explained by claim state, by catalog content (titles, counts, ids, dates, artwork URLs) or by an
+entry in HANDOVER §8 is not a finding. Re-issue every candidate by hand on each server before you
+report it.
+
+## Report format
+
+Write the report to `$C/<A|B>/REPORT.md` and return it as your final message. Most important
+first. For each finding: the exact request(s); zen's and kids' verbatim responses (trimmed but
+real); plexsim's verbatim response; the client impact (what breaks, for whom); and the minimal
+regression check that would fail on the frozen tree. Then the DENOMINATOR: how many names/requests
+/cells you swept and how each was partitioned — (a) identical, (b) catalog content / version / claim,
+(c) already recorded, (d) real behavioural difference (the findings), (e) explicit bound (write,
+private, unsafe, instrument limit). **If (d) is empty, say exactly "no findings"** and list what
+you compared. End with the snapshot comparison result.
+
+## Three hunters share the copies this cycle
+
+Territories A, B and C run at the same time and all may write to plexscratch42. Keep to your own
+content so the account-wide shelves (Home's Continue Watching and On Deck, history) can still be
+read: **A** writes only to movies 1-5 and the Firefly show (section 2); **B** only to the
+Threefold/Twofold library (section 3) and to lists and uploads it creates itself; **C** only to the
+Container Probe movies (ratingKeys 297-313) and lists it creates itself. When you read an
+account-wide shelf, compare only the rows your own writes touch, and say so. Never reset a copy.
+
+If the Write tool refuses to save your REPORT.md, write it with a Bash heredoc instead; the report file must exist on disk.
+
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c61/preamble.md` first and follow it. Your territory, ports and directory:
+
+# Cycle 61 | Territory A | the RENDERED client repeated, and localisation of everything it draws | your own plexsim on 32589 (start it from `$C/head61`; 32587 is the frozen read-only instance) | `$C/A/`
+
+Cycle 60's Territory A found five localisation findings, all built; cycle 59's five hold. This is
+the stopping repeat of axes 5 and 9. The harnesses are in `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c59/A/` and `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c60/A/` (`regress60a.py`, `loc.py`, `i18n.py`, `i18n_global.py`) (`drv.py`, the raw-CDP
+driver; the `page.route` plex.tv bodies; `res/` and `shots/` with every captured page). Read its
+report in HANDOVER §7 "Cycle 59" and §3.3's browser entry.
+
+1. **Repeat the walk** against the new head -- every page and control cycle 59 walked, on
+   plexscratch42, kids (GET-only gate installed BEFORE the first navigation, as in cycle 59) and
+   your plexsim. Try the Windows CDP browser first (`docs/operations/testing.md`); kids' 9223 is
+   the fallback, never 9224. Every cycle-59 fix must hold, rendered.
+2. **Widen to localisation (a new axis).** Plex Web localises from the account language and sends
+   `X-Plex-Language`. Walk the same pages with the client set to **de**, **da**, **ja**, **pt**, and four languages
+   cycle 60 did not walk (**fr**, **ru**, **zh**, **sr**) on plexscratch42 and plexsim, and
+   compare every SERVER-authored string the app draws: filter and sort menus, hub titles, the Edit
+   dialog's Advanced tab (labels, summaries, every dropdown), library settings, server settings,
+   stream names in the track pickers, Get Info. Content strings are not findings. A version question
+   (1.43.4 vs 1.42.2 wording) is settled on zen with a GET.
+3. Also walk what cycle 59 could not: the Dashboard with the account feature ids answered in your
+   canned plex.tv bodies (read `handover`'s notes on `ownerFeatures`), and Up Next / the play
+   queue panel as far as it goes without a media read.
+
+Tag every difference CLIENT-VISIBLE (page and control, plus the request behind it) or not a finding.
+Write an undo for every write. Report pages, languages and controls walked, the partition, and every
+finding with its evidence and a minimal fail-on-frozen HTTP-level regression check.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c61/preamble.md` first and follow it. Your territory, port and directory:
+
+# Cycle 61 | Territory B | python-plexapi's writes repeated, and PLAYBACK per client profile and identity | your own plexsim on 32590 (start it from `$C/head61`) | `$C/B/`
+
+1. **Repeat cycles 59 and 60's python-plexapi write/playback drive** (cycle 60's tooling is in
+   `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c60/B/`: `drive60s.py`, `ident60.py`, `extra60.py`, `regress60b.py`) against the new head. Its tooling is in
+   `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c59/B/` (`drive59.py`, `drive59b.py`, `h59.py` with its guard, `diff59.py`,
+   `regress59b.py`; read them). Every cycle-59 fix must hold and the matrix must come back clean.
+2. **Playback per client PROFILE and IDENTITY, repeated (cycle 60 found it clean).** Every official client plays through
+   the same server surface with a different identity: `X-Plex-Product`, `X-Plex-Platform`,
+   `X-Plex-Device`, `X-Plex-Client-Profile-Name`/`-Extra`, `X-Plex-Client-Identifier` and
+   `X-Plex-Session-Identifier`. For each of these identities -- Plex Web (Chrome, Safari, Firefox),
+   Plex for Android (mobile and TV), Plex for iOS, Plex for Apple TV, Roku, Samsung, LG (webOS),
+   Xbox, PlayStation, Plex HTPC/Desktop (Konvergo), python-plexapi -- drive the whole playback flow a
+   player runs: `/library/metadata/{id}` with the client's include flags, a play queue from an item
+   and from a show, the decision (with and without `hasMDE=1`, the client's own parameters), the
+   timeline beats through a session to completion, `/status/sessions` and its `Player` block, the
+   stream selection (`PUT /library/parts/{id}`), and the part read's headers (on plexscratch42 and
+   plexsim only -- never a media read on kids or zen). Take each client's exact parameters from the
+   decision corpus (`tests/fixtures/decisions/`), `client_profiles.json` and the recorded captures.
+   Compare what each answer tells THAT client (direct play or not, which stream, the Player row, the
+   notification frames). Use the Threefold/Twofold library and movies you create nothing on.
+
+Tag every difference CLIENT-VISIBLE (the client and its call) or MALFORMED-ONLY. Write an undo for
+every write. Report methods and identities driven, the partition, and every finding with its evidence
+and a minimal fail-on-frozen regression check.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c61/preamble.md` first and follow it. Your territory, ports and directory:
+
+# Cycle 61 | Territory C | the stopping repeat of axes 1, 2, 3, 4, 7 and 10 | frozen plexsim 32587 (reads) and your own plexsim on 32591 (writes, from `$C/head61`) | `$C/C/`
+
+HANDOVER §7 "Cycle 60" carries the AXIS LEDGER. Cycle 60's Territory C took these same axes; its
+tooling and per-axis outputs are in `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/e89ae2a5-7f85-41f9-ab6b-6f3596733d42/scratchpad/c60/C/` (`ax1/`...`ax10/`, `ledger.md`) -- start from them. The loop stops only when every axis is clean.
+Repeat, against the new head, every axis below with the tooling that last took it, and report
+anything client-visible:
+
+1. **Plex Web's request inventory, JSON and XML** (cycles 56-58 A): `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c56/A/`
+   (`templates.txt`, `regress56a.py`), `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c57/A/` (`regress57a.py`), `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c58/A/`.
+2. **python-plexapi's read surface** (cycle 57 A): `papi57.py`, `penum.py`, `pdiff.py` in
+   `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c57/A/`.
+3. **Client write flows, the redraw reads and the frames** (cycle 57 B, 58 A): `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c57/B/` and
+   `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c58/A/` -- on plexscratch42 with the Container Probe movies and your own lists only.
+4. **The owner's screens** (cycle 58 B): `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c58/B/` and `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c58/Bf/` (`regress58b.py`).
+   Never write network/auth/claim/updater settings or run maintenance on a reference.
+7. **Server vocabulary under client tags** (cycle 56 B, repeating 54/55): `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c56/B/`,
+   `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c55/`, `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54/A/` -- re-run the sweeps at the resolution cycle 56 used.
+10. **Discovery, claim and connection**: `tests/test_gdm.py`, `/identity`, `/`, `/servers`,
+   `/myplex/account`, the resources a client reads -- read-only on the references; never open a
+   socket or write anything under plex.tv.
+
+Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
+axis, the denominator and the partition, and every finding with its tag, evidence and a
+fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
