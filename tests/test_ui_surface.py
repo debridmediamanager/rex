@@ -31109,6 +31109,23 @@ def main():
     check("a legacy agent's MediaType carries its languages",
           block_c56c.count("<Language ") == 33, "%d rows" % block_c56c.count("<Language "))
 
+    # Cycle 56, measured on zen (1.42.2) and kids (1.43.4): `decade` IGNORES its operator --
+    # `decade!=2010`, `>>=2000`, `<<=2020` each answer the `=` bucket (zen 349, 252, 790).
+    # Plex Web builds "Decade / is not / 2010s" as `decade!=2010`; plexsim compared.
+    _, grid_c56d, _ = get(base, "/library/sections/%s/all" % movie_section)
+    years_c56d = [int(r.get("year")) for r in grid_c56d.get("Metadata") or [] if r.get("year")]
+    if years_c56d:
+        decade_c56d = years_c56d[0] // 10 * 10
+        _, eq_c56d, _ = get(base, "/library/sections/%s/all?decade=%d" % (movie_section, decade_c56d))
+        _, ne_c56d, _ = get(base, "/library/sections/%s/all?decade!=%d" % (movie_section, decade_c56d))
+        _, gt_c56d, _ = get(base, "/library/sections/%s/all?decade%%3E%%3E=%d"
+                            % (movie_section, decade_c56d - 10))
+        keys_c56d = lambda c: sorted(r.get("ratingKey") for r in c.get("Metadata") or [])
+        check("decade answers its = bucket under every operator",
+              keys_c56d(ne_c56d) == keys_c56d(eq_c56d) and not gt_c56d.get("Metadata"),
+              "= %d, != %d, >> %d" % (len(keys_c56d(eq_c56d)), len(keys_c56d(ne_c56d)),
+                                     len(keys_c56d(gt_c56d))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
