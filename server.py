@@ -2365,6 +2365,35 @@ def _bool_option(value):
     return bool(text) and text.isdigit() and int(text) in (0, 1)
 
 
+def _history_time_filter(query, date):
+    """The Dashboard's view-time keys, as a predicate over a history row's `viewedAt`.
+
+    Cycle 54, measured on kids (1.43.4) and zen (1.42.2) with the client's own encoding:
+    `viewedAt>` is `>=`, `viewedAt<` is `<=` and a bare `viewedAt` is `==`; the doubled
+    `>=`/`<=` keys are unknown and ignored. On the history page (`date=False`) a value
+    must be an integer and anything else is a 400; on Top Played and `users/top`
+    (`date=True`) it parses like a filter date -- `-5y` is fine -- and a bad one is a
+    500. Returns an error tuple when the value is refused.
+    """
+    tests = []
+    for key, test in (("viewedAt>", lambda a, b: a >= b), ("viewedAt<", lambda a, b: a <= b),
+                      ("viewedAt", lambda a, b: a == b)):
+        if key not in query:
+            continue
+        value = str(query.get(key) or "")
+        if date:
+            try:
+                moment = filters_module.as_epoch(value)
+            except filters_module.FilterError:
+                return ("error", 500, "plexsim: internal error")
+        else:
+            if not (value.lstrip("-").isdigit() and value.lstrip("-")):
+                return ("error", 400, "plexsim: bad request")
+            moment = int(value)
+        tests.append((test, moment))
+    return lambda viewed: all(test(viewed, moment) for test, moment in tests)
+
+
 def _watched_leaf(row):
     """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
     or an episode with a play recorded. A parent row is never dropped for it."""
@@ -6654,11 +6683,32 @@ class PlexSim:
             if raw is None or not str(raw).lstrip("+-").isdigit():
                 return ("error", 400, "plexsim: bad request")
             wanted = {"1": "movie", "2": "show", "4": "episode"}.get(str(int(raw)))
+            # Cycle 54, measured on kids and zen: the Dashboard builds this with
+            # `accountID`, `librarySectionID` and `viewedAt>`, and they filter the HISTORY
+            # rows before the plays are counted (zen's top episode goes from 12 plays to
+            # 5). A bad value in any of them is a 500. See `_history_time_filter`.
+            passes = _history_time_filter(query, date=True)
+            if isinstance(passes, tuple):
+                return passes
+            ids = {}
+            for name in ("accountID", "librarySectionID"):
+                if name in query:
+                    value = str(query.get(name) or "")
+                    if not (value.lstrip("-").isdigit() and value.lstrip("-")):
+                        return ("error", 500, "plexsim: internal error")
+                    ids[name] = int(value)
             plays, viewers, seen_at = {}, {}, {}
             for entry in (self.library.history() if wanted else ()):
                 key = entry.get("ratingKey")
                 row = catalog.items.get(int(key)) if str(key).isdigit() else None
                 if row is None or row.get("type") != wanted:
+                    continue
+                if not passes(int(entry.get("viewedAt") or 0)):
+                    continue
+                if "accountID" in ids and int(entry.get("accountID") or 1) != ids["accountID"]:
+                    continue
+                if "librarySectionID" in ids \
+                        and int(row.get("librarySectionID") or 0) != ids["librarySectionID"]:
                     continue
                 plays[int(key)] = plays.get(int(key), 0) + 1
                 viewers.setdefault(int(key), set()).add(entry.get("accountID") or 1)
@@ -12441,6 +12491,15 @@ class PlexSim:
             if row.get("type") == "season":
                 return ("error", 500, "plexsim: internal error")
             views = self.library.global_views(row)
+            # Cycle 54, measured on kids and zen: the viewedAt keys filter the history
+            # counted here too (a bad value is a 500); `accountID` does not.
+            passes = _history_time_filter(query, date=True)
+            if isinstance(passes, tuple):
+                return passes
+            if any(key in query for key in ("viewedAt>", "viewedAt<", "viewedAt")):
+                views = sum(1 for entry in self.library.history()
+                            if str(entry.get("ratingKey")) == str(row.get("ratingKey"))
+                            and passes(int(entry.get("viewedAt") or 0)))
             accounts = [{"globalViewCount": views, "id": 1}] if views else []
             return self.tag_container(size=len(accounts), Account=accounts)
         if leaf == "userState":
@@ -18860,9 +18919,15 @@ class PlexSim:
             if not any(str(r.get("ratingKey")) == wanted for r in rows) \
                     and self.catalog.items.get(int(wanted)) is None:
                 return ("error", 404, "plexsim: not found")
-        for key in ("viewedAt>", "viewedAt>=", "viewedAt<", "viewedAt<="):
-            if key in query and not str(query.get(key) or "").lstrip("-").isdigit():
-                return ("error", 400, "plexsim: bad request")
+        # Cycle 54 corrected the keys, measured on kids and zen with the client's own
+        # encoding: `viewedAt%3E=` is the key `viewedAt>` and it is INCLUSIVE (zen's
+        # newest view time answers its two rows), `viewedAt<` likewise, and a bare
+        # `viewedAt` is exact. `viewedAt>=` and `viewedAt<=` are UNKNOWN keys -- ignored
+        # and not validated. Cycle 14's "`viewedAt>=abc` is a 400" was the `viewedAt>`
+        # key read through a raw `>=`.
+        passes = _history_time_filter(query, date=False)
+        if isinstance(passes, tuple):
+            return passes
         # Cycle 15, measured on kids (1.43.4) and zen (1.42.2), which agree: this page
         # lists NOTHING without a `type=`. Both answer `size 0`/`totalSize 0` to the
         # plain call -- zen with 73 rows in it -- and that is the whole of the `size 0`
@@ -18891,13 +18956,7 @@ class PlexSim:
             if query.get(name):
                 rows = [r for r in rows
                         if str(r.get(field)) == str(query[name])]
-        for key, test in (("viewedAt>", lambda a, b: a > b),
-                          ("viewedAt>=", lambda a, b: a >= b),
-                          ("viewedAt<", lambda a, b: a < b),
-                          ("viewedAt<=", lambda a, b: a <= b)):
-            if str(query.get(key) or "").isdigit():
-                moment = int(query[key])
-                rows = [r for r in rows if test(int(r.get("viewedAt") or 0), moment)]
+        rows = [r for r in rows if passes(int(r.get("viewedAt") or 0))]
         # Default order is viewedAt ASCENDING, and an unknown sort key is a 400 --
         # not the 500 a library listing answers, which is its own small surprise.
         spec = query.get("sort") or "viewedAt"

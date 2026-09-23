@@ -30266,6 +30266,41 @@ def main():
     check("unwatched=1 drops the watched rows of three lists", not wrong_c54n,
           "; ".join(wrong_c54n)[:240])
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): the Dashboard's history
+    # filters. The keys are `viewedAt>` (INCLUSIVE, what `viewedAt%3E=` sends), `viewedAt<`
+    # (inclusive) and a bare `viewedAt` (exact); `viewedAt>=` and `viewedAt<=` are unknown
+    # keys, ignored and not validated. `/library/all/top` filters its HISTORY rows by them
+    # and by `accountID` and `librarySectionID` -- a date there parses like a filter date
+    # and a bad one is a 500 -- and counts what is left; `users/top` takes the viewedAt
+    # three; the history page takes them as integers (400 otherwise).
+    import time as time_c54o
+    request(base, "PUT", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    now_c54o = int(time_c54o.time())
+    wrong_c54o = []
+    def size_c54o(path_c54o):
+        status_c54o, found_c54o, _ = get(base, path_c54o)
+        return status_c54o, len(found_c54o.get("Metadata") or found_c54o.get("Account") or [])
+    for path_c54o, want_c54o in (
+            ("/library/all/top?type=1&viewedAt%%3E=%d" % (now_c54o + 3600), (200, 0)),
+            ("/library/all/top?type=1&viewedAt%%3E=%d" % (now_c54o - 3600), (200, None)),
+            ("/library/all/top?type=1&accountID=2", (200, 0)),
+            ("/library/all/top?type=1&accountID=abc", (500, 0)),
+            ("/library/all/top?type=1&librarySectionID=abc", (500, 0)),
+            ("/library/all/top?type=1&viewedAt=abc", (500, 0)),
+            ("/library/metadata/%s/users/top?viewedAt=abc" % movie, (500, 0)),
+            ("/library/metadata/%s/users/top?viewedAt%%3E=%d" % (movie, now_c54o + 3600),
+             (200, 0)),
+            ("/status/sessions/history/all?type=1&viewedAt=abc", (400, 0)),
+            ("/status/sessions/history/all?type=1&viewedAt=1", (200, 0)),
+            ("/status/sessions/history/all?type=1&viewedAt%%3E%%3D=abc", (200, None))):
+        got_c54o = size_c54o(path_c54o)
+        if got_c54o[0] != want_c54o[0] or (want_c54o[1] is not None and got_c54o[1] != want_c54o[1]) \
+                or (want_c54o[1] is None and not got_c54o[1]):
+            wrong_c54o.append("%s -> %s" % (path_c54o.split("?", 1)[1], got_c54o))
+    request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library" % movie)
+    check("the Dashboard's viewedAt, accountID and section filters", not wrong_c54o,
+          "; ".join(wrong_c54o)[:240])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
