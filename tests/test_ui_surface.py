@@ -31806,6 +31806,34 @@ def main():
           and moved_c58u and moved_c58u > before_c58u,
           "lastViewedAt %s -> %s (a moved beat %s), stays hidden %s, a moved beat shows it %s"
           % (before_c58u, same_c58u, moved_c58u, hidden_c58u, back_c58u))
+    # Cycle 58, measured on zen (1.42.2): the Dashboard's Top Played TV column asks
+    # `/library/all/top?type=2`, and a play is counted on the episode's SHOW there (zen's
+    # one show answers `globalViewCount: 73`, its episodes' history rows) and on its SEASON
+    # at `type=3`. plexsim matched the history row's own type, so no show ever had a play.
+    leaves_c58 = get(base, "/library/sections/%s/all?type=4" % show_section)[1].get(
+        "Metadata") or [] if show_section else []
+    if leaves_c58:
+        leaf_c58 = leaves_c58[0]
+        request(base, "GET", "/:/scrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % leaf_c58["ratingKey"])
+        tops_c58 = {}
+        for type_c58 in (2, 3):
+            rows_c58 = get(base, "/library/all/top?type=%d&limit=50" % type_c58)[1].get(
+                "Metadata") or []
+            tops_c58[type_c58] = {str(r.get("ratingKey")): (r.get("type"), r.get("userCount"),
+                                                            bool(r.get("globalViewCount")))
+                                  for r in rows_c58}
+        show_c58 = str(leaf_c58.get("grandparentRatingKey"))
+        season_c58 = str(leaf_c58.get("parentRatingKey"))
+        check("Top Played counts an episode's play on its show and its season",
+              tops_c58[2].get(show_c58) == ("show", 1, True)
+              and tops_c58[3].get(season_c58) == ("season", 1, True),
+              "type=2 %s, type=3 %s" % (tops_c58[2], tops_c58[3]))
+        request(base, "GET", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % leaf_c58["ratingKey"])
+    else:
+        skip("Top Played counts an episode's play on its show and its season",
+             "no episode in the fixture")
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
