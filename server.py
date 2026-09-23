@@ -13116,13 +13116,19 @@ class PlexSim:
         return rows
 
     def section_recently_added_rows(self, section):
-        """Top-level rows for a library's ``tv/movie.recentlyadded`` shelf.
+        """The rows of a library's ``tv/movie.recentlyadded`` shelf.
 
-        Cycle 50 measured the show form independently on kids and zen: the shelf
-        keeps its top-level show row, but stamps that projection with the newest
-        leaf's ``addedAt``.  This differs deliberately from the mixed Home listing,
-        whose roll-up can return a season or episode instead.
+        Cycle 55 REFUTED cycle 50's "the show form keeps its top-level show row". On
+        zen the shelf is the section's own MIXED roll-up -- the same show, episode and
+        season rows, in the same order and with the same newest-leaf stamps, as
+        `/hubs/home/recentlyAdded?type=2&sectionID=2`, twelve of twelve, on both
+        `/hubs/sections/2` and `/hubs/promoted` (`One Piece`, then the episode `Facts of
+        Life`, then `Season 1`...). kids cannot tell the two apart: its whole roll-up
+        is Firefly, which IS the top-level show. The newest-leaf stamp survives, because
+        the roll-up dates every parent row that way.
         """
+        if section.get("type") == "show":
+            return self.recently_added_tv(section.get("key"))
         rows = list(self.catalog.section_items(section.get("key")))
         if section.get("type") == "show":
             dated = []
