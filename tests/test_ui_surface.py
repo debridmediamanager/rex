@@ -30628,6 +30628,35 @@ def main():
               "statuses %s, type=1 rows %s, group=title %s" % (
                   got_c55a2, len(typed_c55a2.get("Metadata") or []), kept_c55a2))
 
+    # Cycle 55, measured on zen and kids: the remaining readers of the listing grammar
+    # refuse what they cannot parse -- `index=abc` on `/collections` and `/playlists`,
+    # `limit=abc` on `/playlists/all` and an item's `/users/top`, an empty `limit=` on
+    # Top Played, `/nearest?limit=abc` (400) and `limit=-1` (500), `/library/onDeck?type=
+    # abc` (400), the autocomplete's `limit=2147483648` (400), `type=2147483648` (400 on
+    # `/library/all` and `/sorts`, 500 on a section grid) and a search `limit` past the
+    # 64-bit range (500). plexsim answered 200 to all but the autocomplete's.
+    cells_c55a3 = [
+        ("/library/sections/%s/collections?index=abc" % movie_section, 500),
+        ("/playlists?index=abc", 500), ("/playlists/all?limit=abc", 500),
+        ("/library/metadata/%s/users/top?limit=abc" % movie, 500),
+        ("/library/all/top?type=1&limit=", 500),
+        ("/library/metadata/%s/nearest?limit=abc" % movie, 400),
+        ("/library/metadata/%s/nearest?limit=-1" % movie, 500),
+        ("/library/onDeck?type=abc", 400),
+        ("/library/sections/%s/autocomplete?type=1&title.query=t&limit=2147483648"
+         % movie_section, 400),
+        ("/library/all?type=2147483648", 400),
+        ("/library/sections/%s/sorts?type=2147483648" % movie_section, 400),
+        ("/library/sections/%s/all?type=2147483648" % movie_section, 500),
+        ("/library/search?query=the&limit=9223372036854775808", 500)]
+    got_c55a3 = [get(base, cell_c55a3)[0] for cell_c55a3, _ in cells_c55a3]
+    ok_c55a3 = [get(base, cell_c55a3)[0] for cell_c55a3 in (
+        "/library/sections/%s/collections?index=1" % movie_section,
+        "/library/metadata/%s/nearest?limit=0" % movie)]
+    check("Index, limit and type refuse where a listing reads them",
+          got_c55a3 == [want for _, want in cells_c55a3] and ok_c55a3 == [200, 200],
+          "%s, controls %s" % (got_c55a3, ok_c55a3))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

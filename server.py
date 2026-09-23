@@ -8485,7 +8485,7 @@ class PlexSim:
             if method not in ("GET", "HEAD"):
                 return ("error", 404, "plexsim: not found")
             if query.get("type") is not None \
-                    and not str(query.get("type")).strip().lstrip("-").isdigit():
+                    and not _int_param(str(query.get("type")).strip()):
                 # Cycle 20: an unparseable `type=` is a 400 on both references.
                 return ("error", 400, "plexsim: bad request")
             return self.common_fields(section_id, section, query)
@@ -8574,7 +8574,9 @@ class PlexSim:
             raw = query.get("type")
             if raw is None:
                 wanted = "2" if section.get("type") == "show" else "1"
-            elif str(raw).lstrip("-").isdigit():
+            elif _int_param(raw):
+                # Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1` the
+                # movie list), measured on zen and kids.
                 wanted = str(int(raw))
             else:
                 return ("error", 400, "plexsim: bad request")
@@ -8589,7 +8591,9 @@ class PlexSim:
             raw = query.get("type")
             if raw is None:
                 wanted = "2" if section.get("type") == "show" else "1"
-            elif str(raw).lstrip("-").isdigit():
+            elif _int_param(raw):
+                # Cycle 55: a signed 32-bit integer (`2147483648` is a 400, `+1` the
+                # movie list), measured on zen and kids.
                 wanted = str(int(raw))
             else:
                 return ("error", 400, "plexsim: bad request")
@@ -9527,7 +9531,11 @@ class PlexSim:
             # a non-number is -- but the `year` AXIS answers 400 to both, measured on
             # kids and zen alike, so the empty case takes its own status here.
             raise filters_module.FilterError(empty_status or 500, "bad type %r" % raw)
-        if not str(raw).lstrip("-").isdigit():
+        # Cycle 55, measured on zen and kids: the type is a SIGNED 32-BIT integer --
+        # `type=2147483648` is refused with the same status as `abc` (500 on a section
+        # listing and its axes, 400 on `/library/all` and `/year`), and `type=+1` and
+        # `type=01` are the movie list.
+        if not _int_param(raw):
             raise filters_module.FilterError(status, "bad type %r" % raw)
         return int(raw)
 
@@ -10900,14 +10908,62 @@ class PlexSim:
             leaf = segments[3]
             if leaf in self.STRUCTURAL_SECTION_LEAVES and (
                     len(segments) == 4 or leaf == "firstCharacter"):
-                return self._structural_parse_refusal(query)
+                refusal = self._structural_parse_refusal(query)
+                if refusal:
+                    return refusal
             # Cycle 55, measured on kids and zen: the in-library autocomplete, `/common`
             # and the section's `/extras/all` parse the same four -- `group=abc`,
             # `sourceType=abc`, `limit=2147483648` and `sort=abc` are 500s -- where a good
             # `group=title` changes nothing.
-            if leaf in ("autocomplete", "common") and len(segments) == 4 \
+            if leaf == "autocomplete" and len(segments) == 4:
+                # ...but the autocomplete refuses its own `type` and `limit` with a 400
+                # (`type=abc`, `limit=2147483648`), on zen and kids alike.
+                if "type" in query and not _int_param(query["type"]) \
+                        or "limit" in query and not _int_param(query["limit"]):
+                    return ("error", 400, "plexsim: bad request")
+                return self._structural_parse_refusal(query, limit=False)
+            if leaf == "common" and len(segments) == 4 \
                     or segments[3:] == ["extras", "all"]:
-                return self._structural_parse_refusal(query)
+                refusal = self._structural_parse_refusal(query)
+                if refusal:
+                    return refusal
+            # Cycle 55, measured on zen and kids: `index=` is PARSED by the listings
+            # that read the query -- `index=abc` is a 500 on `/collections`, `/search`
+            # and `/extras/all` (and `/playlists`), `index=1` and `+1` are 200s -- and
+            # a show library's `/onDeck` and `/recentlyViewedShows` parse `limit=`.
+            if (leaf in ("collections", "search") and len(segments) == 4
+                    or segments[3:] == ["extras", "all"]) \
+                    and "index" in query and not _int_param(query["index"], None):
+                return ("error", 500, "plexsim: bad index")
+            if leaf == "recentlyViewedShows" and len(segments) == 4 \
+                    and "limit" in query and not _int_param(query["limit"]):
+                return ("error", 500, "plexsim: bad limit")
+        if segments == ["playlists"] and "index" in query \
+                and not _int_param(query["index"], None):
+            return ("error", 500, "plexsim: bad index")
+        if segments == ["playlists", "all"] and "limit" in query \
+                and not _int_param(query["limit"]):
+            return ("error", 500, "plexsim: bad limit")
+        if segments == ["library", "all", "top"] and "limit" in query \
+                and not _int_param(query["limit"]):
+            # Cycle 55: an EMPTY `limit=` is a 500 here as well as `abc`.
+            return ("error", 500, "plexsim: bad limit")
+        if segments == ["library", "onDeck"] and "type" in query \
+                and not _int_param(query["type"]):
+            # Cycle 55: `type=abc` and an empty `type=` are 400s on zen and kids.
+            return ("error", 400, "plexsim: bad request")
+        if segments[:2] == ["library", "metadata"] and len(segments) == 5 \
+                and segments[3:] == ["users", "top"] and "limit" in query \
+                and not _int_param(query["limit"]):
+            return ("error", 500, "plexsim: bad limit")
+        if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
+                and segments[3] == "nearest" and "limit" in query:
+            # Cycle 55, measured on zen and kids: `limit=abc` is a 400 and `limit=-1` a
+            # 500, where `limit=0` is the ordinary empty 200.
+            if not _int_param(query["limit"]):
+                return ("error", 400, "plexsim: bad request")
+            if int(query["limit"]) < 0:
+                return ("error", 500, "plexsim: bad limit")
         if segments[:2] == ["library", "metadata"] and len(segments) == 4 \
                 and segments[3] in ("children", "grandchildren") \
                 and segments[2].isdigit():
@@ -14345,9 +14401,11 @@ class PlexSim:
         # statuses the wrong way round and let an empty value through.
         if "limit" in query:
             raw_limit = str(query.get("limit") or "")
-            if not raw_limit.lstrip("-").isdigit():
+            if not _int_param(raw_limit, None):
                 return ("error", 400, "plexsim: bad request")
-            if int(raw_limit) <= 0:
+            if int(raw_limit) <= 0 or not _int_param(raw_limit, 64):
+                # Cycle 55, measured on zen and kids: a count past the signed 64-bit
+                # range (`9223372036854775808`) is the same 500 as a non-positive one.
                 return ("error", 500, "plexsim: internal error")
         limit = int(query.get("limit", 3) or 3)
         typed, tags = self.search_matches(text, limit, tagged_items=True)
@@ -14609,9 +14667,12 @@ class PlexSim:
         # answered 500, 200, 500, 200 and 200 to those five.
         raw_limit = query.get("limit")
         if raw_limit is not None:
-            if not str(raw_limit).lstrip("-").isdigit():
+            if not _int_param(raw_limit, None):
                 return ("error", 400, "plexsim: bad request")
-            if int(raw_limit) <= 0:
+            if int(raw_limit) <= 0 or not _int_param(raw_limit, 64):
+                # Cycle 55, measured on zen and kids: past the signed 64-bit range is a
+                # 500 too. (kids also 500s `2147483647` and `9223372036854775807` and
+                # answers `2147483648`; no rule explains those, so they are not built.)
                 return ("error", 500, "plexsim: internal error")
         limit = int(raw_limit) if raw_limit is not None else 10
         # The filter runs BEFORE the cap: zen's `searchTypes=tv&limit=100` answers 100
@@ -18413,7 +18474,8 @@ class PlexSim:
         type.
         """
         kind = query.get("type") or ""
-        if not kind.lstrip("-").isdigit():
+        # Cycle 55: `type=2147483648` is a 400 too, on zen and kids.
+        if not _int_param(kind):
             return ("error", 400, "plexsim: bad request")
         if str(int(kind)) == "318":
             # Measured on both servers: studios are a tag table too, whose filter is a
