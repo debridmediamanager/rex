@@ -30123,6 +30123,23 @@ def main():
         check("a show's children and grandchildren run the listing query", not wrong_c54i,
               "; ".join(wrong_c54i))
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2): `/unwatched` and
+    # `/recentlyViewedShows` run the listing's FILTERS -- `genre=zzzq` and `title=zzzq`
+    # answer nothing on both -- where `newest`, `recentlyViewed` and `recentlyAdded` ignore
+    # them. plexsim answered both lists whole.
+    wrong_c54j = []
+    for path_c54j in ("/library/sections/%s/unwatched?title=zzzq" % movie_section,
+                      "/library/sections/%s/recentlyViewedShows?title=zzzq" % show_section):
+        _, found_c54j, _ = get(base, path_c54j)
+        if found_c54j.get("Metadata"):
+            wrong_c54j.append(path_c54j.rsplit("/", 1)[-1])
+    status_c54j, _, _ = request(base, "GET", "/library/sections/%s/unwatched?year=abc"
+                                % movie_section)
+    if status_c54j != 500:
+        wrong_c54j.append("unwatched year=abc -> %s" % status_c54j)
+    check("unwatched and recentlyViewedShows take the listing's filters", not wrong_c54j,
+          "; ".join(wrong_c54j))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

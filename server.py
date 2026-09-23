@@ -8624,6 +8624,9 @@ class PlexSim:
             asked = str(query.get("type") or own)
             rows = [] if asked != str(own) else [
                 r for r in self.typed_rows(section_id, query) if not r.get("viewCount")]
+            # Cycle 54, measured on kids and zen: this list runs the listing's filters
+            # (`genre=zzzq` answers nothing, a word on a number is a 500).
+            rows, _ = self.apply_filters(rows, query, section)
             # Cycle 50, measured on kids (`Big Buck Bunny, Elephants Dream, Sintel,
             # Tears of Steel` -- ratingKeys 1, 17, 3, 4) and on zen, whose `/unwatched`
             # page is byte-identical in order to `/library/sections/1/all` over 3,887
@@ -9500,6 +9503,9 @@ class PlexSim:
             # answered the top-level rows.
             asked = str((query or {}).get("type") or ("2" if is_show else "1"))
             rows, _ = self._sorted(self.typed_rows(section_id, {"type": asked}), "titleSort")
+            # Cycle 54, measured on kids and zen: it runs the listing's filters too --
+            # `title=zzzq` answers nothing -- where the other four subsets ignore them.
+            rows, _ = self.apply_filters(rows, query or {}, section)
             rows.sort(key=lambda r: -self._last_viewed(r))
             extra["allowSync"] = False
             view_group = "show" if is_show else "movie"
