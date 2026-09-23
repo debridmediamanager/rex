@@ -2920,6 +2920,16 @@ precisely how the Seasons bug survived a fix attempt.
   per-user write makes `viewCount` and `skipCount` read 0; `/hubs/sections/{id}` honours
   `includeGuids=1` (python-plexapi always sends it).
 
+- **Lists were never on kids or zen, so they are measured on the copies.** A collection search
+  row is on the tag ladder; a list's history is an empty 200; a playlist scores one step below a
+  movie; `X-Plex-Sync-Version` puts `allowSync="1"` on playlist rows and a playlist's items.
+- **Home's merged Continue Watching hub holds the On Deck next-up rows too** (stamped
+  `includedAt`); a library's own Continue Watching shelf lists a next-up only after a PLAYBACK
+  completion, never after a scrobble; a never-watched show carries its FIRST episode as `OnDeck`;
+  a collection of two or more adds a `collection.related` shelf to its members' Related, whose key
+  filters on `tagId=` (exact `=` only); `playQueueLastAddedItemID` is the tail of the Up Next
+  block after the selection.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

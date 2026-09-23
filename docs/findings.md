@@ -10353,6 +10353,47 @@ last; `sort=viewedOrInProgressLeafCount`; hidden-column comparisons (`guid<=`, `
 `mediaAnalysisVersion`, `dovi`, an unset stream language compared as `''`); 55 hub-page refused
 keys and seven columns that filter a hub page's TV shelf; `postplay?includePreferences=1`.
 
+#### The fifty-seventh pass — lists, and what every screen shows after a user acts
+
+Cycle 57 ran under the client-impact rule. Territory A repeated cycle 56's client inventory
+(every cycle-56 fix held) and drove python-plexapi's whole read surface -- 108 classes, 646
+methods and properties, 1,018 probes a server -- and Territory B drove every write the
+official client offers on plexscratch42 and plexsim, reading the 41 things the client redraws
+after each. Neither kids nor zen holds a playlist or a collection, so everything about LISTS was
+measured on the two writable copies, which agree cell for cell across 1.42.2 and 1.43.4.
+
+**Client-visible, all built.**
+
+* **A collection search row is on the tag ladder** -- full name 0.92, a word-by-word prefix from
+  the first word 0.52, a later word 0.32. plexsim matched one word against the whole query, so a
+  multi-word collection was never found by its own name, and scored every hit 0.52.
+* **A list's history is an empty 200**: `metadataItemID=<collection or playlist>` on the history
+  page, which python-plexapi's `Collection.history()` and `Playlist.history()` send. plexsim 404'd.
+* **A playlist's search ladder is one step below a movie's** (0.92/0.72/0.52/0.32).
+* **`X-Plex-Sync-Version` marks a playlist syncable**: a playlist row on `/playlists` and
+  `/playlists/{id}`, and the `/playlists/{id}/items` container, carry `allowSync="1"` under the
+  header python-plexapi sends on every request; nothing else moves with it.
+* **The merged Continue Watching hub (`/hubs/continueWatching` and `/items`) holds the On Deck
+  next-up rows as well as the in-progress ones**, each stamped `includedAt` when it entered --
+  zen's next-up Bosch episode is there, and on both copies a Mark Played puts the next episode
+  there at once. Plex Web builds Home from this hub and drops `home.continue`/`home.ondeck`.
+* **A library's own Continue Watching shelf lists a next-up only after a PLAYBACK completion**,
+  not after a scrobble -- both copies, both versions, and zen for the positive half.
+* **A never-watched show carries an inline `OnDeck`: its first episode**, and so does the season
+  that owns it (kids' show 6 and season 7 carry episode 8; zen's show 5189 carries 5191). Plex
+  Web's Play button on a show reads it. Cycle 41's "a pristine unwatched show omits it" is refuted.
+* **A collection with two or more members adds a `collection.related.{section}.{n}` hub** --
+  "&lt;title&gt; Collection" -- to each member's Related, on every Related read path.
+* **`playQueueLastAddedItemID` is the tail of the added-item block after the selection**: a first
+  Play Next opens the block, a move out of it or a delete re-anchors to its new tail. plexsim left
+  it unset after a Play Next and pointed it at the queue's last item after any move, so the
+  player's Shuffle control was enabled and disabled at the wrong times.
+
+**Recorded, not built.** The legacy agents' JSON booleans and attribute order, the empty related
+container of a collection, and playlist attribute order (A); a preplay read's `async*` options
+pushing a `library.refresh.items` activity that lives under ten milliseconds and persists nothing,
+notification frame key order, and a playlist's locked `Field` on the listing row (B).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
