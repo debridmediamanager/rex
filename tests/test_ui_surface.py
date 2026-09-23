@@ -30560,6 +30560,25 @@ def main():
         request(base, "PUT", "/library/metadata/%s?title.value=%s&audienceRating.value=%s"
                 % (key_c55g, quote(title_c55g or ""), "" if rating_c55g is None else rating_c55g))
 
+    # Cycle 55, measured on plexscratch42: a season's GENERATED title follows an index edit
+    # -- `index.value=0` makes it `Specials`, and putting the index back makes it `Season N`
+    # again. A season's displayed title is generated unless the user wrote one (cycle 31 read
+    # `title = ''` for every season out of the database); plexsim kept `Season 20`.
+    if show:
+        _, seasons_c55h, _ = get(base, "/library/metadata/%s/children?excludeAllLeaves=1" % show)
+        season_c55h = (seasons_c55h.get("Metadata") or [{}])[-1]
+        key_c55h, index_c55h = season_c55h.get("ratingKey"), season_c55h.get("index")
+        if str(season_c55h.get("title") or "") == "Season %s" % index_c55h:
+            request(base, "PUT", "/library/metadata/%s?index.value=0" % key_c55h)
+            _, zero_c55h, _ = get(base, "/library/metadata/%s" % key_c55h)
+            request(base, "PUT", "/library/metadata/%s?index.value=%s" % (key_c55h, index_c55h))
+            _, back_c55h, _ = get(base, "/library/metadata/%s" % key_c55h)
+            check("a season's generated title follows its index",
+                  (zero_c55h.get("Metadata") or [{}])[0].get("title") == "Specials"
+                  and (back_c55h.get("Metadata") or [{}])[0].get("title") == "Season %s" % index_c55h,
+                  "%s then %s" % ((zero_c55h.get("Metadata") or [{}])[0].get("title"),
+                                  (back_c55h.get("Metadata") or [{}])[0].get("title")))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
