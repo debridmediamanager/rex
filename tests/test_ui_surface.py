@@ -30771,6 +30771,17 @@ def main():
               "similar %s, related %s" % ([sorted(k for k in r if k[:1].isupper()) for r in srows_c55f5],
                                           [sorted(k for k in r if k[:1].isupper()) for r in rrows_c55f5]))
 
+    # Cycle 55, measured on zen and kids: `/unwatched?includeGuids=1` carries `Guid` on
+    # its rows like every other listing. plexsim left it off.
+    _, unw_c55f6, _ = get(base, "/library/sections/%s/unwatched?includeGuids=1" % movie_section)
+    rows_c55f6 = unw_c55f6.get("Metadata") or []
+    _, plain_c55f6, _ = get(base, "/library/sections/%s/unwatched" % movie_section)
+    if rows_c55f6:
+        check("The unwatched list carries Guid under includeGuids=1",
+              all("Guid" in r for r in rows_c55f6)
+              and not any("Guid" in r for r in plain_c55f6.get("Metadata") or []),
+              "%s" % [sorted(k for k in r if k[:1].isupper()) for r in rows_c55f6])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
