@@ -7070,7 +7070,9 @@ class PlexSim:
             # home screen's `home.continue`), its key is its OWN items endpoint,
             # and its style is `hero`. plexsim answered a bare hub whose key was
             # /library/all, so the shelf had nowhere to expand to.
-            rows = [self._with_included_at(_listing_row(r)) for r in self.resuming()]
+            # Cycle 57: the rows are `merged_continue_watching()`, not `resuming()`.
+            rows = [self._with_included_at(_listing_row(r))
+                    for r in self.merged_continue_watching()]
             return self.hub_container(Hub=[self.home_hub(
                 "continueWatching", "Continue Watching", "/hubs/continueWatching/items",
                 rows, query, kind="mixed", style="hero")])
@@ -7080,7 +7082,7 @@ class PlexSim:
             # on `/library/metadata/{id}` and none on any of the five resume paths, this
             # one included -- so the lock list is the one block the full row loses here.
             rows = []
-            for row in self.resuming():
+            for row in self.merged_continue_watching():
                 entry = _listing_row(row)
                 entry.pop("Field", None)
                 rows.append(self._with_included_at(entry))
@@ -16356,6 +16358,22 @@ class PlexSim:
                 if row.get("type") == "episode"}
         return bool(deck) and deck == {str(row.get("ratingKey"))
                                        for row in self.resuming()}
+
+    def merged_continue_watching(self):
+        """The MERGED hub, `/hubs/continueWatching` and its `/items` leaf.
+
+        Cycle 57, measured on zen and driven on plexscratch42 (1.42.2) and plexscratch
+        (1.43.4): this is not `home.continue`. It holds the in-progress rows AND On Deck's
+        next-up rows -- zen's Bosch S1E9, with no `viewOffset` and no `viewCount`, is in
+        the merged hub while `/hubs/home/continueWatching` is empty; a scrobble of episode 8
+        on either copy puts episode 9 in it at once, beside the in-progress movies, and an
+        unscrobble takes it out. Every row is stamped `includedAt` -- the second it
+        entered, which for a next-up is the view that put it on deck -- and the list is
+        newest `includedAt` first. plexsim answered `resuming()` here, so Plex Web's Home
+        -- which drops `home.continue` and `home.ondeck` from `/hubs/promoted` and reads
+        this hub instead -- never showed a next episode after one was finished.
+        """
+        return sorted(self.continue_watching(), key=lambda r: -(r.get("lastViewedAt") or 0))
 
     def resuming(self):
         """Rows for CONTINUE WATCHING, which is not On Deck.
