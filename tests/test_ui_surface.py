@@ -30990,6 +30990,15 @@ def main():
     check("The statistics endpoints parse their integer parameters",
           got_c55f22 == [want for _, want in cells_c55f22], "%s" % got_c55f22)
 
+    # Cycle 55, measured on zen and kids: `/library/search?query=` is an empty 200 and only
+    # a missing `query` is the 400. plexsim refused the empty value.
+    empty_c55f23 = get(base, "/library/search?query=")
+    missing_c55f23 = get(base, "/library/search")[0]
+    check("An empty library search query is an empty 200",
+          empty_c55f23[0] == 200 and not empty_c55f23[1].get("Metadata")
+          and empty_c55f23[1].get("size") == 0 and missing_c55f23 == 400,
+          "empty %s, missing %s" % (empty_c55f23[0], missing_c55f23))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
