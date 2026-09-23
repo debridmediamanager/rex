@@ -14484,9 +14484,7 @@ class PlexSim:
         if len(needle) >= 2:
             for row in self.catalog.items.values():
                 for tag in row.get("Collection") or []:
-                    words = re.split(r"[^0-9a-z]+",
-                                     str(tag.get("tag") or "").lower())
-                    if any(word.startswith(needle) for word in words if word):
+                    if self.tag_tier(str(tag.get("tag") or ""), needle_terms) is not None:
                         collection_hit = True
                         break
                 if collection_hit:
@@ -14645,15 +14643,22 @@ class PlexSim:
             if section_id is not None and str(section["key"]) != str(section_id):
                 continue
             seen = {}
+            # Cycle 57, measured on plexscratch42 and plexscratch, identical: a collection
+            # row is on the TAG ladder (`tag_tier`) -- the full name 0.92, a word-by-word
+            # prefix from the first word 0.52, a later word 0.32. plexsim matched one word
+            # against the whole query, so a multi-word name was never found by its own name,
+            # and it scored every hit 0.52.
+            terms = [term for term in hierarchy_module.fold_query(str(needle or "")).split()
+                     if term]
             for row in self.catalog.items.values():
                 if str(row.get("librarySectionID")) != str(section["key"]):
                     continue
                 for tag in row.get("Collection") or []:
                     name = str(tag.get("tag") or "")
-                    words = re.split(r"[^0-9a-z]+", name.lower())
-                    if not any(w.startswith(needle) for w in words if w):
+                    tier = self.tag_tier(name, terms)
+                    if tier is None or len(needle) < 2:
                         continue
-                    entry = seen.setdefault(name, {"tag": tag, "rows": []})
+                    entry = seen.setdefault(name, {"tag": tag, "rows": [], "tier": tier})
                     entry["rows"].append(row)
             for name in sorted(seen):
                 found.append(self._collection_tag_result(seen[name], section))

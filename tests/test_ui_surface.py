@@ -31180,6 +31180,44 @@ def main():
           rows_c56f and all(m.get("Guid") for m in rows_c56f),
           "%d of %d rows carry Guid" % (sum(1 for m in rows_c56f if m.get("Guid")), len(rows_c56f)))
 
+    def make_list_c57(kind_c57, title_c57):
+        """Create a collection or playlist on the first movie; return its ratingKey."""
+        _, grid_c57, _ = get(base, "/library/sections/%s/all" % movie_section)
+        first_c57 = ((grid_c57.get("Metadata") or [{}])[0]).get("ratingKey")
+        uri_c57 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                        % (machine, first_c57))
+        if kind_c57 == "collection":
+            status_c57, body_c57, _ = request(
+                base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                % (quote(title_c57), movie_section, uri_c57))
+        else:
+            status_c57, body_c57, _ = request(
+                base, "POST", "/playlists?type=video&title=%s&smart=0&uri=%s"
+                % (quote(title_c57), uri_c57))
+        try:
+            return ((json.loads(body_c57).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+                    .get("ratingKey"))
+        except ValueError:
+            return None
+    # Cycle 57, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), identical: a
+    # COLLECTION search row is on the tag ladder -- its full name 0.92, a word-by-word prefix
+    # from the first word 0.52, a later word 0.32 -- where plexsim matched one word against
+    # the whole query (so a multi-word name was never found) and scored every hit 0.52.
+    coll_c57a = make_list_c57("collection", "Rg57 Nebula Arc")
+    def hub_c57a(query_c57a):
+        _, found_c57a, _ = get(base, "/hubs/search?query=%s&includeCollections=1" % quote(query_c57a))
+        for hub_c57a in found_c57a.get("Hub") or []:
+            if hub_c57a.get("type") == "collection":
+                return [(d.get("tag"), d.get("score")) for d in hub_c57a.get("Directory") or []]
+        return []
+    cells_c57a = {q: hub_c57a(q) for q in ("Rg57 Nebula Arc", "Rg57 Neb", "Nebula")}
+    if coll_c57a:
+        request(base, "DELETE", "/library/collections/%s" % coll_c57a)
+    check("a collection search row is on the tag ladder",
+          cells_c57a["Rg57 Nebula Arc"] == [("Rg57 Nebula Arc", "0.92000")]
+          and cells_c57a["Rg57 Neb"] == [("Rg57 Nebula Arc", "0.52000")]
+          and cells_c57a["Nebula"] == [("Rg57 Nebula Arc", "0.32000")], str(cells_c57a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
