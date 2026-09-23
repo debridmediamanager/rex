@@ -229,7 +229,17 @@ def as_epoch(value, now=None):
     and `-1w` work.
     """
     now = now if now is not None else time.time()
-    value = str(value).strip()
+    value = str(value)
+    # Cycle 55, measured on zen, kids and plexscratch42 over `addedAt`, `updatedAt`,
+    # `createdAt`, `originallyAvailableAt`, `beginsAt`, `endsAt`, `viewUpdatedAt` and the
+    # three per-user dates: an epoch is a SIGNED 64-BIT integer with nothing around it.
+    # ` 1`, `1 ` and `9223372036854775808` are 500s where `9223372036854775807` is a 200
+    # -- and so is `viewedAt= 1` on Top Played and `/users/top`, which parse the same way.
+    # plexsim stripped the value and read it with `float()`, answering 200 and no rows.
+    if value != value.strip():
+        raise FilterError(500, "unparseable date %r" % value)
+    if re.fullmatch(r"[+-]?[0-9]+", value) and not -2 ** 63 <= int(value) < 2 ** 63:
+        raise FilterError(500, "date out of range %r" % value)
     if "." in value and value.replace(".", "", 1).lstrip("-").isdigit():
         # Cycle 15: a fractional epoch is a 500 on both references -- `addedAt=1.5`,
         # `updatedAt=1.5` and the other three alike.

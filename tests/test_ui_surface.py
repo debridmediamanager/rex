@@ -30795,6 +30795,19 @@ def main():
           every_c55f7 and got_c55f7 == [every_c55f7, every_c55f7, every_c55f7, 0, 0],
           "all %s, got %s" % (every_c55f7, got_c55f7))
 
+    # Cycle 55, measured on zen, kids and plexscratch42: a date column's epoch is a signed
+    # 64-bit integer with nothing around it -- `addedAt= 1`, `updatedAt=1 ` and
+    # `createdAt=9223372036854775808` are 500s, `9223372036854775807` a 200, and so is
+    # `viewedAt= 1` on an item's `/users/top`. plexsim stripped and float-parsed the value.
+    grid_c55f8 = "/library/sections/%s/all" % movie_section
+    got_c55f8 = [get(base, grid_c55f8 + q)[0] for q in (
+        "?addedAt=%201", "?updatedAt=1%20", "?createdAt=9223372036854775808",
+        "?addedAt=9223372036854775807", "?addedAt%3E%3E=-5y")]
+    top_c55f8 = get(base, "/library/metadata/%s/users/top?viewedAt=%%201" % movie)[0]
+    check("A date filter's epoch is a strict 64-bit integer",
+          got_c55f8 == [500, 500, 500, 200, 200] and top_c55f8 == 500,
+          "%s, users/top %s" % (got_c55f8, top_c55f8))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
