@@ -18900,15 +18900,26 @@ class PlexSim:
         # Cycle 54, measured on kids and zen: `/statistics/media` parses `count` and
         # `offset` as int32 and `/statistics/bandwidth` parses `bytes` as int64, each a
         # 400 otherwise.
-        for name, bits in ((("count", 32), ("offset", 32)) if which == "media" else
-                           (("bytes", 64),) if which == "bandwidth" else ()):
+        # Cycle 55, measured on zen and kids: `offset` is an int32 on all THREE endpoints
+        # (`abc`, `1.5` and `2147483648` are 400s, `+1` a 200) -- cycle 54 wired it into
+        # `/statistics/media` alone -- and `/statistics/media` parses `type=` as one too.
+        for name, bits in ((("count", 32), ("offset", 32), ("type", 32)) if which == "media"
+                           else (("bytes", 64), ("offset", 32)) if which == "bandwidth"
+                           else (("offset", 32),)):
             if name in (query or {}) and not _int_param(query[name], bits):
                 return ("error", 400, "plexsim: bad request")
+        if "group" in (query or {}) and query["group"] not in self.STATISTICS_SORTS[which]:
+            # Cycle 55: a `group=` that is not one of the endpoint's own keys -- an empty
+            # value, `abc`, `/statistics/media?group=title` -- is a 400 on zen and kids,
+            # where `bandwidth?group=at` and `group=accountID` are 200s.
+            return ("error", 400, "plexsim: bad request")
         if which == "bandwidth" and self.sessions.has_numeric_platform():
             # This family serialises the Device block even when the direct row can
             # still be read, and hits the same measured bad cast as `/devices`.
             return ("error", 500, "plexsim: internal error")
-        if "timespan" in (query or {}) and not str((query or {})["timespan"]).lstrip("-").isdigit():
+        # Cycle 55: and the window is an int32 -- `timespan=2147483648` is a 400 on all three
+        # endpoints on zen and kids, `timespan=+1` the one-second rollup.
+        if "timespan" in (query or {}) and not _int_param((query or {})["timespan"]):
             # Measured on kids (1.43.4) and zen (1.42.2), on all three endpoints: the
             # rollup window has to parse as a whole number. `abc`, `1.5`, an empty value
             # and one with a leading space are 400s, where `0`, `-1` and `06` are 200s.
@@ -18933,7 +18944,9 @@ class PlexSim:
         # and answered 200 to every value, so the Dashboard's own capped and sorted reads
         # got the whole unsorted series.
         raw_limit = (query or {}).get("limit")
-        if raw_limit is not None and not str(raw_limit).lstrip("-").isdigit():
+        # Cycle 55, measured on zen and kids: `limit=+1` is a 200 (cycle 26's `+1` was a
+        # raw `+`, which decodes to a space) and `limit=2147483648` a 400.
+        if raw_limit is not None and not _int_param(raw_limit):
             return ("error", 400, "plexsim: bad request")
         raw_sort = (query or {}).get("sort")
         if raw_sort is not None:
@@ -18980,7 +18993,9 @@ class PlexSim:
             # plexsim ignored all three, so every filtered graph drew the whole server.
             for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
                 if name in query:
-                    if not str(query[name]).isdigit():
+                    # Cycle 55, measured on zen and kids: a NEGATIVE id (`-1`) and `+1`
+                    # parse -- `-1` answers `size 0`, a 200 -- where a word is the 400.
+                    if not _int_param(query[name], None):
                         return ("error", 400, "plexsim: bad request")
                     rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
             if "lan" in query:
@@ -19004,7 +19019,9 @@ class PlexSim:
             # showed everyone's plays.
             for name, field in (("accountID", "accountID"), ("deviceID", "deviceID")):
                 if name in query:
-                    if not str(query[name]).isdigit():
+                    # Cycle 55, measured on zen and kids: a NEGATIVE id (`-1`) and `+1`
+                    # parse -- `-1` answers `size 0`, a 200 -- where a word is the 400.
+                    if not _int_param(query[name], None):
                         return ("error", 400, "plexsim: bad request")
                     rows = [r for r in rows if str(r.get(field)) == str(int(query[name]))]
         rows = self._statistics_window(rows, query)

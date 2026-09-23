@@ -30971,6 +30971,25 @@ def main():
               "(" in header_web_c55f21 and "(" not in (header_abc_c55f21 or "("),
               "header Plex Web %r, header abc %r" % (header_web_c55f21, header_abc_c55f21))
 
+    # Cycle 55, measured on zen and kids: `/statistics/bandwidth?offset=` is an int32
+    # (`abc` and `2147483648` 400s), `timespan` and `limit` past int32 are 400s and `+1`
+    # a 200, a `group=` that is not one of the endpoint's keys is a 400, `accountID=-1`
+    # is an empty 200, and `/statistics/media?type=abc` is a 400. plexsim answered 200 to
+    # the refusals and 400 to `-1` and `limit=+1`.
+    cells_c55f22 = [("/statistics/bandwidth?offset=abc", 400),
+                    ("/statistics/bandwidth?offset=2147483648", 400),
+                    ("/statistics/bandwidth?timespan=2147483648", 400),
+                    ("/statistics/media?limit=2147483648", 400),
+                    ("/statistics/bandwidth?group=", 400),
+                    ("/statistics/media?type=abc", 400),
+                    ("/statistics/bandwidth?offset=%2B1", 200),
+                    ("/statistics/bandwidth?accountID=-1", 200),
+                    ("/statistics/media?limit=%2B1", 200),
+                    ("/statistics/bandwidth?group=at", 200)]
+    got_c55f22 = [get(base, cell_c55f22)[0] for cell_c55f22, _ in cells_c55f22]
+    check("The statistics endpoints parse their integer parameters",
+          got_c55f22 == [want for _, want in cells_c55f22], "%s" % got_c55f22)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
