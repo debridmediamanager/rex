@@ -32196,6 +32196,41 @@ def main():
           and (left_c59j > 0 or without_c59j == ["recommended", "library", "categories"]),
           str((with_c59j, without_c59j, left_c59j)))
 
+    def provider_directories_c59(path_c59="/media/providers"):
+        _, providers_c59, _ = get(base, path_c59)
+        found_c59 = {}
+        for provider_c59 in providers_c59.get("MediaProvider") or []:
+            for feature_c59 in provider_c59.get("Feature") or []:
+                if feature_c59.get("type") == "content":
+                    for directory_c59 in feature_c59.get("Directory") or []:
+                        found_c59[directory_c59.get("id")] = directory_c59
+        return found_c59
+    # Cycle 59, measured on plexscratch42 and plexscratch (zen, kids and fun hold no playlist
+    # and carry none): once the server holds a video playlist `/media/providers` lists a
+    # `playlists` content directory with one `playlists.video` pivot -- the Playlists
+    # source Plex Web offers in setup and the sidebar -- and `/hubs/promoted` answers the
+    # `home.playlists` shelf when `contentDirectoryID` names `playlists` (zen and kids answer
+    # it even empty). plexsim had neither, so the source page read "Not found".
+    _, grid_c59k, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59k = ((grid_c59k.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, made_c59k, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Src&smart=0&uri=%s"
+                                % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                        % (machine, first_c59k)))
+    pl_c59k = ((made_c59k.get("Metadata") or [{}])[0]).get("ratingKey")
+    source_c59k = provider_directories_c59().get("playlists") or {}
+    _, promoted_c59k, _ = get(base, "/hubs/promoted?contentDirectoryID=playlists&pinnedContentDirectoryID="
+                              "%s%%2C%s%%2Cplaylists&count=12&excludeContinueWatching=1"
+                              % (movie_section, show_section))
+    shelves_c59k = [(h.get("hubIdentifier"), h.get("size")) for h in promoted_c59k.get("Hub") or []]
+    request(base, "DELETE", "/playlists/%s" % pl_c59k)
+    check("a video playlist makes a Playlists source and a Home shelf",
+          source_c59k.get("key") == "/playlists" and source_c59k.get("type") == "playlist"
+          and source_c59k.get("title") == "Playlists"
+          and [(p.get("id"), p.get("key"), p.get("context")) for p in source_c59k.get("Pivot") or []]
+          == [("playlists.video", "/playlists?playlistType=video", "content.playlists.video")]
+          and shelves_c59k and shelves_c59k[0][0] == "home.playlists" and shelves_c59k[0][1] >= 1,
+          str((source_c59k, shelves_c59k)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
