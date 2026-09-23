@@ -899,6 +899,13 @@ def compare(kind, operator, actual, wanted, field=""):
         # `la`s are not adjacent.
         # Cycle 32: `text` is the plain title (compare() stringifies `actual` early);
         # the folded pass needs the row's stored SORT title, which rides on the value.
+        if wanted == "":
+            # Cycle 55, measured on zen (741 of 741 seasons at `type=3&title=`) and kids
+            # (2 of 2), and on a show's `/children` and `/library/all`: an EMPTY query
+            # matches EVERY row, a season whose title the server generates -- and so
+            # stores as nothing -- included. The word matcher found no word in an empty
+            # stored title and dropped every generated-title season.
+            return True
         return (_word_prefixes(wanted, text,
                                str(getattr(actual, "sort", text) or ""))
                 or _original_phrase(wanted, str(getattr(actual, "original", "") or "")))

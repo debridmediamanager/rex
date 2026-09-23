@@ -30873,6 +30873,21 @@ def main():
           tv_c55f14[0] and tv_c55f14[0] == tv_c55f14[1] and not movie_c55f14,
           "tv %s, movie %s" % (tv_c55f14, movie_c55f14))
 
+    # Cycle 55, measured on zen (741 of 741 seasons) and kids (2 of 2): an empty `title=`
+    # matches EVERY row, including the seasons whose title the server generates, on a
+    # section listing, on `/library/all` and on a show's `/children`. plexsim dropped
+    # every generated-title season.
+    if show:
+        seasons_c55f15 = [get(base, "/library/sections/%s/all?type=3%s" % (show_section, q))[1]
+                          .get("size") for q in ("", "&title=", "&title=%2C")]
+        children_c55f15 = [len(get(base, "/library/metadata/%s/children%s" % (show, q))[1]
+                               .get("Metadata") or []) for q in ("", "?title=")]
+        whole_c55f15 = [get(base, "/library/all%s" % q)[1].get("size") for q in ("", "?title=")]
+        check("An empty title filter matches every row",
+              seasons_c55f15[0] and len(set(seasons_c55f15)) == 1
+              and children_c55f15[0] == children_c55f15[1] and whole_c55f15[0] == whole_c55f15[1],
+              "seasons %s, children %s, all %s" % (seasons_c55f15, children_c55f15, whole_c55f15))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
