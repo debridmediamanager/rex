@@ -16485,6 +16485,10 @@ class PlexSim:
         the play itself, which plexsim now records on the leaf. plexsim listed the
         scrobble-derived next-up, so Mark Played filled the library's shelf.
 
+        Cycle 58 widened the gate from the anchor to the SHOW: once any of its episodes
+        has a playback completion in its history, every next-up is listed, however it
+        arose. `_nextUpFromScrobble` therefore marks a show never played.
+
         The per-library-type Remove from Continue Watching rule stands: a show library
         keeps a hidden row, a movie library drops it (cycle 26).
         """
@@ -16570,7 +16574,13 @@ class PlexSim:
                 if watched:
                     anchor = max(watched, key=lambda n: (episodes[n].get("lastViewedAt") or 0))
                     anchor_stamp = episodes[anchor].get("lastViewedAt")
-                    scrobbled = not episodes[anchor].get("_viewedInSession")
+                    # Cycle 58, measured on plexscratch42 and plexscratch over ten steps:
+                    # the gate is the SHOW's play history, not the anchor's provenance.
+                    # Once any episode was completed in a playback session, the shelf
+                    # lists the On Deck episode however it became next -- Mark Played on
+                    # a later episode or the season, and after the played episode is
+                    # unscrobbled -- while a show never played keeps it off (cycle 57).
+                    scrobbled = not any(e.get("_viewedInSession") for e in episodes)
                     chosen = next((e for e in episodes[anchor + 1:]
                                    if not e.get("viewCount") and not e.get("viewOffset")
                                    and (e.get("parentIndex") == episodes[anchor].get("parentIndex")

@@ -2935,6 +2935,9 @@ precisely how the Seasons bug survived a fix attempt.
   within a minute -- answer `ignore` with the STORED offset and keep it, on both versions.
 - **A beat at EXACTLY the stored position writes nothing**: `lastViewedAt` stands still and a
   row removed from Continue Watching stays removed, while 1 ms either side stamps and restores it.
+- **A section's Continue Watching gate is the SHOW's play history**: once any episode was
+  completed in a playback session, the shelf lists the On Deck episode however it became next
+  (Mark Played on a later episode or the season, and after the played one is unscrobbled).
 
 ## Conventions
 
