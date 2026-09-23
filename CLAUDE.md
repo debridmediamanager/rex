@@ -2912,6 +2912,14 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/library/search?limit=4294967296` crashed kids' PMS.** Treat search limits past int32 as
   crash-shaped on a reference, like `/library/shared/all?sort=`.
 
+- **The loop's stopping rule is client impact** (HANDOVER 1): tag every finding CLIENT-VISIBLE
+  (with the client call site) or MALFORMED-ONLY; build the first, record the second.
+- **A show library's provider storage totals are its episodes'**; the playlist Meta's Type key
+  carries `playlistType`/`sectionID`/`type` and nothing is active on `/playlists/all`; a legacy
+  agent's `MediaType` carries its own `Language` rows; `decade` ignores its operator; any
+  per-user write makes `viewCount` and `skipCount` read 0; `/hubs/sections/{id}` honours
+  `includeGuids=1` (python-plexapi always sends it).
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

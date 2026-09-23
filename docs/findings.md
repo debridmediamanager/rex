@@ -10299,6 +10299,60 @@ them 1.42.2's as well:
 * **1.43.4 refuses an empty `group=`/`sourceType=` on a hub page** where 1.42.2 drops it;
   plexsim follows 1.42.2.
 
+#### The fifty-sixth pass — the first cycle under the client-impact rule
+
+From this cycle the loop stops when a cycle finds **nothing a real client would notice**
+(HANDOVER 1). Every finding is tagged CLIENT-VISIBLE -- an official client or python-plexapi
+builds the request in ordinary use and the difference changes what it does, with the call site
+-- or MALFORMED-ONLY. Client-visible findings are built; malformed-only ones are recorded in
+HANDOVER 8.
+
+Territory A started from the CLIENTS: 3,885 recorded Plex Web exchanges (80 shapes), the
+reference walk replayed, 35 python-plexapi templates and 1,455 probes driven through it, 160
+bundle path families and every hub key the servers publish, with the client's WRITES driven on
+plexscratch42 and the reads after them diffed. Territory B repeated cycles 54 and 55 against the
+new head -- every cycle-55 fix held (`regress55.py` 123/123) -- and widened them to a show
+library, the hub pages and the per-user columns after writes. **Six client-visible findings,
+all built; eighteen malformed-only, recorded.**
+
+**Client-visible.**
+
+* **A show library's `/media/providers?includeStorage=1` totals are its EPISODES'** (kids' TV
+  Shows 60186 ms / 37683488 bytes). plexsim summed rows that own a Media -- none in a show
+  library -- and answered 0, which python-plexapi's `LibrarySection.totalDuration` and
+  `totalStorage` report.
+* **The playlist `Meta` follows the request and the path.** Its Type `key` carries the request's
+  `playlistType`, `sectionID` and `type` (alphabetical, URL-encoded); on `/playlists/all` -- what
+  Plex Web's library Playlists page loads -- no Type and no Sort is active, so the page draws no
+  sort bar; on `/playlists` the requested sort is the active one. plexsim sent a constant
+  `/playlists`, active, Name ascending.
+* **In the bare `/system/agents` each legacy `MediaType` carries its own `Language` rows** (33 for
+  the legacy IMDb movies), identical on four servers; python-plexapi's `agents()` reads them as
+  `languageCodes`. Cycle 53's "no Language" was the Agent row's.
+* **`decade` IGNORES its operator**: every operator answers the `=` bucket (zen's `decade!=2010`
+  is its 349 2010s movies). Plex Web builds "Decade is not 2010s" as `decade!=2010`.
+* **Any per-user write creates the row's settings record with `viewCount` and `skipCount` 0**,
+  and the counter filters read it: after a rating `viewCount!=1` and `skipCount=0` find the row
+  and `viewCount<<=0` does not; zen's `viewCount>=0` and `skipCount=0` are both exactly its 424
+  rows with any state. Cycle 54's "`skipCount` is not in the family" is refined: a never-written
+  row's `skipCount` matches nothing, a written one's is 0.
+* **`/hubs/sections/{id}?includeGuids=1` carries `Guid`**, which python-plexapi's `section.hubs()`
+  always asks for; plexsim sent none.
+
+**Malformed-only (recorded, not built).** From Territory A: `/clients/profiles?type=42` marks
+`Universal TV` selected; `titleSort` directly after `title` on a show row; no `allowSync` on an
+item's `/extras`; the metadata-provider tables' ids and music/Personal-Media type lists; the
+`recentlyAdded` Meta's Type key and `personal=1`. From Territory B: negative `count` is four
+rules per path (cycle 28's `len+count` does not fit its own `-1`); the `index=` grammar;
+structural parameters on four more leaves; `limit` on `grandchildren`, `recentlyAdded`, the
+extras leaf (zen ignores it -- cycle 29's "really constrains" was kids) and the section search (it
+caps -- cycle 41's "ignores every legacy limit" is refuted for plain `limit=`); history and
+statistics value bounds; `/system/agents?mediaType=` empty or huge; `type=` on `/search` and
+`/common`; `+`-led and space-led language values; a repeated `type=` on `/library/all` takes the
+last; `sort=viewedOrInProgressLeafCount`; hidden-column comparisons (`guid<=`, `isAdult`,
+`mediaAnalysisVersion`, `dovi`, an unset stream language compared as `''`); 55 hub-page refused
+keys and seven columns that filter a hub page's TV shelf; `postplay?includePreferences=1`.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
