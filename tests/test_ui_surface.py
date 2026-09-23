@@ -32298,6 +32298,25 @@ def main():
           and movie_shelf_c59m == movie_list_c59m[:12] and show_shelf_c59m == show_list_c59m[:12],
           str((movie_shelf_c59m, show_shelf_c59m, movie_list_c59m, show_list_c59m)))
 
+    # Cycle 59: `translations.json` is PER VERSION. It was captured off kids (1.43.4); zen
+    # (1.42.2, the build plexsim reports) words 405 cells differently -- re-captured off zen
+    # with the same tool and overlaid. Three measured cells: a show's Seasons enum in Danish
+    # and Serbian, and Portuguese leaving the subtitle mode's inherit option in English.
+    import html as html_c59n
+    def enum_c59n(language_c59n, setting_c59n):
+        body_c59n = urllib.request.urlopen(urllib.request.Request(
+            base + "/library/metadata/%s?includePreferences=1&X-Plex-Language=%s" % (show, language_c59n),
+            headers={"User-Agent": UA, "Accept": "application/xml"}), timeout=30).read().decode()
+        found_c59n = re.search(r'<Setting id="%s"[^>]*?enumValues="([^"]*)"' % setting_c59n, body_c59n)
+        return html_c59n.unescape(found_c59n.group(1)) if found_c59n else None
+    cells_c59n = (enum_c59n("da", "flattenSeasons"), enum_c59n("sr", "flattenSeasons"),
+                  enum_c59n("pt", "subtitleMode"))
+    check("the localised enums are 1.42.2's wording",
+          cells_c59n[0] == "-1:Bibliotekets standard|0:Show|1:Skjul"
+          and cells_c59n[1] == "-1:Библиотека подразумевана|0:Show|1:Сакрити"
+          and str(cells_c59n[2]).startswith("-1:Account default|0:Selecionado manualmente|"),
+          str(cells_c59n))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
