@@ -5203,6 +5203,14 @@ class PlexSim:
             return ("error", 404, "plexsim: not found")
 
         if method in ("GET", "HEAD"):
+            # Cycle 55, measured on zen and kids: `type=` is read as a NUMBER on every
+            # read path -- `type=01` and `type=+1` answer exactly what `type=1` does on
+            # the genre axis, the grid, `/filters` and Home's Recently Added -- where
+            # plexsim compared the string and answered a different body. Normalised
+            # once here, after the refusals that read the raw value have their own copy
+            # in `_pairs`.
+            if _int_param(query.get("type", ""), None):
+                query["type"] = str(int(query["type"]))
             refusal = self.structural_refusal(segments, query)
             if refusal:
                 return refusal
@@ -6772,9 +6780,12 @@ class PlexSim:
             for name in ("accountID", "librarySectionID"):
                 if name in query:
                     value = str(query.get(name) or "")
-                    if not (value.lstrip("-").isdigit() and value.lstrip("-")):
+                    # Cycle 55, measured on zen and kids: the id is read as a NUMBER --
+                    # `+1` is section 1 and `1.5` a 200 that matches nothing -- and only a
+                    # value that is not one (`abc`, `1x`, empty) is the 500.
+                    if not re.fullmatch(r"[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)", value):
                         return ("error", 500, "plexsim: internal error")
-                    ids[name] = int(value)
+                    ids[name] = float(value)
             plays, viewers, seen_at = {}, {}, {}
             for entry in (self.library.history() if wanted else ()):
                 key = entry.get("ratingKey")
@@ -6945,8 +6956,9 @@ class PlexSim:
             # checked. CLAUDE.md said `contentDirectoryID` "scopes and VALIDATES
             # `/hubs/search` alone"; this is the second path that validates it.
             raw = query.get("contentDirectoryID")
+            # Cycle 55: `+1` is a positive integer too (200 on zen and kids).
             if raw is not None and not any(
-                    part.isdigit() and int(part) > 0 for part in str(raw).split(",")):
+                    _int_param(part, None) and int(part) > 0 for part in str(raw).split(",")):
                 return ("error", 404, "plexsim: not found")
         if route == "/hubs/continueWatching":
             # Measured: this hub's own identifier is `continueWatching` (not the
@@ -14429,6 +14441,10 @@ class PlexSim:
         # this library" answered the whole server and a bad id read as "no results".
         wanted_section = query.get("contentDirectoryID")
         if wanted_section:
+            # Cycle 55, measured on zen and kids: the id is a NUMBER here -- `+1` and
+            # `01` scope the search to section 1 (17 hubs, 200) where plexsim 404'd both.
+            if _int_param(wanted_section, None):
+                wanted_section = str(int(wanted_section))
             if self.catalog.section(wanted_section) is None:
                 return ("error", 404, "plexsim: not found")
         else:
@@ -18584,7 +18600,8 @@ class PlexSim:
         # `AGENT_MEDIA_TYPES` still decides WHICH agents a `?mediaType=N` lists; what is
         # gone is the invented `MediaType` child.
         wanted = query.get("mediaType")
-        if wanted and not wanted.lstrip("-").isdigit():
+        # Cycle 55, measured on zen and kids: `mediaType=+1` is the typed movie list.
+        if wanted and not _int_param(wanted, None):
             return ("error", 400, "plexsim: bad request")
         by_id = {agent["identifier"]: agent for agent in SYSTEM_AGENTS}
         agents = ([by_id[name] for name in AGENT_MEDIA_TYPES.get(str(int(wanted)), [])
@@ -19292,8 +19309,9 @@ class PlexSim:
         for name in ("accountID", "librarySectionID", "metadataItemID"):
             if name not in query:
                 continue
-            value = str(query.get(name) or "")
-            if not (value.lstrip("-").isdigit() and value.lstrip("-")):
+            # Cycle 55, measured on zen and kids: a leading `+` parses (`accountID=+1` is
+            # zen's 50 rows), so the id is the NUMBER and not the string.
+            if not _int_param(query.get(name) or "", None):
                 return ("error", 400, "plexsim: bad request")
         # Cycle 54, measured on kids and zen: `offset` is an int32 here.
         if "offset" in query and not _int_param(query["offset"]):
@@ -19337,7 +19355,11 @@ class PlexSim:
                             ("deviceID", "deviceID"),
                             ("librarySectionID", "librarySectionID"),
                             ("metadataItemID", "ratingKey")):
-            if query.get(name):
+            if query.get(name) and name != "deviceID":
+                rows = [r for r in rows
+                        if str(r.get(field) or 0).lstrip("-").isdigit()
+                        and int(r.get(field) or 0) == int(query[name])]
+            elif query.get(name):
                 rows = [r for r in rows
                         if str(r.get(field)) == str(query[name])]
         rows = [r for r in rows if passes(int(r.get("viewedAt") or 0))]
@@ -21606,8 +21628,12 @@ class Handler(BaseHTTPRequestHandler):
         route, _, raw = path.partition("?")
         route = route.rstrip("/") or "/"
         query = dict(urllib.parse.parse_qsl(raw, keep_blank_values=True))
+        # Cycle 55, measured on zen and kids: a leading `+` is part of the number --
+        # `limit=+1` is one row on a section grid, `/playlists` and a show's
+        # `/children` -- so `limit` takes the shared integer grammar.
         bad = [name for name in ("limit", "parent")
-               if name in query and not str(query[name]).lstrip("-").isdigit()]
+               if name in query and not (_int_param(query[name], None) if name == "limit"
+                                         else str(query[name]).lstrip("-").isdigit())]
         if not bad:
             return 0
         if route == "/status/sessions/history/all":
