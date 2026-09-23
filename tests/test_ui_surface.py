@@ -30748,6 +30748,29 @@ def main():
     check("01 and +1 switch every include and async option on", all(got_c55f4) and differs_c55f4,
           "%s, differs %s" % (got_c55f4, differs_c55f4))
 
+    # Cycle 55, measured on zen and kids: the `include*` blocks reach the FULL rows of
+    # every hub and related list, not only `/hubs` -- `/similar?includePreferences=1`
+    # carries `Preferences` on each row and `/related?includeRelated=1` a `Related`
+    # block inside its `movie.similar` hub (zen: 4 of the first 4 rows). plexsim
+    # expanded them on `/hubs` alone.
+    _, grid_c55f5, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c55f5 = [r.get("ratingKey") for r in grid_c55f5.get("Metadata") or []][:2]
+    if len(pair_c55f5) == 2:
+        for key_c55f5 in pair_c55f5:
+            request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=F5a&genre[1].tag.tag=F5b"
+                    % key_c55f5)
+        _, similar_c55f5, _ = get(base, "/library/metadata/%s/similar?includePreferences=1"
+                                  % pair_c55f5[0])
+        _, related_c55f5, _ = get(base, "/library/metadata/%s/related?includeRelated=1"
+                                  % pair_c55f5[0])
+        srows_c55f5 = similar_c55f5.get("Metadata") or []
+        rrows_c55f5 = ((related_c55f5.get("Hub") or [{}])[0].get("Metadata") or [])
+        check("Hub and related lists pass the include options into their full rows",
+              srows_c55f5 and all("Preferences" in r for r in srows_c55f5)
+              and rrows_c55f5 and all("Related" in r for r in rrows_c55f5),
+              "similar %s, related %s" % ([sorted(k for k in r if k[:1].isupper()) for r in srows_c55f5],
+                                          [sorted(k for k in r if k[:1].isupper()) for r in rrows_c55f5]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -5334,6 +5334,9 @@ class PlexSim:
                 # `text/html`, and the GET was never covered, so it still carried
                 # plexsim's own 18-byte text/plain refusal.
                 result = ("bare", result[1])
+            if isinstance(result, dict) and method in ("GET", "HEAD") \
+                    and self._expands_full_rows(segments, query):
+                self.expand_full_rows(result, query)
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
             language = request_language(query, headers)
@@ -13323,6 +13326,72 @@ class PlexSim:
             "%s.similar" % kind, "Related %s" % ("Shows" if kind == "show" else "Movies"),
             "/library/metadata/%s/similar" % row["ratingKey"], rows, query, kind=kind,
             full=True)]
+
+    @staticmethod
+    def _expands_full_rows(segments, query):
+        """Cycle 55: the paths whose FULL rows take the `include*` blocks."""
+        return (segments[:2] == ["hubs", "sections"] and len(segments) == 3
+                or segments == ["hubs", "promoted"]
+                or segments == ["hubs", "home", "recentlyAdded"]
+                and str(query.get("type") or "") == "2"
+                or segments[:2] == ["hubs", "metadata"] and segments[3:] == ["related"]
+                or segments[:2] == ["library", "metadata"] and len(segments) == 4
+                and segments[3] in ("related", "similar")
+                or segments[:2] == ["library", "sections"] and segments[3:] == ["common"]
+                and bool(query.get("id")))
+
+    def expand_full_rows(self, result, query):
+        """The `include*` blocks on every FULL row of a hub or related list.
+
+        Cycle 46 found `/hubs` passing `includeChildren`, `includeExtras`,
+        `includeOnDeck`, `includeRelated` and `includePreferences` into its full rows.
+        Cycle 55 measured the same on every other list that carries full rows, on zen
+        and kids alike: counting the first rows that carry each block once its flag is
+        sent, zen's `/hubs/sections/2` answers Related 4, Extras 4, Preferences 2, OnDeck
+        2 and Children 1, the TV Recently Added list 4/4/3/3/1, `/hubs/metadata/{id}/
+        related` Related, Extras and Preferences on 4 rows, and `/common?id=` Related and
+        Extras on its one row; `/hubs/promoted` and `/similar` carry them too. plexsim
+        applied them on `/hubs` alone. A LIGHT row never takes them. The options are
+        handed on one at a time, so a nested Related block is not expanded again.
+        """
+        container = result.get("MediaContainer") if isinstance(result, dict) else None
+        if not isinstance(container, dict):
+            return
+        rows = list(container.get("Metadata") or [])
+        for hub in container.get("Hub") or []:
+            rows += hub.get("Metadata") or []
+        wanted = {name: query.get(name) for name in ("includeChildren", "includeRelated")
+                  if _include_int(query.get(name))}
+        if "includeRelated" in wanted and "includeRelatedCount" in query:
+            wanted["includeRelatedCount"] = query["includeRelatedCount"]
+        if query.get("includePreferences") == "1":
+            wanted["includePreferences"] = "1"
+        extras = _include_int(query.get("includeExtras"))
+        on_deck = _include_int(query.get("includeOnDeck"))
+        if not (wanted or extras or on_deck):
+            return
+        for projected in rows:
+            if not isinstance(projected, dict) or projected.get("_light"):
+                continue
+            key = str(projected.get("ratingKey") or "")
+            stored = self.catalog.items.get(int(key)) if key.isdigit() else None
+            if stored is None:
+                continue
+            if extras:
+                found = []
+                for extra in self.catalog.extras(stored["ratingKey"]):
+                    expanded = _full(extra)
+                    expanded.pop("art", None)
+                    found.append(expanded)
+                projected["Extras"] = {"size": len(found)}
+                if found:
+                    projected["Extras"]["Metadata"] = found
+            if on_deck and stored.get("type") in ("show", "season"):
+                projected.update(self.parent_detail(
+                    stored, dict(projected), {"includeOnDeck": query.get("includeOnDeck")}))
+            if wanted:
+                projected.update(self.apply_detail_options(stored, dict(projected),
+                                                           dict(wanted)))
 
     @staticmethod
     def exclude_continue_watching(query):
