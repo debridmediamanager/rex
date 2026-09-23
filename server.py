@@ -8353,6 +8353,17 @@ class PlexSim:
                 }
             )
 
+        if any(p.get("playlistType") == "video" for p in self.library.playlists()):
+            # Cycle 59, measured on plexscratch42 and plexscratch: a server holding a
+            # video playlist lists this source LAST, with one pivot. Only the video form
+            # is measured, so an audio or photo list adds nothing here.
+            directories.append({
+                "id": "playlists", "key": "/playlists", "type": "playlist",
+                "title": "Playlists",
+                "Pivot": [{"id": "playlists.video", "key": "/playlists?playlistType=video",
+                           "type": "list", "title": "Video",
+                           "context": "content.playlists.video", "symbol": "playlist"}]})
+
         # Order is the reference server's, feature for feature. It is not
         # cosmetic for diffing: harness/scripts/replay.py compares the i-th
         # Feature against the i-th, so a set that matches in a different order
@@ -13654,7 +13665,10 @@ class PlexSim:
                 identifier, shelf_title, key,
                 [_listing_row(r) for r in rows], query,
                 kind="mixed" if is_show else "movie", promoted=True))
-        if not wanted:
+        # Cycle 59, measured on zen, kids and plexscratch42: the shelf is ALSO answered
+        # when `contentDirectoryID` names `playlists` -- Home's call for the pinned
+        # Playlists source -- and on zen and kids even with no playlist at all.
+        if not wanted or "playlists" in wanted:
             hubs.append(self.home_hub(
                 "home.playlists", "Recent Playlists",
                 "/playlists/all?type=15&sort=lastViewedAt:desc&playlistType=video,audio",
