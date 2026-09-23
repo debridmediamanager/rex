@@ -31076,6 +31076,27 @@ def main():
     check("a show library's provider storage totals are its episodes'",
           got_c56a == want_c56a and want_c56a[0] > 0, "%s want %s" % (got_c56a, want_c56a))
 
+    # Cycle 56, measured on kids, zen and plexscratch42 and read by Plex Web's library
+    # Playlists page (`/playlists/all?type=15&playlistType=video&sectionID=N&includeMeta=1`):
+    # the playlist Meta's Type `key` carries the request's `playlistType`, `sectionID` and
+    # `type` (alphabetical, URL-encoded), `/playlists/all` marks NO Type and NO Sort active --
+    # so the page draws no sort bar -- and `/playlists` marks the REQUESTED sort active.
+    _, all_c56b, _ = get(base, "/playlists/all?type=15&playlistType=video&sectionID=%s"
+                               "&includeAdvanced=1&includeMeta=1" % movie_section)
+    type_c56b = ((all_c56b.get("Meta") or {}).get("Type") or [{}])[0]
+    _, plain_c56b, _ = get(base, "/playlists?includeMeta=1&sort=lastViewedAt:desc")
+    plain_type_c56b = ((plain_c56b.get("Meta") or {}).get("Type") or [{}])[0]
+    active_c56b = [(s.get("key"), s.get("activeDirection"))
+                   for s in plain_type_c56b.get("Sort") or [] if s.get("active")]
+    check("the playlist Meta follows the request and the path",
+          type_c56b.get("key") == "/playlists?playlistType=video&sectionID=%s&type=15" % movie_section
+          and type_c56b.get("active") is False
+          and not any(s.get("active") for s in type_c56b.get("Sort") or [])
+          and plain_type_c56b.get("active") is True
+          and active_c56b == [("lastViewedAt", "desc")],
+          "all key=%s active=%s; plain sorts %s" % (type_c56b.get("key"), type_c56b.get("active"),
+                                                  active_c56b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

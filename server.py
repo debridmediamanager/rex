@@ -2480,6 +2480,38 @@ def _descending(text):
     return (text == "", [-ord(c) for c in text])
 
 
+def _playlist_meta(query, listing_all):
+    """Cycle 56: the playlist Meta shaped by the request, measured on kids, zen and
+    plexscratch42. The Type `key` carries the request's `playlistType`, `sectionID` and
+    `type` -- alphabetical, URL-encoded (`video,audio` is `video%2Caudio`) -- and nothing
+    else. On `/playlists/all`, the path Plex Web's library Playlists page loads, NO Type and
+    NO Sort is active, so the page draws no sort bar; on `/playlists` the Type is active and
+    the active Sort is the requested one (Name ascending by default). plexsim sent a
+    constant: `/playlists`, active, Name ascending.
+    """
+    meta = json.loads(json.dumps(PLAYLIST_META))
+    kind = meta["Type"][0]
+    carried = [(name, query[name]) for name in ("playlistType", "sectionID", "type")
+               if query.get(name) not in (None, "")]
+    kind["key"] = "/playlists" + ("?" + "&".join(
+        "%s=%s" % (name, urllib.parse.quote(str(value), safe=""))
+        for name, value in carried) if carried else "")
+    for sort in kind.get("Sort") or []:
+        sort.pop("active", None)
+        sort.pop("activeDirection", None)
+    if listing_all:
+        kind["active"] = False
+        return meta
+    kind["active"] = True
+    terms = filters_module.sort_terms(query.get("sort") or "titleSort")
+    wanted, descending = (terms[0][0], terms[0][1]) if terms else ("titleSort", False)
+    for sort in kind.get("Sort") or []:
+        if sort.get("key") == wanted:
+            sort["active"] = True
+            sort["activeDirection"] = "desc" if descending else "asc"
+    return meta
+
+
 def _watched_leaf(row):
     """Cycle 54: the rows `unwatched=1` drops from a list that is not a query -- a movie
     or an episode with a play recorded. A parent row is never dropped for it."""
@@ -17865,7 +17897,8 @@ class PlexSim:
             if query.get("includeMeta") == "1":
                 # Measured on both references, byte-identical: the playlist page's
                 # own sort menu comes from here, and plexsim sent no Meta at all.
-                answer["MediaContainer"]["Meta"] = PLAYLIST_META
+                answer["MediaContainer"]["Meta"] = _playlist_meta(
+                    query, listing_all=segments[1:2] == ["all"])
             return answer
 
         if (len(segments) == 3 and segments[1] == str(PLAYLIST_BASE_BACKGROUND)
