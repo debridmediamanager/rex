@@ -2920,6 +2920,14 @@ def request_regional_server_prefs(query, headers):
     return {"pt-br": "pt-BR", "pt-pt": "pt-PT", "hu-hu": "hu-HU"}.get(normalized)
 
 
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "stream_words.json"), encoding="utf-8") as _handle:
+        STREAM_WORDS = json.load(_handle)["words"]
+except (OSError, ValueError, KeyError):
+    STREAM_WORDS = {}
+
+
 def _with_stream_language(node, language):
     """A response with every Stream's language fields in the client's language.
 
@@ -2939,7 +2947,15 @@ def _with_stream_language(node, language):
     Media/Part/Stream dicts, and a title written into one would reach every client.
     """
     names = LANGUAGE_NAMES.get(language) or {}
-    if not names:
+    # Cycle 60, measured on zen in 28 languages AND under `en` -- which Plex Web and
+    # python-plexapi both send: the name follows the stream's TAG, `fr` answering `French`
+    # under `en` and `Französisch` under `de`, where plexsim keyed a map on the stored
+    # (native) name that had no English entry. The words the titles are composed from
+    # (`Unknown`, `Forced`, `SDH`) are localised with it.
+    by_tag = ITEM_LANGUAGE_NAMES.get(language) or {}
+    words = {name: table.get(language) for name, table in STREAM_WORDS.items()
+             if table.get(language)}
+    if not names and not by_tag and not words:
         return node
 
     def walk(node):
@@ -2950,9 +2966,16 @@ def _with_stream_language(node, language):
             return node
         copy = None
         english = node.get("language")
-        if node.get("streamType") and english and names.get(english):
-            copy = dict(node, language=names[english])
-            mediainfo_module.stream_titles(copy, stand_in=english)
+        tag = node.get("languageTag")
+        localised = (by_tag.get(tag) if tag else None) or (names.get(english) if english else None)
+        if node.get("streamType") in (2, 3) and (localised or words):
+            copy = dict(node, language=localised) if (english and localised) else dict(node)
+            # The omission is decided on the STORED name -- a track titled "French" keeps
+            # its `French` part under `en` on zen (`French (French SRT)`), because the
+            # stored name it is tested against is `Français`.
+            mediainfo_module.stream_titles(copy, stand_in=english, words=words)
+            if copy == node:
+                copy = None
         for key, value in node.items():
             if isinstance(value, (dict, list)):
                 changed = walk(value)
@@ -5631,10 +5654,25 @@ class PlexSim:
             if isinstance(result, dict) and query.get("excludeFields"):
                 result = _exclude_fields(result, query["excludeFields"])
             language = request_language(query, headers)
-            if isinstance(result, dict) and language and language != "en":
+            if isinstance(result, dict) and language:
                 # Before the client titles, not after: a real PMS composes the
                 # codec suffix onto the already-localised title.
+                # Cycle 60: `en` too -- the names are localised from the tag, and zen
+                # answers `French` under `en` where the stored name is `Français`.
                 result = _with_stream_language(result, language)
+                if len(segments) == 4 and segments[:2] == ["library", "sections"] \
+                        and segments[3] in ("audioLanguage", "subtitleLanguage"):
+                    # Cycle 60, measured on zen: the language AXIS names its values in the
+                    # client's language too (`Französisch` under `de`, `French` under
+                    # `en`), keyed by the value -- the language tag.
+                    by_tag = ITEM_LANGUAGE_NAMES.get(language) or {}
+                    body = next(iter(result.values()))
+                    if isinstance(body, dict) and body.get("Directory") and by_tag:
+                        body = dict(body, Directory=[
+                            dict(entry, title=by_tag[entry["key"]])
+                            if by_tag.get(entry.get("key")) else entry
+                            for entry in body["Directory"]])
+                        result = {next(iter(result)): body}
             # Cycle 55, measured on zen and kids: the HEADER beats the query here, as it
             # does for `Samsung` -- header `Plex Web` with query `abc` prints
             # `1080p (H.264)`, header `abc` with query `Plex Web` prints `1080p`.

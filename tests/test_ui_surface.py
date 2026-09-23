@@ -32376,6 +32376,52 @@ def main():
     check("an uploaded theme or logo is not deleted by a DELETE, which stays a 404",
           theme_c60b == 404 and logo_c60b == 404 and kept_c60b, str((theme_c60b, logo_c60b, kept_c60b)))
 
+    # Cycle 60, measured on zen (1.42.2) in 12 languages over 102 rows (23,820 of 23,832
+    # stream cells exact; the 12 left are the recorded AC-3 title case): a stream's language
+    # NAME follows the client's language by its TAG -- `fr` is `French` under `en`, which Plex
+    # Web and python-plexapi both send, and `Französisch` under `de` -- and so do the Audio and
+    # Subtitle Language axes; and the words the titles are composed from (`Unknown`,
+    # `Forced`, `SDH`, a sidecar's `External`) are localised with it. plexsim left every name
+    # native under `en` and every word English.
+    def streams_c60c(rk_c60c, language_c60c):
+        body_c60c = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/metadata/%s" % rk_c60c,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c60c}), timeout=30).read())
+        row_c60c = body_c60c["MediaContainer"]["Metadata"][0]
+        return [s for m in row_c60c.get("Media") or [] for p in m.get("Part") or []
+                for s in p.get("Stream") or [] if s.get("streamType") in (2, 3)]
+    def axis_c60c(language_c60c):
+        body_c60c = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/sections/%s/subtitleLanguage?type=4" % show_section,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c60c}), timeout=30).read())
+        return {d.get("key"): d.get("title") for d in body_c60c["MediaContainer"].get("Directory") or []}
+    _, leaves_c60c, _ = get(base, "/library/sections/%s/all?type=4" % show_section)
+    french_c60c = None
+    for row_c60c in leaves_c60c.get("Metadata") or []:
+        for s_c60c in streams_c60c(row_c60c.get("ratingKey"), "en"):
+            if s_c60c.get("languageTag") == "fr" and french_c60c is None:
+                french_c60c = (row_c60c.get("ratingKey"), s_c60c.get("id"))
+    _, movies_c60c, _ = get(base, "/library/sections/%s/all" % movie_section)
+    unknown_c60c = None
+    for row_c60c in movies_c60c.get("Metadata") or []:
+        for s_c60c in streams_c60c(row_c60c.get("ratingKey"), "ja"):
+            if s_c60c.get("streamType") == 2 and not s_c60c.get("languageTag") and unknown_c60c is None:
+                unknown_c60c = s_c60c
+    def pick_c60c(where_c60c, language_c60c):
+        return next((s for s in streams_c60c(where_c60c[0], language_c60c)
+                     if s.get("id") == where_c60c[1]), {})
+    en_c60c = pick_c60c(french_c60c, "en") if french_c60c else {}
+    de_c60c = pick_c60c(french_c60c, "de") if french_c60c else {}
+    check("a stream's language name and title words follow X-Plex-Language",
+          french_c60c and (en_c60c.get("language"), de_c60c.get("language")) == ("French", "Französisch")
+          and str(en_c60c.get("displayTitle", "")).startswith("French")
+          and unknown_c60c and str(unknown_c60c.get("displayTitle", "")).startswith("不明 (")
+          and axis_c60c("de").get("fr") == "Französisch" and axis_c60c("en").get("fr") == "French",
+          str((en_c60c.get("displayTitle"), de_c60c.get("displayTitle"),
+               (unknown_c60c or {}).get("displayTitle"), axis_c60c("de").get("fr"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
