@@ -30173,6 +30173,45 @@ def main():
     check("the media axes, autocomplete and common take the listing's filters",
           not wrong_c54k, "; ".join(wrong_c54k)[:240])
 
+    # Cycle 54, measured on kids (1.43.4) and zen (1.42.2) and on both copies: every TV
+    # Recently Added shelf -- `home.television.recent` on `/hubs`, `tv.recentlyadded.N` on
+    # `/hubs/promoted` and `/hubs/sections/N`, and `/hubs/home/recentlyAdded?type=2` --
+    # runs the request's listing FILTERS over the EPISODES before it rolls them up
+    # (`title=Train` is the one episode, `title=Firefly` nothing, `show.title=Firefly` the
+    # show), a bad value is a 500, the per-user keys are refused on the `type=2` list, and
+    # `contentDirectoryID` scopes the section page's TV shelf. The movie shelves beside
+    # them ignore all of it.
+    def shelf_c54l(path_c54l, ident_c54l):
+        status_c54l, hubs_c54l, _ = get(base, path_c54l)
+        for hub_c54l in hubs_c54l.get("Hub") or []:
+            if hub_c54l.get("hubIdentifier") == ident_c54l:
+                return status_c54l, len(hub_c54l.get("Metadata") or [])
+        return status_c54l, None
+    wrong_c54l = []
+    _, tv_c54l, _ = get(base, "/hubs/home/recentlyAdded?type=2&title=zzzq")
+    if tv_c54l.get("Metadata"):
+        wrong_c54l.append("type=2&title=zzzq kept rows")
+    for query_c54l in ("unwatched=1", "viewCount=0", "year=abc"):
+        status_c54l, _, _ = request(base, "GET", "/hubs/home/recentlyAdded?type=2&%s" % query_c54l)
+        if status_c54l != 500:
+            wrong_c54l.append("type=2&%s -> %s" % (query_c54l, status_c54l))
+    status_c54l, _, _ = request(base, "GET", "/hubs/home/recentlyAdded?type=1&year=abc")
+    if status_c54l != 200:
+        wrong_c54l.append("type=1&year=abc -> %s" % status_c54l)
+    movies_before_c54l = shelf_c54l("/hubs", "home.movies.recent")[1]
+    if shelf_c54l("/hubs?genre=zzzq", "home.television.recent")[1] or (
+            shelf_c54l("/hubs?genre=zzzq", "home.movies.recent")[1] != movies_before_c54l):
+        wrong_c54l.append("/hubs?genre=zzzq")
+    if shelf_c54l("/hubs/promoted?year=1", "tv.recentlyadded.%s" % show_section)[1]:
+        wrong_c54l.append("/hubs/promoted?year=1")
+    if shelf_c54l("/hubs/sections/%s?contentDirectoryID=%s" % (show_section, movie_section),
+                  "tv.recentlyadded.%s" % show_section)[1]:
+        wrong_c54l.append("/hubs/sections contentDirectoryID")
+    if request(base, "GET", "/hubs?year=abc")[0] != 500:
+        wrong_c54l.append("/hubs?year=abc not refused")
+    check("the TV Recently Added shelves take the request's filters", not wrong_c54l,
+          "; ".join(wrong_c54l))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
