@@ -30525,6 +30525,41 @@ def main():
           created_c55f.get("duration") == want_c55f,
           "%s want %s" % (created_c55f.get("duration"), want_c55f))
 
+    # Cycle 55, re-measured on zen (`movie.genre.1.241` is exactly the head of
+    # `/library/sections/1/all?unwatched=1&genre=241&audienceRating>=7.0`): the genre shelf's
+    # rows are the head of its OWN key listing, in that listing's default order. plexsim
+    # answered them in catalog order.
+    # The shelf needs unwatched rows rated 7 or better; make them, and make the catalog
+    # order differ from the title order by renaming the LAST row to sort first.
+    _, grid_c55g, _ = get(base, "/library/sections/%s/all" % movie_section)
+    saved_c55g = []
+    for row_c55g in grid_c55g.get("Metadata") or []:
+        _, detail_c55g, _ = get(base, "/library/metadata/%s" % row_c55g.get("ratingKey"))
+        full_c55g = (detail_c55g.get("Metadata") or [{}])[0]
+        saved_c55g.append((row_c55g.get("ratingKey"), full_c55g.get("title"),
+                           full_c55g.get("audienceRating")))
+        request(base, "PUT", "/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library"
+                % row_c55g.get("ratingKey"))
+        request(base, "PUT", "/library/metadata/%s?audienceRating.value=8"
+                % row_c55g.get("ratingKey"))
+    if saved_c55g:
+        request(base, "PUT", "/library/metadata/%s?title.value=%s"
+                % (saved_c55g[-1][0], quote("Aaa c55 shelf")))
+    _, hubs_c55g, _ = get(base, "/hubs/sections/%s" % movie_section)
+    genre_c55g = next((h for h in hubs_c55g.get("Hub") or []
+                       if str(h.get("hubIdentifier") or "").startswith("movie.genre")), None)
+    if genre_c55g and genre_c55g.get("Metadata"):
+        _, listing_c55g, _ = get(base, genre_c55g["key"])
+        rows_c55g = [r.get("ratingKey") for r in genre_c55g.get("Metadata") or []]
+        head_c55g = [r.get("ratingKey") for r in listing_c55g.get("Metadata") or []][:len(rows_c55g)]
+        check("the genre shelf is the head of its own key listing", rows_c55g == head_c55g,
+              "%s vs %s" % (rows_c55g, head_c55g))
+    else:
+        check("the genre shelf is the head of its own key listing", False, "no genre shelf")
+    for key_c55g, title_c55g, rating_c55g in saved_c55g:
+        request(base, "PUT", "/library/metadata/%s?title.value=%s&audienceRating.value=%s"
+                % (key_c55g, quote(title_c55g or ""), "" if rating_c55g is None else rating_c55g))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
