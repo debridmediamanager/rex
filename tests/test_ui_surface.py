@@ -32031,6 +32031,36 @@ def main():
           == [("Library scan canceled", "LIBRARY_UPDATE")],
           str((plain_c59d, put_c59d, status_rows_c59d)))
 
+    # Cycle 59, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a timeline beat
+    # on a PLAYLIST's ratingKey -- python-plexapi's `Playlist.updateTimeline()` -- runs the
+    # item's own machine: `ignore` under a minute, `progress` with the offset stored on the
+    # list, `complete` past 90% with the list's `viewCount` stepping from its born 1 to 2, and
+    # a Now Playing row (a `Playlist` with `User` and `Player`) until the `stopped` beat.
+    _, grid_c59f, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59f = ((grid_c59f.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, made_c59f, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20TL&smart=0&uri=%s"
+                                % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                        % (machine, first_c59f)))
+    pl_c59f = ((made_c59f.get("Metadata") or [{}])[0]).get("ratingKey")
+    def beat_c59f(time_c59f, state_c59f):
+        url_c59f = ("/:/timeline?ratingKey=%s&key=/playlists/%s&identifier=com.plexapp.plugins.library"
+                    "&time=%d&state=%s&duration=1000000&X-Plex-Session-Identifier=rg59f"
+                    % (pl_c59f, pl_c59f, time_c59f, state_c59f))
+        status_c59f, body_c59f, _ = container(base, "GET", url_c59f)
+        return status_c59f, body_c59f.get("playbackState"), body_c59f.get("viewCount"), body_c59f.get("viewOffset")
+    cells_c59f = [beat_c59f(30000, "playing"), beat_c59f(200000, "playing")]
+    _, live_c59f, _ = get(base, "/status/sessions")
+    types_c59f = [r.get("type") for r in live_c59f.get("Metadata") or []]
+    cells_c59f += [beat_c59f(950000, "playing"), beat_c59f(960000, "stopped")]
+    _, after_c59f, _ = get(base, "/status/sessions")
+    request(base, "DELETE", "/playlists/%s" % pl_c59f)
+    check("a playlist timeline runs the item machine and opens a session",
+          cells_c59f == [(200, "ignore", 1, -1), (200, "progress", 1, 200000),
+                         (200, "complete", 2, -1), (200, "complete", 2, -1)]
+          and types_c59f.count("playlist") == 1
+          and "playlist" not in [r.get("type") for r in after_c59f.get("Metadata") or []],
+          str((cells_c59f, types_c59f)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
