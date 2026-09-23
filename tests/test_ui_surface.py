@@ -31978,6 +31978,43 @@ def main():
     check("a proxied /player command is a 404; a bare one stays 400",
           cells_c59b == [404, 404, 404, 404] and bare_c59b == 400, str((cells_c59b, bare_c59b)))
 
+    # Cycle 59, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a SMART
+    # collection's `collectionFilterBasedOnUser` -- python-plexapi's
+    # `Collection.filterUserUpdate()`, the Edit Collection dialog's setting -- is a 200 with
+    # an empty body that STORES the value as sent (`abc` included); the row carries it too,
+    # and an empty value reads back empty. A plain collection refuses it with a 400.
+    _, grid_c59c, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59c = ((grid_c59c.get("Metadata") or [{}])[0]).get("ratingKey")
+    smart_uri_c59c = quote("server://%s/com.plexapp.plugins.library/library/sections/%s/all"
+                           "?type=1&unwatched=1" % (machine, movie_section))
+    _, made_c59c, _ = container(base, "POST", "/library/collections?type=1&title=Rg59%%20Smart"
+                                "&smart=1&sectionId=%s&uri=%s" % (movie_section, smart_uri_c59c))
+    smart_c59c = ((made_c59c.get("Metadata") or [{}])[0]).get("ratingKey")
+    status_c59c, body_c59c, _ = request(base, "PUT", "/library/collections/%s/prefs"
+                                        "?collectionFilterBasedOnUser=1" % smart_c59c)
+    def pref_c59c(rk_c59c):
+        _, detail_c59c, _ = get(base, "/library/collections/%s?includePreferences=1" % rk_c59c)
+        row_c59c = (detail_c59c.get("Metadata") or [{}])[0]
+        values_c59c = {s.get("id"): s.get("value") for s
+                       in (row_c59c.get("Preferences") or {}).get("Setting") or []}
+        return values_c59c.get("collectionFilterBasedOnUser"), row_c59c.get("collectionFilterBasedOnUser")
+    stored_c59c = pref_c59c(smart_c59c)
+    request(base, "PUT", "/library/collections/%s/prefs?collectionFilterBasedOnUser=" % smart_c59c)
+    emptied_c59c = pref_c59c(smart_c59c)
+    request(base, "DELETE", "/library/collections/%s" % smart_c59c)
+    _, plainmade_c59c, _ = container(base, "POST", "/library/collections?type=1&title=Rg59%%20Plain"
+                                     "&smart=0&sectionId=%s&uri=%s" % (movie_section, quote(
+                                         "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                         % (machine, first_c59c))))
+    plain_c59c = ((plainmade_c59c.get("Metadata") or [{}])[0]).get("ratingKey")
+    plain_status_c59c, _, _ = request(base, "PUT", "/library/collections/%s/prefs"
+                                      "?collectionFilterBasedOnUser=1" % plain_c59c)
+    request(base, "DELETE", "/library/collections/%s" % plain_c59c)
+    check("a smart collection stores collectionFilterBasedOnUser; a plain one refuses it",
+          status_c59c == 200 and body_c59c == b"" and stored_c59c == ("1", "1")
+          and emptied_c59c == ("", None) and plain_status_c59c == 400,
+          str((status_c59c, stored_c59c, emptied_c59c, plain_status_c59c)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

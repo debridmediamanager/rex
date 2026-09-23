@@ -12077,12 +12077,22 @@ class PlexSim:
                 # collection ORDER at all: its Preferences block carries
                 # `collectionFilterBasedOnUser` in that slot instead.
                 return ("error", 400, "plexsim: bad request")
+            # Cycle 59, measured on plexscratch42 and plexscratch: a SMART collection's
+            # `collectionFilterBasedOnUser` -- the setting its Preferences block carries in
+            # `collectionSort`'s slot, and python-plexapi's `filterUserUpdate()` -- is a 200
+            # that stores the value AS SENT (`abc` included) and puts it on the row; an
+            # empty one drops the attribute and reads back empty. A plain collection
+            # refuses it with a 400. plexsim refused it everywhere.
+            accepted = ("collectionSort", "collectionMode") + (
+                ("collectionFilterBasedOnUser",) if collection.get("smart") else ())
             for name, value in query.items():
                 if name.startswith("X-Plex-") or name == "_pairs":
                     continue
-                if name not in ("collectionSort", "collectionMode"):
+                if name not in accepted:
                     return ("error", 400, "plexsim: bad request")
-                if value == "":
+                if name == "collectionFilterBasedOnUser":
+                    collection[name] = str(value)
+                elif value == "":
                     collection.pop(name, None)
                 else:
                     collection[name] = str(value)

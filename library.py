@@ -2588,6 +2588,10 @@ class Library:
             # the dialog reads to show the current selection.
             if collection.get(name) is not None:
                 row[name] = collection[name]
+        if collection.get("collectionFilterBasedOnUser"):
+            # Cycle 59: an empty value is stored (the Preferences block reads it back
+            # empty) and is not on the row.
+            row["collectionFilterBasedOnUser"] = collection["collectionFilterBasedOnUser"]
         if years and not collection.get("smart"):
             # Measured: a SMART collection carries no minYear/maxYear -- its
             # membership is a query, so there is no fixed span to report. plexsim
