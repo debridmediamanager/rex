@@ -2220,7 +2220,12 @@ class Library:
         else:
             rows = [self.catalog.items.get(i["ratingKey"]) for i in playlist["items"]]
         rows = [r for r in rows if r]
-        duration = sum(int(r.get("duration") or 0) for r in rows)
+        # Cycle 55, from `sum(round(duration/1000, 0))` over each item's longest Media
+        # (SQLite integer division) and measured on plexscratch42: 1800689 + 1800689 +
+        # 20032 ms answers 3620000. plexsim summed the raw milliseconds.
+        duration = 1000 * sum(
+            max([int(m.get("duration") or 0) for m in r.get("Media") or []]
+                or [int(r.get("duration") or 0)]) // 1000 for r in rows)
         stamp = playlist["updatedAt"]
         row = {
             "ratingKey": str(playlist["ratingKey"]),

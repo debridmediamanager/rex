@@ -30500,6 +30500,31 @@ def main():
               "season %s in %s" % (season_c55e, [r.get("ratingKey")
                                                  for r in popular_c55e.get("Metadata") or []]))
 
+    # Cycle 55, from the binary's SQL (`sum(round(duration/1000, 0))` over each item's
+    # longest Media, integer division) and measured on plexscratch42 (1800689 + 1800689 +
+    # 20032 ms is 3620000, not 3621410): a playlist's `duration` is 1000 x the sum of each
+    # item's whole seconds. plexsim summed the raw milliseconds.
+    _, grid_c55f, _ = get(base, "/library/sections/%s/all" % movie_section)
+    keys_c55f = [r.get("ratingKey") for r in grid_c55f.get("Metadata") or []][:2]
+    want_c55f = 0
+    for key_c55f in keys_c55f:
+        _, detail_c55f, _ = get(base, "/library/metadata/%s" % key_c55f)
+        media_c55f = ((detail_c55f.get("Metadata") or [{}])[0]).get("Media") or [{}]
+        want_c55f += max(int(m.get("duration") or 0) for m in media_c55f) // 1000 * 1000
+    status_c55f, body_c55f, _ = request(
+        base, "POST", "/playlists?type=video&title=c55dur&smart=0&uri=%s" % quote(
+            "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+            % (machine, ",".join(keys_c55f))))
+    try:
+        created_c55f = (json.loads(body_c55f).get("MediaContainer", {}).get("Metadata") or [{}])[0]
+    except ValueError:
+        created_c55f = {}
+    if created_c55f.get("ratingKey"):
+        request(base, "DELETE", "/playlists/%s" % created_c55f["ratingKey"])
+    check("a playlist's duration sums each item's whole seconds",
+          created_c55f.get("duration") == want_c55f,
+          "%s want %s" % (created_c55f.get("duration"), want_c55f))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
