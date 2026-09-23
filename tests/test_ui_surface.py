@@ -32259,6 +32259,45 @@ def main():
           "playlists" in roku_c59l and "Pivot" not in roku_c59l["playlists"]
           and None in roku_c59l, str(sorted(map(str, roku_c59l))))
 
+    # Cycle 59, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a library's
+    # `recent.library.playlists.{id}` shelf -- which Plex Web's library hub request always
+    # asks for with `includeLibraryPlaylists=1` -- holds the head of its own key,
+    # `/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc&sectionID={id}`:
+    # the video playlists with a member in that library, and every EMPTY one, which the
+    # listing answers to every library. plexsim hard-coded it empty and dropped an empty
+    # playlist from every library's listing.
+    _, grid_c59m, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c59m = ((grid_c59m.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, full_c59m, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Lib&smart=0&uri=%s"
+                                % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                        % (machine, first_c59m)))
+    full_rk_c59m = ((full_c59m.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, empty_c59m, _ = container(base, "POST", "/playlists?type=video&title=Rg59%%20Empty&smart=0&uri=%s"
+                                 % quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                         % (machine, first_c59m)))
+    empty_rk_c59m = ((empty_c59m.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, items_c59m, _ = get(base, "/playlists/%s/items" % empty_rk_c59m)
+    for item_c59m in items_c59m.get("Metadata") or []:
+        request(base, "DELETE", "/playlists/%s/items/%s" % (empty_rk_c59m, item_c59m.get("playlistItemID")))
+    def shelf_c59m(section_c59m):
+        _, hubs_c59m, _ = get(base, "/hubs/sections/%s?count=12&includeLibraryPlaylists=1" % section_c59m)
+        hub_c59m = next((h for h in hubs_c59m.get("Hub") or []
+                         if h.get("hubIdentifier") == "recent.library.playlists.%s" % section_c59m), {})
+        return [m.get("ratingKey") for m in hub_c59m.get("Metadata") or []]
+    def listing_c59m(section_c59m):
+        _, rows_c59m, _ = get(base, "/playlists/all?type=15&playlistType=video&sort=lastViewedAt:desc"
+                              "&sectionID=%s" % section_c59m)
+        return [m.get("ratingKey") for m in rows_c59m.get("Metadata") or []]
+    movie_shelf_c59m, show_shelf_c59m = shelf_c59m(movie_section), shelf_c59m(show_section)
+    movie_list_c59m, show_list_c59m = listing_c59m(movie_section), listing_c59m(show_section)
+    request(base, "DELETE", "/playlists/%s" % full_rk_c59m)
+    request(base, "DELETE", "/playlists/%s" % empty_rk_c59m)
+    check("a library's Recent Playlists shelf is its key's head, empty lists in every library",
+          full_rk_c59m in movie_shelf_c59m and empty_rk_c59m in movie_shelf_c59m
+          and full_rk_c59m not in show_shelf_c59m and empty_rk_c59m in show_shelf_c59m
+          and movie_shelf_c59m == movie_list_c59m[:12] and show_shelf_c59m == show_list_c59m[:12],
+          str((movie_shelf_c59m, show_shelf_c59m, movie_list_c59m, show_list_c59m)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
