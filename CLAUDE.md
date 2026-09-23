@@ -2845,6 +2845,48 @@ precisely how the Seasons bug survived a fix attempt.
   episode's `/arts` are empty, so neither carries an inline `Art` -- the option must apply
   the same gate the candidate leaf does, or the server contradicts its own `/arts`.
 
+- **The part `Content-Type` table is wider than zen's six extensions.** Measured on
+  plexscratch42 one container at a time: `.ts` is `video/MP2T`, `.m4v` `video/mp4`, `.mpg`/
+  `.mpeg` `video/mpeg`, `.flv` `video/x-flv`, `.wmv` `video/x-ms-wmv`, `.asf`
+  `video/x-ms-asf`, `.divx` `video/x-msvideo`; `.mts`, `.m2ts`, `.ogv`, `.3gp` stay
+  octet-stream. **A `.mov` is container `mov`** and the rest of the QuickTime family `mp4` --
+  the extension decides, not the brand -- and **every MPEG-TS Part carries
+  `packetLength: 188`**, a 192-byte `.m2ts` included. The copy's analysis is SHALLOW, so its
+  fixtures are marked `shallow` and only container-level checks read them.
+- **`viewUpdatedAt` is the view-state WRITE time** -- a date filter and a sort key (Plex Web
+  sorts a hub on it), stamped by every rating, scrobble, unscrobble, stored progress and
+  Remove from Continue Watching on exactly the rows the write touches, and never on a row.
+  **`lastViewedAt`, `lastRatedAt` and `lastSkippedAt` read an unset value as 0**, like
+  `viewCount`; every other date column's null matches nothing. **`lastSkippedAt`, `beginsAt`
+  and `endsAt` are dates.** A negative rating other than `-1` STAMPS `lastRatedAt`.
+- **The binary names filter fields no Meta advertises.** Six media columns
+  (`mediaHeight`, `mediaVideoCodec`, ... -- ANY-Media semantics, case-sensitive names), eighteen
+  more tag-table fields (`mood`, `style`, `similar`, ...), the photo-cluster columns (parse,
+  match nothing) and `trash` as an INTEGER. The tagging join (`tagId`, `tagType`,
+  `taggingIndex`) is real but matches hidden `tagType=318` taggings plexsim does not hold.
+- **An episode listing's leaf-count filters read the SHOW**, as a season's do, and so does a
+  season's `unwatchedLeaves`.
+- **The listing query reaches further than the grid**: a show's `/children` and
+  `/grandchildren` (filters, `sort=`, 500s -- "a show's season list ignores `skipCount`" is
+  refuted), `/unwatched`, `/recentlyViewedShows`, the media axes (still `type=`-blind),
+  `/autocomplete` and `/common?id=`. "All episodes" appears only when MORE THAN ONE season
+  row is answered, paged or not. An empty Common is `{mixedFields, guid, type, titleSort}`
+  and a `Common` is always paired.
+- **Every TV Recently Added shelf filters its EPISODES before the roll-up**, on all four hub
+  paths; a hub PAGE drops an empty-valued pair first, the `type=2` list parses it and refuses
+  the per-user keys, and `contentDirectoryID` empties a section page's TV shelf and scopes
+  `/hubs/items`. `unwatched=1` is a flag on `/library/recentlyAdded` and `/allLeaves` (0/1
+  grammar) and on a section's `recentlyAdded` (the literal `1` only).
+- **The Dashboard's view-time keys are `viewedAt>` and `viewedAt<` (both INCLUSIVE) and a bare
+  `viewedAt` (exact)**; `viewedAt>=`/`viewedAt<=` are unknown keys. Top Played filters its
+  history by them, `accountID` and `librarySectionID` and counts what is left. Probe with the
+  client's encoding: a raw `>=` IS the `viewedAt>` key.
+- **Thirteen more parameters refuse what they cannot parse** -- int32 (`augmentCount`,
+  `count`, `offset`, `excludeParentID`), any-size (`monthsAgo`), int64 (`bytes`), a float
+  (`maxDistance`), the 0/1 option (`personal`), `metadataTypes` (an int32 list that also
+  filters) and `sectionId` (`0` and 2147483647 only) -- and an unknown item id still 404s
+  first. **`sectionID` on Recently Added is a number** (`01` is section 1).
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,

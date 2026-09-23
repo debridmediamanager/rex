@@ -3061,3 +3061,213 @@ prefix 58/58. Formats/transport: 111 safe claim families / 444 local GETs, 173 s
 pairs / 2,540 nodes / 13,072 scalar occurrences, nine system routes, 92 numeric cells plus four
 repairs, all raw transport boundaries, and TLS 10/10 on both runtimes. Every finite axis is green;
 only explicit capability, safety and underivable-state bounds remain. ====
+
+
+==== Cycle 54 (2026-09-22). Frozen commit `f551bf7` served on 32587 (A, opus) and 32588 (B,
+fable) from a `git archive` in the session scratch `c54/head54`. The shared preamble was
+written to a file and each agent was told only to read its territory file and follow it; it
+is reproduced below, then the two territories. Both prompts pointed at the two PMS binaries
+and their extracted strings in the scratch directory, which are never committed. ====
+
+# Cycle 54 | shared preamble (both hunters)
+
+You are hunting for UNIMPLEMENTED or WRONGLY-IMPLEMENTED server behaviour in plexsim, a Plex Media
+Server emulator at `/Users/bensarmiento/debridmediamanager/plexsim`. This is **cycle 54** of a hunt
+that stops only when a cycle reports no findings. "no findings" is a valid, useful result — do not
+manufacture findings, and never report a difference you have not measured yourself.
+
+Read `CLAUDE.md` first (its one rule: **every emulated response is a measurement, not a guess**).
+Then skim `HANDOVER.md` §3.1 (the seven ways a measurement goes wrong), §3.3, §8 (measured and
+deliberately NOT implemented — do not re-report those) and §7's cycles 52 and 53. `CLAUDE.md`'s
+"Traps" bullets and `docs/findings.md` are the **already-fixed list**: search both (with python, not
+grep — see below) before reporting anything. Verify against the CURRENT plexsim, not the docs.
+
+## What is new this cycle
+
+Cycle 52 read PMS's **route table** out of the server binary; cycle 53 read the plug-in framework's
+Python source and the database template's schema. Both references' server binaries are already
+copied to the cycle scratch, with their strings extracted:
+
+- `$C/pms_kids.bin` + `$C/kids_strings.txt` — Plex 1.43.4 (kids)
+- `$C/pms_zen.bin` + `$C/zen_strings.txt` — Plex 1.42.2 (zen — **the build plexsim reports**)
+- `$C/param_like.txt` — 412 names that appear in the kids strings followed by `=` (a first cut)
+- `$C/camel.txt` — 8,374 camelCase identifiers in the kids strings (a first cut)
+
+where `C=/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54`.
+Those files are private scratch material. Never copy them, or any part of the binary, into the repo.
+
+## Instruments
+
+- **Tokens:** `set -a; . $C/tokens.env; set +a` in each Bash call that needs them. It exports
+  `PLEXLAB_TOKEN` (kids), `ZEN_TOKEN` (zen), `SCRATCH_TOKEN` (plexscratch) and `S42_TOKEN`
+  (plexscratch42). **Never print a token**, never write one into any file under the repo, never
+  put one in your report — say `$PLEXLAB_TOKEN`.
+- **kids** — `http://100.85.222.1:32400`, Plex **1.43.4**, the shape authority. **GET and HEAD only.**
+  Section 1 "Movies": ratingKeys 1, 18, 17, 3, 4. Section 2 "TV Shows": Firefly 6; season 7
+  (episodes 8–10), season 11 (episodes 12–14, unmatched). Download queue 1 exists; leave it.
+- **zen** — `http://zen:32400`, Plex **1.42.2**, production, the version oracle and the only real
+  library (3,887 movies in section 1, shows in 2, "Bench TV" 4). **GET and HEAD only, ever, and
+  always send `X-Plex-Container-Start: 0` / `X-Plex-Container-Size: 20` headers on listings.**
+- **plexscratch** — `http://100.85.222.1:32410`, 1.43.4, UNCLAIMED disposable copy of kids. Writes
+  allowed. Token `$SCRATCH_TOKEN` (it changes if the copy restarts: re-read with
+  `ssh ben@kids /home/ben/plexscratch/scratch.sh token | tail -1`). Do not `reset` it without saying so.
+- **plexscratch42** — `http://100.85.222.1:32411`, fresh **1.42.2** install, UNCLAIMED, every item
+  unmatched. Writes allowed. Grammar only, never a count. Token `$S42_TOKEN`.
+- **A difference only an unclaimed copy shows may be the CLAIM (class E)** — check a claimed server.
+- **plexsim under test** — a FROZEN export of `main` at `f551bf7`, at the port your territory names,
+  on `tests/catalog_ui.json`, no token gate. Movies 1007 (Tears of Steel), 1008, 1009; show 20001;
+  seasons 30001, 30002; episodes 1001–1003; sections 1 movie and 2 show. Writing to it is fine; to
+  restart it, kill ONLY the listener on your own port and start
+  `cd $C/head54 && RD_TOKEN=dummy python3 server.py --port <PORT> --catalog tests/catalog_ui.json --assert-claimed`
+  detached (Python `subprocess.Popen(..., start_new_session=True)`; `nohup … &` dies with the call).
+  Do not touch any other port: 32400, 32410, 32411, 32502, 8787, and the other hunter's port.
+- **Tools** in `handover/tools/` (read before use): `probe.py` holds the `WRITE_GET` guard regex;
+  `cmp.py`, `xdiff.py`, `fsweep.py`, `hsweep.py`, `envelope.py` are earlier sweep drivers. Write
+  your own scripts and all outputs under your territory directory `$C/<A|B>/`, never in the repo.
+  **`grep` in this shell is aliased through a filter that can mangle or truncate output**: use
+  `rtk proxy grep` or python for searching. Set `User-Agent: curl/8` on every request.
+- **Do not modify plexsim's tracked files, and do not commit anything.** You are measuring.
+
+## SAFETY — the references are shared, and hunts have damaged them before
+
+Cycle 4 deleted kids' Movies library; cycle 5 re-matched a show; cycle 6 left an undeletable
+download queue; cycle 45 minted orphan rows with a GET. So:
+
+1. **kids and zen: GET and HEAD only**, through a guard in YOUR client that refuses any other
+   method to those hosts and refuses every path matching `probe.py`'s `WRITE_GET` regex, plus:
+   `/library/metadata/*/theme/*/metadata` (a GET that MINTS a row), `/library/shared/*?sort=` with
+   an empty value (crashes a real PMS), anything under `/:/websockets`, `/:/eventsource`, any part/
+   media byte read or transcode, any artwork `?url=` setter, anything that leaves the host. Never
+   open a notification channel on kids or zen. Nothing under plex.tv.
+2. **Writes go to plexscratch, plexscratch42 or your own plexsim only.** Before any write, write
+   down the request and its undo. Never send `DELETE /library/sections/*`, merge/split/match/
+   unmatch on a whole library, maintenance endpoints, network/auth/claim prefs, `scratch.sh make`,
+   or anything that changes a compose file, mount or permission. Put that guard in your harness,
+   not only in your head: a sentence in a prompt has failed twice.
+3. Before your first request and after your last, run
+   `set -a; . $C/tokens.env; set +a; cd /Users/bensarmiento/debridmediamanager/plexsim/handover/tools && python3 refcheck7.py ref_cycle5_before.json`
+   and compare the two outputs; they must be identical. Report the result.
+4. zen is production with a real library: keep your request rate modest (a few per second at most)
+   and page every listing.
+
+## What counts as a finding
+
+A rule is a finding when a real PMS (zen for 1.42.2, backed by kids unless the difference is a
+version split) answers a request one way and the frozen plexsim answers it differently, and the
+difference is not catalog content. **A field only 1.43.4 sends is not a finding** (plexsim reports
+1.42.2) — but a 1.42.2 behaviour plexsim lacks IS, even when kids lacks it too. A difference
+explained by claim state, by catalog content (titles, counts, ids, dates, artwork URLs) or by an
+entry in HANDOVER §8 is not a finding. Re-issue every candidate by hand on each server before you
+report it.
+
+## Report format
+
+Write the report to `$C/<A|B>/REPORT.md` and return it as your final message. Most important
+first. For each finding: the exact request(s); zen's and kids' verbatim responses (trimmed but
+real); plexsim's verbatim response; the client impact (what breaks, for whom); and the minimal
+regression check that would fail on the frozen tree. Then the DENOMINATOR: how many names/requests
+/cells you swept and how each was partitioned — (a) identical, (b) catalog content / version / claim,
+(c) already recorded, (d) real behavioural difference (the findings), (e) explicit bound (write,
+private, unsafe, instrument limit). **If (d) is empty, say exactly "no findings"** and list what
+you compared. End with the snapshot comparison result.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54/preamble.md` first and follow it. Your territory, port and directory:
+
+# Cycle 54 | Territory A | the binary's query-parameter vocabulary | frozen plexsim 32587 | `$C/A/`
+
+**The axis.** Cycle 46 exhausted the PREFIXED option namespace (`include*`, `exclude*`, `async*`,
+`check*`, `skip*`, `only*`, `with*`: 116 names × 76 safe container families × 3 hosts). Every
+other query parameter plexsim understands came from what a CLIENT was seen to send, or from the
+filter grammar. **Nobody has swept the parameter names the SERVER reads.** The binary names them:
+a first cut in `$C/param_like.txt` (strings followed by `=`) already shows `excludeParentID`,
+`includeFields`, `includeElements`, `includeTypeFirst`, `resolveTags`, `respectTags`,
+`curatedHubSeed`, `monthsAgo`, `onlyTranscodes`, `indirectMedia`, `autocorrect`, `scopeName`,
+`asyncIdentifier`, `maxDistance`, `officialTitle`, `playlistType` — most of which plexsim has
+never heard of.
+
+**What to do.**
+
+1. **Build the vocabulary mechanically, and keep its provenance.** From BOTH strings files: every
+   token that appears as `name=` or `&name=` or `?name=`; plus every camelCase identifier that
+   appears adjacent to (within ~40 strings of) a route template or a known parameter literal; plus
+   every name the binary compares against in a param-reading context you can identify. Drop names
+   cycle 46 already swept (the seven prefixes above) and names that are clearly SQL columns,
+   ffmpeg options, environment variables or C++ symbols. Record for each name: kids-only, zen-only
+   or both (a 1.43.4-only name is a version split, not a finding). Aim for a finite list of a few
+   hundred and say exactly how you cut it.
+2. **Build the family catalog.** Every distinct safe GET container family plexsim and the
+   references answer: section grid, each subset leaf, every axis, `/library/all`, the item detail
+   read and its leaves (`children`, `allLeaves`, `grandchildren`, `related`, `similar`, `extras`,
+   `tree`, `posters`, …), every `/hubs/*` path, search endpoints, playlists and their items,
+   collections, `/status/sessions/history/all`, `/statistics/*`, `/:/prefs`, `/media/providers`,
+   `/system/agents`, `/library/tags`, `/playQueues/{id}` (READ of an existing queue on plexsim and
+   the scratch copies only — creating a queue on kids/zen is forbidden), `/butler` (GET), etc. Use
+   the same ids on each server that denote the same row TYPE. ~70–90 families.
+3. **Sweep.** For each (name × family) cell, on zen (1.42.2) and on the frozen plexsim at
+   `http://127.0.0.1:32587`, compare the response to that family's baseline with the name absent,
+   using a few source-shaped values (`1`, `0`, a plausible id, a plausible word). Duplicate each
+   baseline so a moving path (a random shelf, a timestamp) is identified before it is blamed on a
+   name. A name "moves" a family when status, root, container attributes, row set, row order, or
+   row projection changes. Use kids as the second witness for every mover, and plexscratch42 for
+   any mover whose grammar you need to probe with a write-free but state-dependent request.
+   **Page every zen request.** Budget: this is a large sweep — batch it, rate-limit it (≤ 5 req/s to
+   zen) and checkpoint it to disk so a crash does not restart it.
+4. **Triage every mover.** For each name that moves a reference family: does plexsim move the same
+   way? If not, characterise the rule by hand (value grammar: what parses, what is refused and with
+   which status; what it does to rows) on both references, and write the regression check.
+   Also report the inverse — any name plexsim reacts to that no reference does.
+
+Report the vocabulary size and how it was derived, the family count, the cell count, the mover
+set with its partition (both references / 1.42.2-only / 1.43.4-only / claim-dependent), and every
+finding as specified in the preamble.
+Read `/private/tmp/claude-501/-Users-bensarmiento-debridmediamanager-plexsim/8c029687-4cba-4d75-bc2d-78af7d5bc4db/scratchpad/c54/preamble.md` first and follow it. Your territory, port and directory:
+
+# Cycle 54 | Territory B | the binary's own SQL as the oracle for what a listing SELECTS | frozen plexsim 32588 | `$C/B/`
+
+**The axis.** Fifty cycles fitted plexsim's listing, hub, subset, On Deck, statistics, history and
+search behaviour to what the references ANSWERED, one request at a time. The server binary carries
+the SQL it actually RUNS — the strings files are full of it (`select … from metadata_items …`,
+`order by …`, `where … and …`, `metadata_items.title like '%`, `(metadata_items.rating_count= or …`,
+`&beginsAt>=now&sort=`, hub definitions, the play-queue generator, view-history rollups,
+`metadata_item_views`, `metadata_item_settings`, `statistics_*`). Cycle 53 used the database
+TEMPLATE's schema to name columns; **nobody has read the statements.** A statement is a rule
+written down by the server itself: which rows a hub selects, how NULLs sort, which column a sort
+key reads, what joins to what, what a subset excludes, how a count is computed, what the
+tiebreaker is.
+
+**What to do.**
+
+1. **Extract every SQL statement and SQL fragment** from both strings files (select/insert/update/
+   delete/with, and clause fragments: `order by`, `where`, `group by`, `having`, `join`, `case
+   when`, `coalesce`, `ifnull`, `collate`, `limit`). Keep the kids/zen split. Classify each by the
+   API surface it feeds — read fragments are what matter; write statements are useful only to
+   explain what a write changes. Say how many you extracted and how many you classified as
+   API-reachable reads.
+2. **For each API-reachable read, derive the rule it states and a request that discriminates it**
+   — especially edges nobody measured: NULL ordering and NULL membership, secondary/tertiary sort
+   keys, exclusions (`metadata_type != …`, `deleted_at is null`, `extra_type`, `index>0`,
+   `viewed_at > …`), time windows (`monthsAgo`, `beginsAt>=now`, `at > ?`), caps (`limit ?`),
+   aggregates (`count(distinct …)`, `sum`, `max(viewed_at)`), and the joins that decide which
+   parent a leaf rolls up to. Hubs and subsets are the richest target: every `hubIdentifier`
+   whose rows are SELECTed by a statement you can read.
+3. **Measure the discriminating request on zen (1.42.2, real library, the primary witness) and kids
+   (1.43.4)**, then on the frozen plexsim at `http://127.0.0.1:32588`. Where the edge needs STATE
+   the references do not have (a watched episode, a rating, an in-progress offset), make that state
+   on plexscratch42 (1.42.2) or plexscratch with a written undo, never on kids or zen. A rule the
+   SQL states but no reference can be made to show is an explicit bound, not a finding.
+4. **Hold plexsim's own implementation against each statement** — `filters.py`, `library.py`,
+   `hierarchy.py`, the hub and subset builders in `server.py`. Where plexsim computes a thing the
+   SQL computes differently (a different tiebreak, NULLs on the other side, a missing exclusion,
+   a different window), that is a candidate; confirm it with a request before reporting it.
+
+Report the statement count and classification, the rule set you derived, the discriminating
+requests you ran (with their results on each server), and every finding as specified in the
+preamble. Where the SQL overturns something recorded in `docs/findings.md` or `CLAUDE.md`, say
+which bullet and why — that is a class-A/B/D overturn and the most valuable thing you can report.
+
+
+==== Cycle 54 result. Territory A: 1,018 names, 94 families, 332,304 zen cells; nine
+findings (one, the episode leaf-count rule, shared with B), all re-measured and built except
+the tagging join (bounded: hidden tagType 318 taggings). Territory B: 707 statements, 374
+reads, two findings (`viewUpdatedAt`, the episode leaf counts) and the tagging-created bound.
+The driver's container probes added three findings and its re-measurements five more. 22 in
+22 commits; four recorded beliefs overturned; two §3.3 entries closed. ====
