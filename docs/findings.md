@@ -10394,6 +10394,97 @@ container of a collection, and playlist attribute order (A); a preplay read's `a
 pushing a `library.refresh.items` activity that lives under ten milliseconds and persists nothing,
 notification frame key order, and a playlist's locked `Field` on the listing row (B).
 
+#### The fifty-eighth pass — the flows repeated, and the owner's screens
+
+Cycle 58 ran under the client-impact rule. Territory A repeated cycles 56-57's client read and
+write flows against the new head (every earlier fix held) and ran sequences no cycle had tried.
+Territory B drove the screens a server OWNER uses -- Settings, a library's Add/Edit/Manage
+dialogs, Manage Recommendations, the Dashboard, the activity and console panels -- reading on zen
+and kids and writing on the copies. (Recorded here by cycle 59; cycle 58's session ended before
+writing this file.)
+
+**Client-visible, all built.**
+
+* **A library's Continue Watching shelf gates on the SHOW's play history**: once any episode has
+  been completed in a playback session, the shelf lists the On Deck episode however it became
+  next -- after the played episode is unscrobbled, and after Mark Played on a later episode or on
+  the season.
+* **A new session's sub-minute beats keep the resume point**; the deletion happens only inside a
+  session that has already reported more than a minute.
+* **A beat at exactly the stored position writes nothing** -- `lastViewedAt` stands still and a row
+  removed from Continue Watching stays removed.
+* **A section-path collection rename onto a collection tag already in use is a 409**, case
+  folded; renaming to its own current title in any case is a 200.
+* **The legacy agents' `config/{mediaType}` chain, `contributors`, and the order save** with the
+  framework's refusals.
+* **`/library/all/top?type=2|3` rolls an episode play up to its show and season**, a flattened
+  episode's owning season included.
+* **Statistics `at` buckets align to local midnight, local Monday, the 1st and 1 January.**
+* **`hidden=1`/`2` keeps a library off Home and `/library/recentlyAdded`**, and at 2 out of both
+  searches; the Home shelf itself stays, emptied.
+
+**Recorded, not built.** The section Continue Watching answer cached per exact URL (the refresh
+rule was sampled over eleven write types only); the optimized-versions playlist under
+`X-Plex-Sync-Version: 2`; an item-path collection rename then delete leaving members tagged; `PUT
+/library/collections/{id}/children` as a 400; `/statistics/media`'s `Device` rows.
+
+#### The fifty-ninth pass — the rendered client, and python-plexapi's writes
+
+Cycle 59 took two axes no client-impact cycle had: the official Plex Web app RENDERED in a real
+browser (kids' 9223 Chromium, the bundle plexsim serves, plex.tv answered by canned `page.route`
+bodies so the app saw exactly one server) pointed at plexscratch42, kids and plexsim page by page;
+and python-plexapi's whole WRITE and PLAYBACK surface -- 182 methods over 62 classes, 291 steps on
+plexscratch42 and on plexsim, each followed by a reload of everything it should reach.
+
+**Client-visible, all built.**
+
+* **`X-Plex-Language: en` keeps an item's Advanced enums English.** python-plexapi sends it on every
+  request and Plex Web on every query; cycle 50's language-list injection caught every enum whose
+  first row read `Library default`, so a show's Seasons dropdown offered 46 languages and
+  `editAdvanced(flattenSeasons=1)` refused its own value. And an item's own `audioLanguage`/
+  `subtitleLanguage` enum -- built at read time, so never in the table -- is now localised piece by
+  piece: its stream-language head by tag (`item_language_names.json`, read off zen over the 13 shows
+  covering all 62 tags its 507 shows carry, in 30 language forms), the regional tail from the table
+  in its own order, and the inherit option on its own (Danish `:Kontomenu`, where the table's list
+  leads `:Standard for konto`). Exact against zen for a show and a season in all 30.
+* **`/player/*` with `X-Plex-Target-Client-Identifier` is a 404** (python-plexapi's proxied
+  `sendCommand`), on zen, kids and both copies; a bare command stays 400.
+* **A smart collection's `collectionFilterBasedOnUser` is stored** as sent (`filterUserUpdate()`),
+  on the row as well; empty reads back empty; a plain collection 400s it.
+* **`DELETE /library/sections/all/refresh` is a 200** (`Library.cancelUpdate()`) with one status
+  frame, "Library scan canceled".
+* **A playlist's timeline beats run the item machine** (`Playlist.updateTimeline()`): ignore,
+  progress with the offset stored, complete past 90% with `viewCount` stepping, and a `Playlist`
+  Now Playing row with `User` and `Player` until the stop.
+* **Uploads**: a poster/art upload keeps the agent's candidate (unselected) with exactly one
+  selected; an upload is a candidate of its own row only; and a THEME and a LOGO upload are
+  stored -- a selected candidate, a versioned `theme` served `audio/mpeg3`, a `clearLogo` Image
+  served `image/jpeg`, the owned artwork re-versioning onto one stamp.
+* **A match that renames a show reaches its children** (`parentTitle`, `grandparentTitle`), as an
+  edit does.
+* **A library holding a collection has a Collections tab** in `/media/providers` (fun, claimed,
+  and both copies), after Library.
+* **A video playlist makes a Playlists source** -- a `playlists` content directory with one
+  `playlists.video` pivot, which keeps its `id` and loses its pivot for Roku -- and `/hubs/promoted`
+  answers `home.playlists` when `contentDirectoryID` names `playlists` (zen and kids even empty).
+* **A library's Recent Playlists shelf is its key's head**, and an EMPTY playlist answers every
+  library's `sectionID=`.
+* **The pinned list shapes Home's Recently Added on 1.42.2** (zen): only the first pinned library
+  of each type carries the shelf, it merges every pinned library of that type and its key repeats
+  the pinned list as sent; an unpinned library and an empty list get none; and the See All leaf
+  takes a non-empty pinned list as its scope over `contentDirectoryID`.
+* **`translations.json` is per version.** It was captured off kids (1.43.4); re-captured off zen
+  (1.42.2) with the same tool and overlaid, it moves the Danish, Serbian, Ukrainian, Hebrew and
+  Portuguese strings (see the commit and HANDOVER §7).
+
+**Recorded, not built.** The Optimize surface python-plexapi reaches (`DELETE
+/playlists/generators?type=42`, the `mediaProcessingTarget` tag table) stays the recorded Optimize
+bound; a real PMS's CORS echo is limited to `*.plex.tv`, `localhost` and `127.0.0.1` origins and
+plexsim echoes any (no client is served from another origin); collection row attribute order; a
+smart playlist's `content` on `/library/metadata/{id}`; the unpause `queueRefreshed` frame; a
+split row's media delete. The ORDER of an item language enum's head is language-independent and
+fits neither tag order nor English-name order over zen's 507 shows (§3.3).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

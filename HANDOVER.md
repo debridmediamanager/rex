@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 58 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 59 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 59 | **59 — the rendered client, and python-plexapi's writes: 16 CLIENT-VISIBLE findings in 14 fix commits, 7 recorded.** Two axes no client-impact cycle had taken. Territory A (opus) drove the REAL Plex Web app in a browser -- kids' 9223 Chromium, the bundle plexsim serves, plex.tv answered by `page.route` so the app saw exactly one server -- against plexscratch42, kids and plexsim, page by page: five, all built (the `en` enum injection, the Collections tab, the Playlists source and its Home shelf, a library's Recent Playlists shelf, and 1.42.2's pinned-list Recently Added). Territory B (fable) drove python-plexapi's whole write and playback surface -- 182 methods, 291 steps a server -- and found nine client-visible: the same `en` enums, the proxied `/player` 404, a smart collection's user filter, the library-wide scan cancel, a playlist's timeline, three upload rules, and a match's rename cascade; its Optimize cell stays the recorded bound. Re-measuring them the driver found three more: an item's own language enum was never localised (fixed from a zen capture), `translations.json` is per VERSION (405 cells re-captured off zen), and cycle 58's Continue Watching gate is the LIBRARY's play history, not the show's |
 | Cycle 58 | **58 — the flows repeated, and the owner's screens: 9 CLIENT-VISIBLE findings (all built) and 5 recorded.** Territory A repeated cycles 56-57's client read and write flows (every fix held) with sequences no earlier cycle ran, and found four about playback state: a library's Continue Watching shelf gates on the SHOW's play history rather than on how the next-up arose; a new session's sub-minute beats keep the resume point; a beat at exactly the stored position writes nothing; and a collection rename onto a taken collection tag is a 409. Its fifth, the section shelf's per-URL cache, is recorded. Territory B drove the owner-facing screens -- Settings, library Add/Edit/Manage, Manage Recommendations, the Dashboard, activities and console -- and found four: the legacy agents' combination chain and its order save, Top Played rolling an episode up to its show and season (plus a flattened-season follow-up), statistics buckets aligned to local calendar boundaries, and a hidden library kept off Home and out of global search. The session that ran the hunts ended mid-cycle; the next session rebuilt the implementation pass from the surviving worktree and hunt outputs |
 | Cycle 57 | **57 — lists, and what every screen shows after a user acts: 9 CLIENT-VISIBLE findings (all built) and 8 recorded.** Territory A repeated cycle 56's client inventory (every fix held) and drove python-plexapi's whole read surface (108 classes, 646 members, 1,018 probes a server); neither reference holds a list, so its four findings -- collection search ladder, a list's history, a playlist's score base, the sync flag -- were measured on the two writable copies, which agree across versions. Territory B drove every client write on plexscratch42 and plexsim with 41 redraw reads after each, and found five: the merged Continue Watching hub holding the next-up rows, the section shelf's play-only next-up, a pristine show's OnDeck (refuting cycle 41), the collection Related shelf, and the play-queue marker's block rule. Territory B's implementation was delegated to an agent under sdrive, as cycle 55's was |
 | Cycle 56 | **56 — the first cycle under the client-impact stopping rule: 6 CLIENT-VISIBLE findings (all built) and 18 MALFORMED-ONLY (recorded in §8).** Territory A started from the clients -- recorded Plex Web sessions, the reference walk, python-plexapi's templates and 1,455 probes through it, the bundle's path families, every published hub key, and the client's writes driven on plexscratch42 -- and found three (a show library's provider storage totals, the playlist Meta's Type key and active flags, the legacy agents' per-MediaType languages). Territory B repeated cycles 54 and 55 (every fix held, `regress55.py` 123/123) and widened them, finding three (`decade` ignoring its operator, the per-user counters reading 0 once any state is written, `includeGuids` on a library's hub page). **The rule is working: every client-visible finding had a named call site, and the malformed-only count (18) is three times the client-visible one** |
@@ -92,12 +93,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-58 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 59 is next under the stopping rule (§1)** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 59" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 59 | UI **see §7** (serial run on the final tree, `RD_TOKEN=dummy`); decisions **2,340/2,340**, mediainfo **36/36**, catalog features, GDM **103/103**, heartbeat **13/13**, account state **15/15**, sessions, part bytes **12/12**, prefix **58/58**, regional **3/3** all pass | 24,348 | **16 client-visible** in **14 fix commits**, every one proved fail-then-pass against its own parent (13 by `sdrive.py`, the library gate by hand in the offline suite); **7 recorded** in §8. **3 recorded beliefs refined** (cycle 50's language-list injection, cycle 58's per-show gate, the translation table's version) |
 | 58 | UI **1,894/1,894** with 12 fixture skips (the driver's serial run on the merged tree, `RD_TOKEN=dummy`); catalog, decisions, mediainfo, GDM, prefix, part bytes, TLS, heartbeat, account state, sessions and regional all pass; LIVE navigation **25/25**; python-plexapi **29/38**, the recorded placeholder-link baseline under `RD_TOKEN=dummy` (§4.5); `test_all.py` not run (its CLI takes no `--base`) | 24,117 | **9 client-visible** in **9 fix commits** (hunt B's Top Played fix plus a flattened-season follow-up) and 1 test commit; **5 recorded** in §8. **2 recorded beliefs refined** (the sub-minute resume delete, cycle 57's play-only shelf gate) |
 | 57 | UI **1,881/1,881** with 12 fixture skips (the implementation agent's final run); catalog, decisions 2,340, mediainfo 36, GDM 103, prefix 58, part bytes 12, TLS 10, heartbeat 13, account state 15, sessions and regional all pass; LIVE navigation **25/25** (one check re-based: a never-watched show's OnDeck), python-plexapi **38/38**, byte/decode **5/5** | 23,886 | **9 client-visible** in **10 fix commits** (plus a `tagId` filter the collection shelf's key needs, and a flattened-season follow-up) and 2 test commits; **8 recorded** in §8. **1 recorded belief overturned** (cycle 41's pristine OnDeck) |
 | 56 | UI **1,868/1,868** with 15 fixture skips (after one re-based check: cycle 20's null half now reads the rows never written); catalog **all pass**; regional **3/3**; decisions **2,340/2,340**; mediainfo **36/36**; GDM **103/103**; prefix **58/58**; part bytes **12/12**; TLS **10/10**; heartbeat **13/13**; account state **15/15**; sessions all pass; LIVE navigation **24/24**, python-plexapi **38/38**, byte/decode **5/5** | 23,664 | **6 client-visible** in **6 fix commits**, every one proved fail-then-pass; **18 malformed-only** recorded in §8. Denominators: 80 recorded client request shapes, 178 GET templates x 3 servers x 2 formats, 1,455 python-plexapi probes, 22 client writes with 336 reads each side; the repeat of cycles 54-55 (13,912 + 150,588 + 6,970 + 7,008 plexsim cells) and three widening grids (7,264 operator cells, 8,085 hub-page cells, 3,564 post-write cells a server) |
@@ -508,6 +510,10 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **An item's Advanced language enums are translated for every language `translations.json` lacks** (cycle 50) | Only the three LANGUAGE-LIST enums are; the injection keyed on the default's label caught `-1:Library default|0:Show|1:Hide`, `showOrdering` and every other library-default enum, so under `en` a show's Seasons dropdown offered 46 languages | C | cycle 59 |
+| **A section's Continue Watching gate is the SHOW's play history** (cycle 58) | It is the LIBRARY's: with a second show added to one library on plexscratch42, a session completion on one show lists the other's scrobble-only next-up. Cycle 58's copies held one show per library | B | cycle 59 |
+| **`translations.json` is version-neutral** (cycles 16-25) | It is 1.43.4's: zen words 405 cells differently (Danish `Bibliotekets standard`, Serbian, Ukrainian, Hebrew and Portuguese enum rows among them). The seventh per-version fixture | A | cycle 59 |
+| **A playlist timeline stores nothing** (cycle 59's hunt B) | With a session identifier the beat runs the item machine: `progress` stores the offset on the list, a crossing completes it with `viewCount` 1 -> 2, and Now Playing shows a `Playlist` row | F | cycle 59 (driver) |
 | **A beat at or under 60 000 ms DELETES the stored resume point** (cycle 10) | Only inside a playback SESSION that has already reported a position past the minute. A NEW session's sub-minute beats answer `ignore` with the stored offset and keep it, on plexscratch42 and plexscratch alike; the old measurement was taken inside one session | B | cycle 58 |
 | **A section's Continue Watching lists a next-up only when the episode it follows was completed in a session** (cycle 57) | The gate is the SHOW's play history: after any one session completion, every next-up is listed however it arose -- Mark Played on a later episode or the season, and after the played episode is unscrobbled. Cycle 57 drove only one scrobble-then-play sequence, which cannot tell the anchor from the show | B | cycle 58 |
 | **A pristine unwatched show omits the inline `OnDeck`** (cycle 41) | It carries its FIRST episode, and so does the season that owns it -- kids' show 6 and season 7 carry episode 8, zen's show 5189 carries 5191. Cycle 41 measured the omission somewhere the block was absent for another reason | A | cycle 57 |
@@ -839,8 +845,10 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
+| **The ORDER of an item language enum's head** | Language-independent on zen and fitting neither tag order nor English-name order over 507 shows (many heads need five or more sorted runs); plexsim orders by tag within the audio and subtitle groups (cycle 18). The NAMES are exact in 30 language forms | Read the stream table order out of a zen show whose head plexsim would order differently, or the binary's SQL |
+| **Plex Web against plexsim in a real browser** | Cycle 59 is the first render diff and ran on kids' 9223 Chromium, because the Windows CDP machine was unreachable; Playwright's `connect_over_cdp` hangs there, so hunt A wrote a raw-CDP driver. The claimed-account panels (Dashboard upsell, Watch Together, Trending) and anything needing a media read were bounds | Repeat on the Windows browser with a media-reading play, and drive the Dashboard with the account's feature ids |
 | **`viewUpdatedAt`'s stamping rules** | Driven write by write on plexscratch42, which is UNCLAIMED (class E, cycle 49). The column's existence and grammar rest on zen and kids; which rows each write stamps rests on the copy alone, because a read-only reference cannot be written | The same writes on a claimed disposable 1.42.2 server |
-| **Cycle 58's implementation choices the hunt did not settle** | Whether the shelf's play-history gate is per SHOW or per LIBRARY (the copies hold one show each); that the history outlives every later scrobble, unscrobble and cloud import (plexsim no longer clears it anywhere); the sub-minute rule's latch on ANY earlier beat past a minute rather than the last one; the 409 rule's `id=` list refusing the whole write when one member conflicts; the hidden library's effect on paths hunt B did not read | Drive each on plexscratch42 |
+| **Cycle 58's implementation choices the hunt did not settle** | ~~Whether the shelf's play-history gate is per SHOW or per LIBRARY~~ -- per LIBRARY, measured in cycle 59 with a second show (`Twofold`, relative symlinks to Threefold's files under `/home/ben/plexscratch42/media/shows`) added to the Threefold library; whether it is per library or per ACCOUNT is still open (no library on either copy is free of session history). That the history outlives every later scrobble, unscrobble and cloud import (plexsim no longer clears it anywhere); the sub-minute rule's latch on ANY earlier beat past a minute rather than the last one; the 409 rule's `id=` list refusing the whole write when one member conflicts; the hidden library's effect on paths hunt B did not read | Drive each on plexscratch42 |
 | **Cycle 57's implementation choices the hunt did not settle** | The merged hub orders by the next-up's anchor view time; the section shelf's play mark follows the most recent anchor and a cloud import clears it; a pristine OnDeck needs no view state on ANY leaf and puts Specials last; the collection shelf replaces `movie.similar`, its suffix is always 1 and a smart collection adds none; the queue block's membership on a move; `tagId`'s operators other than `=` (zen's `tagId!=` is not the complement) | Drive each on plexscratch42 |
 | **A section's `/onDeck` leaf is ordered by the view-state write time** | Measured on plexscratch42 alone (unclaimed, class E); zen and kids hold no two in-progress rows to show it | Two in-progress rows on a claimed reference, one then rated |
 | **The client-language rule for a separator-led `X-Plex-Language`** | One fitted rule (drop one leading `-`, `_` or space; otherwise English) reproduces all sixteen measured values; nothing on the surface names it | A value outside the sixteen that the rule mispredicts |
@@ -1568,6 +1576,9 @@ Suite conventions, each learnt the hard way:
 - **Restart the fixture server BETWEEN runs, by waiting for the PORT to be free** — a kill plus
   an `/identity` poll can be answered by the process you just killed, and the suite then runs
   against a server it has already written to. Confirm the new pid holds the port.
+- **Never run the UI suite against port 32597 (or 32599).** Both are bound by the suite's
+  own checks -- cycle 29's `/web/*` check starts a server of its own on 32597 -- so a suite
+  pointed there measures itself and fails that check. Cycle 59 lost a run to it; 32596 is free.
 - **A check must survive the END of the suite, not just its own proof.** By the insertion point
   the match check has merged a fixture movie away (two rows, not three), titles have been edited
   into sort ties, and tag lists have been replaced. Count rows live, compare a leaf against the
@@ -3701,6 +3712,64 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 59 — the rendered client, and python-plexapi's writes
+
+Cycles 56-58 compared the RESPONSES to the requests a client builds. Cycle 59 took two axes none
+of them had.
+
+* **Territory A (opus) drove the real Plex Web app in a browser.** The Windows CDP machine was
+  unreachable, so it used kids' 9223 Chromium through a raw-CDP driver (Playwright's
+  `connect_over_cdp` hangs there), loaded the bundle plexsim serves from a `localhost` origin (a
+  real PMS echoes CORS only to `*.plex.tv`, `localhost` and `127.0.0.1`), and answered plex.tv
+  with `page.route` so the app saw exactly one owned server. About 60 pages and dialogs a server
+  on plexsim and plexscratch42, 45 on kids behind a GET-only gate (595 photo transcodes and 13
+  other reads refused, zero writes reached kids). Five client-visible, all built.
+* **Territory B (fable) drove python-plexapi's WRITE and PLAYBACK surface**: 182 methods over 62
+  classes, 291 steps on plexscratch42 and on plexsim with the websocket and eventsource frames and
+  a reload of everything each call should reach. Nine client-visible, all built; its Optimize
+  cell stays the recorded bound. Every cycle-58 fix held (`regress58b.py` 22/22 once a play
+  exists; cycle 58's flow scripts clean).
+* **The driver's re-measurement found three more.** An item's own language enum is built at read
+  time and was never localised (captured off zen per language into `item_language_names.json`);
+  `translations.json` is 1.43.4's and zen words 405 cells differently (re-captured with
+  `capture_i18n.py`, now version-aware, and overlaid -- never replaced, since zen's content-only
+  strings must not enter the table); and cycle 58's Continue Watching gate is the LIBRARY's play
+  history, measured by adding a second show (`Twofold`) to plexscratch42's Threefold library.
+  Hunt B's playlist-timeline report ("nothing stored") was corrected the same way: with a session
+  identifier the beat runs the item machine.
+
+**Built** (14 fix commits): the `en` enum injection and the item language enum; the proxied
+`/player` 404; a smart collection's `collectionFilterBasedOnUser`; `DELETE
+/library/sections/all/refresh`; a playlist's timeline; uploads per row, the agent candidate kept,
+theme and logo uploads stored and served; a match's rename cascade; the pinned list on Home's
+Recently Added (1.42.2); the Collections tab; the Playlists source (and its Roku projection) and
+`home.playlists` on `contentDirectoryID=playlists`; a library's Recent Playlists shelf with empty
+lists in every library; the zen translations; the library-wide gate.
+
+**Writes left on the copies.** plexscratch42: the `Twofold (2019)` show (three relative symlinks
+under `/home/ben/plexscratch42/media/shows`, section 3 -- keep it, it is the two-shows-in-one-
+library instrument), a `clearLogo` upload on movie 4 (1.42.2 has no artwork DELETE and
+`clearLogo.value=` does not clear it), `upload://` candidates on movies 3, 4 and 5, and hunt B's
+298->353 split key. plexscratch: hunt B's rows 69-72 from a library-wide scan of the cycle-54
+probe files, and 72->76. `scratch.sh reset` removes plexscratch's.
+
+**The axis ledger for the stopping rule.** The loop stops when a cycle reports no client-visible
+findings on EVERY axis below. A new axis that finds something has to be repeated clean before the
+loop can stop.
+
+| # | Axis | Taken in | Status after cycle 59 |
+|---|---|---|---|
+| 1 | Plex Web's request inventory, JSON and XML | 56 A, 57 A, 58 A | found things in 58; repeat |
+| 2 | python-plexapi's read surface | 57 A, 58 A | clean in 58's repeat |
+| 3 | Client write flows, the redraw reads, the frames | 57 B, 58 A | found things in 58; repeat |
+| 4 | The owner's screens (settings, library management, Dashboard) | 58 B | found things; repeat |
+| 5 | The RENDERED client | 59 A | found 5; repeat |
+| 6 | python-plexapi's write and playback surface | 59 B | found 9; repeat |
+| 7 | Server vocabulary (binary params, SQL) under client tags | 56 B | clean on the client side; repeat |
+| 8 | Playback per client PROFILE and identity (decision, queue, timeline, bytes for non-Web clients) | not under the client rule | untaken |
+| 9 | Localisation of everything the client draws, per version | 59 (partial) | untaken as an axis |
+| 10 | Discovery, claim and connection (GDM, `/identity`, resources) | 49, 51 | clean before the rule; repeat |
+
 ### Cycle 58 — the flows repeated, and the owner's screens
 
 Territory A re-ran cycles 56-57's client flows against the new code, and every earlier fix held.
@@ -4810,6 +4879,24 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 59** (recorded, not built):
+
+- **Optimize through python-plexapi** (CLIENT-VISIBLE to a python-plexapi user, kept on the Optimize
+  bound): `DELETE /playlists/generators?type=42` is a 200 on both copies (400 for any other type)
+  and `GET /library/tags?type=42` is a fixed three-row `mediaProcessingTarget` table on all four
+  servers; plexsim advertises no encoder, so `Video.optimize()` and `optimizedItems()` stay
+  unsupported.
+- A real PMS echoes `Origin` into `Access-Control-Allow-Origin` only for `*.plex.tv`,
+  `localhost:<port>` and `127.0.0.1:<port>`, and answers `https://app.plex.tv` to any other;
+  plexsim echoes every origin. No official client is served from another origin.
+- Collection row attribute order (`librarySection*` placement, `maxYear`/`minYear`).
+- A smart playlist's `content` on `/library/metadata/{id}` (plexsim) and not there (1.42.2).
+- The unpause `backgroundProcessingQueue {queueRefreshed}` frame (Optimize bound).
+- A split row's media delete resolving no Media id (the copies cannot delete media at all).
+- A match's children after a COMPLETED match on a real PMS is unwitnessed (neither copy completes
+  a match); plexsim now cascades the rename as an edit does, which the parent-read derivation
+  implies.
 
 **Cycle 58** (recorded, not built):
 

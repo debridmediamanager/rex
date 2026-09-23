@@ -2960,6 +2960,44 @@ precisely how the Seasons bug survived a fix attempt.
 - **A collection rename to a name a row of the library carries as a `Collection` tag is a
   409** on the section path, ignoring case, and changes nothing; its own title in any case is a 200.
 
+- **A library's Continue Watching shelf gates on the SHOW's play history** (cycle 58): once one
+  episode has been completed in a playback session the next-up is listed however it became
+  next. A new session's sub-minute beats keep the resume point, and a beat at EXACTLY the
+  stored position writes nothing -- a removed row stays removed.
+- **`hidden=1|2` keeps a library off Home and `/library/recentlyAdded`** (2 also out of both
+  searches), with the Home shelf kept and emptied; statistics `at` buckets align to LOCAL
+  calendar boundaries; `/library/all/top?type=2|3` rolls an episode play up to its show and
+  season.
+
+- **`X-Plex-Language: en` is NOT "no translation", and a language enum is not every enum
+  whose first row says `Library default`.** Cycle 50's injection caught Show/Hide and every
+  other library-default enum, so under python-plexapi's default header a show's Seasons
+  dropdown offered 46 languages. An item's own language enum is built at READ time and is
+  localised piece by piece (`item_language_names.json`): the head by tag, the tail from the
+  table in its own order, the inherit option on its own.
+- **`translations.json` is per VERSION** -- the seventh such fixture. It was captured off kids
+  (1.43.4); re-capture it with `capture_i18n.py` against zen (`I18N_BASE`, `I18N_IDS` remapping
+  kids' ratingKeys) and overlay, never replace: zen lacks what kids' paths alone reach.
+- **An upload belongs to its row, and a theme or logo upload is stored.** A poster upload keeps
+  the agent's candidate unselected with exactly one selected; a theme becomes the row's own
+  versioned `theme` (served `audio/mpeg3`), a logo a `clearLogo` Image (served `image/jpeg`).
+  The candidate lists were keyed server-wide by the bytes' hash.
+- **A playlist is a timeline row** (`Playlist.updateTimeline()`): the item machine runs on it,
+  `viewCount` steps from its born 1, and Now Playing shows a `Playlist` with `User` and `Player`.
+- **What a library OFFERS follows what it holds**: a Collections pivot while it holds a
+  collection, a Playlists source (one `playlists.video` pivot) once a video playlist exists, and
+  a library's Recent Playlists shelf is its key's head -- an EMPTY playlist answering every
+  library's `sectionID=`.
+- **On 1.42.2 the PINNED list shapes Home's Recently Added**: only the first pinned library of
+  each type carries a shelf, merging every pinned library of that type; an empty pinned list
+  gets none, and the See All leaf takes the pinned list over `contentDirectoryID`.
+- **A proxied `/player/*` command (with `X-Plex-Target-Client-Identifier`) is a 404**, and
+  `DELETE /library/sections/all/refresh` a 200 with a "Library scan canceled" status frame.
+- **Drive the RENDERED client, not only its requests.** Cycle 59 pointed the real Plex Web app
+  at plexscratch42, kids and plexsim through kids' 9223 Chromium with `page.route` answering
+  plex.tv, and found four surfaces no request replay had: a response is only half of what the
+  client shows, and whether a tab EXISTS is decided by another endpoint entirely.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
