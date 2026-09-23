@@ -30369,6 +30369,36 @@ def main():
     check("recentlyAdded reads sectionID as a number", not wrong_c54q and every_c54q,
           "; ".join(wrong_c54q))
 
+    # Cycle 55, read out of the binary's SQL (`select metadata_items.id,count(*) as cnt ...
+    # where tags.id in (...) group by metadata_items.id order by cnt desc,
+    # originally_available_at desc limit ?`) and reproduced exactly on zen (59 of 59 rows,
+    # in order) and on all four tagged kids movies: Related is a TAG SCORE. The item's first
+    # THREE genres and first FOUR roles are counted against each candidate, a candidate needs
+    # at least TWO in common, and the list is shared-count then release date, capped at 200.
+    # plexsim took any one shared genre, ordered by addedAt, and stopped at 12.
+    _, grid_c55a, _ = get(base, "/library/sections/%s/all" % movie_section)
+    pair_c55a = [r.get("ratingKey") for r in grid_c55a.get("Metadata") or []][:2]
+    if len(pair_c55a) == 2:
+        first_c55a, second_c55a = pair_c55a
+        request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=G1c55&genre[1].tag.tag=G2c55"
+                "&genre[2].tag.tag=G3c55&genre[3].tag.tag=G4c55&actor[0].tag.tag=R1c55"
+                "&actor[1].tag.tag=R2c55&actor[2].tag.tag=R3c55&actor[3].tag.tag=R4c55"
+                "&actor[4].tag.tag=R5c55" % first_c55a)
+        # One shared genre (the fourth, uncounted) and the fifth role (uncounted): out.
+        request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=G4c55&genre[1].tag.tag=G5c55"
+                "&actor[0].tag.tag=R5c55" % second_c55a)
+        _, none_c55a, _ = get(base, "/library/metadata/%s/similar" % first_c55a)
+        # Two counted genres in common: in.
+        request(base, "PUT", "/library/metadata/%s?genre[0].tag.tag=G1c55&genre[1].tag.tag=G2c55"
+                % second_c55a)
+        _, one_c55a, _ = get(base, "/library/metadata/%s/similar" % first_c55a)
+        check("Related is the measured tag score, two shared at least",
+              not none_c55a.get("Metadata")
+              and [r.get("ratingKey") for r in one_c55a.get("Metadata") or []] == [second_c55a],
+              "one-share %s, two-share %s" % (
+                  [r.get("ratingKey") for r in none_c55a.get("Metadata") or []],
+                  [r.get("ratingKey") for r in one_c55a.get("Metadata") or []]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
