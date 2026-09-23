@@ -30818,6 +30818,13 @@ def main():
     check("A per-user date under a bare = is an int32",
           got_c55f9 == [500, 500, 500, 200, 200], "%s" % got_c55f9)
 
+    # Cycle 55, measured on zen, kids and plexscratch42: `clusterStartsAt` is a date --
+    # `-5y` and `2020-01-01` are 200s, `1.5` a 500. plexsim parsed it as an integer.
+    grid_c55f10 = "/library/sections/%s/all" % movie_section
+    got_c55f10 = [get(base, grid_c55f10 + q)[0] for q in (
+        "?clusterStartsAt=-5y", "?clusterStartsAt=2020-01-01", "?clusterStartsAt=1.5")]
+    check("clusterStartsAt is a date column", got_c55f10 == [200, 200, 500], "%s" % got_c55f10)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

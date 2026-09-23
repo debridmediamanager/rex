@@ -602,6 +602,10 @@ FILTER_FIELD_TYPES["viewUpdatedAt"] = "date"
 # answers as 0 everywhere -- kids' own answer.
 for _column in ("cluster", "clusterStartsAt", "clusterZoomLevel", "clustering"):
     FILTER_FIELD_TYPES.setdefault(_column, "integer")
+# Cycle 55, measured on zen, kids and plexscratch42: `clusterStartsAt` is a DATE column --
+# `-5y` and `2020-01-01` are 200s and `1.5` a 500, the date grammar exactly, where the
+# integer reading refused the first two and accepted the third.
+FILTER_FIELD_TYPES["clusterStartsAt"] = "date"
 # The movie Meta advertises `trash` as a boolean; the grammar both references answer is the
 # integer one (`trash=01` is the `=1` set, `trash=2` none, `trash=abc` a 500).
 FILTER_FIELD_TYPES["trash"] = "integer"
