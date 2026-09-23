@@ -216,6 +216,9 @@ def operator_allowed(kind, field, operator):
         return operator in TAG_OPERATORS
     if field == "guid":
         return operator in GUID_OPERATORS
+    if kind == "tagId":
+        # Cycle 57: only `=` is measured; see server.py's FILTER_FIELD_TYPES.
+        return operator == "="
     if kind == "string":
         return field in UNLISTED_STRING_FIELDS or operator in STRING_OPERATORS
     return True
@@ -664,6 +667,13 @@ def compare(kind, operator, actual, wanted, field=""):
                  "<=": lambda v: v <= wanted, "<<=": lambda v: v < wanted,
                  ">=": lambda v: v >= wanted, ">>=": lambda v: v > wanted}
         return any(tests.get(operator, lambda v: False)(v) for v in values)
+
+    if kind == "tagId":
+        # Cycle 57, measured on zen: the value is a tag ID and has to parse as one --
+        # `abc` and an empty value are 500s -- and it matches a tag of ANY table.
+        if not re.fullmatch(r"[0-9]+", str(wanted).strip()):
+            raise FilterError(500, "bad tagId %r" % wanted)
+        return any(str(one) == str(int(wanted)) for one in actual or [] if one is not None)
 
     if kind == "tag":
         if field not in TAG_TABLE_FIELDS and operator not in TAG_OPERATORS:
