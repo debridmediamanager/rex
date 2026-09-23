@@ -31644,7 +31644,36 @@ def main():
           % (stored_c58t, answer_c58t.get("playbackState"), answer_c58t.get("viewOffset"),
              kept_c58t, dropped_c58t))
 
+    # Cycle 58, measured on both copies in every state, from a new session and the same one:
+    # a beat at EXACTLY the stored position writes nothing -- `lastViewedAt` stands still and
+    # a row removed from Continue Watching stays removed -- while 1 ms further stamps it and
+    # brings it back. Resuming and stopping before the position moves sends exactly that
+    # beat, and plexsim re-sorted Continue Watching and un-hid the removed row.
+    def viewed_c58u():
+        return (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0] \
+            .get("lastViewedAt")
+    def in_cw_c58u():
+        return str(movie) in [str(r.get("ratingKey")) for r in
+                              get(base, "/hubs/continueWatching/items")[1].get("Metadata") or []]
+    beat_c45s(movie, "playing", 200000, 1000000, "c58u-a")
+    beat_c45s(movie, "stopped", 300000, 1000000, "c58u-a")
+    before_c58u = viewed_c58u()
+    time.sleep(2)
+    beat_c45s(movie, "playing", 300000, 1000000, "c58u-b")
+    beat_c45s(movie, "stopped", 300000, 1000000, "c58u-b")
+    same_c58u = viewed_c58u()
+    request(base, "PUT", "/actions/removeFromContinueWatching?ratingKey=%s" % movie)
+    beat_c45s(movie, "stopped", 300000, 1000000, "c58u-c")
+    hidden_c58u = not in_cw_c58u()
+    beat_c45s(movie, "stopped", 300001, 1000000, "c58u-c")
+    back_c58u = in_cw_c58u()
+    moved_c58u = viewed_c58u()
     request(base, "GET", "/:/unscrobble?key=%s&%s" % (movie, I_c58t))
+    check("a beat at the stored position writes nothing",
+          before_c58u and same_c58u == before_c58u and hidden_c58u and back_c58u
+          and moved_c58u and moved_c58u > before_c58u,
+          "lastViewedAt %s -> %s (a moved beat %s), stays hidden %s, a moved beat shows it %s"
+          % (before_c58u, same_c58u, moved_c58u, hidden_c58u, back_c58u))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
