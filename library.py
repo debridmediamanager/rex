@@ -588,7 +588,15 @@ class Library:
         # `/:/progress` never sends one) drove the whole watched-state machine.
         total = int(duration) if duration else 0
         key = (session or "", int(rating_key))
-        if offset is not None:
+        # Cycle 58: a beat at EXACTLY the stored position writes nothing -- measured on both
+        # copies in every state and from a new session and the same one alike:
+        # `lastViewedAt` stands still and a row removed from Continue Watching stays
+        # removed, where 1 ms either side stamps it and brings it back. It is what a
+        # client sends for "resume, then stop before the position moves", and plexsim
+        # re-sorted Continue Watching and un-hid the row the user had removed.
+        unmoved = (offset is not None and row.get("viewOffset") is not None
+                   and int(offset) == int(row["viewOffset"]))
+        if offset is not None and not unmoved:
             # A timeline puts the row back in Continue Watching, whatever the menu
             # entry did before -- measured on the reference. For an episode that row is
             # its SHOW's, which any of the show's episodes hides and brings back.

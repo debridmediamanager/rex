@@ -2933,6 +2933,8 @@ precisely how the Seasons bug survived a fix attempt.
 - **A sub-minute beat deletes the resume point only inside a session that has passed the
   minute.** A NEW playback session's beats under a minute -- "Play from beginning", stopped
   within a minute -- answer `ignore` with the STORED offset and keep it, on both versions.
+- **A beat at EXACTLY the stored position writes nothing**: `lastViewedAt` stands still and a
+  row removed from Continue Watching stays removed, while 1 ms either side stamps and restores it.
 
 ## Conventions
 
