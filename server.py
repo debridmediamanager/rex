@@ -14174,7 +14174,9 @@ class PlexSim:
     # quality; the client promotes a hub on the score, so that inverts the page a real
     # PMS draws. And it had no prefix tier at all, which is the way search is actually
     # used -- a user typing the start of a title got the full-word tier.
-    SEARCH_TIER_BASE = {"episode": 0.91}
+    # Cycle 57, measured on plexscratch42 and plexscratch (neither kids nor zen holds a
+    # playlist): a PLAYLIST's ladder is one step below a movie's, 0.92/0.72/0.52/0.32.
+    SEARCH_TIER_BASE = {"episode": 0.91, "playlist": 0.92}
     SEARCH_TIER_DROP = {"exact": 0.0, "anchored": 0.20, "prefix": 0.40, "fuzzy": 0.60}
     SEARCH_HUB_CLASSES = {"exact": 0, "anchored": 1, "prefix": 2, "fuzzy": 3}
     SEARCH_HUB_CLASS_BONUS = {0: 50, 1: 25, 2: 25, 3: 0}
