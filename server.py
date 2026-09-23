@@ -13068,7 +13068,11 @@ class PlexSim:
         """
         limit = self.SHELF_COUNT
         exhausted = False
-        if count is not None and str(count).strip().lstrip("-").isdigit():
+        # Cycle 55, measured on zen and kids on the related hub: `count` is a SIGNED
+        # 32-BIT integer with an optional sign and nothing else -- `+1` and `01` are one
+        # row, while ` 1`, `1 `, `abc`, `1.5`, `2147483648` and `-2147483649` fall back to
+        # the default. plexsim stripped the value, so ` 1` was one row, and refused `+1`.
+        if count is not None and _int_param(count):
             # Cycle 28, measured on zen and kids over the negative edge of a ten-row
             # shelf: `count=-1` answers ONE row with `more: false`, and `-2`, `-5` and
             # `-100` answer NONE with `more: false` -- where `count=0` answers none with
