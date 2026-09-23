@@ -30657,6 +30657,23 @@ def main():
           got_c55a3 == [want for _, want in cells_c55a3] and ok_c55a3 == [200, 200],
           "%s, controls %s" % (got_c55a3, ok_c55a3))
 
+    # Cycle 55, measured on zen (1.42.2) and kids: Top Played refuses ANY `group`/`sort`
+    # with a 400 and an item's `/users/top` with a 404; the hub pages parse `sourceType`
+    # (`abc` a 500 on `/hubs`, `/hubs/promoted` and a show library's page) and
+    # `/hubs/promoted` and the TV Recently Added list refuse a `group=`. plexsim answered
+    # 200 to all of them.
+    cells_c55a4 = [("/library/all/top?type=1&group=title", 400),
+                   ("/library/all/top?type=1&sort=titleSort", 400),
+                   ("/library/metadata/%s/users/top?sort=abc" % movie, 404),
+                   ("/hubs?sourceType=abc", 500), ("/hubs/promoted?sourceType=abc", 500),
+                   ("/hubs/promoted?group=title", 500),
+                   ("/hubs/home/recentlyAdded?type=2&sourceType=abc", 500),
+                   ("/hubs/home/recentlyAdded?type=2&group=", 500),
+                   ("/hubs?sourceType=2", 200), ("/hubs/promoted?group=", 200)]
+    got_c55a4 = [get(base, cell_c55a4)[0] for cell_c55a4, _ in cells_c55a4]
+    check("Top Played and the hub pages refuse group, sort and sourceType",
+          got_c55a4 == [want for _, want in cells_c55a4], "%s" % got_c55a4)
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
