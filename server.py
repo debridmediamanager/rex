@@ -9747,6 +9747,13 @@ class PlexSim:
         """
         # Cycle 20: the subsets parse `type=` the way a listing does -- `?type=abc`
         # and an empty `?type=` are 500s on both references, on `/onDeck` as on `/all`.
+        # Cycle 55 narrowed that to the subsets that really do: on zen and kids
+        # `/recentlyAdded`, `/newest`, `/recentlyViewed` and `recentlyAddedGrandparents`
+        # answer their ordinary list to `type=abc` and to an empty `type=` on both
+        # library types, while `/onDeck` and the recently-viewed-shows pair refuse.
+        if leaf in ("recentlyAdded", "newest", "recentlyViewed", "recentlyAddedGrandparents") \
+                and not _int_param((query or {}).get("type", "0")):
+            query = {k: v for k, v in (query or {}).items() if k != "type"}
         self._parsed_type(query or {})
         is_show = section.get("type") == "show"
         # Cycle 45: the Grandparents pair runs its twin's body. `recentlyAdded`'s show
@@ -21767,8 +21774,10 @@ class Handler(BaseHTTPRequestHandler):
             return 500
         if route in ("/library/all", "/playlists", "/library/arts"):
             return 500
+        # Cycle 55, measured on zen and kids: a show's `/allLeaves` IGNORES `limit=abc`
+        # (a 200 with every episode); the section's `/allLeaves` still refuses it.
         if parts[:2] == ["library", "metadata"] and len(parts) == 4 \
-                and parts[3] in ("children", "grandchildren", "allLeaves"):
+                and parts[3] in ("children", "grandchildren"):
             return 500
         return 0
 

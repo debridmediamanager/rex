@@ -30888,6 +30888,23 @@ def main():
               and children_c55f15[0] == children_c55f15[1] and whole_c55f15[0] == whole_c55f15[1],
               "seasons %s, children %s, all %s" % (seasons_c55f15, children_c55f15, whole_c55f15))
 
+    # Cycle 55, measured on zen and kids: `/newest`, `/recentlyAdded` and
+    # `/recentlyViewed` answer their ordinary list to `type=abc` and to an empty `type=`,
+    # and a show's `/allLeaves` answers every episode to `limit=abc`, where `/onDeck`
+    # still refuses the type. plexsim 500'd all of them.
+    subset_c55f17 = [get(base, "/library/sections/%s/%s?type=abc" % (movie_section, leaf))
+                     for leaf in ("newest", "recentlyAdded", "recentlyViewed")]
+    plain_c55f17 = [get(base, "/library/sections/%s/%s" % (movie_section, leaf))
+                    for leaf in ("newest", "recentlyAdded", "recentlyViewed")]
+    deck_c55f17 = get(base, "/library/sections/%s/onDeck?type=abc" % movie_section)[0]
+    leaves_c55f17 = get(base, "/library/metadata/%s/allLeaves?limit=abc" % show)[0] if show else 200
+    check("A bad type on the added subsets and a bad limit on allLeaves are ignored",
+          [s[0] for s in subset_c55f17] == [200, 200, 200]
+          and [s[1].get("size") for s in subset_c55f17] == [p[1].get("size") for p in plain_c55f17]
+          and deck_c55f17 == 500 and leaves_c55f17 == 200,
+          "subsets %s, onDeck %s, allLeaves %s" % ([s[0] for s in subset_c55f17],
+                                                   deck_c55f17, leaves_c55f17))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
