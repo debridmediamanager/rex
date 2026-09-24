@@ -10576,6 +10576,25 @@ Cycle 63 repeated all ten axes. A (rendered client and localisation) and C (axes
 **Recorded, not built.** Music and photo sort titles on a type-scoped `/sorts` (`type=8/9/10/13`)
 left in English; plexsim holds no music or photo library and the client always asks its own type.
 
+#### The sixty-fourth pass — the catalogue as an instrument
+
+Cycle 64 repeated all ten axes. C (axes 1, 2, 3, 4, 7, 10) reported zero findings of either kind.
+B swept every product and platform string the binary carries over 40 read paths on four servers
+and found one product-keyed rule plexsim had never had. A added a new instrument -- the
+reference's own gettext catalogues (`plex.mo`), searched for every string plexsim leaves in
+English that the catalogue translates -- and it found a dialog no capture had walked.
+
+* **`X-Plex-Product: Plex Home Theater` gets a five-component `version`** on `/` and
+  `/media/providers` (`1.42.2.10156.0-<build>`), that spelling only, header or query, the header
+  winning; `/identity` and every other product keep four (zen, kids and plexscratch42 agree).
+* **A collection's Advanced settings are localised** -- Collection Mode, Collection order and a
+  smart collection's filter setting, read off plexscratch42 in 28 languages; the table had none.
+
+**Recorded, not built.** A playlist's `/items?includeMeta=1` tab-bar titles stay English (the
+items container carries a `ratingKey`, so the localiser takes it for a row; no client sends that
+request); a header value's leading whitespace -- a real PMS consumes one space and keeps the
+rest, and refuses a leading TAB (no client sends either).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
