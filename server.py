@@ -2818,9 +2818,31 @@ _REQUEST = threading.local()
 # rather than ending the search (`zzz, de` answers German on both references), so the
 # reader needs the set and not just the first tag. `en` is not in it: the table maps the
 # English string to the other 28, so an English request is the absence of a translation.
-TRANSLATED_LANGUAGES = frozenset(
+#
+# Cycle 66: the table also holds locales with NO catalogue of their own, measured on zen,
+# kids and plexscratch42 over every locale Plex Web offers: their menus stay English on a
+# real PMS, and only the ICU-generated names move with the FULL locale -- a library's
+# Certification Country list (`bg` `DE:Германия`, re-collated), a stream's language
+# (`zh-TW` `法文`), `en-GB`'s `St Helena`. They are localised but are not languages the
+# server HAS: `Accept-Language` skips them as it always did.
+ICU_ONLY_LOCALES = frozenset(("bg", "el", "en-GB", "fa", "is", "my", "th", "tr", "vi",
+                              "zh-TW"))
+LOCALISED_LANGUAGES = frozenset(
     _code for _attribute in TRANSLATIONS.values() for _entry in _attribute.values()
     for _code in _entry)
+TRANSLATED_LANGUAGES = LOCALISED_LANGUAGES - ICU_ONLY_LOCALES
+# A regional locale reads another locale's catalogue and differs from it only in the ICU
+# names: on zen `es-419` and `fr-CA` answer Spain's and France's menus (496 of 498 and 502
+# of 503 cells identical, the rest name lists), and `pt-PT` answers Brazil's menus with
+# Portugal's names (`Polaco` where `pt-BR` says `Polonês`). A source zen cannot answer --
+# a collection's settings, read off plexscratch42 -- is the catalogue's own entry.
+CATALOGUE_OF = {"es-419": "es", "fr-CA": "fr", "pt-PT": "pt-BR"}
+for _entries in TRANSLATIONS.values():
+    for _entry in _entries.values():
+        for _regional, _base in CATALOGUE_OF.items():
+            if _regional in LOCALISED_LANGUAGES and _regional not in _entry \
+                    and _base in _entry:
+                _entry[_regional] = _entry[_base]
 
 
 def _accept_language_order(value):
@@ -2936,6 +2958,12 @@ def request_language(query, headers):
     # catalogue everywhere, not only on `/:/prefs` -- `Classificação de usuários` where
     # `pt` says `Avaliação da Plateia` -- and `pt-PT` reads the same Brazilian one.
     exact = {"zh-hk": "en", "zh-tw": "en", "pt-br": "pt-BR", "pt-pt": "pt-BR"}
+    # Cycle 66: the locales whose ICU names differ from their primary subtag's keep the
+    # full tag -- `zh-TW` is still English in every menu, and Traditional in its names.
+    regional = {"zh-tw": "zh-TW", "en-gb": "en-GB", "es-419": "es-419", "fr-ca": "fr-CA",
+                "pt-pt": "pt-PT"}
+    if regional.get(normalized) in LOCALISED_LANGUAGES:
+        return regional[normalized]
     if normalized in exact:
         return exact[normalized]
     primary = normalized.split("-")[0]
@@ -3015,6 +3043,7 @@ def _localise_activity_text(text, language, table=None):
     """
     if not text or not language:
         return text
+    language = CATALOGUE_OF.get(language, language)
     table = ACTIVITY_STRINGS if table is None else table
     exact = table.get(text)
     if exact is not None:
@@ -22398,7 +22427,7 @@ class Handler(BaseHTTPRequestHandler):
         # localiser like any other language; the only `en` entries are the enums
         # synthesised from `agent_languages.json`, so every other string falls through
         # unchanged.
-        if language and TRANSLATIONS and language in TRANSLATED_LANGUAGES:
+        if language and TRANSLATIONS and language in LOCALISED_LANGUAGES:
             body = next(iter(container.values()))
             # Cycle 25: the PLUG-IN FRAMEWORK's own container is not localised. `/system`
             # carries a `Directory` titled `Library Sections` -- the same English string

@@ -32859,6 +32859,24 @@ def main():
           and "Avaliação da Plateia" in sorts_c66h("pt") and "Buscando" in br_scan_c66h,
           str((sorts_c66h("pt-BR")[:5], sorts_c66h("pt")[:5], br_scan_c66h[:2])))
 
+    # Cycle 66, measured on zen, kids and plexscratch42: the ICU-generated names follow the
+    # FULL locale -- a library's Certification Country list in `bg`, `en-GB`'s `St Helena` --
+    # for locales whose menus stay English on a real PMS.
+    def country_c66i(language_c66i):
+        body_c66i = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/sections/%s/prefs" % movie_section,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c66i}), timeout=30).read())
+        return {s.get("id"): s for s in body_c66i["MediaContainer"].get("Setting") or []}
+    bg_c66i = country_c66i("bg")
+    gb_c66i = country_c66i("en-GB")
+    check("ICU country names follow the full locale where the menus stay English",
+          "DE:Германия" in (bg_c66i.get("country") or {}).get("enumValues", "")
+          and "SH:St Helena" in (gb_c66i.get("country") or {}).get("enumValues", "")
+          and (bg_c66i.get("country") or {}).get("label") == "Certification Country",
+          str(((bg_c66i.get("country") or {}).get("enumValues", "")[:80],
+               (gb_c66i.get("country") or {}).get("label"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
