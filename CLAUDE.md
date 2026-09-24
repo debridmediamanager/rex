@@ -3027,6 +3027,12 @@ precisely how the Seasons bug survived a fix attempt.
   the product strings the binary carries: the codec suffix is 21 products (the bare `Plex HTPC`
   stays plain where its `for <OS>` variants do not), the `Bandwidths` suppressor two.
 
+- **The reference's own translation catalogues are an instrument** (`Resources/locale/*/
+  LC_MESSAGES/plex.mo`, readable with `cat` on zen): search them for every string plexsim leaves
+  in English. A capture only finds the strings on the pages it walks.
+- **`Plex Home Theater` alone gets a five-component server version** on `/` and
+  `/media/providers`.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
