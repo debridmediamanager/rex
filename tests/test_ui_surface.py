@@ -32781,6 +32781,19 @@ def main():
           and set(query_c66b) == {(True, True)},
           str((old_c66b, new_c66b, edge_c66b, below_c66b, query_c66b)))
 
+    # Cycle 66, measured on zen and plexscratch42: a lone `Accept-Language: zh-TW` on the socket
+    # handshake is a tag the server does not have -- English -- and `zh-TW,de;q=0.9` is German.
+    def titles_c66f(headers_c66f):
+        _, frames_c66f = notifications(base, lambda: get(
+            base, "/library/sections/%s/refresh" % show_section), seconds=4, headers=headers_c66f)
+        return [n.get("Activity", {}).get("title")
+                for f in frames_c66f for n in f.get("NotificationContainer", {})
+                .get("ActivityNotification") or []]
+    tw_c66f = titles_c66f("Accept-Language: zh-TW\r\n")
+    next_c66f = titles_c66f("Accept-Language: zh-TW,de;q=0.9\r\n")
+    check("a Traditional-Chinese Accept-Language is skipped, not read as Simplified",
+          "Scanning" in tw_c66f and "Suche..." in next_c66f, str((tw_c66f[:2], next_c66f[:2])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
