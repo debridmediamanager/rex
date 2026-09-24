@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 64 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 65 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 65 | **65 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 2 recorded.** C: zero findings of either kind on axes 1, 2, 3, 4, 7, 10. B: python-plexapi's writes and playback per identity repeated clean, then widened to every identity header the 1.42.2 binary reads and the 15 client identities as whole header sets -- two malformed-only (`X-Plex-Client-Platform` as a second platform spelling; the hub page's cache keyed on `X-Plex-Features`/`X-Plex-Language`). A: the rendered client and 18 localised captures clean; the notification socket, walked in ten languages for the first time, found the Activity menu's titles never localised (axis 9) |
 | Cycle 64 | **64 — the catalogue as an instrument: 2 CLIENT-VISIBLE findings in 2 fix commits.** C: zero findings on axes 1, 2, 3, 4, 7, 10. B: the whole product and platform vocabulary of the binary swept over 40 read paths on four servers -- one product-keyed rule plexsim lacked (`Plex Home Theater`'s five-component version, axis 8). A: the rendered client clean in English and in 18 localised captures, and a new instrument, the reference's `plex.mo` catalogues, found an unwalked dialog -- a collection's Advanced settings never localised (axis 9). Hunt A stalled once mid-run on a dead background monitor and was resumed |
 | Cycle 63 | **63 — nine axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits.** A and C reported no client-visible findings on axes 1, 2, 3, 4, 5, 7, 9, 10 (A one malformed-only, C none at all); B found two on axis 8 by sweeping the product strings the binary carries across the two product-keyed rules -- the codec suffix is 21 products, not 13, and `Bandwidths` is withheld from `Plex for Windows Phone` too |
 | Cycle 62 | **62 — eight axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits.** All ten axes with the same three territories. Clean: 1, 2, 4, 5, 6, 7, 9, 10 -- A reported exactly `no findings` over 18 localised captures and 14,790 settings cells. C found one on axis 3 (a renamed collection's members keep the OLD name on their light rows), B one on axis 8 (`Bandwidths` withheld from `Plex for Windows`) |
@@ -98,12 +99,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 64" names what it must cover** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 65" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 65 | UI **1,933/1,933** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,544 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **2 recorded**. **1 recorded belief refined** (cycle 25's "`X-Plex-Features` is inert") |
 | 64 | UI **1,932/1,932** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,476 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass; **2 recorded** |
 | 63 | UI **1,930/1,930** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,467 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass; **2 recorded** (A's sorts, B's sidecar-burn decision) |
 | 62 | UI **1,928/1,928** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,467 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass by `sdrive.py`; **0 recorded** |
@@ -520,6 +522,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **`X-Plex-Features` is inert** (cycle 25, a `/hubs` positive under it dismissed as kids' own drift) | It KEYS the library hub page's cache: every new value (nonsense included, header or query) and every new `X-Plex-Language` is a fresh roll of the page's random shelves, stable per key. Interleaved reads on kids, zen and plexscratch42 never moved the bare baseline. Recorded, not built (§8): no single client can see it | B | cycle 65 |
 | **An item's Advanced language enums are translated for every language `translations.json` lacks** (cycle 50) | Only the three LANGUAGE-LIST enums are; the injection keyed on the default's label caught `-1:Library default|0:Show|1:Hide`, `showOrdering` and every other library-default enum, so under `en` a show's Seasons dropdown offered 46 languages | C | cycle 59 |
 | **A stream's extended title decides the language part's omission on the ENGLISH name and renders the English one** (cycle 17) | It decides on the STORED name and renders the LOCALISED one: zen's track titled "French" reads `French (French SRT)` under `en` and `www.TamilRockers.com (Englisch Erzwungen SRT)` under `de`. Held out over 23,832 cells | B | cycle 60 |
 | **Overlaying the other version's changed cells makes the table 1.42.2's** (cycle 59) | Where 1.42.2 answers ENGLISH the old translation stayed -- 414 cells. The capture has to record unchanged cells too | C | cycle 60 |
@@ -3727,6 +3730,31 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 65 — the notification socket in ten languages
+
+**C** reported exactly zero findings of either kind on axes 1, 2, 3, 4, 7 and 10. **B** repeated
+every cycle-59..64 regression and the write and per-identity playback matrices unchanged, then
+widened the identity sweep to all 53 `X-Plex-*` names the 1.42.2 binary reads, its six feature
+tokens, the 78 profile files and the 15 recorded identities as whole header sets, on four servers
+over 40 read paths: two malformed-only rules (§8). **A** repeated the rendered walk and 18 localised
+captures (identical to cycle 64) and opened the notification socket in ten languages for the first
+time: a real PMS pushes `ActivityNotification` titles and subtitles in the socket's language
+(`X-Plex-Language` in the query, else the handshake's `Accept-Language`, which is what Plex Web's
+Activity menu gets), and on `/activities`; plexsim pushed English. Built from zen's own `plex.mo`
+catalogues into `activity_strings.json`, with the language-to-catalogue map fitted to
+plexscratch42's live frames in 12 languages; status and progress frames stay English on both.
+
+**The axis ledger after cycle 65.** Axes 1, 2, 3, 4, 5, 6, 7, 8 and 10 clean; 9 found one.
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | **clean six times** (60-65) |
+| 3 | Client write flows | **clean three times** (63-65) |
+| 5 | The rendered client | **clean six times** |
+| 6 | python-plexapi's writes | **clean four times** (62-65) |
+| 8 | Playback per client identity | **clean** (65), every identity header the binary reads |
+| 9 | Localisation | found 1 (the notification socket); repeat |
+
 ### Cycle 64 — the catalogue as an instrument
 
 **C** reported exactly zero findings on axes 1, 2, 3, 4, 7 and 10. **B** swept 115 platform-like
@@ -5027,6 +5055,17 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 65** (recorded, not built):
+
+- `X-Plex-Client-Platform` is a second spelling of the platform header on both versions and both
+  claim states (`Roku` strips `/media/providers`' `id`/`Pivot`, `iOS` types the All-episodes row
+  `season`, `Samsung` adds `includeInGlobal` to a library's `/prefs`; `X-Plex-Platform` wins when
+  both are sent). plexsim ignores it. No recorded client sends it: Plex Web, python-plexapi and every
+  capture send `X-Plex-Platform`.
+- A library's hub page (`/hubs/sections/{id}`) is cached per (`X-Plex-Features`,
+  `X-Plex-Language`), each new key a fresh roll of the random shelves; plexsim rolls once per shelf.
+  Only two different clients compared side by side could see it.
 
 **Cycle 64** (recorded, not built):
 

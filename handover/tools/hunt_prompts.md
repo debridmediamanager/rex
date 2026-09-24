@@ -6284,3 +6284,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 65 result. A: 1 client-visible (activity titles per socket language). B: 2 malformed-only (X-Plex-Client-Platform, hub cache key). C: no findings. One fix commit. ====
