@@ -32794,6 +32794,15 @@ def main():
     check("a Traditional-Chinese Accept-Language is skipped, not read as Simplified",
           "Scanning" in tw_c66f and "Suche..." in next_c66f, str((tw_c66f[:2], next_c66f[:2])))
 
+    # Cycle 66, measured on plexscratch42 in ten languages over both transports: the butler's
+    # ProgressNotification sentences follow the socket's language; a scan's stay English.
+    _, frames_c66c = notifications(base, lambda: request(
+        base, "POST", "/butler/BackupDatabase"), seconds=4, query="X-Plex-Language=de")
+    said_c66c = [n.get("message") for f in frames_c66c
+                 for n in f.get("NotificationContainer", {}).get("ProgressNotification") or []]
+    check("the butler's progress messages are localised per socket",
+          "Der Butler hat die Datenbank gesichert." in said_c66c, str(said_c66c[:3]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
