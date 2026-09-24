@@ -1347,6 +1347,24 @@ class Library:
             return
         row[field] = value
 
+    @staticmethod
+    def _capitalised(value):
+        """A NEW tag's spelling: its first character upper-cased when it is an ASCII letter.
+
+        Cycle 61, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) for genre,
+        label, director and collection tags, on the section and item edit paths: `c61c
+        lowgenre` is stored `C61c lowgenre`, while `élan`, `ÿoyo`, `ǆemal`, `ßeta` and
+        `1abc` keep their spelling and an EXISTING tag keeps its canonical one.
+        """
+        value = str(value)
+        if value[:1] and "a" <= value[0] <= "z":
+            return value[0].upper() + value[1:]
+        return value
+
+    def collection_tag_names(self):
+        """Every collection tag name this server has held, lowercased -- the tag TABLE's."""
+        return {lowered for (table_key, lowered) in self._tags if table_key == "Collection"}
+
     def _set_tags(self, row, tag_type, values):
         """Replace a tag list, which is what an indexed write means.
 
@@ -1376,6 +1394,7 @@ class Library:
             if known is not None:
                 fresh.append(dict(known))
                 continue
+            value = self._capitalised(value)
             tag_id = zlib.crc32(("%s:%s" % (key, value)).encode()) % 900000 + 1000
             minted = {"id": tag_id, "tag": value,
                       "filter": "%s=%s" % (tag_type, tag_id)}
@@ -1577,6 +1596,9 @@ class Library:
                   "filter": "%s=%s" % (tag_type, tag_id)}
         if key in PERSON_TAG_ELEMENTS:
             minted["tagKey"] = person_tag_key(value)      # see `_set_tags`
+        # Cycle 61: a membership puts the tag in the TABLE too, where it outlives the
+        # collection (a later rename onto it is a 409 -- see `collection_tag_names`).
+        self._tags.setdefault((key, str(value).lower()), dict(minted))
         tags.append(minted)
         if key == "Collection":
             self._sync_collection_tag(row, value)
@@ -2348,6 +2370,12 @@ class Library:
             "uri": uri if smart else None,
         }
         self._derive_title_sort(collection)
+        # Cycle 61, measured on both copies: the members' tag of a NEW collection titled
+        # `c61c lowcreate` is `C61c lowcreate` -- the title stays as typed -- and an
+        # existing tag of that name keeps its own spelling.
+        known = self._tags.get(("Collection", collection["title"].lower()))
+        collection["tag"] = known["tag"] if known else self._capitalised(collection["title"])
+        collection["_names"] = {collection["tag"].lower()}
         self._collections[key] = collection
         if not collection["smart"]:
             # A smart collection has no members to tag: its membership is its
@@ -2380,7 +2408,7 @@ class Library:
 
     def find_collection(self, title, section_id=None):
         for collection in self._collections.values():
-            if collection.get("tag", collection["title"]) == title and (
+            if str(collection.get("tag", collection["title"])).lower() == str(title).lower() and (
                     section_id is None
                     or str(collection["librarySectionID"]) == str(section_id)):
                 return collection
@@ -2455,6 +2483,11 @@ class Library:
                 if tag.get("tag") == old:
                     tag["tag"] = title
         collection["tag"] = title
+        # Cycle 61: the new name joins the tag TABLE and the old one stays in it.
+        self._tags.setdefault(("Collection", title.lower()),
+                              {"id": collection["tagID"], "tag": title,
+                               "filter": "collection=%s" % collection["tagID"]})
+        collection.setdefault("_names", set()).add(title.lower())
 
     def delete_collection(self, key):
         collection = self._collections.pop(int(key), None)

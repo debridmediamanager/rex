@@ -32480,6 +32480,44 @@ def main():
     check("the network interface picker's lead is localised",
           str(iface_c60f.get("enumValues", "")).startswith(":全て"), str(iface_c60f.get("enumValues"))[:40])
 
+    # Cycle 61, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
+    #  * a section-path collection rename onto ANY name in the collection tag TABLE is a 409
+    #    -- a deleted collection's tag included -- where cycle 58 read only the tags rows
+    #    still carry; python-plexapi's `editTitle()` and the Edit dialog save there;
+    #  * a NEW tag is stored with its first ASCII letter upper-cased (`c61c lowgenre` ->
+    #    `C61c lowgenre`), through the Edit dialog's save as through python-plexapi's
+    #    `addGenre()`; a non-ASCII first letter and a digit are left alone.
+    import random as random_c61a
+    token_c61a = "r%05d" % random_c61a.randint(0, 99999)
+    _, grid_c61a, _ = get(base, "/library/sections/%s/all" % movie_section)
+    member_c61a = ((grid_c61a.get("Metadata") or [{}])[-1]).get("ratingKey")
+    uri_c61a = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, member_c61a))
+    def coll_c61a(title_c61a):
+        _, made_c61a, _ = container(base, "POST", "/library/collections?type=1&title=%s&smart=0"
+                                    "&sectionId=%s&uri=%s" % (quote(title_c61a), movie_section, uri_c61a))
+        return ((made_c61a.get("Metadata") or [{}])[0]).get("ratingKey")
+    def rename_c61a(key_c61a, title_c61a):
+        return request(base, "PUT", "/library/sections/%s/all?type=18&id=%s&title.value=%s&title.locked=1"
+                       % (movie_section, key_c61a, quote(title_c61a)))[0]
+    first_c61a = coll_c61a("Rg61 A " + token_c61a)
+    rename_c61a(first_c61a, "Rg61 Orphan " + token_c61a)
+    request(base, "DELETE", "/library/collections/%s" % first_c61a)
+    second_c61a = coll_c61a("Rg61 B " + token_c61a)
+    blocked_c61a = rename_c61a(second_c61a, "rg61 orphan " + token_c61a)
+    fresh_c61a = rename_c61a(second_c61a, "Rg61 Fresh " + token_c61a)
+    request(base, "DELETE", "/library/collections/%s" % second_c61a)
+    request(base, "PUT", "/library/metadata/%s?collection.locked=0" % member_c61a)
+    check("a rename onto a name in the collection tag table is a 409",
+          blocked_c61a == 409 and fresh_c61a == 200, str((blocked_c61a, fresh_c61a)))
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&genre[0].tag.tag=%s&genre.locked=1"
+            % (movie_section, member_c61a, quote("rg61 low " + token_c61a)))
+    _, detail_c61a, _ = get(base, "/library/metadata/%s" % member_c61a)
+    genres_c61a = [t.get("tag") for t in ((detail_c61a.get("Metadata") or [{}])[0]).get("Genre") or []]
+    request(base, "PUT", "/library/sections/%s/all?type=1&id=%s&genre[].tag.tag-=%s&genre.locked=0"
+            % (movie_section, member_c61a, quote("rg61 low " + token_c61a)))
+    check("a new tag is stored with its first ASCII letter upper-cased",
+          "Rg61 low " + token_c61a in genres_c61a, str(genres_c61a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
