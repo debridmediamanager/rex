@@ -39,6 +39,11 @@ IDS = json.loads(os.environ.get("I18N_IDS") or "{}")
 LANGUAGES = ['ar', 'ca', 'cs', 'da', 'de', 'es', 'et', 'fi', 'fr', 'he', 'hr', 'hu',
              'it', 'ja', 'ko', 'lt', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sk', 'sl',
              'sr', 'sv', 'uk', 'zh']
+# Cycle 66: Plex Web sends `no`, `af` and `pt-BR`, which have catalogues of their own, and a
+# dozen locales (`bg`, `tr`, `zh-TW`, `en-GB`, `es-419`, ...) whose ICU country and language
+# names follow the full locale. `I18N_LANGS` (comma-separated) captures those instead.
+if os.environ.get('I18N_LANGS'):
+    LANGUAGES = os.environ['I18N_LANGS'].split(',')
 
 # Cycle 16's list.
 PATHS = [
