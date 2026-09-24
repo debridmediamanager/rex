@@ -32715,6 +32715,28 @@ def main():
           and identity_c64a == plain_c64a and pmp_c64a == plain_c64a,
           str((plain_c64a, pht_c64a, providers_c64a, identity_c64a, pmp_c64a)))
 
+    # Cycle 64, measured on plexscratch42 (1.42.2) in 28 languages and rendered in Plex Web's
+    # collection Edit > Advanced: a collection's Preferences (Collection Mode, Collection order,
+    # a smart collection's filter) are localised; the table held none of them.
+    _, grid_c64c, _ = get(base, "/library/sections/%s/all" % movie_section)
+    first_c64c = ((grid_c64c.get("Metadata") or [{}])[0]).get("ratingKey")
+    _, made_c64c, _ = container(base, "POST", "/library/collections?type=1&title=Rg64%%20Loc&smart=0"
+                                "&sectionId=%s&uri=%s" % (movie_section, quote(
+                                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                    % (machine, first_c64c))))
+    coll_c64c = ((made_c64c.get("Metadata") or [{}])[0]).get("ratingKey")
+    body_c64c = json.loads(urllib.request.urlopen(urllib.request.Request(
+        base + "/library/collections/%s?includePreferences=1" % coll_c64c,
+        headers={"User-Agent": UA, "Accept": "application/json", "X-Plex-Language": "de"}), timeout=30).read())
+    settings_c64c = {s.get("id"): s for s in ((body_c64c["MediaContainer"].get("Metadata") or [{}])[0]
+                                              .get("Preferences") or {}).get("Setting") or []}
+    request(base, "DELETE", "/library/collections/%s" % coll_c64c)
+    request(base, "PUT", "/library/metadata/%s?collection.locked=0" % first_c64c)
+    check("a collection's Advanced settings are localised",
+          (settings_c64c.get("collectionMode") or {}).get("label") == "Sammlungsmodus"
+          and (settings_c64c.get("collectionSort") or {}).get("enumValues") == "0:Veröffentlichungsdatum|1:Alphabetisch",
+          str({k: v.get("label") for k, v in settings_c64c.items()}))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
