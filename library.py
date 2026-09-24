@@ -1419,6 +1419,7 @@ class Library:
         else:
             row.pop(key, None)
         if key == "Collection":
+            row.pop("_collectionLight", None)
             for entry in fresh:
                 self._sync_collection_tag(row, entry["tag"])
             for gone in before - {str(t["tag"]) for t in fresh}:
@@ -1614,6 +1615,7 @@ class Library:
         else:
             row.pop(key, None)
         if key == "Collection":
+            row.pop("_collectionLight", None)
             for value in values:
                 self._untag_collection(row, value)
 
@@ -2482,6 +2484,14 @@ class Library:
             for tag in (row or {}).get("Collection") or []:
                 if tag.get("tag") == old:
                     tag["tag"] = title
+                    # Cycle 62, measured on plexscratch42 and plexscratch, and through
+                    # python-plexapi's `section.all()`: a member's LIGHT row -- the grid,
+                    # the section search, Recently Added -- keeps the name it had before the
+                    # rename (the FIRST one, through a chain of renames) while its detail row
+                    # and the axis move. Only a collection tag written on the item itself
+                    # refreshes it, and the delete clears it.
+                    light = row.setdefault("_collectionLight", {})
+                    light[title.lower()] = light.pop(str(old).lower(), old)
         collection["tag"] = title
         # Cycle 61: the new name joins the tag TABLE and the old one stays in it.
         self._tags.setdefault(("Collection", title.lower()),

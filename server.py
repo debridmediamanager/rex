@@ -2394,6 +2394,10 @@ def _public_row(row):
     choose artwork.
     """
     out = {k: v for k, v in row.items() if not k.startswith("_")}
+    if row.get("_collectionLight"):
+        # Cycle 62: carried through for the LIGHT projection alone; `_drop_private` takes
+        # it off every response.
+        out["_collectionLight"] = row["_collectionLight"]
     title = out.get("title") or ""
     images = []
     if out.get("type") == "episode" and out.get("grandparentThumb"):
@@ -3297,9 +3301,13 @@ def _grid_row(row, keep_section=True, keep_guid=False, keep_location=False):
     if not keep_section:
         for key in ("librarySectionID", "librarySectionTitle", "librarySectionKey"):
             out.pop(key, None)
+    stale = row.get("_collectionLight") or {}
     for key in GRID_TAGS:
         if isinstance(out.get(key), list):
-            out[key] = [{"tag": tag["tag"]} for tag in out[key]
+            # Cycle 62: a member's light row keeps a renamed collection's OLD name (see
+            # `library.rename_collection_tag`).
+            out[key] = [{"tag": stale.get(str(tag["tag"]).lower(), tag["tag"])
+                         if key == "Collection" else tag["tag"]} for tag in out[key]
                         if isinstance(tag, dict) and tag.get("tag")][:GRID_TAG_CAPS.get(key)]
     if out.get("Media"):
         out["Media"] = [dict(media, Part=[{k: v for k, v in part.items() if k != "Stream"}
