@@ -72,8 +72,9 @@ python3 tests/conformance.py       # drives plexsim with python-plexapi
 ## Documentation
 
 `docs/findings.md` is the record of what was measured against a real PMS and
-against plex.tv — including the failures, which are the useful part. `CLAUDE.md`
-is the working contract for anyone (human or agent) changing this.
+against plex.tv — including the failures, which are the useful part.
+`docs/protocol-traps.md` collects the measured implementation edge cases.
+`CLAUDE.md` is the working contract for anyone (human or agent) changing this.
 
 ## Status
 
