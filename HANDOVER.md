@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 62 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 63 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 63 | **63 — nine axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits.** A and C reported no client-visible findings on axes 1, 2, 3, 4, 5, 7, 9, 10 (A one malformed-only, C none at all); B found two on axis 8 by sweeping the product strings the binary carries across the two product-keyed rules -- the codec suffix is 21 products, not 13, and `Bandwidths` is withheld from `Plex for Windows Phone` too |
 | Cycle 62 | **62 — eight axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits.** All ten axes with the same three territories. Clean: 1, 2, 4, 5, 6, 7, 9, 10 -- A reported exactly `no findings` over 18 localised captures and 14,790 settings cells. C found one on axis 3 (a renamed collection's members keep the OLD name on their light rows), B one on axis 8 (`Bandwidths` withheld from `Plex for Windows`) |
 | Cycle 61 | **61 — the stopping repeat that was not: 7 CLIENT-VISIBLE findings in 4 fix commits.** All ten axes repeated with cycle 60's three territories. Clean: 1, 2, 4, 5, 7, 8, 10. C found two on axis 3 (a collection rename onto any name in the tag TABLE is a 409; a new tag's first ASCII letter is upper-cased); B four on axis 6 (a session listed only from its first `playing` beat and given a `Session` block only after a decision; a theme uploaded after a logo lands; a show theme reaches its seasons as `parentTheme`); A one on axis 9 (`/:/prefs` pages, so cycle 60 had re-captured 20 of zen's 173 settings) |
 | Cycle 60 | **60 — localisation as an axis, and the first three-hunter repeat: 7 CLIENT-VISIBLE findings in 6 fix commits.** Three hunters on the axis ledger. A (opus) repeated the rendered client clean in English and walked it in de, da, ja and pt: five, all localisation -- stream language names by TAG (under `en` too) and the words titles are composed from, hub titles around the name they carry, the Related/post-play/manage titles the table never held, and `translations.json` still carrying 1.43.4's translation in 414 cells where 1.42.2 answers English (cycle 59 overlaid changed cells only; the capture now records unchanged ones). B (fable) repeated python-plexapi's writes (every cycle-59 fix held) and drove playback as 15 client identities (Player blocks, timelines, queues, stream selection and the profile model all identical): one client-visible, a regression cycle 59's upload store introduced (a DELETE of an uploaded theme answered its bytes). C (opus) repeated axes 1, 2, 3, 4, 7 and 10: one client-visible (joining a collection locks the member's `collection` field) and one unmeasurable bound (Manage Recommendations' writes need a claimed writable 1.42.2). Axes 1, 2, 7 and 10 are clean |
@@ -96,12 +97,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 62" names what it must cover** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 63" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 63 | UI **1,930/1,930** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,467 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass; **2 recorded** (A's sorts, B's sidecar-burn decision) |
 | 62 | UI **1,928/1,928** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,467 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass by `sdrive.py`; **0 recorded** |
 | 61 | UI **1,926/1,926** with 12 fixture skips (serial, final tree, port 32596, after two `test:` commits re-basing six checks on this cycle's measurements); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,454 | **7 client-visible** in **4 fix commits**, every one proved fail-then-pass by `sdrive.py`; **1 recorded**. **3 recorded beliefs refined** (cycle 58's 409 rule, cycle 60's "zen's token sees 20 settings", hunt B's per-row `Session` claim) |
 | 60 | UI **1,921/1,921** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (the placeholder-link baseline) | 24,434 | **7 client-visible** in **6 fix commits**, every one proved fail-then-pass by `sdrive.py`; **12 recorded** in §8. **2 recorded beliefs refined** (cycle 17's stand-in rule, cycle 59's overlay) |
@@ -3723,6 +3725,30 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 63 — nine axes clean
+
+**A** walked the rendered client on the Windows browser (until it went offline mid-run, then kids'
+9223) and localisation in nine languages: 18 captures identical to cycle 62's, 14,790 settings
+cells, 2,682 stream-name cells, 224 hub-template cells and a new 74,849-cell whole-stream-title
+check (58 mismatches, all the recorded empty-stored-title streams) -- no client-visible findings,
+one malformed-only (music/photo sort titles). **C** reported exactly zero findings of either kind on
+axes 1, 2, 3, 4, 7 and 10. **B** repeated every earlier regression clean, then swept the product
+strings the 1.42.2 binary carries across the two product-keyed rules plexsim has, and found both
+tables sampled short: the codec suffix (21 products, not 13) and the `Bandwidths` suppressor
+(`Plex for Windows Phone` too). Both built.
+
+**The axis ledger after cycle 63.** Every axis but 8 is clean in cycle 63; axis 8's two tables are
+now swept whole from the binary's own product strings.
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | **clean four times** (60-63) |
+| 3 | Client write flows | **clean** (63) |
+| 5 | The rendered client | **clean four times** |
+| 6 | python-plexapi's writes | **clean twice** (62, 63) |
+| 8 | Playback per client identity | found 2 (product tables); repeat |
+| 9 | Localisation | **clean twice** (62, 63) |
+
 ### Cycle 62 — eight axes clean
 
 The same three territories on all ten axes. **A** reported exactly `no findings`: the rendered
@@ -4981,6 +5007,15 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 63** (recorded, not built):
+
+- `/library/sections/{id}/sorts?type=8|9|10|13` leaves Album Artist, Date Played, Date Rated,
+  Popularity and Date Taken in English where zen localises them. plexsim cannot hold a music or
+  photo library and Plex Web asks for the section's own type.
+- A decision that asks to burn (`subtitles=burn`/`auto`/absent) while the SELECTED subtitle is an
+  uploaded sidecar is a 400 on 1.42.2 and a 200 on plexsim; Plex Web sends `subtitles=sidecar`
+  there, which is a 200 on both.
 
 **Cycle 61** (recorded, not built):
 
