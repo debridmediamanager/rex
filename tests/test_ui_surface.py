@@ -85,7 +85,7 @@ def skip(label, why):
     print("  %s  %-52s %s" % (YELLOW + "SKIP" + OFF, label, why))
 
 
-def notifications(base, trigger, seconds=8):
+def notifications(base, trigger, seconds=8, query="", headers=""):
     """Open the notification socket, run `trigger`, and collect what arrives.
 
     A hand-rolled client rather than a dependency: the handshake plus text-frame
@@ -105,10 +105,10 @@ def notifications(base, trigger, seconds=8):
     key = base64.b64encode(os.urandom(16)).decode()
     sock = socket.create_connection((host, port), timeout=seconds + 5)
     sock.sendall((
-        "GET /:/websockets/notifications HTTP/1.1\r\n"
+        "GET /:/websockets/notifications%s HTTP/1.1\r\n"
         "Host: %s:%d\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-        "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n\r\n"
-        % (host, port, key)).encode())
+        "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\n%s\r\n"
+        % ("?" + query if query else "", host, port, key, headers)).encode())
     # The handshake read needs its own timeout: without one a server that accepts
     # the connection and never answers the upgrade stalls the whole suite instead of
     # failing this one check. (It happened once, in cycle 20.)
@@ -32736,6 +32736,26 @@ def main():
           (settings_c64c.get("collectionMode") or {}).get("label") == "Sammlungsmodus"
           and (settings_c64c.get("collectionSort") or {}).get("enumValues") == "0:Veröffentlichungsdatum|1:Alphabetisch",
           str({k: v.get("label") for k, v in settings_c64c.items()}))
+
+    # Cycle 65, measured on plexscratch42 (1.42.2) in ten languages through one scan: a socket
+    # opened with `X-Plex-Language=de`, or with `Accept-Language: de` on the handshake (all Plex
+    # Web's Activity menu sends), is pushed German activity titles; a socket with none, English.
+    def titles_c65a(query_c65a, headers_c65a):
+        _, frames_c65a = notifications(base, lambda: get(
+            base, "/library/sections/%s/refresh" % show_section), seconds=4,
+            query=query_c65a, headers=headers_c65a)
+        return [n.get("Activity", {}).get("title")
+                for f in frames_c65a for n in f.get("NotificationContainer", {})
+                .get("ActivityNotification") or []]
+    de_c65a = titles_c65a("X-Plex-Language=de", "")
+    accept_c65a = titles_c65a("", "Accept-Language: de-DE,de;q=0.9\r\n")
+    en_c65a = titles_c65a("", "")
+    check("activity titles on the notification socket follow the socket's language",
+          "Suche..." in de_c65a and "Abonnements verarbeiten …" in de_c65a
+          and any(str(t).startswith("Durchsuche ") for t in de_c65a)
+          and "Suche..." in accept_c65a and "Scanning" in en_c65a
+          and "Processing subscriptions" in en_c65a,
+          str((de_c65a[:3], accept_c65a[:3], en_c65a[:3])))
 
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,

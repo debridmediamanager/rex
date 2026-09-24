@@ -2958,6 +2958,61 @@ except (OSError, ValueError, KeyError):
     STREAM_WORDS = {}
 
 
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "activity_strings.json"), encoding="utf-8") as _handle:
+        ACTIVITY_STRINGS = json.load(_handle)["strings"]
+except (OSError, ValueError, KeyError):
+    ACTIVITY_STRINGS = {}
+
+
+def _localise_activity_text(text, language):
+    """One activity title or subtitle in `language`, or the text itself.
+
+    Cycle 65, measured on plexscratch42 with ten sockets open through one scan: a
+    socket opened with `X-Plex-Language=de` (or `Accept-Language: de` on the
+    handshake) is pushed `Suche...` then `Durchsuche TV Shows` and `Abonnements
+    verarbeiten …`, where the socket with no language gets `Scanning`, `Scanning TV
+    Shows` and `Processing subscriptions`. The strings are the server's gettext
+    catalogue's; `{1}` is the library name or a count, which is content and stays.
+    A message id the catalogue lacks stays English on a real PMS too.
+    """
+    if not text or not language:
+        return text
+    exact = ACTIVITY_STRINGS.get(text)
+    if exact is not None:
+        return exact.get(language, text)
+    for msgid, languages in ACTIVITY_STRINGS.items():
+        head, marker, tail = msgid.partition("{1}")
+        if marker and language in languages and len(text) > len(head) + len(tail) \
+                and text.startswith(head) and text.endswith(tail):
+            return languages[language].replace(
+                "{1}", text[len(head):len(text) - len(tail)])
+    return text
+
+
+def _localise_activity(activity, language):
+    """A copy of one `Activity` with its title and subtitle in `language`."""
+    if not language or not isinstance(activity, dict):
+        return activity
+    localised = dict(activity)
+    for field in ("title", "subtitle"):
+        if field in localised:
+            localised[field] = _localise_activity_text(localised[field], language)
+    return localised
+
+
+def _localise_activity_rows(element, rows, language):
+    """The rows one socket is sent: `ActivityNotification` rows in the socket's
+    language, everything else as it is. Measured on plexscratch42: the
+    `StatusNotification` (`Scanning the "TV Shows" section`) and
+    `ProgressNotification` frames of the same scan stay English in every language."""
+    if element != "ActivityNotification" or not language:
+        return rows
+    return [dict(row, Activity=_localise_activity(row["Activity"], language))
+            if isinstance(row, dict) and "Activity" in row else row for row in rows]
+
+
 def _with_stream_language(node, language):
     """A response with every Stream's language fields in the client's language.
 
@@ -6410,7 +6465,11 @@ class PlexSim:
                 # Measured: an activity has no read of its own -- `GET /activities/{id}`
                 # is a 404, for a live uuid on fun as well. plexsim answered the list.
                 return ("error", 404, "plexsim: not found")
-            activities = self.library.activities()
+            # Cycle 65, measured on plexscratch42 while an item refresh ran: the list is
+            # localised the way the socket is -- en `Refreshing`, de `Aktualisieren …`.
+            language = getattr(_REQUEST, "language", None)
+            activities = [_localise_activity(activity, language)
+                          for activity in self.library.activities()]
             return self.bare_container(size=len(activities), Activity=activities)
 
         if segments == ["status", "sessions", "history"]:
@@ -23691,6 +23750,10 @@ class Handler(BaseHTTPRequestHandler):
         # does not get.
         everything = not filters and "filters" in urllib.parse.parse_qs(
             raw_query, keep_blank_values=True)
+        # Cycle 65: the socket's language, fixed at the handshake -- `X-Plex-Language` in
+        # the query, else the handshake's `Accept-Language`, which is all Plex Web sends
+        # (its socket URL carries only the token). Activity titles follow it.
+        language = self._language(None)
         logger.info("websocket event channel opened filters=%s", filters or "all")
 
         sim = self.server.sim
@@ -23704,6 +23767,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.connection.settimeout(max(deadline - time.time(), 0.05))
                 except OSError:
                     pass
+            rows = _localise_activity_rows(element, rows, language)
             payload = plex_json({"NotificationContainer": {
                 "type": kind, "size": len(rows), element: rows}}).encode()
             # One writer at a time: two notifications interleaving mid-frame
@@ -23832,6 +23896,10 @@ class Handler(BaseHTTPRequestHandler):
         # does not get.
         everything = not filters and "filters" in urllib.parse.parse_qs(
             raw_query, keep_blank_values=True)
+        # Cycle 65: the socket's language, fixed at the handshake -- `X-Plex-Language` in
+        # the query, else the handshake's `Accept-Language`, which is all Plex Web sends
+        # (its socket URL carries only the token). Activity titles follow it.
+        language = self._language(None)
 
         def sink(kind, element, rows, deadline=None):
             # Cycle 30: the same send budget as the websocket sink.
@@ -23842,7 +23910,7 @@ class Handler(BaseHTTPRequestHandler):
                     pass
             frames = "".join(
                 "event: %s\ndata: %s\n\n" % (kind, plex_json({element: row}))
-                for row in rows)
+                for row in _localise_activity_rows(element, rows, language))
             with lock:
                 self.wfile.write(frames.encode())
                 self.wfile.flush()
