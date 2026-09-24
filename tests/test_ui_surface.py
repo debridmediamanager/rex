@@ -32670,6 +32670,29 @@ def main():
           " (" in str(htpc_c63a) and " (" in str(smart_c63a) and " (" not in str(bare_c63a),
           str((htpc_c63a, smart_c63a, bare_c63a)))
 
+    # Cycle 63, measured on plexscratch42 (1.42.2): the timeline's `Bandwidths` suppressor is
+    # TWO products -- `Plex for Windows` and `Plex for Windows Phone`.
+    _, grid_c63b, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rk_c63b = ((grid_c63b.get("Metadata") or [{}])[0]).get("ratingKey")
+    def bandwidths_c63b(product_c63b, sess_c63b):
+        headers_c63b = {"User-Agent": UA, "Accept": "application/json", "X-Plex-Platform": "Windows",
+                        "X-Plex-Product": product_c63b, "X-Plex-Session-Identifier": sess_c63b,
+                        "X-Plex-Client-Identifier": sess_c63b}
+        def call_c63b(path_c63b):
+            return json.loads(urllib.request.urlopen(urllib.request.Request(
+                base + path_c63b, headers=headers_c63b), timeout=30).read() or b"{}")
+        call_c63b("/video/:/transcode/universal/decision?path=%s&mediaIndex=0&partIndex=0&protocol=http"
+                  "&directPlay=1&directStream=1&hasMDE=1" % quote("/library/metadata/%s" % rk_c63b))
+        beat_c63b = "/:/timeline?ratingKey=%s&key=%s&identifier=com.plexapp.plugins.library&time=1000&duration=1800000" \
+                    % (rk_c63b, quote("/library/metadata/%s" % rk_c63b))
+        body_c63b = call_c63b(beat_c63b + "&state=playing").get("MediaContainer") or {}
+        call_c63b(beat_c63b + "&state=stopped")
+        return "Bandwidths" in body_c63b
+    phone_c63b = bandwidths_c63b("Plex for Windows Phone", "rg63phone")
+    xbox_c63b = bandwidths_c63b("Plex for Xbox", "rg63xbox")
+    check("the timeline withholds Bandwidths from Plex for Windows Phone too",
+          phone_c63b is False and xbox_c63b is True, str((phone_c63b, xbox_c63b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
