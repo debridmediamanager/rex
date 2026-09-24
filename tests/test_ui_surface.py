@@ -32840,6 +32840,25 @@ def main():
           str((sorts_c66g("no")[:4], sorts_c66g("af")[:4], friendly_c66g("no"),
                friendly_c66g("af"), no_scan_c66g[:2])))
 
+    # Cycle 66, measured on zen, kids and plexscratch42: `pt-BR` (and `pt-PT`) read the
+    # Brazilian catalogue on every document and on the socket, not only on `/:/prefs`.
+    def sorts_c66h(language_c66h):
+        return [d.get("title") for d in json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/sections/%s/sorts" % movie_section,
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c66h}), timeout=30).read())
+                ["MediaContainer"].get("Directory") or []]
+    _, frames_c66h = notifications(base, lambda: get(
+        base, "/library/sections/%s/refresh" % show_section), seconds=4,
+        headers="Accept-Language: pt-BR,pt;q=0.9\r\n")
+    br_scan_c66h = [n.get("Activity", {}).get("title") for f in frames_c66h
+                    for n in f.get("NotificationContainer", {}).get("ActivityNotification") or []]
+    check("Brazilian Portuguese is its own catalogue on every document and the socket",
+          "Classificação de usuários" in sorts_c66h("pt-BR")
+          and "Classificação de usuários" in sorts_c66h("pt-PT")
+          and "Avaliação da Plateia" in sorts_c66h("pt") and "Buscando" in br_scan_c66h,
+          str((sorts_c66h("pt-BR")[:5], sorts_c66h("pt")[:5], br_scan_c66h[:2])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
