@@ -32693,6 +32693,28 @@ def main():
     check("the timeline withholds Bandwidths from Plex for Windows Phone too",
           phone_c63b is False and xbox_c63b is True, str((phone_c63b, xbox_c63b)))
 
+    # Cycle 64, measured on zen (1.42.2), kids and plexscratch42 over every product string the
+    # binary carries: `X-Plex-Product: Plex Home Theater` -- that spelling only, header or query,
+    # the header winning -- gets a FIVE-component `version` on `/` and `/media/providers`
+    # (`1.42.2.10156.0-<build>`); `/identity` and every other product keep four.
+    def version_c64a(path_c64a, product_c64a):
+        headers_c64a = {"User-Agent": UA, "Accept": "application/json"}
+        if product_c64a:
+            headers_c64a["X-Plex-Product"] = product_c64a
+        body_c64a = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + path_c64a, headers=headers_c64a), timeout=30).read())
+        return body_c64a["MediaContainer"].get("version")
+    plain_c64a = version_c64a("/", None)
+    pht_c64a = version_c64a("/", "Plex Home Theater")
+    providers_c64a = version_c64a("/media/providers", "Plex Home Theater")
+    identity_c64a = version_c64a("/identity", "Plex Home Theater")
+    pmp_c64a = version_c64a("/", "Plex Media Player")
+    head_c64a, _, tail_c64a = str(plain_c64a).partition("-")
+    check("Plex Home Theater is handed a five-component version on / and /media/providers",
+          pht_c64a == "%s.0-%s" % (head_c64a, tail_c64a) and providers_c64a == pht_c64a
+          and identity_c64a == plain_c64a and pmp_c64a == plain_c64a,
+          str((plain_c64a, pht_c64a, providers_c64a, identity_c64a, pmp_c64a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

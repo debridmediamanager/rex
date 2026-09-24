@@ -5711,6 +5711,15 @@ class PlexSim:
             # does for `Samsung` -- header `Plex Web` with query `abc` prints
             # `1080p (H.264)`, header `abc` with query `Plex Web` prints `1080p`.
             product = (headers or {}).get("X-Plex-Product") or query.get("X-Plex-Product")
+            if isinstance(result, dict) and product == "Plex Home Theater" \
+                    and route in ("/", "/media/providers"):
+                # Cycle 64, measured on zen, kids and plexscratch42: for this product alone
+                # the version on these two paths gains a fifth component, `.0`, before the
+                # build (`1.42.2.10156.0-<build>`); `/identity` keeps four.
+                body = result.get("MediaContainer")
+                if isinstance(body, dict) and "-" in str(body.get("version") or ""):
+                    head, _, tail = str(body["version"]).partition("-")
+                    result = {"MediaContainer": dict(body, version="%s.0-%s" % (head, tail))}
             if isinstance(result, dict) and product in mediainfo_module.CODEC_TITLE_PRODUCTS:
                 result = _with_client_titles(result, product)
             return result
