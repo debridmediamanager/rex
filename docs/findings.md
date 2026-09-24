@@ -10521,6 +10521,33 @@ sends one sends `hasMDE=1`); a beat's stale `playQueueItemID` echoed in its fram
 latch after a stopped beat; `/hubs/promoted?includeGuids=1`; the `tagId` value grammar;
 `/query/parse` `fieldTitle`s; `/library`'s Directory titles in sl/sr; `/butler` in sr.
 
+#### The sixty-first pass — the stopping repeat that was not
+
+Cycle 61 repeated all ten axes with cycle 60's three territories. Axes 1, 2, 4, 5, 7, 8 and 10 came
+back clean; axes 3, 6 and 9 did not.
+
+**Client-visible, all built.**
+
+* **A collection rename onto ANY name in the collection tag TABLE is a 409** -- a deleted
+  collection's tag included, matched ignoring case -- except names the collection has held itself.
+  Cycle 58 read only the tags rows still carry.
+* **A NEW tag is stored with its first ASCII letter upper-cased** (`c61c lowgenre` -> `C61c
+  lowgenre`) on both edit paths and for a new collection's member tag; `élan`, `ßeta` and `1abc`
+  keep their spelling, and an existing tag its canonical one.
+* **A session is LISTED from its first `playing` beat**: a `paused` or `buffering` beat on a new
+  session allocates a key (its `playing` frame carries one) and lists nothing, which is Plex Web's
+  first beat. **Its `Session` block is there only once the session has asked for a decision**,
+  and stays when the session moves to another row (the hunt reported it dropping there;
+  re-measured, it stays).
+* **A theme uploaded after a logo lands** (cycle 59's upload diverted it), and **a show's theme
+  reaches its seasons as `parentTheme`** -- no row below the show carries a `theme` of its own
+  (plexscratch42, and kids' Firefly).
+* **Every server setting is 1.42.2's wording**: `/:/prefs` PAGES, and cycle 60 read 20 of zen's 173
+  settings. Re-captured whole, the table matches zen in all 3,045 compared cells.
+
+**Recorded, not built.** A collection renamed through its ITEM path and then deleted leaves its
+original tag on the members (no client renames a collection that way).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

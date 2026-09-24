@@ -3010,6 +3010,14 @@ precisely how the Seasons bug survived a fix attempt.
   follow the TARGET. Make a test show from re-muxed copies with their own bytes (cycle 60 lost
   cycle 59's `Twofold` that way).
 
+- **The collection tag TABLE outlives every collection**: a rename onto any name in it is a 409,
+  and a NEW tag's first ASCII letter is upper-cased. Each rename or add leaves a name behind on
+  a copy for good -- use a fresh name per run.
+- **A session is listed from its first `playing` beat, and carries `Session` only after a
+  decision** -- the key is allocated on a `paused` beat all the same.
+- **`/:/prefs` pages like a listing.** A capture sending `X-Plex-Container-Size: 20` reads twenty
+  settings and nothing says so; cycle 60 took that for the token's reach.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
