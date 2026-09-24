@@ -16585,7 +16585,7 @@ class PlexSim:
                 or query.get("X-Plex-Product")
             if (self._playback_session(query, headers),
                     int(rating_key)) in self.decided and bitrate \
-                    and product != "Plex for Windows":
+                    and product not in ("Plex for Windows", "Plex for Windows Phone"):
                 resolution = media.get("videoResolution") or ""
                 fields["Bandwidths"] = [{"Bandwidth": [{
                     "time": 0, "bandwidth": int(round(bitrate * 2.1)),
