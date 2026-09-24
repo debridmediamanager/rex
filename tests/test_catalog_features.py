@@ -265,9 +265,13 @@ def main():
           and profile_titles.index("Plex Desktop")
           < profile_titles.index("Plex Home Theater-RaspberryPi")
           < profile_titles.index("Plex Home Theater"))
+    # Cycle 66: `zh-TW` keeps its full tag -- still no catalogue of its own (English menus),
+    # but a real PMS names countries and languages in Traditional Chinese under it.
+    traditional = server.request_language({}, {"X-Plex-Language": "zh-TW"})
     check("Traditional Chinese request tags select the measured English catalogue",
           server.request_language({"X-Plex-Language": "zh-HK"}, {}) == "en"
-          and server.request_language({}, {"X-Plex-Language": "zh-TW"}) == "en")
+          and traditional in ("en", "zh-TW")
+          and traditional not in server.TRANSLATED_LANGUAGES, str(traditional))
 
     # The real spellfix tables are stale between rebuilds.  Both binaries call the
     # rebuild from explicit optimization, the Butler task, and section-deletion
