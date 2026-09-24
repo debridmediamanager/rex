@@ -2892,6 +2892,13 @@ def request_language(query, headers):
                 # Every tag in weight order: the first the server HAS wins, and one it
                 # does not have is skipped rather than ending the search.
                 for tag in order:
+                    # Cycle 66, measured on zen and plexscratch42 (the socket and
+                    # `/:/prefs`): the Traditional-Chinese tags are tags the server does
+                    # NOT have -- `zh-TW` alone is English and `zh-TW,de;q=0.9` German --
+                    # where plexsim read their primary subtag as Simplified Chinese. A
+                    # Safari in Taiwan or Hong Kong sends one of them alone on the socket.
+                    if tag.replace("_", "-").lower() in ("zh-tw", "zh-hk", "zh-hant"):
+                        continue
                     primary = tag.replace("_", "-").split("-")[0].lower()
                     if primary in TRANSLATED_LANGUAGES:
                         return primary
