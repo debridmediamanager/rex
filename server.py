@@ -2899,6 +2899,11 @@ def request_language(query, headers):
                     # Safari in Taiwan or Hong Kong sends one of them alone on the socket.
                     if tag.replace("_", "-").lower() in ("zh-tw", "zh-hk", "zh-hant"):
                         continue
+                    # Cycle 66: `pt-BR` and `pt-PT` read the Brazilian catalogue here too
+                    # (a Brazilian browser's socket gets `Buscando`, not `A actualizar`).
+                    if tag.replace("_", "-").lower() in ("pt-br", "pt-pt") \
+                            and "pt-BR" in TRANSLATED_LANGUAGES:
+                        return "pt-BR"
                     primary = tag.replace("_", "-").split("-")[0].lower()
                     if primary in TRANSLATED_LANGUAGES:
                         return primary
@@ -2926,7 +2931,11 @@ def request_language(query, headers):
     # Brazilian Portuguese and hu-HU are handled separately below for `/:/prefs`,
     # the only endpoint whose complete regional catalogues were captured. Keep the
     # primary-subtag rule everywhere else instead of extrapolating that one document.
-    exact = {"zh-hk": "en", "zh-tw": "en"}
+    # Cycle 66, measured on zen, kids and plexscratch42 on every document Plex Web reads
+    # (sorts, filters, hubs, the butler, `/activities`, the socket): `pt-BR` is its OWN
+    # catalogue everywhere, not only on `/:/prefs` -- `Classificação de usuários` where
+    # `pt` says `Avaliação da Plateia` -- and `pt-PT` reads the same Brazilian one.
+    exact = {"zh-hk": "en", "zh-tw": "en", "pt-br": "pt-BR", "pt-pt": "pt-BR"}
     if normalized in exact:
         return exact[normalized]
     primary = normalized.split("-")[0]
