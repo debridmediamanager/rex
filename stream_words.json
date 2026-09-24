@@ -2,6 +2,7 @@
  "_provenance": "Cycle 60. The words a stream's titles are composed from, per X-Plex-Language, read off plexscratch42's language-less audio track (movie 2, `Unknown`) and zen's forced (movie 1924) and SDH (movie 2925) English subtitles, as the displayTitle less the stream's own localised language name. `External` is the suffix of zen's sidecar subtitle (movie 19813).",
  "words": {
   "External": {
+   "af": "Ekstern",
    "ar": "خارجي",
    "ca": "Externo",
    "cs": "Externí",
@@ -21,6 +22,7 @@
    "lt": "Išorinis",
    "nb": "Ekstern",
    "nl": "Extern",
+   "no": "Ekstern",
    "pl": "zewnętrzne",
    "pt": "Ligação Externa",
    "ro": "Extern",
@@ -33,6 +35,7 @@
    "zh": "外部"
   },
   "Forced": {
+   "af": "Geforseer",
    "ar": "مُجبرة",
    "ca": "Forzado",
    "cs": "Vynucené",
@@ -52,6 +55,7 @@
    "lt": "Priverstinai",
    "nb": "tvunget",
    "nl": "Gedwongen",
+   "no": "tvunget",
    "pl": "Wymuszone",
    "pt": "Forçado",
    "ro": "Forțat",
@@ -95,6 +99,7 @@
    "zh": "SDH"
   },
   "Unknown": {
+   "af": "Onbekend",
    "ar": "غير معروف",
    "ca": "Desconocido",
    "cs": "Neznámý",
@@ -114,6 +119,7 @@
    "lt": "Nežinoma",
    "nb": "Ukjent",
    "nl": "Onbekend",
+   "no": "Ukjent",
    "pl": "Nieznany",
    "pt": "Desconhecido",
    "ro": "Necunoscut",
