@@ -10562,6 +10562,20 @@ had one client-visible finding.
   exactly that spelling, any platform -- while the decision, the session row and its `Session`
   block match every other product (plexscratch42, 48 platform x product cells).
 
+#### The sixty-third pass — nine axes clean
+
+Cycle 63 repeated all ten axes. A (rendered client and localisation) and C (axes 1, 2, 3, 4, 7,
+10) reported no client-visible findings; B found two on axis 8, both product tables sampled short:
+
+* **The codec suffix goes to 21 products** -- `Plex HTPC for Windows/Mac/Linux`, `Plex for
+  Linux`, `Plex for Fetch TV`, `Plex for Smart TVs`, `Plex for VIDAA` and `Plex for X1` besides the
+  thirteen -- while the bare `Plex HTPC` stays plain (zen, kids and plexscratch42 agree), swept
+  over the product strings the binary carries.
+* **`Bandwidths` is withheld from `Plex for Windows Phone`** as well as `Plex for Windows`.
+
+**Recorded, not built.** Music and photo sort titles on a type-scoped `/sorts` (`type=8/9/10/13`)
+left in English; plexsim holds no music or photo library and the client always asks its own type.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

@@ -566,9 +566,9 @@ precisely how the Seasons bug survived a fix attempt.
   no NotificationContainer and no size.
 - **`displayTitle` is the plain label and `extendedDisplayTitle` carries the codec** --
   not the other way round -- and a track title never enters `displayTitle`. Except that
-  thirteen products (Plex Web; Plex for iOS, Apple TV, Android (TV), Android (Mobile), LG,
-  Samsung, Windows, Mac, Xbox, PlayStation 4, PlayStation 5 and Vizio -- exact names,
-  header or query) get ` (<CODEC>)` in a video's and a subtitle's `displayTitle` too. The
+  twenty-one products since cycle 63 (Plex Web; Plex for iOS, Apple TV, Android (TV), Android (Mobile), LG,
+  Samsung, Windows, Mac, Xbox, PlayStation 4, PlayStation 5 and Vizio; and HTPC for Windows,
+  Mac and Linux, Linux, Fetch TV, Smart TVs, VIDAA and X1 -- exact names, header or query) get ` (<CODEC>)` in a video's and a subtitle's `displayTitle` too. The
   server adds it on the way out (`_with_client_titles`), never into the catalog. These are
   the strings the quality and track pickers print.
 - **`filters=` on the notification channels is a whitelist, and `log` is opt-in.**
@@ -3022,6 +3022,10 @@ precisely how the Seasons bug survived a fix attempt.
   tag is written on the item itself; the detail row and the axis move at once. A private
   `_collectionLight` map carries it, and only `_public_row`'s whitelist lets it reach `_grid_row`.
 - **`Bandwidths` is withheld from `X-Plex-Product: Plex for Windows`** and from nothing else.
+
+- **Every product-keyed rule is a TABLE, and a table sampled short is a finding waiting.** Sweep
+  the product strings the binary carries: the codec suffix is 21 products (the bare `Plex HTPC`
+  stays plain where its `for <OS>` variants do not), the `Bandwidths` suppressor two.
 
 ## Conventions
 
