@@ -409,7 +409,11 @@ CODEC_TITLE_PRODUCTS = frozenset((
     "Plex Web", "Plex for iOS", "Plex for Apple TV", "Plex for Android (TV)",
     "Plex for Android (Mobile)", "Plex for LG", "Plex for Samsung", "Plex for Windows",
     "Plex for Mac", "Plex for Xbox", "Plex for PlayStation 4", "Plex for PlayStation 5",
-    "Plex for Vizio"))
+    "Plex for Vizio",
+    # Cycle 63, measured on zen, kids and plexscratch42 over the product strings the binary
+    # carries: eight more. The bare `Plex HTPC` stays plain; its `for <OS>` variants do not.
+    "Plex HTPC for Windows", "Plex HTPC for Mac", "Plex HTPC for Linux", "Plex for Linux",
+    "Plex for Fetch TV", "Plex for Smart TVs", "Plex for VIDAA", "Plex for X1"))
 
 
 def client_display_title(row, product):
