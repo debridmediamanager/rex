@@ -17865,9 +17865,16 @@ class PlexSim:
                 # measured on the copy, where the season's own path and stamp survived
                 # and only its `parentThumb` followed. plexsim assigned the show's value
                 # over it, so a season's own backdrop was lost to the next show write.
-                for name in ("art", "theme"):
-                    self._hand_down(child, name,
-                                    self._handed_down_from(name, child, row))
+                self._hand_down(child, "art", self._handed_down_from("art", child, row))
+                # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on
+                # kids' Firefly: a season carries the show's theme as `parentTheme` and has
+                # no `theme` of its own. plexsim handed `theme` down as the season's own and
+                # never set `parentTheme`, so a season page played no theme music.
+                child.pop("theme", None)
+                if row.get("theme") is None:
+                    child.pop("parentTheme", None)
+                else:
+                    child["parentTheme"] = row["theme"]
             else:
                 # The episodes of a season that owns its poster all carry it; the
                 # episodes of a season that borrows the show's carry none at all.
@@ -17876,10 +17883,9 @@ class PlexSim:
                 else:
                     child.pop("parentThumb", None)
                 # Cycle 29: and their own `art` switches to the season's the moment the
-                # season owns one, where plexsim left it naming the show.
-                for name in ("art", "theme"):
-                    self._hand_down(child, name,
-                                    self._handed_down_from(name, row, show))
+                # season owns one, where plexsim left it naming the show. (An episode has
+                # no `theme` of its own -- only `grandparentTheme`, cycle 61.)
+                self._hand_down(child, "art", self._handed_down_from("art", row, show))
             # A row that borrows THIS row's poster shows it, so its own `thumb`
             # follows the new stamp -- and goes when the owner's does. Only this row's:
             # a value naming some other ratingKey is a shape a real PMS cannot produce
@@ -17899,9 +17905,7 @@ class PlexSim:
                 # different versions on the same row. Cycle 29: WHICH ancestor is the
                 # nearest one that owns it, and the field is CREATED where there was
                 # none, which `_follow_artwork` could not do.
-                for name in ("art", "theme"):
-                    self._hand_down(leaf, name,
-                                    self._handed_down_from(name, child, row))
+                self._hand_down(leaf, "art", self._handed_down_from("art", child, row))
 
     def upload_artwork(self, row, kind, body):
         """`POST /library/metadata/{id}/{posters,arts}` with the image as the body.
@@ -17962,7 +17966,9 @@ class PlexSim:
             # A logo is not an attribute of the row: it is an `Image` of type
             # `clearLogo`, re-versioned with the rest.
             row["_clearLogo"] = "/library/metadata/%s/clearLogo/%d" % (row["ratingKey"], stamp)
-        else:
+        if field != "clearLogo":
+            # Cycle 61: independently of the logo -- a theme uploaded after a logo was
+            # diverted into the logo branch and never landed.
             row.setdefault(field, "/library/metadata/%s/%s/%d" % (row["ratingKey"], field, stamp))
         # Cycle 17, measured on plexscratch: the upload moves `updatedAt` onto the SAME
         # stamp the new artwork path carries, exactly as an artwork PICK does. Cycle 15

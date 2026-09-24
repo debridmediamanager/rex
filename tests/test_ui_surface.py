@@ -32543,6 +32543,27 @@ def main():
     check("a session is listed from its first playing beat, with no Session block before a decision",
           paused_c61b == [] and plain_c61b == [False], str((paused_c61b, plain_c61b)))
 
+    # Cycle 61, measured on plexscratch42 (a theme upload on a show) and read on kids'
+    # Firefly: a season carries its show's theme as `parentTheme` and has no `theme` of its
+    # own, an episode only `grandparentTheme`; and a theme uploaded after a LOGO lands --
+    # plexsim diverted it into the logo branch. Plex Web plays theme music from
+    # `grandparentTheme || parentTheme || theme`.
+    mp3_c61c = b"ID3\x04\x00\x00\x00\x00\x00\x00" + b"\xff\xfb\x90\x00" * 32
+    png_c61c = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk"
+                                "+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    request(base, "POST", "/library/metadata/%s/clearLogos" % show, body=png_c61c)
+    request(base, "POST", "/library/metadata/%s/themes" % show, body=mp3_c61c)
+    _, show_c61c, _ = get(base, "/library/metadata/%s" % show)
+    theme_c61c = ((show_c61c.get("Metadata") or [{}])[0]).get("theme")
+    _, seasons_c61c, _ = get(base, "/library/metadata/%s/children" % show)
+    season_rows_c61c = [r for r in seasons_c61c.get("Metadata") or [] if r.get("type") == "season"]
+    _, leaves_c61c, _ = get(base, "/library/metadata/%s/allLeaves" % show)
+    check("a show theme lands after a logo and reaches its seasons as parentTheme",
+          theme_c61c and season_rows_c61c
+          and all(r.get("parentTheme") == theme_c61c and not r.get("theme") for r in season_rows_c61c)
+          and all(not r.get("theme") for r in leaves_c61c.get("Metadata") or []),
+          str((theme_c61c, [(r.get("parentTheme"), r.get("theme")) for r in season_rows_c61c])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
