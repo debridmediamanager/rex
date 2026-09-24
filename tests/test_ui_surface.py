@@ -967,8 +967,9 @@ def main():
     _, detail, _ = get(base, "/library/metadata/%s" % movie)
     row = (detail.get("Metadata") or [{}])[0]
     tags = [t.get("tag") for t in row.get("Collection") or []]
+    # Cycle 61, re-measured on both copies: a NEW tag's first ASCII letter is upper-cased.
     check("Add to Collection tags the row", is_empty_200(status, body)
-          and "plexsim probe tag" in tags, ",".join(tags))
+          and "Plexsim probe tag" in tags, ",".join(tags))
     # Cycle 30, measured on BOTH writable references (plexscratch 1.43.4 and the new
     # plexscratch42 1.42.2): the tag write makes a TAG and NOT a collection. It appears in
     # the section's `/collection` AXIS -- and in both search endpoints -- while
@@ -980,7 +981,7 @@ def main():
     _, axis, _ = get(base, "/library/sections/%s/collection" % movie_section)
     axis_names = [d.get("title") for d in axis.get("Directory") or []]
     check("the tagged collection is a TAG, not a collection",
-          "plexsim probe tag" in axis_names and "plexsim probe tag" not in names,
+          "Plexsim probe tag" in axis_names and "Plexsim probe tag" not in names,
           "axis %s | collections %s" % (",".join(axis_names), ",".join(names)))
     request(base, "PUT", "/library/metadata/%s?collection%%5B%%5D.tag.tag-=%s"
                          % (movie, quote("plexsim probe tag")))
@@ -2084,8 +2085,9 @@ def main():
               "%d member(s)" % len(children.get("Metadata") or []))
         _, detail, _ = get(base, "/library/metadata/%s" % movie)
         tags = [t.get("tag") for t in (detail.get("Metadata") or [{}])[0].get("Collection") or []]
+        # Cycle 61: the member tag of a new collection is capitalised (the title is not).
         check("a member row carries the collection as a tag",
-              "plexsim collection" in tags, ",".join(tags))
+              "Plexsim collection" in tags, ",".join(tags))
         if spare:
             add_uri = "server://%s/com.plexapp.plugins.library/library/metadata/%s" \
                       % (machine, spare)
@@ -2399,10 +2401,12 @@ def main():
     check("a timeline alone creates a session",
           sessions.get("size") == 1 and row.get("sessionKey"),
           "sessionKey=%s" % row.get("sessionKey"))
-    check("the session row carries viewOffset, User, Player and Session",
+    # Cycle 61, re-measured on plexscratch42: `Session` appears only once the session has
+    # asked for a decision; a session that has only sent timelines carries none.
+    check("the session row carries viewOffset, User and Player, and no Session before a decision",
           row.get("viewOffset") == 3000 and row.get("User") and row.get("Player")
-          and row.get("Session"),
-          "viewOffset=%s" % row.get("viewOffset"))
+          and not row.get("Session"),
+          "viewOffset=%s Session=%s" % (row.get("viewOffset"), row.get("Session")))
     player = row.get("Player") or {}
     # Player is an echo of the client's own X-Plex values plus the peer address.
     check("Player echoes the client and names the peer",
@@ -2411,9 +2415,15 @@ def main():
           and player.get("address") and player.get("state") == "playing",
           "%s / %s / %s" % (player.get("product"), player.get("address"),
                             player.get("state")))
-    check("Session.id is the client's session identifier",
-          (row.get("Session") or {}).get("id") == "suite-sess",
-          str((row.get("Session") or {}).get("id")))
+    container(base, "GET", "/video/:/transcode/universal/decision?path=%s&mediaIndex=0&partIndex=0"
+                           "&protocol=http&directPlay=1&directStream=1&hasMDE=1&%s"
+                           % (quote("/library/metadata/%s" % session_item), identity))
+    _, decided_sessions, _ = get(base, "/status/sessions")
+    decided_row = next((r for r in decided_sessions.get("Metadata") or []
+                        if str(r.get("ratingKey")) == str(session_item)), {})
+    check("Session.id is the client's session identifier, once a decision exists",
+          (decided_row.get("Session") or {}).get("id") == "suite-sess",
+          str((decided_row.get("Session") or {}).get("id")))
     # The client renders "Direct Play" precisely when Session is present and
     # TranscodeSession is not, which is the truth for a server with no encoder.
     #
@@ -7658,13 +7668,14 @@ def main():
     key_w13e = (doc_w13e.get("Metadata") or [{}])[0].get("ratingKey")
     def tags_w13e():
         return [t.get("tag") for t in (get(base, "/library/metadata/%s" % movie)[1].get("Metadata") or [{}])[0]
-                .get("Collection") or [] if str(t.get("tag")).startswith("w13e")]
+                .get("Collection") or [] if str(t.get("tag")).lower().startswith("w13e")]
     request(base, "PUT", "/library/collections/%s?title=w13erenamed" % key_w13e)
     renamed_w13e = tags_w13e()
     request(base, "DELETE", "/library/collections/%s" % key_w13e)
     deleted_w13e = tags_w13e()
     check("renaming a collection leaves its members' tag, and deleting it still untags them",
-          renamed_w13e == ["w13e"] and deleted_w13e == [], "%s then %s" % (renamed_w13e, deleted_w13e))
+          # Cycle 61: the member tag of a new collection is capitalised.
+          renamed_w13e == ["W13e"] and deleted_w13e == [], "%s then %s" % (renamed_w13e, deleted_w13e))
 
 
     def activities_w15(frames):
@@ -32528,12 +32539,12 @@ def main():
     def beat_c61b(state_c61b, sess_c61b, time_c61b=0):
         request(base, "GET", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&identifier="
                 "com.plexapp.plugins.library&time=%d&state=%s&duration=1800000"
-                "&X-Plex-Session-Identifier=%s" % (rk_c61b, rk_c61b, time_c61b, state_c61b, sess_c61b))
+                "&X-Plex-Session-Identifier=%s&X-Plex-Client-Identifier=%s"
+                % (rk_c61b, rk_c61b, time_c61b, state_c61b, sess_c61b, sess_c61b))
     def listed_c61b(sess_c61b):
         _, live_c61b, _ = get(base, "/status/sessions")
         return [("Session" in r) for r in live_c61b.get("Metadata") or []
-                if (r.get("Session") or {}).get("id") == sess_c61b
-                or str(r.get("ratingKey")) == str(rk_c61b)]
+                if (r.get("Player") or {}).get("machineIdentifier") == sess_c61b]
     beat_c61b("paused", "rg61paused")
     paused_c61b = listed_c61b("rg61paused")
     beat_c61b("stopped", "rg61paused")
