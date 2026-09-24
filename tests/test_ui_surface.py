@@ -32757,6 +32757,30 @@ def main():
           and "Processing subscriptions" in en_c65a,
           str((de_c65a[:3], accept_c65a[:3], en_c65a[:3])))
 
+    # Cycle 66, measured on kids, zen and plexscratch42 over 260 cells: `X-Plex-Platform: Roku`
+    # strips a library row's `id` and `Pivot` from `/media/providers` only for a Roku whose
+    # `X-Plex-Version` is absent, unparsable or below 6.4.2 -- every shipping Roku keeps them.
+    def rows_c66b(headers_c66b, query_c66b=""):
+        body_c66b = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/media/providers" + query_c66b,
+            headers=dict({"User-Agent": UA, "Accept": "application/json"}, **headers_c66b)),
+            timeout=30).read())
+        return [("id" in row_c66b, "Pivot" in row_c66b)
+                for provider_c66b in body_c66b["MediaContainer"].get("MediaProvider") or []
+                for feature_c66b in provider_c66b.get("Feature") or []
+                for row_c66b in feature_c66b.get("Directory") or []
+                if str(row_c66b.get("key") or "").startswith("/library/sections/")]
+    old_c66b = rows_c66b({"X-Plex-Platform": "Roku"})
+    new_c66b = rows_c66b({"X-Plex-Platform": "Roku", "X-Plex-Version": "9.7.1"})
+    edge_c66b = rows_c66b({"X-Plex-Platform": "Roku", "X-Plex-Version": "6.4"})
+    below_c66b = rows_c66b({"X-Plex-Platform": "Roku", "X-Plex-Version": "6.4.1"})
+    query_c66b = rows_c66b({}, "?X-Plex-Platform=Roku&X-Plex-Version=9.7.1")
+    check("a current Roku keeps its library pivots; only an old or version-less one loses them",
+          old_c66b and set(old_c66b) == {(False, False)} and set(below_c66b) == {(False, False)}
+          and set(new_c66b) == {(True, True)} and set(edge_c66b) == {(True, True)}
+          and set(query_c66b) == {(True, True)},
+          str((old_c66b, new_c66b, edge_c66b, below_c66b, query_c66b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

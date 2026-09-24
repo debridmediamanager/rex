@@ -2702,6 +2702,24 @@ PROFILE_NAMES = {
 }
 
 
+def _roku_predates_pivots(version):
+    """Whether a Roku at `version` is one a real PMS withholds library pivots from.
+
+    Cycle 66, measured identically on kids, zen and plexscratch42: the strip applies
+    when the version is absent or does not parse -- `abc`, a bare `7`, `v9.7.1`,
+    `6.9-beta` (a suffix only after three components), a leading space -- or is below
+    6.4.2 on the components it carries: `6.4` keeps (a missing patch is not compared),
+    `6.4.0`, `6.4.1` and `6.4.0.1` strip, `06.9`, `6.39` and `9.7.1-abc` keep.
+    """
+    match = re.fullmatch(r"(\d+)\.(\d+)(?:\.(\d+)(?:\.\d+)*(?:-.*)?)?", str(version or ""))
+    if not match:
+        return True
+    major, minor = int(match.group(1)), int(match.group(2))
+    if (major, minor) != (6, 4):
+        return (major, minor) < (6, 4)
+    return match.group(3) is not None and int(match.group(3)) < 2
+
+
 def client_profile(query, headers):
     """The profile a real PMS resolves for this client, or None if it resolves none.
 
@@ -6043,7 +6061,7 @@ class PlexSim:
                 return ("error", 400, "plexsim: bad request")
             if method in ("PUT", "DELETE"):
                 return ("error", 404, "plexsim: not found")
-            return self.media_providers(query)
+            return self.media_providers(query, headers)
 
         # The claim flow: a client hands the server a short-lived claim token
         # and the SERVER redeems it. This is what the "Claim this server"
@@ -8201,7 +8219,7 @@ class PlexSim:
                         else s for s in settings]
         return settings
 
-    def media_providers(self, query=None):
+    def media_providers(self, query=None, headers=None):
         """`/media/providers` -- the first call a modern client makes.
 
         The Feature list is a capability contract: a client will not offer
@@ -8215,6 +8233,12 @@ class PlexSim:
         `Pivot` list from every library `Directory` here, leaving the other nine
         attributes alone. plexsim sent the same rows to every client, so a Roku is
         handed pivots a real server withholds from it.
+
+        Cycle 66, measured on kids, zen and plexscratch42 over 260 cells: that strip is
+        for an OLD Roku only. With `X-Plex-Version` at 6.4.2 or above -- every Plex for
+        Roku shipped since 2020; the recorded identity sends 9.7.1 -- the rows keep
+        both. Cycle 16 measured the platform header alone, the one shape no shipping
+        Roku sends, so plexsim stripped the tabs from every real Roku.
         """
         container = self.bare_container(size=1,
                                         MediaProvider=self.media_provider_rows(),
@@ -8286,7 +8310,10 @@ class PlexSim:
                     if counted:
                         feature["durationTotal"] = duration
                         feature["storageTotal"] = storage
-        if (query or {}).get("X-Plex-Platform") == "Roku":
+        if (query or {}).get("X-Plex-Platform") == "Roku" and _roku_predates_pivots(
+                (headers or {}).get("X-Plex-Version")
+                if (headers or {}).get("X-Plex-Version") is not None
+                else (query or {}).get("X-Plex-Version")):
             for provider in container["MediaContainer"].get("MediaProvider") or []:
                 for feature in provider.get("Feature") or []:
                     for row in feature.get("Directory") or []:
