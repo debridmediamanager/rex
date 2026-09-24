@@ -2986,12 +2986,14 @@ except (OSError, ValueError, KeyError):
 try:
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            "activity_strings.json"), encoding="utf-8") as _handle:
-        ACTIVITY_STRINGS = json.load(_handle)["strings"]
+        _ACTIVITY_DOC = json.load(_handle)
+        ACTIVITY_STRINGS = _ACTIVITY_DOC["strings"]
+        ACTIVITY_PROGRESS = _ACTIVITY_DOC.get("progress") or {}
 except (OSError, ValueError, KeyError):
-    ACTIVITY_STRINGS = {}
+    ACTIVITY_STRINGS, ACTIVITY_PROGRESS = {}, {}
 
 
-def _localise_activity_text(text, language):
+def _localise_activity_text(text, language, table=None):
     """One activity title or subtitle in `language`, or the text itself.
 
     Cycle 65, measured on plexscratch42 with ten sockets open through one scan: a
@@ -3004,10 +3006,11 @@ def _localise_activity_text(text, language):
     """
     if not text or not language:
         return text
-    exact = ACTIVITY_STRINGS.get(text)
+    table = ACTIVITY_STRINGS if table is None else table
+    exact = table.get(text)
     if exact is not None:
         return exact.get(language, text)
-    for msgid, languages in ACTIVITY_STRINGS.items():
+    for msgid, languages in table.items():
         head, marker, tail = msgid.partition("{1}")
         if marker and language in languages and len(text) > len(head) + len(tail) \
                 and text.startswith(head) and text.endswith(tail):
@@ -3031,7 +3034,19 @@ def _localise_activity_rows(element, rows, language):
     """The rows one socket is sent: `ActivityNotification` rows in the socket's
     language, everything else as it is. Measured on plexscratch42: the
     `StatusNotification` (`Scanning the "TV Shows" section`) and
-    `ProgressNotification` frames of the same scan stay English in every language."""
+    `ProgressNotification` frames of the same scan stay English in every language.
+
+    Cycle 66, measured on plexscratch42 in ten languages over both transports: the
+    BUTLER's `ProgressNotification` messages do follow the socket's language (`The
+    butler backed up your database.` is `Der Butler hat die Datenbank gesichert.`,
+    `The butler analyzed 0 items.` is `Es wurden 0 Einträge analysiert.`), because each
+    is a catalogue message id; a scan's progress line is in no catalogue. Plex Web draws
+    them on Status > Alerts."""
+    if element == "ProgressNotification" and language:
+        return [dict(row, message=_localise_activity_text(
+                    row["message"], language, ACTIVITY_PROGRESS))
+                if isinstance(row, dict) and isinstance(row.get("message"), str) else row
+                for row in rows]
     if element != "ActivityNotification" or not language:
         return rows
     return [dict(row, Activity=_localise_activity(row["Activity"], language))
