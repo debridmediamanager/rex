@@ -32564,6 +32564,21 @@ def main():
           and all(not r.get("theme") for r in leaves_c61c.get("Metadata") or []),
           str((theme_c61c, [(r.get("parentTheme"), r.get("theme")) for r in season_rows_c61c])))
 
+    # Cycle 61, measured on zen (1.42.2) over ALL 173 of its settings in 28 languages:
+    # `/:/prefs` pages, and cycle 60's capture read 20 of them, so the server Settings pages
+    # kept 1.43.4's wording in 478 cells (Settings > Network read `Client Netzwerk` where
+    # 1.42.2 reads `Client Network`).
+    def prefs_c61d(language_c61d):
+        body_c61d = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
+                                        "X-Plex-Language": language_c61d}), timeout=30).read())
+        return {s.get("id"): s for s in body_c61d["MediaContainer"].get("Setting") or []}
+    de_c61d, da_c61d = prefs_c61d("de"), prefs_c61d("da")
+    check("the server settings are 1.42.2's wording",
+          (de_c61d.get("IPNetworkType") or {}).get("label") == "Client Network"
+          and (da_c61d.get("logDebug") or {}).get("label") == "Aktiver Plex Media Server debug logning",
+          str(((de_c61d.get("IPNetworkType") or {}).get("label"), (da_c61d.get("logDebug") or {}).get("label"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
