@@ -32652,6 +32652,24 @@ def main():
     check("the timeline withholds Bandwidths from Plex for Windows alone",
           windows_c62b is False and mac_c62b is True, str((windows_c62b, mac_c62b)))
 
+    # Cycle 63, measured on zen (1.42.2), kids and plexscratch42 over the product strings the
+    # binary carries: the codec suffix goes to 21 products, not 13 -- `Plex HTPC for
+    # Windows/Mac/Linux`, `Plex for Linux`, `Plex for Fetch TV`, `Plex for Smart TVs`, `Plex for
+    # VIDAA` and `Plex for X1` read `1080p (H.264)` where the bare `Plex HTPC` reads `1080p`.
+    def video_title_c63a(product_c63a):
+        body_c63a = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/metadata/%s" % movie, headers={"User-Agent": UA, "Accept": "application/json",
+                                                           "X-Plex-Product": product_c63a}), timeout=30).read())
+        streams_c63a = [s for m in body_c63a["MediaContainer"]["Metadata"][0].get("Media") or []
+                        for p in m.get("Part") or [] for s in p.get("Stream") or [] if s.get("streamType") == 1]
+        return (streams_c63a[0] if streams_c63a else {}).get("displayTitle")
+    htpc_c63a = video_title_c63a("Plex HTPC for Windows")
+    smart_c63a = video_title_c63a("Plex for Smart TVs")
+    bare_c63a = video_title_c63a("Plex HTPC")
+    check("the codec suffix reaches the HTPC and smart-TV products, not the bare HTPC",
+          " (" in str(htpc_c63a) and " (" in str(smart_c63a) and " (" not in str(bare_c63a),
+          str((htpc_c63a, smart_c63a, bare_c63a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
