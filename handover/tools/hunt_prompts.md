@@ -5063,3 +5063,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 61 result. A: 1 client-visible (the settings table). B: 4 client-visible. C: 2 client-visible, 1 malformed-only. Seven clean axes, three not. Four fix commits. ====
