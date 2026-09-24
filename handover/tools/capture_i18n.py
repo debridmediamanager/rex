@@ -201,10 +201,12 @@ def fetch(path, language=None):
     import time
     time.sleep(float(os.environ.get('I18N_DELAY', '0')))
     path = remap(path)
-    # zen is production with a real library: every listing is paged.
+    # zen is production with a real library: every listing is paged. Cycle 61: and
+    # `/:/prefs` PAGES too -- 20 of zen's 173 settings were all cycle 60 captured, which
+    # it misread as the token's reach. `I18N_PAGE` widens the window for that path.
     headers = {'X-Plex-Token': TOKEN, 'Accept': 'application/json',
                'User-Agent': 'curl/8', 'X-Plex-Container-Start': '0',
-               'X-Plex-Container-Size': '20'}
+               'X-Plex-Container-Size': os.environ.get('I18N_PAGE', '20')}
     if language:
         headers['X-Plex-Language'] = language
     request = urllib.request.Request(BASE + path, headers=headers, method='GET')
