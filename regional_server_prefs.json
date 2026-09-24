@@ -1,5 +1,5 @@
 {
- "_provenance": "Captured by three GET-only requests to kids Plex 1.43.4 /:/prefs with X-Plex-Language pt-BR, pt-PT and hu-HU. The requests carried the server token but no device identity headers. All three returned 174 ordered rows; pt-BR and pt-PT were identical. Only the complete server-owned localisable attributes are retained here, so installation/account values are absent.",
+ "_provenance": "Captured by three GET-only requests to kids Plex 1.43.4 /:/prefs with X-Plex-Language pt-BR, pt-PT and hu-HU. The requests carried the server token but no device identity headers. All three returned 174 ordered rows; pt-BR and pt-PT were identical. Only the complete server-owned localisable attributes are retained here, so installation/account values are absent. Cycle 66: plexsim serves 1.42.2, and cycle 61 moved the 28-language table to 1.42.2's wording but not this one. Re-read off zen (1.42.2) whole: TranscoderTempDirectory's and DownloadsTempDirectory's summaries (pt-BR and hu-HU) and _CPU-TranscodeCountLimit's label and summary (pt-BR, which 1.42.2 leaves in English) take zen's text. The host-built enum lists (PreferredNetworkInterface, HardwareDevicePath) are the machine's own and are not re-read.",
  "aliases": {
   "pt-PT": "pt-BR"
  },
@@ -312,12 +312,12 @@
    {
     "id": "TranscoderTempDirectory",
     "label": "Diretório temporário do transcodificador",
-    "summary": "Diretório usado para transcodificar arquivos temporários. Idealmente, este deve ser um local em uma unidade física local. Não é recomendado definir isso para um local de rede ou disco RAM."
+    "summary": "Diretório utilizado ao transcodificar para arquivos temporários."
    },
    {
     "id": "DownloadsTempDirectory",
     "label": "Diretório de download temporário",
-    "summary": "Diretório usado para armazenar downloads transcodificados até que o cliente os baixe. Idealmente, este deve ser um local em uma unidade física local. Não é recomendado definir isso para um local de rede ou disco RAM."
+    "summary": "Diretório a ser usado ao armazenar downloads transcodificados até que o cliente os baixe."
    },
    {
     "id": "TranscoderDefaultDuration",
@@ -577,8 +577,8 @@
    },
    {
     "id": "_CPU-TranscodeCountLimit",
-    "label": "Máximo de transcodificações simultâneas pela CPU",
-    "summary": "Limite o número de faixas de transcodificação de vídeo simultâneos que seu servidor pode utilizar em sua CPU",
+    "label": "Maximum simultaneous CPU transcodes",
+    "summary": "Limit the number of simultaneous video transcode streams your server can utilize on your CPU",
     "enumValues": "0:Ilimitado|1:1|2:2|3:3|4:4|5:5|6:6|7:7|8:8|9:9|10:10|11:11|12:12|13:13|14:14|15:15|16:16|17:17|18:18|19:19|20:20"
    },
    {
@@ -1214,12 +1214,12 @@
    {
     "id": "TranscoderTempDirectory",
     "label": "Átkódoló ideiglenes könyvtára",
-    "summary": "Directory to use when transcoding for temporary files. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk."
+    "summary": "Az átkódoláshoz használt könyvtár az ideiglenes fájlok számára."
    },
    {
     "id": "DownloadsTempDirectory",
     "label": "Downloads temporary directory",
-    "summary": "Directory to use when storing transcoded downloads until the client downloads them. This should ideally be a location on a local physical drive. It is not recommended to set this to a network location or RAM disk."
+    "summary": "Directory to use when storing transcoded downloads until the client downloads them."
    },
    {
     "id": "TranscoderDefaultDuration",

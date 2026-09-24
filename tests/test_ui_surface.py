@@ -32803,6 +32803,20 @@ def main():
     check("the butler's progress messages are localised per socket",
           "Der Butler hat die Datenbank gesichert." in said_c66c, str(said_c66c[:3]))
 
+    # Cycle 66, measured on zen (1.42.2) read whole: the regional pt-BR settings carry 1.42.2's
+    # wording on the transcoder rows, and 1.42.2 leaves the CPU transcode limit in English.
+    body_c66d = json.loads(urllib.request.urlopen(urllib.request.Request(
+        base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
+                                    "X-Plex-Language": "pt-BR"}), timeout=30).read())
+    rows_c66d = {row.get("id"): row for row in body_c66d["MediaContainer"].get("Setting") or []}
+    check("the regional pt-BR settings carry 1.42.2's transcoder wording",
+          (rows_c66d.get("TranscoderTempDirectory") or {}).get("summary")
+          == "Diretório utilizado ao transcodificar para arquivos temporários."
+          and (rows_c66d.get("_CPU-TranscodeCountLimit") or {}).get("label")
+          == "Maximum simultaneous CPU transcodes",
+          str([(rows_c66d.get(k) or {}).get("summary", "")[:60]
+               for k in ("TranscoderTempDirectory", "_CPU-TranscodeCountLimit")]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
