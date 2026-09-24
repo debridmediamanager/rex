@@ -4835,7 +4835,8 @@ check proved to fail against its own parent commit.
   Another invented path, the same class as cycle 14's `/recentlyReleased`.
 - **`X-Plex-Platform: Roku`** — that exact spelling — strips `id` and the whole `Pivot`
   list from every library `Directory` of `/media/providers`, and leaves the other nine
-  attributes alone.
+  attributes alone. Cycle 66: only when the Roku's `X-Plex-Version` is absent, unparsable or
+  below 6.4.2 -- this was measured with the platform header alone, which no shipping Roku sends.
 - **Four XML shapes.** A `Meta/Type` orders its children `Filter, Sort, Field` (not the
   item order, where `Field` comes first); `includeDetails=1` carries no
   `active`/`activeDirection` on a Sort and no `advanced` on a Filter, where `includeMeta=1`
@@ -10608,12 +10609,42 @@ no client can see. A opened the notification socket in ten languages for the fir
   the name (`TV Showsをスキャン中`). `/activities` localises the same way under `X-Plex-Language`.
   The strings are the server's gettext catalogue's (read off zen: ca reads `es`, nb `no`, cs/et/hr/ja/
   zh their regional files); a message id the catalogue lacks stays English. `StatusNotification`
-  and `ProgressNotification` stay English. Plex Web's socket URL carries only the token, so its
+  and a scan's `ProgressNotification` stay English (cycle 66: the butler's do not). Plex Web's socket URL carries only the token, so its
   Activity menu is in the browser's `Accept-Language`.
 
 **Recorded, not built.** `X-Plex-Client-Platform` as a second spelling of the platform header, and
 the library hub page's cache keyed on `X-Plex-Features` and `X-Plex-Language` (cycle 25 had called
 the header inert).
+
+#### The sixty-sixth pass — the locales Plex Web actually sends
+
+Cycle 66 repeated all ten axes. C (axes 1, 2, 3, 4, 7, 10) reported zero findings of either kind.
+B widened the identity sweep's skipped cells and found the Roku strip version-gated. A measured
+the language rule against the 44 values Plex Web's own language list carries.
+
+* **The Roku pivot strip is for an old Roku only.** `/media/providers` keeps a library row's
+  `id` and `Pivot` for `X-Plex-Platform: Roku` with `X-Plex-Version` 6.4.2 or above (9.7.1 is
+  the recorded identity); absent, unparsable (`abc`, `7`, `v9.7.1`, `6.9-beta`) or below
+  (`6.4.1`, `6.4.0.1`) strips. `6.4` keeps -- a missing patch is not compared. 260 cells,
+  identical on kids, zen and plexscratch42.
+* **`no` and `af` are catalogues** (zen: `Kallenavn`, `Vriendlike naam`, 31 of 35 vocabulary
+  paths); plexsim held `nb`, which reads the same catalogue, and no `af`.
+* **`pt-BR` is its own catalogue on every document** -- sorts, filters, hubs, the butler,
+  `/activities`, the socket (`Classificação de usuários`, `Buscando`) -- and `pt-PT` reads it
+  too, with Portugal's ICU names (`Polaco` where Brazil says `Polonês`).
+* **The butler's `ProgressNotification` sentences are localised per socket** (`Der Butler hat
+  die Datenbank gesichert.`); each is a catalogue message id with the count as `{1}`. Plex Web
+  draws them on Status > Alerts.
+* **The regional `pt-BR`/`hu-HU` settings were 1.43.4's**: three transcoder rows read off zen.
+* **ICU names follow the FULL locale** for `bg`, `el`, `fa`, `is`, `my`, `th`, `tr`, `vi`,
+  `zh-TW`, `en-GB`, `es-419`, `fr-CA` (and the three above): a library's Certification Country
+  list (`bg` `DE:Германия`, re-collated) and a stream's language (`zh-TW` `法文`). Their menus
+  stay English (or `es`/`fr`'s) on a real PMS too.
+* **`Accept-Language: zh-TW`, `zh-HK` or `zh-Hant` is skipped**, not read as `zh`.
+
+**Recorded, not built.** `X-Plex-Container-Focus-Key` wins over an explicit start on the
+recently-added family (a section's `/recentlyAdded`, `/newest`, `/search`, the global list, a
+show's `/allLeaves`), with `offset` echoing the start; no client on disk sends it.
 
 ### Emulation calibrated against the account's own claimed servers
 
