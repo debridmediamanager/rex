@@ -32597,6 +32597,35 @@ def main():
           and (da_c61d.get("logDebug") or {}).get("label") == "Aktiver Plex Media Server debug logning",
           str(((de_c61d.get("IPNetworkType") or {}).get("label"), (da_c61d.get("logDebug") or {}).get("label"))))
 
+    # Cycle 62, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), and through
+    # python-plexapi's `section.all()` after `Collection.editTitle()`: after a section-path
+    # collection rename a member's LIGHT row -- grid, section search, Recently Added -- keeps
+    # the OLD name (the first one through a chain of renames) while its detail row and the
+    # axis carry the new one; the delete clears both. plexsim renamed it everywhere.
+    import random as random_c62a
+    token_c62a = "r%05d" % random_c62a.randint(0, 99999)
+    _, grid_c62a, _ = get(base, "/library/sections/%s/all" % movie_section)
+    member_c62a = ((grid_c62a.get("Metadata") or [{}])[-1]).get("ratingKey")
+    _, made_c62a, _ = container(base, "POST", "/library/collections?type=1&title=%s&smart=0&sectionId=%s&uri=%s"
+                                % (quote("Rg62 Old " + token_c62a), movie_section, quote(
+                                    "server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                    % (machine, member_c62a))))
+    coll_c62a = ((made_c62a.get("Metadata") or [{}])[0]).get("ratingKey")
+    request(base, "PUT", "/library/sections/%s/all?type=18&id=%s&title.value=%s&title.locked=1"
+            % (movie_section, coll_c62a, quote("Rg62 New " + token_c62a)))
+    def tags_c62a(path_c62a):
+        _, body_c62a, _ = get(base, path_c62a)
+        return [t.get("tag") for t in ((body_c62a.get("Metadata") or [{}])[0]).get("Collection") or []
+                if "Rg62" in str(t.get("tag"))]
+    light_c62a = tags_c62a("/library/sections/%s/all?type=1&id=%s" % (movie_section, member_c62a))
+    detail_c62a = tags_c62a("/library/metadata/%s" % member_c62a)
+    request(base, "DELETE", "/library/collections/%s" % coll_c62a)
+    gone_c62a = tags_c62a("/library/sections/%s/all?type=1&id=%s" % (movie_section, member_c62a))
+    request(base, "PUT", "/library/metadata/%s?collection.locked=0" % member_c62a)
+    check("a renamed collection's members keep the old name on their light rows",
+          light_c62a == ["Rg62 Old " + token_c62a] and detail_c62a == ["Rg62 New " + token_c62a]
+          and gone_c62a == [], str((light_c62a, detail_c62a, gone_c62a)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
