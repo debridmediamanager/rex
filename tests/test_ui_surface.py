@@ -32877,6 +32877,19 @@ def main():
           str(((bg_c66i.get("country") or {}).get("enumValues", "")[:80],
                (gb_c66i.get("country") or {}).get("label"))))
 
+    # Cycle 66, measured on zen and plexscratch42: `/library`'s own directory titles and a
+    # collection's Collection Mode list are localised in `af` and `pt-BR` too -- sources the
+    # zen capture's paths do not reach.
+    def library_c66j(language_c66j):
+        return [d.get("title") for d in json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library", headers={"User-Agent": UA, "Accept": "application/json",
+                                        "X-Plex-Language": language_c66j}), timeout=30).read())
+                ["MediaContainer"].get("Directory") or []]
+    check("/library's titles are localised in Afrikaans and Brazilian Portuguese",
+          "Seções da Biblioteca" in library_c66j("pt-BR")
+          and "Biblioteekafdelings" in library_c66j("af"),
+          str((library_c66j("pt-BR"), library_c66j("af"))))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

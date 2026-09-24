@@ -414,6 +414,7 @@
     "zh": "-1:同资料库|0:Show|1:隐藏"
    },
    "-1:Library default|1:Hide items in this collection|2:Show this collection and its items|0:Hide this collection but show its items": {
+    "af": "-1:Biblioteekverstek|1:Versteek items in hierdie versameling|2:Wys hierdie versameling en sy items|0:Versteek hierdie versameling maar wys al sy items",
     "ar": "-1:المكتبة الافتراضية|1:إخفاء العناصر في هذه المجموعة|2:عرض هذه المجموعة وعناصرها|0:Hide this collection but show its items",
     "ca": "-1:Por defecto de la biblioteca|1:Ocultar elementos en esta colección|2:Muestra esta colección y sus artículos|0:Hide this collection but show its items",
     "cs": "-1:Výchozí z knihovny|1:Skrýt položky v této sbírce|2:Zobrazit tuto sbírku a její položky|0:Skrýt tuto sbírku, ale zobrazit její položky",
@@ -435,6 +436,7 @@
     "no": "-1:Bibliotekets standard|1:Skjul elementene i denne samlingen|2:Vis denne samlingen og elementene i den|0:Skjul denne samlingen, men vis elementene i den",
     "pl": "-1:Domyślne biblioteki|1:Ukryj elementy w tej kolekcji|2:Pokaż tę kolekcję i jej elementy|0:Hide this collection but show its items",
     "pt": "-1:Padrão da biblioteca|1:Ocultar itens nesta coleção|2:Mostrar esta coleção e seus itens|0:Hide this collection but show its items",
+    "pt-BR": "-1:Padrão da biblioteca|1:Ocultar itens nesta coleção|2:Mostrar esta coleção e seus itens|0:Ocultar esta coleção, mas mostrar seus itens",
     "ro": "-1:Biblioteca implicită|1:Ascundeți elementele din această colecție|2:Afișați această colecție și articolele sale|0:Hide this collection but show its items",
     "ru": "-1:Библиотека по умолчанию|1:Скрыть элементы в этой коллекции|2:Показать эту коллекцию и ее элементы|0:Hide this collection but show its items",
     "sk": "-1:Predvolené knižnicou|1:Skryť položky v tejto zbierke|2:Zobraziť túto zbierku a jej položky|0:Skryť túto zbierku, ale ukázať jej položky",
@@ -14080,6 +14082,7 @@
     "zh": "资料库播放列表"
    },
    "Library Sections": {
+    "af": "Biblioteekafdelings",
     "ar": "خيارات المكتبة",
     "ca": "Bibliotecas",
     "cs": "Sekce knihovny",
@@ -14101,6 +14104,7 @@
     "no": "Bibliotekseksjoner",
     "pl": "Sekcje biblioteki",
     "pt": "Seções da Biblioteca",
+    "pt-BR": "Seções da Biblioteca",
     "ro": "Secțiunile bibliotecii",
     "ru": "Разделы библиотеки",
     "sk": "Sekcie knižnice",
@@ -14345,6 +14349,7 @@
     "zh": "最近关注"
    },
    "On Deck Content": {
+    "af": "Op die Dek Inhoud",
     "ar": "محتويات على السطح",
     "ca": "Contenido En Progreso",
     "cs": "Obsah Právě přidáno",
@@ -14366,6 +14371,7 @@
     "no": "På dekk innhold",
     "pl": "Zawartość Na tapecie",
     "pt": "Conteúdo em cartaz",
+    "pt-BR": "Conteúdo Em Cartaz",
     "ro": "Conținut redate recent",
     "ru": "Контент \"Текущее\"",
     "sk": "Obsah rozpozeraných",
@@ -14762,6 +14768,7 @@
     "zh": "最近添加"
    },
    "Recently Added Content": {
+    "af": "Onlangs Toegevoegde Inhoud",
     "ar": "محتويات أضيفت مؤخراً",
     "ca": "Contenido Añadido Recientemente",
     "cs": "Naposledy přidaný obsah",
@@ -14783,6 +14790,7 @@
     "no": "Nylig lagt til innhold",
     "pl": "Ostatnio dodana zawartość",
     "pt": "Conteúdo adicionado recentemente",
+    "pt-BR": "Conteúdo Adicionado Recentemente",
     "ro": "Conținut adăugat recent",
     "ru": "Добавленное недавно",
     "sk": "Nedávno pridaný obsah",
