@@ -8946,11 +8946,19 @@ class PlexSim:
                                  for r in self.catalog.items.values()
                                  if str(r.get("librarySectionID")) == str(section.get("key"))
                                  for t in r.get("Collection") or []}
+                        # Cycle 61, measured on plexscratch42 and plexscratch: ANY name
+                        # in the collection tag TABLE is taken -- a deleted collection's
+                        # tag, one added and removed in the Edit dialog -- except the
+                        # names this collection has held itself. An unused collection's
+                        # TITLE (which never made a tag) stays free.
+                        taken |= self.library.collection_tag_names()
                         for key in (query.get("id") or "").split(","):
                             stored = self.library.collection(key.strip()) \
                                 if key.strip().isdigit() else None
+                            own = {str(stored.get("title") or "").lower()} | set(
+                                stored.get("_names") or ()) if stored is not None else set()
                             if stored is not None and wanted_title.lower() in taken \
-                                    and wanted_title.lower() != str(stored.get("title") or "").lower():
+                                    and wanted_title.lower() not in own:
                                 return ("error", 409, "plexsim: a collection has that name")
                     for key in (query.get("id") or "").split(","):
                         if key.strip().isdigit() and self.library.collection(key.strip()):
