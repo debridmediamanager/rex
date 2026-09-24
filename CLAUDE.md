@@ -3032,6 +3032,10 @@ precisely how the Seasons bug survived a fix attempt.
   in English. A capture only finds the strings on the pages it walks.
 - **`Plex Home Theater` alone gets a five-component server version** on `/` and
   `/media/providers`.
+- **Activity titles are localised per notification SOCKET**, fixed at the handshake
+  (`X-Plex-Language` query, else `Accept-Language`); status and progress frames are not.
+- **`X-Plex-Features` is not inert**: it keys the library hub page's cache, as `X-Plex-Language`
+  does, so interleave reads before calling a hub difference drift.
 
 ## Conventions
 

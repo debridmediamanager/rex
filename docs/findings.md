@@ -10595,6 +10595,26 @@ items container carries a `ratingKey`, so the localiser takes it for a row; no c
 request); a header value's leading whitespace -- a real PMS consumes one space and keeps the
 rest, and refuses a leading TAB (no client sends either).
 
+#### The sixty-fifth pass — the notification socket in ten languages
+
+Cycle 65 repeated all ten axes. C (axes 1, 2, 3, 4, 7, 10) reported zero findings of either kind.
+B widened the identity sweep to every `X-Plex-*` header the 1.42.2 binary reads and found two rules
+no client can see. A opened the notification socket in ten languages for the first time.
+
+* **Activity titles follow the socket's language.** On plexscratch42 a socket opened with
+  `X-Plex-Language=de`, or with `Accept-Language: de-DE,de;q=0.9` on the handshake, is pushed
+  `Suche...` → `Durchsuche TV Shows` and `Abonnements verarbeiten …` for one scan, where a socket
+  with no language gets `Scanning` → `Scanning TV Shows` and `Processing subscriptions`; ja inserts
+  the name (`TV Showsをスキャン中`). `/activities` localises the same way under `X-Plex-Language`.
+  The strings are the server's gettext catalogue's (read off zen: ca reads `es`, nb `no`, cs/et/hr/ja/
+  zh their regional files); a message id the catalogue lacks stays English. `StatusNotification`
+  and `ProgressNotification` stay English. Plex Web's socket URL carries only the token, so its
+  Activity menu is in the browser's `Accept-Language`.
+
+**Recorded, not built.** `X-Plex-Client-Platform` as a second spelling of the platform header, and
+the library hub page's cache keyed on `X-Plex-Features` and `X-Plex-Language` (cycle 25 had called
+the header inert).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
