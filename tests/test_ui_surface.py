@@ -2415,14 +2415,21 @@ def main():
           and player.get("address") and player.get("state") == "playing",
           "%s / %s / %s" % (player.get("product"), player.get("address"),
                             player.get("state")))
+    # A session of its own, stopped afterwards: a decision arms `Bandwidths` for its session,
+    # which the checks below read on `suite-sess`.
+    probe_identity = "X-Plex-Client-Identifier=suite-probe-d&X-Plex-Session-Identifier=suite-sess-d"
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=playing&time=3000&duration=600000&%s"
+                           % (session_item, quote("/library/metadata/%s" % session_item), probe_identity))
     container(base, "GET", "/video/:/transcode/universal/decision?path=%s&mediaIndex=0&partIndex=0"
                            "&protocol=http&directPlay=1&directStream=1&hasMDE=1&%s"
-                           % (quote("/library/metadata/%s" % session_item), identity))
+                           % (quote("/library/metadata/%s" % session_item), probe_identity))
     _, decided_sessions, _ = get(base, "/status/sessions")
     decided_row = next((r for r in decided_sessions.get("Metadata") or []
-                        if str(r.get("ratingKey")) == str(session_item)), {})
+                        if (r.get("Player") or {}).get("machineIdentifier") == "suite-probe-d"), {})
+    container(base, "GET", "/:/timeline?ratingKey=%s&key=%s&state=stopped&time=3000&duration=600000&%s"
+                           % (session_item, quote("/library/metadata/%s" % session_item), probe_identity))
     check("Session.id is the client's session identifier, once a decision exists",
-          (decided_row.get("Session") or {}).get("id") == "suite-sess",
+          (decided_row.get("Session") or {}).get("id") == "suite-sess-d",
           str((decided_row.get("Session") or {}).get("id")))
     # The client renders "Direct Play" precisely when Session is present and
     # TranscodeSession is not, which is the truth for a server with no encoder.
