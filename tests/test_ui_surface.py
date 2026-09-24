@@ -32518,6 +32518,31 @@ def main():
     check("a new tag is stored with its first ASCII letter upper-cased",
           "Rg61 low " + token_c61a in genres_c61a, str(genres_c61a))
 
+    # Cycle 61, measured on plexscratch42 (1.42.2): a playback session is LISTED in
+    # /status/sessions from its first `playing` beat -- a `paused` or `buffering` beat on a new
+    # session lists nothing, which is Plex Web's very first beat -- and its `Session` block is
+    # there only once the session has asked for a decision. plexsim listed every beat's session
+    # and gave every one a `Session` with a computed bandwidth.
+    _, grid_c61b, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rk_c61b = ((grid_c61b.get("Metadata") or [{}])[0]).get("ratingKey")
+    def beat_c61b(state_c61b, sess_c61b, time_c61b=0):
+        request(base, "GET", "/:/timeline?ratingKey=%s&key=/library/metadata/%s&identifier="
+                "com.plexapp.plugins.library&time=%d&state=%s&duration=1800000"
+                "&X-Plex-Session-Identifier=%s" % (rk_c61b, rk_c61b, time_c61b, state_c61b, sess_c61b))
+    def listed_c61b(sess_c61b):
+        _, live_c61b, _ = get(base, "/status/sessions")
+        return [("Session" in r) for r in live_c61b.get("Metadata") or []
+                if (r.get("Session") or {}).get("id") == sess_c61b
+                or str(r.get("ratingKey")) == str(rk_c61b)]
+    beat_c61b("paused", "rg61paused")
+    paused_c61b = listed_c61b("rg61paused")
+    beat_c61b("stopped", "rg61paused")
+    beat_c61b("playing", "rg61plain", 1000)
+    plain_c61b = listed_c61b("rg61plain")
+    beat_c61b("stopped", "rg61plain", 1000)
+    check("a session is listed from its first playing beat, with no Session block before a decision",
+          paused_c61b == [] and plain_c61b == [False], str((paused_c61b, plain_c61b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

@@ -269,6 +269,12 @@ class Sessions:
         self.record_bytes(identifier, player["local"], 0,
                           name=value("X-Plex-Device-Name"),
                           platform=value("X-Plex-Platform"))
+        # Cycle 61, measured on plexscratch42: a session is LISTED from its first `playing`
+        # beat. A `paused` or `buffering` beat on a new session allocates the key (its
+        # `playing` frame carries one) and lists nothing -- Plex Web's very first beat is
+        # `paused` at 0 -- and a pause after a `playing` keeps the row listed.
+        if state == "playing":
+            entry["_listed"] = True
         if state == "stopped":
             self._sessions.pop(session_id, None)
         return entry
