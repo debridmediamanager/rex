@@ -2,6 +2,7 @@
  "_provenance": "Cycle 60. Hub titles with a name inserted, per X-Plex-Language, with %s where the name goes: `Recently Added in %s` off zen's movie and TV library hub pages (identical for both), `Top Movies in %s` off zen's genre shelf with the genre resolved from the shelf's own key, `%s Collection` off plexscratch42's collection.related hub (1.42.2). Applied to a Hub's own title only. `enum_leads` are the lead rows of an enum built from the HOST (PreferredNetworkInterface lists the machine's own interfaces after `:Any`), identical on zen and plexscratch42.",
  "enum_leads": {
   ":Any": {
+   "af": ":Enige",
    "ar": ":أي",
    "ca": ":Cualquiera",
    "cs": ":Jakékoli",
@@ -20,6 +21,7 @@
    "lt": ":Bet koks",
    "nb": ":Alle",
    "nl": ":Alle",
+   "no": ":Alle",
    "pl": ":Dowolny",
    "pt": ":Qualquer",
    "ro": ":Orice",
@@ -34,6 +36,7 @@
  },
  "templates": {
   "%s Collection": {
+   "af": "%s Versameling",
    "ar": "%s المجموعة",
    "ca": "Colección %s",
    "cs": "%s sbírka",
@@ -52,6 +55,7 @@
    "lt": "%s kolekcija",
    "nb": "%s samling",
    "nl": "%s Collectie",
+   "no": "%s samling",
    "pl": "Kolekcja %s",
    "pt": "%s Coleção",
    "ro": "%s Colecție",
@@ -64,6 +68,7 @@
    "zh": "%s合集"
   },
   "Recently Added in %s": {
+   "af": "Onlangs toegevoeg in %s",
    "ar": "Recently Added in %s",
    "ca": "Añadido Recientemente en %s",
    "cs": "Nedávno přidáno do %s",
@@ -82,6 +87,7 @@
    "lt": "Recently Added in %s",
    "nb": "Nylig lagt til i %s",
    "nl": "Onlangs toegevoegd in %s",
+   "no": "Nylig lagt til i %s",
    "pl": "Ostatnio dodane w %s",
    "pt": "Adicionado Recentemente em %s",
    "ro": "Adăugat recent în %s",
@@ -94,6 +100,7 @@
    "zh": "最近添加的%s"
   },
   "Top Movies in %s": {
+   "af": "Toprolprente in %s",
    "ar": "الأفلام الأولي في %s",
    "ca": "Mejores Películas en %s",
    "cs": "Top filmy v %s",
@@ -112,6 +119,7 @@
    "lt": "Populiariausi filmai %s žanre",
    "nb": "Toppfilmer i %s",
    "nl": "Top films in %s",
+   "no": "Toppfilmer i %s",
    "pl": "Najlepsze filmy z %s",
    "pt": "Melhores filmes em %s",
    "ro": "Filme de top în %s",

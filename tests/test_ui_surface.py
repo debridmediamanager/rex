@@ -32817,6 +32817,29 @@ def main():
           str([(rows_c66d.get(k) or {}).get("summary", "")[:60]
                for k in ("TranscoderTempDirectory", "_CPU-TranscodeCountLimit")]))
 
+    # Cycle 66, measured on zen, kids and plexscratch42: Plex Web's `no` (Norsk) and `af`
+    # (Afrikaans) have catalogues of their own on a real PMS -- plexsim held `nb` and no `af`.
+    def doc_c66g(path_c66g, language_c66g):
+        return json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + path_c66g, headers={"User-Agent": UA, "Accept": "application/json",
+                                       "X-Plex-Language": language_c66g}), timeout=30).read())
+    def sorts_c66g(language_c66g):
+        return [d.get("title") for d in doc_c66g("/library/sections/%s/sorts" % movie_section,
+                                                 language_c66g)["MediaContainer"].get("Directory") or []]
+    def friendly_c66g(language_c66g):
+        return {s.get("id"): s.get("label") for s in doc_c66g("/:/prefs", language_c66g)
+                ["MediaContainer"].get("Setting") or []}.get("FriendlyName")
+    _, frames_c66g = notifications(base, lambda: get(
+        base, "/library/sections/%s/refresh" % show_section), seconds=4, query="X-Plex-Language=no")
+    no_scan_c66g = [n.get("Activity", {}).get("title") for f in frames_c66g
+                    for n in f.get("NotificationContainer", {}).get("ActivityNotification") or []]
+    check("Norwegian (no) and Afrikaans (af) are answered in their own catalogues",
+          "Publikumsvurdering" in sorts_c66g("no") and "Kykergradering" in sorts_c66g("af")
+          and friendly_c66g("no") == "Kallenavn" and friendly_c66g("af") == "Vriendlike naam"
+          and "Skanner" in no_scan_c66g,
+          str((sorts_c66g("no")[:4], sorts_c66g("af")[:4], friendly_c66g("no"),
+               friendly_c66g("af"), no_scan_c66g[:2])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

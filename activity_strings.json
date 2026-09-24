@@ -2,6 +2,7 @@
  "_provenance": "Cycle 65. The activity titles and subtitles a real PMS pushes on the notification sockets and answers on /activities, per X-Plex-Language, read out of zen's (1.42.2) own gettext catalogues (Resources/locale/*/LC_MESSAGES/plex.mo) for the message ids plexsim emits; {1} is the inserted name or count. The language-to-catalogue map (ca reads es, nb reads no, cs/et/hr/ja/zh their regional files) was fitted to plexscratch42's live frames in 12 languages, which the table reproduces exactly. A message id the catalogue lacks (Analyzing Media, Updating Metadata) stays English on a real PMS too. Cycle 66: `progress` holds the butler's sentences, which follow the socket's language the same way (plexscratch42, ten languages), and af, no and pt-BR read their own catalogues. Built by handover/tools/build_activity_strings.py.",
  "progress": {
   "The butler analyzed {1} items.": {
+   "af": "Die dienskneg het {1} items ontleed.",
    "ar": "الوصيف حلل {1} عنصر.",
    "ca": "El mayordomo analizó {1} elementos.",
    "cs": "Váš komorník analyzoval {1} položek.",
@@ -20,6 +21,7 @@
    "lt": "Butleris išanalizavo {1} elementus.",
    "nb": "Hovmesteren analyserte {1} elementer.",
    "nl": "De butler analyseerde {1} items.",
+   "no": "Hovmesteren analyserte {1} elementer.",
    "pl": "Lokaj przeanalizował {1} elementy(ów).",
    "pt": "O assistente analisou {1} itens.",
    "ro": "Majordomul a analizat {1} articole.",
@@ -32,6 +34,7 @@
    "zh": "管家已分析 {1} 个项目。"
   },
   "The butler backed up your database.": {
+   "af": "Die dienskneg het u databasis gerugsteun.",
    "ar": "البتلر أخذ نسخه أحتياطيه من قاعده البينات الخاصه بك.",
    "ca": "El mayordomo respaldó su base de datos.",
    "cs": "Váš komorník zálohoval Vaši databázi.",
@@ -50,6 +53,7 @@
    "lt": "Butler paruošė savo duomenų bazę.",
    "nb": "Hovmesteren tok en sikkerhetskopi av databasen.",
    "nl": "De butler maakte een backup van de database.",
+   "no": "Hovmesteren tok en sikkerhetskopi av databasen.",
    "pl": "Lokaj wykonał kopię zapasową bazy danych.",
    "pt": "O assistente fez cópia de segurança da base de dados.",
    "ro": "Majordomul v-a salvat o copie a bazei de date.",
@@ -62,6 +66,7 @@
    "zh": "管家已备份数据库。"
   },
   "The butler cleaned {1} media bundles.": {
+   "af": "Die dienskneg het {1} mediabundels opgeruim.",
    "ar": "الوصيف نظف {1} من حزم الوسائط.",
    "ca": "El mayordomo limpió {1} paquetes.",
    "cs": "Váš komorník vyčistil {1} balíčků médií.",
@@ -80,6 +85,7 @@
    "lt": "Butleris išvalo {1} medijų paketus.",
    "nb": "Hovmesteren ryddet {1} mediebunter.",
    "nl": "De butler schoonde {1} media bundels op.",
+   "no": "Hovmesteren ryddet {1} mediebunter.",
    "pl": "Lokaj oczyścił {1} zasobów multimedialnych.",
    "pt": "O assistente limpou {1} pacotes de conteúdo.",
    "ro": "Majordomul a curățat {1} pachete media.",
@@ -92,6 +98,7 @@
    "zh": "管家已清理 {1} 个媒体包。"
   },
   "The butler cleaned {1} metadata bundles.": {
+   "af": "Die dienskneg het {1} metadatabundels opgeruim.",
    "ar": "الوصيف نظف {1} من حزم البيانات الوصفية.",
    "ca": "El mayordomo limpió {1} paquetes de metadatos.",
    "cs": "Váš komorník vyčistil {1} balíčků metadat.",
@@ -110,6 +117,7 @@
    "lt": "Butleris išvalo {1} metaduomenų rinkinius.",
    "nb": "Hovmesteren ryddet {1} metadatabunter.",
    "nl": "De butler schoonde {1} metadata bundels op.",
+   "no": "Hovmesteren ryddet {1} metadatabunter.",
    "pl": "Lokaj oczyścił {1} zasobów metadanych.",
    "pt": "O assistente limpou {1} pacotes de informaçoes.",
    "ro": "Majordomul a curățat {1} pachete de metadate.",
@@ -122,6 +130,7 @@
    "zh": "管家已清理 {1} 个元数据包。"
   },
   "The butler collected blob garbage.": {
+   "af": "Die dienskneg het blertsvullis gesamel.",
    "ar": "بتلر جمع القمامة فوب.",
    "ca": "El mayordomo recogió restos de basura.",
    "cs": "Váš komorník posbíral všechno smetí.",
@@ -140,6 +149,7 @@
    "lt": "Dviratis surinko šiukšlių šiukšles.",
    "nb": "Hovmesteren samlet blob-søppel.",
    "nl": "De butler verzamelde rommel.",
+   "no": "Hovmesteren samlet blob-søppel.",
    "pl": "Lokaj zebrał śmieci.",
    "pt": "O assistente arrumou o lixo.",
    "ro": "Butlerul a strâns gunoi.",
@@ -152,6 +162,7 @@
    "zh": "管家收集了垃圾数据。"
   },
   "The butler deleted {1} old cache files.": {
+   "af": "Die dienskneg het {1} ou kaslêers geskrap.",
    "ar": "الوصيف حذف {1} من ملفات الذاكرة المؤقتة.",
    "ca": "El mayordomo limpió {1} archivos de caché antiguos.",
    "cs": "Váš komorník smazal {1} starých souborů mezipaměti.",
@@ -170,6 +181,7 @@
    "lt": "Butleris ištrynė {1} senus talpyklos failus.",
    "nb": "Hovmesteren slettet {1} gamle cache-filer.",
    "nl": "De butler verwijderde {1} oude cache bestanden.",
+   "no": "Hovmesteren slettet {1} gamle cache-filer.",
    "pl": "Lokaj usunął {1} starych plików pamięci podręcznej.",
    "pt": "O assistente apagou {1} antigos ficheiros de cache.",
    "ro": "Majordomul a șters {1} fișiere vechi de cache.",
@@ -182,6 +194,7 @@
    "zh": "管家已删除 {1} 个旧缓存文件。"
   },
   "The butler generated ad markers for {1} show(s).": {
+   "af": "Die dienskneg het advertensiemerkers vir {1} program(me) gegenereer.",
    "ca": "El mayordomo generó marcadores publicitarios para {1} serie(s).",
    "cs": "Váš komorník vygeneroval reklamní značky pro {1} seriálů.",
    "da": "Butleren genererede annoncemarkører til {1} show(s).",
@@ -196,6 +209,7 @@
    "ko": "버틀러가 {1}개 쇼(들)에 대한 광고 마커를 생성했습니다.",
    "nb": "Hovmesteren genererte annonsemarkører for {1} serie(r).",
    "nl": "De butler genereerde reclameblok markeringen voor {1} show(s).",
+   "no": "Hovmesteren genererte annonsemarkører for {1} serie(r).",
    "pl": "Lokaj wygenerował markery reklam dla {1} serialu(i).",
    "pt": "O assistente gerou marcadores de anúncio para {1} programa(s).",
    "ru": "Дворецкий сгенерировал рекламные маркеры для {1} шоу.",
@@ -206,6 +220,7 @@
    "zh": "管家已为 {1} 个节目生成了广告标记。"
   },
   "The butler generated chapter thumbnails for {1} files.": {
+   "af": "Die dienskneg het hoofstukduimnaels vir {1} lêers gegenereer.",
    "ar": "الوصيف ولّد صورة مصغرة فصلية لـ {1} ملف.",
    "ca": "El mayordomo generó miniaturas de capítulos de {1} archivos.",
    "cs": "Váš komorník vygeneroval miniatury kapitol u {1} souborů.",
@@ -224,6 +239,7 @@
    "lt": "\"Butler\" sukūrė {1} failų skyrių miniatiūras.",
    "nb": "Hovmesteren opprettet kapittel-miniatyrer for {1} filer.",
    "nl": "De butler genereerde hoofdstukminiaturen voor {1} bestanden.",
+   "no": "Hovmesteren opprettet kapittel-miniatyrer for {1} filer.",
    "pl": "Lokaj wygenerował miniatury rozdziałów dla {1} plików.",
    "pt": "O assistente gerou miniaturas de capítulos para {1} ficheiros.",
    "ro": "Majordomul a generat miniaturi de capitol pentru {1} fișiere.",
@@ -236,6 +252,7 @@
    "zh": "管家已为 {1} 个文件创建章节缩略图。"
   },
   "The butler generated {1} credits markers.": {
+   "af": "Die dienskneg het {1} kredietmerkers gegenereer.",
    "ca": "El mayordomo generó {1} marcadores de créditos.",
    "cs": "Váš komorník vygeneroval {1} značek konečných titulků.",
    "da": "Tjeneren har genereret (1) rulletekstmarkør.",
@@ -250,6 +267,7 @@
    "ko": "시스템이 {1}개의 크레딧 마커를 생성했습니다.",
    "nb": "Hovmesteren genererte {1} rulletekstmarkører.",
    "nl": "De butler genereerde {1} aftiteling markeringen.",
+   "no": "Hovmesteren genererte {1} rulletekstmarkører.",
    "ru": "Дворецкий сгенерировал {1} маркеров титров.",
    "sk": "Systém vygeneroval {1} značiek kreditov.",
    "sl": "Butler je ustvaril {1} označevalnikov zaslug oz. napisov.",
@@ -258,6 +276,7 @@
    "zh": "管家已生成 {1} 个片尾标记。"
   },
   "The butler generated {1} season intro markers.": {
+   "af": "Die dienskneg het {1} seisoeninleidingmerkers gegenereer.",
    "ca": "El mayordomo generó {1} marcadores de introducción a la temporada.",
    "cs": "Váš komorník vygeneroval {1} značek úvodů řady.",
    "da": "Butleren genererede {1} sæson intro markører.",
@@ -272,6 +291,7 @@
    "ko": "집사가 {1} 시즌에 대한 광고 마커를 생성했습니다.",
    "nb": "Hovmesteren genererte {1} intromarkører.",
    "nl": "De butler genereerde {1} seizoen intro markeringen.",
+   "no": "Hovmesteren genererte {1} intromarkører.",
    "pl": "Lokaj wygenerował {1} marker(ów) wstępu sezonu.",
    "pt": "O assistente gerou {1} marcadores de introdução de temporada.",
    "ru": "Дворецкий сгенерировал {1} маркеры заставок сезона.",
@@ -282,6 +302,7 @@
    "zh": "管家生成了 {1} 季的片头标记。"
   },
   "The butler generated {1} video preview thumbnails.": {
+   "af": "Die dienskneg het {1} videovoorskouduimnaels gegenereer.",
    "ar": "الوصيف ولّد {1} صورة مصغرة لمشاهد الفيديو.",
    "ca": "El mayordomo generó {1} miniaturas de vídeo de vista previa.",
    "cs": "Váš komorník vygeneroval {1} náhledů miniatur videa.",
@@ -300,6 +321,7 @@
    "lt": "\"Butler\" sukūrė {1} vaizdo įrašo peržiūros miniatiūras.",
    "nb": "Hovmesteren opprettet {1} miniatyrbilder.",
    "nl": "De butler genereerde {1} video voorproef miniaturen.",
+   "no": "Hovmesteren opprettet {1} miniatyrbilder.",
    "pl": "Lokaj wygenerował {1} miniatur podglądu wideo.",
    "pt": "O assistente gerou {1} miniaturas de vídeo.",
    "ro": "Majordomul a generat {1} miniaturi de previzualizare.",
@@ -312,6 +334,7 @@
    "zh": "管家已创建 {1} 个视频预览缩略图。"
   },
   "The butler optimized your database.": {
+   "af": "Die dienskneg het u databasis geoptimeer.",
    "ar": "الوصيف حسن قاعدة بياناتك",
    "ca": "El mayordomo optimizó su base de datos.",
    "cs": "Váš komorník optimalizoval Vaši databázi.",
@@ -330,6 +353,7 @@
    "lt": "Butler optimizavo jūsų duomenų bazę.",
    "nb": "Hovmesteren optimaliserte databasen din.",
    "nl": "De butler heeft de database geoptimaliseerd.",
+   "no": "Hovmesteren optimaliserte databasen din.",
    "pl": "Lokaj zoptymalizował Twoją bazę danych.",
    "pt": "O assistente optimizou a base de dados.",
    "ro": "Majordomul v-a optimizat baza de date.",
@@ -342,6 +366,7 @@
    "zh": "管家已优化数据库。"
   },
   "The butler performed deep analysis on {1} files.": {
+   "af": "Die dienskneg het ’n diepontleding van {1} lêers gedoen.",
    "ar": "الوصيف نفذ تحليلاً عميقاً على {1} ملف.",
    "ca": "El mayordomo realizó un análisis profundo de {1} archivos.",
    "cs": "Váš komorník provedl hloubkovou analýzu na {1} ssouborech.",
@@ -360,6 +385,7 @@
    "lt": "Butleris atliko gilų {1} failų analizę.",
    "nb": "Hovmesteren gjorde dyp analyse av {1} filer.",
    "nl": "De butler deed uitgebreide analyse van {1} bestanden.",
+   "no": "Hovmesteren gjorde dyp analyse av {1} filer.",
    "pl": "Lokaj wykonał dogłębną analizę {1} plików.",
    "pt": "O assistente realizou análise profunda em {1} ficheiros.",
    "ro": "Majordomul a efectuat o analiză profundă a {1} fișiere.",
@@ -372,6 +398,7 @@
    "zh": "管家已对 {1} 个文件执行深度分析。"
   },
   "The butler performed loudness analysis on {1} albums.": {
+   "af": "Die bediende het ’n hardheidontleding op {1} albums uitgevoer.",
    "ar": "قام بتلر بإجراء تحليل جهارة على ألبومات {1}.",
    "ca": "El mayordomo realizó un análisis de volumen en {1} álbumes.",
    "cs": "Komorník provedl analýzu hlasitosti na albach {1}.",
@@ -390,6 +417,7 @@
    "lt": "Butleris atliko {1} albumus garsumo analizę.",
    "nb": "Hovmesteren utførte lydstyrkeanalyse på {1} album.",
    "nl": "De butler voerde volume analyse uit op {1} albums.",
+   "no": "Hovmesteren utførte lydstyrkeanalyse på {1} album.",
    "pl": "Lokaj wykonał analizę głośności na {1} albumach.",
    "pt": "O assistente analisou o volume em {1} álbuns.",
    "ro": "Butlerul a efectuat analiza luminozității pe {1} albume.",
@@ -402,6 +430,7 @@
    "zh": "管家已对 {1} 张专辑进行了音量分析。"
   },
   "The butler performed sonic analysis on {1} batches of albums.": {
+   "af": "Die dienskneg het ’n soniese ontleding op {1} klompie albums gedoen.",
    "ca": "El mayordomo realizó un análisis sonoro en {1} lotes de álbumes.",
    "cs": "Komorník provedl analýzu zvuku na {1} albech.",
    "da": "Tjeneren udførte lydanalyse på {1} grupper af albummer",
@@ -416,6 +445,7 @@
    "ko": "버틀러는 {1}개의 앨범 묶음에 대해 소닉 분석을 수행했습니다.",
    "nb": "Hovmesteren utførte sonisk analyse på {1} partier med album.",
    "nl": "De butler deed geluidsanalyse op {1} album batches.",
+   "no": "Hovmesteren utførte sonisk analyse på {1} partier med album.",
    "pl": "Lokaj wykonał analizę dźwiękową {1} partii albumów.",
    "pt": "O assistente efectuou análise sonora em {1} lotes de álbuns.",
    "ru": "Дворецкий провел звуковой анализ {1} группы альбомов.",
@@ -426,6 +456,7 @@
    "zh": "管家对 {1} 张专辑进行了声波分析。"
   },
   "The butler refreshed all libraries.": {
+   "af": "Die dienskneg het alle biblioteke verfris.",
    "ar": "الوصيف حدّث كل المكتبات",
    "ca": "El mayordomo actualizó todas las bibliotecas.",
    "cs": "Váš komorník obnovil všechny knihovny.",
@@ -444,6 +475,7 @@
    "lt": "Butleris atnaujino visas bibliotekas.",
    "nb": "Hovmesteren gjenoppfrisket alle biblioteker.",
    "nl": "Alle bibliotheken ververst door de butler.",
+   "no": "Hovmesteren gjenoppfrisket alle biblioteker.",
    "pl": "Lokaj odświeżył wszystkie biblioteki.",
    "pt": "O assistente atualizou todas as bibliotecas.",
    "ro": "Majordomul a reîmprospătat toate bibliotecile.",
@@ -456,6 +488,7 @@
    "zh": "管家已刷新所有库。"
   },
   "The butler refreshed {1} artists.": {
+   "af": "Die dienskneg het {1} kunstenaars verfris.",
    "ar": "الوصيف حدّث {1} فنان.",
    "ca": "El mayordomo actualizó {1} artistas.",
    "cs": "Váš komorník obnovil {1} umělců.",
@@ -474,6 +507,7 @@
    "lt": "Butleris atnaujino {1} menininkus.",
    "nb": "Hovmesteren gjenoppfrisket {1} artister.",
    "nl": "De butler ververste {1} artiesten.",
+   "no": "Hovmesteren gjenoppfrisket {1} artister.",
    "pl": "Lokaj odświeżył {1} wykonawców.",
    "pt": "O assistente atualizou {1} artistas.",
    "ro": "Majordomul a reîmprospătat {1} artiști.",
@@ -486,6 +520,7 @@
    "zh": "管家已刷新 {1} 个艺人。"
   },
   "The butler refreshed {1} items.": {
+   "af": "Die dienskneg het {1} items verfris.",
    "ar": "الوصيف حدّث {1} عنصر.",
    "ca": "El mayordomo actualizó {1} elementos.",
    "cs": "Váš komorník obnovil {1} položek.",
@@ -504,6 +539,7 @@
    "lt": "Butleris atnaujino {1} elementus.",
    "nb": "Hovmesteren gjenoppfrisket {1} elementer.",
    "nl": "De butler ververste {1} items.",
+   "no": "Hovmesteren gjenoppfrisket {1} elementer.",
    "pl": "Lokaj odświeżył {1} elementy(ów).",
    "pt": "O assistente atualizou {1} itens.",
    "ro": "Majordomul a reîmprospătat {1} articole.",
@@ -516,6 +552,7 @@
    "zh": "管家已刷新 {1} 个项目。"
   },
   "The butler refreshed {1} movies.": {
+   "af": "Die dienskneg het {1} rolprente verfris.",
    "ca": "El mayordomo actualizó {1} películas.",
    "cs": "Váš komorník obnovil {1} filmů.",
    "da": "Tjeneren har opdateret (1) film.",
@@ -530,6 +567,7 @@
    "ko": "시스템이 {1}개의 영화를 새로 고쳤습니다.",
    "nb": "Hovmesteren gjenoppfrisket {1} filmer.",
    "nl": "De butler ververste {1} films.",
+   "no": "Hovmesteren gjenoppfrisket {1} filmer.",
    "ru": "Дворецкий обновил {1} фильмов.",
    "sk": "Systém obnovil {1} filmov.",
    "sl": "Butler je osvežil {1} filmov.",
@@ -538,6 +576,7 @@
    "zh": "管家已刷新 {1} 部电影。"
   },
   "The butler refreshed {1} seasons.": {
+   "af": "Die dienskneg het {1} seisoene verfris.",
    "ca": "El mayordomo actualizó {1} temporadas.",
    "cs": "Váš komorník obnovil {1} řad.",
    "da": "Butleren opdaterede {1} sæsoner.",
@@ -552,6 +591,7 @@
    "ko": "집사가 {1}의 시즌을 갱신했습니다.",
    "nb": "Butleren oppdaterte {1} sesonger.",
    "nl": "De butler ververste {1} seizoenen.",
+   "no": "Butleren oppdaterte {1} sesonger.",
    "pl": "Lokaj odświeżył {1} sezony(ów).",
    "pt": "O assistente atualizou {1} temporadas.",
    "ru": "Дворецкий обновил {1} сезонов.",
@@ -562,6 +602,7 @@
    "zh": "管家刷新了 {1} 季。"
   },
   "The butler refreshed {1} shows.": {
+   "af": "Die dienskneg het {1} programme verfris.",
    "ca": "El mayordomo actualizó {1} series.",
    "cs": "Váš komorník obnovil {1} seriálů.",
    "da": "Tjeneren har opdateret (1) serie.",
@@ -576,6 +617,7 @@
    "ko": "시스템이 {1}개의 쇼를 새로 고쳤습니다.",
    "nb": "Hovmesteren gjenoppfrisket {1} serier.",
    "nl": "De butler ververste {1} TV-series.",
+   "no": "Hovmesteren gjenoppfrisket {1} serier.",
    "ru": "Дворецкий обновил {1} шоу.",
    "sk": "Systém obnovil {1} relácií.",
    "sl": "Butler je osvežil {1} oddaj.",
@@ -584,6 +626,7 @@
    "zh": "管家已刷新 {1} 个节目。"
   },
   "The butler wasn't able to back up your database.": {
+   "af": "Die dienskneg kon nie u databasis rugsteun nie.",
    "ar": "البتلر بم يستطع أن يأخذ نسخه أحتياطية من قاعده البيانات الخاصة بك",
    "ca": "El mayordomo no fue capaz de respaldar su base de datos.",
    "cs": "Váš komorník nemohl zálohovat Vaši databázi.",
@@ -602,6 +645,7 @@
    "lt": "Butleris negalėjo sugrupuoti savo duomenų bazės.",
    "nb": "Hovmesteren klarte ikke å ta en sikkerhetskopi av databasen.",
    "nl": "De butler kon geen back-up maken van de database.",
+   "no": "Hovmesteren klarte ikke å ta en sikkerhetskopi av databasen.",
    "pl": "Lokaj nie mógł wykonać kopii zapasowej bazy danych.",
    "pt": "O assistente não foi capaz de fazer a cópia de segurança da base de dados.",
    "ro": "Majordomul nu a putut salva o copie a bazei de date.",
@@ -616,6 +660,7 @@
  },
  "strings": {
   "Analyzing media bundles": {
+   "af": "Ontleed mediabundels",
    "ar": "تحليل حزم الوسائط",
    "ca": "Analizando paquetes de contenido",
    "cs": "Analyzování balíčků médií",
@@ -634,6 +679,7 @@
    "lt": "Analizuojant žiniasklaidos rinkinius",
    "nb": "Analyserer mediebunter",
    "nl": "Mediabundels analyseren",
+   "no": "Analyserer mediebunter",
    "pl": "Analizowanie zasobów multimedialnych",
    "pt": "A analisar pacotes de conteúdo",
    "ro": "Se analizează pachetele media",
@@ -646,6 +692,7 @@
    "zh": "正在分析媒体包"
   },
   "Analyzing metadata bundles": {
+   "af": "Ontleed metadatabundels",
    "ar": "تحليل حزم البيانات الوصفية",
    "ca": "Analizando paquetes de metadatos",
    "cs": "Analyzování balíčků metadat",
@@ -664,6 +711,7 @@
    "lt": "Metaduomenų rinkinių analizė",
    "nb": "Analyserer metadatabunter",
    "nl": "Analyseren van metadatabundels",
+   "no": "Analyserer metadatabunter",
    "pl": "Analizowanie zasobów metadanych",
    "pt": "A analizar pacotes de informações ",
    "ro": "Se analizează pachetele de metadate",
@@ -676,6 +724,7 @@
    "zh": "正在分析元数据包"
   },
   "Backing up database": {
+   "af": "Databasis word gerugsteun",
    "ar": "قاعدة بيانات النسخ الإحتياطي",
    "ca": "Guardando copia de seguridad de la base de datos",
    "cs": "Zálohování databáze",
@@ -694,6 +743,7 @@
    "lt": "Atsarginės duomenų bazės kopijavimas",
    "nb": "Sikkerhetskopierer databasen",
    "nl": "Database back-up maken",
+   "no": "Sikkerhetskopierer databasen",
    "pl": "Tworzenie kopii zapasowej bazy danych",
    "pt": "A fazer cópia de segurança da base de dados",
    "ro": "Copie de siguranță a bazei de date",
@@ -706,6 +756,7 @@
    "zh": "正在备份数据库"
   },
   "Butler tasks": {
+   "af": "Diensknegtake",
    "ca": "Tareas de mayordomo",
    "cs": "Úlohy komorníka",
    "da": "Butler opgaver",
@@ -719,6 +770,7 @@
    "ko": "버틀러 작업",
    "nb": "Hovmesteroppgaver",
    "nl": "Butler taken",
+   "no": "Hovmesteroppgaver",
    "pl": "Zadania lokaja",
    "pt": "Tarefas do assistente",
    "ru": "Главные задания",
@@ -729,6 +781,7 @@
    "zh": "管家任务"
   },
   "Cleaning Bundles": {
+   "af": "Bundels word opgeruim",
    "ar": "تنظيف الحزم",
    "ca": "Limpiando Paquetes",
    "cs": "Čištění balíčků",
@@ -747,6 +800,7 @@
    "lt": "Valymo paketai",
    "nb": "Rydder i bunter",
    "nl": "Bundels opschonen",
+   "no": "Rydder i bunter",
    "pl": "Oczyszczanie zasobów",
    "pt": "Limpando informações",
    "ro": "Se curăță pachetele",
@@ -759,6 +813,7 @@
    "zh": "正在清理数据包"
   },
   "Cleaning bundles": {
+   "af": "Maak tans bundels skoon",
    "ar": "تنظيف الحزم",
    "ca": "Limpiando Paquetes",
    "cs": "Čištění balíčků",
@@ -777,6 +832,7 @@
    "lt": "Valymo ryšuliai",
    "nb": "Rydder i bunter",
    "nl": "Bundels schoonmaken",
+   "no": "Rydder i bunter",
    "pl": "Oczyszczanie zasobów",
    "pt": "A limpar pacotes",
    "ro": "Se curăță pachetele",
@@ -789,6 +845,7 @@
    "zh": "正在清理数据包"
   },
   "Database": {
+   "af": "Databasis",
    "ar": "قاعدة بيانات",
    "ca": "Base de datos",
    "cs": "Databáze",
@@ -815,6 +872,7 @@
    "zh": "数据库"
   },
   "Deleting Library": {
+   "af": "Skrap Biblioteek",
    "ar": "جاري حذف المكتبة",
    "ca": "Borrando Biblioteca",
    "cs": "Mazání knihovny",
@@ -833,6 +891,7 @@
    "lt": "Ištrinti biblioteką",
    "nb": "Sletter bibliotek",
    "nl": "Bibliotheek Verwijderen",
+   "no": "Sletter bibliotek",
    "pl": "Usuwanie biblioteki",
    "pt": "Apagando biblioteca",
    "ro": "Se șterge biblioteca",
@@ -845,6 +904,7 @@
    "zh": "正在删除库"
   },
   "Deleting section {1}": {
+   "af": "Skrap afdeling {1}",
    "ar": "جاري حذف القسم {1}",
    "ca": "Borrando sección {1}",
    "cs": "Mazání sekce {1}",
@@ -863,6 +923,7 @@
    "lt": "Ištrynus skirsnį {1}",
    "nb": "Sletter seksjon {1}",
    "nl": "Sectie {1} verwijderen",
+   "no": "Sletter seksjon {1}",
    "pl": "Usuwanie sekcji {1}",
    "pt": "Apagando seção {1}",
    "ro": "Se șterge secțiunea {1}",
@@ -875,6 +936,7 @@
    "zh": "正在删除第 {1} 部分"
   },
   "Deleting {1} media bundles": {
+   "af": "Skrap {1} mediabundels",
    "ar": "جاري حذف حزم وسائط {1}",
    "ca": "Borrando {1} paquetes de contenido",
    "cs": "Mazání {1} balíčků médií ",
@@ -893,6 +955,7 @@
    "lt": "Ištrina {1} medijų rinkinius",
    "nb": "Sletter {1} mediebunter",
    "nl": "{1} mediabundels verwijderen",
+   "no": "Sletter {1} mediebunter",
    "pl": "Usuwanie {1} zasobów multimedialnych",
    "pt": "A apagar {1}  pacotes de conteúdo",
    "ro": "Se șterg {1} pachete media",
@@ -905,6 +968,7 @@
    "zh": "正在删除 {1} 个媒体包"
   },
   "Deleting {1} metadata bundles": {
+   "af": "Skrap {1} metadatabundels",
    "ar": "حذف {1} حزم البيانات الوصفية",
    "ca": "Borrando {1} paquetes de metadatos",
    "cs": "Mazání {1} balíčků metadat",
@@ -923,6 +987,7 @@
    "lt": "Ištrinant {1} metaduomenų rinkinius",
    "nb": "Sletter {1} metadatabunter",
    "nl": "{1} metadata bundels verwijderen",
+   "no": "Sletter {1} metadatabunter",
    "pl": "Usuwanie {1} zasobów metadanych",
    "pt": "A apagar {1} pacotes de informações",
    "ro": "Se șterg {1} pachete de metadate",
@@ -935,6 +1000,7 @@
    "zh": "正在删除 {1} 个元数据包"
   },
   "Generating video chapter thumbnails": {
+   "af": "Genereer videohoofstukduimnaels",
    "ca": "Generando miniaturas de capítulos de video",
    "cs": "Generování náhledů miniatur kapitol",
    "da": "Genererer miniaturebilleder til videokapiteler",
@@ -950,6 +1016,7 @@
    "ko": "챕터 미리보기 생성중",
    "nb": "Genererer miniatyrbilder til kapitler",
    "nl": "Genereer video hoofdstuk miniaturen",
+   "no": "Genererer miniatyrbilder til kapitler",
    "pl": "Generowanie miniatur rozdziałów wideo",
    "pt": "A gerar miniaturas de vídeo dos capítulos",
    "ru": "Создание видеопревью",
@@ -960,6 +1027,7 @@
    "zh": "生成章节缩略图"
   },
   "Optimizing Database": {
+   "af": "Optimeer Databasis",
    "ar": "تحسين قاعدة البيانات",
    "ca": "Optimizando la Base de Datos",
    "cs": "Optimalizování databáze",
@@ -978,6 +1046,7 @@
    "lt": "Duomenų bazės optimizavimas",
    "nb": "Optimaliser database",
    "nl": "Database optimaliseren",
+   "no": "Optimaliser database",
    "pl": "Optymalizowanie bazy danych",
    "pt": "A optimizar a base de dados.",
    "ro": "Optimizează baza de date",
@@ -990,6 +1059,7 @@
    "zh": "正在优化数据库"
   },
   "Optimizing database": {
+   "af": "Optimeer tans databasis",
    "ar": "تحسين قاعدة البيانات",
    "ca": "Optimizando la base de datos",
    "cs": "Optimalizování databáze",
@@ -1008,6 +1078,7 @@
    "lt": "Duomenų bazės optimizavimas",
    "nb": "Optimaliserer databasen",
    "nl": "Database optimaliseren",
+   "no": "Optimaliserer databasen",
    "pl": "Optymalizowanie bazy danych",
    "pt": "A optimizar a base de dados.",
    "ro": "Optimizarea bazei de date",
@@ -1020,6 +1091,7 @@
    "zh": "正在优化数据库"
   },
   "Processing subscriptions": {
+   "af": "Verwerk tans intekenings",
    "ar": "معالجة الاشتراكات",
    "ca": "Procesando subscripciones",
    "cs": "Zpracovávání předplatného",
@@ -1038,6 +1110,7 @@
    "lt": "Prenumeratos apdorojimas",
    "nb": "Behandler abonnement",
    "nl": "Abonnementen verwerken",
+   "no": "Behandler abonnement",
    "pl": "Przetwarzanie subskrypcji",
    "pt": "Processando assinaturas",
    "ro": "Prelucrarea abonamentelor",
@@ -1050,6 +1123,7 @@
    "zh": "处理订阅"
   },
   "Scanning": {
+   "af": "Skandeer Tans",
    "ar": "جاري التفحص",
    "ca": "Escaneando",
    "cs": "Prohledávání",
@@ -1067,6 +1141,7 @@
    "lt": "Skanuoja",
    "nb": "Skanner",
    "nl": "Scannen",
+   "no": "Skanner",
    "pl": "Skanowanie",
    "pt": "A actualizar",
    "ru": "Сканирование",
@@ -1078,6 +1153,7 @@
    "zh": "正在扫描"
   },
   "Scanning {1}": {
+   "af": "Skandeer {1}",
    "ar": "جاري تفحص {1}",
    "ca": "Escaneando {1}",
    "cs": "Prohledávání {1}",
@@ -1094,6 +1170,7 @@
    "lt": "Skanuoja {1}",
    "nb": "Skanner {1}",
    "nl": "Scannen {1}",
+   "no": "Skanner {1}",
    "pl": "Skanowanie {1}",
    "pt": "A actualizar {1}",
    "ru": "Сканирование {1}",
