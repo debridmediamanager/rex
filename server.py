@@ -16657,6 +16657,8 @@ class PlexSim:
         """
         rows = []
         for entry in self.sessions.live():
+            if not entry.get("_listed"):
+                continue
             row = entry.get("row") or {}
             if entry.get("_list"):
                 # Cycle 59, measured on plexscratch42: a playlist's session row is the
@@ -16754,7 +16756,11 @@ class PlexSim:
             item["_session"] = True
             item["User"] = entry["User"]
             item["Player"] = entry["Player"]
-            item["Session"] = entry["Session"]
+            # Cycle 61, measured on plexscratch42: `Session` is there only once THIS
+            # playback session has asked for a decision -- a session that only sends
+            # timelines has none -- and it stays when the session moves on to another row.
+            if any(pair[0] == entry.get("id") for pair in self.decided):
+                item["Session"] = entry["Session"]
             rows.append(item)
         return rows
 
