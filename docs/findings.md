@@ -10548,6 +10548,20 @@ back clean; axes 3, 6 and 9 did not.
 **Recorded, not built.** A collection renamed through its ITEM path and then deleted leaves its
 original tag on the members (no client renames a collection that way).
 
+#### The sixty-second pass — eight axes clean
+
+Cycle 62 repeated all ten axes. Axes 1, 2, 4, 5, 6, 7, 9 and 10 were clean; axes 3 and 8 each
+had one client-visible finding.
+
+* **After a section-path collection rename a member's LIGHT row keeps the OLD name** -- grid,
+  section search, Recently Added; the first name through a chain of renames -- while its detail
+  row and the `/collection` axis carry the new one. A collection tag written on the item refreshes
+  it and the delete clears it. Both copies, and python-plexapi's `section.all()` against
+  `fetchItem()`. It had sat in cycle 60's axis-3 diff undispositioned, and cycle 61's 409 hid it.
+* **The timeline's `Bandwidths` block is withheld from `X-Plex-Product: Plex for Windows`** --
+  exactly that spelling, any platform -- while the decision, the session row and its `Session`
+  block match every other product (plexscratch42, 48 platform x product cells).
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

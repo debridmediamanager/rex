@@ -5360,3 +5360,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 62 result. A: no findings. B: 1 client-visible (axis 8). C: 1 client-visible (axis 3). Two fix commits. ====
