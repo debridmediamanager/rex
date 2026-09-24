@@ -3018,6 +3018,11 @@ precisely how the Seasons bug survived a fix attempt.
 - **`/:/prefs` pages like a listing.** A capture sending `X-Plex-Container-Size: 20` reads twenty
   settings and nothing says so; cycle 60 took that for the token's reach.
 
+- **A renamed collection's members keep the OLD name on their LIGHT rows** until a collection
+  tag is written on the item itself; the detail row and the axis move at once. A private
+  `_collectionLight` map carries it, and only `_public_row`'s whitelist lets it reach `_grid_row`.
+- **`Bandwidths` is withheld from `X-Plex-Product: Plex for Windows`** and from nothing else.
+
 ## Conventions
 
 - Comments explain **what was measured and why the obvious thing is wrong**,
