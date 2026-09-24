@@ -16579,8 +16579,13 @@ class PlexSim:
             # state alone, so it was present before any decision and absent on the
             # stop -- exactly inverted at both ends. The resolution here is the
             # LABEL (`1080p`), not the raw `videoResolution`.
+            # Cycle 62, measured on plexscratch42 over 48 platform x product cells: withheld
+            # for `X-Plex-Product: Plex for Windows` alone, in exactly that spelling.
+            product = (headers.get("X-Plex-Product") if headers else None) \
+                or query.get("X-Plex-Product")
             if (self._playback_session(query, headers),
-                    int(rating_key)) in self.decided and bitrate:
+                    int(rating_key)) in self.decided and bitrate \
+                    and product != "Plex for Windows":
                 resolution = media.get("videoResolution") or ""
                 fields["Bandwidths"] = [{"Bandwidth": [{
                     "time": 0, "bandwidth": int(round(bitrate * 2.1)),

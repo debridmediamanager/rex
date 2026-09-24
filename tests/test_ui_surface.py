@@ -32626,6 +32626,32 @@ def main():
           light_c62a == ["Rg62 Old " + token_c62a] and detail_c62a == ["Rg62 New " + token_c62a]
           and gone_c62a == [], str((light_c62a, detail_c62a, gone_c62a)))
 
+    # Cycle 62, measured on plexscratch42 (1.42.2) over 48 platform x product cells: the
+    # timeline's `Bandwidths` block is withheld for `X-Plex-Product: Plex for Windows` --
+    # exactly that spelling -- whatever the platform, while the decision, the session row and
+    # its `Session` block are the same as for any other product. `Plex for Mac` and `Plex HTPC`
+    # keep it.
+    _, grid_c62b, _ = get(base, "/library/sections/%s/all" % movie_section)
+    rk_c62b = ((grid_c62b.get("Metadata") or [{}])[0]).get("ratingKey")
+    def bandwidths_c62b(product_c62b, sess_c62b):
+        headers_c62b = {"User-Agent": UA, "Accept": "application/json", "X-Plex-Platform": "Windows",
+                        "X-Plex-Product": product_c62b, "X-Plex-Session-Identifier": sess_c62b,
+                        "X-Plex-Client-Identifier": sess_c62b}
+        def call_c62b(path_c62b):
+            return json.loads(urllib.request.urlopen(urllib.request.Request(
+                base + path_c62b, headers=headers_c62b), timeout=30).read() or b"{}")
+        call_c62b("/video/:/transcode/universal/decision?path=%s&mediaIndex=0&partIndex=0&protocol=http"
+                  "&directPlay=1&directStream=1&hasMDE=1" % quote("/library/metadata/%s" % rk_c62b))
+        beat_c62b = "/:/timeline?ratingKey=%s&key=%s&identifier=com.plexapp.plugins.library&time=1000&duration=1800000" \
+                    % (rk_c62b, quote("/library/metadata/%s" % rk_c62b))
+        body_c62b = call_c62b(beat_c62b + "&state=playing").get("MediaContainer") or {}
+        call_c62b(beat_c62b + "&state=stopped")
+        return "Bandwidths" in body_c62b
+    windows_c62b = bandwidths_c62b("Plex for Windows", "rg62win")
+    mac_c62b = bandwidths_c62b("Plex for Mac", "rg62mac")
+    check("the timeline withholds Bandwidths from Plex for Windows alone",
+          windows_c62b is False and mac_c62b is True, str((windows_c62b, mac_c62b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
