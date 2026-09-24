@@ -1137,7 +1137,12 @@ precisely how the Seasons bug survived a fix attempt.
   neither do `All Movies`, an axis's `title2` or `Unplayed` -- the same words ARE
   translated as a section pivot's `title`, so the table is keyed by ATTRIBUTE and then by
   the English string (`translations.json`, captured by diffing each endpoint against
-  itself in each language).
+  itself in each language). **Cycle 66 corrected the language model** against the 44 values
+  Plex Web actually sends: `no` and `af` have catalogues of their own; `pt-BR` and `pt-PT`
+  read the Brazilian one on EVERY document (`pt-PT` with Portugal's ICU names); `es-419` and
+  `fr-CA` read `es`/`fr` with their own ICU names; and `bg`, `el`, `fa`, `is`, `my`, `th`,
+  `tr`, `vi`, `zh-TW` and `en-GB` have no catalogue (English menus) but ICU country and
+  language names in the full locale.
 - **A real PMS ROUTES before it authenticates.** With no token an unknown path is a
   **404** and only a path that exists is a 401. Of the single-segment paths exactly eleven
   answer 401 (`library hubs playlists devices butler servers clients accounts activities
@@ -1180,7 +1185,8 @@ precisely how the Seasons bug survived a fix attempt.
   `.js` is `text/javascript`, `.html` carries no charset, `.ico` is
   `application/octet-stream`.
 - **`X-Plex-Platform: Roku`** -- that exact spelling -- strips `id` and `Pivot` from every
-  library `Directory` of `/media/providers` and changes nothing else.
+  library `Directory` of `/media/providers` and changes nothing else -- **only for a Roku whose
+  `X-Plex-Version` is absent, unparsable or below 6.4.2** (cycle 66); every shipping Roku keeps them.
 - **Four XML shapes**: a `Meta/Type` orders its children `Filter, Sort, Field`;
   `includeDetails=1` carries no `active`/`activeDirection` on a Sort nor `advanced` on a
   Filter where `includeMeta=1` carries all three; the rows `includeChildren=1` inlines
@@ -2667,7 +2673,8 @@ precisely how the Seasons bug survived a fix attempt.
   regional catalogues: `pt-BR` and `pt-PT` are identical, `hu-HU` is distinct, and the reported
   1.42 build serves 172 of each captured 174 rows. Do not collapse them to their primary subtag,
   and do not project this exception onto unmeasured endpoints. `zh-HK` and `zh-TW` likewise route
-  to their measured English catalogue rather than generic `zh`.
+  to their measured English catalogue rather than generic `zh`. (Cycle 66 measured every other
+  endpoint: `pt-BR` is its own catalogue everywhere, and `zh-TW` keeps Traditional ICU names.)
 - **The legacy single-segment prefix dispatcher is a finite registry, not a prefix algorithm.**
   The durable executed denominator is 58 unique paths (old prose said 57), identical over 174
   reference GETs. Reproduce the captured ordered shapes only; deriving rows from plexsim's own
@@ -3036,6 +3043,12 @@ precisely how the Seasons bug survived a fix attempt.
   (`X-Plex-Language` query, else `Accept-Language`); status and progress frames are not.
 - **`X-Plex-Features` is not inert**: it keys the library hub page's cache, as `X-Plex-Language`
   does, so interleave reads before calling a hub difference drift.
+- **Plex Web sends 44 language values** (`ak.languages` in its bundle), not the 28 the table
+  was captured for; measure a language rule against that list. Activity titles AND the
+  butler's `ProgressNotification` sentences follow the socket's language; a scan's progress
+  and status lines do not.
+- **Sweep with the client's WHOLE header set.** The Roku pivot strip was measured with the
+  platform header alone and is gated on the `X-Plex-Version` every real Roku sends.
 
 ## Conventions
 

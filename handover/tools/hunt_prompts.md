@@ -6621,3 +6621,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 66 result. A: 6 client-visible (no/af, pt-BR, butler progress, regional prefs version, ICU names by full locale, zh-TW Accept-Language), 3 malformed-only (built with the same resolution). B: 1 client-visible (Roku version gate), 1 malformed-only (focus key). C: no findings. Eight fix commits. ====

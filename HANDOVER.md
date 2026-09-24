@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 65 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 66 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 66 | **66 — the locales Plex Web actually sends: 7 CLIENT-VISIBLE findings in 8 fix commits, 1 recorded.** C: zero findings on axes 1, 2, 3, 4, 7, 10. B: the cells cycle 65 skipped as unstable, read after the write chains, found the Roku pivot strip gated on `X-Plex-Version` < 6.4.2 (axis 8) and the focus key's second mode (recorded). A: axis 5 clean; axis 9 measured against the 44 language values Plex Web sends found six -- `no`/`af` and `pt-BR` catalogues, the butler's progress sentences per socket, the regional settings' version, ICU names by FULL locale, and `zh-TW` skipped in `Accept-Language` |
 | Cycle 65 | **65 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 2 recorded.** C: zero findings of either kind on axes 1, 2, 3, 4, 7, 10. B: python-plexapi's writes and playback per identity repeated clean, then widened to every identity header the 1.42.2 binary reads and the 15 client identities as whole header sets -- two malformed-only (`X-Plex-Client-Platform` as a second platform spelling; the hub page's cache keyed on `X-Plex-Features`/`X-Plex-Language`). A: the rendered client and 18 localised captures clean; the notification socket, walked in ten languages for the first time, found the Activity menu's titles never localised (axis 9) |
 | Cycle 64 | **64 — the catalogue as an instrument: 2 CLIENT-VISIBLE findings in 2 fix commits.** C: zero findings on axes 1, 2, 3, 4, 7, 10. B: the whole product and platform vocabulary of the binary swept over 40 read paths on four servers -- one product-keyed rule plexsim lacked (`Plex Home Theater`'s five-component version, axis 8). A: the rendered client clean in English and in 18 localised captures, and a new instrument, the reference's `plex.mo` catalogues, found an unwalked dialog -- a collection's Advanced settings never localised (axis 9). Hunt A stalled once mid-run on a dead background monitor and was resumed |
 | Cycle 63 | **63 — nine axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits.** A and C reported no client-visible findings on axes 1, 2, 3, 4, 5, 7, 9, 10 (A one malformed-only, C none at all); B found two on axis 8 by sweeping the product strings the binary carries across the two product-keyed rules -- the codec suffix is 21 products, not 13, and `Bandwidths` is withheld from `Plex for Windows Phone` too |
@@ -99,12 +100,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 65" names what it must cover** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 66" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 66 | UI **1,941/1,941** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes (one cycle-50 check re-based on this cycle's measurement); LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,631 | **7 client-visible** in **8 fix commits**, every one proved fail-then-pass by `sdrive.py`; **1 recorded**. **4 recorded beliefs overturned** (the 28-language model, the Roku strip, the scan-only ProgressNotification rule, the regional settings' version) |
 | 65 | UI **1,933/1,933** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,544 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **2 recorded**. **1 recorded belief refined** (cycle 25's "`X-Plex-Features` is inert") |
 | 64 | UI **1,932/1,932** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,476 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass; **2 recorded** |
 | 63 | UI **1,930/1,930** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,467 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass; **2 recorded** (A's sorts, B's sidecar-burn decision) |
@@ -522,6 +524,10 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **A regional form works like its primary subtag, an unknown language falls back to English, and 28 languages answer differently** (cycles 16, 45, 50) | Measured against the 44 values Plex Web sends: `no` and `af` have catalogues; `pt-BR`/`pt-PT` read the Brazilian one on every document; `es-419`/`fr-CA` read `es`/`fr`; ten locales have no catalogue but ICU names in the full locale; `zh-TW`/`zh-HK`/`zh-Hant` are skipped in `Accept-Language` | A | cycle 66 |
+| **`X-Plex-Platform: Roku` strips a library row's `id` and `Pivot`** (cycle 16) | Only for a Roku whose `X-Plex-Version` is absent, unparsable or below 6.4.2 -- measured with the platform header alone, which no shipping Roku sends | A | cycle 66 |
+| **`ProgressNotification` stays English** (cycle 65) | A SCAN's does; the butler's sentences are catalogue ids and follow the socket's language | B | cycle 66 |
+| **The regional `/:/prefs` catalogues are 1.42.2's** (cycle 50, captured off kids) | Three rows carried 1.43.4's wording; re-read off zen | A | cycle 66 |
 | **`X-Plex-Features` is inert** (cycle 25, a `/hubs` positive under it dismissed as kids' own drift) | It KEYS the library hub page's cache: every new value (nonsense included, header or query) and every new `X-Plex-Language` is a fresh roll of the page's random shelves, stable per key. Interleaved reads on kids, zen and plexscratch42 never moved the bare baseline. Recorded, not built (§8): no single client can see it | B | cycle 65 |
 | **An item's Advanced language enums are translated for every language `translations.json` lacks** (cycle 50) | Only the three LANGUAGE-LIST enums are; the injection keyed on the default's label caught `-1:Library default|0:Show|1:Hide`, `showOrdering` and every other library-default enum, so under `en` a show's Seasons dropdown offered 46 languages | C | cycle 59 |
 | **A stream's extended title decides the language part's omission on the ENGLISH name and renders the English one** (cycle 17) | It decides on the STORED name and renders the LOCALISED one: zen's track titled "French" reads `French (French SRT)` under `en` and `www.TamilRockers.com (Englisch Erzwungen SRT)` under `de`. Held out over 23,832 cells | B | cycle 60 |
@@ -3730,6 +3736,37 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 66 — the locales Plex Web actually sends
+
+**C** reported exactly zero findings of either kind on axes 1, 2, 3, 4, 7 and 10 (it ran out of
+local ports once, `Errno 49`, and re-ran the damaged flows after the axis-7 sweep; it also found
+the shell's wrapped `diff` printing "Files are identical" for files that differ -- compare with
+`/usr/bin/cmp`). **B** repeated every regression and matrix clean, then read the cells cycle 65 had
+SKIPPED as unstable after the write chains instead of during them: the Roku pivot strip is gated on
+`X-Plex-Version` < 6.4.2 (built -- tagged by the hunter as malformed-only for want of a Roku
+capture, re-tagged client-visible because every shipping Roku sends a version) and
+`X-Plex-Container-Focus-Key` wins over an explicit start on the recently-added family (recorded).
+**A** repeated the rendered walk clean and measured the language rule against Plex Web's own list
+of 44 values: six client-visible, built from two fresh zen captures (`capture_i18n.py` with
+`I18N_LANGS`, 16 locales; `capture_locale_tables.py`, the names/leads/words/templates) and the
+catalogues (`build_activity_strings.py`), merged only where the table already held the English
+source; the sources zen's paths do not reach were completed from plexscratch42 and zen by hand.
+
+**Process.** The first zen capture was killed without a word after 13 of 16 locales: with
+`I18N_KEEP_SAME=1` it held ~291,000 cells per language. Capture new locales WITHOUT it, in
+batches that each write their own file.
+
+**The axis ledger after cycle 66.** Axes 1, 2, 3, 4, 5, 6, 7 and 10 clean; 8 found one, 9 six.
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | **clean seven times** (60-66) |
+| 3 | Client write flows | **clean four times** (63-66) |
+| 5 | The rendered client | **clean seven times** |
+| 6 | python-plexapi's writes | **clean five times** (62-66) |
+| 8 | Playback per client identity | found 1 (the Roku version gate); repeat with whole header sets |
+| 9 | Localisation | found 6 (the 44 Plex Web locales); repeat |
+
 ### Cycle 65 — the notification socket in ten languages
 
 **C** reported exactly zero findings of either kind on axes 1, 2, 3, 4, 7 and 10. **B** repeated
@@ -5055,6 +5092,22 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 66** (recorded, not built):
+
+- `X-Plex-Container-Focus-Key` has two modes: on a grid it supplies the start only when
+  `X-Plex-Container-Start` is absent (cycle 45, built); on the recently-added family (a section's
+  `/recentlyAdded`, `/newest`, `/search`, the global `/library/recentlyAdded`, a show's
+  `/allLeaves`) it WINS over any start, the page is `[max(0, i-(N-1)//2), +N)` clipped at the end,
+  `offset` echoes the sent start (absent when none), and a season row in the global list is not
+  matched. No client on disk sends the header.
+- Hunt A's three malformed-only rules (`Accept-Language` alone on plain HTTP for `pt-BR`/`zh-TW`,
+  `no`/`af`; the `hu-HU` regional rows) came out of the same resolution and data and are BUILT.
+- Table sources zen's capture paths do not reach and no 1.42.2 surface plexsim emits carries
+  (1.43.4's codec-axis titles and legacy-agents row, content strings) stay English for `af` and
+  `pt-BR`.
+- `asyncCheckFiles=1`'s `Part.accessible`/`exists` are time-dependent on a real PMS (zen 4/6 reads
+  with them); plexsim always sends them. Not a client-visible rule.
 
 **Cycle 65** (recorded, not built):
 
