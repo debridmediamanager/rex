@@ -1547,8 +1547,9 @@ One cycle, as run for cycles 8–15:
 8. **Run every suite** on the fixture and on the full catalog, from a freshly restarted server.
 9. **Document.** A `#### The Nth pass …` section in `docs/findings.md` inserted just before
    `### Emulation calibrated against the account's own claimed servers`, ending with a "Measured
-   and not acted on" list that includes what was REFUTED; trap bullets in `CLAUDE.md` just
-   before `## Conventions`; and this file — §2, §3.2, §3.3, §7 and §8.
+   and not acted on" list that includes what was REFUTED; trap bullets at the end of
+   `docs/protocol-traps.md` (moved out of `CLAUDE.md`, which keeps only the agent
+   instructions and the harness traps); and this file — §2, §3.2, §3.3, §7 and §8.
 10. **Commit and push.** Scan the whole branch diff for secrets (both tokens, `X-Plex-Token=…`,
     real-debrid `/d/` links) **in the same `&&` chain as the commit**, so the scan gates it.
     Commit as `Ben Adrian Sarmiento <me@bensarmiento.com>`, semantic single-line messages, **no
