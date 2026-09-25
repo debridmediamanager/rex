@@ -64,7 +64,10 @@ class Tap:
         path = ctx.options.taplog
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "a") as fh:
-            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            # ASCII escapes: a body can carry a lone surrogate (a mis-decoded byte), which
+            # a UTF-8 file refuses -- the addon then dropped the flow. Measured with Plex for
+            # Android's traffic.
+            fh.write(json.dumps(rec, ensure_ascii=True) + "\n")
 
     def error(self, flow: http.HTTPFlow):
         """A failed flow is evidence too -- a TLS refusal names a pinned host."""
