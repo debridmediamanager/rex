@@ -196,6 +196,141 @@ def plex_guid(kind, seed):
     return "plex://%s/%s" % (kind, hashlib.sha1(("plexsim/%s/%s" % (kind, seed)).encode()).hexdigest()[:24])
 
 
+PROVIDER = "https://metadata.provider.plex.tv"
+
+
+class PlexProvider:
+    """Plex's own metadata agent, asked for the one thing TMDB cannot give: the item's
+    real `plex://` guid.
+
+    Cycle 70, measured with the native Plex for Android app (2026.9.0) in an emulator:
+    a movie or show page whose `guid` is not one plex.tv knows never asks luma.plex.tv
+    for its detail screen, so its action row (Watchlist, Rate, Mark as Watched, More)
+    stays a skeleton and a show's Seasons block spins forever. Swapping plexsim's minted
+    guid for the real one through the proxy, and nothing else, made the same page draw
+    both. A real PMS gets the guid from this agent: the lab's outbound capture shows
+    `POST /library/metadata/matches` and then the item's `children`. The match accepts
+    the external id plexsim already holds (`{"type": 2, "guid": "tmdb://5920"}`), and a
+    season's and an episode's guids are the parent's `children` by `index`.
+
+    Needs a Plex account token (`PLEX_TOKEN`); without one, or offline, every lookup
+    answers None and the minted guid stands. Answers are cached on disk like TMDB's.
+    """
+
+    KIND_TYPE = {"movie": 1, "show": 2}
+
+    def __init__(self, token, cache_path, opener=None):
+        self._token = token
+        self._cache_path = cache_path
+        self._open = opener or self._urlopen
+        self._cache = {}
+        if cache_path and os.path.exists(cache_path):
+            try:
+                with open(cache_path) as handle:
+                    self._cache = json.load(handle)
+            except ValueError:
+                self._cache = {}
+
+    def _urlopen(self, method, path, body):
+        headers = {
+            "X-Plex-Token": self._token,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Plex-Product": "Plex Media Server",
+            "X-Plex-Provider-Version": "6.5.0",
+            "X-Plex-Client-Identifier": "plexsim",
+        }
+        if method == "GET":
+            # The agent pages at 50 (the lab capture); 500 is refused with a 400.
+            headers.update({"X-Plex-Container-Start": "0", "X-Plex-Container-Size": "50"})
+        request = urllib.request.Request(
+            PROVIDER + path, method=method, headers=headers,
+            data=json.dumps(body).encode() if body is not None else None)
+        with urllib.request.urlopen(request, timeout=25) as response:
+            return json.load(response)
+
+    def _call(self, method, path, body=None):
+        key = "%s %s %s" % (method, path, json.dumps(body, sort_keys=True) if body else "")
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            payload = self._open(method, path, body)
+        except Exception:
+            return None
+        self._cache[key] = payload
+        if self._cache_path:
+            with open(self._cache_path, "w") as handle:
+                json.dump(self._cache, handle)
+        return payload
+
+    def match(self, kind, external_ids):
+        """(guid, slug) of the provider's item for a movie or show, or None."""
+        for external in sorted(external_ids, key=lambda value: not value.startswith("tmdb://")):
+            payload = self._call("POST", "/library/metadata/matches",
+                                 {"type": self.KIND_TYPE[kind], "guid": external})
+            rows = ((payload or {}).get("MediaContainer") or {}).get("Metadata") or []
+            if rows and rows[0].get("guid", "").startswith("plex://%s/" % kind):
+                return rows[0]["guid"], rows[0].get("slug")
+        return None
+
+    def children(self, guid):
+        """{index: guid} of a show's seasons or a season's episodes."""
+        payload = self._call("GET", "/library/metadata/%s/children" % guid.rsplit("/", 1)[-1])
+        rows = ((payload or {}).get("MediaContainer") or {}).get("Metadata") or []
+        return {row["index"]: row["guid"] for row in rows if "index" in row and row.get("guid")}
+
+
+def apply_plex_guids(items, provider):
+    """Relink a built catalog's movie, show, season and episode guids to the provider's.
+
+    Rows the provider cannot place keep the guid they have. Every copy of a relinked
+    guid moves with it -- a season's `parentGuid`, an episode's `parentGuid` and
+    `grandparentGuid` -- and a matched movie or show takes the provider's `slug` (a
+    real slug is the agent's, not the slugified title: HANDOVER §3.3, cycle 20), which
+    a season's `parentSlug` and an episode's `grandparentSlug` repeat. Returns the
+    number of rows relinked.
+    """
+    relinked = 0
+    for row in items:
+        kind = row.get("type")
+        if kind not in ("movie", "show"):
+            continue
+        found = provider.match(kind, [g["id"] for g in row.get("Guid") or [] if g.get("id")])
+        if not found:
+            continue
+        guid, slug = found
+        row["guid"] = guid
+        if slug:
+            row["slug"] = slug
+        relinked += 1
+        if kind != "show":
+            continue
+        seasons = provider.children(guid)
+        for season in items:
+            if season.get("type") != "season" or season.get("parentRatingKey") != row["ratingKey"]:
+                continue
+            season["parentGuid"] = guid
+            if slug:
+                season["parentSlug"] = slug
+            season_guid = seasons.get(season.get("index"))
+            if season_guid:
+                season["guid"] = season_guid
+                relinked += 1
+            episodes = provider.children(season_guid) if season_guid else {}
+            for episode in items:
+                if episode.get("type") != "episode" or episode.get("parentRatingKey") != season["ratingKey"]:
+                    continue
+                episode["grandparentGuid"] = guid
+                episode["parentGuid"] = season.get("guid")
+                if slug:
+                    episode["grandparentSlug"] = slug
+                episode_guid = episodes.get(episode.get("index"))
+                if episode_guid:
+                    episode["guid"] = episode_guid
+                    relinked += 1
+    return relinked
+
+
 def _people(credits, job=None, department=None, limit=6):
     rows = []
     if job or department:

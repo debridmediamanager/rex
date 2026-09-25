@@ -2731,3 +2731,10 @@ are changing; replay the client's exact request before altering behavior.
   6558/6559/6560): an unmatched one has no `showOrdering` enum and another content head, so the
   comparison is silently empty. A socket's regional catalogue (`hu-HU` reads `hu_HU`) answers
   before the one it is based on.
+- **A `plex://` guid must be one plex.tv knows.** The native Plex for Android app (2026.9.0,
+  cycle 70) never asks luma.plex.tv for a movie's or show's detail screen when the guid is
+  minted, so the action row stays a skeleton and a show's Seasons block spins forever. The
+  catalog takes Plex's own guids from `metadata.provider.plex.tv` (`POST
+  /library/metadata/matches {"type":1|2,"guid":"tmdb://N"}`, then `children` by `index`):
+  `build_catalog.py --relink` with `PLEX_TOKEN`. The provider refuses `X-Plex-Container-Size:
+  500` with a 400; the agent pages at 50.
