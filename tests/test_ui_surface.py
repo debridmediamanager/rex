@@ -33020,6 +33020,41 @@ def main():
           all(n and not with_part and n == with_count
               for n, with_part, with_count in parts_c70.values()), str(parts_c70))
 
+    def app_beat_c70(rk_b, duration_b, position_b, state_b, session_b, extra_b=()):
+        # One of Plex for Android's timeline beats (js:994737), its exact parameter set.
+        query_b = urllib.parse.urlencode([
+            ("key", "/library/metadata/%s" % rk_b), ("ratingKey", rk_b), ("playQueueItemID", "1"),
+            ("duration", duration_b), ("time", position_b), ("playbackTime", position_b),
+            ("hasMDE", "1"), ("context", "null:null"), ("state", state_b),
+            ("X-Plex-Playback-Session-Id", session_b), ("X-Plex-Playback-Id", "p70")] + list(extra_b))
+        req_b = urllib.request.Request(base + "/:/timeline?" + query_b, headers={
+            "Accept": "application/json", "User-Agent": UA,
+            "X-Plex-Product": "Plex for Android (Mobile)", "X-Plex-Platform": "Android",
+            "X-Plex-Client-Identifier": "c70-app", "X-Plex-Session-Id": session_b})
+        with urllib.request.urlopen(req_b, timeout=30) as response_b:
+            return json.loads(response_b.read())["MediaContainer"]
+    # Cycle 70, measured on plexscratch42 (1.42.2) and kids (1.43.4): a play a timeline
+    # completes writes a history row with NO viewType, listed by the plain call (Plex for
+    # Android's Play History, js:1622286) and by type=0; a scrobble's row is viewType 1.
+    rk_c70 = spare or movie
+    dur_c70 = get(base, "/library/metadata/%s" % rk_c70)[1]["Metadata"][0]["duration"]
+    request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70)
+    app_beat_c70(rk_c70, dur_c70, 60000, "playing", "c70-hist")
+    app_beat_c70(rk_c70, dur_c70, dur_c70 * 95 // 100, "playing", "c70-hist")
+    app_beat_c70(rk_c70, dur_c70, dur_c70 * 95 // 100, "stopped", "c70-hist")
+    def hist_c70(extra_c70=""):
+        rows_c70 = get(base, "/status/sessions/history/all?metadataItemID=%s&sort=viewedAt:desc%s"
+                       % (rk_c70, extra_c70))[1].get("Metadata") or []
+        return [r.get("viewType") for r in rows_c70]
+    plain_c70, one_c70, zero_c70 = hist_c70(), hist_c70("&type=1"), hist_c70("&type=0")
+    request(base, "PUT", "/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70)
+    plain2_c70, one2_c70 = hist_c70(), hist_c70("&type=1")
+    request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70)
+    check("a session play's history row has no viewType and the plain call lists it",
+          plain_c70 == [None] and one_c70 == [] and zero_c70 == [None]
+          and plain2_c70 == [None] and one2_c70 == [1],
+          str((plain_c70, one_c70, zero_c70, plain2_c70, one2_c70)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

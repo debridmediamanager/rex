@@ -20549,7 +20549,9 @@ class PlexSim:
     def _history_row(cls, entry):
         """One history row as the single read projects it."""
         row = {name: entry[name] for name in cls.HISTORY_ROW_FIELDS if entry.get(name) is not None}
-        row["viewType"] = 1
+        # Cycle 70: only a scrobble's row carries it; a session play's single read has none.
+        if entry.get("viewType") is not None:
+            row["viewType"] = entry["viewType"]
         # Cycle 27: the FIELDS were right and the ORDER was not. `_split` buckets a row
         # by its element and `type`, so this projection was sorted as an ordinary
         # `Video[movie]` -- `type, title, librarySectionID, ...` -- where both references
@@ -20566,10 +20568,9 @@ class PlexSim:
         key/ratingKey/parentKey/grandparent*/index/parentIndex, a movie carries
         title and originallyAvailableAt.
         """
-        # Cycle 15: every listing row carries `viewType: 1`, which is also the
-        # column `type=` matches -- see the gate below. plexsim put `viewType` on
-        # the single read only, so the column `type=` filters on was not on the row.
-        rows = [dict(row, viewType=1) for row in self.library.history()]
+        # Cycle 15: a listing row carries its `viewType`, which is also the column
+        # `type=` matches -- see the gate below. Cycle 70: only a scrobble's row has one.
+        rows = [dict(row) for row in self.library.history()]
         # Measured: this page filters and sorts, and plexsim ignored all of it --
         # so Top Users' "View Play History" link (`accountID=&viewedAt=`) and the
         # per-item history link (`metadataItemID=`) both showed the whole server's
@@ -20632,13 +20633,21 @@ class PlexSim:
         #
         # plexsim ignored `type=` completely, so it answered its whole history where a
         # real PMS answers none, and answered every row to `type=2` as well.
-        wanted_types = set()
+        # Cycle 70 REFINES that, measured on plexscratch42 (1.42.2) and kids (1.43.4): a
+        # row with NO `viewType` -- the one a timeline completion writes -- is type 0,
+        # and an absent `type=` means `type=0`. So the plain call lists every play a
+        # session completed and no scrobble, `type=1` the scrobbles alone, `type=0,1`
+        # both. Cycle 15 measured histories that held scrobble rows only (zen's 73, kids'
+        # five), so its plain call looked empty. Plex for Android's Play History screen
+        # (js:1622286) and python-plexapi's `history()` send no `type`, and after a
+        # watch in the app plexsim showed none.
+        wanted_types = {0}
         if "type" in query:
             parts = str(query.get("type") or "").split(",")
             if not all(p.lstrip("-").isdigit() and p.lstrip("-") for p in parts):
                 return ("error", 400, "plexsim: bad request")
             wanted_types = {int(p) for p in parts}
-        rows = [r for r in rows if int(r.get("viewType") or 1) in wanted_types]
+        rows = [r for r in rows if int(r.get("viewType") or 0) in wanted_types]
         for name, field in (("accountID", "accountID"),
                             ("deviceID", "deviceID"),
                             ("librarySectionID", "librarySectionID"),

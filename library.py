@@ -475,7 +475,7 @@ class Library:
                 # copy's already-recorded session-bound limit (HANDOVER section 8,
                 # cycle 9) -- so only the additive half is asserted, the half where the
                 # instrument produced a row rather than failed to.
-                self.record_view(leaf, account_id, device_id)
+                self.record_view(leaf, account_id, device_id, view_type=1)
             else:
                 leaf.pop("viewCount", None)
                 leaf.pop("viewOffset", None)
@@ -747,7 +747,7 @@ class Library:
 
     # -- play history ----------------------------------------------------
 
-    def record_view(self, row, account_id=1, device_id=1):
+    def record_view(self, row, account_id=1, device_id=1, view_type=None):
         """One row of `/status/sessions/history/all`.
 
         Field set measured on fun (a production PMS with 3879 rows): an episode
@@ -778,6 +778,12 @@ class Library:
         # both types carries both. The comment above says the field set was measured on
         # fun; both current references disagree with it, and the History page listed the
         # episode with no episode name at all.
+        # Cycle 70, measured on plexscratch42 (1.42.2) and kids (1.43.4) with Plex for
+        # Android's own beats: a SCROBBLE writes a row with `viewType: 1`, and a play a
+        # timeline completes writes one with no `viewType` at all. The two never overlap
+        # -- 191 and 129 rows on the copy -- and the kind decides which listing shows it.
+        if view_type is not None:
+            entry["viewType"] = view_type
         entry["_history"] = True
         if row.get("type") == "episode":
             for source, target in (("parentRatingKey", "parentKey"),
