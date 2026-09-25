@@ -10646,6 +10646,26 @@ the language rule against the 44 values Plex Web's own language list carries.
 recently-added family (a section's `/recentlyAdded`, `/newest`, `/search`, the global list, a
 show's `/allLeaves`), with `offset` echoing the start; no client on disk sends it.
 
+#### The sixty-seventh pass — nine axes clean, and a sweep that never compared what it named
+
+Cycle 67 repeated all ten axes. B (axes 6, 8) and C (axes 1, 2, 3, 4, 7, 10) reported zero
+findings of either kind. A swept all 43 Plex Web language values and found four on axis 9.
+
+* **A show's Episode ordering lead is 1.42.2's**: `sr` `:Библиотека подразумевана`, `da`
+  `:Bibliotekets standard`, `uk` `:Бібліотека за замовчуванням`, localised in `af` and `pt-BR`
+  (zen's matched show 6558; the table held kids' 1.43.4 wording).
+* **A show's and season's Preferred audio/subtitle language lists are localised and re-collated
+  for the new locales** (`af` `:Reeksverstek|en:Engels|ar-SA:Arabies (Saoedi-Arabië)|…`,
+  `zh-TW`, `bg`, `en-GB`, `pt-BR`, …). The item-prefs sweep had paired plexsim's show with an
+  unmatched zen show, so these were never compared.
+* **A socket opened in `hu-HU` reads the `hu_HU` catalogue** for the butler's sentences (`A
+  rendszer képeket készített a 0 fájl fejezeteihez.`), the rule cycle 50 measured on `/:/prefs`.
+* **`nn`/`nn-NO` read Norwegian**, and the Traditional-Chinese skip is the script and region
+  (`zh-Hant-*`, `zh-MO`), not three spellings.
+
+**Recorded, not built.** `DELETE /library/metadata/{collection}` deletes on a real PMS (clients use
+`/library/collections/{id}`); `Accept-Language: nl-BE` alone on HTTP reads `nl_BE`.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
