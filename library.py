@@ -437,7 +437,7 @@ class Library:
             out.extend(self._descendants(child))
         return out
 
-    def scrobble(self, rating_key, watched, account_id=1, device_id=1):
+    def scrobble(self, rating_key, watched, account_id=1, device_id=1, view_type=1):
         """Mark played/unplayed. A show or season marks every episode beneath it.
 
         The client's own menu predicate reads `unviewedLeafCount` for a show, so
@@ -475,7 +475,7 @@ class Library:
                 # copy's already-recorded session-bound limit (HANDOVER section 8,
                 # cycle 9) -- so only the additive half is asserted, the half where the
                 # instrument produced a row rather than failed to.
-                self.record_view(leaf, account_id, device_id, view_type=1)
+                self.record_view(leaf, account_id, device_id, view_type=view_type)
             else:
                 leaf.pop("viewCount", None)
                 leaf.pop("viewOffset", None)
