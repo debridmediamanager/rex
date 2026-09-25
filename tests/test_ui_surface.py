@@ -33055,6 +33055,39 @@ def main():
           and plain2_c70 == [None] and one2_c70 == [1],
           str((plain_c70, one_c70, zero_c70, plain2_c70, one2_c70)))
 
+    def app_beat_c70(rk_b, duration_b, position_b, state_b, session_b, extra_b=()):
+        # One of Plex for Android's timeline beats (js:994737), its exact parameter set.
+        query_b = urllib.parse.urlencode([
+            ("key", "/library/metadata/%s" % rk_b), ("ratingKey", rk_b), ("playQueueItemID", "1"),
+            ("duration", duration_b), ("time", position_b), ("playbackTime", position_b),
+            ("hasMDE", "1"), ("context", "null:null"), ("state", state_b),
+            ("X-Plex-Playback-Session-Id", session_b), ("X-Plex-Playback-Id", "p70")] + list(extra_b))
+        req_b = urllib.request.Request(base + "/:/timeline?" + query_b, headers={
+            "Accept": "application/json", "User-Agent": UA,
+            "X-Plex-Product": "Plex for Android (Mobile)", "X-Plex-Platform": "Android",
+            "X-Plex-Client-Identifier": "c70-app", "X-Plex-Session-Id": session_b})
+        with urllib.request.urlopen(req_b, timeout=30) as response_b:
+            return json.loads(response_b.read())["MediaContainer"]
+    # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): a beat past
+    # 90% completes only when the session's previous beat carried a NON-ZERO position.
+    rk_c70b = spare or movie
+    dur_c70b = get(base, "/library/metadata/%s" % rk_c70b)[1]["Metadata"][0]["duration"]
+    request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70b)
+    app_beat_c70(rk_c70b, dur_c70b, 0, "playing", "c70-zero")
+    zero_c70b = app_beat_c70(rk_c70b, dur_c70b, dur_c70b * 95 // 100, "playing", "c70-zero")
+    app_beat_c70(rk_c70b, dur_c70b, dur_c70b * 95 // 100, "stopped", "c70-zero")
+    zero_count_c70b = get(base, "/library/metadata/%s" % rk_c70b)[1]["Metadata"][0].get("viewCount")
+    app_beat_c70(rk_c70b, dur_c70b, 1, "playing", "c70-one")
+    one_c70b = app_beat_c70(rk_c70b, dur_c70b, dur_c70b * 95 // 100, "playing", "c70-one")
+    app_beat_c70(rk_c70b, dur_c70b, dur_c70b * 95 // 100, "stopped", "c70-one")
+    one_count_c70b = get(base, "/library/metadata/%s" % rk_c70b)[1]["Metadata"][0].get("viewCount")
+    request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70b)
+    check("a crossing beat after a time=0 beat does not complete; after time=1 it does",
+          zero_c70b.get("playbackState") == "ignore" and not zero_count_c70b
+          and one_c70b.get("playbackState") == "complete" and one_count_c70b == 1,
+          str((zero_c70b.get("playbackState"), zero_count_c70b,
+               one_c70b.get("playbackState"), one_count_c70b)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
