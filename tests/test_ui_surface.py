@@ -32940,6 +32940,20 @@ def main():
           af_c67b.startswith(":Reeksverstek|") and "de-DE:Duits" in af_c67b
           and "|ja-JP:日文" in audio_c67b("zh-TW"), af_c67b[:120])
 
+    # Cycle 67, measured on plexscratch42: a Hungarian browser's socket (`hu-HU`) reads the
+    # `hu_HU` catalogue for the butler's sentences, where `hu` reads `hu`.
+    def said_c67c(headers_c67c):
+        _, frames_c67c = notifications(base, lambda: request(
+            base, "POST", "/butler/GenerateChapterThumbs"), seconds=4, headers=headers_c67c)
+        return [n.get("message") for f in frames_c67c
+                for n in f.get("NotificationContainer", {}).get("ProgressNotification") or []]
+    huhu_c67c = said_c67c("Accept-Language: hu-HU,hu;q=0.9\r\n")
+    hu_c67c = said_c67c("Accept-Language: hu\r\n")
+    check("a Hungarian browser's socket reads the hu_HU catalogue",
+          any(str(m).startswith("A rendszer képeket készített") for m in huhu_c67c)
+          and any(str(m).startswith("A rendszer generálta a bélyegképeket") for m in hu_c67c),
+          str((huhu_c67c[:1], hu_c67c[:1])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
