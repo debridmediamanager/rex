@@ -2836,7 +2836,7 @@ TRANSLATED_LANGUAGES = LOCALISED_LANGUAGES - ICU_ONLY_LOCALES
 # of 503 cells identical, the rest name lists), and `pt-PT` answers Brazil's menus with
 # Portugal's names (`Polaco` where `pt-BR` says `Polonês`). A source zen cannot answer --
 # a collection's settings, read off plexscratch42 -- is the catalogue's own entry.
-CATALOGUE_OF = {"es-419": "es", "fr-CA": "fr", "pt-PT": "pt-BR"}
+CATALOGUE_OF = {"es-419": "es", "fr-CA": "fr", "pt-PT": "pt-BR", "hu-HU": "hu"}
 for _entries in TRANSLATIONS.values():
     for _entry in _entries.values():
         for _regional, _base in CATALOGUE_OF.items():
@@ -2889,8 +2889,14 @@ def _accept_language_order(value):
     return [tag for _weight, _index, tag in sorted(ranked)]
 
 
-def request_language(query, headers):
+def request_language(query, headers, regional=False):
     """The language a request asks for, by the measured precedence.
+
+    `regional` is for a notification socket: cycle 67 measured on plexscratch42 that a
+    socket opened with `hu-HU` (a Hungarian browser's handshake, or the query) reads the
+    `hu_HU` catalogue for its activity and butler strings -- `A rendszer képeket készített a
+    0 fájl fejezeteihez.` where `hu` says `A rendszer generálta a bélyegképeket` -- the
+    rule cycle 50 measured for `/:/prefs`, carried to the socket.
 
     Cycle 16 on kids and zen: `X-Plex-Language` beats `Accept-Language` when both are
     sent, either may be a regional form (`de-DE` works like `de`), the query string
@@ -2931,6 +2937,8 @@ def request_language(query, headers):
                     # on a socket opened with `nn-NO,nn;q=0.9`, Firefox's Nynorsk build).
                     if subtags[0] == "nn" and "no" in TRANSLATED_LANGUAGES:
                         return "no"
+                    if regional and subtags == ["hu", "hu"]:
+                        return "hu-HU"
                     # Cycle 66: `pt-BR` and `pt-PT` read the Brazilian catalogue here too
                     # (a Brazilian browser's socket gets `Buscando`, not `A actualizar`).
                     if tag.replace("_", "-").lower() in ("pt-br", "pt-pt") \
@@ -2968,6 +2976,8 @@ def request_language(query, headers):
     # catalogue everywhere, not only on `/:/prefs` -- `Classificação de usuários` where
     # `pt` says `Avaliação da Plateia` -- and `pt-PT` reads the same Brazilian one.
     exact = {"zh-hk": "en", "zh-tw": "en", "pt-br": "pt-BR", "pt-pt": "pt-BR"}
+    if regional and normalized == "hu-hu":
+        return "hu-HU"
     # Cycle 66: the locales whose ICU names differ from their primary subtag's keep the
     # full tag -- `zh-TW` is still English in every menu, and Traditional in its names.
     regional = {"zh-tw": "zh-TW", "en-gb": "en-GB", "es-419": "es-419", "fr-ca": "fr-CA",
@@ -3056,17 +3066,22 @@ def _localise_activity_text(text, language, table=None):
     """
     if not text or not language:
         return text
-    language = CATALOGUE_OF.get(language, language)
     table = ACTIVITY_STRINGS if table is None else table
+    # A regional catalogue answers first (`hu-HU` reads `hu_HU`); an id it lacks reads the
+    # catalogue it is based on (`es-419` reads `es`).
+    fallback = CATALOGUE_OF.get(language)
+
+    def pick(languages):
+        return languages.get(language) or (languages.get(fallback) if fallback else None)
+
     exact = table.get(text)
     if exact is not None:
-        return exact.get(language, text)
+        return pick(exact) or text
     for msgid, languages in table.items():
         head, marker, tail = msgid.partition("{1}")
-        if marker and language in languages and len(text) > len(head) + len(tail) \
+        if marker and pick(languages) and len(text) > len(head) + len(tail) \
                 and text.startswith(head) and text.endswith(tail):
-            return languages[language].replace(
-                "{1}", text[len(head):len(text) - len(tail)])
+            return pick(languages).replace("{1}", text[len(head):len(text) - len(tail)])
     return text
 
 
@@ -22300,7 +22315,7 @@ class Handler(BaseHTTPRequestHandler):
     # Strings that are the LIBRARY's own content rather than the server's own text.
     # Measured: an item title, a tag name and a library name stay as they are in every
     # language; only the server's own vocabulary moves.
-    def _language(self, query):
+    def _language(self, query, regional=False):
         """The language a request asks for, by the measured precedence.
 
         Cycle 16 on kids and zen: `X-Plex-Language` beats `Accept-Language` when both
@@ -22311,7 +22326,7 @@ class Handler(BaseHTTPRequestHandler):
         if query is None:
             query = dict(urllib.parse.parse_qsl(
                 _target_parts(self.path)[1], keep_blank_values=True))
-        return request_language(query, self.headers)
+        return request_language(query, self.headers, regional)
 
     def _regional_server_prefs_language(self):
         """Return the measured regional catalogue for this prefs request, if any."""
@@ -23853,7 +23868,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 65: the socket's language, fixed at the handshake -- `X-Plex-Language` in
         # the query, else the handshake's `Accept-Language`, which is all Plex Web sends
         # (its socket URL carries only the token). Activity titles follow it.
-        language = self._language(None)
+        language = self._language(None, regional=True)
         logger.info("websocket event channel opened filters=%s", filters or "all")
 
         sim = self.server.sim
@@ -23999,7 +24014,7 @@ class Handler(BaseHTTPRequestHandler):
         # Cycle 65: the socket's language, fixed at the handshake -- `X-Plex-Language` in
         # the query, else the handshake's `Accept-Language`, which is all Plex Web sends
         # (its socket URL carries only the token). Activity titles follow it.
-        language = self._language(None)
+        language = self._language(None, regional=True)
 
         def sink(kind, element, rows, deadline=None):
             # Cycle 30: the same send budget as the websocket sink.
