@@ -32994,6 +32994,32 @@ def main():
           and list(colors_c70[0]) == ["topLeft", "topRight", "bottomRight", "bottomLeft"],
           str((got_c70, status_c70, colors_c70)))
 
+    # Cycle 70, measured on zen (1.42.2): `excludeElements=Part` drops the Parts and adds a
+    # trailing `Media.partCount` on LISTING rows too -- Plex for Android sends it on every
+    # library hubs request (js:1518625) -- and on a detail's nested Related rows.
+    parts_c70 = {}
+    for path_c70 in ("/library/sections/%s/all?excludeElements=Part" % movie_section,
+                     "/hubs/sections/%s?count=20&includeLibraryPlaylists=1&includeStations=1"
+                     "&excludeElements=Actor,Collection,Country,Director,Genre,Label,Location,"
+                     "Mood,Part,Producer,Similar,Photo,Role,Vast,Topic,Writer"
+                     "&excludeFields=file,tagline,summary" % movie_section,
+                     "/library/sections/%s/recentlyAdded?excludeElements=Part" % movie_section,
+                     "/library/metadata/%s?includeRelated=1&excludeElements=Part" % movie):
+        body_c70 = get(base, path_c70)[1]
+        rows_c70 = list(body_c70.get("Metadata") or [])
+        for hub_c70 in body_c70.get("Hub") or []:
+            rows_c70 += hub_c70.get("Metadata") or []
+        for row_c70 in list(rows_c70):
+            for hub_c70 in (row_c70.get("Related") or {}).get("Hub") or []:
+                rows_c70 += hub_c70.get("Metadata") or []
+        media_c70 = [m for r in rows_c70 for m in r.get("Media") or []]
+        parts_c70[path_c70.split("?")[0]] = (
+            len(media_c70), sum(1 for m in media_c70 if "Part" in m),
+            sum(1 for m in media_c70 if list(m)[-1:] == ["partCount"]))
+    check("excludeElements=Part drops Parts and adds partCount on listings and nested rows",
+          all(n and not with_part and n == with_count
+              for n, with_part, with_count in parts_c70.values()), str(parts_c70))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

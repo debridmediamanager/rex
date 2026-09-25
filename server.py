@@ -3332,6 +3332,29 @@ EXCLUDABLE_ELEMENTS = {"Media", "Part", "Genre", "Country", "Guid", "Rating",
 NEVER_EXCLUDED = {"Image", "UltraBlurColors"}
 
 
+def _drop_parts(row):
+    """`excludeElements=Part` on one row: each Media loses its Parts (and so their
+    Streams) and gains a trailing `partCount`.
+
+    Cycle 70, measured on zen (1.42.2): this holds on a LISTING row -- a section's
+    `/all`, every hub, `recentlyAdded` -- and on a detail's nested Related rows exactly
+    as cycle 22 measured it on the detail row itself. plexsim applied it only there, and
+    Plex for Android names `Part` on every library hubs request (js:1518625), so it was
+    sent the Part tree of every shelf row with no count in its place.
+    """
+    if not isinstance(row.get("Media"), list):
+        return row
+    media_rows = []
+    for media in row["Media"]:
+        if not isinstance(media, dict) or "Part" not in media:
+            media_rows.append(media)
+            continue
+        trimmed = {k: v for k, v in media.items() if k != "Part"}
+        trimmed["partCount"] = len(media.get("Part") or [])
+        media_rows.append(trimmed)
+    return dict(row, Media=media_rows)
+
+
 def _excluded(query):
     """The element names `excludeElements=` really removes, measured cycle 22."""
     return [e for e in ((query or {}).get("excludeElements") or "").split(",")
@@ -11042,6 +11065,8 @@ class PlexSim:
         if "Media" in excluded:
             trimmed["mediaCount"] = len(node.get("Media") or [])
             trimmed["mediaCountOptimized"] = 0
+        elif "Part" in excluded:
+            trimmed = _drop_parts(trimmed)
         return trimmed
 
     def _sort_key(self, key):
@@ -12019,6 +12044,8 @@ class PlexSim:
                 out["mediaCount"] = (len(row["Media"]) if "Media" in row
                                      else row.get("mediaCount", 0))
                 out["mediaCountOptimized"] = 0
+            elif "Part" in excluded:
+                out = _drop_parts(out)
             trimmed.append(out)
         return trimmed
 
