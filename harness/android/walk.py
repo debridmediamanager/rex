@@ -120,7 +120,12 @@ def to_library(lib):
     if tap(r" library on ", wait=4):
         adb("shell", "input", "tap", "797", "2248")   # See All Libraries
         time.sleep(5)
-        y = 1482 if lib == MLIB else 1632             # row 1 movies, row 2 shows
+        # The sheet is bottom-anchored: its last row sits at 1632 and each row is 150
+        # above the next. LIBROWS is how many libraries the server lists (plexscratch
+        # adds a Playlists row); movies are row 1 and shows row 2.
+        rows = int(os.environ.get("LIBROWS", "2"))
+        top = 1632 - 150 * (rows - 1)
+        y = top if lib == MLIB else top + 150
         adb("shell", "input", "tap", "180", str(y))
         time.sleep(7)
 
@@ -171,7 +176,8 @@ def _():
 def to_movie():
     to_library(MLIB)
     tap(r"Browse, 2 of", wait=6)
-    return tap(f"^{re.escape(MTITLE)}", wait=8)
+    # A detail page draws its actions from luma.plex.tv, which can take 20 s and more.
+    return tap(f"^{re.escape(MTITLE)}", wait=int(os.environ.get("DETAIL_WAIT", "30")))
 
 
 @step("movie")
@@ -212,7 +218,7 @@ def _():
 def _():
     to_library(SLIB)
     tap(r"Browse, 2 of", wait=6)
-    if not tap(f"^{re.escape(STITLE)}", wait=8):
+    if not tap(f"^{re.escape(STITLE)}", wait=int(os.environ.get("DETAIL_WAIT", "30"))):
         return
     snap("show")
     swipe()
