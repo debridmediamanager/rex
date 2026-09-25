@@ -7717,3 +7717,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 69 result. A: no findings. B: no findings. C: no findings. Clean on all ten axes: the stopping rule is met. ====

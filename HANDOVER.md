@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 68 merged, equal to `origin/main`, clean tree |
-| Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 69 recorded, equal to `origin/main`, clean tree |
+| Cycles complete | **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 69 | **69 — CLEAN ON ALL TEN AXES: the stopping cycle.** No client-visible and no new malformed-only findings from any territory. A: the rendered walk (36 English and 17x34 localised captures), 8,064 + 462 HTTP cells against zen, the item Advanced tab in 43 languages, 115,240 stream-name cells, 130 pushed-frame captures and 40 new `Accept-Language` edge lists -- every difference content, version/claim or already in §8. B: every matrix, identity flow and sweep with the identical partition as cycle 68, plus a new 1,680-GET item-read sweep over zen's 20 newest movies. C: 197,892 vocabulary cells byte-identical to cycle 68's and every other axis clean. No code changed |
 | Cycle 68 | **68 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 4 recorded.** B and C reported no client-visible findings on axes 1, 2, 3, 4, 6, 7, 8, 10 (B one malformed-only: `X-Plex-Client-Capabilities`' `audioDecoders` re-selects the widest audio stream). A: the rendered client clean; on axis 9 a fallback-only language (`ca` reads Spanish, `nn` Norwegian) loses to an exact catalogue later in `Accept-Language`, so Chrome's Catalan header is English on a real PMS -- and three malformed-only rules, among them the decision texts, localised in 32 of 43 languages where no client draws them |
 | Cycle 67 | **67 — nine axes clean: 4 CLIENT-VISIBLE findings in 4 fix commits, 2 recorded.** B and C reported no findings of either kind on axes 1, 2, 3, 4, 6, 7, 8, 10; A the rendered client clean and four on axis 9: a show's Episode ordering lead (1.42.2's wording in sr/da/uk, English in af/pt-BR) and a show's and season's language lists for the new locales -- both hidden since cycle 62 because the sweep paired plexsim's show with an UNMATCHED zen show -- and, on the socket, `hu-HU`'s own catalogue and Nynorsk reading Norwegian |
 | Cycle 66 | **66 — the locales Plex Web actually sends: 7 CLIENT-VISIBLE findings in 8 fix commits, 1 recorded.** C: zero findings on axes 1, 2, 3, 4, 7, 10. B: the cells cycle 65 skipped as unstable, read after the write chains, found the Roku pivot strip gated on `X-Plex-Version` < 6.4.2 (axis 8) and the focus key's second mode (recorded). A: axis 5 clean; axis 9 measured against the 44 language values Plex Web sends found six -- `no`/`af` and `pt-BR` catalogues, the butler's progress sentences per socket, the regional settings' version, ICU names by FULL locale, and `zh-TW` skipped in `Accept-Language` |
@@ -102,12 +103,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 68" names what it must cover** |
+| Work half-done | **none -- the loop STOPPED at cycle 69 under the user's rule (§1): one cycle clean on every axis of the ledger. Every client-visible finding of cycles 56-68 is built and proved fail-then-pass; everything malformed-only is in §8. A new cycle is warranted only by a new instrument, a new client, a new PMS version, or a behaviour change (see §7 "Cycle 69" for what the loop does NOT bound)** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 69 | no code changed; the cycle-68 tree's suites stand (UI **1,946/1,946**, offline all pass, LIVE navigation **25/25**, python-plexapi **29/38** baseline), and hunt A's regressions re-ran on it (`regress60a`-`regress68a_ws` all pass) | 24,672 | **0 findings** -- the stopping cycle |
 | 68 | UI **1,946/1,946** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24672 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **4 recorded**. **1 recorded belief refined** (cycle 67's Nynorsk rule) |
 | 67 | UI **1,945/1,945** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24659 | **4 client-visible** in **4 fix commits**, every one proved fail-then-pass by `sdrive.py`; **2 recorded**. **2 recorded beliefs overturned** (the item-prefs sweep's coverage, cycle 66's three-spelling Chinese skip) |
 | 66 | UI **1,941/1,941** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes (one cycle-50 check re-based on this cycle's measurement); LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,631 | **7 client-visible** in **8 fix commits**, every one proved fail-then-pass by `sdrive.py`; **1 recorded**. **4 recorded beliefs overturned** (the 28-language model, the Roku strip, the scan-only ProgressNotification rule, the regional settings' version) |
@@ -3742,6 +3744,40 @@ Matroska magic unconditionally. The old check failed 37/38 on the measured MP4 b
 container-aware check passes 38/38 and now deliberately prefers the Plex Web direct-play shape.
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
+
+### Cycle 69 — clean on all ten axes: the loop stops
+
+**A** walked the rendered client (36 English captures on plexsim, plexscratch42 and kids; 17 languages
+x 34 pages on plexsim and plexscratch42, 1,154 of 1,156 cells as cycle 68, the other two content and
+matched-state), read zen's localised documents whole (8,064 cells and 462 matched-pair cells, the
+same recorded set as cycle 68), compared the item Advanced tab in 43 languages (0 differences),
+115,240 stream-name cells (the 86 recorded ones), and 130 pushed-frame captures over both transports,
+both handshake spellings and every Plex Web language (identical), plus 40 new `Accept-Language` edge
+lists (39 identical; `ca,iw` is §8's CLDR map). **B** re-ran every write matrix, identity flow and
+sweep with cycle 68's partition cell for cell, 0 cells skipped, and added a 1,680-GET item-read sweep
+over zen's 20 newest movies (every reshape a recorded rule). **C** re-ran axes 1, 2, 3, 4, 7, 10: the
+197,892 vocabulary cells byte-identical to cycle 68's and every other axis clean. Both reference
+snapshots are identical before and after. **Zero client-visible and zero new malformed-only findings
+on every axis: the stopping rule set in cycle 56 is met.**
+
+**What the stop does NOT bound.** A clean cycle bounds the axes its instruments swept, not the
+surface (§1, and cycles 45, 54 and 67 each found an instrument's vocabulary or pairing to be the
+ceiling). Known limits carried as §8/§3.3 bounds: kids and zen are never written, plexscratch42 is
+unclaimed and isolated (no match candidates, no plex.tv), plexsim has no transcoder and the part
+bytes need a real RD token, the Windows browser was offline for the last cycles (kids' 9223 drove
+every rendered walk), and no capture exists of a native client (Roku, Apple TV, Android TV, a
+smart TV) -- a capture of one is the most likely source of a new client-visible rule.
+
+**The final axis ledger.**
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | **clean ten times** (60-69) |
+| 3 | Client write flows | **clean seven times** (63-69) |
+| 5 | The rendered client | **clean ten times** |
+| 6 | python-plexapi's writes | **clean eight times** (62-69) |
+| 8 | Playback per client identity | **clean three times** (67-69) |
+| 9 | Localisation | **clean** (69) |
 
 ### Cycle 68 — nine axes clean again, and a fallback rule
 
