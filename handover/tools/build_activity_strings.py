@@ -13,7 +13,8 @@ are NOT kept in the repository.
 `LANGUAGE_FILES` is the language -> catalogue file map, fitted in cycle 65 to
 plexscratch42's live frames in 12 languages (ca reads `es`, nb `no`, the regional files
 for cs/et/hr/ja/zh) and widened in cycle 66 to `af`, `no` and `pt-BR`, which Plex Web
-sends and which have catalogues of their own.
+sends and which have catalogues of their own. Cycle 67: `hu-HU`, which a Hungarian browser's
+socket handshake carries, reads `hu_HU` (eight ids worded apart from `hu`, on plexscratch42).
 
     python3 build_activity_strings.py MO_DIR OUT
 """
@@ -24,7 +25,7 @@ import sys
 
 LANGUAGE_FILES = {
     "af": "af", "ar": "ar", "ca": "es", "cs": "cs_CZ", "da": "da", "de": "de", "es": "es",
-    "et": "et_EE", "fi": "fi", "fr": "fr", "he": "he", "hr": "hr_HR", "hu": "hu", "it": "it",
+    "et": "et_EE", "fi": "fi", "fr": "fr", "he": "he", "hr": "hr_HR", "hu": "hu", "hu-HU": "hu_HU", "it": "it",
     "ja": "ja_JP", "ko": "ko", "lt": "lt", "nb": "no", "nl": "nl", "no": "no", "pl": "pl",
     "pt": "pt", "pt-BR": "pt_BR", "ro": "ro", "ru": "ru", "sk": "sk", "sl": "sl", "sr": "sr",
     "sv": "sv", "uk": "uk", "zh": "zh_CN",
