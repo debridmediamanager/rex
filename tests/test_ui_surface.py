@@ -5206,7 +5206,10 @@ def main():
     check("one device reads by id, and an unknown id is a 404",
           status_one == 200 and (one.get("Device") or [{}])[0].get("id") == seen.get("id")
           and status_bad == 404, "HTTP %s / %s" % (status_one, status_bad))
-    history = get(base, "/status/sessions/history/all?type=1&sort=viewedAt:desc")[1].get("Metadata") or []
+    # Cycle 70 re-measured the history kinds on plexscratch42 and kids: a play a timeline
+    # completes writes a row with no `viewType`, which only the plain call (`type=0`) lists;
+    # `type=1` lists scrobbles. This read used `type=1` on cycle 15's belief.
+    history = get(base, "/status/sessions/history/all?sort=viewedAt:desc")[1].get("Metadata") or []
     # The NEWEST row by historyKey: the suite played this movie earlier, and two
     # plays in the same second tie on viewedAt.
     played = sorted((h for h in history if str(h.get("ratingKey")) == str(c5_movie)),
@@ -12940,9 +12943,17 @@ def main():
     one_h15 = get(base, "/status/sessions/history/all?type=1")[1]
     four_h15 = get(base, "/status/sessions/history/all?type=4")[1]
     list_h15 = get(base, "/status/sessions/history/all?type=1,4")[1]
-    check("the history page lists nothing without a type=",
-          (none_h15.get("size") or 0) == 0 and (one_h15.get("size") or 0) > 0,
-          "no type: size=%s | type=1: size=%s" % (none_h15.get("size"), one_h15.get("size")))
+    # Cycle 70 RE-MEASURED this on plexscratch42 (1.42.2) and kids (1.43.4): kids' and zen's
+    # histories held scrobble rows only. A play a timeline completes -- the one just driven
+    # -- writes a row with NO `viewType`, which the plain call lists (it is `type=0`) and
+    # `type=1` does not; the scrobble rows stay `type=1`'s alone.
+    zero_h15 = get(base, "/status/sessions/history/all?type=0")[1]
+    check("the plain history call lists the session plays (type=0), not the scrobbles",
+          (none_h15.get("size") or 0) > 0 and (one_h15.get("size") or 0) > 0
+          and all(r_h15.get("viewType") is None for r_h15 in none_h15.get("Metadata") or [])
+          and (zero_h15.get("size") or 0) == (none_h15.get("size") or 0),
+          "no type: size=%s | type=0: size=%s | type=1: size=%s"
+          % (none_h15.get("size"), zero_h15.get("size"), one_h15.get("size")))
     check("history type= matches the row's viewType, not its metadata type",
           all(r_h15.get("viewType") == 1 for r_h15 in one_h15.get("Metadata") or [])
           and (four_h15.get("size") or 0) == 0
