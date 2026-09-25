@@ -33050,13 +33050,19 @@ def main():
     rk_c70 = spare or movie
     dur_c70 = get(base, "/library/metadata/%s" % rk_c70)[1]["Metadata"][0]["duration"]
     request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70)
+    mark_c70 = max([int(str(r.get("historyKey")).rsplit("/", 1)[-1])
+                    for q_c70 in ("", "&type=1")
+                    for r in get(base, "/status/sessions/history/all?sort=viewedAt:desc" + q_c70)[1]
+                    .get("Metadata") or []] or [0])
     app_beat_c70(rk_c70, dur_c70, 60000, "playing", "c70-hist")
     app_beat_c70(rk_c70, dur_c70, dur_c70 * 95 // 100, "playing", "c70-hist")
     app_beat_c70(rk_c70, dur_c70, dur_c70 * 95 // 100, "stopped", "c70-hist")
     def hist_c70(extra_c70=""):
+        # Only rows this check wrote: the suite has played this movie before.
         rows_c70 = get(base, "/status/sessions/history/all?metadataItemID=%s&sort=viewedAt:desc%s"
                        % (rk_c70, extra_c70))[1].get("Metadata") or []
-        return [r.get("viewType") for r in rows_c70]
+        return [r.get("viewType") for r in rows_c70
+                if int(str(r.get("historyKey")).rsplit("/", 1)[-1]) > mark_c70]
     plain_c70, one_c70, zero_c70 = hist_c70(), hist_c70("&type=1"), hist_c70("&type=0")
     request(base, "PUT", "/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70)
     plain2_c70, one2_c70 = hist_c70(), hist_c70("&type=1")
@@ -33118,6 +33124,10 @@ def main():
     rk_c70c = spare or movie
     dur_c70c = get(base, "/library/metadata/%s" % rk_c70c)[1]["Metadata"][0]["duration"]
     request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70c)
+    mark_c70c = max([int(str(r.get("historyKey")).rsplit("/", 1)[-1])
+                     for q_c70c in ("", "&type=1")
+                     for r in get(base, "/status/sessions/history/all?sort=viewedAt:desc" + q_c70c)[1]
+                     .get("Metadata") or []] or [0])
     def offline_c70(count_c70):
         extra_c70 = [("offline", "1"), ("updated", str(int(time.time()) - 600))]
         if count_c70 is not None:
@@ -33127,7 +33137,11 @@ def main():
         return (answer_c70.get("playbackState"), answer_c70.get("viewCount"), row_c70.get("viewCount"))
     got_c70c = [offline_c70(n) for n in (1, 1, 0, None, "abc")]
     plain_c70c = [r.get("viewType") for r in get(base, "/status/sessions/history/all?metadataItemID=%s"
-                                                  % rk_c70c)[1].get("Metadata") or []]
+                                                  % rk_c70c)[1].get("Metadata") or []
+                  if int(str(r.get("historyKey")).rsplit("/", 1)[-1]) > mark_c70c]
+    plain_c70c += ["type=1"] * len([r for r in get(base, "/status/sessions/history/all?type=1&"
+                                                   "metadataItemID=%s" % rk_c70c)[1].get("Metadata") or []
+                                    if int(str(r.get("historyKey")).rsplit("/", 1)[-1]) > mark_c70c])
     check("the offline timeline's viewCount marks the item watched, and 0 clears it",
           got_c70c == [("complete", 1, 1), ("complete", 2, 2), ("complete", 0, None),
                        ("ignore", 0, None), ("ignore", 0, None)]
