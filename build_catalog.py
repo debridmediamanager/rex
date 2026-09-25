@@ -123,7 +123,21 @@ def main():
         default=os.environ.get("TMDB_KEY"),
         help="TMDB api key; without it rows keep their probe-derived titles only",
     )
+    parser.add_argument(
+        "--relink",
+        action="store_true",
+        help="only relink the guids of the existing --out catalog to Plex's (needs PLEX_TOKEN)",
+    )
     args = parser.parse_args()
+
+    if args.relink:
+        with open(args.out) as handle:
+            document = json.load(handle)
+        count = relink_guids(document["items"], args.out)
+        with open(args.out, "w") as handle:
+            json.dump(document, handle, indent=2)
+        print("relinked %d row(s) in %s" % (count, args.out))
+        return
 
     token = os.environ.get("RD_TOKEN")
     if not token:
@@ -276,6 +290,7 @@ def main():
 
     # Flat leaves -> movies + show/season/episode rows.
     items = hierarchy_module.build(items)
+    relink_guids(items, args.out)
     kinds = {}
     for row in items:
         kinds[row["type"]] = kinds.get(row["type"], 0) + 1
@@ -291,6 +306,17 @@ def main():
         json.dump(document, handle, indent=2)
 
     print("\nwrote %s: %d item(s), machine=%s" % (args.out, len(items), machine))
+
+
+def relink_guids(items, out):
+    """Give the rows Plex's own guids (metadata.PlexProvider); a no-op without PLEX_TOKEN."""
+    token = os.environ.get("PLEX_TOKEN")
+    if not token:
+        print("no PLEX_TOKEN: guids stay minted, and the Android app's detail pages stay empty")
+        return 0
+    provider = metadata_module.PlexProvider(
+        token, os.path.join(os.path.dirname(os.path.abspath(out)), "plex_cache.json"))
+    return metadata_module.apply_plex_guids(items, provider)
 
 
 def _extension(filename):

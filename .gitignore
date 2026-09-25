@@ -18,3 +18,4 @@ webclient_fun/
 __pycache__/
 *.pyc
 handover/tools/scratch.token
+plex_cache.json
