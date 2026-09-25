@@ -83,10 +83,7 @@ def _fill_real_pms_fields(rows):
         if kind in ("show", "season", "movie", "episode"):
             # Plex derives this palette from the artwork; the values are only
             # used for background tinting.
-            row.setdefault("UltraBlurColors", {
-                "topLeft": "1a1a1e", "topRight": "24242a",
-                "bottomRight": "15151a", "bottomLeft": "1f1f26",
-            })
+            row.setdefault("UltraBlurColors", dict(DEFAULT_ULTRABLUR))
 
         if kind == "season":
             parent = row.get("parentTitle") or ""
@@ -599,6 +596,14 @@ def normalize_rows(rows):
             if parts[3] in stamps:
                 row[field] = "/".join(parts[:5] + [str(stamps[parts[3]])])
     return rows
+
+
+# The palette a row without measured artwork colours carries; the values are only used
+# for background tinting.
+DEFAULT_ULTRABLUR = {
+    "topLeft": "1a1a1e", "topRight": "24242a",
+    "bottomRight": "15151a", "bottomLeft": "1f1f26",
+}
 
 
 def _slug(title):
