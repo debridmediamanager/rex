@@ -7980,6 +7980,37 @@ class PlexSim:
             # /ping, /stop, /session: all of it belongs to a transcode session,
             # and plexsim never opens one.
             return ("error", 404, "plexsim: no transcoder")
+        if route in ("/service/ultrablur/colors", "/services/ultrablur/colors") \
+                and method in ("GET", "HEAD"):
+            # Cycle 70: the native Plex for Android app asks `{server}/service/ultrablur/
+            # colors?url={thumb}` (the SINGULAR spelling, js:831397) for the backdrop tint of
+            # any item that arrives without `UltraBlurColors` -- its post-play screen did,
+            # and plexsim 404'd it. zen (1.42.2) answers both spellings, and the url is
+            # resolved exactly as `/photo/:/transcode` resolves it: no `url` a 400; an empty,
+            # relative or unknown one, or a row's missing field, a 404; a server path that
+            # answers but is not an image (`/identity`, a detail row) a 500; any image it
+            # serves -- item artwork, a bundled resource, a section composite -- a 200 with
+            # the four corner colours; a repeated `url` is the LAST one. The colours are a
+            # function of the image's PIXELS (an item's own `UltraBlurColors` matches the
+            # answer only when it was taken from the same image: 2 of 5 zen movies), and
+            # plexsim's server path has no image decoder (cycle 9), so the VALUES are the
+            # row's own palette -- a recorded content bound; the status, the shape and the
+            # resolution are measured.
+            if "url" not in query:
+                return ("error", 400, "plexsim: bad request")
+            fetched = self._route(method, "/photo/:/transcode", ["photo", ":", "transcode"],
+                                  {"url": query["url"], "width": "64", "height": "64"},
+                                  body, headers, address)
+            if fetched and fetched[0] == "error":
+                return fetched
+            inner = urllib.parse.urlparse(urllib.parse.unquote(query["url"])).path
+            owner = re.match(r"^/library/metadata/(\d+)/", inner)
+            row = catalog.items.get(int(owner.group(1))) if owner else None
+            colors = (row or {}).get("UltraBlurColors") or dict(hierarchy_module.DEFAULT_ULTRABLUR)
+            if isinstance(colors, list):
+                colors = colors[0]
+            return self.bare_container(size=1, UltraBlurColors=[
+                {key: colors[key] for key in ("topLeft", "topRight", "bottomRight", "bottomLeft")}])
         if route == "/photo/:/transcode":
             # Measured: both dimensions are MANDATORY and a real PMS 400s the request
             # without them, 400s a non-numeric one, and 404s a `url` naming a row it

@@ -32971,6 +32971,29 @@ def main():
           and got_c68a["nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
           and got_c68a["nn,ca;q=0.9"] == "Kallenavn", str(got_c68a))
 
+    # Cycle 70, measured on zen (1.42.2): Plex for Android asks /service/ultrablur/colors
+    # for an item's backdrop tint (js:831397). The url resolves as the photo transcoder does.
+    def ub_c70(url_c70, spelling_c70="service"):
+        path_c70 = "/%s/ultrablur/colors" % spelling_c70
+        if url_c70 is not None:
+            path_c70 += "?url=" + urllib.parse.quote(url_c70, safe="")
+        return request(base, "GET", path_c70)
+    got_c70 = {}
+    for url_c70 in (None, "", "/library/metadata/%s/thumb" % movie, "/:/resources/movie.png",
+                    "library/metadata/%s/thumb" % movie, "/library/metadata/99999999/thumb",
+                    "/identity"):
+        got_c70[url_c70] = ub_c70(url_c70)[0]
+    status_c70, body_c70, _ = ub_c70("/library/metadata/%s/art" % movie, "services")
+    colors_c70 = (json.loads(body_c70 or b"{}").get("MediaContainer") or {}).get("UltraBlurColors") \
+        if status_c70 == 200 else None
+    check("/service(s)/ultrablur/colors resolves its url like the photo transcoder",
+          got_c70 == {None: 400, "": 404, "/library/metadata/%s/thumb" % movie: 200,
+                      "/:/resources/movie.png": 200, "library/metadata/%s/thumb" % movie: 404,
+                      "/library/metadata/99999999/thumb": 404, "/identity": 500}
+          and isinstance(colors_c70, list) and len(colors_c70) == 1
+          and list(colors_c70[0]) == ["topLeft", "topRight", "bottomRight", "bottomLeft"],
+          str((got_c70, status_c70, colors_c70)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
