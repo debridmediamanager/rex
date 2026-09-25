@@ -3049,6 +3049,9 @@ precisely how the Seasons bug survived a fix attempt.
   and status lines do not.
 - **Sweep with the client's WHOLE header set.** The Roku pivot strip was measured with the
   platform header alone and is gated on the `X-Plex-Version` every real Roku sends.
+- **`Accept-Language` is matched as a LIST**: a language with no catalogue of its own (`ca`, `nn`)
+  is a fallback that any exact catalogue later in the header beats (Chrome's Catalan header is
+  English).
 - **An item-prefs sweep must pair plexsim's item with a MATCHED reference item** (zen show
   6558/6559/6560): an unmatched one has no `showOrdering` enum and another content head, so the
   comparison is silently empty. A socket's regional catalogue (`hu-HU` reads `hu_HU`) answers
