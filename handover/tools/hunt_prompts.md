@@ -6975,3 +6975,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 67 result. A: 4 client-visible (showOrdering lead, show/season language lists, hu-HU socket, nn socket), 4 malformed-only (2 built with G4, 2 recorded). B: no findings. C: no findings. Four fix commits. ====
