@@ -77,8 +77,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 69 recorded; the protocol traps moved out of `CLAUDE.md` into `docs/protocol-traps.md` (2026-09-25, the owner's commit rebased onto cycle 69) and the harness CDP address corrected; equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
-| Cycles complete | **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 70 merged: seven client-visible fixes from the first NATIVE client capture (Plex for Android 2026.9.0 in an emulator), the instrument committed as `harness/android/`; equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
+| Cycles complete | **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until a cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 70 | **70 — the native Plex for Android app: 7 CLIENT-VISIBLE findings in 7 fix commits, 9 recorded.** A new axis (11). The APK, pulled off a phone, is React Native/Hermes; its bundle was decompiled (57,551 functions) into an inventory of every PMS request it builds, and the app itself was driven in a local arm64 emulator through mitmproxy pinned to one server (`harness/android/`), plexsim against plexscratch, walk for walk. The driver found three (minted `plex://` guids stop the app's detail screens loading actions and seasons -- the catalog now takes Plex's own guids from the metadata agent; `/service/ultrablur/colors`; `excludeElements=Part` on listings); hunt NA (opus, the read surface) one (a session play's history row has no `viewType`, refuting cycle 15); hunt NB (fable, writes/playback/downloads) three (a crossing needs a non-zero previous beat; the offline sync's `viewCount=`; the post-play `tv.upnext` hub). **Two recorded beliefs overturned** |
 | Cycle 69 | **69 — CLEAN ON ALL TEN AXES: the stopping cycle.** No client-visible and no new malformed-only findings from any territory. A: the rendered walk (36 English and 17x34 localised captures), 8,064 + 462 HTTP cells against zen, the item Advanced tab in 43 languages, 115,240 stream-name cells, 130 pushed-frame captures and 40 new `Accept-Language` edge lists -- every difference content, version/claim or already in §8. B: every matrix, identity flow and sweep with the identical partition as cycle 68, plus a new 1,680-GET item-read sweep over zen's 20 newest movies. C: 197,892 vocabulary cells byte-identical to cycle 68's and every other axis clean. No code changed |
 | Cycle 68 | **68 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 4 recorded.** B and C reported no client-visible findings on axes 1, 2, 3, 4, 6, 7, 8, 10 (B one malformed-only: `X-Plex-Client-Capabilities`' `audioDecoders` re-selects the widest audio stream). A: the rendered client clean; on axis 9 a fallback-only language (`ca` reads Spanish, `nn` Norwegian) loses to an exact catalogue later in `Accept-Language`, so Chrome's Catalan header is English on a real PMS -- and three malformed-only rules, among them the decision texts, localised in 32 of 43 languages where no client draws them |
 | Cycle 67 | **67 — nine axes clean: 4 CLIENT-VISIBLE findings in 4 fix commits, 2 recorded.** B and C reported no findings of either kind on axes 1, 2, 3, 4, 6, 7, 8, 10; A the rendered client clean and four on axis 9: a show's Episode ordering lead (1.42.2's wording in sr/da/uk, English in af/pt-BR) and a show's and season's language lists for the new locales -- both hidden since cycle 62 because the sweep paired plexsim's show with an UNMATCHED zen show -- and, on the socket, `hu-HU`'s own catalogue and Nynorsk reading Norwegian |
@@ -106,12 +107,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none -- the loop STOPPED at cycle 69 under the user's rule (§1): one cycle clean on every axis of the ledger. Every client-visible finding of cycles 56-68 is built and proved fail-then-pass; everything malformed-only is in §8. A new cycle is warranted only by a new instrument, a new client, a new PMS version, or a behaviour change (see §7 "Cycle 69" for what the loop does NOT bound)** |
+| Work half-done | **none in code -- cycle 70 is merged. The loop is OPEN again: cycle 71 must repeat all eleven axes (§7 "Cycle 70" ledger), axis 11 with `harness/android/` against the merged head, and stops only when every axis is clean** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 70 | UI **1,952/1,952** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes, `tests/test_plex_guids.py` **12/12** new; LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** served | 24,776 | **7 client-visible** in **7 fix commits**, every server one proved fail-then-pass by `sdrive.py` and the catalog one by its offline test; **9 recorded**. **2 recorded beliefs overturned** (cycle 15's history rule, cycle 20's "plexsim mints a `plex://` guid for every row" as a harmless shape) |
 | 69 | no code changed; the cycle-68 tree's suites stand (UI **1,946/1,946**, offline all pass, LIVE navigation **25/25**, python-plexapi **29/38** baseline), and hunt A's regressions re-ran on it (`regress60a`-`regress68a_ws` all pass) | 24,672 | **0 findings** -- the stopping cycle |
 | 68 | UI **1,946/1,946** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24672 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **4 recorded**. **1 recorded belief refined** (cycle 67's Nynorsk rule) |
 | 67 | UI **1,945/1,945** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24659 | **4 client-visible** in **4 fix commits**, every one proved fail-then-pass by `sdrive.py`; **2 recorded**. **2 recorded beliefs overturned** (the item-prefs sweep's coverage, cycle 66's three-spelling Chinese skip) |
@@ -533,6 +535,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **The plain `/status/sessions/history/all` lists nothing; every row carries `viewType: 1`** (cycle 15, kids and zen) | Two row KINDS: a scrobble writes `viewType: 1` (listed by `type=1`), a play a timeline completes writes none (`type=0`, which is what an absent `type=` means). kids' and zen's histories held scrobbles only, and the copy's "timeline writes no row" was read through `type=1`, which hides exactly those rows | B | cycle 70 |
+| **A minted `plex://` guid is as good as a real one** (cycles 20 and 44: "plexsim mints a `plex://` guid for every row, so the two rules coincide") | The shape was right and the VALUE mattered: Plex for Android keys its luma detail screen on the guid, and a guid plex.tv does not know leaves the action row and a show's Seasons block empty. Real guids now come from the metadata agent | E | cycle 70 |
+| **`excludeElements=Part` is a detail-row rule** (cycle 22, measured on a detail row) | It applies to listing rows, hubs and nested Related rows as well, with the same trailing `partCount` | B | cycle 70 |
 | **`nn` reads Norwegian wherever it appears in `Accept-Language`** (cycle 67) | Only as a FALLBACK: `nn` and `ca` have no catalogue of their own, and an exact catalogue later in the list beats them (`nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7` is English, `ca,fr;q=0.9` French) | D | cycle 68 |
 | **An item's Advanced enums match zen in every language** (the item-prefs sweeps of cycles 62-66) | They were never compared: the sweep's pair file matched plexsim's show and season with zen's UNMATCHED show 5189, whose `showOrdering` has no enum and whose language lists carry another content head. Re-paired with matched show 6558/6559/6560 | B | cycle 67 |
 | **`zh-TW`, `zh-HK` and `zh-Hant` are the Traditional tags `Accept-Language` skips** (cycle 66) | The rule is the script and region: `zh-Hant-TW`, `zh-Hant-HK` and `zh-MO` are skipped too; `zh-SG`, `zh-Hans`, `zh-Hans-CN` read Simplified | D | cycle 67 |
@@ -880,6 +885,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Item | Why it is thin | How to settle it |
 |---|---|---|
+| **The offline sync's `viewCount=1` with a STORED position** | 1.43.4 (plexscratch) stores the position and does not count a view when the offline beat carries a real `time`; plexsim does that because the beat's own handling runs first, but 1.42.2's copy has only 12-second media, where no position is ever stored | A long item on plexscratch42 (a re-muxed file of a few minutes) |
+| **The post-play `tv.upnext` hub beside Related hubs** | Measured on episodes, which carry no Related shelf on either copy; plexsim puts Up Next first if an episode ever gets both | An episode with a similar-shows shelf on a claimed server |
+| **Plex for Android TV, and Plex for iOS** | Cycle 70 walked the PHONE UI only. The TV screens are in the same bundle (the static inventory covers every request builder), but the leanback UI was not driven: the `android-tv` system image is a `user` build -- no `adb root`, so the proxy's CA cannot be made a system CA and plex.tv cannot be pinned safely. The iOS app is a separate build | A `userdebug` TV image (or a rooted Android TV device dedicated to testing), then `harness/android/` with D-pad key events |
 | **Manage Recommendations' writes** | Plex Web's promote, reorder, remove, reset and publish (`PUT/DELETE /hubs/sections/{id}/manage[/{identifier}[/move]]`, `POST ...manage?metadataItemId=`) are 404s on plexsim and the route exists in 1.42.2's binary (`HubManagementRequestHandler`), but both writable copies 404 the whole manage leaf (unclaimed) and kids and zen are read-only. CLIENT-VISIBLE: the dialog's checkboxes snap back | A claimed, writable 1.42.2 server |
 | **The ORDER of an item language enum's head** | Language-independent on zen and fitting neither tag order nor English-name order over 507 shows (many heads need five or more sorted runs); plexsim orders by tag within the audio and subtitle groups (cycle 18). The NAMES are exact in 30 language forms | Read the stream table order out of a zen show whose head plexsim would order differently, or the binary's SQL |
 | **Plex Web against plexsim in a real browser** | Cycle 59 is the first render diff and ran on kids' 9223 Chromium, because the Windows CDP machine was unreachable; Playwright's `connect_over_cdp` hangs there, so hunt A wrote a raw-CDP driver. The claimed-account panels (Dashboard upsell, Watch Together, Trending) and anything needing a media read were bounds | Repeat on the Windows browser with a media-reading play, and drive the Dashboard with the account's feature ids |
@@ -1514,6 +1522,19 @@ Its subnets, container names and port are all distinct from plexscratch's, so th
 `harness/scratch42/README.md` carries the same list with the isolation proof.
 
 ---
+
+### 4.7 Native client — Plex for Android in an emulator (cycle 70)
+
+`harness/android/` (read its README): the real Plex for Android APK in a local arm64 Android 13
+emulator on this Mac, all its traffic through a mitmproxy that pins plex.tv's resource list to ONE
+server (plexsim or a writable copy -- never kids or zen, whose writes a real client makes on every
+play), answers plex.tv writes locally, and signs in by answering the PIN poll with the lab account's
+token. `walk.py` runs the same scripted walk on each server and `capdiff.py` diffs the captures by
+request template; `$DROID_WORK/N/rewrite.txt` swaps a string in the pinned server's answers, which is
+how a single field is proved to be the cause. The app is React Native (Hermes 96): `hermes-dec`
+decompiles its bundle, and cycle 70's static inventory of every PMS request it builds is the
+denominator for axis 11. Two real devices are on this Mac's adb (a Pixel 7a with the app signed in to
+the owner's account, and a Pixel 6): **use the emulator**, and only pull the APK from the phone.
 
 ## 5. The cycle procedure
 
@@ -3749,6 +3770,57 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 70 — the native Plex for Android app
+
+Cycle 69 named its own limit: no native client had ever been captured. On this Mac's adb were a
+Pixel 7a carrying Plex for Android 2026.9.0 and a spare Pixel 6; the APK was pulled off the phone
+and run in a local emulator instead, so neither device nor the owner's account was touched. The app
+turned out to be **React Native compiled to Hermes bytecode -- a separate codebase from Plex Web**,
+with its own request vocabulary (`excludeElements` naming sixteen elements on every hubs request,
+`/service/ultrablur/colors`, `/hubs/metadata/{id}/postplay` after every decision, an offline
+view-state sync, headers moved into the decision URL).
+
+**Instruments.** Static: the bundle decompiled into 57,551 functions (a general-purpose agent read
+every request builder and mapped it against `server.py`: `$C/static/INVENTORY.md`). Live: the app in
+an emulator behind mitmproxy (§4.7), the same scripted walk against plexsim and plexscratch, diffed by
+request template. **The driver** found the first three by watching the app: a show page on plexsim
+never loaded its actions or seasons, and swapping plexsim's minted guid for the real one through the
+proxy -- and nothing else -- fixed it. **Hunt NA** (opus) replayed every read in the inventory on zen,
+plexscratch42 and plexsim; **hunt NB** (fable) every write, playback and download request on the
+writable copies. Every finding was re-measured by the driver before it was built, and two were widened
+(the offline `viewCount` is one view per sync and `0` clears a watched item; post-play Up Next needs
+view state, not a pristine On Deck).
+
+| | |
+|---|---|
+| catalog | real `plex://` guids and slugs from `metadata.provider.plex.tv` (`build_catalog.py --relink`, `PLEX_TOKEN`) |
+| images | `/service/ultrablur/colors` and `/services/...` resolving `url` like the photo transcoder |
+| listings | `excludeElements=Part` on listings, hubs and nested Related rows, with `partCount` |
+| history | a session play's row has no `viewType`; the plain call is `type=0` |
+| timeline | a crossing needs a non-zero previous beat; the offline sync's `viewCount=` |
+| post-play | the show's next-up as the `tv.upnext` hub |
+
+**Process.** The emulator needs `-writable-system` and the proxy CA as a SYSTEM certificate; the app
+caches per server, so every walk starts from a cleared app; a mitmdump started from a tool call died
+between calls and now runs under launchd; the emulator's CONNECTs to IPv6 literals needed re-resolving
+over IPv4; waiters that `pgrep -f` their own pattern never ended. The UI suite needed two re-baselined
+history checks (cycle 15's belief); its first full run also failed the two cycle-52 part-path checks
+because the fixture server had been started with the REAL `RD_TOKEN`, which turns the fixture's dead
+links into `unavailable_file` 404s -- start the fixture with `RD_TOKEN=dummy`, as §6 says -- and two
+new checks that counted rows the suite had written earlier. Both reference snapshots are identical.
+
+**The axis ledger after cycle 70.** Eleven axes; the loop stops when one cycle is clean on all of them.
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | clean ten times (60-69); repeat on the new head |
+| 3 | Client write flows | clean seven times (63-69); repeat |
+| 5 | The rendered client (Plex Web) | clean ten times; repeat |
+| 6 | python-plexapi's writes | clean eight times (62-69); repeat (the history-kind fix touches `history()`) |
+| 8 | Playback per client identity | clean three times (67-69); repeat (the crossing rule changed) |
+| 9 | Localisation | clean (69); repeat |
+| 11 | **The native Android client** (static inventory + emulator walks) | found 7; repeat |
+
 ### Cycle 69 — clean on all ten axes: the loop stops
 
 **A** walked the rendered client (36 English captures on plexsim, plexscratch42 and kids; 17 languages
@@ -5193,6 +5265,27 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 70** (recorded, not built):
+
+- The inline `OnDeck` row keeps its elements under `excludeElements` on plexsim; zen trims it (and
+  its Parts, adding `partCount`). Plex for Android reads only its `viewOffset` (js:832733).
+- An empty playlist's or collection's detail with `includeExtras=1`/`includeRelated=1` omits
+  `"Extras":{"size":0}` and `"Related":{}`; the app reads neither block when it is absent.
+- A collection's `/children` container sends `librarySectionID` as a string where plexscratch42 sends
+  a number; the rows carry their own numbers and the app coerces the field.
+- `PUT /:/unscrobble?key={show}` on 1.42.2 also clears every season's own `viewCount`/`lastViewedAt`
+  (single witness, s42 show 15); plexsim clears the show's. The app draws seasons from
+  `viewedLeafCount`.
+- A decision with `X-Plex-Client-Profile-Extra` unencoded is a 400 on the copy; the app encodes it.
+- Bare `GET /downloadQueue` is a 404 on the unclaimed copy; no client sends it.
+- Bounds: the download family (`/downloadQueue/{q}/add`, `/item/{i}/media|decision`) 404s on an
+  unclaimed copy, so plexsim's answers cannot be compared; the app's transcode fallback needs a
+  transcoder; the `Review` rows `includeReviews=1` returns come from Plex's agent (content), and so
+  do `primaryExtraKey`/trailers; the ultrablur colours are pixels (plexsim answers the row's palette).
+- Refuted: the third library tab ("Collections" vs "Categories") is claim state plus content
+  (`/media/providers` pivots), and the reference's `terminationCode` after a play was its own
+  transcoder failing on the scratch copy.
+
 **Cycle 68** (recorded, not built):
 
 - The decision's four text fields (`generalDecisionText`, `directPlayDecisionText`,
@@ -6158,6 +6251,18 @@ reference, like cycle 45's empty `sort=` on `/library/shared`.
 
 ## 10. Tooling and environment gotchas
 
+**Cycle 70 added these.**
+
+- **A backgrounded waiter that `pgrep -f`s its pattern matches ITSELF** and never ends. Wait on a PID.
+- **mitmdump started from a tool call died between calls** (no error); run long-lived proxies under
+  launchd and address the binary by absolute path (launchd's PATH has no Homebrew).
+- **`sdkmanager`'s SDK root is Homebrew's** (`/opt/homebrew/share/android-commandlinetools`), not
+  `~/Library/Android/sdk`; the emulator refuses a root without `platform-tools`/`platforms`, and needs
+  `ANDROID_HOME` as well as `ANDROID_SDK_ROOT`. `JAVA_HOME` must be set (openjdk@17).
+- **zsh's `path` is `PATH`**: a loop variable named `path` empties the command search path.
+- **An unquoted heredoc runs backticks**: a prompt file written through `<<EOF` executed its own
+  `sed -n`, which waited on stdin until the call timed out.
+
 **Cycle 45 added these.**
 
 - **The session scratchpad can be removed between two tool calls.** The disk filled during cycle
@@ -6587,6 +6692,7 @@ base from `PLEXSIM_BASE`.
 | `ui_ro.py`, `replay_ro.py`, `replay_remap.py` | `probes/ui_surface.py` and `harness/scripts/replay.py` restricted to GET/HEAD, and a ratingKey remap for replaying a recorded corpus onto plexsim's ids |
 | `territory_a.py`, `territory_b.py` | The cycle-6 notification-frame and malformed-identifier sweeps |
 | `hdr.py` | Cycle 33: the RESPONSE HEADER prober -- twenty-six response classes off a raw socket on three servers, printing the status line and the header names in order, and flagging where kids and zen agree and plexsim differs. GET/HEAD/OPTIONS only, with the `WRITE_GET` list asserted per case |
+| `harness/android/` | Cycle 70: the Android instrument -- `emu.sh` boots the emulator through the proxy, `fresh.sh` clears and signs the app in against one server, `walk.py` walks it and records dumps, screenshots and capture ranges, `capdiff.py` diffs two captures by request template, `droid.py` is the proxy addon (resource pinning, plex.tv writes answered locally, PIN sign-in, favourites, IPv4 re-resolution, `rewrite`) |
 | `frames.py` | Cycle 33: capture the frames one write pushes, on one server -- an eventsource listener with no `filters=`, a control write first, and a one-line summary per frame |
 | `ddrive.py` | Cycle 34: drive all 78 client profiles' PLAIN-FORM decision against one row and record the four codes and their texts -- the file `tests/fixtures/decisions/cells.jsonl` is built from. GET-only, so it may be pointed at kids or zen; but the answer depends on per-user state the row does not show, so record WHICH state (`audioStreamID=<id>` sets it, `-1` clears it) |
 | `rangesweep.py` | Cycle 35: the `Range` grammar off a raw socket -- 43 header values against both references over a container and a `/web` asset, 172 cells. `urllib` will not send most of them, and a ranged container answers its length twice |
