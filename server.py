@@ -2919,8 +2919,18 @@ def request_language(query, headers):
                     # NOT have -- `zh-TW` alone is English and `zh-TW,de;q=0.9` German --
                     # where plexsim read their primary subtag as Simplified Chinese. A
                     # Safari in Taiwan or Hong Kong sends one of them alone on the socket.
-                    if tag.replace("_", "-").lower() in ("zh-tw", "zh-hk", "zh-hant"):
+                    # Cycle 67, measured on plexscratch42 and zen: the rule is the SCRIPT and
+                    # region, not three spellings -- `zh-Hant-TW`, `zh-Hant-HK` and `zh-MO`
+                    # are skipped too, where `zh-SG`, `zh-Hans` and `zh-Hans-CN` read
+                    # Simplified Chinese.
+                    subtags = tag.replace("_", "-").lower().split("-")
+                    if subtags[0] == "zh" and any(
+                            subtag in ("hant", "tw", "hk", "mo") for subtag in subtags[1:]):
                         continue
+                    # Cycle 67: Norwegian Nynorsk reads the Norwegian catalogue (`Skanner`
+                    # on a socket opened with `nn-NO,nn;q=0.9`, Firefox's Nynorsk build).
+                    if subtags[0] == "nn" and "no" in TRANSLATED_LANGUAGES:
+                        return "no"
                     # Cycle 66: `pt-BR` and `pt-PT` read the Brazilian catalogue here too
                     # (a Brazilian browser's socket gets `Buscando`, not `A actualizar`).
                     if tag.replace("_", "-").lower() in ("pt-br", "pt-pt") \
@@ -2967,6 +2977,9 @@ def request_language(query, headers):
     if normalized in exact:
         return exact[normalized]
     primary = normalized.split("-")[0]
+    if primary == "nn" and "no" in TRANSLATED_LANGUAGES:
+        # Cycle 67, measured on plexscratch42's socket (`?X-Plex-Language=nn`).
+        return "no"
     return primary or None
 
 

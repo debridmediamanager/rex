@@ -32890,6 +32890,23 @@ def main():
           and "Biblioteekafdelings" in library_c66j("af"),
           str((library_c66j("pt-BR"), library_c66j("af"))))
 
+    # Cycle 67, measured on plexscratch42: a Norwegian Nynorsk socket reads the Norwegian
+    # catalogue, and `zh-Hant-TW` is skipped like `zh-TW` where `zh-Hans` is Simplified.
+    def titles_c67d(query_c67d, headers_c67d):
+        _, frames_c67d = notifications(base, lambda: get(
+            base, "/library/sections/%s/refresh" % show_section), seconds=4,
+            query=query_c67d, headers=headers_c67d)
+        return [n.get("Activity", {}).get("title")
+                for f in frames_c67d for n in f.get("NotificationContainer", {})
+                .get("ActivityNotification") or []]
+    nn_c67d = titles_c67d("", "Accept-Language: nn-NO,nn;q=0.9\r\n")
+    nnq_c67d = titles_c67d("X-Plex-Language=nn", "")
+    hant_c67d = titles_c67d("", "Accept-Language: zh-Hant-TW\r\n")
+    hans_c67d = titles_c67d("", "Accept-Language: zh-Hans\r\n")
+    check("Nynorsk reads Norwegian; a Traditional script is skipped, a Simplified one is not",
+          "Skanner" in nn_c67d and "Skanner" in nnq_c67d and "Scanning" in hant_c67d
+          and "正在扫描" in hans_c67d, str((nn_c67d[:1], nnq_c67d[:1], hant_c67d[:1], hans_c67d[:1])))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
