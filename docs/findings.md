@@ -10666,6 +10666,20 @@ findings of either kind. A swept all 43 Plex Web language values and found four 
 **Recorded, not built.** `DELETE /library/metadata/{collection}` deletes on a real PMS (clients use
 `/library/collections/{id}`); `Accept-Language: nl-BE` alone on HTTP reads `nl_BE`.
 
+#### The sixty-eighth pass — a fallback rule
+
+Cycle 68 repeated all ten axes; B and C reported no client-visible findings. A found one:
+
+* **`ca` and `nn` are fallbacks in `Accept-Language`.** Neither has a catalogue of its own (`ca`
+  reads Spanish, `nn` Norwegian), so an exact catalogue ANYWHERE later in the list beats them:
+  `ca-ES,ca;q=0.9,en-US;q=0.8,en;q=0.7` (Chrome) is English, `ca,fr;q=0.9` French, `ca,es;q=0.9`
+  Spanish, `ca`, `ca,nn` and `ca,zh-TW` Spanish, `nn,ca` Norwegian, `nn,nb` Norwegian (`nb` is exact).
+  Measured on zen's `/:/prefs` and plexscratch42's socket; the socket drives Plex Web's Activity menu.
+
+**Recorded, not built.** The decision's text fields are localised (no client draws them for a
+decision plexsim answers); the CLDR fallback map for languages Plex Web does not list;
+`X-Plex-Client-Capabilities`' `audioDecoders` stream re-selection.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

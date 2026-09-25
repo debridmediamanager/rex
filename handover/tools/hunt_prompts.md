@@ -7342,3 +7342,6 @@ anything client-visible:
 Read each tool before re-running it and adapt only the ports, paths and frozen tree. Report, per
 axis, the denominator and the partition, and every finding with its tag, evidence and a
 fail-on-frozen regression check. If an axis has no client-visible findings say so for that axis.
+
+
+==== Cycle 68 result. A: 1 client-visible (ca/nn are Accept-Language fallbacks), 3 malformed-only (decision texts, CLDR fallback map, HTTP Accept-Language alone). B: 1 malformed-only (Client-Capabilities audioDecoders). C: no findings. One fix commit. ====

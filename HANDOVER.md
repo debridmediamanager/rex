@@ -74,8 +74,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 67 merged, equal to `origin/main`, clean tree |
+| `main` | cycle 68 merged, equal to `origin/main`, clean tree |
 | Cycles complete | **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 68 | **68 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 4 recorded.** B and C reported no client-visible findings on axes 1, 2, 3, 4, 6, 7, 8, 10 (B one malformed-only: `X-Plex-Client-Capabilities`' `audioDecoders` re-selects the widest audio stream). A: the rendered client clean; on axis 9 a fallback-only language (`ca` reads Spanish, `nn` Norwegian) loses to an exact catalogue later in `Accept-Language`, so Chrome's Catalan header is English on a real PMS -- and three malformed-only rules, among them the decision texts, localised in 32 of 43 languages where no client draws them |
 | Cycle 67 | **67 — nine axes clean: 4 CLIENT-VISIBLE findings in 4 fix commits, 2 recorded.** B and C reported no findings of either kind on axes 1, 2, 3, 4, 6, 7, 8, 10; A the rendered client clean and four on axis 9: a show's Episode ordering lead (1.42.2's wording in sr/da/uk, English in af/pt-BR) and a show's and season's language lists for the new locales -- both hidden since cycle 62 because the sweep paired plexsim's show with an UNMATCHED zen show -- and, on the socket, `hu-HU`'s own catalogue and Nynorsk reading Norwegian |
 | Cycle 66 | **66 — the locales Plex Web actually sends: 7 CLIENT-VISIBLE findings in 8 fix commits, 1 recorded.** C: zero findings on axes 1, 2, 3, 4, 7, 10. B: the cells cycle 65 skipped as unstable, read after the write chains, found the Roku pivot strip gated on `X-Plex-Version` < 6.4.2 (axis 8) and the focus key's second mode (recorded). A: axis 5 clean; axis 9 measured against the 44 language values Plex Web sends found six -- `no`/`af` and `pt-BR` catalogues, the butler's progress sentences per socket, the regional settings' version, ICU names by FULL locale, and `zh-TW` skipped in `Accept-Language` |
 | Cycle 65 | **65 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 2 recorded.** C: zero findings of either kind on axes 1, 2, 3, 4, 7, 10. B: python-plexapi's writes and playback per identity repeated clean, then widened to every identity header the 1.42.2 binary reads and the 15 client identities as whole header sets -- two malformed-only (`X-Plex-Client-Platform` as a second platform spelling; the hub page's cache keyed on `X-Plex-Features`/`X-Plex-Language`). A: the rendered client and 18 localised captures clean; the notification socket, walked in ten languages for the first time, found the Activity menu's titles never localised (axis 9) |
@@ -101,12 +102,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 67" names what it must cover** |
+| Work half-done | **none — every Cycle-59 client-visible finding is implemented and proved fail-then-pass; the rest are in §8. Cycle 60 is next under the stopping rule (§1); the axis ledger in §7 "Cycle 68" names what it must cover** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 68 | UI **1,946/1,946** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24672 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **4 recorded**. **1 recorded belief refined** (cycle 67's Nynorsk rule) |
 | 67 | UI **1,945/1,945** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24659 | **4 client-visible** in **4 fix commits**, every one proved fail-then-pass by `sdrive.py`; **2 recorded**. **2 recorded beliefs overturned** (the item-prefs sweep's coverage, cycle 66's three-spelling Chinese skip) |
 | 66 | UI **1,941/1,941** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes (one cycle-50 check re-based on this cycle's measurement); LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,631 | **7 client-visible** in **8 fix commits**, every one proved fail-then-pass by `sdrive.py`; **1 recorded**. **4 recorded beliefs overturned** (the 28-language model, the Roku strip, the scan-only ProgressNotification rule, the regional settings' version) |
 | 65 | UI **1,933/1,933** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **29/38** (baseline) | 24,544 | **1 client-visible** in **1 fix commit**, proved fail-then-pass by `sdrive.py`; **2 recorded**. **1 recorded belief refined** (cycle 25's "`X-Plex-Features` is inert") |
@@ -526,6 +528,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **`nn` reads Norwegian wherever it appears in `Accept-Language`** (cycle 67) | Only as a FALLBACK: `nn` and `ca` have no catalogue of their own, and an exact catalogue later in the list beats them (`nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7` is English, `ca,fr;q=0.9` French) | D | cycle 68 |
 | **An item's Advanced enums match zen in every language** (the item-prefs sweeps of cycles 62-66) | They were never compared: the sweep's pair file matched plexsim's show and season with zen's UNMATCHED show 5189, whose `showOrdering` has no enum and whose language lists carry another content head. Re-paired with matched show 6558/6559/6560 | B | cycle 67 |
 | **`zh-TW`, `zh-HK` and `zh-Hant` are the Traditional tags `Accept-Language` skips** (cycle 66) | The rule is the script and region: `zh-Hant-TW`, `zh-Hant-HK` and `zh-MO` are skipped too; `zh-SG`, `zh-Hans`, `zh-Hans-CN` read Simplified | D | cycle 67 |
 | **A regional form works like its primary subtag, an unknown language falls back to English, and 28 languages answer differently** (cycles 16, 45, 50) | Measured against the 44 values Plex Web sends: `no` and `af` have catalogues; `pt-BR`/`pt-PT` read the Brazilian one on every document; `es-419`/`fr-CA` read `es`/`fr`; ten locales have no catalogue but ICU names in the full locale; `zh-TW`/`zh-HK`/`zh-Hant` are skipped in `Accept-Language` | A | cycle 66 |
@@ -3740,6 +3743,31 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 68 — nine axes clean again, and a fallback rule
+
+**C** reported exactly zero findings on axes 1, 2, 3, 4, 7 and 10 (the axis-7 sweep alone, first,
+197,892 cells byte-identical to cycle 67's). **B** reported no client-visible findings on axes 6
+and 8, every regression and identity flow byte-identical to cycle 67's, and one malformed-only rule
+(below). **A** walked the rendered client clean (cycle 67's G1/G2 now draw correctly), swept 74,440
+pushed frames over ~280 browser header forms, and audited the pair files (the old one still names
+zen's unmatched 5189-5191; `i18n/extra68.json` holds the matched pairs). One client-visible rule:
+a language with no catalogue of its own (`ca`, `nn`) is only a fallback in `Accept-Language`, so
+Chrome's `ca-ES,ca;q=0.9,en-US;q=0.8,en;q=0.7` socket is English on a real PMS and was Spanish on
+plexsim -- measured on zen's `/:/prefs` and plexscratch42's socket, and re-measured by the driver
+over 16 header forms on zen. Catalan is the only Plex Web language whose Chrome- and Firefox-shaped
+headers differ.
+
+**The axis ledger after cycle 68.** Axes 1-8 and 10 clean; 9 found one.
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | **clean nine times** (60-68) |
+| 3 | Client write flows | **clean six times** (63-68) |
+| 5 | The rendered client | **clean nine times** |
+| 6 | python-plexapi's writes | **clean seven times** (62-68) |
+| 8 | Playback per client identity | **clean twice** (67, 68) |
+| 9 | Localisation | found 1 (the fallback rule); repeat |
+
 ### Cycle 67 — nine axes clean, and a sweep that never compared what it named
 
 **C** reported exactly zero findings of either kind on axes 1, 2, 3, 4, 7 and 10 (running the
@@ -5124,6 +5152,24 @@ same title stem, so release, alphabetical and insertion order coincided.
 ---
 
 ## 8. Measured and deliberately NOT implemented
+
+**Cycle 68** (recorded, not built):
+
+- The decision's four text fields (`generalDecisionText`, `directPlayDecisionText`,
+  `transcodeDecisionText`, `mdeDecisionText`) follow `X-Plex-Language` in 32 of 43 Plex Web
+  languages on both copies (zen's `plex.mo` holds every template); plexsim answers English. Plex Web
+  draws the server's text only for a FAILED decision, which it never requests from a server without
+  a transcoder (it draws its own error instead), so no client reads it. `A/regress68a.py`: frozen
+  8/44, plexscratch42 44/44.
+- The CLDR-style fallback map without English in the header: gl/eu/gn/qu read Spanish,
+  az/be/hy/kk/ky/mn/uz/tg/tt Russian, br/oc/wo French, lb/rm German, fy Dutch, bs Croatian, ckb
+  Arabic, iw Hebrew, pt-AO Brazilian. With the headers browsers send (English listed) both servers
+  answer English.
+- HTTP `Accept-Language` without `X-Plex-Language` (68 of 153 forms differ, mostly ICU names by
+  full locale); Plex Web always sends `X-Plex-Language`.
+- `X-Plex-Client-Capabilities` with an `audioDecoders` key re-selects the item read's `selected`
+  audio stream to the one with the most channels within the largest `{channels:N}` limit (zen
+  19836, 27 probes); plexsim never reads the header. No recorded client sends it.
 
 **Cycle 67** (recorded, not built):
 
