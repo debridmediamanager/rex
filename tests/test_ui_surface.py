@@ -32907,6 +32907,23 @@ def main():
           "Skanner" in nn_c67d and "Skanner" in nnq_c67d and "Scanning" in hant_c67d
           and "正在扫描" in hans_c67d, str((nn_c67d[:1], nnq_c67d[:1], hant_c67d[:1], hans_c67d[:1])))
 
+    # Cycle 67, measured on zen's matched show 6558 (1.42.2): the Episode ordering lead is
+    # 1.42.2's in sr/da/uk and localised in af and pt-BR.
+    def ordering_c67a(language_c67a):
+        body_c67a = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/metadata/%s?includePreferences=1" % get(
+                base, "/library/sections/%s/all?type=2" % show_section)[1]["Metadata"][0]["ratingKey"],
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c67a}), timeout=30).read())
+        rows_c67a = {s.get("id"): s for s in (body_c67a["MediaContainer"]["Metadata"][0]
+                                              .get("Preferences") or {}).get("Setting") or []}
+        return (rows_c67a.get("showOrdering") or {}).get("enumValues", "").split("|")[0]
+    check("a show's Episode ordering lead is 1.42.2's and localised in af and pt-BR",
+          ordering_c67a("sr") == ":Библиотека подразумевана"
+          and ordering_c67a("af") == ":Biblioteekverstek"
+          and ordering_c67a("pt-BR") == ":Padrão da biblioteca",
+          str([ordering_c67a(l) for l in ("sr", "af", "pt-BR")]))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
