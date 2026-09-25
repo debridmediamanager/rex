@@ -33088,6 +33088,40 @@ def main():
           str((zero_c70b.get("playbackState"), zero_count_c70b,
                one_c70b.get("playbackState"), one_count_c70b)))
 
+    def app_beat_c70(rk_b, duration_b, position_b, state_b, session_b, extra_b=()):
+        # One of Plex for Android's timeline beats (js:994737), its exact parameter set.
+        query_b = urllib.parse.urlencode([
+            ("key", "/library/metadata/%s" % rk_b), ("ratingKey", rk_b), ("playQueueItemID", "1"),
+            ("duration", duration_b), ("time", position_b), ("playbackTime", position_b),
+            ("hasMDE", "1"), ("context", "null:null"), ("state", state_b),
+            ("X-Plex-Playback-Session-Id", session_b), ("X-Plex-Playback-Id", "p70")] + list(extra_b))
+        req_b = urllib.request.Request(base + "/:/timeline?" + query_b, headers={
+            "Accept": "application/json", "User-Agent": UA,
+            "X-Plex-Product": "Plex for Android (Mobile)", "X-Plex-Platform": "Android",
+            "X-Plex-Client-Identifier": "c70-app", "X-Plex-Session-Id": session_b})
+        with urllib.request.urlopen(req_b, timeout=30) as response_b:
+            return json.loads(response_b.read())["MediaContainer"]
+    # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): Plex for
+    # Android's offline view-state sync (js:1673773) marks an item watched with viewCount>=1
+    # (one view per sync, a session-kind history row) and clears a watched one with 0.
+    rk_c70c = spare or movie
+    dur_c70c = get(base, "/library/metadata/%s" % rk_c70c)[1]["Metadata"][0]["duration"]
+    request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % rk_c70c)
+    def offline_c70(count_c70):
+        extra_c70 = [("offline", "1"), ("updated", str(int(time.time()) - 600))]
+        if count_c70 is not None:
+            extra_c70.append(("viewCount", str(count_c70)))
+        answer_c70 = app_beat_c70(rk_c70c, dur_c70c, 0, "stopped", "c70-off", extra_c70)
+        row_c70 = get(base, "/library/metadata/%s" % rk_c70c)[1]["Metadata"][0]
+        return (answer_c70.get("playbackState"), answer_c70.get("viewCount"), row_c70.get("viewCount"))
+    got_c70c = [offline_c70(n) for n in (1, 1, 0, None, "abc")]
+    plain_c70c = [r.get("viewType") for r in get(base, "/status/sessions/history/all?metadataItemID=%s"
+                                                  % rk_c70c)[1].get("Metadata") or []]
+    check("the offline timeline's viewCount marks the item watched, and 0 clears it",
+          got_c70c == [("complete", 1, 1), ("complete", 2, 2), ("complete", 0, None),
+                       ("ignore", 0, None), ("ignore", 0, None)]
+          and plain_c70c == [None, None], str((got_c70c, plain_c70c)))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)

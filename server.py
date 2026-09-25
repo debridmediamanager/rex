@@ -16821,6 +16821,24 @@ class PlexSim:
                     # the refused ones saying `progress`.
                     finished = row.get("_completed") == (playing_session or True)
                     playback_state = "complete" if finished and not already else "ignore"
+            # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
+            # OFFLINE form Plex for Android syncs a downloaded item's view state with
+            # (`offline=1&time&updated&state=stopped&duration&viewCount`, js:1673773) marks
+            # the item watched when `viewCount` is 1 or more and the beat itself stores and
+            # completes nothing: one view per sync (1 -> 2 -> 3, whatever the number), a
+            # history row of the SESSION kind (no `viewType`), `complete` with the new count.
+            # `viewCount=0` on a watched item clears its view state instead, answering
+            # `complete` and 0; on an unwatched one it is the ordinary beat. A negative or
+            # unparseable value is ignored. plexsim never read the name, so an episode
+            # watched offline stayed unwatched once the phone reconnected.
+            if (str(query.get("offline") or "") == "1" and listed is None
+                    and playback_state == "ignore" and str(query.get("viewCount") or "").isdigit()):
+                if int(query["viewCount"]) >= 1:
+                    self.library.scrobble(int(rating_key), True, device_id=device, view_type=None)
+                    playback_state = "complete"
+                elif int(row.get("viewCount") or 0) > 0:
+                    self.library.scrobble(int(rating_key), False, device_id=device)
+                    playback_state = "complete"
             view_count = int(row.get("viewCount") or 0)
             if state == "stopped" and listed is None:
                 self.sessions.record_play(row, offset_ms / 1000 if offset_ms else 0,
