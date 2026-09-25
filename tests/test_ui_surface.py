@@ -32924,6 +32924,22 @@ def main():
           and ordering_c67a("pt-BR") == ":Padrão da biblioteca",
           str([ordering_c67a(l) for l in ("sr", "af", "pt-BR")]))
 
+    # Cycle 67, measured on zen, kids and plexscratch42: a season's Preferred audio language
+    # list is localised and re-collated for af, pt-BR, bg, zh-TW and the other new locales.
+    def audio_c67b(language_c67b):
+        body_c67b = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/library/metadata/%s?includePreferences=1" % get(
+                base, "/library/sections/%s/all?type=3" % show_section)[1]["Metadata"][0]["ratingKey"],
+            headers={"User-Agent": UA, "Accept": "application/json",
+                     "X-Plex-Language": language_c67b}), timeout=30).read())
+        rows_c67b = {s.get("id"): s for s in (body_c67b["MediaContainer"]["Metadata"][0]
+                                              .get("Preferences") or {}).get("Setting") or []}
+        return (rows_c67b.get("audioLanguage") or {}).get("enumValues", "")
+    af_c67b = audio_c67b("af")
+    check("a season's language lists are localised for the new locales",
+          af_c67b.startswith(":Reeksverstek|") and "de-DE:Duits" in af_c67b
+          and "|ja-JP:日文" in audio_c67b("zh-TW"), af_c67b[:120])
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
