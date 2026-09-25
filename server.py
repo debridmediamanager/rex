@@ -2919,6 +2919,16 @@ def request_language(query, headers, regional=False):
             if order:
                 # Every tag in weight order: the first the server HAS wins, and one it
                 # does not have is skipped rather than ending the search.
+                #
+                # Cycle 68, measured on zen (`/:/prefs`) and plexscratch42 (the socket): a
+                # language with no catalogue of its OWN -- `ca` reads Spanish, `nn`
+                # Norwegian -- is only a FALLBACK, and an exact catalogue anywhere later in
+                # the list beats it. Chrome's Catalan header `ca-ES,ca;q=0.9,en-US;q=0.8,
+                # en;q=0.7` is English, `ca,fr;q=0.9` French and `ca,es;q=0.9` Spanish;
+                # `ca` alone, `ca,nn` and `ca,zh-TW` stay Spanish, and `nn,ca` Norwegian.
+                # plexsim took the first tag it could map, so a Catalan browser's Activity
+                # menu and Alerts were Spanish where a real PMS draws English.
+                fallback = None
                 for tag in order:
                     # Cycle 66, measured on zen and plexscratch42 (the socket and
                     # `/:/prefs`): the Traditional-Chinese tags are tags the server does
@@ -2935,8 +2945,11 @@ def request_language(query, headers, regional=False):
                         continue
                     # Cycle 67: Norwegian Nynorsk reads the Norwegian catalogue (`Skanner`
                     # on a socket opened with `nn-NO,nn;q=0.9`, Firefox's Nynorsk build).
-                    if subtags[0] == "nn" and "no" in TRANSLATED_LANGUAGES:
-                        return "no"
+                    if subtags[0] in ("ca", "nn"):
+                        target = {"ca": "ca", "nn": "no"}[subtags[0]]
+                        if fallback is None and target in TRANSLATED_LANGUAGES:
+                            fallback = target
+                        continue
                     if regional and subtags == ["hu", "hu"]:
                         return "hu-HU"
                     # Cycle 66: `pt-BR` and `pt-PT` read the Brazilian catalogue here too
@@ -2947,7 +2960,7 @@ def request_language(query, headers, regional=False):
                     primary = tag.replace("_", "-").split("-")[0].lower()
                     if primary in TRANSLATED_LANGUAGES:
                         return primary
-                return None
+                return fallback
             if source is not None and str(source).strip():
                 # A malformed header falls back to English rather than to the next
                 # source: `de;q=abc` is not "no Accept-Language".

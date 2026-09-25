@@ -32954,6 +32954,23 @@ def main():
           and any(str(m).startswith("A rendszer generálta a bélyegképeket") for m in hu_c67c),
           str((huhu_c67c[:1], hu_c67c[:1])))
 
+    # Cycle 68, measured on zen and plexscratch42: `ca` and `nn` have no catalogue of their own,
+    # so an exact catalogue later in Accept-Language beats them -- Chrome's Catalan header is English.
+    def friendly_c68a(accept_c68a):
+        body_c68a = json.loads(urllib.request.urlopen(urllib.request.Request(
+            base + "/:/prefs", headers={"User-Agent": UA, "Accept": "application/json",
+                                        "Accept-Language": accept_c68a}), timeout=30).read())
+        return {s.get("id"): s.get("label") for s in body_c68a["MediaContainer"]
+                .get("Setting") or []}.get("FriendlyName")
+    got_c68a = {al: friendly_c68a(al) for al in (
+        "ca-ES,ca;q=0.9,en-US;q=0.8,en;q=0.7", "ca,fr;q=0.9", "ca",
+        "nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7", "nn,ca;q=0.9")}
+    check("a fallback-only language loses to an exact catalogue later in Accept-Language",
+          got_c68a["ca-ES,ca;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
+          and got_c68a["ca,fr;q=0.9"] == "Nom d'usage" and got_c68a["ca"] == "Nombre familiar"
+          and got_c68a["nn-NO,nn;q=0.9,en-US;q=0.8,en;q=0.7"] == "Friendly name"
+          and got_c68a["nn,ca;q=0.9"] == "Kallenavn", str(got_c68a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
