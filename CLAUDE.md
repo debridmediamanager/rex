@@ -109,7 +109,7 @@ fact about status and headers, not something to keep on disk.
 | `http://kids:32400` | the reference PMS |
 | `http://kids:9081` | mitmweb, client axis (password `plexlab`) |
 | `http://kids:7902` | the browser's desktop, for watching a session run |
-| `http://kids:9224` | CDP, for driving it |
+| `http://100.101.10.1:9224` | CDP, for driving it. **Not** `http://kids:9224`: Chrome refuses a `Host` that is not an IP or localhost, and nothing rewrites it on this port (only kids' 9222 has Caddy in front). Verified 2026-09-22. |
 
 ### Setting it up from scratch
 
