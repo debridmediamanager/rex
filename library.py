@@ -654,7 +654,14 @@ class Library:
             self._reported[key] = position
             if position > 60000:
                 self._progressed.add(key)
-        crossed = seen is not None and total and seen < total * 0.9
+        # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4) with Plex for
+        # Android's own beats: the previous position must be NON-ZERO. The app reports
+        # `time=0` until its player has advanced (its first two beats of every play), and a
+        # crossing beat whose predecessor was 0 -- a seek into the last tenth before the
+        # first real position -- answers `ignore` and leaves the item unwatched on both
+        # versions; `1` then 95% completes, and so does 0, 2000, 95% or a later crossing
+        # after a refused one. plexsim counted the 0 as a position and marked it watched.
+        crossed = seen is not None and seen > 0 and total and seen < total * 0.9
         # Cycle 45 REFUTED the `position > 60000` gate that used to stand here. The
         # minute rule is real for the RESUME POINT -- a beat at or under 60 000 ms
         # deletes the stored offset, measured and still applied above -- and NOT for
