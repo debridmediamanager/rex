@@ -14157,6 +14157,25 @@ class PlexSim:
             return ("error", 404, "plexsim: no such item")
         hubs = self.related_hubs(row, query, collections=leaf == "related")
         if leaf == "postplay":
+            # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): an
+            # EPISODE's post-play carries a `tv.upnext` hub holding its show's On Deck row
+            # -- the same row, field for field, as the show's detail `OnDeck` -- whenever
+            # that row comes from view state (an episode watched or in progress in the
+            # show) and is not the episode itself. A pristine show's first-episode On Deck
+            # does not count, and it goes again when the view state is undone. Plex for
+            # Android reads it after every decision (js:2175089) for its Up Next card and
+            # auto-advance; plexsim answered an empty container, so an episode ended with
+            # no next one offered.
+            if row.get("type") == "episode":
+                pick = next((candidate for candidate in self.continue_watching()
+                             if candidate.get("type") == "episode"
+                             and str(candidate.get("grandparentRatingKey"))
+                             == str(row.get("grandparentRatingKey"))), None)
+                if pick is not None and str(pick.get("ratingKey")) != str(row.get("ratingKey")):
+                    hubs = [{"hubKey": "/library/metadata/%s" % pick["ratingKey"],
+                             "upNext": True, "title": "Up Next", "type": "episode",
+                             "hubIdentifier": "tv.upnext", "context": "hub.tv.upnext",
+                             "size": 1, "more": False, "Metadata": [_full(pick)]}] + list(hubs)
             return self.hub_container(Hub=hubs, allowSync=False)
         section = self.catalog.section(row["librarySectionID"]) or {}
         return self.hub_container(

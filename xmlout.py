@@ -290,8 +290,10 @@ _ATTR_ORDER = {
         # Cycle 27: `random` comes BEFORE `style` on both -- measured on the Rediscover
         # and Start-Watching shelves of `/hubs/sections/{id}`, which are the only rows
         # that carry it. It was absent from this bucket, so it fell to the end.
+        # Cycle 70: a post-play `tv.upnext` hub carries `upNext` straight after `hubKey`
+        # (plexscratch42 and plexscratch).
         "identifier",
-        "hubKey", "key", "title", "type", "hubIdentifier", "context", "size",
+        "hubKey", "upNext", "key", "title", "type", "hubIdentifier", "context", "size",
         "more", "random", "style", "promoted"
     ),
     "Sort": (

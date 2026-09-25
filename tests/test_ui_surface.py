@@ -33122,6 +33122,37 @@ def main():
                        ("ignore", 0, None), ("ignore", 0, None)]
           and plain_c70c == [None, None], str((got_c70c, plain_c70c)))
 
+    # Cycle 70, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): an episode's
+    # post-play carries its show's On Deck row as a `tv.upnext` hub once that row comes
+    # from view state, never for the episode itself (Plex for Android, js:2175089).
+    if show:
+        leaves_c70d = [m for m in get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []]
+        for leaf_c70d in leaves_c70d:
+            request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s"
+                    % leaf_c70d["ratingKey"])
+        first_c70d, second_c70d = leaves_c70d[0]["ratingKey"], leaves_c70d[1]["ratingKey"]
+        pristine_c70d = get(base, "/hubs/metadata/%s/postplay" % second_c70d)[1].get("Hub")
+        request(base, "PUT", "/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % first_c70d)
+        after_c70d = get(base, "/hubs/metadata/%s/postplay" % first_c70d)[1]
+        self_c70d = get(base, "/hubs/metadata/%s/postplay" % second_c70d)[1].get("Hub")
+        deck_c70d = get(base, "/library/metadata/%s?includeOnDeck=1" % show)[1]["Metadata"][0] \
+            .get("OnDeck", {}).get("Metadata")
+        status_x_c70d, body_x_c70d, _ = request(base, "GET", "/hubs/metadata/%s/postplay" % first_c70d,
+                                               want_json=False)
+        request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % first_c70d)
+        hub_c70d = (after_c70d.get("Hub") or [{}])[0]
+        check("an episode's post-play carries the show's next-up as the tv.upnext hub",
+              not pristine_c70d and not self_c70d
+              and list(hub_c70d)[:8] == ["hubKey", "upNext", "title", "type", "hubIdentifier",
+                                          "context", "size", "more"]
+              and hub_c70d.get("hubKey") == "/library/metadata/%s" % second_c70d
+              and hub_c70d.get("upNext") is True and hub_c70d.get("title") == "Up Next"
+              and hub_c70d.get("hubIdentifier") == "tv.upnext"
+              and hub_c70d.get("Metadata") == [deck_c70d]
+              and b'<Hub hubKey="/library/metadata/%s" upNext="1" title="Up Next"'
+              % second_c70d.encode() in body_x_c70d,
+              str((pristine_c70d, self_c70d, {k: v for k, v in hub_c70d.items() if k != "Metadata"})))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
