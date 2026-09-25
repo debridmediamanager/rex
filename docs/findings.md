@@ -10688,6 +10688,63 @@ HTTP, the socket and `/activities`), python-plexapi's writes and playback per id
 request inventory, reads, write flows, owner's screens, vocabulary and discovery. It is the cycle
 the client-impact stopping rule asked for. What it does not bound is listed in HANDOVER §7 "Cycle 69".
 
+#### The seventieth pass — the native Plex for Android app
+
+Cycle 69 was clean on all ten axes and named the instrument none of them had: a native client.
+Cycle 70 took one. **Plex for Android 2026.9.0 is a React Native app compiled to Hermes bytecode —
+a codebase separate from Plex Web** — and it was captured two ways: statically (the APK pulled from
+a phone, its bundle decompiled into 57,551 functions and every PMS request it can build listed with
+its literal parameters) and live (the same APK in a local arm64 Android 13 emulator behind
+mitmproxy, plex.tv's resource list rewritten to exactly one server, plex.tv writes answered locally,
+sign-in completed by answering the PIN poll with the lab account's token). The same scripted walk
+ran against plexsim and against plexscratch, and every request the app made was diffed by
+template. Seven client-visible rules came out, all built:
+
+* **A `plex://` guid must be one plex.tv knows.** A movie or show whose guid plexsim MINTED never
+  gets its luma.plex.tv detail screen, so the action row (Watchlist, Rate, Mark as Watched, More)
+  stays a skeleton and a show's Seasons block spins forever. Swapping the one guid for the real one
+  through the proxy, and nothing else, drew both. The catalog now takes Plex's own guids from the
+  agent the reference itself calls (`POST metadata.provider.plex.tv/library/metadata/matches
+  {"type":1|2,"guid":"tmdb://N"}`, then `children` by `index` for seasons and episodes), with the
+  agent's slug; `build_catalog.py --relink` applies it to a built catalog.
+* **`/service/ultrablur/colors?url=`** (singular, and `/services/...`) answers the image's four
+  corner colours; the app asks it for any item without `UltraBlurColors` (its post-play screen did).
+  The url resolves exactly as `/photo/:/transcode` resolves it (400 without, 404 empty/relative/
+  unknown, 500 for a non-image server path, 200 for any image the server serves; the last `url`
+  wins). The values are pixels, which a stdlib server cannot decode, so they are the row's palette.
+* **`excludeElements=Part` on listings.** The app names `Part` on every library hubs request; zen
+  drops the Parts and adds a trailing `Media.partCount` on section listings, hubs, `recentlyAdded`
+  and a detail's nested Related rows, as cycle 22 measured on the detail row alone.
+* **A session play's history row has no `viewType`** (hunt NA). A scrobble writes `viewType: 1`,
+  a play a timeline completes writes none; the plain `/status/sessions/history/all` call — the app's
+  Play History screen, and python-plexapi's `history()` — lists only the second kind (it is
+  `type=0`), and `type=1` only the first. Cycle 15's "lists nothing without `type=`" was measured
+  on histories holding scrobbles alone.
+* **A crossing beat needs a non-zero previous position** (hunt NB). The app reports `time=0` until
+  its player advances; a beat past 90% whose predecessor was 0 answers `ignore` and leaves the item
+  unwatched on both versions. plexsim counted the 0.
+* **The offline-sync timeline's `viewCount=`** (hunt NB, widened by the driver): with
+  `offline=1&state=stopped`, `viewCount>=1` adds one view per sync (1, 2, 3 — not the number sent)
+  and a session-kind history row, and `viewCount=0` on a watched item clears it; both answer
+  `complete`. A negative or unparseable value is ignored.
+* **An episode's post-play carries `tv.upnext`** (hunt NB, completed by the driver): the show's On
+  Deck row, field for field, whenever it comes from view state (a watched or in-progress episode)
+  and is not the episode itself; a pristine show's first-episode On Deck does not count. `upNext`
+  follows `hubKey` in the hub's attribute order.
+
+**Measured and not acted on.** The inline `OnDeck` row keeps its elements under `excludeElements`
+(zen trims it; the app reads only its `viewOffset`); an empty playlist's or collection's detail
+omits `"Extras":{"size":0}` and `"Related":{}` (the app reads neither when absent); a collection's
+`/children` container sends `librarySectionID` as a string (the app coerces it); a SHOW unscrobble
+on 1.42.2 also clears every season's own counters (single witness); an unencoded
+`X-Plex-Client-Profile-Extra` is a 400 on the copy (the app encodes it); bare `GET /downloadQueue`
+is a 404 on the unclaimed copy (no client sends it). Bounds: the download family cannot be measured
+on an unclaimed copy (404 without an account); the app's transcode fallback needs a transcoder;
+`Review` rows come from Plex's agent (content). **Refuted:** the third library tab's
+"Collections"/"Categories" split is claim state plus content (unclaimed copies advertise
+Collections only on a library holding one), and the reference's `terminationCode` on a stop was its
+own transcoder failing on the scratch copy.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
