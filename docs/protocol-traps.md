@@ -2738,3 +2738,21 @@ are changing; replay the client's exact request before altering behavior.
   /library/metadata/matches {"type":1|2,"guid":"tmdb://N"}`, then `children` by `index`):
   `build_catalog.py --relink` with `PLEX_TOKEN`. The provider refuses `X-Plex-Container-Size:
   500` with a 400; the agent pages at 50.
+- **`/service/ultrablur/colors` resolves its `url` like `/photo/:/transcode`** and answers the
+  corner colours as a JSON LIST of one (an element in XML). Plex for Android uses the singular
+  `/service/` spelling for any item without `UltraBlurColors`.
+- **`excludeElements=Part` is a LISTING rule too**: Parts go and a trailing `Media.partCount` comes,
+  on section listings, hubs and nested Related rows, not only on a detail row.
+- **History rows come in two kinds.** A scrobble's carries `viewType: 1`; a play a timeline
+  completes carries none and is `type=0`, which is what an absent `type=` means. Plex for Android's
+  Play History and python-plexapi's `history()` send no `type`.
+- **A 90% crossing needs a non-zero previous beat** in the session: Plex for Android beats `time=0`
+  until its player advances. The OFFLINE timeline (`offline=1&viewCount=`) marks watched (one view
+  per sync) or, with 0 on a watched item, clears it.
+- **An episode's post-play carries `tv.upnext`**: the show's On Deck row when it comes from view
+  state and is not the episode itself.
+- **Drive a native client through a proxy that owns plex.tv's resource list.** Plex for Android
+  lists every owned server; rewrite `/api/v2/resources` to one entry (with `accessToken` and a plain
+  `http://IP:port` connection), answer plex.tv writes locally, and answer the PIN poll with a token.
+  The emulator resolves names itself and CONNECTs to an IPv6 literal the Mac cannot route: re-resolve
+  the SNI name over IPv4 in `server_connect`.
