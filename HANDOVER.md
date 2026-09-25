@@ -6,8 +6,11 @@ recorded beliefs have been overturned, and which are still at risk**. It is trac
 repository and carries **no tokens**. Tokens live in the private
 `../docs/operations/credentials.md` and in zen's own `Preferences.xml`.
 
-Read `CLAUDE.md` and `docs/findings.md` as well. Those two record *what was measured*. This
-file records *how the work is run and what not to trust*.
+Read `CLAUDE.md`, `docs/protocol-traps.md` and `docs/findings.md` as well. `CLAUDE.md` holds the
+agent instructions and the harness; the measured protocol and implementation traps (619 bullets,
+formerly `CLAUDE.md`'s "Traps that cost real time") live in `docs/protocol-traps.md`, and
+`findings.md` holds the captures behind them. This file records *how the work is run and what not
+to trust*.
 
 ---
 
@@ -74,7 +77,7 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 69 recorded, equal to `origin/main`, clean tree |
+| `main` | cycle 69 recorded; the protocol traps moved out of `CLAUDE.md` into `docs/protocol-traps.md` (2026-09-25, the owner's commit rebased onto cycle 69) and the harness CDP address corrected; equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
 | Cycles complete | **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
 | Cycle 69 | **69 — CLEAN ON ALL TEN AXES: the stopping cycle.** No client-visible and no new malformed-only findings from any territory. A: the rendered walk (36 English and 17x34 localised captures), 8,064 + 462 HTTP cells against zen, the item Advanced tab in 43 languages, 115,240 stream-name cells, 130 pushed-frame captures and 40 new `Accept-Language` edge lists -- every difference content, version/claim or already in §8. B: every matrix, identity flow and sweep with the identical partition as cycle 68, plus a new 1,680-GET item-read sweep over zen's 20 newest movies. C: 197,892 vocabulary cells byte-identical to cycle 68's and every other axis clean. No code changed |
 | Cycle 68 | **68 — nine axes clean: 1 CLIENT-VISIBLE finding in 1 fix commit, 4 recorded.** B and C reported no client-visible findings on axes 1, 2, 3, 4, 6, 7, 8, 10 (B one malformed-only: `X-Plex-Client-Capabilities`' `audioDecoders` re-selects the widest audio stream). A: the rendered client clean; on axis 9 a fallback-only language (`ca` reads Spanish, `nn` Norwegian) loses to an exact catalogue later in `Accept-Language`, so Chrome's Catalan header is English on a real PMS -- and three malformed-only rules, among them the decision texts, localised in 32 of 43 languages where no client draws them |
@@ -6452,8 +6455,9 @@ Every one of these cost real time at least once.
 - **A proof's parent tree needs every sidecar.** `mediainfo.py` loads `languages.json` beside
   itself; a parent tree holding only `mediainfo.py` dies at import, and that reads as a failing
   check.
-- **CLAUDE.md bullets wrap mid-phrase and use em dashes.** A patch that finds a bullet by its
-  opening words has to match the line break; read the lines with `repr` first.
+- **Trap bullets (now in `docs/protocol-traps.md`) wrap mid-phrase and use em dashes.** A patch
+  that finds a bullet by its opening words has to match the line break; read the lines with `repr`
+  first.
 
 **The references and the copy**
 
