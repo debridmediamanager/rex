@@ -299,6 +299,11 @@ library changes stay in the previous file, kept as `<file>.stale`. An unreadable
 file is kept as `<file>.corrupt` and the server starts fresh; the file admits only
 plain data, so it cannot name code to run.
 
+Restored rows keep the shape they had when the file was first written. A later
+change to the load-time row or media rules reaches them only after the file is
+removed or the catalog is rebuilt, because re-running those rules would undo user
+edits and locks.
+
 Sources: [persist.py](persist.py), [persistence checks](tests/test_persist.py).
 
 ## Configuration requirements
