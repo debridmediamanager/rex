@@ -75,3 +75,12 @@ each writes a UI dump, a screenshot and the capture-line range it produced.
   (`restart_mitm.sh`). A dead proxy leaves the emulator with no route at all.
 * **After a cold boot the emulator can lose its default route** ("Network is unreachable");
   `adb emu kill` and boot again.
+* **Keep HTTP/2 off at the proxy** (`--set http2=false`, in `mitm.sh`). With it on, a pip-installed
+  mitmproxy 12.2.3 stalled the app after sign-in (cycle 73): `/api/v2/user` answered, then no
+  further plex.tv request went out and the app reported "The operation was aborted" to Sentry.
+* **The Homebrew cask's `mitmdump` can hang in the dynamic loader** before `main` (0 % CPU,
+  `sample` shows only `_dyld_start`). Point `MITMDUMP` at a venv's instead:
+  `uv venv ~/.cache/mitmvenv && uv pip install --python ~/.cache/mitmvenv/bin/python mitmproxy`.
+* **Never pass a path containing `claude` to a long-lived process** on the driver's Mac: an hourly
+  launchd job there `kill -9`s every tty-less process whose command line matches it. Symlink the
+  work directory (`ln -s <scratch> ~/pxc70`) and use `DROID_WORK=~/pxc70`.
