@@ -30,19 +30,28 @@ def wait_tap(label, timeout=90, tap=True):
 
 
 adb("shell", "am", "start", "-W", "-n", "com.plexapp.android/tv.plex.app.MainActivity")
-print("sign in", wait_tap("Sign in"))
-time.sleep(8)
-adb("shell", "am", "start", "-W", "-n", "com.plexapp.android/tv.plex.app.MainActivity")
-end = time.time() + 120
 state = None
-while time.time() < end and state is None:
-    labels = {t: (a, b, c, d) for t, a, b, c, d in texts()}
-    if "Home, tab 1 of 5" in labels:
-        state = "home"
-    elif "Continue" in labels:
-        a, b, c, d = labels["Continue"]
-        adb("shell", "input", "tap", str((int(a) + int(c)) // 2), str((int(b) + int(d)) // 2))
-        time.sleep(6)
-    else:
-        time.sleep(3)
+for attempt in range(4):
+    print("sign in", wait_tap("Sign in", 60))
+    time.sleep(10)
+    # The PIN is polled while the app is in front: leave the auth tab (Chrome's first
+    # run can sit on top after a cold boot) by BACK, then bring the app forward.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(2)
+    adb("shell", "am", "start", "-n", "com.plexapp.android/tv.plex.app.MainActivity")
+    end = time.time() + 90
+    while time.time() < end and state is None:
+        labels = {t: (a, b, c, d) for t, a, b, c, d in texts()}
+        if "Home, tab 1 of 5" in labels:
+            state = "home"
+        elif "Continue" in labels:
+            a, b, c, d = labels["Continue"]
+            adb("shell", "input", "tap", str((int(a) + int(c)) // 2), str((int(b) + int(d)) // 2))
+            time.sleep(6)
+        elif "Sign in" in labels:
+            break
+        else:
+            time.sleep(3)
+    if state:
+        break
 print("state", state)
