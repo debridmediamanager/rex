@@ -11,8 +11,13 @@ export RD_TOKEN=...
 # On --port 32400 plexsim answers Plex's LAN discovery protocol (GDM) on udp/32410
 # and udp/32414 by default, which is what a real PMS does and what lets an official
 # client on the same network find it without plex.tv. `--gdm off` turns it off.
+#
+# --state keeps watch state, edits, playlists, collections, history, preferences,
+# uploads and the device/statistics tables across restarts (gitignored). Leave it
+# out and a restart reloads catalog.json as it is on disk.
 exec /usr/bin/python3 server.py \
   --port 32400 \
+  --state state.pickle \
   --part-mode proxy \
   --assert-claimed \
   --verbose

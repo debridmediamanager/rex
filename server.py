@@ -37,6 +37,7 @@ import os
 import random
 import re
 import resource
+import signal
 import socket
 import ssl
 import struct
@@ -71,6 +72,7 @@ import claim as claim_module  # noqa: E402
 import accountstate as accountstate_module  # noqa: E402
 import heartbeat as heartbeat_module  # noqa: E402
 import library as library_module  # noqa: E402
+import persist as persist_module  # noqa: E402
 import filters as filters_module  # noqa: E402
 import mediainfo as mediainfo_module  # noqa: E402
 import hierarchy as hierarchy_module  # noqa: E402
@@ -3857,13 +3859,15 @@ class PlexSim:
         self.theme_rows = {}
         self.sessions = {}
         # Everything the UI can change: watch state, edits, playlists,
-        # collections, play history. In memory only -- catalog.json is input.
+        # collections, play history. catalog.json is input; with `--state` the
+        # changes are saved beside it (persist.py), and otherwise they last until
+        # the process ends.
         self.library = library_module.Library(catalog,
                                              notify=self.notify_activity_event,
                                              resolve=self._items_for_uri)
         # Preferences the client has written back through PUT /:/prefs. A real
-        # PMS persists these; plexsim keeps them for the life of the process so
-        # a settings page round-trips instead of silently reverting.
+        # PMS persists these; plexsim keeps them for the life of the process, and
+        # across restarts with `--state`.
         self.pref_overrides = {}
         # The resource graph's series, and the last (wall clock, cpu seconds) pair
         # a process-CPU percentage is measured against.
@@ -3903,6 +3907,8 @@ class PlexSim:
         # Live playback sessions and the byte counters behind the Dashboard. A
         # session is created by /:/timeline, not by anyone reading bytes.
         self.sessions = sessions_module.Sessions(owner=owner_username)
+        # The `--state` file, when one is configured: every request marks it dirty.
+        self.state_store = None
 
     # -- notifications ---------------------------------------------------
 
@@ -23111,6 +23117,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _dispatch(self, method):
         sim = getattr(self.server, "sim", None)
+        if sim is not None and sim.state_store is not None:
+            # Not only the write verbs: a GET writes too -- `/:/scrobble`, `/:/rate`,
+            # `/:/timeline` and `/:/progress` are all GETs from the web client.
+            sim.state_store.touch()
         if sim is not None:
             # The line `/connections` prints: the client names itself with
             # `X-Plex-Device-Name, X-Plex-Product` when it sends them and with its
@@ -24579,6 +24589,11 @@ def main():
     parser.add_argument("--account-state-interval", type=int,
                         default=accountstate_module.DEFAULT_INTERVAL,
                         help="seconds between claimed-account watch/rating imports")
+    parser.add_argument(
+        "--state", default=os.environ.get("PLEXSIM_STATE"),
+        help="file to keep watch state, edits, lists, history, preferences, uploads "
+             "and statistics in across restarts. Default OFF: without it a restart "
+             "reloads the catalog as it is on disk, which the test suites rely on")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -24622,6 +24637,13 @@ def main():
         owner_email=args.owner_email,
         tmdb=tmdb,
     )
+    store = None
+    if args.state:
+        store = persist_module.Store(args.state, args.catalog)
+        logger.info("state file %s: %s", store.path, store.restore(sim))
+        # The claim reports the server's name to plex.tv; a restored rename is it.
+        claim.name = catalog.friendly
+        sim.state_store = store
 
     # Keep the log in memory as well as on stderr, so Download Logs on the
     # Troubleshooting page has something real to hand over. The format is the
@@ -24764,11 +24786,21 @@ def main():
             accountstate_module.DECRYPT_SECRET_ENV,
         )
 
+    if store is not None:
+        store.start(sim)
+        # launchd and `kill` stop a process with SIGTERM, which by default ends it
+        # without running the `finally` below -- and so without the last save.
+        def _terminate(_signum, _frame):
+            raise KeyboardInterrupt
+        signal.signal(signal.SIGTERM, _terminate)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         logger.info("stopping")
     finally:
+        if store is not None:
+            store.stop(sim)
         if beat is not None:
             beat.stop()
         if account_sync is not None:
