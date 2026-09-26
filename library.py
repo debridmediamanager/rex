@@ -20,11 +20,11 @@ one flag list per item type plus the predicate gating each entry):
     Split Apart      more than one Media (or Location for a show)
     Optimize         server reports transcoderVideo AND backgroundProcessing
 
-Everything here is in memory. catalog.json is never rewritten, which makes a
-restart the undo button -- deliberate, because a Delete in the Plex UI is
-phrased "delete from your filesystem" and plexsim owns no files: the honest
-local meaning is "drop the row from the library", and the debrid content behind
-it is untouched.
+Everything here is in memory, and catalog.json is never rewritten. Without
+`--state` that makes a restart the undo button; with it, persist.py saves this
+state beside the catalog and a restart changes nothing. Either way a Delete in
+the Plex UI -- phrased "delete from your filesystem" -- only drops the row from
+the library: plexsim owns no files, and the debrid content behind it is untouched.
 
 Key spaces stay disjoint, the way the catalog's already are (leaves 1000+,
 shows 20000+, seasons 30000+), so a ratingKey identifies its own kind on sight:
