@@ -2783,3 +2783,13 @@ are changing; replay the client's exact request before altering behavior.
   a restart stays unfound by a misspelling after it (`/hubs/search`, `/library/search`); only an
   optimize rebuilds the spellfix tables. `--state` saves the vocabulary's rows rather than
   rebuilding them at restore.
+- **A device row is written by the request that first names it**, and survives a hard kill 0.16 s
+  after a plain GET's answer on plexscratch. plexsim registers a device while counting the
+  response's bytes, after the answer; with `--state` a new or renamed device is registered first
+  and the request is saved before its status line.
+- **An empty maintenance window is not stored.** A `/:/prefs` write leaving `ButlerStartHour ==
+  ButlerEndHour` moves the end hour to start + 1 (23 wraps to 0) on 1.42.2 and 1.43.4, with a
+  `preference` frame for the moved setting first; a window across midnight is kept.
+- **An uploaded sidecar's `key` serves its bytes** (200 `text/html`, length before type, `Connection:
+  close`; `autoAdjustSubtitle=`, `format=srt` and `.srt` alike) on 1.42.2, and Plex for Android loads
+  it on every play of an item whose selected subtitle is a sidecar. Only an EMBEDDED track is the 501.

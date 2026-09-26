@@ -542,6 +542,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **No client fetches an uploaded sidecar's `key`** (cycle 73, §8, read off Plex Web's `isCloud` gate) | Plex for Android fetches it with `autoAdjustSubtitle=` on every direct play whose selected subtitle is a sidecar; no capture held one because no catalog carried a sidecar until one was uploaded | B | cycle 74 |
 | **"A crash loses at most the last couple of seconds" is acceptable persistence** (after cycle 72, `--state`) | A real PMS keeps a write it answered 0.17 s before a hard kill; five of five survived on plexscratch where plexsim lost five of five. A client write is now on disk before its answer | D | cycle 73 |
 | **A random sort is stable across requests** (a `test_ui_surface.py` check since the early cycles, never measured) | An UNSEEDED `sort=random` is a fresh order on every request on zen, kids and plexscratch; only `random:<seed>` holds one. plexsim's own behaviour had been written down as the rule | G | cycle 73 |
 | **A restore may rebuild what is "derived from the rows"** (`persist.py`: the spelling index "rebuilt after a restore") | The spellfix vocabulary is state, not a derivation: a restart leaves it stale on a real PMS until an optimize -- cycle 38's recorded schedule, which the restore did not implement | C | cycle 73 |
@@ -5454,9 +5455,7 @@ same title stem, so release, alphabetical and insertion order coincided.
 - `/` and `/media/providers` `updatedAt` step to the start time on every PMS restart (and on writes);
   plexsim's is a constant. `sessionKey` numbering restarts at 1 on PMS, at 2 on plexsim. Plex Web
   declares `updatedAt` on the server model and reads it nowhere; a session key is opaque.
-- `GET /library/streams/{id}` of an UPLOADED sidecar is 200 with its bytes on PMS (also `?format=srt`)
-  and 501 here, although plexsim stores the bytes. Plex Web fetches a stream's `key` only when
-  `transcodeServer.get("isCloud")`; python-plexapi and the Android app never do.
+- ~~`GET /library/streams/{id}` of an UPLOADED sidecar is 200 with its bytes on PMS and 501 here~~ -- **BUILT in cycle 74**: Plex for Android loads that key on every play whose selected subtitle is a sidecar (its StreamSelector's `selectExternalStream`), so the "no client reads it" tag was wrong. Only Plex Web's fetch is gated on `isCloud`.
 - PMS runs a `provider.subscriptions.process` activity about 9 s after each start (the unclaimed
   copy; possibly class E). plexsim has no startup activity.
 
