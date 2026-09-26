@@ -416,8 +416,12 @@ CODEC_TITLE_PRODUCTS = frozenset((
     "Plex for Fetch TV", "Plex for Smart TVs", "Plex for VIDAA", "Plex for X1"))
 
 
-def client_display_title(row, product):
-    """The `displayTitle` one client is sent for a Stream row."""
+def client_display_title(row, product, external="External"):
+    """The `displayTitle` one client is sent for a Stream row.
+
+    `external` is the client's word for a sidecar: cycle 73, measured on plexscratch42 and
+    zen in 43 languages, the suffix Plex Web gets is localised (`Unbekannt (SRT Extern)`)
+    exactly as the extended title's is."""
     title = row.get("displayTitle")
     if product not in CODEC_TITLE_PRODUCTS or not title:
         return title
@@ -425,7 +429,7 @@ def client_display_title(row, product):
     if kind == 1:
         codec = _video_codec_label(row)
     elif kind == 3:
-        codec = _subtitle_codec_label(row)
+        codec = _subtitle_codec_label(row, external)
     else:
         return title
     return "%s (%s)" % (title, codec) if codec else title
