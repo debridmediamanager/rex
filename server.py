@@ -7511,6 +7511,14 @@ class PlexSim:
                 self.library.delete_stream(int(stream_id))
                 self.uploaded_subtitles.pop(int(stream_id), None)
                 return ("empty", 200)
+            if method in ("GET", "HEAD") and int(stream_id) in self.uploaded_subtitles:
+                # Cycle 74, measured on plexscratch42 (1.42.2) with a subtitle uploaded
+                # through Plex Web's modal: its `key` answers 200 with the file's bytes --
+                # bare, with `autoAdjustSubtitle=0|1`, `format=srt` or as `.srt` -- as
+                # `text/html`, and closes. Plex for Android loads exactly that URL when it
+                # plays an item whose selected subtitle is a sidecar (its StreamSelector's
+                # `selectExternalStream`); plexsim answered the embedded track's 501.
+                return ("sidecar", self.uploaded_subtitles[int(stream_id)])
             return ("error", 501, "plexsim: streams are embedded in the part")
 
         if segments[:2] == ["library", "parts"] and method in ("PUT", "POST"):
@@ -21201,6 +21209,7 @@ class Handler(BaseHTTPRequestHandler):
             self._undrained = 0
             self._close_after_response = False
             self._status_sent = None
+            self._sidecar_answer = False
             # cycle 49: the method bound is enforced as the eleventh byte ARRIVES, not
             # when the line finishes. `peek` blocks for the first byte, as this read
             # would anyway, and then hands back whatever the one raw read brought.
@@ -21896,6 +21905,10 @@ class Handler(BaseHTTPRequestHandler):
         `/photo/:/transcode` and a `/web/*` or `/:/resources/*` asset send the SAME five
         names in two different orders, so those two are decided by the path.
         """
+        if getattr(self, "_sidecar_answer", False):
+            # Cycle 74: an uploaded sidecar's bytes write their length before their type,
+            # the error family's order, and close (measured on plexscratch42).
+            return "error"
         if "etag" in names or "content-disposition" in names:
             return "part"
         if status == 416:
@@ -23434,6 +23447,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, result[1], result[2],
                            [("Cache-Control", "no-cache"), ("Accept-Ranges", "bytes"),
                             ("Content-Encoding", None)])
+                return
+            if kind == "sidecar":
+                self.close_connection = True
+                self._sidecar_answer = True
+                self._send(200, "text/html", result[1],
+                           [("Cache-Control", "no-cache"), ("Content-Encoding", None)])
                 return
             if kind == "static":
                 self._serve_static(result[1])
