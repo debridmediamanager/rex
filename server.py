@@ -11246,8 +11246,13 @@ class PlexSim:
             # direction or a seed) sort like `random`; python-plexapi always sends the
             # prefixed form, and plexsim 500'd it.
             if key.rpartition(".")[2] == "random":
+                # Cycle 73, three reads each on zen, kids and plexscratch: a bare
+                # `sort=random` (Plex Web's "Randomly", which sends no seed) is a fresh
+                # order on EVERY request, `random:desc` too. Only a seed holds one.
+                # plexsim hashed a fixed "0" seed, so the grid never reshuffled.
+                salt = seed or "%.17g" % random.random()
                 ordered = sorted(ordered, key=lambda r: zlib.crc32(
-                    ("%s/%s" % (seed or "0", r.get("ratingKey"))).encode()))
+                    ("%s/%s" % (salt, r.get("ratingKey"))).encode()))
                 if descending:
                     ordered.reverse()
                 continue

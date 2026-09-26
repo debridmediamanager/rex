@@ -4578,13 +4578,17 @@ def main():
     down = [r.get("ratingKey") for r in descending.get("Metadata") or []]
     check("a sort direction is honoured", len(up) > 1 and up == list(reversed(down)),
           "%s vs %s" % (up, down))
-    _, first, _ = get(base, "/library/sections/%s/all?sort=random" % movie_section)
-    _, second, _ = get(base, "/library/sections/%s/all?sort=random" % movie_section)
-    # A random sort has to be stable per request, or paging through it repeats
-    # and skips rows.
-    check("the random sort is stable across requests",
-          [r.get("ratingKey") for r in first.get("Metadata") or []]
-          == [r.get("ratingKey") for r in second.get("Metadata") or []])
+    # Cycle 73, three reads each on zen, kids and plexscratch: an UNSEEDED random
+    # sort -- Plex Web's "Randomly" sends no seed -- is a fresh order per request.
+    # This check used to assert the opposite, a belief that was never measured.
+    draws = []
+    for _ in range(8):
+        _, drawn, _ = get(base, "/library/sections/%s/all?sort=random" % movie_section)
+        draws.append(tuple(r.get("ratingKey") for r in drawn.get("Metadata") or []))
+    check("an unseeded random sort is re-drawn per request",
+          len(draws[0]) > 2 and len(set(draws)) > 1
+          and all(sorted(d) == sorted(draws[0]) for d in draws),
+          "orders %s" % sorted(set(draws)))
     # A `sort=` spec is a COMMA-SEPARATED list, and plexsim used to split the
     # whole thing on the first colon: the secondary key was dropped and
     # `titleSort:asc,year:desc` even came out descending, because the spec as a
