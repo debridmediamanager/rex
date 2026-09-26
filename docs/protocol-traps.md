@@ -2791,10 +2791,13 @@ are changing; replay the client's exact request before altering behavior.
 - **An empty maintenance window is not stored.** A `/:/prefs` write leaving `ButlerStartHour ==
   ButlerEndHour` moves the end hour to start + 1 (23 wraps to 0) on 1.42.2 and 1.43.4, with a
   `preference` frame for the moved setting first; a window across midnight is kept.
-- **An uploaded sidecar's `key` serves its bytes** (200 `text/html`, length before type, `Connection:
-  close`; `autoAdjustSubtitle=`, `format=srt` and `.srt` alike) on 1.42.2, and Plex for Android loads
+- **An uploaded sidecar's `key` serves its bytes** (200 `text/html`, length before type, the request's
+  connection state -- cycle 74's `close` was urllib's own request header echoed; `autoAdjustSubtitle=`, `format=srt` and `.srt` alike) on 1.42.2, and Plex for Android loads
   it on every play of an item whose selected subtitle is a sidecar. Only an EMBEDDED track is the 501.
 - **Shuffle on a queue nothing was added to is real** (1.42.2 and 1.43.4): `PUT
   /playQueues/{id}/shuffle` puts the selected item first and reorders the rest, `unshuffle` restores
   the natural order (a queue created with `shuffle=1` too); both 200 with the queue, version + 1, every
   row but the selected one re-minted by position. Cycle 15's 404 was measured after an add only.
+- **`urllib` sends `Connection: close` on every request**, and a real PMS answers the connection state
+  the client asked for. A header read through it is the client's, not the server's: read an envelope
+  over a raw socket (cycle 75 found cycle 74's recorded `Connection: close` was exactly this).
