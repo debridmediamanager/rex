@@ -124,7 +124,8 @@ are changing; replay the client's exact request before altering behavior.
   `playQueueItemID` — so ids computed from position plus a frozen version means
   every refresh is thrown away once playback passes the first item.
   `playQueueLastAddedItemID` tracks plain adds only and disables the Up Next
-  shuffle button. `shuffle`/`unshuffle` are 404; `items/{id}/move` is real.
+  shuffle button. `shuffle`/`unshuffle` are 404 ONCE an item has been added (cycle 75: on a
+  queue nothing was added to they shuffle and restore it); `items/{id}/move` is real.
 - **`/:/progress` is NOT `/:/timeline`** — it keys on `key`, not `ratingKey`, and
   answers an EMPTY body. Routed at the timeline it silently records nothing.
 - **The timeline's `viewOffset` is the item's STORED offset**, -1 only when it has
@@ -2793,3 +2794,7 @@ are changing; replay the client's exact request before altering behavior.
 - **An uploaded sidecar's `key` serves its bytes** (200 `text/html`, length before type, `Connection:
   close`; `autoAdjustSubtitle=`, `format=srt` and `.srt` alike) on 1.42.2, and Plex for Android loads
   it on every play of an item whose selected subtitle is a sidecar. Only an EMBEDDED track is the 501.
+- **Shuffle on a queue nothing was added to is real** (1.42.2 and 1.43.4): `PUT
+  /playQueues/{id}/shuffle` puts the selected item first and reorders the rest, `unshuffle` restores
+  the natural order (a queue created with `shuffle=1` too); both 200 with the queue, version + 1, every
+  row but the selected one re-minted by position. Cycle 15's 404 was measured after an add only.

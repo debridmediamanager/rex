@@ -16187,6 +16187,7 @@ class PlexSim:
             rows = [row for row, _item_id in self.library.playlist_items(playlist)]
         else:
             rows = self._items_for_uri(uri, continuous=query.get("continuous") == "1")
+        natural = [int(row["ratingKey"]) for row in rows]
         if query.get("shuffle") == "1":
             # Cycle 16, measured on plexscratch: three consecutive shuffled queues over
             # the same show come back in three DIFFERENT orders. plexsim reversed the
@@ -16222,6 +16223,8 @@ class PlexSim:
                 "source": ("" if playlist is not None
                            else uri if foreign else self.source_uri(uri, rows)),
                 "shuffled": query.get("shuffle") == "1",
+                # The order an unshuffle restores, even for a queue created shuffled.
+                "natural": natural,
                 "client": client,
                 "version": 1,
                 "selected": selected,
@@ -19203,12 +19206,45 @@ class PlexSim:
         if queue is None:
             return ("error", 404, "plexsim: no such play queue")
 
-        # Measured: the player's shuffle button PUTs here and a real PMS answers
-        # 404 -- it has no such endpoint. The client reverts its optimistic
-        # `playQueueShuffled` on a failure, so plexsim's 200 left the button stuck
-        # "on" over a queue that was never shuffled.
         if len(segments) == 3 and segments[2] in ("shuffle", "unshuffle"):
-            return ("error", 404, "plexsim: not found")
+            # Cycle 75, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4): the
+            # player's Shuffle toggle PUTs here, and a queue NOTHING has been added to is
+            # shuffled -- the selected item first, the rest in a new order -- or put back
+            # in its natural order (a queue created with `shuffle=1` too), 200 with the
+            # queue, `playQueueShuffled` set and the version stepped, whatever state it was
+            # in. Every row but the selected one gets a new id, minted by position, so the
+            # selected row's own slot skips one. Once anything has been added
+            # (`playQueueLastAddedItemID`) both are the 404 cycle 15 measured -- which was
+            # the only case it measured, so plexsim refused every shuffle.
+            if method != "PUT":
+                return ("error", 404, "plexsim: not found")
+            with self.lock:
+                if queue.get("last_added") is not None:
+                    return ("error", 404, "plexsim: not found")
+                current = next((entry for entry in queue["items"]
+                                if entry["id"] == queue["selected"]), None)
+                order = list(queue.get("natural") or
+                             [entry["ratingKey"] for entry in queue["items"]])
+                if segments[2] == "shuffle":
+                    if current is not None and current["ratingKey"] in order:
+                        order.remove(current["ratingKey"])
+                    random.shuffle(order)
+                    if current is not None:
+                        order.insert(0, current["ratingKey"])
+                items, kept = [], False
+                for rating_key in order:
+                    self.next_play_queue_item += 1
+                    if (current is not None and not kept
+                            and rating_key == current["ratingKey"]):
+                        items.append(current)
+                        kept = True
+                    else:
+                        items.append({"id": self.next_play_queue_item,
+                                      "ratingKey": rating_key})
+                queue["items"] = items
+                queue["shuffled"] = segments[2] == "shuffle"
+                queue["version"] += 1
+                return self.play_queue_container(queue_id, query, locked=True)
 
         if (len(segments) == 5 and segments[2] == "items"
                 and segments[4] == "move" and method == "PUT"):

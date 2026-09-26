@@ -1317,7 +1317,7 @@ anything naming a list) rather than echoed; the container carries **no**
 `playQueueSelectedItemOffset` and `playQueueTotalCount`; `PUT
 /playQueues/{id}/items/{id}/move?after=-1` moves an item to the front (plexsim did
 not route it and answered 200 with the queue unchanged); and `PUT
-/playQueues/{id}/shuffle` and `/unshuffle` are **404** -- the client reverts its
+/playQueues/{id}/shuffle` and `/unshuffle` are **404** (on a queue with an add -- cycle 75 found both real on one without) -- the client reverts its
 optimistic `playQueueShuffled` on failure, so plexsim's 200 left the shuffle
 button stuck on over a queue that was never shuffled.
 
