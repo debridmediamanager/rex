@@ -2762,3 +2762,24 @@ are changing; replay the client's exact request before altering behavior.
   server; a walk that restarts the app between steps sees skeleton actions on the second open.
 - **After a cold boot the Android emulator's Chrome first-run screen can swallow the sign-in tab**:
   `harness/android/signin.py` retries (back, bring the app forward, repeat while Sign in shows).
+- **A real PMS keeps a write it answered, even through a hard kill.** Five client writes (a rating,
+  a scrobble, a playlist, a server pref, a locked edit) answered 0.17-0.5 s before `docker kill -s
+  KILL` all survived on plexscratch. A coalescing saver loses exactly that window; with `--state`
+  plexsim saves a client write (any non-GET, and the scrobble/rate/progress/timeline GETs) before
+  its status line.
+- **An unseeded `sort=random` is a fresh order on every request** (zen, kids, plexscratch; `random:desc`
+  too). Only `random:<seed>` holds one order, and a `random="1"` shelf's sample is a different
+  mechanism that stays stable for the process. Plex Web's "Randomly" sends no seed.
+- **What a restart changes on a real PMS** (cycle 73, seven restarts of plexscratch): watch state,
+  resume points, ratings, locked edits, lists, play queues (with their selected item), devices,
+  history and its deletes, prefs, agent order, uploads and created libraries are KEPT, and ids keep
+  counting up; the live session, the section timeline, open notification sockets, the hub page's
+  per-URL cache and the genre/actor shelf pick are DROPPED or re-rolled; `/` `updatedAt` steps to
+  the start time and `sessionKey` numbering restarts (neither is read by a client).
+- **A sidecar's codec suffix is localised in the plain title too.** Plex Web (the codec-suffix
+  products) gets `Unbekannt (SRT Extern)` on 1.42.2, the same word the extended title carries; a
+  catalog with no sidecar hides it, so a pairing sweep over catalog items is empty here, not clean.
+- **A restart does not refresh the fuzzy-search vocabulary.** On plexscratch a title edited before
+  a restart stays unfound by a misspelling after it (`/hubs/search`, `/library/search`); only an
+  optimize rebuilds the spellfix tables. `--state` saves the vocabulary's rows rather than
+  rebuilding them at restore.

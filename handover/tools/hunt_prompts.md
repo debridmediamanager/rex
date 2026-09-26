@@ -9496,3 +9496,5 @@ copy. Report the redraw set's denominator, the partition, every finding with bot
 before/after answers, and a minimal regression check that fails on the frozen tree (it may start its
 own plexsim with `--state`, write, restart, and read -- `tests/test_persist.py` is the pattern).
 Leave plexscratch running and healthy at the end and say what state you left on it.
+
+==== Cycle 73 result. P: 2 client-visible (write durability before a hard kill; the unseeded random sort). A: 1 client-visible (the sidecar's Plex Web `External`) and 1 restart candidate the driver measured into a finding (the spelling vocabulary across a restart). B, C, N: no client-visible findings; every other restart candidate settled as agreement on the reference. All four built. ====

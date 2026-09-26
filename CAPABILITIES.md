@@ -290,6 +290,7 @@ on a restart undoing their writes.
 | Created, renamed, and deleted sections; section and show settings | |
 | Server preferences (including the server name) and agent settings | |
 | Uploaded posters, art and subtitles; minted theme rows | |
+| The fuzzy-search vocabulary as it stood (a real PMS rebuilds it at optimize, not at start) | |
 | Play and download queues | |
 | The device table and bandwidth/play statistics | |
 

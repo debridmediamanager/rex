@@ -77,8 +77,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 72 recorded (the stopping cycle: no code change but the Android harness's sign-in retry), then **`--state` persistence** (`369bbd9`, opt-in, off for every test instance -- §7 "After cycle 72"); equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
-| Cycles complete | **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until a cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 73 merged: four fix commits (write durability, the unseeded random sort, the spelling vocabulary across a restart, the sidecar's localised `External`) and one harness commit; equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
+| Cycles complete | **73 -- reopened on `--state`: 4 client-visible findings on a new twelfth axis and two old ones.** `--state` (after cycle 72) changed what a restart does, so cycle 73 repeated all eleven axes with it on and added axis 12, a server restart, measured on the reference itself. It found three restart rules (durability, the spelling vocabulary) and two others its hunts exposed (the unseeded random sort, the sidecar's `External`). The loop runs until one cycle is clean on all TWELVE axes. Before: **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until a cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 73 | **73 — a server restart as the twelfth axis: 4 CLIENT-VISIBLE findings in 4 fix commits, 5 recorded.** Five hunters (A opus: 5, 9; B fable: 6, 8; C opus: 1-4, 7, 10; N fable: 11; P opus: 12, owning plexscratch and restarting it seven times). B, C and N reported no client-visible findings; P found that PMS keeps a write answered just before a hard kill (plexsim's 2 s saver lost it) and that an unseeded `sort=random` reshuffles per request; A found the sidecar's Plex Web title keeps `External` English in 32 languages and that a restart refreshed plexsim's fuzzy-search vocabulary, which the driver measured stale across a real restart. Every other restart candidate was settled as agreement on the reference |
 | After cycle 72 | **`--state FILE` -- the mutable half survives a restart.** Not a cycle and not a measurement: a feature closing the Persistence gap `CAPABILITIES.md` recorded. Watch state, edits, lists, history, sections, preferences, uploads, queues, devices and statistics are saved to one file and restored at start; off by default, because every suite relies on a restart undoing its writes. `test_persist.py` 14/14; the UI surface 1,954/1,954 with it on, as without |
 | Cycle 72 | **72 — CLEAN ON ALL ELEVEN AXES: the stopping cycle.** The four hunters stopped at launch on the account's weekly subagent limit (resets 2026-09-29), so the driver re-ran every territory's cycle-71 tooling against the new head and compared each output with cycle 71's (both reference snapshots identical): the rendered Plex Web walk in English and 17 languages on the Windows CDP browser, every localisation sweep, 63 pushed-frame captures, python-plexapi's write/playback matrices and 15 identities (crossing matrix 105/105), the request inventory, python-plexapi reads, write flows, owner's screens, the 198,034-cell vocabulary sweep, discovery, the Android read and write inventories on six servers and the emulator walk. Every difference is state, timing or per-run identifiers. No code changed |
 | Cycle 71 | **71 — ten of eleven axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits, 6 recorded.** Four hunters (A opus: axes 5, 9; B fable: 6, 8; C opus: 1, 2, 3, 4, 7, 10; N fable: 11) and the driver's Android walk. C, B and N reported no client-visible findings, the driver's walk none; A found two localisation rules on axis 9 that only Plex for Android draws -- the post-play `tv.upnext` title (cycle 70 built it English) and the inline `Related` hub title on a detail row. Six malformed-only/not-read rules recorded (§8) |
@@ -110,12 +111,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none -- the loop STOPPED at cycle 72 under the user's rule: one cycle clean on every axis of the eleven-axis ledger. A new cycle is warranted only by a new instrument, a new client (the Android TV UI, iOS -- §3.3), a new PMS version or a behaviour change** |
+| Work half-done | **none -- cycle 73 is merged. The next cycle is 74, the repeat of all twelve axes on the cycle-73 head (§7 "Cycle 73" ledger); the loop stops when one cycle is clean on every axis** |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 73 | UI **1,955/1,955** with 12 fixture skips (serial, final tree, port 32596), and 1,954/1,954 with `--state` on before the last two fixes; every offline suite passes (`test_persist.py` **15/15**); LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** with `--state` on | 24,839 | **4 client-visible** in **4 fix commits**, each proved fail-then-pass against its parent; **5 recorded**. **3 recorded beliefs overturned** (§3.2) |
 | 72 | no server code changed; the cycle-71 tree's suites stand (UI **1,954/1,954**, offline all pass, LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5**), and every hunter regression file re-ran on it at its cycle-71 count | 24,782 | **0 findings** -- the stopping cycle |
 | 71 | UI **1,954/1,954** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** | 24,782 | **2 client-visible** in **2 fix commits**, both proved fail-then-pass by `sdrive.py`; **6 recorded** |
 | 70 | UI **1,952/1,952** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes, `tests/test_plex_guids.py` **12/12** new; LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** served | 24,776 | **7 client-visible** in **7 fix commits**, every server one proved fail-then-pass by `sdrive.py` and the catalog one by its offline test; **9 recorded**. **2 recorded beliefs overturned** (cycle 15's history rule, cycle 20's "plexsim mints a `plex://` guid for every row" as a harmless shape) |
@@ -540,6 +542,9 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 
 | Belief as recorded | What it actually is | Class | Corrected in |
 |---|---|---|---|
+| **"A crash loses at most the last couple of seconds" is acceptable persistence** (after cycle 72, `--state`) | A real PMS keeps a write it answered 0.17 s before a hard kill; five of five survived on plexscratch where plexsim lost five of five. A client write is now on disk before its answer | D | cycle 73 |
+| **A random sort is stable across requests** (a `test_ui_surface.py` check since the early cycles, never measured) | An UNSEEDED `sort=random` is a fresh order on every request on zen, kids and plexscratch; only `random:<seed>` holds one. plexsim's own behaviour had been written down as the rule | G | cycle 73 |
+| **A restore may rebuild what is "derived from the rows"** (`persist.py`: the spelling index "rebuilt after a restore") | The spellfix vocabulary is state, not a derivation: a restart leaves it stale on a real PMS until an optimize -- cycle 38's recorded schedule, which the restore did not implement | C | cycle 73 |
 | **The plain `/status/sessions/history/all` lists nothing; every row carries `viewType: 1`** (cycle 15, kids and zen) | Two row KINDS: a scrobble writes `viewType: 1` (listed by `type=1`), a play a timeline completes writes none (`type=0`, which is what an absent `type=` means). kids' and zen's histories held scrobbles only, and the copy's "timeline writes no row" was read through `type=1`, which hides exactly those rows | B | cycle 70 |
 | **A minted `plex://` guid is as good as a real one** (cycles 20 and 44: "plexsim mints a `plex://` guid for every row, so the two rules coincide") | The shape was right and the VALUE mattered: Plex for Android keys its luma detail screen on the guid, and a guid plex.tv does not know leaves the action row and a show's Seasons block empty. Real guids now come from the metadata agent | E | cycle 70 |
 | **`excludeElements=Part` is a detail-row rule** (cycle 22, measured on a detail row) | It applies to listing rows, hubs and nested Related rows as well, with the same trailing `partCount` | B | cycle 70 |
@@ -891,7 +896,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | Item | Why it is thin | How to settle it |
 |---|---|---|
 | **The offline sync's `viewCount=1` with a STORED position** | 1.43.4 (plexscratch) stores the position and does not count a view when the offline beat carries a real `time`; plexsim does that because the beat's own handling runs first, but 1.42.2's copy has only 12-second media, where no position is ever stored | A long item on plexscratch42 (a re-muxed file of a few minutes) |
-| **What a real PMS keeps across a restart** | `--state` (after cycle 72) was built from what plexsim itself mutates, not measured: it keeps play and download queues, the device table and the statistics on the belief that PMS's database holds them, and drops live sessions, activities and random-shelf seeds on the belief that it does not. No reference was restarted to check any of it. Restored rows also skip later load-time rules (`normalize_rows`, `normalize_media`), because re-running them would strip user locks and edits | Restart plexscratch after a queue, a device, a random shelf read and a session, and diff each surface before and after; then decide per item |
+| ~~**What a real PMS keeps across a restart**~~ | **CLOSED in cycle 73** on plexscratch, restarted seven times (five clean, two `docker kill -s KILL`) around every client write kind: every belief `--state` was built on held -- queues, devices, history, prefs, uploads kept; live sessions, the section timeline, sockets and the shelf pick dropped -- except durability: PMS keeps a write answered 0.17 s before a hard kill, which plexsim's 2 s saver lost (built). What stays open is the load-time-rule limit: a rule added to `normalize_rows`/`normalize_media` after a state file was written does not reach its rows (§7 "After cycle 72") | A code upgrade over a kept state file: diff a restored row against a fresh one after the next such rule lands |
 | **The post-play `tv.upnext` hub beside Related hubs** | Measured on episodes, which carry no Related shelf on either copy; plexsim puts Up Next first if an episode ever gets both | An episode with a similar-shows shelf on a claimed server |
 | **Plex for Android TV, and Plex for iOS** | Cycle 70 walked the PHONE UI only. The TV screens are in the same bundle (the static inventory covers every request builder), but the leanback UI was not driven: the `android-tv` system image is a `user` build -- no `adb root`, so the proxy's CA cannot be made a system CA and plex.tv cannot be pinned safely. The iOS app is a separate build | A `userdebug` TV image (or a rooted Android TV device dedicated to testing), then `harness/android/` with D-pad key events |
 | **Manage Recommendations' writes** | Plex Web's promote, reorder, remove, reset and publish (`PUT/DELETE /hubs/sections/{id}/manage[/{identifier}[/move]]`, `POST ...manage?metadataItemId=`) are 404s on plexsim and the route exists in 1.42.2's binary (`HubManagementRequestHandler`), but both writable copies 404 the whole manage leaf (unclaimed) and kids and zen are read-only. CLIENT-VISIBLE: the dialog's checkboxes snap back | A claimed, writable 1.42.2 server |
@@ -3781,6 +3786,55 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 73 — a server restart as the twelfth axis
+
+`--state` was a behaviour change built on beliefs about what a restart does, so cycle 73 reopened
+the loop on it. Five hunters: **A** (opus: axes 5, 9), **B** (fable: 6, 8), **C** (opus: 1, 2, 3, 4,
+7, 10), **N** (fable: 11) and a new territory **P** (opus: axis 12, what a client sees across a
+server restart), which owned plexscratch and restarted it seven times (five clean stops, two
+`docker kill -s KILL`) around every client write kind. Every plexsim ran with `--state`, the
+frozen one included, and every territory added a RESTART LEG on its own instance (read, `kill
+-TERM`, restart on the same file, read again). The driver walked the Android app on the
+live-catalog instance before and after a restart of it, and settled every restart candidate
+against the reference.
+
+**4 CLIENT-VISIBLE findings in 4 fix commits:**
+
+| # | Finding | Found by | Fix |
+|---|---|---|---|
+| 1 | A write answered just before a hard kill is lost (PMS keeps 5/5 at 0.17-0.5 s; plexsim's 2 s saver kept 0/5) | P | `cc34085`: a client write is saved before its status line |
+| 2 | An unseeded `sort=random` never reshuffles (PMS: a fresh order per request) | P, in passing | `e875100` |
+| 3 | A restart refreshes the fuzzy-search vocabulary (PMS: stale until an optimize, measured across a restart by the driver) | A (R1) | `8d5b4e5`: the vocabulary's rows are saved |
+| 4 | A sidecar's Plex Web plain title keeps `External` in English (32 of 43 languages) | A | `7bdd6fc` |
+
+Plus `352de5b` (the Android proxy runs with HTTP/2 off and an overridable `mitmdump`).
+
+**Settled as agreement, not findings:** live sessions dropped on both (a client's next beat opens a
+new one on both), a continued session's `Session` block, a 93% crossing whose non-zero predecessor
+beat came before the restart (ignored on both -- measured by the driver on plexscratch and
+plexsim), the `/statistics/resources` series (zen's `statistics_resources` table is empty: the
+series is in memory on PMS too). **Recorded, malformed-only:** five (§8 cycle 73).
+
+**The instrument broke three ways, none of them the hunters':** an hourly launchd job on this Mac
+`kill -9`s every tty-less process with `claude` in its command line (every scratch-path server died
+at 11:01 and 12:01, and a background UI suite at 16:01); B's copied tooling uses 32595/32596, and the
+driver's UI suite wrote into one of them for a minute (B re-took everything); the Homebrew
+`mitmdump` hung in `dyld`, and the venv one needs HTTP/2 off (§10). Hunters A and B stopped on the
+session limit mid-cycle and were resumed when it reset.
+
+**The axis ledger after cycle 73.**
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 7, 10 | request inventory, python-plexapi reads, owner's screens, vocabulary, discovery | clean thirteen times (60-69, 71-73) |
+| 3 | Client write flows (and the grid's reads) | found 1 by P in passing (the unseeded random sort; C's flows never re-read a random grid twice); repeat |
+| 5 | The rendered client (Plex Web) | clean thirteen times |
+| 6 | python-plexapi's writes | clean eleven times |
+| 8 | Playback per client identity | clean six times |
+| 9 | Localisation | found 1 (the sidecar's `External`); repeat |
+| 11 | The native Android client | clean three times (71-73) |
+| 12 | Across a server restart (new) | found 2 (durability, the spelling vocabulary); repeat |
+
 ### After cycle 72 — `--state` persistence (`369bbd9`)
 
 Not a cycle: the user asked for the Persistence gap in `CAPABILITIES.md` to be closed, limited to
@@ -3800,7 +3854,7 @@ renamed server took its old name back.
 - **One pickle**, so object identity survives (several paths test `items.get(key) is row`).
   `_PlainPickler` refuses anything but plain containers and scalars, and `_PlainUnpickler`
   resolves no class, so the file cannot name code to run.
-- **When it saves:** every dispatched request marks it dirty, GETs included (`/:/scrobble`,
+- **When it saves** (cycle 73 changed this: a client write -- any non-GET, and the scrobble/rate/progress/timeline GETs -- is now saved before it is answered, and the spelling vocabulary is saved rather than rebuilt at restore): every dispatched request marks it dirty, GETs included (`/:/scrobble`,
   `/:/rate`, `/:/timeline` are GETs); a saver thread writes within 2 s, every 60 s regardless (the
   cloud import writes with no request), atomically via `.tmp` + `os.replace`, skipping identical
   bytes. SIGTERM is turned into KeyboardInterrupt only when `--state` is on, so the `finally`
@@ -5388,6 +5442,24 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 73** (recorded, not built -- none is read by a client):
+
+- A SECTION listing `/library/sections/{id}/all?excludeElements=Part` answers `Media.partCount: 0` on
+  every row (the listing trims Parts, `_grid_row` rebuilds an empty `Part` list, and the post-handler
+  pass recounts it); zen and kids answer the count. No client sends `excludeElements` on this route
+  (the Android app sends it on hubs and playlists only; `partCount` is not in its bundle).
+- `/playlists?type=42` `addedAt` and `/updater/status` `checkedAt` are the process start time on
+  plexsim and move across a restart; a database row on PMS. Plex Web's Conversions page never draws
+  `addedAt`; nothing reads `checkedAt`.
+- `/` and `/media/providers` `updatedAt` step to the start time on every PMS restart (and on writes);
+  plexsim's is a constant. `sessionKey` numbering restarts at 1 on PMS, at 2 on plexsim. Plex Web
+  declares `updatedAt` on the server model and reads it nowhere; a session key is opaque.
+- `GET /library/streams/{id}` of an UPLOADED sidecar is 200 with its bytes on PMS (also `?format=srt`)
+  and 501 here, although plexsim stores the bytes. Plex Web fetches a stream's `key` only when
+  `transcodeServer.get("isCloud")`; python-plexapi and the Android app never do.
+- PMS runs a `provider.subscriptions.process` activity about 9 s after each start (the unclaimed
+  copy; possibly class E). plexsim has no startup activity.
+
 **Cycle 71** (recorded, not built -- none is read by a client):
 
 - A show's `/children?unwatched=1` keeps every season that still has unwatched LEAVES on both
@@ -6392,6 +6464,23 @@ refcheck snapshot was byte-identical. Treat a search `limit` past int32 as crash
 reference, like cycle 45's empty `sort=` on `/library/shared`.
 
 ## 10. Tooling and environment gotchas
+
+**Cycle 73 added these.**
+
+- **An hourly launchd job on the driver's Mac kills every tty-less process whose command line
+  contains `claude`** (`~/Library/LaunchAgents/com.user.claude-cleanup.plist`, the owner's; never
+  change it). Every server whose `--state`/`--catalog` argument named the scratchpad
+  (`/private/tmp/claude-501/...`) died at 11:01 and 12:01 with no log line, and a UI suite run from a
+  background tool shell (whose argv holds `.claude/shell-snapshots`) died at 16:01. Symlink the cycle
+  directory (`ln -s <scratch>/c73 ~/pxc73`), pass only symlinked paths, detach long suites with
+  `Popen(..., start_new_session=True)`, and check `ps -ww -o command= -p PID | grep -c claude` = 0.
+- **Hunters reuse the ports their copied tooling names.** B's cycle-71 tooling runs plexsim on 32595
+  and 32596 -- the UI suite's documented port -- and the driver's suite wrote into B's instance for a
+  minute. List every listener's command line before choosing a port, and run the suites after the
+  hunters stop.
+- **The Homebrew cask's `mitmdump` hung in the dynamic loader** (0 % CPU, `_dyld_start` only); a
+  venv-installed mitmproxy works, with `--set http2=false` or the Android app stalls after sign-in
+  (`harness/android/README.md`).
 
 **Cycle 70 added these.**
 
