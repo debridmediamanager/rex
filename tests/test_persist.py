@@ -206,6 +206,26 @@ def main():
         third_run.request("PUT", "/:/prefs?FriendlyName=Persisted%20Server")
         third_run.stop()
 
+        # -- a restart does not refresh the fuzzy-search vocabulary ------------
+        # Cycle 73, on plexscratch: a title edited before a restart is still missed by a
+        # misspelling after it; PMS rebuilds its spellfix tables at optimization only.
+        spelled = os.path.join(work, "spelling.pickle")
+        speller = Instance(catalog, spelled)
+        speller.request("PUT", "/library/sections/1/all?type=1&id=1009"
+                               "&title.value=Zyxwvut%20Probe&title.locked=1")
+
+        def misspelt(instance):
+            hubs = instance.request("GET", "/hubs/search?query=zyxwvuq&limit=30")[1]
+            return [row.get("title") for hub in hubs["MediaContainer"].get("Hub") or []
+                    for row in hub.get("Metadata") or []]
+        stale = misspelt(speller)
+        speller.stop(signal.SIGTERM)
+        speller = Instance(catalog, spelled)
+        check("a restart keeps the spelling vocabulary as it stood",
+              stale == [] and misspelt(speller) == [], "before %s after %s" % (
+                  stale, misspelt(speller)))
+        speller.stop()
+
         # -- without --state a restart is still the undo button ----------------
         plain = Instance(catalog)
         again = snapshot(plain)

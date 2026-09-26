@@ -55,11 +55,13 @@ import pickle
 import socket
 import threading
 
+import spellfix as spellfix_module
+
 logger = logging.getLogger("plexsim.persist")
 
 FORMAT = 1
 
-# Derived from the rows at load, and rebuilt after a restore.
+# Not plain data: the spelling index is saved as its vocabularies' rows instead.
 CATALOG_SKIP = {"spelling"}
 # Wiring (the catalog object itself and two callbacks into the server) and the
 # activity list, whose entries describe work in flight in THIS process.
@@ -144,6 +146,12 @@ class Store:
         server = {k: getattr(sim, k) for k in SIM_FIELDS if hasattr(sim, k)}
         sessions = {k: getattr(sim.sessions, k) for k in SESSION_FIELDS
                     if hasattr(sim.sessions, k)}
+        # Cycle 73, measured on plexscratch: a title edited before a restart is still not
+        # found by a misspelling after it -- PMS rebuilds its spellfix tables at database
+        # optimization only -- so the vocabulary is kept as it stands, not rebuilt.
+        spelling = getattr(sim.catalog, "spelling", None)
+        if spelling is not None:
+            catalog["_spelling_rows"] = (spelling.metadata.rows, spelling.tags.rows)
         document = {"format": FORMAT, "catalog_digest": self.digest,
                     "catalog": catalog, "library": library, "server": server,
                     "sessions": sessions}
@@ -219,8 +227,13 @@ class Store:
         return "carried over %d rows" % carried
 
     def _restore_all(self, sim, document):
-        sim.catalog.__dict__.update(document["catalog"])
-        sim.catalog.rebuild_spelling()
+        restored = dict(document["catalog"])
+        saved = restored.pop("_spelling_rows", None)
+        sim.catalog.__dict__.update(restored)
+        if saved is not None:
+            sim.catalog.spelling = spellfix_module.SearchIndex.from_rows(*saved)
+        else:
+            sim.catalog.rebuild_spelling()
         sim.library.__dict__.update(document["library"])
         for key, value in document["server"].items():
             setattr(sim, key, value)

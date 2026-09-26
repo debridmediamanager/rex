@@ -267,6 +267,13 @@ class Vocabulary:
                               "k2": phonehash(k1)})
         self.rows.sort(key=lambda row: (row["k2"], row["rowid"]))
 
+    @classmethod
+    def from_rows(cls, rows):
+        """A vocabulary exactly as saved: `rows` is a previous one's `rows`."""
+        vocabulary = cls.__new__(cls)
+        vocabulary.rows = rows
+        return vocabulary
+
     def candidates(self, query, top=10, cutoff=200):
         pattern = transliterate(query)
         hashed = phonehash(pattern)
@@ -373,6 +380,14 @@ class SearchIndex:
             tag_inputs.extend(self._row_tag_inputs(row, tag_fields))
         self.metadata = Vocabulary(title_inputs)
         self.tags = Vocabulary(tag_inputs)
+
+    @classmethod
+    def from_rows(cls, metadata_rows, tag_rows):
+        """An index as it stood when saved, not rebuilt from the rows it is given now."""
+        index = cls.__new__(cls)
+        index.metadata = Vocabulary.from_rows(metadata_rows)
+        index.tags = Vocabulary.from_rows(tag_rows)
+        return index
 
     @staticmethod
     def metadata_text(row):
