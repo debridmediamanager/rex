@@ -1,17 +1,20 @@
 # plexsim capabilities
 
 This is the feature inventory of the current movie/TV server, based on the code
-and recorded measurements through **cycle 72**, at commit `caf8f4c`. It describes
+and recorded measurements through **cycle 72**, plus the `--state` persistence
+added after it. It describes
 implemented behavior and its prerequisites, not the current health or
 configuration of a deployed instance.
 
 plexsim presents a Plex library backed by Real-Debrid links and streams the
-original media without keeping complete media files locally. Its two largest
-limits are **direct play only** and **library changes generally lasting only
-until restart**.
+original media without keeping complete media files locally. Its largest limit
+is **direct play only**. Library changes last across restarts only when the
+server runs with `--state`; without it a restart reloads the catalog.
 
 Cycle 72 added no server capabilities after cycle 71. It repeated the
 compatibility audit and improved the Android test harness's sign-in recovery.
+After it, `--state` made the server's mutable state survive restarts; see
+[Persistence](#persistence).
 
 ## Client access and discovery
 
@@ -140,6 +143,7 @@ Sources: [server.py](server.py), [decision.py](decision.py), [debrid.py](debrid.
 - Optional import of the claimed owner's Plex cloud watch/rating state.
 - Periodic refresh of the claimed owner's account information and feature list.
 
+Viewing state and history persist across restarts with `--state`.
 Cloud state import is conditional on claim, consent, and service-token setup.
 It is not full bidirectional synchronization or a multi-user state system.
 
@@ -157,8 +161,8 @@ Sources: [library.py](library.py), [sessions.py](sessions.py),
 - Delete individual media versions or remove catalog items.
 - Propagate relevant parent metadata, counts, and artwork to child rows.
 
-Deletion removes the in-memory library representation; it does not delete the
-RD content or rewrite `catalog.json`. Edit support follows the measured Plex
+Deletion removes the row from the library (and, with `--state`, keeps it removed
+across restarts); it does not delete the RD content or rewrite `catalog.json`. Edit support follows the measured Plex
 route and field rules: an accepted write is not a promise that every supplied
 field is stored.
 
@@ -178,7 +182,8 @@ Sources: [library.py](library.py), [server.py](server.py).
 | Additional behavior | Recent-playlist shelves and viewing state | Ordering/display preferences, member tags, and related shelves |
 
 Smart-list membership is governed by its query; ordinary item-list mutations
-are subject to the measured restrictions. Lists and their edits are in memory.
+are subject to the measured restrictions. Lists and their edits persist across
+restarts with `--state`.
 
 Sources: [library.py](library.py), [server.py](server.py).
 
@@ -213,7 +218,8 @@ Source: [server.py](server.py).
 - Show activity progress and cancellation responses for supported operations.
 - Stream Console logs and provide a downloadable log archive.
 
-Statistics are process-local. Redirected CDN traffic is outside plexsim's byte
+Statistics and the device table persist across restarts with `--state`, and are
+otherwise process-local. Live sessions never outlive the process. Redirected CDN traffic is outside plexsim's byte
 counters; resource-memory values are placeholders. There is no persistent Plex
 database to export, and termination cannot recall bytes already delivered or a
 CDN URL already handed to a client.
@@ -264,6 +270,37 @@ equivalence. Deliberately deferred and unmeasurable cases remain recorded in
 Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 [translations.json](translations.json), [protocol traps](docs/protocol-traps.md).
 
+## Persistence
+
+With `--state FILE` (or `PLEXSIM_STATE`) the server saves what clients change to
+one file and restores it at start: writes are coalesced and saved within about
+two seconds, every minute regardless, and on SIGTERM or Ctrl-C. A crash loses at
+most the last couple of seconds. It is off by default because the test suites rely
+on a restart undoing their writes.
+
+| Kept | Not kept |
+|---|---|
+| Watch state, progress, ratings, view stamps, and parent counts | Live playback sessions and terminations |
+| Metadata edits, locks, item preferences, and artwork selections | Activities, notification sockets, and log lines |
+| Match/Unmatch, merges, splits, deleted items and media versions | Random-shelf seeds and match candidates |
+| Playlists, collections, the tag table, and their id counters | The resource graph and connection table |
+| Play history and view counts (Top/popular shelves) | The `catalog.json` input, which is never rewritten |
+| Created, renamed, and deleted sections; section and show settings | |
+| Server preferences (including the server name) and agent settings | |
+| Uploaded posters, art and subtitles; minted theme rows | |
+| Play and download queues | |
+| The device table and bandwidth/play statistics | |
+
+The file belongs to the catalog it was saved over. When `catalog.json` changes,
+its rows and keys can no longer be overlaid, so only each row's view state and
+ratings (matched by guid, then by part file) and the server preferences, agent
+settings, device table, and statistics carry over. Edits, lists, history, and
+library changes stay in the previous file, kept as `<file>.stale`. An unreadable
+file is kept as `<file>.corrupt` and the server starts fresh; the file admits only
+plain data, so it cannot name code to run.
+
+Sources: [persist.py](persist.py), [persistence checks](tests/test_persist.py).
+
 ## Configuration requirements
 
 | Capability | Requirement |
@@ -279,6 +316,7 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 | Proxy or redirect media | `--part-mode proxy` or `--part-mode redirect` |
 | Answer LAN discovery | `--gdm on`, or `auto` when serving on port 32400 |
 | Serve HTTPS | `--tls-cert` and the corresponding key via `--tls-key` or the certificate file |
+| Keep library changes across restarts | `--state FILE` or `PLEXSIM_STATE` |
 | Import owner cloud watch/rating state | Real claim, account consent, and `PLEXSIM_SCROBBLING_DECRYPT_SECRET_B64` service-token setup |
 
 Plex and RD account credentials serve different purposes. Possessing a Plex
@@ -291,7 +329,7 @@ them enabled.
 | Area | Current boundary |
 |---|---|
 | Transcoding/remuxing | No video/audio conversion, bitrate reduction, subtitle burning, or transcoded streaming fallback |
-| Persistence | Watch state, edits, lists, library changes, uploads, preferences, and statistics are generally in memory; restart reloads the catalog. Claim state and metadata caches have separate persistent files |
+| Persistence | Opt-in: without `--state`, watch state, edits, lists, library changes, uploads, preferences, and statistics last until restart. With it, a catalog rebuild keeps only view state and server-level settings. There is no PMS database, backup format, or export. Claim state and metadata caches have separate persistent files |
 | Acquisition | No built-in torrent search, magnet acquisition, continuous RD-library synchronization, or automatic discovery of new media |
 | Scanning/analysis | No complete filesystem scanner, media-analysis pipeline, generated thumbnails, intro/credits detection, or actual PMS database backups |
 | Subtitle delivery | Embedded extraction is unimplemented; uploaded subtitle records do not yet have working byte delivery |
@@ -321,6 +359,7 @@ written and not a live deployment health check.
 | Cycle 71 playback/byte/decode suite | 5/5 |
 | Cycle 71 offline suites | All passing, as recorded in the handover |
 | Cycle 72 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 11 audit axes |
+| `--state` persistence (`test_persist.py`) | 14/14; fails before the change, where the server refuses `--state` |
 
 Cycle 72 repeated Web walks in English and 17 other languages, localization and
 notification checks, playback/write matrices, client identities, request and
