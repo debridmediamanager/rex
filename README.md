@@ -42,6 +42,9 @@ Jellyfin.
 - **Claimed-server emulation**, calibrated field by field against the account's
   own real servers at `/identity`, `/media/providers`, `/:/prefs` and
   `/library/sections`.
+- **Survives a restart**, with `--state FILE`: watch state, edits, playlists,
+  collections, history, sections, preferences and uploads are saved as they
+  change and restored at start. Without it a restart reloads `catalog.json`.
 - **Published over a named Cloudflare tunnel**, so clients reach it without a
   port forward or a `*.plex.direct` certificate.
 
@@ -67,6 +70,7 @@ python3 tests/test_navigation.py   # replays a client's request sequence, checks
 python3 tests/test_ui_surface.py   # the context menu and every server page, end to end
 python3 tests/test_all.py          # play queue → decision → byte reads → frame decode
 python3 tests/conformance.py       # drives plexsim with python-plexapi
+python3 tests/test_persist.py      # --state survives restarts, crashes and catalog rebuilds
 ```
 
 ## Documentation

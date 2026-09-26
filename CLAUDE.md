@@ -31,6 +31,7 @@ searched on disk. The gate is usually one truthiness check in minified code.
 | `server.py` | The PMS surface. Every route, ~4400 lines. Start here. |
 | `library.py` | The mutable half: watch state, edits, playlists, collections, history |
 | `filters.py` | Plex's filter query language: the operator is part of the KEY |
+| `persist.py` | `--state`: the one file that keeps the mutable half across a restart |
 | `sessions.py` | Live playback sessions, and the byte counters behind the Dashboard |
 | `hierarchy.py` | Flat leaves → show/season/episode with synthesised parents |
 | `metadata.py` | TMDB identification, `plex://` guid minting, artwork URLs |
@@ -60,6 +61,8 @@ with `dirname(__file__)`. The descriptors (`server_prefs.json`, `regional_server
 (`crossdomain.xml`, `clientaccesspolicy.xml`, `favicon.ico`). Two runtime files are the
 exception to the flat rule: `tmdb_cache.json` and `claim_state.json` are resolved beside the
 **catalog**, not beside `server.py`, because they are state rather than measurement.
+The `--state` file is state too, and lives wherever that flag names (`run.sh.example`
+puts it beside the catalog).
 
 A movie library and a show library have **different**
 `Meta` descriptors, which is why there are two: retargeting one onto the other
@@ -83,6 +86,14 @@ launchctl remove com.plexsim.dev
 ```
 
 A plain `nohup ... &` from an agent tool call **does not survive** the call.
+
+`--state FILE` (or `PLEXSIM_STATE`) keeps what clients change -- watch state, ratings,
+edits, deletes, playlists, collections, history, sections, preferences, uploads, queues,
+and the device and statistics tables -- across restarts; see `persist.py` for what is
+and is not kept. It is **off by default**, because every suite relies on a restart
+being the undo button: never pass it to a test instance. The file is tied to the
+catalog's digest; after a catalog rebuild only view state (by guid, then part file) and
+the server-level settings carry over, and the old file is kept as `<file>.stale`.
 
 ## The reference harness
 
@@ -298,12 +309,14 @@ python3 tests/conformance.py                # drives plexsim with python-plexapi
 python3 tests/test_mediainfo.py             # mediainfo.py against a real PMS's analysis; no server
 python3 tests/test_decision.py              # decision.py against 1,872 measured decisions; no server
 python3 tests/test_gdm.py                   # gdm.py against four real servers' GDM; no server
+python3 tests/test_persist.py               # --state across SIGTERM, SIGKILL and a rebuilt catalog; starts its own
 ```
 
 `test_ui_surface.py` **writes**: it edits rows, builds and deletes playlists and
 collections, and finally deletes a row and a section. Everything it touches is in
-memory, so restarting the server is the undo button — but run it against a test
-instance, started on the fixture the checks are written against:
+memory, so restarting the server is the undo button — provided it was started
+without `--state` — but run it against a test instance, started on the fixture the
+checks are written against:
 
 ```bash
 python3 server.py --port 32500 --catalog tests/catalog_ui.json --assert-claimed &
