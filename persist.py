@@ -37,6 +37,14 @@ catalog has different rows and keys, so its structure cannot be overlaid; then
 only the per-item view state (matched by guid, then by part file) and the
 server-level state carry over, and the old file is kept beside the new one as
 `<file>.stale`.
+
+A restored row keeps the shape the code gave it when the catalog was first loaded.
+`Catalog.__init__` re-applies the measured row and media rules to every row it reads
+(`hierarchy.normalize_rows`, `mediainfo.normalize_media`), and they are not run over
+restored rows: they would strip the very fields a user wrote (a locked `Field`, an
+edited sort title). So a rule added to those after the file was written reaches its
+rows only once the file is removed, or the catalog is rebuilt and the view state is
+carried over.
 """
 
 import hashlib
