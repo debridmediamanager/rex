@@ -10767,6 +10767,33 @@ history row composes its parent artwork URLs from the parents' keys. None is rea
 (HANDOVER §8). **Checked and clean:** the Android walk's missing luma detail call on a repeat open
 is the app's own behaviour -- the reference does the same after a restart.
 
+#### The seventy-second pass — clean on all eleven axes
+
+Cycle 72 repeated every axis on the cycle-71 head (`0a3ccfd`). The four hunters it launched stopped
+at once on the account's weekly subagent limit, so the driver re-ran each territory's cycle-71
+tooling itself against the new head and compared every output with cycle 71's (the reference
+snapshots are identical, so cycle 71's reference-side answers stand):
+
+* **Axes 5 and 9** (A): the English Plex Web walk and seventeen localised walks plus the collection
+  walk on the Windows CDP browser -- identical to cycle 71 except state (the German walk ran before
+  the lists existed); the 43-language HTTP sweep's global and per-path sets identical; the Android
+  app's 24 requests x 42 languages now free of `Up Next` and `Related Movies`; item enums (zen and
+  plexscratch42), stream titles and `Accept-Language` identical; the catalogue sweep no longer
+  lists either title; 63 pushed-frame captures filter to the same 150 recorded lines; every
+  earlier regression file at its cycle-71 count, the two new ones 10/10 and 7/7.
+* **Axes 6 and 8** (B): regressions identical line for line; identity, queue-advance, write-matrix,
+  XML and session captures identical after masking timestamps and per-process identifiers; the
+  product/platform/profile/timeline sweeps' diffs identical; the crossing matrix 105/105.
+* **Axes 1, 2, 3, 4, 7, 10** (C): the request inventory changes only on zen's side (its BIF indexes,
+  butler activities, devices); python-plexapi's reads, the write flows, the owner's screens and the
+  vocabulary sweep (198,034 cells; only `/statistics/bandwidth` row counts moved) identical up to
+  state; discovery identical.
+* **Axis 11** (N and the driver): the Android read inventory on six servers differs from cycle 71
+  only by view state; the write inventory likewise; the emulator walk on plexsim issues no request
+  template that differs from cycle 71's.
+
+**Zero client-visible and zero new malformed-only findings on all eleven axes.**
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

@@ -2760,3 +2760,5 @@ are changing; replay the client's exact request before altering behavior.
   catalogues) and the `Related` block INSIDE a detail row, whose member rows keep the row guard.
 - **Plex for Android does not re-request a detail screen from luma after an app restart** on either
   server; a walk that restarts the app between steps sees skeleton actions on the second open.
+- **After a cold boot the Android emulator's Chrome first-run screen can swallow the sign-in tab**:
+  `harness/android/signin.py` retries (back, bring the app forward, repeat while Sign in shows).
