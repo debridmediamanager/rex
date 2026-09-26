@@ -365,6 +365,7 @@ written and not a live deployment health check.
 | Cycle 71 offline suites | All passing, as recorded in the handover |
 | Cycle 72 compatibility repeat | Zero client-visible and zero new malformed-only findings across all 11 audit axes |
 | `--state` persistence (`test_persist.py`) | 14/14; fails before the change, where the server refuses `--state` |
+| With `--state` on (2026-09-26) | UI surface 1,954/1,954 (12 skips, same as without); navigation 25/25; python-plexapi 38/38; playback 5/5 against the local instance; offline suites passing. The UI suite's end state (12 playlists, 9 collections, 97 history rows, one library deleted) was restored intact after a restart |
 
 Cycle 72 repeated Web walks in English and 17 other languages, localization and
 notification checks, playback/write matrices, client identities, request and
