@@ -1770,13 +1770,38 @@ def main():
             ("GET", "/playQueues?type=1", 400, "a GET of the collection"),
             ("GET", "/playQueues/999999", 404, "an unknown queue"),
             ("PUT", "/playQueues/%s" % qid, 400, "a refresh PUT with no uri"),
-            ("PUT", "/playQueues/%s/shuffle" % qid, 404, "the shuffle toggle"),
-            ("PUT", "/playQueues/%s/unshuffle" % qid, 404, "the unshuffle toggle"),
+            ("PUT", "/playQueues/%s/shuffle" % qid, 404, "the shuffle toggle after an add"),
+            ("PUT", "/playQueues/%s/unshuffle" % qid, 404, "the unshuffle toggle after an add"),
             ("DELETE", "/playQueues/%s/items/999999" % qid, 404, "an unknown queue item"),
             ("POST", "/playQueues/%s" % qid, 404, "a POST to one queue"),
             ("DELETE", "/playQueues/%s" % qid, 404, "a DELETE of one queue")):
         status, _, _ = container(base, method, path_)
         check("play queue: %s is a %d" % (why, want), status == want, "HTTP %s" % status)
+
+    # Cycle 75, measured on plexscratch42 and plexscratch: on a queue NOTHING was added
+    # to, the Shuffle toggle shuffles (selected first, version stepped, every other row a
+    # new id) and Unshuffle restores the natural order around the same selected row.
+    leaves_c75 = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or []
+    episode_c75 = leaves_c75[min(2, len(leaves_c75) - 1)]["ratingKey"] if leaves_c75 else ""
+    fresh_c75 = container(base, "POST", "/playQueues?type=video&own=1&uri=%s&key=%s"
+                          % (quote("server://%s/com.plexapp.plugins.library/library/metadata/%s"
+                                   % (machine, show)), quote("/library/metadata/%s" % episode_c75)))[1]
+    qid_c75 = fresh_c75.get("playQueueID")
+    before_c75 = [(r.get("playQueueItemID"), r.get("ratingKey")) for r in fresh_c75.get("Metadata") or []]
+    shuf_s_c75, shuffled_c75, _ = container(base, "PUT", "/playQueues/%s/shuffle?repeat=0" % qid_c75)
+    back_s_c75, back_c75, _ = container(base, "PUT", "/playQueues/%s/unshuffle?repeat=0" % qid_c75)
+    selected_c75 = fresh_c75.get("playQueueSelectedItemID")
+    rows_s_c75 = [(r.get("playQueueItemID"), r.get("ratingKey")) for r in shuffled_c75.get("Metadata") or []]
+    rows_b_c75 = [(r.get("playQueueItemID"), r.get("ratingKey")) for r in back_c75.get("Metadata") or []]
+    check("the Shuffle toggle shuffles a queue nothing was added to, and Unshuffle restores it",
+          shuf_s_c75 == 200 and back_s_c75 == 200 and len(before_c75) > 2
+          and shuffled_c75.get("playQueueShuffled") and not back_c75.get("playQueueShuffled")
+          and rows_s_c75[0][0] == selected_c75
+          and sorted(k for _i, k in rows_s_c75) == sorted(k for _i, k in before_c75)
+          and [k for _i, k in rows_b_c75] == [k for _i, k in before_c75]
+          and back_c75.get("playQueueVersion") == fresh_c75.get("playQueueVersion") + 2
+          and not {i for i, _k in rows_b_c75 if i != selected_c75} & {i for i, _k in before_c75},
+          "%s -> %s -> %s" % (before_c75, rows_s_c75, rows_b_c75))
 
     print("\n=== playback state: progress, refusals, history filters ===")
     # /:/progress is NOT an alias of /:/timeline: it keys on `key`, not `ratingKey`,
