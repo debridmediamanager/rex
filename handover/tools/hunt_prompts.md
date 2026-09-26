@@ -10065,3 +10065,5 @@ bundle call site or corpus line) or MALFORMED-ONLY/NOT-READ. Write an undo for e
 copy. Report the denominator, the partition, every finding with both servers' verbatim answers and
 a minimal regression check that fails on the frozen tree. If (d) is empty say exactly "no
 findings". Leave plexscratch running and healthy and say what state you left on it.
+
+==== Cycle 74 result. A, B, C: no findings (axes 1-10 and their restart legs). P: 2 client-visible (a new device lost inside the 2 s save window; the empty butler window). N: 1 client-visible (Plex for Android fetches an uploaded sidecar's key). Driver's Android walk across a restart: clean. All three built. ====

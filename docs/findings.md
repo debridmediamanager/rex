@@ -10849,6 +10849,34 @@ cloud server); `/` `updatedAt` and `sessionKey` numbering across a restart; the 
 territories raised (live sessions, a continued session's `Session` block, the crossing across a
 restart, the resource series) -- the reference behaves the same way.
 
+#### The seventy-fourth pass — the repeat of all twelve axes, and three rules it found
+
+Cycle 74 repeated every axis on the cycle-73 head (`b42d6b2`) with `--state` on everywhere and a
+restart leg in every territory. A, B and C were clean on axes 1-10 and on their restart legs; every
+cycle-73 fix held on every axis that reaches it. Three were built:
+
+* **A device row outlives a hard kill of the request that first named it.** P killed plexscratch
+  0.16-1.13 s after a new client's first request (a plain GET, and once a write): the device was in
+  `/devices` after every restart. plexsim registers a device while counting the response's bytes,
+  after the answer, so the save-before-answer of cycle 73 never covered it; with `--state` a new or
+  renamed device is now registered before the handler runs and saved before the status line.
+  python-plexapi's `systemDevices()` reads the table.
+* **An empty maintenance window moves its end hour.** Found by P while undoing its own writes, and
+  bisected on plexscratch (1.43.4) and plexscratch42 (1.42.2): any `/:/prefs` write that leaves
+  `ButlerStartHour == ButlerEndHour` sets the end to start + 1 (23 to 0), in one PUT or two, and
+  pushes the moved setting's `preference` frame before the written ones'. A window across midnight
+  is kept. Plex Web's Scheduled Tasks page saves each hour on its own.
+* **An uploaded sidecar's `key` serves its bytes.** N read Plex for Android's StreamSelector: on a
+  direct play whose selected subtitle has a `key`, `selectStreamOnEngine` builds `uri + key +
+  X-Plex-Token + autoAdjustSubtitle` and hands it to the native player. plexscratch42 answers 200
+  with the uploaded bytes (`text/html`, length before type, `Connection: close`; `.srt`,
+  `format=srt` and `autoAdjustSubtitle=0|1` alike); plexsim answered the embedded track's 501.
+  Cycle 73 had recorded the 501 as unread, from Plex Web's `isCloud` gate alone.
+
+Measured and not acted on: a theme row minted by `GET .../theme/{v}/metadata` rides the coalesced
+save (no client sends it). REFUTED: nothing new; cycle 73's settled restart candidates reproduced
+unchanged in every territory.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
