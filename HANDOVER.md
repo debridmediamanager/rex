@@ -77,8 +77,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 72 recorded (the stopping cycle: no code change but the Android harness's sign-in retry); equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
+| `main` | cycle 72 recorded (the stopping cycle: no code change but the Android harness's sign-in retry), then **`--state` persistence** (`369bbd9`, opt-in, off for every test instance -- §7 "After cycle 72"); equal to `origin/main`, clean tree. The shared checkout at `~/debridmediamanager/plexsim` is on `main` |
 | Cycles complete | **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until a cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| After cycle 72 | **`--state FILE` -- the mutable half survives a restart.** Not a cycle and not a measurement: a feature closing the Persistence gap `CAPABILITIES.md` recorded. Watch state, edits, lists, history, sections, preferences, uploads, queues, devices and statistics are saved to one file and restored at start; off by default, because every suite relies on a restart undoing its writes. `test_persist.py` 14/14; the UI surface 1,954/1,954 with it on, as without |
 | Cycle 72 | **72 — CLEAN ON ALL ELEVEN AXES: the stopping cycle.** The four hunters stopped at launch on the account's weekly subagent limit (resets 2026-09-29), so the driver re-ran every territory's cycle-71 tooling against the new head and compared each output with cycle 71's (both reference snapshots identical): the rendered Plex Web walk in English and 17 languages on the Windows CDP browser, every localisation sweep, 63 pushed-frame captures, python-plexapi's write/playback matrices and 15 identities (crossing matrix 105/105), the request inventory, python-plexapi reads, write flows, owner's screens, the 198,034-cell vocabulary sweep, discovery, the Android read and write inventories on six servers and the emulator walk. Every difference is state, timing or per-run identifiers. No code changed |
 | Cycle 71 | **71 — ten of eleven axes clean: 2 CLIENT-VISIBLE findings in 2 fix commits, 6 recorded.** Four hunters (A opus: axes 5, 9; B fable: 6, 8; C opus: 1, 2, 3, 4, 7, 10; N fable: 11) and the driver's Android walk. C, B and N reported no client-visible findings, the driver's walk none; A found two localisation rules on axis 9 that only Plex for Android draws -- the post-play `tv.upnext` title (cycle 70 built it English) and the inline `Related` hub title on a detail row. Six malformed-only/not-read rules recorded (§8) |
 | Cycle 70 | **70 — the native Plex for Android app: 7 CLIENT-VISIBLE findings in 7 fix commits, 9 recorded.** A new axis (11). The APK, pulled off a phone, is React Native/Hermes; its bundle was decompiled (57,551 functions) into an inventory of every PMS request it builds, and the app itself was driven in a local arm64 emulator through mitmproxy pinned to one server (`harness/android/`), plexsim against plexscratch, walk for walk. The driver found three (minted `plex://` guids stop the app's detail screens loading actions and seasons -- the catalog now takes Plex's own guids from the metadata agent; `/service/ultrablur/colors`; `excludeElements=Part` on listings); hunt NA (opus, the read surface) one (a session play's history row has no `viewType`, refuting cycle 15); hunt NB (fable, writes/playback/downloads) three (a crossing needs a non-zero previous beat; the offline sync's `viewCount=`; the post-play `tv.upnext` hub). **Two recorded beliefs overturned** |
@@ -890,6 +891,7 @@ Every one of these was in `docs/findings.md` as a measurement. Sorted by the cla
 | Item | Why it is thin | How to settle it |
 |---|---|---|
 | **The offline sync's `viewCount=1` with a STORED position** | 1.43.4 (plexscratch) stores the position and does not count a view when the offline beat carries a real `time`; plexsim does that because the beat's own handling runs first, but 1.42.2's copy has only 12-second media, where no position is ever stored | A long item on plexscratch42 (a re-muxed file of a few minutes) |
+| **What a real PMS keeps across a restart** | `--state` (after cycle 72) was built from what plexsim itself mutates, not measured: it keeps play and download queues, the device table and the statistics on the belief that PMS's database holds them, and drops live sessions, activities and random-shelf seeds on the belief that it does not. No reference was restarted to check any of it. Restored rows also skip later load-time rules (`normalize_rows`, `normalize_media`), because re-running them would strip user locks and edits | Restart plexscratch after a queue, a device, a random shelf read and a session, and diff each surface before and after; then decide per item |
 | **The post-play `tv.upnext` hub beside Related hubs** | Measured on episodes, which carry no Related shelf on either copy; plexsim puts Up Next first if an episode ever gets both | An episode with a similar-shows shelf on a claimed server |
 | **Plex for Android TV, and Plex for iOS** | Cycle 70 walked the PHONE UI only. The TV screens are in the same bundle (the static inventory covers every request builder), but the leanback UI was not driven: the `android-tv` system image is a `user` build -- no `adb root`, so the proxy's CA cannot be made a system CA and plex.tv cannot be pinned safely. The iOS app is a separate build | A `userdebug` TV image (or a rooted Android TV device dedicated to testing), then `harness/android/` with D-pad key events |
 | **Manage Recommendations' writes** | Plex Web's promote, reorder, remove, reset and publish (`PUT/DELETE /hubs/sections/{id}/manage[/{identifier}[/move]]`, `POST ...manage?metadataItemId=`) are 404s on plexsim and the route exists in 1.42.2's binary (`HubManagementRequestHandler`), but both writable copies 404 the whole manage leaf (unclaimed) and kids and zen are read-only. CLIENT-VISIBLE: the dialog's checkboxes snap back | A claimed, writable 1.42.2 server |
@@ -1242,6 +1244,9 @@ RD_TOKEN=dummy exec python3 server.py --port 32541 --catalog tests/catalog_ui.js
 # full catalog (gitignored, RD links are account-scoped)
 RD_TOKEN=dummy exec python3 server.py --port 32543 --catalog catalog.json --assert-claimed
 ```
+
+**Never pass `--state` (or set `PLEXSIM_STATE`) on a test instance**: with it a restart no longer
+undoes the suite's writes, and the next run starts on the last one's leftovers.
 
 From an agent tool, start servers with `subprocess.Popen(..., start_new_session=True)` or as a
 background task (Claude Code: `run_in_background: true`). `nohup … &` dies with the tool call.
@@ -1616,12 +1621,14 @@ python3 tests/test_all.py --catalog catalog.json --local http://127.0.0.1:32543 
 python3 tests/test_mediainfo.py        # no server
 python3 tests/test_decision.py         # no server
 python3 tests/test_gdm.py              # no server, no network
+python3 tests/test_persist.py          # starts its own servers on a copy of the fixture
 ```
 
 | Suite | What it is |
 |---|---|
 | `test_navigation.py` | **The regression suite.** Every fixed rendering bug gets a check here, and it must fail against the unfixed server — prove it |
-| `test_ui_surface.py` | The context menu and every server page, end to end. **It writes**; restarting the server is the undo |
+| `test_ui_surface.py` | The context menu and every server page, end to end. **It writes**; restarting the server is the undo -- only on a server started without `--state` |
+| `test_persist.py` | `--state`: every write read identically after a SIGTERM restart, a write surviving SIGKILL once the saver ran, no `--state` still resetting, a rebuilt catalog carrying view state and settings only, a corrupt file and a class-naming pickle refused. Starts its own servers on a temp copy of `catalog_ui.json` |
 | `test_all.py` | Play queue → decision → byte reads → real decode. It decodes frames rather than trusting a 200 |
 | `conformance.py` | Drives plexsim with python-plexapi, as a third-party client |
 | `test_mediainfo.py` | `mediainfo.py` against 46 recorded probes and a real PMS's analysis of the same files. Offline |
@@ -3773,6 +3780,52 @@ Matroska magic unconditionally. The old check failed 37/38 on the measured MP4 b
 container-aware check passes 38/38 and now deliberately prefers the Plex Web direct-play shape.
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
+
+### After cycle 72 — `--state` persistence (`369bbd9`)
+
+Not a cycle: the user asked for the Persistence gap in `CAPABILITIES.md` to be closed, limited to
+state the server itself touches. Before it, everything a client changed lived in memory and a
+restart reloaded `catalog.json` -- a watched episode came back unwatched, a playlist vanished, a
+renamed server took its old name back.
+
+**What it is.** `persist.py`, wired into `server.py` behind `--state FILE` / `PLEXSIM_STATE`:
+
+- **Kept:** the Catalog's whole `__dict__` but the spelling index (rows as edited, sections and
+  their indexes, `section_show_prefs`, `_retired`); the Library's but its wiring and activities
+  (playlists, collections, the tag table, history, view counts, every id counter); on PlexSim
+  `SIM_FIELDS` -- server, section and agent prefs, provider groups, uploads, uploaded subtitles,
+  theme rows, play and download queues; on Sessions the device table, `_bytes` and `_plays`.
+- **Not kept:** live sessions and terminations, activities, sockets, log lines, connections,
+  decisions, random-shelf seeds, match candidates, the resource graph.
+- **One pickle**, so object identity survives (several paths test `items.get(key) is row`).
+  `_PlainPickler` refuses anything but plain containers and scalars, and `_PlainUnpickler`
+  resolves no class, so the file cannot name code to run.
+- **When it saves:** every dispatched request marks it dirty, GETs included (`/:/scrobble`,
+  `/:/rate`, `/:/timeline` are GETs); a saver thread writes within 2 s, every 60 s regardless (the
+  cloud import writes with no request), atomically via `.tmp` + `os.replace`, skipping identical
+  bytes. SIGTERM is turned into KeyboardInterrupt only when `--state` is on, so the `finally`
+  runs the last save.
+- **Tied to the catalog's sha256.** A changed catalog carries only per-row view state (by guid,
+  then first part file) and the portable server state, then `recount`s; the old file goes to
+  `<file>.stale`. An unreadable one goes to `<file>.corrupt` and the server starts fresh.
+
+**Why off by default.** Every suite, and every hunt's frozen server, relies on a restart being
+the undo button. `run.sh.example` passes `--state state.pickle`; the live `run.sh` was left alone.
+
+**The known limit.** Restored rows keep the shape the code gave them at first load. A rule added
+later to `normalize_rows` / `normalize_media` reaches them only after the file is removed or the
+catalog is rebuilt; re-running those rules would strip user locks and edited sort titles (§3.3).
+
+**Verification.** `test_persist.py` 14/14, and it fails on the parent (the flag is refused).
+With `--state` on: UI surface 1,954/1,954 (12 skips, identical to a same-day baseline on the
+parent), navigation 25/25, python-plexapi 38/38, `test_all.py` 5/5 local, every offline suite; the
+UI suite's end state (12 playlists, 9 collections, 97 history rows, the TV library deleted) came
+back intact after a launchd restart.
+
+**Two traps met.** A server started with `&` inside an agent's shell died mid-suite with nothing
+in its log -- the tool shell reaping its children, not the saver; under `launchctl submit` the same
+run was clean. And `test_all.py`'s default `--public` is the deployed tunnel: pass `--public` as
+the local URL too, or the public leg reports 0/5 about a different server.
 
 ### Cycle 72 — clean on all eleven axes: the loop stops
 
