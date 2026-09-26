@@ -204,6 +204,18 @@ def main():
               "userRating=%r viewCount=%r friendlyName=%r" % (
                   rated.get("userRating"), watched.get("viewCount"), name))
         third_run.request("PUT", "/:/prefs?FriendlyName=Persisted%20Server")
+        # Cycle 74, on plexscratch: a client's first request, a plain GET, leaves its
+        # device row behind a `docker kill -s KILL` 0.16 s after the answer.
+        headers = dict(HEADERS, **{"X-Plex-Client-Identifier": "persist-crash-device",
+                                   "X-Plex-Device-Name": "Crash Device"})
+        third_run.request("GET", "/library/sections", headers=headers)
+        third_run.stop(signal.SIGKILL)
+        fourth_run = Instance(catalog, state)
+        names = {device.get("clientIdentifier"): device.get("name") for device in
+                 fourth_run.request("GET", "/devices")[1]["MediaContainer"]["Device"]}
+        check("a device first seen just before a SIGKILL survives it",
+              names.get("persist-crash-device") == "Crash Device", "devices %s" % names)
+        third_run = fourth_run
         third_run.stop()
 
         # -- a restart does not refresh the fuzzy-search vocabulary ------------
