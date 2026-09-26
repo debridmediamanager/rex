@@ -7515,7 +7515,7 @@ class PlexSim:
                 # Cycle 74, measured on plexscratch42 (1.42.2) with a subtitle uploaded
                 # through Plex Web's modal: its `key` answers 200 with the file's bytes --
                 # bare, with `autoAdjustSubtitle=0|1`, `format=srt` or as `.srt` -- as
-                # `text/html`, and closes. Plex for Android loads exactly that URL when it
+                # `text/html`. Plex for Android loads exactly that URL when it
                 # plays an item whose selected subtitle is a sidecar (its StreamSelector's
                 # `selectExternalStream`); plexsim answered the embedded track's 501.
                 return ("sidecar", self.uploaded_subtitles[int(stream_id)])
@@ -21943,7 +21943,7 @@ class Handler(BaseHTTPRequestHandler):
         """
         if getattr(self, "_sidecar_answer", False):
             # Cycle 74: an uploaded sidecar's bytes write their length before their type,
-            # the error family's order, and close (measured on plexscratch42).
+            # the error family's order (measured on plexscratch42).
             return "error"
         if "etag" in names or "content-disposition" in names:
             return "part"
@@ -23485,7 +23485,9 @@ class Handler(BaseHTTPRequestHandler):
                             ("Content-Encoding", None)])
                 return
             if kind == "sidecar":
-                self.close_connection = True
+                # Cycle 75: the connection state is the request's -- the `Connection:
+                # close` cycle 74 recorded was urllib's own request header echoed back; a
+                # keep-alive client gets `Keep-Alive: timeout=20` and an open socket.
                 self._sidecar_answer = True
                 self._send(200, "text/html", result[1],
                            [("Cache-Control", "no-cache"), ("Content-Encoding", None)])

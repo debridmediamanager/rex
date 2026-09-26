@@ -10869,7 +10869,7 @@ cycle-73 fix held on every axis that reaches it. Three were built:
 * **An uploaded sidecar's `key` serves its bytes.** N read Plex for Android's StreamSelector: on a
   direct play whose selected subtitle has a `key`, `selectStreamOnEngine` builds `uri + key +
   X-Plex-Token + autoAdjustSubtitle` and hands it to the native player. plexscratch42 answers 200
-  with the uploaded bytes (`text/html`, length before type, `Connection: close`; `.srt`,
+  with the uploaded bytes (`text/html`, length before type, the request's connection state -- corrected in cycle 75, the `close` recorded here was urllib's own request header; `.srt`,
   `format=srt` and `autoAdjustSubtitle=0|1` alike); plexsim answered the embedded track's 501.
   Cycle 73 had recorded the 501 as unread, from Plex Web's `isCloud` gate alone.
 
