@@ -23146,6 +23146,22 @@ class Handler(BaseHTTPRequestHandler):
                 method not in ("GET", "HEAD", "OPTIONS")
                 or _PERSIST_GET.match(_target_parts(
                     (self.requestline.split(" ") + ["", ""])[1])[0]) is not None)
+            # Cycle 74, on plexscratch: a client's FIRST request -- a plain GET -- leaves
+            # its device row behind even when the server is killed 0.16 s after the
+            # answer. plexsim registers a device when it counts the response's bytes,
+            # after the answer, so the device is registered here instead and saved first.
+            params = urllib.parse.parse_qs(_target_parts(self.path)[1])
+
+            def plex(name):
+                return self.headers.get(name) or params.get(name, [""])[-1]
+            identifier = plex("X-Plex-Client-Identifier")
+            name, platform = plex("X-Plex-Device-Name"), plex("X-Plex-Platform")
+            devices = sim.sessions
+            known = identifier in devices._devices
+            if (not known or (name and devices._device_names.get(identifier) != name)
+                    or (platform and identifier not in devices._device_platforms)):
+                devices.device_id(identifier, name, platform)
+                self._persist_before_answer = True
         if sim is not None:
             # The line `/connections` prints: the client names itself with
             # `X-Plex-Device-Name, X-Plex-Product` when it sends them and with its
