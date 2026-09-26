@@ -10745,6 +10745,28 @@ on an unclaimed copy (404 without an account); the app's transcode fallback need
 Collections only on a library holding one), and the reference's `terminationCode` on a stop was its
 own transcoder failing on the scratch copy.
 
+#### The seventy-first pass — eleven axes, two titles
+
+Cycle 71 repeated all eleven axes on the cycle-70 head with four hunters and the driver's own
+Android walk. Nine axes and the native client came back clean; A found two CLIENT-VISIBLE
+localisation rules on axis 9, both drawn only by Plex for Android:
+
+* **The post-play `tv.upnext` hub's title is localised** (`Demnächst`, `À suivre`, `次に登場`): zen
+  and plexscratch42 agree in all 43 languages, 34 of zen's catalogues translate it. Cycle 70 built
+  the hub with an English literal. The app titles its post-play shelf with it; Plex Web removes the
+  hub.
+* **The inline `Related` block's hub titles are localised on a detail row** (`Ähnliche Filme`), as
+  the same hub at `/hubs/metadata/{id}/related` already was; plexsim's row guard stopped at the
+  row. The app's detail screen titles its Related shelf with it.
+
+**Measured and not acted on.** A show's `/children?unwatched=1` keeps seasons that still hold
+unwatched leaves; an empty season's `/children` names its children's type; `/library/all?type=3`
+season rows carry no leaf counts; a show library's legacy `/unwatched` lists shows by their leaves;
+`/library/metadata/{collection}/children` on an episode collection is empty on 1.42.2; an episode's
+history row composes its parent artwork URLs from the parents' keys. None is read by a client
+(HANDOVER §8). **Checked and clean:** the Android walk's missing luma detail call on a repeat open
+is the app's own behaviour -- the reference does the same after a restart.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
