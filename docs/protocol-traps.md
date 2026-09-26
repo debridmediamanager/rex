@@ -2756,3 +2756,7 @@ are changing; replay the client's exact request before altering behavior.
   `http://IP:port` connection), answer plex.tv writes locally, and answer the PIN poll with a token.
   The emulator resolves names itself and CONNECTs to an IPv6 literal the Mac cannot route: re-resolve
   the SNI name over IPv4 in `server_connect`.
+- **A hub title is localised wherever the hub sits**: the post-play `tv.upnext` (`Up Next` is in the
+  catalogues) and the `Related` block INSIDE a detail row, whose member rows keep the row guard.
+- **Plex for Android does not re-request a detail screen from luma after an app restart** on either
+  server; a walk that restarts the app between steps sees skeleton actions on the second open.
