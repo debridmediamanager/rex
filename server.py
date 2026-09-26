@@ -22487,7 +22487,13 @@ class Handler(BaseHTTPRequestHandler):
     # The blocks inside a row that carry the SERVER's vocabulary rather than the
     # user's content, and are therefore translated there. Measured on kids over a
     # movie, a show, a season and an episode with every include option set.
-    _LOCALISED_BLOCKS = frozenset(("Preferences",))
+    #
+    # Cycle 71, measured on zen (movie 380) and kids (movies 3, 4, 17, 18): the inline
+    # `Related` block's HUB titles are translated too (`Ähnliche Filme`), exactly as the
+    # same hub at `/hubs/metadata/{id}/related` is; its member rows keep their guard, since
+    # a row is recognised by its own `ratingKey`. Plex for Android draws that title on its
+    # detail screen (js:buildPmsDetailsScreen), and plexsim left it English.
+    _LOCALISED_BLOCKS = frozenset(("Preferences", "Related"))
 
     # Cycle 25, measured on kids and on zen in de, fr and ja: the `Setting` rows a
     # SHOW's `/tree` node ends with are NOT localised -- all eight stay English in every

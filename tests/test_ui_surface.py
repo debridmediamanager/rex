@@ -33198,6 +33198,25 @@ def main():
                               "ja": ["次に登場"], "ru": ["Очередь воспр."], "th": ["Up Next"]},
               str(titles_c71a))
 
+    # Cycle 71, measured on zen (movie 380) and kids: the inline Related block's hub title
+    # on a detail row follows X-Plex-Language, as /hubs/metadata/{id}/related does.
+    related_c71b = {}
+    for lang_c71b in ("en", "de", "fr", "ja", "th"):
+        req_c71b = urllib.request.Request(
+            base + "/library/metadata/%s?includeExtras=1&includeOnDeck=1&includeRelated=1"
+                   "&includeRelatedCount=15&includeReviews=1&includeExternalMetadata=1" % movie,
+            headers={"Accept": "application/json", "User-Agent": UA, "X-Plex-Language": lang_c71b})
+        row_c71b = json.loads(urllib.request.urlopen(req_c71b, timeout=30).read())["MediaContainer"]["Metadata"][0]
+        related_c71b[lang_c71b] = [(h.get("hubIdentifier"), h.get("title"))
+                                   for h in (row_c71b.get("Related") or {}).get("Hub") or []]
+    en_c71b = dict(related_c71b["en"])
+    check("the inline Related hub title is localised on a detail row",
+          en_c71b.get("movie.similar") == "Related Movies"
+          and dict(related_c71b["de"]).get("movie.similar") == "Ähnliche Filme"
+          and dict(related_c71b["fr"]).get("movie.similar") == "Films associés"
+          and dict(related_c71b["ja"]).get("movie.similar") == "関連する映画"
+          and dict(related_c71b["th"]).get("movie.similar") == "Related Movies", str(related_c71b))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
