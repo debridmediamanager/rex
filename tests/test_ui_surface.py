@@ -27896,6 +27896,20 @@ def main():
           and all(isinstance(v_c19w, int) for v_c19w in stored_c19w.values()),
           "%s ; stored %s" % (lenient_c19w, stored_c19w))
 
+    # Cycle 74, measured on plexscratch and plexscratch42: a write that leaves the butler
+    # window EMPTY moves the end hour to start + 1 (23 wraps to 0); one across midnight stays.
+    def butler_c74(query_c74):
+        request(base, "PUT", "/:/prefs?" + query_c74)
+        return tuple(s_c74.get("value") for s_c74 in sorted(
+            (get(base, "/:/prefs")[1].get("Setting") or []), key=lambda s: s.get("id"))
+            if s_c74.get("id") in ("ButlerStartHour", "ButlerEndHour"))[::-1]
+    window_c74 = [butler_c74("ButlerStartHour=5&ButlerEndHour=5"),
+                  butler_c74("ButlerEndHour=23") and butler_c74("ButlerStartHour=23"),
+                  butler_c74("ButlerEndHour=4") and butler_c74("ButlerStartHour=6")]
+    butler_c74("ButlerStartHour=2&ButlerEndHour=5")
+    check("an empty butler window moves the end hour to start + 1",
+          window_c74 == [(5, 6), (23, 0), (6, 4)], window_c74)
+
     # Cycle 19: `server_prefs.json` was captured off kids (1.43.4) and plexsim reports 1.42.2
     # -- the fifth fixture found to be per VERSION. kids answers 174 settings and zen 173,
     # and exactly `AllowLegacyAgents` and `CLDriver` are on kids and not on zen. A write to
