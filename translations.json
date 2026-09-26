@@ -1,5 +1,5 @@
 {
- "_provenance": "Captured from the plexlab reference (Plex 1.43.4) by fetching each endpoint in English and in each language the server answers differently, then diffing the two documents string by string at the same structural path. English key -> language code -> the reference's own translation. Nothing here is invented. Cycle 16 captured 31 paths; cycle 17 widened the list to cover the library and item preferences, the search hubs, the butler and a generated episode title, and dropped the strings that differ between two English fetches of the same path. Cycle 18 added the firstCharacter buckets, /query/parse fieldTitles, the music and photo filter axes, a music library prefs list and the per-library hub page, and dropped the strings that differ between two fetches in the TARGET language as well. Cycle 25 added the three `/library` Directory titles, captured the same way over the same 28 languages; the plug-in framework's `/system` carries one of the same English strings and does NOT translate it, so `_send_container` skips that container. Cycle 59: the table is PER VERSION and plexsim reports 1.42.2, so it was re-captured off zen (Plex 1.42.2) with the same tool -- kids' ratingKeys remapped to zen rows of the same kind, every listing paged -- and overlaid: 405 cells whose English source the table already held take zen's wording (Danish, Serbian, Ukrainian, Hebrew and Portuguese most of all). Sources only zen's content reaches (its generated episode numbers, its stream titles, its items' own language heads) are not added: they are content, not vocabulary. Cycle 60: rebuilt as 1.42.2's table. The capture now records the cells a language leaves in ENGLISH as well, and zen (every path) and plexscratch42 (the settings documents zen's token cannot read in full) were captured that way: 59 cells take 1.42.2's wording, 414 translations 1.42.2 does not have are removed, and 7 English sources are added from the Related, post-play, Manage Recommendations and settings paths the table never held. `Related Movies` and `Related Shows` were read off zen's movie 3729 and show 11113 (the capture's own movie has no Related shelf). Cycle 61: `/:/prefs` PAGES, and cycle 60 read 20 of zen's 173 settings; re-captured whole (`I18N_PAGE=500`): 242 cells reworded, 217 removed, 3 sources added. Cycle 64: a collection's three Preferences settings (collectionMode, collectionSort and a smart collection's collectionFilterBasedOnUser), read off plexscratch42 (1.42.2) in 28 languages -- the table had none of them.",
+ "_provenance": "Captured from the plexlab reference (Plex 1.43.4) by fetching each endpoint in English and in each language the server answers differently, then diffing the two documents string by string at the same structural path. English key -> language code -> the reference's own translation. Nothing here is invented. Cycle 16 captured 31 paths; cycle 17 widened the list to cover the library and item preferences, the search hubs, the butler and a generated episode title, and dropped the strings that differ between two English fetches of the same path. Cycle 18 added the firstCharacter buckets, /query/parse fieldTitles, the music and photo filter axes, a music library prefs list and the per-library hub page, and dropped the strings that differ between two fetches in the TARGET language as well. Cycle 25 added the three `/library` Directory titles, captured the same way over the same 28 languages; the plug-in framework's `/system` carries one of the same English strings and does NOT translate it, so `_send_container` skips that container. Cycle 59: the table is PER VERSION and plexsim reports 1.42.2, so it was re-captured off zen (Plex 1.42.2) with the same tool -- kids' ratingKeys remapped to zen rows of the same kind, every listing paged -- and overlaid: 405 cells whose English source the table already held take zen's wording (Danish, Serbian, Ukrainian, Hebrew and Portuguese most of all). Sources only zen's content reaches (its generated episode numbers, its stream titles, its items' own language heads) are not added: they are content, not vocabulary. Cycle 60: rebuilt as 1.42.2's table. The capture now records the cells a language leaves in ENGLISH as well, and zen (every path) and plexscratch42 (the settings documents zen's token cannot read in full) were captured that way: 59 cells take 1.42.2's wording, 414 translations 1.42.2 does not have are removed, and 7 English sources are added from the Related, post-play, Manage Recommendations and settings paths the table never held. `Related Movies` and `Related Shows` were read off zen's movie 3729 and show 11113 (the capture's own movie has no Related shelf). Cycle 61: `/:/prefs` PAGES, and cycle 60 read 20 of zen's 173 settings; re-captured whole (`I18N_PAGE=500`): 242 cells reworded, 217 removed, 3 sources added. Cycle 64: a collection's three Preferences settings (collectionMode, collectionSort and a smart collection's collectionFilterBasedOnUser), read off plexscratch42 (1.42.2) in 28 languages -- the table had none of them. Cycle 71: `Up Next`, the post-play `tv.upnext` hub cycle 70 added, read off zen's episode 19758 in its 44 catalogue languages (34 translate it; the regional forms follow their catalogue).",
  "strings": {
   "alt": {
    "Episode 1": {
@@ -15448,6 +15448,39 @@
     "sv": "Återupptäck",
     "uk": "Перевідкриття",
     "zh": "再次发现"
+   },
+   "Up Next": {
+    "af": "Volgende",
+    "ar": "الي التالي",
+    "ca": "A Continuación",
+    "cs": "Následující",
+    "da": "Næste",
+    "de": "Demnächst",
+    "es": "A Continuación",
+    "et": "Järgmisena",
+    "fi": "Seuraavaksi",
+    "fr": "À suivre",
+    "he": "הבא בתור",
+    "hr": "Slijedi",
+    "hu": "Következő",
+    "it": "Successivi",
+    "ja": "次に登場",
+    "ko": "다음",
+    "lt": "Toliau",
+    "nb": "Neste",
+    "nl": "Volgende",
+    "no": "Neste",
+    "pl": "Następne",
+    "pt": "A seguir",
+    "pt-BR": "A seguir",
+    "ro": "Urmează",
+    "ru": "Очередь воспр.",
+    "sk": "Nasledujúce",
+    "sl": "Sledi",
+    "sr": "Следеће",
+    "sv": "Kommande",
+    "uk": "До Наступного",
+    "zh": "下一个"
    },
    "Related Movies": {
     "af": "Verwante Rolprente",

@@ -33178,6 +33178,26 @@ def main():
               % second_c70d.encode() in body_x_c70d,
               str((pristine_c70d, self_c70d, {k: v for k, v in hub_c70d.items() if k != "Metadata"})))
 
+    # Cycle 71, measured on zen (episode 19758) and plexscratch42: an episode post-play's
+    # `tv.upnext` hub title follows X-Plex-Language (Plex for Android draws it).
+    leaves_c71a = get(base, "/library/metadata/%s/allLeaves" % show)[1].get("Metadata") or [] \
+        if show else []
+    if len(leaves_c71a) > 1:
+        first_c71a = leaves_c71a[0]["ratingKey"]
+        request(base, "PUT", "/:/scrobble?identifier=com.plexapp.plugins.library&key=%s" % first_c71a)
+        titles_c71a = {}
+        for lang_c71a in ("en", "de", "fr", "ja", "ru", "th"):
+            req_c71a = urllib.request.Request(base + "/hubs/metadata/%s/postplay" % first_c71a, headers={
+                "Accept": "application/json", "User-Agent": UA, "X-Plex-Language": lang_c71a})
+            body_c71a = json.loads(urllib.request.urlopen(req_c71a, timeout=30).read())["MediaContainer"]
+            titles_c71a[lang_c71a] = [h.get("title") for h in body_c71a.get("Hub") or []
+                                      if h.get("hubIdentifier") == "tv.upnext"]
+        request(base, "PUT", "/:/unscrobble?identifier=com.plexapp.plugins.library&key=%s" % first_c71a)
+        check("the post-play Up Next hub title is localised",
+              titles_c71a == {"en": ["Up Next"], "de": ["Demnächst"], "fr": ["À suivre"],
+                              "ja": ["次に登場"], "ru": ["Очередь воспр."], "th": ["Up Next"]},
+              str(titles_c71a))
+
     status, _, _ = request(base, "DELETE", "/library/metadata/%s?proxy=1" % movie)
     check("Delete Version with no optimized version is a 400", status == 400,
           "HTTP %s" % status)
