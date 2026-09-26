@@ -10460,6 +10460,21 @@ def main():
              [(s_c11m.get("title"), s_c11m.get("displayTitle"), s_c11m.get("selected"))
               for s_c11m in subs_c11m]))
 
+    # Cycle 73, measured on plexscratch42 and zen in 43 languages: the `External` in the
+    # codec suffix Plex Web's plain title gets is the client's word, as in the extended
+    # title -- `Unbekannt (SRT Extern)`. plexsim localised the extended title only.
+    localised_c73a = {}
+    for lang_c73a in ("de", "ja", "sr"):
+        row_c73a = (get(base, "/library/metadata/%s?X-Plex-Language=%s" % (movie, lang_c73a))[1]
+                    .get("Metadata") or [{}])[0]
+        localised_c73a[lang_c73a] = [
+            s_c73a.get("displayTitle") for m_c73a in (row_c73a.get("Media") or [])
+            for p_c73a in (m_c73a.get("Part") or []) for s_c73a in (p_c73a.get("Stream") or [])
+            if s_c73a.get("title") == "c11sub2"]
+    check("a sidecar's Plex Web title localises its External word",
+          localised_c73a == {"de": ["Unbekannt (SRT Extern)"], "ja": ["不明 (SRT 外部)"],
+                             "sr": ["Непознато (SRT Екстерно)"]}, localised_c73a)
+
 
     # Measured on a writable copy of the reference: a PUT to a stream the server HAS is
     # 200 with an empty body (and stores nothing -- the title is unchanged after it),
