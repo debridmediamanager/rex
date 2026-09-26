@@ -19580,7 +19580,23 @@ class PlexSim:
         # the value changed -- the shape `/:/prefs/get` answers, label and summary emptied.
         # The client's alerts list and the Console consume these; plexsim pushed none.
         current = {s.get("id"): s for s in self.server_prefs()}
-        for name, _value in sorted(typed):
+        written = {name for name, _value in typed}
+        moved = []
+        if written & {"ButlerStartHour", "ButlerEndHour"}:
+            # Cycle 74, measured on plexscratch (1.43.4) and plexscratch42 (1.42.2): a write
+            # that leaves the maintenance window EMPTY (start == end, whichever was written,
+            # one PUT or two) moves the end hour to start + 1, wrapping 23 to 0, and pushes
+            # a `preference` frame for the moved setting before the written ones'. A window
+            # across midnight is left alone. plexsim kept the empty window.
+            start = (current.get("ButlerStartHour") or {}).get("value")
+            end = (current.get("ButlerEndHour") or {}).get("value")
+            if isinstance(start, int) and start == end:
+                self.pref_overrides["ButlerEndHour"] = (start + 1) % 24
+                logger.info("PREF ButlerEndHour = %s (an empty window)", (start + 1) % 24)
+                current = {s.get("id"): s for s in self.server_prefs()}
+                if "ButlerEndHour" not in written:
+                    moved = ["ButlerEndHour"]
+        for name in moved + sorted(written):
             setting = current.get(name)
             if setting is None:
                 continue
