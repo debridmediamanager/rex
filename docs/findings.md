@@ -10794,6 +10794,61 @@ snapshots are identical, so cycle 71's reference-side answers stand):
 
 **Zero client-visible and zero new malformed-only findings on all eleven axes.**
 
+#### The seventy-third pass — a server restart as the twelfth axis
+
+`--state` (after cycle 72) changed what a restart does, and it chose what to keep by belief. Cycle
+73 repeated every axis with the state file ON in every plexsim, added a RESTART LEG to each
+territory (read, `kill -TERM`, restart on the same file, read again), and a twelfth axis measured
+on the reference itself: plexscratch restarted seven times (five clean stops, two `docker kill -s
+KILL`) around every client write kind, against plexsim restarted by SIGTERM and SIGKILL.
+
+What a restart changes on a real PMS, 64 redraw GETs per restart:
+
+| Kept | Dropped or re-rolled | Steps |
+|---|---|---|
+| watch state, resume points (`/:/timeline`, `/:/progress`), ratings, locked edits and sort titles, dumb and smart playlists (order after a move), dumb and smart collections, play queues with their selected item, the device table, history and its deletes, prefs, section prefs, agent order, uploaded poster and subtitle, a created library; ids keep counting up | the live session (a client's next beat opens a new one on both), the section timeline, open notification sockets (EOF), the hub page's per-URL cache, the genre/actor shelf pick, a 93% `stopped` beat whose non-zero predecessor came before the restart (ignored on both), the `/statistics/resources` series (zen's `statistics_resources` table is empty: it lives in memory) | `/` `updatedAt` to the start time, `sessionKey` from 1 (neither read by a client) |
+
+plexsim agreed on every clean-restart cell but one. Four differences were built:
+
+* **A write answered before a hard kill survives it.** Five writes (a rating, a scrobble, a
+  playlist, `TranscoderThrottleBuffer`, a locked title) answered 0.17-0.5 s before `docker kill -s
+  KILL` all came back on plexscratch; plexsim's coalescing saver (2 s) lost all five. A client write
+  -- any non-GET, and the scrobble/unscrobble/rate/progress/timeline GETs -- is now saved before its
+  status line is sent (`Handler.send_response`). `test_persist.py` no longer sleeps before its
+  SIGKILL, which is exactly the window it used to hide.
+* **An unseeded `sort=random` is a fresh order per request.** Three reads each on zen, kids and
+  plexscratch gave three orders (`random:desc` too); plexsim hashed a fixed seed, so Plex Web's
+  "Randomly" grid never reshuffled. `test_ui_surface.py` had asserted the opposite, unmeasured.
+  Found by the restart hunt in passing; `random:<seed>` and the `random="1"` shelves are unchanged.
+* **A restart does not refresh the fuzzy-search vocabulary.** On plexscratch, `Tears of Steel`
+  renamed `Zyxwvut Probe`: `zyxwvuq` finds nothing before the restart and nothing after it
+  (`/hubs/search` and Plex Web's `/library/search` alike), the exact word finds it on both sides.
+  plexsim's restore called `rebuild_spelling()`, so the misspelling found the new title after a
+  restart. The vocabulary's rows are now saved and restored as they stood (cycle 38's measured
+  schedule: only an optimize rebuilds them).
+* **A sidecar's codec suffix is localised in Plex Web's plain title.** plexscratch42 and zen in 43
+  languages: `Unbekannt (SRT Extern)`, `不明 (SRT 外部)`, where plexsim localised the word in the
+  extended title only (cycle 60) and sent `Unbekannt (SRT External)` to the codec-suffix products.
+  Plex Web draws it as the chosen track in the preplay subtitle dropdown and in Get Info. The
+  i18n sweeps pair catalog items, and the fixture holds no sidecar until one is uploaded: an empty
+  pairing, not a clean one.
+
+Every other axis repeated clean with `--state` on: C's 198,034 vocabulary cells and every
+comparator byte-identical to cycle 71's, also across a restart of the frozen instance; B's
+matrices, 15 identities and 105 crossing cells, plus 26 restart legs with every cell but live
+sessions and time-moving statistics identical; N's Android inventory (160 labels x 5 targets) and
+three restarts of its own instance, a SIGKILL among them; the driver's emulator walk before and
+after a restart of the live-catalog instance. A's rendered walk (12 English scripts, 34 pages in 17 languages) and every localisation sweep (HTTP, socket, Android, catalogue, item enums, stream titles, `Accept-Language`) repeated cycle 72's answers, also across a restart: 5,124 localised documents with zero strings moved.
+
+Measured and not acted on: a section `/all` listing answers `Media.partCount: 0` under
+`excludeElements=Part` (no client sends it there); `/playlists?type=42` and `/updater/status`
+stamp the process start (`addedAt`, `checkedAt`; no client reads them); an uploaded sidecar's
+`/library/streams/{id}` is 200 with its bytes on PMS and 501 here (read only by Plex Web against a
+cloud server); `/` `updatedAt` and `sessionKey` numbering across a restart; the copy's startup
+`provider.subscriptions.process` activity. REFUTED as findings: every restart candidate the
+territories raised (live sessions, a continued session's `Session` block, the crossing across a
+restart, the resource series) -- the reference behaves the same way.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
