@@ -10471,6 +10471,14 @@ def main():
             s_c73a.get("displayTitle") for m_c73a in (row_c73a.get("Media") or [])
             for p_c73a in (m_c73a.get("Part") or []) for s_c73a in (p_c73a.get("Stream") or [])
             if s_c73a.get("title") == "c11sub2"]
+    # Cycle 74, measured on plexscratch42: the uploaded track's `key` serves its bytes --
+    # Plex for Android loads it, with `autoAdjustSubtitle=`, to render the sidecar.
+    key_c74n = next((s_c74n.get("key") for s_c74n in mine_c11m if s_c74n.get("title") == "c11sub"), "")
+    served_c74n = [request(base, "GET", key_c74n + suffix_c74n, want_json=False)[:2]
+                   for suffix_c74n in ("", "?autoAdjustSubtitle=0", "?autoAdjustSubtitle=1", ".srt")]
+    check("an uploaded sidecar's key serves its bytes",
+          bool(key_c74n) and served_c74n == [(200, b"1\n00:00:00,000 --> 00:00:02,000\nc11\n\n")] * 4,
+          served_c74n)
     check("a sidecar's Plex Web title localises its External word",
           localised_c73a == {"de": ["Unbekannt (SRT Extern)"], "ja": ["不明 (SRT 外部)"],
                              "sr": ["Непознато (SRT Екстерно)"]}, localised_c73a)
