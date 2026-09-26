@@ -273,9 +273,11 @@ Sources: [server.py](server.py), [xmlout.py](xmlout.py),
 ## Persistence
 
 With `--state FILE` (or `PLEXSIM_STATE`) the server saves what clients change to
-one file and restores it at start: writes are coalesced and saved within about
-two seconds, every minute regardless, and on SIGTERM or Ctrl-C. A crash loses at
-most the last couple of seconds. It is off by default because the test suites rely
+one file and restores it at start. A client write (any non-GET request, and the
+scrobble, rate, progress and timeline GETs) is on disk before it is answered, so a
+crash loses nothing a client was told succeeded -- a real PMS keeps writes answered a
+fraction of a second before a hard kill. Everything else is saved within about two
+seconds, every minute regardless, and on SIGTERM or Ctrl-C. It is off by default because the test suites rely
 on a restart undoing their writes.
 
 | Kept | Not kept |

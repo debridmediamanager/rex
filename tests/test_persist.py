@@ -186,14 +186,24 @@ def main():
               second_run.request("GET", "/")[1]["MediaContainer"].get("friendlyName")
               == "Persisted Server")
 
-        # -- a crash loses at most the saver's interval -----------------------
+        # -- a crash right after a write keeps it ------------------------------
+        # Cycle 73, on plexscratch: a rating, a scrobble, a playlist, a server pref and a
+        # locked edit answered 0.17-0.5 s before `docker kill -s KILL` all survived. No
+        # sleep here: the saver's 2 s interval is exactly the window this checks.
         second_run.request("GET", "/:/rate?key=1007&identifier=%s&rating=4" % LIBRARY)
-        time.sleep(4)
+        second_run.request("GET", "/:/scrobble?key=1009&identifier=%s" % LIBRARY)
+        second_run.request("PUT", "/:/prefs?FriendlyName=Crashed%20Server")
         second_run.stop(signal.SIGKILL)
         third_run = Instance(catalog, state)
-        check("a write survives SIGKILL once the saver has run",
-              first(third_run.request("GET", "/library/metadata/1007")[1]).get("userRating")
-              == 4.0)
+        rated = first(third_run.request("GET", "/library/metadata/1007")[1])
+        watched = first(third_run.request("GET", "/library/metadata/1009")[1])
+        name = third_run.request("GET", "/")[1]["MediaContainer"].get("friendlyName")
+        check("writes answered just before a SIGKILL survive it",
+              rated.get("userRating") == 4.0 and watched.get("viewCount") == 1
+              and name == "Crashed Server",
+              "userRating=%r viewCount=%r friendlyName=%r" % (
+                  rated.get("userRating"), watched.get("viewCount"), name))
+        third_run.request("PUT", "/:/prefs?FriendlyName=Persisted%20Server")
         third_run.stop()
 
         # -- without --state a restart is still the undo button ----------------

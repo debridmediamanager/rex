@@ -3724,6 +3724,8 @@ KNOWN_LANGUAGES = _known_languages()
 # Cycle 36: an id in a path SEGMENT is `+?0*<digits>` on both references. Only the
 # non-canonical spellings are rewritten, so a plain `1` and a bucket key are untouched.
 _PADDED_ID_SEGMENT = re.compile(r"\+?0*[0-9]+\Z")
+# The GETs the official clients write with (`--state` saves them before answering).
+_PERSIST_GET = re.compile(r"/:/(scrobble|unscrobble|rate|progress|timeline)\Z")
 
 
 def _target_parts(target):
@@ -21998,6 +22000,14 @@ class Handler(BaseHTTPRequestHandler):
         still puts an empty header on the wire -- so the banner has to be dropped by
         not sending it. `Date` stays: both references send one.
         """
+        if getattr(self, "_persist_before_answer", False):
+            self._persist_before_answer = False
+            sim = getattr(self.server, "sim", None)
+            if sim is not None and sim.state_store is not None:
+                try:
+                    sim.state_store.save(sim)
+                except OSError as error:
+                    logger.error("state not saved: %s", error)
         self.log_request(code)
         self.send_response_only(code, message)
         # Cycle 33: `Date` is the LAST header a real PMS sends, not the first, so it is
@@ -23117,10 +23127,18 @@ class Handler(BaseHTTPRequestHandler):
 
     def _dispatch(self, method):
         sim = getattr(self.server, "sim", None)
+        self._persist_before_answer = False
         if sim is not None and sim.state_store is not None:
             # Not only the write verbs: a GET writes too -- `/:/scrobble`, `/:/rate`,
             # `/:/timeline` and `/:/progress` are all GETs from the web client.
             sim.state_store.touch()
+            # Cycle 73, measured on plexscratch: five client writes answered 0.17-0.5 s
+            # before a `docker kill -s KILL` all survived the restart, where plexsim's
+            # 2 s coalesced save lost all five. A write is on disk before it is answered.
+            self._persist_before_answer = (
+                method not in ("GET", "HEAD", "OPTIONS")
+                or _PERSIST_GET.match(_target_parts(
+                    (self.requestline.split(" ") + ["", ""])[1])[0]) is not None)
         if sim is not None:
             # The line `/connections` prints: the client names itself with
             # `X-Plex-Device-Name, X-Plex-Product` when it sends them and with its

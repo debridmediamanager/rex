@@ -124,8 +124,9 @@ class Store:
     def __init__(self, path, catalog_path, interval=2.0, fallback=60.0):
         self.path = os.path.abspath(path)
         self.digest = catalog_digest(catalog_path)
-        # Writes are coalesced: a request marks the state dirty and the saver writes
-        # at most once per `interval`. `fallback` catches the writes no request
+        # A client write is saved before it is answered (`Handler.send_response`);
+        # everything else is coalesced: a request marks the state dirty and the saver
+        # writes at most once per `interval`. `fallback` catches the writes no request
         # makes, such as the claimed-account import and the session reaper.
         self.interval = interval
         self.fallback = fallback
