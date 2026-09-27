@@ -10640,3 +10640,5 @@ bundle call site or corpus line) or MALFORMED-ONLY/NOT-READ. Write an undo for e
 copy. Report the denominator, the partition, every finding with both servers' verbatim answers and
 a minimal regression check that fails on the frozen tree. If (d) is empty say exactly "no
 findings". Leave plexscratch running and healthy and say what state you left on it.
+
+==== Cycle 75 result. B, C: no findings. P: 1 client-visible (the Shuffle toggle on a queue nothing was added to) and a play-queue restart candidate the driver settled as agreement. A: axes 5, 9 clean; the listen backlog of 5 (built). N: axis 11 clean; corrected cycle 74's `Connection: close`. All built. ====

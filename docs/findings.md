@@ -10877,6 +10877,33 @@ Measured and not acted on: a theme row minted by `GET .../theme/{v}/metadata` ri
 save (no client sends it). REFUTED: nothing new; cycle 73's settled restart candidates reproduced
 unchanged in every territory.
 
+#### The seventy-fifth pass — the second twelve-axis repeat
+
+Cycle 75 repeated every axis on the cycle-74 head (`f3dd044`), `--state` on everywhere. B and C were
+clean on their axes and restart legs; every cycle-73 and -74 fix held. Built:
+
+* **Shuffle and Unshuffle on a queue nothing was added to.** P, in passing, then re-measured by the
+  driver on plexscratch42 (1.42.2) and plexscratch (1.43.4): `PUT /playQueues/{id}/shuffle` answers
+  200 with the queue, the selected item first and the rest in a new order; `unshuffle` restores the
+  natural order (a queue created with `shuffle=1` too) around the same selected item; both step the
+  version whatever state the queue was in, and re-mint every row's id but the selected one's, by
+  position, so the selected slot skips one id. Once anything has been added
+  (`playQueueLastAddedItemID`) both are 404 -- the only case cycle 15 had measured, so plexsim
+  refused every shuffle and Plex Web's Shuffle toggle reverted.
+* **A burst of simultaneous connections is answered** (A): 30 of 30 on plexscratch42 from kids,
+  where plexsim reset most of them and some already at six -- `socketserver`'s listen backlog of 5.
+  No capture shows a reset, but six is a browser's per-host connection count.
+* **A sidecar answer's connection state is the client's** (N, a correction of cycle 74's record): the
+  `Connection: close` cycle 74 measured was urllib's own request header echoed back; a keep-alive
+  client gets `Keep-Alive: timeout=20` and an open socket on 1.42.2.
+
+Measured and not acted on: a selected sidecar's decision row names `location: "sidecar-subs"` under
+`subtitles=sidecar` (plexsim `direct`), which the app never reads; `subtitles=auto|burn` with a
+selected sidecar is a 400 on the transcoder-less copy (a bound). REFUTED: "PMS keeps only the newest
+play queue across a restart" -- three queues from three clients all survived a clean restart on the
+API and in the `play_queues` table, which holds one row per client; the queues P saw vanish were one
+client's, retired by its own newer queue.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
