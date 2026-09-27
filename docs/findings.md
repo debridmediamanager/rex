@@ -10926,6 +10926,34 @@ A's localisation sweeps (HTTP, Android, catalogue, stream titles, `Accept-Langua
 the 150 socket lines, all byte-identical), its regression suites at cycle 75's counts, its HTTP
 restart leg (only the statistics move) and the driver's Android walk across a restart.
 
+#### The seventy-seventh pass — clean on all twelve axes
+
+Cycle 77 repeated every axis on the cycle-76 head (`f8d9437`), `--state` on everywhere, run by the
+driver from each territory's cycle-76 tooling (the subagents are on the weekly limit until
+2026-10-02), every output compared with cycle 76's:
+
+* **Axes 1-4, 7, 10 (C):** the 198,034-cell vocabulary sweep byte-identical to cycle 76's on the
+  frozen instance and, before and after a restart, on its own; every comparator = r71; axes 1, 2 and
+  10 identical up to zen's BIF `indexes`; axes 3 and 4 identical up to the random shuffle order and
+  the log zip's bytes; the restart legs at cycle 76's block set.
+* **Axes 6, 8 (B):** every regression, matrix and identity flow identical to cycle 76's on plexsim;
+  the fixes 21/21, 22/22, 31/31 (30/30 on plexscratch42); the crossing rule table identical to the
+  reference's on all 105 cells. The copy's side moved (its busy database gave 122 ten-second
+  give-ups, its timeline sessions did not open and leftover sessions stayed listed), plexsim's did not.
+* **Axes 5, 9 (A):** every localisation sweep byte-identical; 14 regression suites at their counts;
+  plexsim's 852 distinct socket frame texts identical; the rendered walk 1,038 of 1,168 cells equal,
+  every other one the copy's dialogs failing under load or cycle 76's own failed captures (this cycle's
+  French collection dialog matches the copy's string for string); the restart leg moves only statistics.
+* **Axis 11 (N and the driver):** the Android read and write inventories, fix checks and restart legs
+  equal to cycle 76's; the emulator walk before and after a restart issues the same templates.
+* **Axis 12 (P):** the restart matrix and a 33-pair hard-kill matrix agree with plexscratch but for the
+  scans (plexsim holds no files); every earlier restart regression passes.
+
+**Zero client-visible and zero new malformed-only findings.** One instrument note: B's restart-leg
+reader read every play queue with `own=1` under one client, which -- after cycle 76's ownership fix,
+and exactly as a real PMS does -- takes each queue and retires the one taken before; the queues
+survive a restart when read without `own` (checked directly). The reader no longer sends it.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
