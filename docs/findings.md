@@ -10926,6 +10926,64 @@ A's localisation sweeps (HTTP, Android, catalogue, stream titles, `Accept-Langua
 the 150 socket lines, all byte-identical), its regression suites at cycle 75's counts, its HTTP
 restart leg (only the statistics move) and the driver's Android walk across a restart.
 
+#### The seventy-eighth pass — clean on all twelve axes
+
+Cycle 78 repeated the cycle-77 implementation head (`afba7e4`) across every axis.
+A/B/C/N/P matrices, offline suites and their restart legs found no new
+client-visible or malformed-only difference. The complete exact command ledger,
+exit codes, raw paths and hashes are in `handover/cycle78-report.md`.
+
+The private copy of the current account catalog passed navigation **25/25**,
+python-plexapi **38/38**, and real byte reads/decode **5/5**. The fixture UI
+surface passed **1,960/1,960** on a server explicitly started without `--state`;
+stateful acceptance and persistence legs used disposable state files. The older
+fixture conformance/decode nonzero results are the fixture's dead account-scoped
+media links, not live-catalog evidence.
+
+The two client legs that were missing from the first cycle-78 report are now
+fresh evidence. The existing Windows CDP browser, reached through `ssh
+ben@windows`, rendered the same Plex Web 4.147.1 bundle against the cycle-owned
+server and read-only kids PMS. Home, movie, show, season and episode routes all
+passed assertions on both legs, with reference write/socket gates active. Each
+full leg's 18 status failures are exactly nine harness-origin `GET /` 404s and
+nine harness-origin `GET /media/providers` 404s; the full-walk console counts are
+108 (sim) and 169 (kids), with failed/blocked auxiliary requests classified in
+the token-free Windows error inventory. A standalone Playwright fallback rendered
+the local walk and the saved French settings page/accessibility snapshot after
+the in-app browser runtime was unavailable. The disposable
+native Android emulator reached `home` and rendered both libraries through show,
+season and episode detail. A follow-up on the actual live catalog rendered Big
+Buck Bunny detail with all action controls after the exact metadata request
+returned 200. The fixture episode frame retains skeleton placeholders, so it is not used as
+loaded-action evidence. The live-catalog follow-up supplies that evidence; the
+synthetic fixture retains its explicit unavailable-media bound.
+These are fresh client-visible checks, not a reinterpretation of cycle-77
+evidence.
+
+The protected reference snapshot is **kids-only**: before and after hashes match
+and the diff is empty; no zen snapshot is claimed. No reference destructive
+operation, plex.tv write, account mutation, paid operation, production edit or
+server-code change occurred. Cycle-owned servers, proxy, emulator and Windows
+Chrome were stopped after ownership checks, while the unrelated port-8899
+listener and physical adb devices were preserved.
+
+**No cycle-78 implementation finding remains. All twelve axes are clean.**
+
+| Axis | Fresh cycle-78 denominator | Disposition |
+|---|---|---|
+| 1 | C restart/request legs, N Android templates, A/B matrices | clean |
+| 2 | C 1,018 probes, B read chains, N read cells | clean |
+| 3 | C/B/N write regressions and P delayed-write controls | clean |
+| 4 | B owner readbacks, 1,960 HTTP assertions, rendered client routes | clean |
+| 5 | Windows local/reference rendered comparison plus fallback walk; 18 status rows per leg and 108/169 console dispositions classified | clean |
+| 6 | B API write chains and restart readbacks | clean |
+| 7 | C vocabulary comparators and regression sets | clean |
+| 8 | B/N identity/playback matrices plus live decode | clean |
+| 9 | A 44-language/153-header corpus plus rendered French settings | clean |
+| 10 | C discovery plus N provider/device inventory | clean |
+| 11 | Native emulator fixture walk plus live-catalog Big Buck Bunny detail with loaded actions | clean |
+| 12 | C/B/N/P restart, TERM/KILL and delayed-write legs | clean |
+
 #### The seventy-seventh pass — clean on all twelve axes
 
 Cycle 77 repeated every axis on the cycle-76 head (`f8d9437`), `--state` on everywhere, run by the

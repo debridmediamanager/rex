@@ -77,8 +77,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | cycle 77 recorded (the stopping cycle: no code change); equal to `origin/main`, clean tree |
-| Cycles complete | **77 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 77 repeated every axis of the post-cycle-73 ledger on the cycle-76 head and found zero client-visible and zero new malformed-only differences. Before: **76 -- the third twelve-axis repeat: 1 client-visible finding (play-queue ownership), eleven axes clean.** Finished by the driver after the weekly subagent limit. Before: **75 -- the second twelve-axis repeat: 1 client-visible finding (the Shuffle toggle, axis 3) and two transport rules; nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **74 -- the twelve-axis repeat: 3 client-visible findings on axes 11 and 12, nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **73 -- reopened on `--state`: 4 client-visible findings on a new twelfth axis and two old ones.** `--state` (after cycle 72) changed what a restart does, so cycle 73 repeated all eleven axes with it on and added axis 12, a server restart, measured on the reference itself. It found three restart rules (durability, the spelling vocabulary) and two others its hunts exposed (the unseeded random sort, the sidecar's `External`). The loop runs until one cycle is clean on all TWELVE axes. Before: **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until a cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 78 recorded: clean on all twelve bounded axes; documentation-only change, implementation unchanged from cycle 77 |
+| Cycles complete | **78 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 78 repeated every axis on the cycle-77 head, found no implementation finding, passed the real account-catalog navigation/API/decode legs, and completed the Windows Plex Web comparison, French fallback walk and native Android emulator walk. **77 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 77 repeated every axis of the post-cycle-73 ledger on the cycle-76 head and found zero client-visible and zero new malformed-only differences. Before: **76 -- the third twelve-axis repeat: 1 client-visible finding (play-queue ownership), eleven axes clean.** Finished by the driver after the weekly subagent limit. Before: **75 -- the second twelve-axis repeat: 1 client-visible finding (the Shuffle toggle, axis 3) and two transport rules; nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **74 -- the twelve-axis repeat: 3 client-visible findings on axes 11 and 12, nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **73 -- reopened on `--state`: 4 client-visible findings on a new twelfth axis and two old ones.** `--state` (after cycle 72) changed what a restart does, so cycle 73 repeated all eleven axes with it on and added axis 12, a server restart, measured on the reference itself. It found three restart rules (durability, the spelling vocabulary) and two others its hunts exposed (the unseeded random sort, the sidecar's `External`). The loop runs until one cycle is clean on all TWELVE axes. Before: **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until one cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 78 | **78 — CLEAN ON ALL TWELVE AXES: no implementation finding.** A/B/C/N/P matrices, offline suites, and corrected live-catalog navigation/API/decode all pass. The Windows CDP browser rendered the official bundle against both the cycle server and the kids reference; standalone fallback captured French settings; the disposable Android emulator rendered the fixture TV path through episode detail and the actual live catalog's Big Buck Bunny detail with loaded actions. Windows' 18 status rows per leg and 108/169 console dispositions are classified in the token-free report. The UI fixture run intentionally had no `--state`; acceptance/persistence legs used private state files. No code changed |
 | Cycle 77 | **77 — CLEAN ON ALL TWELVE AXES: the stopping cycle.** Driver-run (weekly subagent limit) from every territory's cycle-76 tooling; every output compared with cycle 76's. No code changed |
 | Cycle 76 | **76 — the third twelve-axis repeat: 1 CLIENT-VISIBLE finding in 1 fix commit.** Hunters stopped on the weekly limit; the driver finished A, B, C and P from their tooling. P's unreported candidate, re-measured: a queue read with `own=1` moves ownership, and the one-queue-per-client rule follows the owner |
 | Cycle 75 | **75 — the second twelve-axis repeat: 1 CLIENT-VISIBLE finding and 2 transport rules in 3 fix commits, 2 recorded.** B and C clean; P found the Shuffle toggle real on a queue nothing was added to (plexsim 404'd it) and raised a play-queue restart candidate the driver settled as agreement; A found the listen backlog of 5; N corrected cycle 74's `Connection: close` |
@@ -115,12 +116,13 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 | Cycle 32 | **32**. Cycle 32 swept CONCURRENCY for the first time -- two requests released from one barrier -- and found plexsim building a write's answer outside the lock it wrote under; finished the title FOLD as a measured 100-character table on the sort-title, query and hub-search sides; replaced the two hard-coded direct-play names with a DECISION MODEL read out of the reference image's own profile files (exact on 1,871 of 1,872 measured cells); and found the JSON BYTE FORM in its revalidation step. It was begun by one session and finished by another (§7). |
 | Cycle 31 | **31**. Cycle 31 held the WRITE surface out between 1.42.2 and 1.43.4 -- the verb table is where they differ and every grammar table is identical -- scored plexsim's own DERIVATIONS against zen's 14,433 rows (the artwork derivation has zero misses), and found that **the reference's own files and database are readable**, which settled two §3.3 entries and one rule the API cannot express. |
 | Worktrees and stashes | none |
-| Work half-done | **none -- the loop STOPPED at cycle 77: one cycle clean on every axis of the twelve-axis ledger. A new cycle is warranted by a new instrument or client (a FREE plex.tv account claiming a fourth reference -- awaiting the user; the Android TV UI; iOS), a new PMS version or a behaviour change** |
+| Work half-done | **none for cycle 78.** All twelve axes have fresh bounded evidence; the full ledger and token-free artifacts are in `handover/cycle78-report.md`. |
 
 Coverage, measured from the repository rather than asserted:
 
 | Cycle | Checks in the suites | `server.py` lines | Findings acted on |
 |---|---|---|---|
+| 78 | no server code changed; A/B/C/N/P matrices, offline suites, live account-catalog navigation/API/decode, Windows Plex Web comparison with per-path error dispositions, French fallback walk and native Android fixture/live detail legs are recorded in `handover/cycle78-report.md` | as 77 | **0 findings** -- clean on all twelve axes |
 | 77 | no server code changed; the cycle-76 tree's suites stand (UI **1,960/1,960**, offline all pass, LIVE **25/25**, **38/38**, **5/5**), and every territory's regression files re-ran at their cycle-76 counts | as 76 | **0 findings** -- the stopping cycle |
 | 76 | UI **1,960/1,960** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** with `--state` on | 24,954 | **1 client-visible** in **1 fix commit**, proved fail-then-pass (P's `regress_p76.py` 1/5 -> 5/5) |
 | 75 | UI **1,959/1,959** with 12 fixture skips (serial, final tree, port 32596); every offline suite passes; LIVE navigation **25/25**, python-plexapi **38/38**, `test_all.py` **5/5** with `--state` on | 24,933 | **1 client-visible** and **2 transport rules** in **3 fix commits**, each proved fail-then-pass against its parent; **2 recorded**; **1 recorded belief overturned** (cycle 15's shuffle 404) and cycle 74's own `Connection: close` corrected |
@@ -3796,6 +3798,75 @@ Matroska magic unconditionally. The old check failed 37/38 on the measured MP4 b
 container-aware check passes 38/38 and now deliberately prefers the Plex Web direct-play shape.
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
+
+### Cycle 78 — clean on all twelve axes
+
+Cycle 78 repeated the cycle-77 implementation head (`afba7e4`) across all twelve
+axes. The A/B/C/N/P matrices and offline suites found no implementation finding.
+The complete command ledger, exit codes, raw paths, hashes and dispositions are
+in [`handover/cycle78-report.md`](handover/cycle78-report.md).
+
+The live account catalog was copied privately and measured against its real
+parts: `tests/test_navigation.py` passed **25/25**, `tests/conformance.py`
+passed **38/38** with `plexapi` supplied by `uv`, and `tests/test_all.py` served
+and decoded **5/5**. The earlier fixture-only conformance/decode failures remain
+known dead account-scoped fixture links and are not live-catalog evidence. The
+fixture UI surface passed **1,960/1,960** against a server deliberately started
+without `--state`; persistence and live acceptance used disposable state files.
+
+The previously missing client legs are now complete. Through the existing
+Windows CDP browser over `ssh ben@windows`, the official Plex Web 4.147.1 bundle
+rendered home, movie, show, season and episode routes against both the cycle-owned
+server and the read-only kids PMS; every assertion passed and the reference
+write/socket gates stayed enabled. The full walk's 18 status failures on each leg
+are exactly nine harness-origin `GET /` 404s and nine harness-origin
+`GET /media/providers` 404s; the sim console count is 108 and the kids count is
+169. The per-host failed/blocked auxiliary requests are classified in the
+token-free `windows78/windows78_error_disposition78.txt` and JSON inventory.
+The standalone Playwright fallback separately rendered the local walk and saved
+the French settings screen and accessibility snapshot. The disposable Android
+emulator completed sign-in and rendered home, Debrid Movies, Debrid TV, browse,
+The Simpsons, Season 19 and its episode. A follow-up against the actual live
+catalog rendered Big Buck Bunny detail with Watch, Add to Watchlist, Mark as
+Watched and More controls; its exact metadata request returned 200. The earlier
+fixture episode screenshot retains loading placeholders and is not proof that
+those actions loaded. The live-catalog follow-up supplies the loaded-action
+evidence; synthetic-fixture media remains an explicit test bound. These client artifacts are private scratch evidence under `/private/tmp/plexsim-cycle78/windows78`,
+`/private/tmp/plexsim-cycle78/live78/web`, and
+`/private/tmp/plexsim-cycle78/android`.
+
+The guarded reference snapshot is **kids-only**: `ref_before78.txt` and
+`ref_after78.txt` are byte-identical and `ref_diff78.txt` is empty. No zen
+snapshot is claimed. Cycle-owned servers, proxy, emulator and Windows CDP
+Chrome were stopped after ownership checks; the unrelated port-8899 listener
+and physical adb devices remain. No plex.tv writes, account mutations, paid
+operations, production edits or destructive reference operations occurred. The
+integrator repeated the kids snapshot after the final Windows/Android legs:
+`ref_final78.txt` matches the initial snapshot and `ref_final_diff78.txt` is empty.
+
+**All twelve axes are clean for cycle 78.**
+
+| # | Axis | Status |
+|---|---|---|
+| 1 | Request inventory | clean: C restart legs, N Android templates, A/B matrices |
+| 2 | Python API reads | clean: C probes, B read chains, N read cells |
+| 3 | Client writes | clean: C/B/N/P disposable write and delayed-write legs |
+| 4 | Owner screens | clean: B/UI assertions plus Windows/native rendered routes |
+| 5 | Plex Web rendering | clean: Windows local/reference comparison plus standalone fallback; 18 status rows and 108/169 console dispositions classified in the error inventory |
+| 6 | Python API writes | clean: B identity/write chains and restart readbacks |
+| 7 | Vocabulary | clean: C comparators and regression sets |
+| 8 | Playback by identity | clean: B/N matrices plus live catalog direct-play/decode |
+| 9 | Localisation | clean: A language corpus and rendered French settings |
+| 10 | Discovery | clean: C/N discovery/provider/device coverage |
+| 11 | Native Android client | clean: fixture emulator home → library → show → season → episode plus live-catalog Big Buck Bunny detail with loaded actions |
+| 12 | Restart durability | clean: C/B/N/P restart, TERM/KILL and delayed-write legs |
+
+No implementation change was required. Historical cycle 77 remains below as the
+prior closure; this cycle adds the fresh live and client evidence needed to close
+the bounded cycle-78 record. The final token-free cleanup record is
+`cleanup78_final.log` (`930dbd4fbec2`); the cycle-owned labels, listeners,
+Windows dedicated Chrome profile and SSH forwards were removed, while port 8899
+and the physical adb devices were preserved.
 
 ### Cycle 77 — clean on all twelve axes: the loop stops
 
