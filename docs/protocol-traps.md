@@ -2801,3 +2801,6 @@ are changing; replay the client's exact request before altering behavior.
 - **`urllib` sends `Connection: close` on every request**, and a real PMS answers the connection state
   the client asked for. A header read through it is the client's, not the server's: read an envelope
   over a raw socket (cycle 75 found cycle 74's recorded `Connection: close` was exactly this).
+- **A real PMS answers a burst of simultaneous connections** (30 of 30 on plexscratch42 from kids);
+  `socketserver`'s default listen backlog of 5 reset most of them, and six -- a browser's per-host
+  connection count -- already lost some. plexsim listens with a backlog of 128.

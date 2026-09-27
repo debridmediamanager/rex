@@ -42,6 +42,7 @@ import json
 import os
 import re
 import socket
+import threading
 import sys
 import time
 import urllib.error
@@ -14469,6 +14470,32 @@ def main():
     # -- the whole body's and the slice's, which is what both references send -- and
     # `http.client` takes the FIRST and then waits for bytes that never come
     # (`IncompleteRead`). The check is the same; only the reader changed.
+    # Cycle 75, measured from kids: 30 simultaneous connects to plexscratch42 are all
+    # answered; plexsim reset most of them (a listen backlog of 5), and six at once -- a
+    # browser's per-host count -- already lost some.
+    host_c75b = (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1]))
+    burst_c75b, gate_c75b = [], threading.Barrier(30)
+
+    def connect_c75b():
+        try:
+            conn_c75b = socket.create_connection(host_c75b, 10)
+            try:
+                gate_c75b.wait(timeout=15)
+            except threading.BrokenBarrierError:
+                pass
+            conn_c75b.sendall(b"GET /identity HTTP/1.1\r\nHost: h\r\nConnection: close\r\n\r\n")
+            burst_c75b.append(conn_c75b.recv(16).startswith(b"HTTP/1.1 "))
+            conn_c75b.close()
+        except OSError:
+            burst_c75b.append(False)
+            gate_c75b.abort()
+    threads_c75b = [threading.Thread(target=connect_c75b) for _ in range(30)]
+    for thread_c75b in threads_c75b:
+        thread_c75b.start()
+    for thread_c75b in threads_c75b:
+        thread_c75b.join(40)
+    check("thirty simultaneous connections are all answered",
+          burst_c75b.count(True) == 30, "%d of 30" % burst_c75b.count(True))
     sock_c16q = socket.create_connection(
         (base.split("//")[1].split(":")[0], int(base.rsplit(":", 1)[1])), 20)
     sock_c16q.settimeout(20)

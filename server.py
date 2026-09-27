@@ -24612,6 +24612,11 @@ def _part_content_type(part, container):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    # Cycle 75, measured from kids over Tailscale: 30 simultaneous connects to
+    # plexscratch42 are all answered, three runs of three, where plexsim reset 25 of 30
+    # -- and 6 of 8 runs at SIX, a browser's per-host connection count -- because
+    # socketserver's listen backlog defaults to 5.
+    request_queue_size = 128
 
     def __init__(self, address, sim, verbose, tls_context=None):
         self.sim = sim
