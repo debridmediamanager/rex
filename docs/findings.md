@@ -10904,6 +10904,28 @@ play queue across a restart" -- three queues from three clients all survived a c
 API and in the `play_queues` table, which holds one row per client; the queues P saw vanish were one
 client's, retired by its own newer queue.
 
+#### The seventy-sixth pass — the third twelve-axis repeat, finished by the driver
+
+Cycle 76 repeated every axis on the cycle-75 head (`ad9c25f`), `--state` on everywhere. The five
+hunters stopped twice on the account's limits -- the second time the WEEKLY limit (it resets
+2026-10-02) -- after N had written its report; the driver finished the other four territories from
+their own tooling and outputs, as cycle 72 did, and compared every output with cycle 75's.
+
+* **A play queue has an owner, and `own=1` moves it** (P, re-measured by the driver on plexscratch42):
+  a queue read with `own=1` by a client that does not own it takes the queue -- version + 1, and the
+  same owner's read changes nothing -- and the one-queue-per-client retirement follows the owner:
+  the taker's other queue is retired at once, the taker's next new queue retires this one, and the
+  creator's new queue leaves it alone. Plex Web hands a player the queue's key with `own:1` when it
+  plays on another device (`containerKey: join([url], {own:1})`). plexsim kept the creator as owner,
+  so the browser's next queue retired the one the other device was still playing.
+
+Clean on the repeat: C's six axes (every comparator and capture identical to cycle 75's, across a
+restart of its own instance too), B's axes 6, 8 and 12 (fixes 21/21, 22/22, 31/31; the crossing
+matrix 105/105; the reference's two new BadRequests the copy's busy-database 500s), N's axis 11,
+A's localisation sweeps (HTTP, Android, catalogue, stream titles, `Accept-Language`, item enums and
+the 150 socket lines, all byte-identical), its regression suites at cycle 75's counts, its HTTP
+restart leg (only the statistics move) and the driver's Android walk across a restart.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
