@@ -7954,7 +7954,7 @@ class PlexSim:
                 mediaTagVersion=1655122614,
                 playQueueID=1, playQueueShuffled=False, playQueueVersion=-1)
         if segments[:1] == ["playQueues"] and len(segments) == 2 and method == "GET":
-            return self.get_play_queue(segments[1], query)
+            return self.get_play_queue(segments[1], query, headers)
         if segments[:1] == ["playQueues"] and len(segments) >= 2:
             return self.play_queue_route(method, segments, query)
 
@@ -16255,12 +16255,33 @@ class PlexSim:
                     queue_id, len(rows), (uri or playlist_id or "")[:80])
         return answer
 
-    def get_play_queue(self, queue_id, query=None):
+    def get_play_queue(self, queue_id, query=None, headers=None):
         if not str(queue_id).isdigit() or int(queue_id) not in self.play_queues:
             # Measured: an unknown queue is a 404, where plexsim invented an
             # empty one -- which a client reads as "the queue is still there".
             return ("error", 404, "plexsim: no such play queue")
-        return self.play_queue_container(int(queue_id), query)
+        query = query or {}
+        client = (query.get("X-Plex-Client-Identifier")
+                  or (headers or {}).get("X-Plex-Client-Identifier") or "")
+        with self.lock:
+            queue = self.play_queues.get(int(queue_id))
+            if queue is None:
+                return ("error", 404, "plexsim: no such play queue")
+            if query.get("own") == "1" and client and queue.get("client") != client:
+                # Cycle 76, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4):
+                # a read with `own=1` from a client that does not own the queue TAKES it
+                # -- the version steps by one, and the one-queue-per-client rule then
+                # follows the new owner: the taker's other queue is retired at once, the
+                # taker's next new queue retires this one, and the creator's does not.
+                # Plex Web hands a player the queue's key with `own:1` when it plays on
+                # another device; plexsim kept the creator as owner, so the browser's next
+                # queue retired the one the other player was still playing.
+                for old in [key for key, known in self.play_queues.items()
+                            if known.get("client") == client and key != int(queue_id)]:
+                    del self.play_queues[old]
+                queue["client"] = client
+                queue["version"] += 1
+            return self.play_queue_container(int(queue_id), query, locked=True)
 
     def play_queue_container(self, queue_id, query=None, locked=False):
         """One play-queue response, used by create, fetch and add-to.

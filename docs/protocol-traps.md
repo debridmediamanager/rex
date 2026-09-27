@@ -2804,3 +2804,8 @@ are changing; replay the client's exact request before altering behavior.
 - **A real PMS answers a burst of simultaneous connections** (30 of 30 on plexscratch42 from kids);
   `socketserver`'s default listen backlog of 5 reset most of them, and six -- a browser's per-host
   connection count -- already lost some. plexsim listens with a backlog of 128.
+- **A play queue has an OWNER, and `own=1` moves it.** A queue read with `own=1` by a client that does
+  not own it takes the queue (version + 1; the same owner's read changes nothing), and the
+  one-queue-per-client rule follows the owner: the taker's other queue is retired at once, its next new
+  queue retires this one, and the creator's new queue leaves it alone (1.42.2 and 1.43.4). Plex Web hands
+  another player the queue key with `own:1`.

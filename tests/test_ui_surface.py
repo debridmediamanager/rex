@@ -1804,6 +1804,34 @@ def main():
           and not {i for i, _k in rows_b_c75 if i != selected_c75} & {i for i, _k in before_c75},
           "%s -> %s -> %s" % (before_c75, rows_s_c75, rows_b_c75))
 
+    # Cycle 76, measured on plexscratch42 and plexscratch: a queue read with `own=1` by a
+    # client that does not own it moves the queue to that client (version + 1), and the
+    # one-queue-per-client retirement follows the owner. Plex Web hands another player the
+    # queue's key with `own:1` when it plays there.
+    def own_c76(method_c76, path_c76, client_c76):
+        req_c76 = urllib.request.Request(base.rstrip("/") + path_c76, method=method_c76, headers={
+            "Accept": "application/json", "X-Plex-Client-Identifier": client_c76,
+            "X-Plex-Product": "Plex Web", "X-Plex-Platform": "Chrome", "User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req_c76, timeout=30) as resp_c76:
+                return resp_c76.status, json.loads(resp_c76.read()).get("MediaContainer") or {}
+        except urllib.error.HTTPError as error_c76:
+            return error_c76.code, {}
+    uri_c76 = quote("server://%s/com.plexapp.plugins.library/library/metadata/%s" % (machine, movie))
+    taken_c76 = own_c76("POST", "/playQueues?type=video&own=1&uri=%s" % uri_c76, "c76-creator")[1]
+    tq_c76 = taken_c76.get("playQueueID")
+    took_c76 = own_c76("GET", "/playQueues/%s?own=1" % tq_c76, "c76-player")[1]
+    own_c76("POST", "/playQueues?type=video&own=1&uri=%s" % uri_c76, "c76-creator")
+    after_creator_c76 = own_c76("GET", "/playQueues/%s" % tq_c76, "c76-player")[0]
+    own_c76("POST", "/playQueues?type=video&own=1&uri=%s" % uri_c76, "c76-player")
+    after_player_c76 = own_c76("GET", "/playQueues/%s" % tq_c76, "c76-player")[0]
+    check("a queue read with own=1 by another client changes its owner",
+          took_c76.get("playQueueVersion") == taken_c76.get("playQueueVersion", 0) + 1
+          and after_creator_c76 == 200 and after_player_c76 == 404,
+          "version %s -> %s, after the creator's new queue %s, after the player's %s"
+          % (taken_c76.get("playQueueVersion"), took_c76.get("playQueueVersion"),
+             after_creator_c76, after_player_c76))
+
     print("\n=== playback state: progress, refusals, history filters ===")
     # /:/progress is NOT an alias of /:/timeline: it keys on `key`, not `ratingKey`,
     # and answers an EMPTY body. Routed at the timeline it read no key at all, so
