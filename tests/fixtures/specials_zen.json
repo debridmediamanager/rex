@@ -1,0 +1,1044 @@
+{
+ "_provenance": "Captured 2026-09-28 off zen (Plex 1.42.2.10156) by GET only: every show of section 2 with a season of index 0, and one without, as the show detail row (JSON key order and XML attribute order), its /children titles, and the Specials season's own /children container and first episode, per X-Plex-Language over plexsim's LOCALISED_LANGUAGES. Artwork/theme paths and summaries are dropped; nothing else is edited.",
+ "shows": [
+  {
+   "ratingKey": "11004",
+   "title": "Bluey (2018)",
+   "keys": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "tagline",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage",
+    "primaryExtraKey",
+    "Image",
+    "UltraBlurColors",
+    "Genre",
+    "Country",
+    "Guid",
+    "Rating",
+    "Role",
+    "CommonSenseMedia",
+    "Location"
+   ],
+   "xml_attrs": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "tagline",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage",
+    "primaryExtraKey"
+   ],
+   "childCount": 4,
+   "seasonCount": 3,
+   "seasons": [
+    {
+     "ratingKey": "11130",
+     "index": 0,
+     "title": "Specials",
+     "leafCount": 3
+    },
+    {
+     "ratingKey": "11007",
+     "index": 1,
+     "title": "Season 1",
+     "leafCount": 1
+    },
+    {
+     "ratingKey": "13150",
+     "index": 2,
+     "title": "Season 2",
+     "leafCount": 52
+    },
+    {
+     "ratingKey": "11005",
+     "index": 3,
+     "title": "Season 3",
+     "leafCount": 50
+    }
+   ],
+   "localised": {
+    "af": {
+     "seasons": [
+      "Spesiale",
+      "Seisoen 1",
+      "Seisoen 2",
+      "Seisoen 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Spesiale"
+    },
+    "ar": {
+     "seasons": [
+      "عروض خاصة",
+      "الموسم 1",
+      "الموسم 2",
+      "الموسم 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "عروض خاصة"
+    },
+    "bg": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "ca": {
+     "seasons": [
+      "Especiales",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiales"
+    },
+    "cs": {
+     "seasons": [
+      "Bonusy",
+      "Řada 1",
+      "Řada 2",
+      "Řada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Bonusy"
+    },
+    "da": {
+     "seasons": [
+      "Specials",
+      "Sæson 1",
+      "Sæson 2",
+      "Sæson 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "de": {
+     "seasons": [
+      "Specials",
+      "Staffel 1",
+      "Staffel 2",
+      "Staffel 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "el": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "en": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "en-GB": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "es": {
+     "seasons": [
+      "Especiales",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiales"
+    },
+    "es-419": {
+     "seasons": [
+      "Especiales",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiales"
+    },
+    "et": {
+     "seasons": [
+      "Erisaated",
+      "Hooaeg 1",
+      "Hooaeg 2",
+      "Hooaeg 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Erisaated"
+    },
+    "fa": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "fi": {
+     "seasons": [
+      "Erikoisjaksot",
+      "Kausi 1",
+      "Kausi 2",
+      "Kausi 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Erikoisjaksot"
+    },
+    "fr": {
+     "seasons": [
+      "Spécials",
+      "Saison 1",
+      "Saison 2",
+      "Saison 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Spécials"
+    },
+    "fr-CA": {
+     "seasons": [
+      "Spécials",
+      "Saison 1",
+      "Saison 2",
+      "Saison 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Spécials"
+    },
+    "he": {
+     "seasons": [
+      "מיוחדים",
+      "עונה 1",
+      "עונה 2",
+      "עונה 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "מיוחדים"
+    },
+    "hr": {
+     "seasons": [
+      "Specijali",
+      "Sezona 1",
+      "Sezona 2",
+      "Sezona 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specijali"
+    },
+    "hu": {
+     "seasons": [
+      "Különlegességek",
+      "1. évad",
+      "2. évad",
+      "3. évad"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Különlegességek"
+    },
+    "is": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "it": {
+     "seasons": [
+      "Speciali",
+      "Stagione 1",
+      "Stagione 2",
+      "Stagione 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Speciali"
+    },
+    "ja": {
+     "seasons": [
+      "スペシャル",
+      "シーズン 1",
+      "シーズン 2",
+      "シーズン 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "スペシャル"
+    },
+    "ko": {
+     "seasons": [
+      "특별영상",
+      "시즌 1",
+      "시즌 2",
+      "시즌 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "특별영상"
+    },
+    "lt": {
+     "seasons": [
+      "Specialūs pasiūlymai",
+      "Sezonas 1",
+      "Sezonas 2",
+      "Sezonas 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specialūs pasiūlymai"
+    },
+    "my": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "nb": {
+     "seasons": [
+      "Spesialer",
+      "Sesong 1",
+      "Sesong 2",
+      "Sesong 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Spesialer"
+    },
+    "nl": {
+     "seasons": [
+      "Extra's",
+      "Seizoen 1",
+      "Seizoen 2",
+      "Seizoen 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Extra's"
+    },
+    "no": {
+     "seasons": [
+      "Spesialer",
+      "Sesong 1",
+      "Sesong 2",
+      "Sesong 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Spesialer"
+    },
+    "pl": {
+     "seasons": [
+      "Dodatki",
+      "Sezon 1",
+      "Sezon 2",
+      "Sezon 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Dodatki"
+    },
+    "pt": {
+     "seasons": [
+      "Especiais",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiais"
+    },
+    "pt-BR": {
+     "seasons": [
+      "Especiais",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiais"
+    },
+    "pt-PT": {
+     "seasons": [
+      "Especiais",
+      "Temporada 1",
+      "Temporada 2",
+      "Temporada 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Especiais"
+    },
+    "ro": {
+     "seasons": [
+      "Speciale",
+      "Sezonul 1",
+      "Sezonul 2",
+      "Sezonul 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Speciale"
+    },
+    "ru": {
+     "seasons": [
+      "Спецвыпуски",
+      "Сезон 1",
+      "Сезон 2",
+      "Сезон 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Спецвыпуски"
+    },
+    "sk": {
+     "seasons": [
+      "Špeciály",
+      "Séria 1",
+      "Séria 2",
+      "Séria 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Špeciály"
+    },
+    "sl": {
+     "seasons": [
+      "Posebni dodatki",
+      "Sezona 1",
+      "Sezona 2",
+      "Sezona 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Posebni dodatki"
+    },
+    "sr": {
+     "seasons": [
+      "Специјали",
+      "Сезона 1",
+      "Сезона 2",
+      "Сезона 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Специјали"
+    },
+    "sv": {
+     "seasons": [
+      "Special",
+      "Säsong 1",
+      "Säsong 2",
+      "Säsong 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Special"
+    },
+    "th": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "tr": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "uk": {
+     "seasons": [
+      "Спеціальні матеріали",
+      "Сезон 1",
+      "Сезон 2",
+      "Сезон 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Спеціальні матеріали"
+    },
+    "vi": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    },
+    "zh": {
+     "seasons": [
+      "特色",
+      "季 1",
+      "季 2",
+      "季 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "特色"
+    },
+    "zh-TW": {
+     "seasons": [
+      "Specials",
+      "Season 1",
+      "Season 2",
+      "Season 3"
+     ],
+     "specials_title2": "Specials",
+     "specials_parentTitle": "",
+     "episode_parentTitle": "Specials"
+    }
+   }
+  },
+  {
+   "ratingKey": "16831",
+   "title": "Mobile Suit Gundam Wing",
+   "keys": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "originalTitle",
+    "contentRating",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage",
+    "Image",
+    "UltraBlurColors",
+    "Genre",
+    "Country",
+    "Guid",
+    "Rating",
+    "Role",
+    "Location"
+   ],
+   "xml_attrs": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "originalTitle",
+    "contentRating",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage"
+   ],
+   "childCount": 2,
+   "seasonCount": 1,
+   "seasons": [
+    {
+     "ratingKey": "16832",
+     "index": 0,
+     "title": "Specials",
+     "leafCount": 1
+    },
+    {
+     "ratingKey": "16834",
+     "index": 1,
+     "title": "Season 1",
+     "leafCount": 49
+    }
+   ]
+  },
+  {
+   "ratingKey": "13486",
+   "title": "MythBusters",
+   "keys": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "tagline",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage",
+    "Image",
+    "UltraBlurColors",
+    "Genre",
+    "Country",
+    "Guid",
+    "Rating",
+    "Role",
+    "CommonSenseMedia",
+    "Location"
+   ],
+   "xml_attrs": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "tagline",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "deletedAt",
+    "audienceRatingImage"
+   ],
+   "childCount": 17,
+   "seasonCount": 16,
+   "seasons": [
+    {
+     "ratingKey": "16808",
+     "index": 0,
+     "title": "Specials",
+     "leafCount": 2
+    },
+    {
+     "ratingKey": "13487",
+     "index": 2003,
+     "title": "Season 2003",
+     "leafCount": 11
+    },
+    {
+     "ratingKey": "13499",
+     "index": 2004,
+     "title": "Season 2004",
+     "leafCount": 20
+    },
+    {
+     "ratingKey": "13517",
+     "index": 2005,
+     "title": "Season 2005",
+     "leafCount": 27
+    },
+    {
+     "ratingKey": "13545",
+     "index": 2006,
+     "title": "Season 2006",
+     "leafCount": 28
+    },
+    {
+     "ratingKey": "13574",
+     "index": 2007,
+     "title": "Season 2007",
+     "leafCount": 25
+    },
+    {
+     "ratingKey": "13600",
+     "index": 2008,
+     "title": "Season 2008",
+     "leafCount": 21
+    },
+    {
+     "ratingKey": "13622",
+     "index": 2009,
+     "title": "Season 2009",
+     "leafCount": 23
+    },
+    {
+     "ratingKey": "13646",
+     "index": 2010,
+     "title": "Season 2010",
+     "leafCount": 24
+    },
+    {
+     "ratingKey": "13671",
+     "index": 2011,
+     "title": "Season 2011",
+     "leafCount": 22
+    },
+    {
+     "ratingKey": "13694",
+     "index": 2012,
+     "title": "Season 2012",
+     "leafCount": 21
+    },
+    {
+     "ratingKey": "13715",
+     "index": 2013,
+     "title": "Season 2013",
+     "leafCount": 11
+    },
+    {
+     "ratingKey": "13727",
+     "index": 2014,
+     "title": "Season 2014",
+     "leafCount": 15
+    },
+    {
+     "ratingKey": "13743",
+     "index": 2015,
+     "title": "Season 2015",
+     "leafCount": 14
+    },
+    {
+     "ratingKey": "13758",
+     "index": 2016,
+     "title": "Season 2016",
+     "leafCount": 12
+    },
+    {
+     "ratingKey": "16815",
+     "index": 2017,
+     "title": "Season 2017",
+     "leafCount": 6
+    },
+    {
+     "ratingKey": "16822",
+     "index": 2018,
+     "title": "Season 2018",
+     "leafCount": 8
+    }
+   ]
+  },
+  {
+   "ratingKey": "6438",
+   "title": "Solo Leveling",
+   "keys": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "originalTitle",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "audienceRatingImage",
+    "Image",
+    "UltraBlurColors",
+    "Genre",
+    "Country",
+    "Guid",
+    "Rating",
+    "Role",
+    "CommonSenseMedia",
+    "Location"
+   ],
+   "xml_attrs": [
+    "ratingKey",
+    "key",
+    "guid",
+    "slug",
+    "studio",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "originalTitle",
+    "contentRating",
+    "contentRatingAge",
+    "summary",
+    "index",
+    "audienceRating",
+    "userRating",
+    "lastRatedAt",
+    "year",
+    "thumb",
+    "art",
+    "theme",
+    "duration",
+    "originallyAvailableAt",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "seasonCount",
+    "addedAt",
+    "updatedAt",
+    "audienceRatingImage"
+   ],
+   "childCount": 3,
+   "seasonCount": 2,
+   "seasons": [
+    {
+     "ratingKey": "6447",
+     "index": 0,
+     "title": "Specials",
+     "leafCount": 1
+    },
+    {
+     "ratingKey": "6439",
+     "index": 1,
+     "title": "Season 1",
+     "leafCount": 2
+    },
+    {
+     "ratingKey": "10841",
+     "index": 2,
+     "title": "Season 2",
+     "leafCount": 1
+    }
+   ]
+  },
+  {
+   "ratingKey": "5189",
+   "title": "0c381b087b05aa797e063dc5d09756d3f5ec5c00 {Imdb Tt1375666}",
+   "keys": [
+    "ratingKey",
+    "key",
+    "guid",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "summary",
+    "index",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "addedAt",
+    "deletedAt",
+    "Location"
+   ],
+   "xml_attrs": [
+    "ratingKey",
+    "key",
+    "guid",
+    "type",
+    "title",
+    "librarySectionTitle",
+    "librarySectionID",
+    "librarySectionKey",
+    "summary",
+    "index",
+    "leafCount",
+    "viewedLeafCount",
+    "childCount",
+    "addedAt",
+    "deletedAt"
+   ],
+   "childCount": 1,
+   "seasonCount": null,
+   "seasons": [
+    {
+     "ratingKey": "5190",
+     "index": 1,
+     "title": "Season 1",
+     "leafCount": 1
+    }
+   ]
+  }
+ ]
+}

@@ -382,6 +382,9 @@ def person_tag_key(name):
     return hashlib.sha1(("plexsim-person:%s" % name).encode("utf-8")).hexdigest()[:24]
 
 
+SPECIALS_TITLE = "Specials"
+
+
 def normalize_rows(rows):
     """The row rules a real PMS follows, applied to rows however they were built.
 
@@ -472,6 +475,21 @@ def normalize_rows(rows):
         key = str(row.get("key") or "")
         if key and not key.endswith("/children"):
             row["key"] = key.rstrip("/") + "/children"
+    # Cycle 79, measured on zen (1.42.2) across all 509 shows of its show library: a real
+    # PMS titles season 0 `Specials` -- never `Season 0` -- and its episodes carry that as
+    # `parentTitle`. `build` titled every season `Season %d`, so a catalog holding an
+    # `S00E01` release drew a "Season 0" block on every client. Corrected at LOAD as well,
+    # because catalogs built before this carry the old title.
+    for row in rows:
+        if row.get("type") != "season":
+            continue
+        if row.get("index") == 0 and row.get("title") in (None, "", "Season 0"):
+            row["title"] = SPECIALS_TITLE
+    for row in rows:
+        if row.get("type") == "episode" and row.get("parentTitle") == "Season 0":
+            season_row = by_key.get(str(row.get("parentRatingKey")))
+            if season_row is not None and season_row.get("index") == 0:
+                row["parentTitle"] = season_row.get("title") or SPECIALS_TITLE
     for row in rows:
         kind = row.get("type")
         title = row.get("title") or ""
@@ -753,7 +771,7 @@ def build(leaves):
                 # list rendered empty in the client even though the rows were
                 # otherwise complete.
                 "guid": leaf.get("_season_guid"),
-                "title": "Season %d" % season_number,
+                "title": SPECIALS_TITLE if season_number == 0 else "Season %d" % season_number,
                 "index": season_number,
                 # A season carries a `year` only when it has an air date of its OWN
                 # -- then `titleSort` too, equal to its title -- and `parentYear`

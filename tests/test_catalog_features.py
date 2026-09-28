@@ -1054,6 +1054,90 @@ def main():
           and edited_gdm == ("empty", 200) and deleted_gdm == ("empty", 200),
           "key=%r touches=%d" % (created_key, gdm_stamp.touches))
 
+    # Cycle 79: season 0, driven from what zen answered for its four shows that hold one
+    # (tests/fixtures/specials_zen.json) and its control show without. Each show is
+    # rebuilt from one leaf per zen season through the catalog builder, and once more as
+    # a catalog written before the rule (season 0 stored as `Season 0`), which the load
+    # has to correct.
+    import json
+    import tempfile
+    with open(os.path.join(HERE, "fixtures", "specials_zen.json"), encoding="utf-8") as handle:
+        zen_specials = json.load(handle)["shows"]
+    with open(fixture, encoding="utf-8") as handle:
+        feature_sections = json.load(handle)["sections"]
+
+    def specials_catalog(legacy):
+        leaves = []
+        for number, show in enumerate(zen_specials):
+            for season in show["seasons"]:
+                leaves.append({
+                    "ratingKey": str(46000 + len(leaves)), "title": "Leaf %d" % len(leaves),
+                    "_kind": "tv", "_tmdb_id": 79000 + number, "_show_title": show["title"],
+                    "_season": season["index"], "_episode": 1, "addedAt": 1, "updatedAt": 1})
+        rows = server.hierarchy_module.build(leaves)
+        if legacy:
+            for row in rows:
+                if row.get("type") == "season" and row.get("index") == 0:
+                    row["title"] = "Season 0"
+                if row.get("type") == "episode" and row.get("parentIndex") == 0:
+                    row["parentTitle"] = "Season 0"
+                if row.get("type") == "show":
+                    row.pop("seasonCount", None)
+        path = tempfile.mkstemp(suffix=".json")[1]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump({"machineIdentifier": "c79specials", "friendlyName": "c79",
+                       "sections": feature_sections, "items": rows}, handle)
+        return server.Catalog(path)
+
+    class Localiser(server.Handler):
+        def __init__(self):  # no socket: only the localiser is exercised
+            pass
+
+    localiser = Localiser()
+    for legacy in (False, True):
+        label = "a catalog written before the rule" if legacy else "a fresh build"
+        specials_sim = server.PlexSim(specials_catalog(legacy), Resolver(), assert_claimed=True)
+        shows = {row.get("title"): row for row in specials_sim.catalog.items.values()
+                 if row.get("type") == "show"}
+        wrong_titles = []
+        for show in zen_specials:
+            row = shows[show["title"]]
+            children = specials_sim.handle(
+                "GET", "/library/metadata/%s/children" % row["ratingKey"], b"", {})
+            titles = [season.get("title") for season in children["MediaContainer"]["Metadata"]]
+            if titles != [season["title"] for season in show["seasons"]]:
+                wrong_titles.append((show["title"], titles))
+        check("a season 0 is titled Specials, as zen titles it (%s)" % label,
+              not wrong_titles, str(wrong_titles))
+        bluey = next(show for show in zen_specials if show.get("localised"))
+        bluey_row = shows[bluey["title"]]
+        specials_row = next(season for season in specials_sim.catalog.children(
+            bluey_row["ratingKey"]) if season.get("index") == 0)
+        wrong = []
+        for language, expected in sorted(bluey["localised"].items()):
+            children = localiser._localise(specials_sim.handle(
+                "GET", "/library/metadata/%s/children" % bluey_row["ratingKey"], b"", {}),
+                language)["MediaContainer"]
+            episodes = localiser._localise(specials_sim.handle(
+                "GET", "/library/metadata/%s/children" % specials_row["ratingKey"], b"", {}),
+                language)["MediaContainer"]
+            got = {"seasons": [season.get("title") for season in children["Metadata"]],
+                   "specials_title2": episodes.get("title2"),
+                   "specials_parentTitle": episodes.get("parentTitle"),
+                   "episode_parentTitle": episodes["Metadata"][0].get("parentTitle")}
+            if got != expected:
+                wrong.append((language, got, expected))
+        check("Specials is localised as a season title and an episode's parentTitle, and "
+              "kept English as title2, in every language zen answers (%s)" % label,
+              not wrong, str(wrong[:3]))
+
+
+    # A film really called "Specials" is content, not a generated title.
+    content_row = {"ratingKey": "1", "type": "movie", "title": "Specials", "index": 0}
+    check("a movie titled Specials keeps its own title in French",
+          localiser._localise({"MediaContainer": {"Metadata": [content_row]}}, "fr")
+          ["MediaContainer"]["Metadata"][0]["title"] == "Specials")
+
     if failures:
         print("FAIL %d catalog feature check(s)" % len(failures))
         return 1
