@@ -385,6 +385,31 @@ def person_tag_key(name):
 SPECIALS_TITLE = "Specials"
 
 
+def set_season_count(show, seasons):
+    """Give a show its `seasonCount`, or take it away, from its season rows.
+
+    Cycle 79, measured on zen (1.42.2): exactly the four of its 509 shows that hold a
+    season 0 carry `seasonCount`, and it is the count WITHOUT the specials -- Bluey's
+    `childCount="4" seasonCount="3"`, MythBusters' 17 and 16 -- sitting straight after
+    `childCount` on the detail row, the section listing and every hub. A show with no
+    season 0 carries none. python-plexapi's `Show.seasonCount` reads the attribute and
+    falls back to `childCount`, so without it every show with specials counted one
+    season too many.
+    """
+    specials = sum(1 for season in seasons if season.get("index") == 0)
+    show.pop("seasonCount", None)
+    if not specials:
+        return
+    count = len(seasons) - specials
+    ordered = list(show.items())
+    show.clear()
+    for key, value in ordered:
+        show[key] = value
+        if key == "childCount":
+            show["seasonCount"] = count
+    show.setdefault("seasonCount", count)
+
+
 def normalize_rows(rows):
     """The row rules a real PMS follows, applied to rows however they were built.
 
@@ -480,9 +505,11 @@ def normalize_rows(rows):
     # `parentTitle`. `build` titled every season `Season %d`, so a catalog holding an
     # `S00E01` release drew a "Season 0" block on every client. Corrected at LOAD as well,
     # because catalogs built before this carry the old title.
+    seasons_of = {}
     for row in rows:
         if row.get("type") != "season":
             continue
+        seasons_of.setdefault(str(row.get("parentRatingKey")), []).append(row)
         if row.get("index") == 0 and row.get("title") in (None, "", "Season 0"):
             row["title"] = SPECIALS_TITLE
     for row in rows:
@@ -490,6 +517,8 @@ def normalize_rows(rows):
             season_row = by_key.get(str(row.get("parentRatingKey")))
             if season_row is not None and season_row.get("index") == 0:
                 row["parentTitle"] = season_row.get("title") or SPECIALS_TITLE
+        elif row.get("type") == "show":
+            set_season_count(row, seasons_of.get(str(row.get("ratingKey"))) or [])
     for row in rows:
         kind = row.get("type")
         title = row.get("title") or ""

@@ -40,7 +40,8 @@ import uuid
 import zlib
 
 from hierarchy import (_GENERATED_TITLE as GENERATED_SEASON_TITLE,
-                       PERSON_TAG_ELEMENTS, person_tag_key, sort_title)
+                       PERSON_TAG_ELEMENTS, person_tag_key, set_season_count,
+                       sort_title)
 
 logger = logging.getLogger("plexsim.library")
 
@@ -750,7 +751,9 @@ class Library:
             parent["leafCount"] = len(leaves)
             parent["viewedLeafCount"] = sum(1 for l in leaves if l.get("viewCount"))
             if parent.get("type") == "show":
-                parent["childCount"] = len(self.catalog.children(parent["ratingKey"]))
+                seasons = self.catalog.children(parent["ratingKey"])
+                parent["childCount"] = len(seasons)
+                set_season_count(parent, seasons)
 
     # -- play history ----------------------------------------------------
 

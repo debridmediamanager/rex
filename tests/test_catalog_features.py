@@ -1099,7 +1099,7 @@ def main():
         specials_sim = server.PlexSim(specials_catalog(legacy), Resolver(), assert_claimed=True)
         shows = {row.get("title"): row for row in specials_sim.catalog.items.values()
                  if row.get("type") == "show"}
-        wrong_titles = []
+        wrong_titles, wrong_counts = [], []
         for show in zen_specials:
             row = shows[show["title"]]
             children = specials_sim.handle(
@@ -1107,8 +1107,25 @@ def main():
             titles = [season.get("title") for season in children["MediaContainer"]["Metadata"]]
             if titles != [season["title"] for season in show["seasons"]]:
                 wrong_titles.append((show["title"], titles))
+            detail = specials_sim.handle("GET", "/library/metadata/%s" % row["ratingKey"],
+                                         b"", {})["MediaContainer"]["Metadata"][0]
+            keys = list(detail)
+            placed = ("seasonCount" not in keys if show["seasonCount"] is None else
+                      keys[keys.index("childCount") + 1:][:1] == ["seasonCount"])
+            attrs = re.findall(r' ([A-Za-z]+)="', xmlout.to_xml(
+                {"MediaContainer": {"size": 1, "Metadata": [detail]}}).decode("utf-8"))
+            xml_placed = ("seasonCount" not in attrs if show["seasonCount"] is None else
+                          attrs[attrs.index("childCount") + 1:][:1] == ["seasonCount"])
+            if (detail.get("childCount"), detail.get("seasonCount")) != (
+                    show["childCount"], show["seasonCount"]) or not placed or not xml_placed:
+                wrong_counts.append((show["title"], detail.get("childCount"),
+                                     detail.get("seasonCount"), placed, xml_placed))
         check("a season 0 is titled Specials, as zen titles it (%s)" % label,
               not wrong_titles, str(wrong_titles))
+        check("a show with a season 0 carries seasonCount, without the specials, straight "
+              "after childCount, as zen answers (%s)" % label,
+              not wrong_counts, str(wrong_counts))
+
         bluey = next(show for show in zen_specials if show.get("localised"))
         bluey_row = shows[bluey["title"]]
         specials_row = next(season for season in specials_sim.catalog.children(
@@ -1131,6 +1148,19 @@ def main():
               "kept English as title2, in every language zen answers (%s)" % label,
               not wrong, str(wrong[:3]))
 
+        # Deleting the season 0 recounts the show: zen's rule leaves a show without one
+        # no `seasonCount` at all, so it goes with the season rather than staying stale.
+        gundam = shows["Mobile Suit Gundam Wing"]
+        season_zero = next(season for season in specials_sim.catalog.children(
+            gundam["ratingKey"]) if season.get("index") == 0)
+        specials_sim.handle("DELETE", "/library/metadata/%s" % season_zero["ratingKey"],
+                            b"", {})
+        after = specials_sim.handle("GET", "/library/metadata/%s" % gundam["ratingKey"],
+                                    b"", {})["MediaContainer"]["Metadata"][0]
+        check("deleting a show's season 0 takes its seasonCount away (%s)" % label,
+              after.get("childCount") == 1 and "seasonCount" not in after,
+              "childCount=%s seasonCount=%s" % (after.get("childCount"),
+                                                after.get("seasonCount")))
 
     # A film really called "Specials" is content, not a generated title.
     content_row = {"ratingKey": "1", "type": "movie", "title": "Specials", "index": 0}
