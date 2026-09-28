@@ -32,6 +32,8 @@ import threading
 import time
 import urllib.request
 
+from server_command import server_command
+
 ROOT = os.environ.get("PLEXSIM_TEST_ROOT",
                       os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SIZE = 100000
@@ -247,8 +249,7 @@ def main():
     environment = dict(os.environ, RD_TOKEN="dummy",
                        RD_API="http://127.0.0.1:%d" % rd_port)
     process = subprocess.Popen(
-        [sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port),
-         "--catalog", catalog.name, "--assert-claimed"],
+        server_command("--port", port, "--catalog", catalog.name, "--assert-claimed", root=ROOT),
         cwd=ROOT, env=environment,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:

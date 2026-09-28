@@ -39,6 +39,19 @@ FIXTURES = os.path.join(HERE, "fixtures", "decisions")
 GREEN, RED, GREY, OFF = "\033[32m", "\033[31m", "\033[90m", "\033[0m"
 
 
+def test_python_json_semantics():
+    """Keep native numeric helpers aligned with the Python oracle.
+
+    These are type/whitespace probes, not measured PMS rows: the corpus remains the
+    only source for server outcomes and decision text.
+    """
+    assert decision._number(" 2.0 ") == 2.0
+    numeric = {"Part": [{"Stream": [{"streamType": 2, "selected": True}]}]}
+    textual = {"Part": [{"Stream": [{"streamType": "2", "selected": True}]}]}
+    assert decision.evaluated_audio(numeric)["streamType"] == 2
+    assert decision.evaluated_audio(textual) is None
+
+
 def outcome(cell):
     """The reference's answer as the model's own vocabulary names it."""
     if cell["status"] != 200:
@@ -62,6 +75,7 @@ def main():
                         help="how many mismatching cells to print")
     args = parser.parse_args()
 
+    test_python_json_semantics()
     corpus = json.load(open(os.path.join(FIXTURES, "rows.json"), encoding="utf-8"))
     rows, texts = corpus["rows"], corpus["texts"]
     cells = [json.loads(line) for line in

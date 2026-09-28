@@ -14,6 +14,8 @@ import sys
 import time
 from xml.parsers import expat
 
+from server_command import server_command
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -62,8 +64,8 @@ def main():
     port = free_port()
     env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
     proc = subprocess.Popen(
-        [sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port),
-         "--catalog", os.path.join(HERE, "catalog_ui.json"), "--gdm", "off"],
+        server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
+                        "--gdm", "off", root=ROOT),
         cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         for _ in range(80):

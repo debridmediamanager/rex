@@ -58,6 +58,8 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+from server_command import server_command
+
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -2940,12 +2942,10 @@ def main():
     # The gate is opt-in (`--token`) because the suites and probes talk to plexsim
     # without one; this check starts its OWN gated instance to prove it works.
     import subprocess
-    import sys as _sys
     gated_port = 32599
     gated = subprocess.Popen(
-        [_sys.executable, "server.py", "--port", str(gated_port),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--token", "suite-gate-token"],
+        server_command("--port", gated_port, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--token", "suite-gate-token", root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -14800,9 +14800,8 @@ def main():
     open(os.path.join(web_root_c16y, "favicon.ico"), "wb").write(b"\x00" * 300)
     web_port_c16y = 32598
     web_c16y = subprocess.Popen(
-        [_sys.executable, "server.py", "--port", str(web_port_c16y),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--web-root", web_root_c16y],
+        server_command("--port", web_port_c16y, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--web-root", web_root_c16y, root=REPO_ROOT),
         cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -23151,7 +23150,6 @@ def main():
     # It needs `--web-root`, so it starts its own instance the way cycle 16's asset check
     # does, on its own port.
     import subprocess as subprocess_c29l
-    import sys as sys_c29l
     import tempfile as tempfile_c29l
     root_c29l = tempfile_c29l.mkdtemp(prefix="plexsim-c29l-")
     os.makedirs(os.path.join(root_c29l, "js"))
@@ -23161,15 +23159,15 @@ def main():
     # The suite's own file locates the tree: `__file__` is not in the namespace a
     # patch's check block is exec'd in (the proof driver builds it from the module's
     # public names), so the module is found by its basename instead.
+    import sys as sys_c29l
     tree_c29l = next(
         os.path.dirname(os.path.dirname(os.path.abspath(argument_c29l)))
         for argument_c29l in sys_c29l.argv
         if argument_c29l.endswith("test_ui_surface.py"))
     port_c29l = 32597
     server_c29l = subprocess_c29l.Popen(
-        [sys_c29l.executable, "server.py", "--port", str(port_c29l),
-         "--catalog", "tests/catalog_ui.json", "--assert-claimed",
-         "--web-root", root_c29l],
+        server_command("--port", port_c29l, "--catalog", "tests/catalog_ui.json",
+                       "--assert-claimed", "--web-root", root_c29l, root=tree_c29l),
         cwd=tree_c29l,
         env=dict(os.environ, RD_TOKEN="dummy"),
         stdout=subprocess_c29l.DEVNULL, stderr=subprocess_c29l.DEVNULL)

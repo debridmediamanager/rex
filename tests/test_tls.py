@@ -17,6 +17,8 @@ import sys
 import tempfile
 import time
 
+from server_command import server_command
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FIXTURE = os.path.join(HERE, "fixtures", "tls", "reference.json")
@@ -106,8 +108,8 @@ def http_over(sock, path="/identity"):
 def serve(port, extra):
     env = dict(os.environ, RD_TOKEN="dummy")
     proc = subprocess.Popen(
-        [sys.executable, os.path.join(ROOT, "server.py"), "--port", str(port),
-         "--catalog", os.path.join(HERE, "catalog_ui.json")] + extra,
+        server_command("--port", port, "--catalog", os.path.join(HERE, "catalog_ui.json"),
+                        *extra, root=ROOT),
         cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(80):
         try:

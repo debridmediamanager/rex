@@ -21,6 +21,8 @@ import tempfile
 import time
 import urllib.parse
 
+from server_command import server_command
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -48,8 +50,8 @@ def free_port():
 class Instance:
     def __init__(self, catalog, state=None):
         self.port = free_port()
-        command = [sys.executable, os.path.join(ROOT, "server.py"), "--port", str(self.port),
-                   "--catalog", catalog, "--gdm", "off", "--assert-claimed"]
+        command = server_command("--port", self.port, "--catalog", catalog,
+                                 "--gdm", "off", "--assert-claimed", root=ROOT)
         if state:
             command += ["--state", state]
         env = dict(os.environ, RD_TOKEN="dummy", PYTHONDONTWRITEBYTECODE="1")
