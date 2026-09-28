@@ -260,7 +260,9 @@ _ATTR_ORDER = {
         "viewCount", "skipCount", "viewOffset", "lastViewedAt", "includedAt",
         "lastRatedAt", "year",
         "tagline", "thumb", "art", "theme", "duration", "originallyAvailableAt",
-        "leafCount", "viewedLeafCount", "childCount", "addedAt", "updatedAt",
+        "leafCount", "viewedLeafCount", "childCount",
+        # Cycle 79: `seasonCount` -- a show with a season 0 -- follows `childCount` on zen.
+        "seasonCount", "addedAt", "updatedAt",
         "deletedAt", "audienceRatingImage", "episodeSort", "flattenSeasons"
     ),
     "Field": (
