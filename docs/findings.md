@@ -11012,6 +11012,88 @@ reader read every play queue with `own=1` under one client, which -- after cycle
 and exactly as a real PMS does -- takes each queue and retires the one taken before; the queues
 survive a restart when read without `own` (checked directly). The reader no longer sends it.
 
+#### The seventy-ninth pass — a confirming repeat that was not: season 0, and python-plexapi 4.18.2
+
+Cycle 79 repeated all twelve axes on `d3125c1` (implementation identical to cycle 77's), driver-run
+from cycle 78's tooling copied to `/private/tmp/plexsim-cycle79`. Nothing in the reopen triggers had
+moved (PMS 1.43.4.10903 still the newest, app.plex.tv 4.160.0, Plex for Android 2026.9.0), but two
+instruments had: **zen's library** gained shows with a season 0 in its section hubs, and the Mac's
+`python3` now carries **python-plexapi 4.18.2** where cycle 78's venv had 4.17.2. Three
+client-visible rules came out of those two, and nothing else.
+
+**Season 0 (N's `hubsec-ss`, then C's `ana1`).** zen's Top Rated shelf now holds Bluey (2018), whose
+row carries `seasonCount`. Measured on all 509 shows of zen's show library: the four with a season of
+index 0 carry `seasonCount` = `childCount` minus the specials (Bluey 4/3, Gundam Wing 2/1, MythBusters
+17/16, Solo Leveling 3/2) straight after `childCount`, on the detail row, the section listing and the
+hubs; no other show carries it. The season itself is titled `Specials`, translated in 32 of 45
+languages (`Spécials`, `スペシャル`; German keeps `Specials`) as the season's `title` and its
+episodes' `parentTitle`, English as the season list's `title2`, with an empty container
+`parentTitle`. plexsim titled a season 0 `Season 0` (`Staffel 0` in German) and never emitted
+`seasonCount`. Rendered both ways on a copy of the Android fixture with a season 0: Plex for Android
+drew a `Season 0` card (it sorts season 0 last, and computes its own "4 Seasons" header from truthy
+indexes) and Plex Web 4.147.1 on Windows drew `Season 0` / `Staffel 0`; after the fix both draw
+`Specials`, and French Plex Web `Spécials`. python-plexapi's `Show.seasonCount` reads the attribute
+and falls back to `childCount`. Cycle 78's C analysis had already listed `seasonCount` as a
+zen-only show field (`miss-zen /MediaContainer/Metadata[show]`) and passed over it as content. A
+pristine show with specials decks its first REGULAR season's first episode (Gundam Wing S1E1,
+MythBusters 2003E1), which is what plexsim's "Specials sort last" choice already did; the comment
+now says it is measured.
+
+**Play-queue flags (B's plexapi chains).** 4.17.2 builds `PlayQueue.create(shuffle=1, repeat=1,
+continuous=1)` as `shuffle=True&repeat=True&continuous=True`; 4.18.2 sends `1`. Measured on
+plexscratch42 (1.42.2) and plexscratch (1.43.4), identical cell for cell over 17 values: `shuffle` and
+`repeat` are integer flags -- an optional `+` and digits, value 0 or 1 (`01`, `001`, `+1` shuffle) --
+and `True`, `true`, `False`, `yes`, `2`, `10`, `-1`, `1.0`, `0x1`, ` 1` and an empty value are 400s;
+`continuous` takes anything. plexsim compared against the literal `"1"`, so it answered 4.17.2 with an
+unshuffled 200 where a real PMS raises `BadRequest`, and `01` did not shuffle. Cycle 78's `diff60s`
+recorded exactly that line (`ref BadRequest: (400) ... shuffle=True | sim ok`) and it was passed over.
+Plex Web (`shuffle ? 1 : undefined`, `repeat ? 1 : 0`) and Plex for Android (`shuffle: a1 ? 1 : 0`,
+`repeat: 0`) send integers, so the refusal breaks no current client. The only other request shape
+4.18.2 changes across B's chains is `GET /playlists/{id}/items?includeGuids=1`, which both servers
+answered alike.
+
+**Everything else agreed with cycle 78**, and several comparisons were broken in cycle 78 without
+anyone noticing:
+
+- A's four `.mo` sweeps had crashed on their first language in cycle 78 (and here, until repaired):
+  `A/mo` was a symlink into a wiped session scratchpad. Re-derived from zen's
+  `Resources/locale/*/LC_MESSAGES/plex.mo` (32 catalogues), all four are byte-identical to cycle 77
+  (168, 21, 5 and 0 candidates).
+- C's restart legs L0 and L1 had run without their snapshot half in cycle 78: `ax1/old72/hubkeys.txt`
+  was never copied. Restored, all three legs agree with their no-restart controls except the
+  background list's `addedAt` (cycle 73's recorded bound).
+- B's main and 59b chain diffs compared against cycle 59's s42 capture, which lived in a wiped
+  scratchpad. Compared plexsim-to-plexsim with cycle 78 instead: 0 of 20 59b steps differ, and the
+  main chain differs only in timestamps, artwork versions and the plexapi-version request shapes above.
+- A's s42 item-settings sweep crashed on its collection pair in cycle 78 (plexsim's collection 50001
+  was a leftover of cycle 76's instance); with one created first it is identical to cycle 77.
+- N's `fix76` and `sidecar76` checks, and its whole `out/`, need the directory tree the copy did not
+  carry; rerun, they agree with cycle 77 up to the unseeded random sort.
+- B's advance flow reported a new s42 history row for every identity: N's s42 pass, released at
+  02:12:46 by a gate set for cycle 76's clock, scrobbled the same episode on s42 meanwhile. The first
+  identity, run before that, shows none on either server.
+- The live account catalog's first API/decode run lost part 10010 to five Real-Debrid 429s; the rerun
+  passed 38/38 and 5/5.
+
+Measured and not acted on: the background processing list's `addedAt` moves across a restart (cycle
+73's bound, still unread by any client); the Android header count is the app's own; s42's `coll.editTitle`
+409 is its tag table holding a previous cycle's name.
+
+| Axis | Cycle-79 evidence | Disposition |
+|---|---|---|
+| 1 | C request sweeps, N's 160 Android templates over five hosts | **found** season 0's `seasonCount` (zen content) |
+| 2 | C's 1,018 python-plexapi 4.18.2 probes, B read chains | **found** `Show.seasonCount` |
+| 3 | C/B/N write regressions, P's delayed-write matrix | clean |
+| 4 | UI surface 1,960/1,960, B owner readbacks, rendered routes | **found** the Specials season title |
+| 5 | Windows Plex Web local vs kids, 18 status rows each, same failure classes as 78 | **found** `Season 0` rendered (specials copy) |
+| 6 | B's plexapi 4.18.2 write chains vs s42 and vs cycle 78's plexsim | **found** the queue flag grammar |
+| 7 | C comparators and regression sets | clean |
+| 8 | B/N identity and playback matrices, live decode 5/5 | clean |
+| 9 | A's 44-language corpus (8,202 cells identical to 78), `.mo` sweeps and s42 item settings (both repaired), titles, aliases | **found** `Specials` in 45 languages |
+| 10 | C discovery, N provider/device inventory | clean |
+| 11 | Android emulator fixture walk, and the specials copy before/after | **found** the `Season 0` card |
+| 12 | C L0/L1/L2 (repaired), N TERM/KILL, P hard-kill matrix | clean |
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
