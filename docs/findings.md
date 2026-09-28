@@ -11094,6 +11094,50 @@ Measured and not acted on: the background processing list's `addedAt` moves acro
 | 11 | Android emulator fixture walk, and the specials copy before/after | **found** the `Season 0` card |
 | 12 | C L0/L1/L2 (repaired), N TERM/KILL, P hard-kill matrix | clean |
 
+#### The eightieth pass — clean on all twelve axes
+
+Cycle 80 repeated all twelve axes on `0cb760b` (cycle 79's three fixes merged), driver-run from a tree
+built by `mk_next.sh` out of cycle 79's repaired tooling, with python-plexapi 4.18.2 and N's s42 pass
+gated on B's s42 work finishing. **No client-visible and no new malformed-only difference.**
+
+- The two cycle-79 rules held against live references: N's `hubsec-ss` no longer differs on zen's
+  season-0 shows, and the specials copy of the Android fixture rendered `Specials` in Plex for
+  Android and in Plex Web (English `Specials`, French `Spécials`) on the cycle-80 head.
+- B's denominator equals cycle 79's except 14 fewer s42 DELETEs -- cycle 79's deletions of N's
+  contaminating history row -- and its advance flow no longer reports a new s42 history row. Its
+  59b chain is identical to cycle 79's plexsim (0 of 20 steps) and its main chain differs only in
+  timestamps and one play-queue item type chosen by the queue's shuffle.
+- A's 44-language corpus is identical to cycle 79's, and its four `.mo` sweeps (168, 21, 5 and 0
+  candidates) run whole, as does the s42 item-settings sweep on its own collection.
+- C's comparators, regressions and all three restart legs match cycle 79; each restart equals its
+  control except the background list's `addedAt` (cycle 73's bound).
+- P's hard-kill matrix, restart checks and regressions match cycle 79 exactly.
+- Suites: offline 13/13, navigation 29/29 (fixture) and 25/25 (live account catalog), conformance
+  38/38, decode 5/5. The fixture UI surface ran twice under the five territories' load: the first run
+  died on a raw-socket check (the server reset rather than closed a request dropped at 20 s; it closes
+  cleanly three times of three when idle) and the second failed one statistics check whose series
+  gained a sample between its reads (105, then 106). Both are the check's timing, and both passed in
+  cycles 78 and 79.
+- Windows Plex Web: every screen true against the cycle server and kids, 18 status failures each, the
+  same failure classes as cycle 79. Plex for Android: the season page's first load waited on a plex.tv
+  `luma` request that never completed; on re-entry it answered 404 in 273 ms, as in cycle 79, and the
+  page and the episode drew completely.
+
+| Axis | Cycle-80 evidence | Disposition |
+|---|---|---|
+| 1 | C request sweeps, N's 160 Android templates over five hosts | clean |
+| 2 | C's 1,018 plexapi 4.18.2 probes, B read chains | clean |
+| 3 | C/B/N write regressions, P's delayed-write matrix | clean |
+| 4 | UI surface, B owner readbacks, rendered routes | clean (two timing-only UI checks, above) |
+| 5 | Windows Plex Web local vs kids; the specials copy | clean |
+| 6 | B's plexapi 4.18.2 chains vs s42 and vs cycle 79's plexsim | clean |
+| 7 | C comparators and regression sets | clean |
+| 8 | B/N identity and playback matrices, live decode 5/5 | clean |
+| 9 | A corpus, `.mo`, titles, aliases, zen and s42 item settings | clean |
+| 10 | C discovery, N provider/device inventory | clean |
+| 11 | Android emulator walk; the specials copy | clean |
+| 12 | C L0/L1/L2, N TERM/KILL, P hard-kill matrix | clean |
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
