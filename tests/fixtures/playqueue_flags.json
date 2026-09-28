@@ -1,0 +1,545 @@
+{
+ "_provenance": "Captured 2026-09-28 by POST /playQueues?type=video&uri=<a show> with ONE flag set, on plexscratch42 (Plex 1.42.2) and plexscratch (Plex 1.43.4). Each cell is [status, playQueueShuffled]. The two plexapi rows are the whole query python-plexapi 4.17.2 and 4.18.2 send for PlayQueue.create(item, shuffle=1, repeat=1, continuous=1), read off cycle 78 and 79 request logs, with the uri replaced.",
+ "cells": {
+  "shuffle": {
+   "1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     true
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     true
+    ]
+   },
+   "0": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "01": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     true
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     true
+    ]
+   },
+   "001": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     true
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     true
+    ]
+   },
+   "00": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "+1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     true
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     true
+    ]
+   },
+   "True": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "true": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "False": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "yes": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "2": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "10": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "-1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "1.0": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "0x1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   " 1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   }
+  },
+  "repeat": {
+   "1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "0": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "01": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "001": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "00": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "+1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "True": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "true": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "False": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "yes": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "2": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "10": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "-1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "1.0": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "0x1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   " 1": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   },
+   "": {
+    "plexscratch42 (1.42.2)": [
+     400,
+     null
+    ],
+    "plexscratch (1.43.4)": [
+     400,
+     null
+    ]
+   }
+  },
+  "continuous": {
+   "1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "0": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "01": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "001": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "00": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "+1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "True": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "true": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "False": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "yes": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "2": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "10": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "-1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "1.0": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "0x1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   " 1": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   },
+   "": {
+    "plexscratch42 (1.42.2)": [
+     200,
+     false
+    ],
+    "plexscratch (1.43.4)": [
+     200,
+     false
+    ]
+   }
+  }
+ },
+ "plexapi": {
+  "4.17.2": {
+   "query": "continuous=True&includeChapters=1&includeRelated=1&repeat=True&shuffle=True&type=video",
+   "plexscratch42 (1.42.2)": [
+    400,
+    null
+   ],
+   "plexscratch (1.43.4)": [
+    400,
+    null
+   ]
+  },
+  "4.18.2": {
+   "query": "continuous=1&includeChapters=1&includeRelated=1&repeat=1&shuffle=1&type=video",
+   "plexscratch42 (1.42.2)": [
+    200,
+    true
+   ],
+   "plexscratch (1.43.4)": [
+    200,
+    true
+   ]
+  }
+ }
+}

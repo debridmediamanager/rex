@@ -1162,6 +1162,35 @@ def main():
               "childCount=%s seasonCount=%s" % (after.get("childCount"),
                                                 after.get("seasonCount")))
 
+    # Cycle 79: a play queue's `shuffle`/`repeat` flags, cell by cell against what
+    # plexscratch42 (1.42.2) and plexscratch (1.43.4) answered, and python-plexapi's own
+    # two query shapes (4.17.2 sends `True`, 4.18.2 sends `1`).
+    with open(os.path.join(HERE, "fixtures", "playqueue_flags.json"), encoding="utf-8") as handle:
+        queue_flags = json.load(handle)
+    flag_uri = urllib.parse.quote("server://%s/com.plexapp.plugins.library/library/metadata/108"
+                                  % catalog.machine, safe="")
+
+    def queue_answer(query):
+        answer = sim.handle("POST", "/playQueues?%s&uri=%s" % (query, flag_uri), b"", {})
+        if isinstance(answer, dict):
+            return [200, answer["MediaContainer"].get("playQueueShuffled")]
+        return [answer[1], None]
+
+    wrong = []
+    for flag, cells in queue_flags["cells"].items():
+        for value, measured in cells.items():
+            expected = set(tuple(cell) for cell in measured.values())
+            got = tuple(queue_answer("type=video&%s=%s" % (flag, urllib.parse.quote(value, safe=""))))
+            if expected != {got}:
+                wrong.append((flag, value, got, sorted(expected)))
+    for version, shape in queue_flags["plexapi"].items():
+        expected = set(tuple(cell) for key, cell in shape.items() if key != "query")
+        got = tuple(queue_answer(shape["query"]))
+        if expected != {got}:
+            wrong.append(("plexapi " + version, got, sorted(expected)))
+    check("a play queue's shuffle and repeat are 0/1 integer flags and anything else is a "
+          "400, as both PMS versions answer", not wrong, str(wrong))
+
     # A film really called "Specials" is content, not a generated title.
     content_row = {"ratingKey": "1", "type": "movie", "title": "Specials", "index": 0}
     check("a movie titled Specials keeps its own title in French",
