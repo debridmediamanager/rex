@@ -5115,7 +5115,11 @@ class PlexSim:
                     "title1": show.get("title") if show else parent.get("parentTitle"),
                     "title2": parent.get("title"),
                     "parentIndex": parent.get("index"),
+                    # A generated season title is stored nowhere, so the container's
+                    # `parentTitle` is empty for it -- `Specials` included (zen, cycle 79).
                     "parentTitle": ("" if parent.get("title") in ("", "Season %s" % parent.get("index"))
+                                    or (parent.get("index") == 0
+                                        and parent.get("title") == hierarchy_module.SPECIALS_TITLE)
                                     else parent.get("title")),
                     "parentYear": parent.get("year"),
                     "thumb": _owned_artwork(parent, "thumb"),
@@ -22640,10 +22644,22 @@ class Handler(BaseHTTPRequestHandler):
             # user's content. The row guard stopped at the row boundary, so the whole
             # per-item Advanced pane stayed English while the same settings on
             # `/library/sections/{id}/prefs` moved.
-            return {key: self._localise(value, language, key,
-                                        False if key in self._LOCALISED_BLOCKS
-                                        else (row or in_row))
-                    for key, value in node.items()}
+            localised = {key: self._localise(value, language, key,
+                                             False if key in self._LOCALISED_BLOCKS
+                                             else (row or in_row))
+                         for key, value in node.items()}
+            # Cycle 79, measured on zen in all 45 languages: a season 0's generated
+            # `Specials` is translated like `Season N` -- as the season's `title` and its
+            # episodes' `parentTitle` -- and a film really called "Specials" is content.
+            # The row's own index is what tells the two apart.
+            for key, index in (("title", "index"), ("parentTitle", "parentIndex")):
+                if (row and localised.get(key) == hierarchy_module.SPECIALS_TITLE
+                        and node.get(index) == 0
+                        and node.get("type") == ("season" if key == "title" else "episode")):
+                    found = (TRANSLATIONS.get(key) or {}).get(hierarchy_module.SPECIALS_TITLE)
+                    if found and language in found:
+                        localised[key] = found[language]
+            return localised
         if isinstance(node, list):
             return [self._localise(value, language, attribute, in_row) for value in node]
         if isinstance(node, str) and attribute:
