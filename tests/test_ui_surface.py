@@ -9199,6 +9199,8 @@ def main():
                         break
             except _sock49h.timeout:
                 pass
+            except ConnectionResetError:
+                closed = True  # a close that raced bytes still in flight arrives as a reset
             return [buf[i:i + 40].split(b"\r\n")[0].decode("latin-1")
                     for i in range(len(buf)) if buf.startswith(b"HTTP/1.1 ", i)], closed
         finally:
@@ -9251,6 +9253,11 @@ def main():
                 delayed_raw_c50j += piece_c50j
         except _sock49h.timeout:
             pass
+        except ConnectionResetError:
+            # The late bytes can reach a socket the server has already closed, and the
+            # kernel answers those with a reset instead of a FIN: the same close, seen
+            # under load (cycles 80 and 82 stopped the suite here).
+            delayed_closed_c50j = True
     finally:
         delayed_body_c50j.close()
     delayed_statuses_c50j = [
@@ -9287,6 +9294,10 @@ def main():
             answer_c49h = sock_c49h.recv(4096)
         except _sock49h.timeout:
             answer_c49h = b"TIMEOUT"
+        except ConnectionResetError:
+            # The last piece lands after the 20 s drop, so the kernel can answer it with a
+            # reset before recv sees the FIN: the same drop, with no answer.
+            answer_c49h = b""
     finally:
         sock_c49h.close()
     check("an incomplete request is dropped 20 s after its FIRST byte, not after 20 s idle",
