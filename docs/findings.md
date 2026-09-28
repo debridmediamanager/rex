@@ -11204,6 +11204,32 @@ implementation changed; repository changes are the cycle-copy repair helper
 and invocation, the Unicode-domain test correction, and the token-free cycle
 evidence.
 
+#### The eighty-second pass — python-plexapi 4.18.3, clean on all twelve axes
+
+python-plexapi 4.18.3 (2026-09-28) was the one reopen trigger that moved; cycle 81 ran 4.18.2.
+Its diff is a stricter filter-field grammar and four `AudioStream` attributes plus
+`Video.canNormalizeLoudness`.
+
+- **Video loudness is a 1.43.4 behaviour.** kids answers every video audio stream with
+  `canNormalizeLoudness="1" gainOffset loudness loudnessAnalysisVersion lra peak threshold`
+  (a ten-second synthetic AAC mono clip: `gainOffset="0.03" loudness="-21.76" lra="0.10"
+  peak="-17.96" threshold="-31.76" loudnessAnalysisVersion="0.02"`). zen carries none of them on
+  62 movie audio streams, and the 1.42.2 binary does not contain `canNormalizeLoudness` or
+  `gainOffset`; its loudness analysis is the music butler's (`albumGain`, `endRamp`, ...). plexsim
+  advertises 1.42.2 and answers `canNormalizeLoudness` False, as zen does.
+- **No reference names a field with a digit**, so 4.18.3's grammar changes plexapi's own
+  validation only. 58 filter cells answered identically on zen, plexscratch42 and plexsim.
+- **Same-second history rows order by history id ascending** under `viewedAt:desc`,
+  `viewedAt:asc` and no sort, on plexscratch (1.43.4) and plexsim alike, measured with playbacks
+  whose crossing beat lands in one wall-clock second. A `/:/scrobble` of an episode or a season
+  writes no history row.
+
+Every territory re-ran under 4.18.3 with no client-visible and no new malformed-only
+difference; the per-leg ledger is `handover/cycle82-report.md`. **Measured and not acted on:**
+plexscratch42's 500 on a 95 % timeline beat and on one identity's `select_sub_none` (it answers
+200 replayed on an idle server: reference contention); `regress_p75`'s fourth check, which encodes
+a claim cycle 75 refuted.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,

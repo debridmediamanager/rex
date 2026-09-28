@@ -7,6 +7,15 @@ are changing; replay the client's exact request before altering behavior.
 
 ## Traps that cost real time
 
+- **Loudness on a video's audio stream is version-scoped.** 1.43.4 writes
+  `canNormalizeLoudness`, `gainOffset`, `loudness`, `loudnessAnalysisVersion`, `lra`, `peak` and
+  `threshold` on every video audio stream; 1.42.2 writes none and its binary has no
+  `canNormalizeLoudness`. python-plexapi 4.18.3 reads the flag. Emulating 1.42.2, leave them out.
+- **A copied rendered walk can name the wrong browser.** Cycle 81's `windows81/*.py` drove kids'
+  9224 while its report said Windows. Read `drv.CDP` (and the user agent at `/json/version`)
+  before calling a walk "Windows"; `cycle_mk_next.sh` now refuses 9224.
+- **A raw-socket check that expects a close must accept a reset.** Late bytes that reach a socket
+  the server already closed are answered with RST, so `recv` raises instead of returning `b""`.
 - **A comparison's completion marker is not evidence that it sent a request.**
   Cycle 80's C, P and B wrappers each reported a nominal completion path while
   stopping first on C's two missing captured body sets, P's missing R0 identity
