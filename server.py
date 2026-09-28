@@ -4767,8 +4767,9 @@ class PlexSim:
                 # season 7 carry episode 8, zen's 5189 carries 5191 and 6558 its S8 E12 --
                 # and only the season owning it does. Cycle 41 recorded the opposite.
                 # Only a show with NO view state is measured, so a show whose watched
-                # episodes leave no next-up still omits it. Specials sort last: a
-                # choice, since no witness held a season 0.
+                # episodes leave no next-up still omits it. Specials sort last --
+                # measured in cycle 79 on zen's two pristine shows with a season 0:
+                # Gundam Wing's deck is S1 E1 and MythBusters' is 2003 E1.
                 leaves = [leaf for leaf in self.catalog.leaves(show_key)
                           if leaf.get("type") == "episode"]
                 if leaves and not any(leaf.get("viewCount") or leaf.get("viewOffset")
