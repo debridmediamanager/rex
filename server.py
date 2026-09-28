@@ -16167,6 +16167,23 @@ class PlexSim:
             return ("error", 400, "plexsim: bad request")
         if not uri and not playlist_id:
             return ("error", 400, "plexsim: bad request")
+        # Cycle 79, measured on plexscratch42 (1.42.2) and plexscratch (1.43.4), which
+        # agree cell for cell (tests/fixtures/playqueue_flags.json): `shuffle` and
+        # `repeat` are INTEGER flags -- an optional `+` and digits whose value is 0 or 1,
+        # so `01` and `+1` shuffle -- and anything else is a 400: `True`, `2`, `-1`, `1.0`,
+        # an empty value. `continuous` takes anything. python-plexapi 4.17.2 sends
+        # `shuffle=True&repeat=True` for `PlayQueue.create(shuffle=1, repeat=1)`, which a
+        # real PMS refuses; plexsim compared against "1", so it answered 200 with an
+        # UNSHUFFLED queue, and `01` did not shuffle either.
+        flags = {}
+        for name in ("shuffle", "repeat"):
+            value = query.get(name)
+            if value is None:
+                continue
+            if not re.fullmatch(r"\+?[0-9]+", value) or int(value) > 1:
+                return ("error", 400, "plexsim: bad request")
+            flags[name] = int(value)
+        shuffle = flags.get("shuffle") == 1
         playlist = self.library.playlist(playlist_id) if playlist_id else None
         named = re.match(r"server://([^/]+)/", urllib.parse.unquote(uri or ""))
         foreign = bool(named) and named.group(1) != self.catalog.machine
@@ -16192,7 +16209,7 @@ class PlexSim:
         else:
             rows = self._items_for_uri(uri, continuous=query.get("continuous") == "1")
         natural = [int(row["ratingKey"]) for row in rows]
-        if query.get("shuffle") == "1":
+        if shuffle:
             # Cycle 16, measured on plexscratch: three consecutive shuffled queues over
             # the same show come back in three DIFFERENT orders. plexsim reversed the
             # queue instead, so Shuffle played a show's episodes backwards -- and
@@ -16226,7 +16243,7 @@ class PlexSim:
                 "items": items,
                 "source": ("" if playlist is not None
                            else uri if foreign else self.source_uri(uri, rows)),
-                "shuffled": query.get("shuffle") == "1",
+                "shuffled": shuffle,
                 # The order an unshuffle restores, even for a queue created shuffled.
                 "natural": natural,
                 "client": client,
