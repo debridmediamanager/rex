@@ -77,8 +77,9 @@ cycle 12 onwards should be tagged with its client impact (what breaks, and for w
 
 | | |
 |---|---|
-| `main` | reopen triggers checked 2026-09-28 (§7, "After cycle 78"): PMS, Plex Web and Plex for Android unchanged, so no cycle 79. Before: cycle 78 recorded: clean on all twelve bounded axes; documentation-only change, implementation unchanged from cycle 77 |
-| Cycles complete | **78 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 78 repeated every axis on the cycle-77 head, found no implementation finding, passed the real account-catalog navigation/API/decode legs, and completed the Windows Plex Web comparison, French fallback walk and native Android emulator walk. **77 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 77 repeated every axis of the post-cycle-73 ledger on the cycle-76 head and found zero client-visible and zero new malformed-only differences. Before: **76 -- the third twelve-axis repeat: 1 client-visible finding (play-queue ownership), eleven axes clean.** Finished by the driver after the weekly subagent limit. Before: **75 -- the second twelve-axis repeat: 1 client-visible finding (the Shuffle toggle, axis 3) and two transport rules; nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **74 -- the twelve-axis repeat: 3 client-visible findings on axes 11 and 12, nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **73 -- reopened on `--state`: 4 client-visible findings on a new twelfth axis and two old ones.** `--state` (after cycle 72) changed what a restart does, so cycle 73 repeated all eleven axes with it on and added axis 12, a server restart, measured on the reference itself. It found three restart rules (durability, the spelling vocabulary) and two others its hunts exposed (the unseeded random sort, the sidecar's `External`). The loop runs until one cycle is clean on all TWELVE axes. Before: **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until one cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| `main` | cycle 79 merged: 3 client-visible fixes (season 0 `Specials`, `seasonCount`, the play-queue flag grammar); cycle 80 must repeat all twelve axes. Before: reopen triggers checked 2026-09-28 (§7, "After cycle 78"), then cycle 79 run at the user's request as a confirming repeat. Before: cycle 78 recorded: clean on all twelve bounded axes; documentation-only change, implementation unchanged from cycle 77 |
+| Cycles complete | **79 -- the confirming repeat found 3 CLIENT-VISIBLE rules: the loop REOPENS.** Two instruments had moved without a version bump: zen's library now shows shows with a season 0 in its hubs, and the Mac's python-plexapi is 4.18.2 (cycle 78 ran 4.17.2). Built: season 0 titled `Specials` and localised, a show's `seasonCount`, and `shuffle`/`repeat` read as 0/1 integer flags. Five comparisons were found dead since cycle 78 and repaired (§7). Cycle 80 repeats all twelve axes. Before: **78 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 78 repeated every axis on the cycle-77 head, found no implementation finding, passed the real account-catalog navigation/API/decode legs, and completed the Windows Plex Web comparison, French fallback walk and native Android emulator walk. **77 -- THE STOPPING RULE IS MET ON ALL TWELVE AXES.** Cycle 77 repeated every axis of the post-cycle-73 ledger on the cycle-76 head and found zero client-visible and zero new malformed-only differences. Before: **76 -- the third twelve-axis repeat: 1 client-visible finding (play-queue ownership), eleven axes clean.** Finished by the driver after the weekly subagent limit. Before: **75 -- the second twelve-axis repeat: 1 client-visible finding (the Shuffle toggle, axis 3) and two transport rules; nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **74 -- the twelve-axis repeat: 3 client-visible findings on axes 11 and 12, nine axes clean.** The loop runs until one cycle is clean on all twelve. Before: **73 -- reopened on `--state`: 4 client-visible findings on a new twelfth axis and two old ones.** `--state` (after cycle 72) changed what a restart does, so cycle 73 repeated all eleven axes with it on and added axis 12, a server restart, measured on the reference itself. It found three restart rules (durability, the spelling vocabulary) and two others its hunts exposed (the unseeded random sort, the sidecar's `External`). The loop runs until one cycle is clean on all TWELVE axes. Before: **72 -- THE STOPPING RULE IS MET ON ALL ELEVEN AXES.** Cycle 72 repeated every axis of the post-cycle-70 ledger on the cycle-71 head and found zero client-visible and zero new malformed-only differences. Before: **71 -- ten of eleven axes clean.** Cycle 71 repeated every axis on the cycle-70 head: 1-8, 10 and 11 clean, axis 9 two client-visible titles only the Android app draws. Cycle 72 repeats all eleven. Before: **70 -- reopened on a new instrument.** Cycle 69 met the stopping rule on ten axes and named what it did not bound: no native client had ever been captured. Cycle 70 captured one -- Plex for Android, a React Native codebase separate from Plex Web -- as axis 11, and found seven client-visible rules; the loop runs until one cycle is clean on all ELEVEN axes. The history before: **69 -- THE STOPPING RULE IS MET.** Cycle 69 is the first cycle under the client-impact rule (cycle 56) to report no findings on all ten axes of the ledger: hunts A (axes 5, 9), B (6, 8) and C (1, 2, 3, 4, 7, 10) each report zero client-visible and zero new malformed-only findings, every cycle 59-68 regression holds, and both reference snapshots are identical. The earlier history follows. **58. The last CLEAN cycle was 51 — the stopping gate below — and cycles 52, 53 and 54 each reopened the loop by recognising a new instrument; cycle 55 repeated 54's two axes at full resolution and neither was finished (§7).** The stopping gate as it stood: **51 — met on every finite Cycle-50 axis.** Cycle 50 recovered seven surviving commits and the original transcripts, found one lost measured patch, **18 report entries not yet implemented**, three unprotected transport/GDM rules and one now-actionable Cycle-49 deferred entry, then closed every Territory-A **23/23**, Territory-B **8/8** and Territory-C **10/10** entry. It added the exact 58-path prefix registry, three complete regional preference documents, per-session playback state, the searchable-tag gate/current count, exact GDM lifecycle and the remaining catalog/transport/format rules. Cycle 51 froze that behavior/test head and ran three independent read-only stopping audits: exact requests/client, catalog/hierarchy/controls, and claim/dual-format/transport/TLS/discovery. **All three reports end literally `NO FINDINGS`**; every finite denominator is green or named as an explicit capability/safety/underivable-state bound. See §7 and §8. |
+| Cycle 79 | **79 — 3 CLIENT-VISIBLE findings in 3 fix commits, 3 recorded.** Driver-run from cycle 78's tooling. N's hub sweep and C's analysis exposed zen's season-0 shows (`Specials`, `seasonCount`), rendered before and after in Plex for Android and Plex Web on a specials copy of the fixture; B's plexapi 4.18.2 chains exposed the queue-flag grammar (4.17.2's `shuffle=True` is a 400 on both PMS versions). A, C, P and the live catalog otherwise identical to cycle 78, with five dead comparisons repaired |
 | Cycle 78 | **78 — CLEAN ON ALL TWELVE AXES: no implementation finding.** A/B/C/N/P matrices, offline suites, and corrected live-catalog navigation/API/decode all pass. The Windows CDP browser rendered the official bundle against both the cycle server and the kids reference; standalone fallback captured French settings; the disposable Android emulator rendered the fixture TV path through episode detail and the actual live catalog's Big Buck Bunny detail with loaded actions. Windows' 18 status rows per leg and 108/169 console dispositions are classified in the token-free report. The UI fixture run intentionally had no `--state`; acceptance/persistence legs used private state files. No code changed |
 | Cycle 77 | **77 — CLEAN ON ALL TWELVE AXES: the stopping cycle.** Driver-run (weekly subagent limit) from every territory's cycle-76 tooling; every output compared with cycle 76's. No code changed |
 | Cycle 76 | **76 — the third twelve-axis repeat: 1 CLIENT-VISIBLE finding in 1 fix commit.** Hunters stopped on the weekly limit; the driver finished A, B, C and P from their tooling. P's unreported candidate, re-measured: a queue read with `own=1` moves ownership, and the one-queue-per-client rule follows the owner |
@@ -3799,6 +3800,67 @@ container-aware check passes 38/38 and now deliberately prefers the Plex Web dir
 No emulated server behavior changed. Live links remain only in `catalog.json`; neither links nor
 credentials enter the repository.
 
+### Cycle 79 — the confirming repeat that reopened the loop: season 0, and the queue flags
+
+Run at the user's request after the trigger check below found nothing, as a repeat of all twelve axes
+on `d3125c1`, driver-run from cycle 78's tooling copied to `/private/tmp/plexsim-cycle79` (no "claude"
+in the path, so the hourly cleanup job leaves its processes alone). The token-free command ledger is
+[`handover/cycle79-report.md`](handover/cycle79-report.md).
+
+**3 CLIENT-VISIBLE findings in 3 fix commits** (`8e337a1`, `16a8c09`, `7e77c8c`):
+
+| Finding | Axis and instrument | Client call site |
+|---|---|---|
+| A season 0 is titled `Specials`, translated like `Season N` (45 languages off zen) | 1, 4, 5, 9, 11: zen's new season-0 shows in N's `hubsec-ss` sweep | Plex for Android's season card and Plex Web's season list draw the row `title` (both rendered `Season 0` before, `Specials` after) |
+| A show holding a season 0 carries `seasonCount` (without it) after `childCount` | 1, 2: the same rows; C's `ana1` had listed it since cycle 78 | python-plexapi `Show.seasonCount` (falls back to `childCount`) |
+| `POST /playQueues`' `shuffle`/`repeat` are 0/1 integer flags; anything else is a 400 | 6: B's chains under python-plexapi 4.18.2 vs cycle 78's 4.17.2 | python-plexapi 4.17.2 `PlayQueue.create(shuffle=1)` sends `shuffle=True` |
+
+Each fix is proven by `tests/test_catalog_features.py` failing on its parent and passing on it, driven
+from real input captured this cycle: `tests/fixtures/specials_zen.json` (zen's four specials shows and a
+control, the Specials titles in 45 languages) and `tests/fixtures/playqueue_flags.json` (17 values x 3
+flags on 1.42.2 and 1.43.4, and both plexapi versions' exact queries). Every suite passed on the merged
+head from fresh servers: UI surface 1,960/1,960, navigation 29/29 (fixture) and 25/25 (live account
+catalog), conformance 38/38, decode 5/5, and all thirteen offline suites.
+
+**Why a "confirming" repeat found three.** The reopen triggers watch versions, and neither of these
+moved a version: zen's LIBRARY changed (its Top Rated shelf now holds Bluey), and the Mac's `python3`
+changed from cycle 78's 3.9 venv (plexapi 4.17.2) to mise's 3.10 (plexapi 4.18.2). Both findings were
+already in cycle 78's own outputs -- `seasonCount` in C's `miss-zen` list and the `shuffle=True` 400 in
+B's `diff60s` -- and were passed over as content and as the reference's contention. **A reference-only
+field or a reference-only refusal is a candidate until its cause is measured**, not a disposition.
+
+**Five comparisons had been dead since cycle 78** (repaired here; fold the repairs into cycle 80's
+copy):
+
+- `A/mo` was a symlink into a wiped scratchpad, so all four `.mo` sweeps crashed on their first
+  language. Re-derived from zen's `Resources/locale/*/LC_MESSAGES/plex.mo`; identical to cycle 77.
+- `C/ax1/old72/hubkeys.txt` was never copied, so the L0/L1 restart legs ran without their snapshot
+  half. Restored from `~/pxc77`; all three legs agree with their controls but for the recorded bound.
+- B's `diffs76.sh` compares plexsim against cycle 59's s42 capture (`$P` in a wiped scratchpad);
+  compared plexsim-to-plexsim with cycle 78 instead.
+- A's s42 item-settings sweep (`itemenum68.py ... s42`) crashed on its `coll` pair: plexsim's
+  collection 50001 existed on cycle 76's instance only. Created on A's own 32693 first, the sweep is
+  identical to cycle 77.
+- The mtime-based copy dropped N's five scripts edited during cycle 78 (`nreq.py` and the kill and
+  restart legs), P's `poster.png`, the root `start.py` and every empty directory (N's `out/`).
+
+**What went wrong in the run, and what to do instead:**
+- B's advance flow is not safe beside N's s42 pass: `gated_s42.py`'s gate is an absolute time set in
+  cycle 76, so it opened at once and N scrobbled s42's episode 393 inside B's run. Start N's s42 pass
+  after B's `REMOTE1_76_DONE`.
+- A copy of a leg that restarts onto a state file must START on that file: `leg.sh` captures "pre" on
+  whatever holds the port. Run `rleg/restart.py STATE` first, as phase 2/3 do.
+- Driving Plex for Android by label: `tap('The Simpsons')` can hit the Discover result and open
+  plex.tv's page (the owner's watch history). Check `metadata-title` before reading a screen.
+
+**The axis ledger after cycle 79.**
+
+| # | Axis | Status |
+|---|---|---|
+| 1, 2, 4, 5, 9, 11 | request inventory, plexapi reads, owner's screens, rendered client, localisation, Android | found season 0 (built); repeat |
+| 6 | python-plexapi's writes | found the queue flags under 4.18.2 (built); repeat |
+| 3, 7, 8, 10, 12 | client writes, vocabulary, playback per identity, discovery, restart | clean (79) |
+
 ### After cycle 78 — the reopen triggers checked, none fired (2026-09-28)
 
 Cycle 78 found nothing to build, so there was no cycle-78 finding to implement. Cycle 79
@@ -3813,6 +3875,8 @@ was not run, because none of the conditions that reopen the loop had changed:
 
 Doing the twelve axes a third time with no changed instrument would only confirm cycles 77
 and 78. Check these four rows again first. If any row has changed, that is cycle 79.
+(The user then asked for the repeat anyway, and it found three: the table watches VERSIONS, and
+neither zen's library content nor the Mac's python-plexapi is a version it lists. See Cycle 79.)
 
 ### Cycle 78 — clean on all twelve axes
 
@@ -5664,6 +5728,15 @@ same title stem, so release, alphabetical and insertion order coincided.
 
 ## 8. Measured and deliberately NOT implemented
 
+**Cycle 79** (recorded, not built):
+
+- Plex for Android computes its own "N Seasons" header from seasons with a truthy `index`, so a show
+  with specials reads one fewer there than its `childCount`; nothing server-side is involved.
+- A pristine show with specials decks its first regular season's first episode (zen: Gundam Wing S1E1,
+  MythBusters 2003E1) -- plexsim's existing choice, now measured, so nothing to build.
+- s42's `coll.editTitle` 409 is its collection tag table still holding an earlier cycle's name (the
+  cycle 58 rule), and the background list's `addedAt` across a restart is cycle 73's bound.
+
 **Cycle 75** (recorded, not built):
 
 - A SELECTED sidecar's stream row inside a decision is `location: "sidecar-subs"` under
@@ -6699,6 +6772,19 @@ refcheck snapshot was byte-identical. Treat a search `limit` past int32 as crash
 reference, like cycle 45's empty `sort=` on `/library/shared`.
 
 ## 10. Tooling and environment gotchas
+
+**Cycle 79 added these.**
+
+- **Pin the python the drivers use, and record its plexapi version.** B's and C's scripts call bare
+  `python3`; cycle 78 ran them under a 3.9 venv (plexapi 4.17.2), cycle 79 under mise's 3.10 (4.18.2),
+  and the difference was a finding. Print `plexapi.VERSION` into every cycle's report.
+- **A copied tree needs its symlinks resolved and its empty directories made.** `cp`/`rsync` of a
+  file list keeps a symlink into a session scratchpad that is later wiped (`A/mo`, `$P` in
+  `diffs76.sh`) and drops empty directories (`N/out`). Grep every output for `FileNotFoundError`
+  before comparing it: five comparisons were silently dead in cycle 78.
+- **The hourly cleanup kills the driver's own waits** (`until ...; sleep` in a Bash tool call carries
+  `.claude/shell-snapshots` in its argv): at :01 every such wait dies with exit 1 while the detached
+  work carries on. Re-arm after :01 rather than reading the failure as the work's.
 
 **Cycle 77 added these.**
 

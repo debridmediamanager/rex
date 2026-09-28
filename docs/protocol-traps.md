@@ -2809,3 +2809,12 @@ are changing; replay the client's exact request before altering behavior.
   one-queue-per-client rule follows the owner: the taker's other queue is retired at once, its next new
   queue retires this one, and the creator's new queue leaves it alone (1.42.2 and 1.43.4). Plex Web hands
   another player the queue key with `own:1`.
+- **Season 0 is `Specials`, and only a show that holds one carries `seasonCount`.** On zen (1.42.2,
+  509 shows) the four shows with a season 0 answer `childCount` WITH it and `seasonCount` without it
+  (Bluey 4 and 3) straight after `childCount` -- detail, section listing, hubs -- and no other show
+  carries the attribute. The season's generated title is translated like `Season N` (its `title` and
+  its episodes' `parentTitle`; 13 of 45 languages leave it English), stays English as the season
+  list's `title2`, and the container's `parentTitle` is empty. Plex for Android draws the server's
+  title on the season card (it sorts season 0 last) and computes its own "N Seasons" header from
+  truthy indexes; python-plexapi's `Show.seasonCount` reads the attribute and falls back to
+  `childCount`. A pristine show with specials puts its first REGULAR season's first episode on deck.
