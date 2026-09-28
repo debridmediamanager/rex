@@ -7,6 +7,12 @@ are changing; replay the client's exact request before altering behavior.
 
 ## Traps that cost real time
 
+- **A comparison's completion marker is not evidence that it sent a request.**
+  Cycle 80's C, P and B wrappers each reported a nominal completion path while
+  stopping first on C's two missing captured body sets, P's missing R0 identity
+  manifest or B's nonexistent subtitle fixture. Cycle 81 repaired those inputs
+  from measured captures and the isolated scratch PMS; check the request
+  denominator and the source fixture before calling a leg clean.
 - **`catalog.json` links are account-scoped.** Real-Debrid `/d/` links resolve
   only for the account that created them. A different key answers
   `404 unavailable_file`, which surfaces as HTTP 502 on every part read and

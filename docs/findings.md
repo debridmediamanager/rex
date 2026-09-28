@@ -11138,6 +11138,72 @@ gated on B's s42 work finishing. **No client-visible and no new malformed-only d
 | 11 | Android emulator walk; the specials copy | clean |
 | 12 | C L0/L1/L2, N TERM/KILL, P hard-kill matrix | clean |
 
+#### The eighty-first pass — clean on all twelve axes
+
+Cycle 81 repeated all twelve axes on the clean cycle-80 head `ed66770`. The
+first audit found four cycle-80 comparisons that were dead before their first
+request: C `f587` had copied no measured bodies, P's R0 read had no identity
+manifest, and B's subtitle upload named `c61b.srt` although the measured fixture
+is `c59b.srt`. The cycle-local copier now repairs these from measured `C/ax1`
+bodies, isolated plexscratch identity data and the existing subtitle fixture;
+the helper refuses non-cycle paths and never synthesises a response. The
+repaired legs completed with their original denominators, including the real
+subtitle upload and removal request.
+
+- C's 1,068/130 reference and simulator exchanges, comparators, regressions,
+  discovery and all three restart legs were clean apart from the existing
+  timing/content bounds.
+- P's R0/R1/R2/R3/R4 redraws and hard-kill matrix completed on isolated
+  plexscratch; B's local, remote and plexscratch42 chains completed, including
+  the subtitle upload.
+- A's fresh simulator requests covered 8,064 web cells in 42 locales and 1,032
+  Android cells in 43 locales, `Accept-Language` 153/153, `.mo` sweeps
+  (168/21/5/0), title/alias and item-setting legs. The preserved measured zen
+  paging corpus gave the same cycle-80 malformed-only partition. N's
+  provider/device and Android request legs, the Windows rendered walk and the
+  disposable Android emulator all rendered or compared cleanly.
+- Offline decision, mediainfo, GDM, account-state and persistence suites passed;
+  fixture navigation passed 29/29 (`/private/tmp/plexsim-cycle81/accept/navigation_fixture81.txt`)
+  and the LAN-bound UI suite passed 1,960/1,960.
+  The live account catalog passed navigation 25/25 and conformance 38/38; its
+  local byte/decode checks passed, while the public tunnel's prefix/seek legs
+  returned its existing HTTP 530 boundary.
+
+The four repaired pre-request dead comparisons were C `f587`'s two response
+body sets, P's R0 identity baseline and B's subtitle upload. The copy guard is
+a safety check rather than a fifth probe: it requires an exact cycle root and
+refuses edited targets whose symlink resolves outside that tree. The Windows
+and Android clients still made external plex.tv/luma/pubsub read attempts in
+their rendered walks; no harness-side plex.tv write, claim or account mutation
+was issued, and the blocked/failed external requests remain in the inventories.
+Axis 9 retained `i18n/zcache69`, the measured zen paging corpus carried from
+cycle 80, while the simulator requests were fresh. The live locale leg measured
+153 `Accept-Language` forms and therefore establishes partition selection, not
+a newly captured full zen response corpus. The catalog feature test's dynamic
+Unicode candidate-domain count was also separated from the exact measured
+U+0300..U+036F removal behavior; both Python 3.9 and 3.12 now pass that same
+behavior check.
+
+| Axis | Cycle-81 evidence | Disposition |
+|---|---|---|
+| 1 | C request/XML inventory, A corpus, N request sweeps | clean |
+| 2 | C and B python-plexapi reads | clean |
+| 3 | C/B/N writes, redraws and frames; P readbacks | clean |
+| 4 | LAN UI surface and owner legs | clean; fixture capability skips only |
+| 5 | Windows Plex Web sim/kids and French walk | clean on detail screens |
+| 6 | B plexapi writes/playback and subtitle chain | clean |
+| 7 | C regressions and B vocabulary matrix | clean |
+| 8 | B/N identity, queue, decision and byte legs | clean within tunnel/media bounds |
+| 9 | A localisation, `.mo`, title, alias and item settings | clean |
+| 10 | C discovery and N provider/device/GDM | clean |
+| 11 | Android emulator movie/show/season/episode walk | clean |
+| 12 | C restart, N TERM/KILL and P hard-kill legs | clean |
+
+The protected kids snapshot is byte-identical before and after. No server
+implementation changed; repository changes are the cycle-copy repair helper
+and invocation, the Unicode-domain test correction, and the token-free cycle
+evidence.
+
 ### Emulation calibrated against the account's own claimed servers
 
 Rather than guessing what a claimed server reports, `/identity`,
