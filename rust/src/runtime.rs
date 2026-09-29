@@ -21089,9 +21089,11 @@ fn page_container(response: &mut Response, query: &HashMap<String, String>, path
     let count = if lists.is_empty() {
         body.get("size").and_then(Value::as_u64).unwrap_or(0) as usize
     } else {
-        lists
-            .iter()
-            .filter_map(|key| sliced.get(key).and_then(Value::as_array).map(Vec::len))
+        // `size` counts every sliced list -- a statistics page's Device and Account
+        // lookups included (`sum(len(rows) for rows in sliced.values())`).
+        sliced
+            .values()
+            .filter_map(|rows| rows.as_array().map(Vec::len))
             .sum()
     };
     let mut out = Map::new();
