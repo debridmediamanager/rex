@@ -132,6 +132,20 @@ impl Runtime {
 
     /// `/library/all` (`server.py`'s handler of the same route).
     pub(super) fn library_all(&self, query: &HashMap<String, String>) -> Response {
+        let pairs = query
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect::<Vec<_>>();
+        self.library_all_pairs(query, &pairs)
+    }
+
+    /// `/library/all` with the request's ORDERED pairs: a filter query may repeat a
+    /// key, and the scoped-guid conjunction below reads every `type=` it names.
+    pub(super) fn library_all_pairs(
+        &self,
+        query: &HashMap<String, String>,
+        pairs: &[(String, String)],
+    ) -> Response {
         // Measured: an unparseable `type=` is a 400 here and an empty one a 500.
         let type_number = match parsed_type(query, 400, None) {
             Ok(number) => number,
@@ -176,6 +190,25 @@ impl Runtime {
             .filter(|row| type_number.is_some() || row.get("type").and_then(Value::as_str) != Some("clip"))
             .cloned()
             .collect::<Vec<_>>();
+        let scoped = |scope: &str, field: &str| {
+            pairs.iter().any(|(name, _)| {
+                let (key, _) = crate::filters::split_key(name);
+                let (found_scope, found_field) = crate::filters::split_scope(&key);
+                found_scope == scope && found_field == field
+            })
+        };
+        let scoped_guid = scoped("show", "guid");
+        // Cycle 41, measured with this exact client conjunction on both PMS versions.
+        // A scoped show guid supplies the row type when `/library/all` is untyped, so
+        // `show.guid=...&season.index=1` returns the SHOW alone.  With an explicit type
+        // the plan is asymmetric: type 3 returns its season, type 4 its episodes, and
+        // `type=2&season.index=1` refuses with 500 even without the guid clause.
+        if type_number.is_none() && scoped_guid {
+            source.retain(|row| row.get("type").and_then(Value::as_str) == Some("show"));
+        }
+        if type_number == Some(2) && scoped("season", "index") {
+            return Response::error(500, "plexsim: invalid scoped conjunction");
+        }
         if type_number.is_none() {
             // Cycle 25: the UNTYPED query lists collections as well, sorted into the
             // rest by ratingKey.
@@ -202,18 +235,28 @@ impl Runtime {
             source.retain(|row| !wanted.is_empty() && row.get("type").and_then(Value::as_str) == Some(wanted));
         }
         let section_type = if type_number == Some(2) { "show" } else { "movie" };
-        let pairs = query
+        // A plain `guid=` is the listing's own prefix match below; the grammar reads
+        // `guid` only when a scoped guid asks for it (`parse_only`).
+        let filter_pairs = pairs
             .iter()
-            .filter(|(key, _)| key.as_str() != "guid")
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .filter(|(key, _)| scoped_guid || key.as_str() != "guid")
+            .cloned()
             .collect::<Vec<_>>();
-        let mut rows = match self.filter_rows(source, &pairs, section_type) {
+        let mut rows = match self.filter_rows(source, &filter_pairs, section_type) {
             Ok(rows) => rows,
             Err(status) => return Response::error(status, "plexsim: bad request"),
         };
         // `guid=` is a case-sensitive PREFIX of the row's guid (measured).
-        if let Some(prefix) = query.get("guid") {
-            rows.retain(|row| row.get("guid").and_then(Value::as_str).unwrap_or("").starts_with(prefix.as_str()));
+        let prefixes = pairs
+            .iter()
+            .filter(|(name, _)| name == "guid")
+            .map(|(_, value)| value.as_str())
+            .collect::<Vec<_>>();
+        if !prefixes.is_empty() {
+            rows.retain(|row| {
+                let guid = row.get("guid").and_then(Value::as_str).unwrap_or("");
+                prefixes.iter().all(|prefix| guid.starts_with(prefix))
+            });
         }
         if let Some(group) = query.get("group") {
             // Cycle 29: `group=` is honoured here too, and refused as on a listing.
