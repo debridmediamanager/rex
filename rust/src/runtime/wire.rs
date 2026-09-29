@@ -438,3 +438,74 @@ pub(super) fn write_enveloped<S: Write>(stream: &mut S, response: &Response, wir
     stream.flush().map_err(|e| e.to_string())?;
     Ok(keep)
 }
+
+/// `excludeElements=` as a property of the RESPONSE (`server.py` `_exclude_container`,
+/// cycles 11, 15, 22, 70): every MediaContainer's rows -- and every hub's -- lose the
+/// named child elements; dropping `Media` substitutes `mediaCount` and
+/// `mediaCountOptimized`, dropping `Part` gives each Media a `partCount`. A decision
+/// is the measured exception.
+pub(super) fn exclude_container(response: &mut Response, query: &HashMap<String, String>, path: &str) {
+    const EXCLUDABLE: &[&str] = &[
+        "Media", "Part", "Genre", "Country", "Guid", "Rating", "Director", "Writer", "Role",
+        "Producer", "CommonSenseMedia",
+    ];
+    let excluded = query
+        .get("excludeElements")
+        .map(|value| value.split(',').filter(|name| EXCLUDABLE.contains(name)).map(str::to_string).collect::<Vec<_>>())
+        .unwrap_or_default();
+    if excluded.is_empty()
+        || path.starts_with("/video/:/transcode/universal/decision")
+        || response.status != 200
+        || !response.content_type.starts_with("application/json")
+    {
+        return;
+    }
+    let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) else {
+        return;
+    };
+    let Some(object) = document.as_object() else {
+        return;
+    };
+    if object.len() != 1 || !object.contains_key("MediaContainer") {
+        return;
+    }
+    fn trim_rows(rows: &mut [Value], excluded: &[String]) {
+        for row in rows.iter_mut() {
+            let Some(object) = row.as_object_mut() else { continue };
+            let media_count = object.get("Media").and_then(Value::as_array).map(Vec::len);
+            for name in excluded {
+                object.remove(name);
+            }
+            if excluded.iter().any(|name| name == "Media") {
+                let count = media_count.map(|n| json!(n)).or_else(|| object.get("mediaCount").cloned()).unwrap_or(json!(0));
+                object.insert("mediaCount".to_string(), count);
+                object.insert("mediaCountOptimized".to_string(), json!(0));
+            } else if excluded.iter().any(|name| name == "Part") {
+                if let Some(media_rows) = object.get_mut("Media").and_then(Value::as_array_mut) {
+                    for media in media_rows {
+                        if let Some(media) = media.as_object_mut() {
+                            if let Some(parts) = media.remove("Part") {
+                                let count = parts.as_array().map_or(0, Vec::len);
+                                media.insert("partCount".to_string(), json!(count));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn walk(container: &mut Value, excluded: &[String]) {
+        if let Some(rows) = container.get_mut("Metadata").and_then(Value::as_array_mut) {
+            trim_rows(rows, excluded);
+        }
+        if let Some(hubs) = container.get_mut("Hub").and_then(Value::as_array_mut) {
+            for hub in hubs {
+                walk(hub, excluded);
+            }
+        }
+    }
+    if let Some(body) = document.get_mut("MediaContainer") {
+        walk(body, &excluded);
+    }
+    response.body = serde_json::to_vec(&document).unwrap_or_default();
+}
