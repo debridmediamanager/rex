@@ -26,6 +26,7 @@ use sha1::{Digest, Sha1};
 use crate::{catalog::Catalog, decision, xmlout};
 
 mod artwork;
+mod edit;
 mod notify;
 mod resume;
 use resume::{bool_option, content_directories, exclude_continue_watching, guid_gate, hub_refusal, int_param, page_window};
@@ -316,6 +317,9 @@ pub struct Runtime {
     list_artwork: HashMap<String, (String, Vec<u8>)>,
     /// Uploaded artwork by its `upload://...` uri: the bytes and their type.
     uploads: HashMap<String, (Vec<u8>, String)>,
+    /// The tag TABLE a real PMS keeps beside the rows: (element, lowercased name) ->
+    /// the tag, so a tag cleared from every row keeps its spelling and id.
+    tag_table: HashMap<(String, String), Value>,
     metadata_provider_groups: HashMap<String, MetadataProviderGroup>,
     next_metadata_provider_group: i64,
     queues: HashMap<String, Queue>,
@@ -412,6 +416,7 @@ impl Runtime {
             collections: HashMap::new(),
             list_artwork: HashMap::new(),
             uploads: HashMap::new(),
+            tag_table: HashMap::new(),
             metadata_provider_groups: HashMap::new(),
             next_metadata_provider_group: 5,
             queues: HashMap::new(),
@@ -536,7 +541,12 @@ impl Runtime {
                         if let Some(row) = self.catalog.get_mut(key).and_then(Value::as_object_mut)
                         {
                             for (field, field_value) in fields {
-                                row.insert(field.clone(), field_value.clone());
+                                // A removal is recorded as null.
+                                if field_value.is_null() {
+                                    row.remove(field);
+                                } else {
+                                    row.insert(field.clone(), field_value.clone());
+                                }
                             }
                         }
                     }
@@ -12622,13 +12632,15 @@ impl Runtime {
                 {
                     return Response::error(400, "plexsim: bad request");
                 }
-                for child_key in key.split(',').filter(|value| !value.is_empty()) {
-                    let response = self.edit_metadata(child_key, query);
-                    if response.status != 200 {
-                        return response;
-                    }
-                }
-                return Response::empty(200);
+                // Measured: a batch EDIT over the members the library holds.
+                let keys = key
+                    .split(',')
+                    .filter(|value| {
+                        value.bytes().all(|b| b.is_ascii_digit()) && self.catalog.get(value).is_some()
+                    })
+                    .map(str::to_string)
+                    .collect::<Vec<_>>();
+                return self.apply_edit(&keys, pairs, false, "loading");
             }
             if key.contains(',') && request.method == "GET" && segments.len() > 3 {
                 let members = key
@@ -12966,69 +12978,105 @@ impl Runtime {
             return Response::error(404, "plexsim: not found");
         }
         if request.method == "PUT" {
-            let Some(type_number) = query.get("type").and_then(|v| v.parse::<i64>().ok()) else {
+            // THE Edit dialog's save path (`MultiMetadataModel.saveUrl`). Measured:
+            // `id=` scopes it to those rows, with no `id` the whole FILTERED set is
+            // edited, and no `type` -- or one that does not parse (cycle 16) -- is a 400.
+            let Some(type_number) = query
+                .get("type")
+                .and_then(|v| v.trim_start_matches('+').parse::<i64>().ok())
+            else {
                 return Response::error(400, "plexsim: bad request");
             };
-            if query.keys().any(|name| {
-                name.starts_with("movie.")
-                    || name.starts_with("show.")
-                    || name.starts_with("season.")
-                    || name.starts_with("episode.")
-                    || name.contains(">>")
-                    || name.contains("<<")
-                    || name.contains("!=")
-            }) {
-                return Response::error(400, "plexsim: bad request");
-            }
-            let selected = query.get("id").cloned().unwrap_or_default();
-            let mut candidates = self.choose_rows(Some(section_key), Some(type_number));
-            for (field, value) in query {
-                if let Some(base) = field.strip_suffix('=') {
-                    candidates.retain(|row| {
-                        row.get(base)
-                            .map(string_value)
-                            .is_some_and(|actual| actual == *value)
-                    });
+            for (name, _) in pairs {
+                if name.starts_with("X-Plex-")
+                    || name.starts_with("include")
+                    || name.starts_with("exclude")
+                    || name == "type"
+                    || name == "id"
+                    || name.contains(".tag.")
+                    || name.ends_with(".value")
+                    || name.ends_with(".locked")
+                {
+                    continue;
+                }
+                // Measured: a TYPE-SCOPED filter is a 400 on this path.
+                let (field, _) = crate::filters::split_key(name);
+                if !crate::filters::split_scope(&field).0.is_empty() {
+                    return Response::error(400, "plexsim: bad request");
                 }
             }
-            let mut keys = if selected.is_empty() {
-                candidates
-                    .into_iter()
-                    .filter_map(|row| key_of(&row))
-                    .collect::<Vec<_>>()
-            } else {
-                selected.split(',').map(str::to_string).collect::<Vec<_>>()
-            };
-            keys.retain(|key| {
-                if type_number == 18 {
-                    return self
+            if type_number == 18 {
+                let selected = query.get("id").cloned().unwrap_or_default();
+                let edits = query
+                    .iter()
+                    .filter(|(field, _)| {
+                        field.contains(".value") || field.contains(".locked") || field.contains(".tag")
+                    })
+                    .map(|(field, value)| (field.clone(), value.clone()))
+                    .collect::<HashMap<_, _>>();
+                for key in selected.split(',').map(str::trim) {
+                    if self
                         .collections
                         .get(key)
-                        .is_some_and(|collection| collection.section == section_key);
+                        .is_some_and(|collection| collection.section == section_key)
+                    {
+                        let _ = self.edit_collection(key, &edits);
+                    }
                 }
-                self.catalog.get(key).is_some_and(|row| {
-                    string_value(row.get("librarySectionID").unwrap_or(&Value::Null)) == section_key
-                        && type_number_for(row) == Some(type_number)
-                })
-            });
-            let edits = query
-                .iter()
-                .filter(|(field, _)| {
-                    field.contains(".value") || field.contains(".locked") || field.contains(".tag")
-                })
-                .map(|(field, value)| (field.clone(), value.clone()))
-                .collect::<HashMap<_, _>>();
-            if edits.is_empty() {
-                return Response::error(400, "plexsim: bad request");
+                return Response::empty(200);
             }
-            for key in keys {
-                if self.collections.contains_key(&key) {
-                    let _ = self.edit_collection(&key, &edits);
-                } else {
-                    let _ = self.edit_metadata_with_state(&key, &edits, "queued");
-                }
+            let wanted = match type_number {
+                1 => "movie",
+                2 => "show",
+                3 => "season",
+                4 => "episode",
+                _ => "",
+            };
+            // Cycle 18: a REPEATED `id=` edits NOTHING, a comma list edits each.
+            let named = pairs.iter().filter(|(name, _)| name == "id").count();
+            if named > 1 {
+                return Response::empty(200);
             }
-            return Response::empty(200);
+            let keys = if let Some(ids) = query.get("id").filter(|ids| !ids.is_empty()) {
+                ids.split(',')
+                    .map(str::trim)
+                    .filter(|key| {
+                        self.catalog.get(key).is_some_and(|row| {
+                            row.get("type").and_then(Value::as_str) == Some(wanted)
+                                && string_value(row.get("librarySectionID").unwrap_or(&Value::Null))
+                                    == section_key
+                        })
+                    })
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            } else {
+                let section_type = self
+                    .section(section_key)
+                    .and_then(|section| section.get("type").and_then(Value::as_str))
+                    .unwrap_or("movie")
+                    .to_string();
+                let filter_pairs = pairs
+                    .iter()
+                    .filter(|(name, _)| {
+                        !(name.starts_with("X-Plex-")
+                            || name.starts_with("include")
+                            || name.starts_with("exclude")
+                            || name == "type"
+                            || name == "id"
+                            || name.contains(".tag.")
+                            || name.ends_with(".value")
+                            || name.ends_with(".locked"))
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let rows = self.choose_rows(Some(section_key), Some(type_number));
+                self.filter_rows(rows, &filter_pairs, &section_type)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(key_of)
+                    .collect::<Vec<_>>()
+            };
+            return self.apply_edit(&keys, pairs, true, "queued");
         }
         let type_number = query
             .get("type")
@@ -13967,7 +14015,9 @@ impl Runtime {
     ) -> Response {
         if tail.is_empty() {
             if request.method == "PUT" {
-                return self.edit_metadata(key, query);
+                let (_, raw_query) = split_target(&request.target);
+                let pairs = parse_query(&raw_query);
+                return self.apply_edit(&[key.to_string()], &pairs, false, "loading");
             }
             if request.method == "DELETE" {
                 if self.catalog.remove(key).is_some() {
@@ -14937,588 +14987,6 @@ impl Runtime {
         }
         self.dirty = true;
         Response::empty(200)
-    }
-
-    fn edit_metadata(&mut self, key: &str, query: &HashMap<String, String>) -> Response {
-        self.edit_metadata_with_state(key, query, "loading")
-    }
-
-    fn edit_metadata_with_state(
-        &mut self,
-        key: &str,
-        query: &HashMap<String, String>,
-        metadata_state: &str,
-    ) -> Response {
-        if query
-            .keys()
-            .all(|name| name.starts_with("X-Plex-") || name == "includeExternalMedia")
-        {
-            return Response::error(400, "plexsim: bad request");
-        }
-        let Some(row) = self.catalog.get_mut(key) else {
-            return Response::error(404, "plexsim: not found");
-        };
-        let mut changed = Map::new();
-        let allowed = [
-            "title",
-            "titleSort",
-            "summary",
-            "studio",
-            "year",
-            "originallyAvailableAt",
-            "contentRating",
-            "tagline",
-            "collection",
-            "genre",
-            "director",
-            "writer",
-            "country",
-            "role",
-            "producer",
-            "label",
-            "style",
-            "similar",
-            "mood",
-            "art",
-            "thumb",
-            "rating",
-            "audienceRating",
-            "userRating",
-            "index",
-            "remote",
-            "isAdult",
-            "resourcesChangedAt",
-            "userFields",
-            "mediaAnalysisVersion",
-            "beginsAt",
-            "endsAt",
-            "agent",
-            "source",
-        ];
-        let old_art = row.get("art").cloned();
-        let old_thumb = row.get("thumb").cloned();
-        let section_write = metadata_state == "queued";
-        let title_sort_lock_request = query.get("titleSort.locked").map(String::as_str);
-        let mut locks = Vec::new();
-        let had_locks;
-        {
-            let Some(object) = row.as_object_mut() else {
-                return Response::error(500, "plexsim: internal error");
-            };
-            for (field, value) in query {
-                if field.starts_with("X-Plex-")
-                    || matches!(field.as_str(), "includeExternalMedia" | "type" | "id")
-                {
-                    continue;
-                }
-                if field.ends_with(".locked") {
-                    let name = field.trim_end_matches(".locked");
-                    if name == "key" || !matches!(value.as_str(), "0" | "1" | "01") {
-                        return Response::error(400, "plexsim: bad request");
-                    }
-                    locks.push((field.trim_end_matches(".locked").to_string(), value.clone()));
-                    continue;
-                }
-                if field.contains(".tag") {
-                    let base = field.split('[').next().unwrap_or(field);
-                    let tag_name = value
-                        .chars()
-                        .next()
-                        .map(|first| {
-                            first.to_uppercase().collect::<String>() + &value[first.len_utf8()..]
-                        })
-                        .unwrap_or_default();
-                    let tag_key = match base {
-                        "collection" => "Collection",
-                        "genre" => "Genre",
-                        "director" => "Director",
-                        "writer" => "Writer",
-                        "country" => "Country",
-                        "role" => "Role",
-                        "producer" => "Producer",
-                        "label" => "Label",
-                        "style" => "Style",
-                        "similar" => "Similar",
-                        // A movie accepts Mood writes but does not retain the
-                        // value in its metadata projection.
-                        "mood" => continue,
-                        _ => return Response::error(400, "plexsim: bad request"),
-                    };
-                    let tags = object
-                        .entry(tag_key.to_string())
-                        .or_insert_with(|| Value::Array(Vec::new()));
-                    let Some(tags) = tags.as_array_mut() else {
-                        return Response::error(400, "plexsim: bad request");
-                    };
-                    if field.contains("tag-") {
-                        tags.retain(|tag| tag.get("tag").and_then(Value::as_str) != Some(value));
-                    } else {
-                        *tags = vec![json!({"tag":tag_name,"id":1})];
-                    }
-                    continue;
-                }
-                let base = field.strip_suffix(".value").unwrap_or(field);
-                if !allowed.contains(&base) {
-                    return Response::error(400, "plexsim: bad request");
-                }
-                // The item writer treats an unlocked sort title and an item
-                // user rating as accepted no-ops.  The section writer keeps a
-                // typed sort title and owns user ratings.
-                if base == "titleSort" && !section_write && title_sort_lock_request != Some("1") {
-                    continue;
-                }
-                if base == "userRating" && !section_write {
-                    continue;
-                }
-                {
-                    if value.is_empty() {
-                        if matches!(base, "year" | "audienceRating" | "rating") && !section_write {
-                            return Response::error(500, "plexsim: bad request");
-                        }
-                        if base == "year" && section_write {
-                            object.remove(base);
-                        } else if base == "title" || base == "summary" {
-                            object.insert(base.to_string(), json!(value));
-                        } else {
-                            object.remove(base);
-                        }
-                    } else if base == "year" {
-                        if let Ok(number) = value.parse::<i64>() {
-                            if number < 0 {
-                                object.remove(base);
-                            } else {
-                                object.insert(base.to_string(), json!(number));
-                            }
-                        } else {
-                            return Response::error(500, "plexsim: bad request");
-                        }
-                    } else if base == "originallyAvailableAt" {
-                        match normalize_date_value(value) {
-                            Ok(Some(date)) => {
-                                object.insert(base.to_string(), json!(date));
-                            }
-                            Ok(None) => {
-                                object.remove(base);
-                            }
-                            Err(()) if section_write => {
-                                return Response::error(500, "plexsim: bad request");
-                            }
-                            Err(()) => {
-                                object.remove(base);
-                            }
-                        }
-                    } else if matches!(base, "rating" | "audienceRating" | "userRating") {
-                        let Ok(number) = value.parse::<f64>() else {
-                            return Response::error(500, "plexsim: bad request");
-                        };
-                        object.insert(base.to_string(), json!(number));
-                    } else if base == "index" {
-                        let Ok(number) = value.parse::<i64>() else {
-                            return Response::error(500, "plexsim: bad request");
-                        };
-                        object.insert(base.to_string(), json!(number));
-                    } else if base == "isAdult" {
-                        if value == "1" {
-                            object.insert(base.to_string(), json!(true));
-                        } else {
-                            object.remove(base);
-                        }
-                    } else {
-                        object.insert(base.to_string(), json!(value));
-                    }
-                    changed.insert(
-                        base.to_string(),
-                        object.get(base).cloned().unwrap_or(Value::Null),
-                    );
-                }
-            }
-            let field_rows = object
-                .entry("Field".to_string())
-                .or_insert_with(|| Value::Array(Vec::new()));
-            had_locks = !locks.is_empty();
-            if let Some(field_rows) = field_rows.as_array_mut() {
-                for (name, value) in locks {
-                    let locked = is_true_option(&value);
-                    if let Some(existing) = field_rows
-                        .iter_mut()
-                        .find(|row| row.get("name").and_then(Value::as_str) == Some(name.as_str()))
-                    {
-                        if let Some(existing) = existing.as_object_mut() {
-                            if locked {
-                                existing.insert("locked".to_string(), json!(true));
-                            } else {
-                                existing.remove("locked");
-                            }
-                        }
-                    } else if locked {
-                        field_rows.push(json!({"name":name,"locked":true}));
-                    }
-                }
-                field_rows
-                    .retain(|field| field.get("locked").and_then(Value::as_bool) == Some(true));
-                let order = [
-                    "title",
-                    "studio",
-                    "rating",
-                    "thumb",
-                    "genre",
-                    "userRating",
-                    "year",
-                    "summary",
-                    "contentRating",
-                    "art",
-                    "tagline",
-                ];
-                field_rows.sort_by_key(|field| {
-                    order
-                        .iter()
-                        .position(|name| Some(*name) == field.get("name").and_then(Value::as_str))
-                        .unwrap_or(order.len())
-                });
-            }
-            let title_changed = query.contains_key("title") || query.contains_key("title.value");
-            if title_changed && title_sort_lock_request != Some("1") {
-                let title = object
-                    .get("title")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                if title.is_empty() {
-                    // Keep the prior custom sort form while an explicit title
-                    // is cleared; generated season/episode labels use it until
-                    // the next non-empty title write.
-                } else {
-                    object.insert(
-                        "titleSort".to_string(),
-                        json!(crate::hierarchy::sort_title(title)),
-                    );
-                }
-            }
-        }
-        // Indexed tag writes replace the complete tag list in one request.  The
-        // query map still preserves each distinct indexed key, so collect them
-        // before applying the final canonical list.  Any `tag-` operation is the
-        // measured clear-all form, including when its value names no tag.
-        let mut indexed: HashMap<String, Vec<(String, String)>> = HashMap::new();
-        let mut removes = HashSet::new();
-        for (field, value) in query {
-            let Some(base) = field.split('[').next() else {
-                continue;
-            };
-            if !field.contains(".tag") || matches!(field.as_str(), "type" | "id") {
-                continue;
-            }
-            let tag_key = match base {
-                "collection" => "Collection",
-                "genre" => "Genre",
-                "director" => "Director",
-                "writer" => "Writer",
-                "country" => "Country",
-                "role" => "Role",
-                "producer" => "Producer",
-                "label" => "Label",
-                "style" => "Style",
-                "similar" => "Similar",
-                "mood" => continue,
-                _ => continue,
-            };
-            if field.contains("tag-") {
-                removes.insert(tag_key.to_string());
-            } else {
-                indexed
-                    .entry(tag_key.to_string())
-                    .or_default()
-                    .push((field.clone(), value.clone()));
-            }
-        }
-        if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-            for tag_key in removes {
-                object.insert(tag_key, Value::Array(Vec::new()));
-            }
-            for (tag_key, mut values) in indexed {
-                values.sort_by(|left, right| left.0.cmp(&right.0));
-                let tags = values
-                    .into_iter()
-                    .map(|(_, value)| {
-                        let tag = canonical_tag(&value);
-                        json!({"tag":tag,"id":tag_id(&tag_key, &tag)})
-                    })
-                    .collect::<Vec<_>>();
-                object.insert(tag_key, Value::Array(tags));
-            }
-        }
-        if section_write && changed.contains_key("originallyAvailableAt") {
-            let date = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("originallyAvailableAt"))
-                .and_then(Value::as_str)
-                .map(|value| value.get(..4).unwrap_or(value))
-                .and_then(|value| value.parse::<i64>().ok());
-            if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                if let Some(year) = date {
-                    object.insert("year".to_string(), json!(year));
-                } else {
-                    object.remove("year");
-                }
-            }
-        }
-        if section_write && changed.contains_key("userRating") {
-            let value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("userRating"))
-                .cloned();
-            if let Some(value) = value.filter(|value| !value.is_null()) {
-                if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                    object.insert("lastRatedAt".to_string(), json!(now()));
-                    object.insert("viewUpdatedAt".to_string(), json!(now()));
-                    let _ = value;
-                }
-            } else if let Some(object) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                object.remove("lastRatedAt");
-            }
-        }
-        let changed_names = changed.keys().cloned().collect::<HashSet<_>>();
-        self.propagate_metadata_change(key, &changed_names);
-        if changed.contains_key("art") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("art"))
-                .cloned();
-            self.cascade_artwork(key, "art", old_art, new_value);
-        }
-        if changed.contains_key("thumb") {
-            let new_value = self
-                .catalog
-                .get(key)
-                .and_then(|row| row.get("thumb"))
-                .cloned();
-            self.cascade_artwork(key, "thumb", old_thumb, new_value);
-        }
-        // Field lock rows are part of the metadata document and the edit dialog
-        // reads them back after a restart.  Persist the projected Field array
-        // alongside ordinary scalar edits instead of losing `title.locked` (and
-        // the corresponding collection/genre locks) at the state boundary.
-        if had_locks {
-            if let Some(fields) = self.catalog.get(key).and_then(|row| row.get("Field")) {
-                changed.insert("Field".to_string(), fields.clone());
-            }
-        }
-        self.edits
-            .entry(key.to_string())
-            .or_default()
-            .extend(changed);
-        self.push_edit_events_named(key, metadata_state);
-        self.dirty = true;
-        self.save_if_dirty();
-        Response::empty(200)
-    }
-
-    fn propagate_metadata_change(&mut self, key: &str, changed: &HashSet<String>) {
-        let Some(owner) = self.catalog.get(key).cloned() else {
-            return;
-        };
-        let kind = owner
-            .get("type")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let snapshot = self.catalog.items.clone();
-        let descendants = snapshot
-            .iter()
-            .filter_map(|candidate| {
-                let parent = candidate
-                    .get("parentRatingKey")
-                    .map(string_value)
-                    .unwrap_or_default();
-                let grandparent = candidate
-                    .get("grandparentRatingKey")
-                    .map(string_value)
-                    .unwrap_or_default();
-                let candidate_key = key_of(candidate).unwrap_or_default();
-                if parent == key || grandparent == key || candidate_key == key {
-                    Some(candidate_key)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        if kind == "show" && changed.contains("contentRating") {
-            let inherited = owner.get("contentRating").cloned();
-            for child_key in &descendants {
-                if child_key == key {
-                    continue;
-                }
-                let Some(child) = self
-                    .catalog
-                    .get_mut(&child_key)
-                    .and_then(Value::as_object_mut)
-                else {
-                    continue;
-                };
-                let inherited_before = child
-                    .get("_inheritedContentRating")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false);
-                if child.get("contentRating").is_none() || inherited_before {
-                    match &inherited {
-                        Some(value) if !string_value(value).is_empty() => {
-                            child.insert("contentRating".to_string(), value.clone());
-                            child.insert("_inheritedContentRating".to_string(), json!(true));
-                        }
-                        _ => {
-                            child.remove("contentRating");
-                            child.remove("_inheritedContentRating");
-                        }
-                    }
-                }
-            }
-        }
-        if kind == "episode" && changed.contains("contentRating") {
-            if let Some(child) = self.catalog.get_mut(key).and_then(Value::as_object_mut) {
-                child.remove("_inheritedContentRating");
-            }
-        }
-        if kind == "season" && changed.contains("summary") {
-            let summary = owner.get("summary").cloned();
-            for child_key in &descendants {
-                if child_key == key {
-                    continue;
-                }
-                if let Some(child) = self
-                    .catalog
-                    .get_mut(&child_key)
-                    .and_then(Value::as_object_mut)
-                {
-                    if child.get("summary").is_none() || child.get("_inheritedSummary").is_some() {
-                        match &summary {
-                            Some(value) if !string_value(value).is_empty() => {
-                                child.insert("summary".to_string(), value.clone());
-                                child.insert("_inheritedSummary".to_string(), json!(true));
-                            }
-                            _ => {
-                                child.remove("summary");
-                                child.remove("_inheritedSummary");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        self.dirty = true;
-    }
-
-    fn cascade_artwork(
-        &mut self,
-        owner_key: &str,
-        field: &str,
-        old: Option<Value>,
-        new: Option<Value>,
-    ) {
-        let owner_prefix = format!("/library/metadata/{owner_key}/{field}/");
-        let old = old.and_then(|value| value.as_str().map(str::to_string));
-        let new = new.and_then(|value| value.as_str().map(str::to_string));
-        let keys = self
-            .catalog
-            .items
-            .iter()
-            .filter_map(key_of)
-            .collect::<HashSet<_>>();
-        for row in &mut self.catalog.items {
-            let Some(row_key) = key_of(row) else { continue };
-            if row_key == owner_key {
-                continue;
-            }
-            let parent = row
-                .get("parentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            let grandparent = row
-                .get("grandparentRatingKey")
-                .map(string_value)
-                .unwrap_or_default();
-            if !keys.contains(&parent) && !keys.contains(&grandparent) {
-                continue;
-            }
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let current = object
-                .get(field)
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            let owns = current.as_deref().is_some_and(|value| {
-                value.starts_with(&format!("/library/metadata/{row_key}/{field}/"))
-                    || value.starts_with("upload://")
-            });
-            let inherits_owner = current.is_none() || old.as_deref() == current.as_deref();
-            if !owns && inherits_owner {
-                match new.as_deref() {
-                    Some(value) => {
-                        object.insert(field.to_string(), json!(value));
-                    }
-                    None => {
-                        object.remove(field);
-                    }
-                }
-            }
-        }
-        let field_parent = format!("parent{}", capitalize_ascii(field));
-        let field_grandparent = format!("grandparent{}", capitalize_ascii(field));
-        let snapshot = self.catalog.items.clone();
-        for row in &mut self.catalog.items {
-            let Some(kind) = row.get("type").and_then(Value::as_str).map(str::to_string) else {
-                continue;
-            };
-            let Some(object) = row.as_object_mut() else {
-                continue;
-            };
-            let parent_key = object.get("parentRatingKey").map(string_value);
-            let grandparent_key = object.get("grandparentRatingKey").map(string_value);
-            if kind == "season" {
-                let inherited = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = inherited {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-            } else if kind == "episode" {
-                let parent = parent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                let grandparent = grandparent_key
-                    .as_deref()
-                    .and_then(|key| {
-                        snapshot
-                            .iter()
-                            .find(|candidate| key_of(candidate).as_deref() == Some(key))
-                    })
-                    .and_then(|parent| parent.get(field));
-                if let Some(value) = parent {
-                    object.insert(field_parent.clone(), value.clone());
-                } else {
-                    object.remove(&field_parent);
-                }
-                if let Some(value) = grandparent {
-                    object.insert(field_grandparent.clone(), value.clone());
-                } else {
-                    object.remove(&field_grandparent);
-                }
-            }
-        }
-        let _ = owner_prefix;
     }
 
     fn route_art(
@@ -19016,19 +18484,6 @@ fn key_of(value: &Value) -> Option<String> {
     value.get("ratingKey").map(string_value)
 }
 
-fn type_number_for(value: &Value) -> Option<i64> {
-    match value.get("type").and_then(Value::as_str) {
-        Some("movie") => Some(1),
-        Some("show") => Some(2),
-        Some("season") => Some(3),
-        Some("episode") => Some(4),
-        Some("clip") => Some(8),
-        Some("playlist") => Some(15),
-        Some("collection") => Some(18),
-        _ => None,
-    }
-}
-
 fn strip_excluded_fields(value: &mut Value, names: &HashSet<&str>) {
     match value {
         Value::Object(object) => {
@@ -19822,76 +19277,11 @@ fn base64_decode_bytes(text: &str) -> Option<Vec<u8>> {
     Some(bytes)
 }
 
-fn capitalize_ascii(text: &str) -> String {
-    let mut chars = text.chars();
-    match chars.next() {
-        Some(first) => first.to_ascii_uppercase().to_string() + chars.as_str(),
-        None => String::new(),
-    }
-}
-
 fn is_true_option(value: &str) -> bool {
     let normalized = value.trim_start_matches('+');
     !normalized.is_empty()
         && normalized.chars().all(|ch| ch.is_ascii_digit())
         && normalized.parse::<u64>().ok() == Some(1)
-}
-
-fn normalize_date_value(value: &str) -> Result<Option<String>, ()> {
-    if value.is_empty() {
-        return Ok(None);
-    }
-    let trimmed = value.trim();
-    if trimmed.len() >= 10
-        && trimmed.as_bytes().get(4) == Some(&b'-')
-        && trimmed.as_bytes().get(7) == Some(&b'-')
-    {
-        let year = trimmed[0..4].parse::<i64>().map_err(|_| ())?;
-        let month = trimmed[5..7].parse::<i64>().map_err(|_| ())?;
-        let day = trimmed[8..10].parse::<i64>().map_err(|_| ())?;
-        if !(1..=12).contains(&month) || day <= 0 {
-            return Err(());
-        }
-        let mut year = year;
-        let mut month = month;
-        let mut day = day;
-        loop {
-            let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
-            let days = match month {
-                2 if leap => 29,
-                2 => 28,
-                4 | 6 | 9 | 11 => 30,
-                _ => 31,
-            };
-            if day <= days {
-                break;
-            }
-            day -= days;
-            month += 1;
-            if month > 12 {
-                month = 1;
-                year += 1;
-            }
-        }
-        return Ok(Some(format!("{year:04}-{month:02}-{day:02}")));
-    }
-    let seconds = trimmed.parse::<i64>().map_err(|_| ())?;
-    if seconds < 0 {
-        return Err(());
-    }
-    let days = seconds / 86_400;
-    // Howard Hinnant's civil_from_days, with the Unix epoch as day zero.
-    let z = days + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = mp + if mp < 10 { 3 } else { -9 };
-    let y = y + if m <= 2 { 1 } else { 0 };
-    Ok(Some(format!("{y:04}-{m:02}-{d:02}")))
 }
 
 fn http_date() -> String {

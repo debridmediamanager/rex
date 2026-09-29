@@ -969,10 +969,11 @@ pub fn build(mut leaves: Vec<Value>) -> Vec<Value> {
             str_value(&season, "guid").or_else(|| str_value(&season, "parentGuid")),
         );
         put_opt(leaf, "art", str_value(&season, "art"));
-        if leaf.get("contentRating").is_none() {
-            if let Some(rating) = str_value(&show, "contentRating") {
-                put(leaf, "contentRating", rating);
-            }
+        if str_value(leaf, "contentRating").is_some_and(|rating| !rating.is_empty()) {
+            // the leaf's OWN rating, which a later show edit must not overwrite
+            put(leaf, "_own_content_rating", true);
+        } else if let Some(rating) = str_value(&show, "contentRating") {
+            put(leaf, "contentRating", rating);
         }
         put_opt(
             leaf,
