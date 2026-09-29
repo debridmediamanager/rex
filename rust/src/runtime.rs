@@ -15480,7 +15480,13 @@ impl Runtime {
                     let children = self
                         .children(key)
                         .into_iter()
-                        .map(|child| self.listing_row(&child))
+                        .map(|child| {
+                            let mut shown = self.detail_row(&child);
+                            if let Some(object) = shown.as_object_mut() {
+                                object.retain(|name, _| !name.starts_with("librarySection"));
+                            }
+                            shown
+                        })
                         .collect::<Vec<_>>();
                     object.insert(
                         "Children".to_string(),
@@ -17341,6 +17347,30 @@ impl Runtime {
         if tail.len() == 1 && matches!(tail[0], "posters" | "arts" | "clearLogos" | "themes") {
             return self.list_artwork_response(&playlist.id, false, tail[0], request);
         }
+        if tail.len() == 1 && matches!(tail[0], "thumbs" | "banners") {
+            // Cycle 16, measured on plexscratch: a list answers these two the way an
+            // ITEM does -- 200 with an empty candidate container.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "identifier": "com.plexapp.plugins.library",
+                                          "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                                          "mediaTagVersion": MEDIA_TAG_VERSION}}),
+            );
+        }
+        if tail == ["tree"] {
+            // Cycle 16: a list has a `/tree` too, a single `MetadataItem` naming itself.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 1, "MetadataItem": [
+                    {"id": playlist.id.parse::<i64>().unwrap_or(0)}]}}),
+            );
+        }
         if tail == ["items"] && request.method == "PUT" && playlist.smart {
             return self.save_smart_playlist(&playlist.id, query);
         }
@@ -17580,6 +17610,14 @@ impl Runtime {
                 } else {
                     Response::error(404, "plexsim: no such playlist item")
                 };
+            }
+            // Cycle 16, measured on plexscratch: a playlist's artwork lives under
+            // `/library/metadata/{ratingKey}/`; under `/playlists/{id}/` `posters`,
+            // `arts`, `thumb`, `art` and the UNVERSIONED `composite` are 404s.
+            if (segments.len() == 2 && matches!(segments[1], "posters" | "arts" | "thumb" | "art" | "composite"))
+                || matches!(segments.get(1), Some(&"thumbs" | &"banners" | &"tree"))
+            {
+                return Response::error(404, "plexsim: not found");
             }
             return self.route_playlist_metadata(&p, &segments[1..], query, request);
         }
