@@ -105,27 +105,29 @@ impl Runtime {
     pub(super) fn notify_activity(&mut self, activity: &Map<String, Value>, event: &str) {
         self.push_event(
             "activity",
-            json!({"ActivityNotification": [{
+            // One OBJECT per event: the eventsource sends `data: {"El": {row}}` and the
+            // websocket writer wraps it in its own list (the oracle's `notify`).
+            json!({"ActivityNotification": {
                 "event": event,
                 "uuid": activity.get("uuid").cloned().unwrap_or(Value::Null),
                 "Activity": Value::Object(activity.clone()),
-            }]}),
+            }}),
         );
     }
 
     pub(super) fn notify_status(&mut self, title: &str, description: &str) {
         self.push_event(
             "status",
-            json!({"StatusNotification": [{
+            json!({"StatusNotification": {
                 "title": title,
                 "description": description,
                 "notificationName": "LIBRARY_UPDATE",
-            }]}),
+            }}),
         );
     }
 
     pub(super) fn notify_progress(&mut self, message: &str) {
-        self.push_event("progress", json!({"ProgressNotification": [{"message": message}]}));
+        self.push_event("progress", json!({"ProgressNotification": {"message": message}}));
     }
 
     /// The frames a library scan pushes (`notify_section_scan`).
