@@ -382,6 +382,8 @@ pub struct Runtime {
     /// How many events the bound has drained from the front of `events`, so a
     /// subscriber's cursor stays a sequence number once the buffer is full.
     events_dropped: usize,
+    /// The history key counter: monotonic, never reused.
+    history_counter: std::cell::Cell<i64>,
     /// Per-user view state written to a COLLECTION or a PLAYLIST through the
     /// `/:/` state writes (cycle 21): both take every write in the family.
     pub list_state: HashMap<String, Map<String, Value>>,
@@ -488,6 +490,7 @@ impl Runtime {
             events: Vec::new(),
             section_timeline: HashMap::new(),
             events_dropped: 0,
+            history_counter: std::cell::Cell::new(0),
             list_state: HashMap::new(),
             activity_serial: 0,
         };
@@ -3359,40 +3362,51 @@ impl Runtime {
         true
     }
 
+    /// One row of `/status/sessions/history/all` (library.record_view).
+    ///
+    /// The key is a MONOTONIC counter, never reused (the reference went 34, 35,
+    /// delete 35, then 36).  Cycle 25: an EPISODE row carries `title` and
+    /// `originallyAvailableAt` too, plus the parent/grandparent keys, titles,
+    /// indexes and artwork; the `_history` marker gives the row its own measured
+    /// attribute order in both writers and never reaches a client.
     fn history_row(&self, row: &Value) -> Value {
         let key = key_of(row).unwrap_or_default();
-        let mut history = json!({
-            // PMS exposes history rows as numeric resources.  The path is
-            // also the stable deletion key and is what the dashboard sorts
-            // after stripping `/status/sessions/history/`.
-            "historyKey": format!(
-                "/status/sessions/history/{}",
-                now()
-                    .saturating_mul(1000)
-                    .saturating_add(self.next_dynamic_key)
-            ),
-            "ratingKey": key,
-            "key": format!("/library/metadata/{key}"),
-            "title": row.get("title").cloned().unwrap_or(Value::Null),
-            "type": row.get("type").cloned().unwrap_or(Value::Null),
-            "viewedAt": now(),
-            "accountID": 1,
-            "deviceID": 1,
-            "librarySectionID": string_value(row.get("librarySectionID").unwrap_or(&Value::Null)),
-        });
-        if let Some(object) = history.as_object_mut() {
-            for name in [
-                "index",
-                "parentIndex",
-                "grandparentTitle",
-                "originallyAvailableAt",
-            ] {
-                if let Some(value) = row.get(name) {
-                    object.insert(name.to_string(), value.clone());
+        let number = self.history_counter.get() + 1;
+        self.history_counter.set(number);
+        let mut entry = Map::new();
+        entry.insert("historyKey".to_string(), json!(format!("/status/sessions/history/{number}")));
+        entry.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+        entry.insert("ratingKey".to_string(), json!(key));
+        entry.insert(
+            "librarySectionID".to_string(),
+            json!(string_value(row.get("librarySectionID").unwrap_or(&Value::Null))),
+        );
+        entry.insert("type".to_string(), row.get("type").cloned().unwrap_or(Value::Null));
+        entry.insert("viewedAt".to_string(), json!(now()));
+        entry.insert("accountID".to_string(), json!(1));
+        entry.insert("deviceID".to_string(), json!(1));
+        entry.insert("_history".to_string(), json!(true));
+        let detail = self.detail_row(row);
+        if row.get("type").and_then(Value::as_str) == Some("episode") {
+            for (source, target) in [("parentRatingKey", "parentKey"), ("grandparentRatingKey", "grandparentKey")] {
+                if let Some(value) = row.get(source).map(string_value).filter(|value| !value.is_empty()) {
+                    entry.insert(target.to_string(), json!(format!("/library/metadata/{value}")));
                 }
             }
+            for name in ["grandparentTitle", "index", "parentIndex", "thumb", "parentThumb", "grandparentThumb", "grandparentArt"] {
+                if let Some(value) = detail.get(name).filter(|value| !value.is_null()) {
+                    entry.insert(name.to_string(), value.clone());
+                }
+            }
+        } else if let Some(value) = row.get("thumb").filter(|value| !value.is_null()) {
+            entry.insert("thumb".to_string(), value.clone());
         }
-        history
+        for name in ["title", "originallyAvailableAt"] {
+            if let Some(value) = detail.get(name).filter(|value| !value.is_null()) {
+                entry.insert(name.to_string(), value.clone());
+            }
+        }
+        Value::Object(entry)
     }
 
     fn history_row_for_device(&self, row: &Value, device_id: i64) -> Value {
@@ -4858,6 +4872,12 @@ impl Runtime {
         }
         if request.method == "OPTIONS" {
             {
+                // Cycle 25: `/match` answers EVERY verb, a bare OPTIONS included,
+                // with its own no-parameters 400.
+                let parts = path.split('/').filter(|p| !p.is_empty()).collect::<Vec<_>>();
+                if parts.len() == 4 && parts[..2] == ["library", "metadata"] && parts[3] == "match" {
+                    return Response::error(400, "plexsim: bad request");
+                }
                 return match path.as_str() {
                     "/identity" => self.identity_response(&query),
                     "/hubs" | "/playlists" => Response::json(200, plugin_container(Vec::new())),
@@ -12885,12 +12905,23 @@ impl Runtime {
                                 .unwrap_or("movie"),
                         )
                     };
+                    let mut settings = settings;
+                    // Cycle 25, measured on kids and zen: `X-Plex-Platform: Samsung` --
+                    // that exact spelling, the header beating the query -- appends a
+                    // HIDDEN twentieth setting to an existing library's prefs.
+                    let platform = request
+                        .headers
+                        .get("x-plex-platform")
+                        .or_else(|| query.get("X-Plex-Platform"));
+                    if platform.map(String::as_str) == Some("Samsung") {
+                        settings.push(json!({
+                            "id": "includeInGlobal", "label": "", "summary": "", "type": "bool",
+                            "default": "true", "value": "true", "hidden": "1", "advanced": "0",
+                            "group": ""}));
+                    }
                     return Response::json(
                         200,
-                        self.container(
-                            Map::from_iter([("Setting".to_string(), Value::Array(settings))]),
-                            false,
-                        ),
+                        json!({"MediaContainer": {"size": settings.len(), "Setting": settings}}),
                     );
                 }
                 if segments[3] == "collections" {
@@ -15654,174 +15685,166 @@ impl Runtime {
         row
     }
 
+    /// `/library/metadata/{id}/tree` -- the raw item/media/part tree Get Info
+    /// reads.  It NESTS (a show holds its seasons, each season its episodes), an
+    /// EPISODE's tree is rooted at its SHOW and (cycle 21, kids and zen) carries
+    /// only the ancestor CHAIN -- the show, that episode's season, the episode.
     fn route_tree(&self, row: &Value) -> Response {
-        let mut fields = Map::new();
-        fields.insert(
-            "MetadataItem".to_string(),
-            Value::Array(vec![self.tree_node(row, true)]),
-        );
-        Response::json(200, self.container(fields, true))
-    }
-
-    fn tree_node(&self, row: &Value, root: bool) -> Value {
-        let mut node = self.detail_row(row);
-        let key = key_of(row).unwrap_or_default();
-        if let Some(object) = node.as_object_mut() {
-            let kind = row.get("type").and_then(Value::as_str).unwrap_or_default();
-            if kind == "season" {
-                object.insert("title".to_string(), json!(""));
-                let parent_title = if root {
-                    row.get("parentRatingKey")
-                        .map(string_value)
-                        .and_then(|parent| self.catalog.get(&parent))
-                        .and_then(|parent| parent.get("title"))
-                        .cloned()
-                        .unwrap_or_else(|| json!(""))
-                } else {
-                    json!("")
-                };
-                object.insert("parentTitle".to_string(), parent_title);
-            } else if kind == "episode" {
-                let show_title = row
-                    .get("grandparentRatingKey")
-                    .map(string_value)
-                    .and_then(|parent| self.catalog.get(&parent))
-                    .and_then(|parent| parent.get("title"))
-                    .cloned()
-                    .or_else(|| {
-                        row.get("parentRatingKey")
-                            .map(string_value)
-                            .and_then(|parent| self.catalog.get(&parent))
-                            .and_then(|parent| parent.get("parentRatingKey"))
-                            .map(string_value)
-                            .and_then(|show| self.catalog.get(&show))
-                            .and_then(|show| show.get("title"))
-                            .cloned()
-                    })
-                    .unwrap_or_else(|| json!(""));
-                object.insert("parentTitle".to_string(), show_title);
-            } else if kind == "show" {
-                let setting_ids = [
-                    "episodeSort",
-                    "autoDeletionItemPolicyUnwatchedLibrary",
-                    "autoDeletionItemPolicyWatchedLibrary",
-                    "flattenSeasons",
-                    "showOrdering",
-                    "audioLanguage",
-                    "subtitleLanguage",
-                    "subtitleMode",
-                ];
-                let settings = self
-                    .item_preferences("show", row)
-                    .into_iter()
-                    .filter(|setting| {
-                        setting
-                            .get("id")
-                            .and_then(Value::as_str)
-                            .is_some_and(|id| setting_ids.contains(&id))
-                    })
-                    .map(|mut setting| {
-                        if let Some(value) = setting.get("value").cloned() {
-                            if let Some(object) = setting.as_object_mut() {
-                                object.insert("value".to_string(), json!(string_value(&value)));
-                            }
-                        }
-                        setting
-                    })
-                    .collect::<Vec<_>>();
-                object.insert("Setting".to_string(), Value::Array(settings));
-            }
-            object.remove("Media");
-            let children = self.children(&key);
-            if !children.is_empty() {
-                object.insert(
-                    "MetadataItem".to_string(),
-                    Value::Array(
-                        children
-                            .iter()
-                            .map(|child| self.tree_node(child, false))
-                            .collect(),
-                    ),
-                );
-            }
-            if let Some(media_rows) = row.get("Media").and_then(Value::as_array) {
-                let media_items = media_rows
-                    .iter()
-                    .map(|media| {
-                        let mut media_item = Map::new();
-                        if let Some(id) = media.get("id") {
-                            media_item.insert("id".to_string(), id.clone());
-                        }
-                        let parts = media
-                            .get("Part")
-                            .and_then(Value::as_array)
-                            .into_iter()
-                            .flatten()
-                            .map(|part| {
-                                let mut part_item = Map::new();
-                                for (name, value) in part.as_object().into_iter().flatten() {
-                                    if name != "Stream" && name != "container" && name != "bitrate"
-                                    {
-                                        part_item.insert(name.clone(), value.clone());
-                                    }
-                                }
-                                let streams = part
-                                    .get("Stream")
-                                    .and_then(Value::as_array)
-                                    .into_iter()
-                                    .flatten()
-                                    .map(|stream| {
-                                        let mut stream_item = Map::new();
-                                        if let Some(stream_object) = stream.as_object() {
-                                            let stream_type = stream_object
-                                                .get("streamType")
-                                                .cloned()
-                                                .unwrap_or(Value::Null);
-                                            for (name, value) in stream_object {
-                                                if matches!(
-                                                    name.as_str(),
-                                                    "streamType"
-                                                        | "bitrate"
-                                                        | "displayTitle"
-                                                        | "extendedDisplayTitle"
-                                                        | "selected"
-                                                ) {
-                                                    continue;
-                                                }
-                                                let value = if matches!(
-                                                    name.as_str(),
-                                                    "id" | "index" | "channels"
-                                                ) {
-                                                    value.clone()
-                                                } else if let Some(number) = value.as_i64() {
-                                                    json!(number.to_string())
-                                                } else if let Some(number) = value.as_f64() {
-                                                    json!(number.to_string())
-                                                } else if let Some(boolean) = value.as_bool() {
-                                                    json!(if boolean { "1" } else { "0" })
-                                                } else {
-                                                    value.clone()
-                                                };
-                                                stream_item.insert(name.clone(), value);
-                                            }
-                                            stream_item.insert("type".to_string(), stream_type);
-                                        }
-                                        Value::Object(stream_item)
-                                    })
-                                    .collect::<Vec<_>>();
-                                part_item.insert("MediaStream".to_string(), Value::Array(streams));
-                                part_item.insert("metadataType".to_string(), json!(4));
-                                Value::Object(part_item)
-                            })
-                            .collect::<Vec<_>>();
-                        media_item.insert("MediaPart".to_string(), Value::Array(parts));
-                        Value::Object(media_item)
-                    })
-                    .collect::<Vec<_>>();
-                object.insert("MediaItem".to_string(), Value::Array(media_items));
+        let mut top = row.clone();
+        let mut keep: Option<HashSet<String>> = None;
+        if row.get("type").and_then(Value::as_str) == Some("episode") {
+            if let Some(show) = row
+                .get("grandparentRatingKey")
+                .map(string_value)
+                .and_then(|key| self.catalog.get(&key))
+            {
+                top = show.clone();
+                keep = Some(HashSet::from([
+                    row.get("parentRatingKey").map(string_value).unwrap_or_default(),
+                    key_of(row).unwrap_or_default(),
+                ]));
             }
         }
-        node
+        let item = self.tree_node(&top, &top, keep.as_ref());
+        Response::json(
+            200,
+            json!({"MediaContainer": {
+                "size": 1,
+                "identifier": "com.plexapp.plugins.library",
+                "mediaTagPrefix": MEDIA_TAG_PREFIX,
+                "mediaTagVersion": MEDIA_TAG_VERSION,
+                "MetadataItem": [item],
+            }}),
+        )
+    }
+
+    /// One node of the tree (server.py's `metadata_tree` item): a MediaItem
+    /// carries ONLY its id; a MediaPart its id, file, size and duration (an
+    /// episode's leads with `metadataType` 4) and its streams as MediaStream; a
+    /// season's title is always EMPTY and every node's parentTitle is the ROOT's
+    /// (a season root's show title, else empty); a show's node ends with eight
+    /// of its settings, every value and default a string.
+    fn tree_node(&self, row: &Value, root: &Value, keep: Option<&HashSet<String>>) -> Value {
+        let kind = row.get("type").and_then(Value::as_str).unwrap_or("");
+        let mut media_items = Vec::new();
+        for media in row.get("Media").and_then(Value::as_array).into_iter().flatten() {
+            let mut parts = Vec::new();
+            for part in media.get("Part").and_then(Value::as_array).into_iter().flatten() {
+                let mut entry = Map::new();
+                if kind == "episode" {
+                    entry.insert("metadataType".to_string(), json!(4));
+                }
+                for name in ["id", "file", "size", "duration"] {
+                    entry.insert(name.to_string(), part.get(name).cloned().unwrap_or(Value::Null));
+                }
+                let streams = part
+                    .get("Stream")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(tree_stream)
+                    .collect::<Vec<_>>();
+                if !streams.is_empty() {
+                    entry.insert("MediaStream".to_string(), Value::Array(streams));
+                }
+                entry.retain(|_, value| !value.is_null());
+                parts.push(Value::Object(entry));
+            }
+            media_items.push(json!({"id": media.get("id").cloned().unwrap_or(Value::Null), "MediaPart": parts}));
+        }
+        let title = if kind == "season" {
+            String::new()
+        } else {
+            self.detail_title(row)
+        };
+        let parent_title = if root.get("type").and_then(Value::as_str) == Some("season") {
+            root.get("parentRatingKey")
+                .map(string_value)
+                .and_then(|key| self.catalog.get(&key))
+                .and_then(|show| show.get("title"))
+                .map(string_value)
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let number = |name: &str| row.get(name).filter(|value| !value.is_null()).cloned();
+        let mut item = Map::new();
+        item.insert(
+            "id".to_string(),
+            json!(key_of(row).and_then(|key| key.parse::<i64>().ok()).unwrap_or(0)),
+        );
+        item.insert("title".to_string(), json!(title));
+        item.insert("guid".to_string(), json!(row.get("guid").map(string_value).unwrap_or_default()));
+        item.insert("parentTitle".to_string(), json!(parent_title));
+        item.insert("instanceRatingKey".to_string(), json!(""));
+        item.insert(
+            "index".to_string(),
+            number("index").filter(|value| value.as_i64() != Some(0)).unwrap_or(json!(1)),
+        );
+        item.insert(
+            "originallyAvailableAt".to_string(),
+            number("originallyAvailableAt").unwrap_or(json!("")),
+        );
+        item.insert("addedAt".to_string(), number("addedAt").unwrap_or(json!(0)));
+        item.insert("refreshedAt".to_string(), number("updatedAt").unwrap_or(json!(0)));
+        if !media_items.is_empty() {
+            item.insert("MediaItem".to_string(), Value::Array(media_items));
+        }
+        let children = self
+            .children(&key_of(row).unwrap_or_default())
+            .into_iter()
+            .filter(|child| keep.is_none_or(|keep| keep.contains(&key_of(child).unwrap_or_default())))
+            .map(|child| self.tree_node(&child, root, keep))
+            .collect::<Vec<_>>();
+        if !children.is_empty() {
+            item.insert("MetadataItem".to_string(), Value::Array(children));
+        }
+        if kind == "show" {
+            let names = [
+                "episodeSort",
+                "autoDeletionItemPolicyUnwatchedLibrary",
+                "autoDeletionItemPolicyWatchedLibrary",
+                "flattenSeasons",
+                "showOrdering",
+                "audioLanguage",
+                "subtitleLanguage",
+                "subtitleMode",
+            ];
+            let known = self.item_preferences("show", row);
+            let mut settings = Vec::new();
+            for name in names {
+                let Some(mut setting) = known
+                    .iter()
+                    .find(|setting| setting.get("id").and_then(Value::as_str) == Some(name))
+                    .cloned()
+                else {
+                    continue;
+                };
+                for field in ["default", "value"] {
+                    let text = match setting.get(field) {
+                        None | Some(Value::Null) => String::new(),
+                        Some(Value::Bool(flag)) => if *flag { "1" } else { "0" }.to_string(),
+                        Some(value) => string_value(value),
+                    };
+                    setting[field] = json!(text);
+                }
+                settings.push(setting);
+            }
+            if !settings.is_empty() {
+                item.insert("Setting".to_string(), Value::Array(settings));
+            }
+        }
+        Value::Object(item)
+    }
+
+    /// A row's own title as the detail row prints it (a generated season or
+    /// episode label materialised from the index when stored empty).
+    fn detail_title(&self, row: &Value) -> String {
+        let title = row.get("title").map(string_value).unwrap_or_default();
+        if title.is_empty() && row.get("type").and_then(Value::as_str) == Some("episode") {
+            return format!("Episode {}", row.get("index").map(string_value).unwrap_or_default());
+        }
+        title
     }
 
     fn route_playlist_metadata(
@@ -18947,6 +18970,50 @@ fn has_settings(row: &Value) -> bool {
     ]
     .iter()
     .any(|name| row.get(*name).is_some_and(|value| !value.is_null() && value.as_str() != Some("")))
+}
+
+/// The tree's MediaStream (server.py's `_tree_stream`): a fixed field set per
+/// stream type, `type` rather than `streamType`, the language as its short
+/// TAG, and every number a STRING except `id`, `index`, `type` and `channels`.
+fn tree_stream(stream: &Value) -> Value {
+    let kind = stream.get("streamType").and_then(Value::as_i64).unwrap_or(0);
+    let names: &[&str] = match kind {
+        1 => &[
+            "id", "index", "type", "codec", "language", "bitDepth", "chromaLocation",
+            "chromaSubsampling", "codedHeight", "codedWidth", "frameRate", "hasScalingMatrix",
+            "height", "level", "profile", "refFrames", "scanType", "width",
+        ],
+        2 => &["id", "index", "type", "channels", "codec", "language", "samplingRate"],
+        _ => &["id", "index", "type", "codec", "language"],
+    };
+    let mut out = Map::new();
+    for name in names {
+        let value = match *name {
+            "type" => stream.get("streamType").cloned(),
+            "language" => stream
+                .get("languageTag")
+                .filter(|value| !value.is_null())
+                .or_else(|| stream.get("language"))
+                .cloned(),
+            other => stream.get(other).cloned(),
+        };
+        let Some(value) = value.filter(|value| !value.is_null()) else {
+            continue;
+        };
+        let value = if matches!(*name, "id" | "index" | "type" | "channels") {
+            value
+        } else if *name == "frameRate" && value.is_number() {
+            json!(format!("{:.3}", value.as_f64().unwrap_or(0.0)))
+        } else if let Some(flag) = value.as_bool() {
+            json!(if flag { "1" } else { "0" })
+        } else if value.is_number() {
+            json!(string_value(&value))
+        } else {
+            value
+        };
+        out.insert(name.to_string(), value);
+    }
+    Value::Object(out)
 }
 
 fn page_fields(fields: &mut Map<String, Value>, query: &HashMap<String, String>) {
