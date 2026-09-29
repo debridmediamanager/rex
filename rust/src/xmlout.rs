@@ -174,6 +174,19 @@ fn child_rank(name: &str, key: &str, row: &Map<String, Value>) -> usize {
     list.iter().position(|v| *v == key).unwrap_or(list.len())
 }
 fn attr_order(name: &str, row: &Map<String, Value>, key: &str) -> usize {
+    if row.get("_searchhit").is_some() {
+        // `xmlout.py` `_SEARCH_LEAD`: a search hit LEADS with `librarySectionTitle`
+        // and then its `score`, ahead of the row's own order (cycle 25).
+        return match key {
+            "librarySectionTitle" => 0,
+            "score" => 1,
+            _ => attr_order_base(name, row, key).saturating_add(2),
+        };
+    }
+    attr_order_base(name, row, key)
+}
+
+fn attr_order_base(name: &str, row: &Map<String, Value>, key: &str) -> usize {
     if row.get("_session").is_some() {
         return match key {
             "selected" => 1,

@@ -757,6 +757,8 @@ impl Runtime {
             object.remove("librarySectionKey");
         }
         let mut ordered = Map::new();
+        // The marker the XML/JSON orderer leads the hit by; never serialised.
+        ordered.insert("_searchhit".to_string(), json!(true));
         if let Some(title) = object.remove("librarySectionTitle") {
             ordered.insert("librarySectionTitle".to_string(), title);
         }
