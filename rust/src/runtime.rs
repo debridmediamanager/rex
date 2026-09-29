@@ -8532,6 +8532,7 @@ impl Runtime {
         let Some(section) = self.section(section_key) else {
             return Response::error(404, "plexsim: not found");
         };
+        let include_guids = query.get("includeGuids").map(String::as_str) == Some("1");
         let is_show = section.get("type").and_then(Value::as_str) == Some("show");
         if is_show {
             if let Some(refusal) = hub_refusal(query) {
@@ -8777,7 +8778,24 @@ impl Runtime {
                     {
                         self.detail_row(&row)
                     } else {
-                        self.listing_row(&row)
+                        // Cycle 56, measured on zen and kids: `includeGuids=1` carries
+                        // `Guid` on a library hub page's rows too.
+                        let mut shown = self.listing_row(&row);
+                        if include_guids {
+                            let guids = row
+                                .get("Guid")
+                                .filter(|guids| guids.as_array().is_some_and(|list| !list.is_empty()))
+                                .cloned()
+                                .or_else(|| {
+                                    row.get("guid")
+                                        .filter(|guid| !string_value(guid).is_empty())
+                                        .map(|guid| json!([{"id": guid}]))
+                                });
+                            if let (Some(guids), Some(object)) = (guids, shown.as_object_mut()) {
+                                object.insert("Guid".to_string(), guids);
+                            }
+                        }
+                        shown
                     }
                 })
                 .collect::<Vec<_>>();
