@@ -3430,7 +3430,9 @@ impl Runtime {
             ("id".to_string(), "id".to_string()),
             ("guid".to_string(), "string".to_string()),
             ("type".to_string(), "string".to_string()),
-            ("parent".to_string(), "string".to_string()),
+            // Cycle 15/55: `parent=` is a NUMBER column -- `+<show>` is that show's
+            // seasons and `1.5` an empty 200.
+            ("parent".to_string(), "integer".to_string()),
             ("parentIndex".to_string(), "integer".to_string()),
             ("originalTitle".to_string(), "string".to_string()),
             ("createdAt".to_string(), "date".to_string()),
@@ -11203,6 +11205,12 @@ impl Runtime {
                     if request.method != "GET" && request.method != "HEAD" {
                         return Response::error(404, "plexsim: not found");
                     }
+                    // Cycle 20/55: `/onDeck` parses `type=` the way a listing does --
+                    // `abc` and an empty value are 500s -- where the added subsets
+                    // ignore it.
+                    if let Err(status) = listing::parsed_type(query, 500, None) {
+                        return Response::error(status, "plexsim: bad type");
+                    }
                     // Cycle 28: the FULL detail row; cycle 55: ordered by the
                     // view-state write time, then index and id; cycle 30: no `Field`
                     // and no `librarySectionKey`.
@@ -11410,6 +11418,13 @@ impl Runtime {
                         .and_then(Value::as_str)
                         .unwrap_or("movie");
                     let leaf = segments[3];
+                    // Cycle 55: the added subsets answer their ordinary list to a bad
+                    // `type=`, while the recently-viewed-shows pair refuses it (500).
+                    if matches!(leaf, "recentlyViewedShows" | "recentlyViewedGrandparents") {
+                        if let Err(status) = listing::parsed_type(query, 500, None) {
+                            return Response::error(status, "plexsim: bad type");
+                        }
+                    }
                     let mut fields = Map::from_iter([
                         (
                             "title2".to_string(),
