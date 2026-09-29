@@ -1575,6 +1575,15 @@ impl Runtime {
     /// enums rebuilt for the item (`item_language_enum`).
     fn item_preferences(&self, kind: &str, row: &Value) -> Vec<Value> {
         let mut rows = self.preferences_for(kind, row.get("_prefs"));
+        // Cycle 16/36: an UNMATCHED show drops its agent-driven settings.
+        let unmatched = row.get("guid").and_then(Value::as_str).is_some_and(|guid| {
+            guid.starts_with("local://") || guid.starts_with("none://") || guid.starts_with("tv.plex.agents.none://")
+        });
+        if unmatched && kind == "show" {
+            rows.retain(|setting| {
+                !matches!(setting.get("id").and_then(Value::as_str), Some("languageOverride" | "useOriginalTitle"))
+            });
+        }
         for setting in &mut rows {
             let id = setting.get("id").and_then(Value::as_str).unwrap_or("");
             if matches!(id, "audioLanguage" | "subtitleLanguage") {
