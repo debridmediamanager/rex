@@ -1248,6 +1248,10 @@ impl Runtime {
         if !keep_guid {
             object.remove("Guid");
         }
+        // Cycle 19: a LIGHT row orders its children `Media Image UltraBlurColors Guid
+        // Genre ...` where a detail row puts Guid after its tags; only the builder knows
+        // which projection a row is, so it marks it (the writers drop the marker).
+        object.insert("_light".to_string(), json!(true));
         if !keep_section {
             for name in [
                 "librarySectionID",
@@ -2374,7 +2378,7 @@ impl Runtime {
 
     fn metadata_provider_group_row(&self, group: &MetadataProviderGroup) -> Value {
         json!({
-            "id": group.id,
+            "id": group.id.parse::<i64>().map(|id| json!(id)).unwrap_or_else(|_| json!(group.id)),
             "title": group.title,
             "primaryIdentifier": group.primary_identifier,
             "MetadataAgentProviderGroupItem": group.items,
@@ -2386,7 +2390,7 @@ impl Runtime {
             .metadata_provider_rows()
             .into_iter()
             .map(|provider| {
-                let id = string_value(provider.get("id").unwrap_or(&Value::Null));
+                let id = provider.get("id").cloned().unwrap_or(Value::Null);
                 let identifier = provider
                     .get("identifier")
                     .and_then(Value::as_str)
@@ -2422,7 +2426,8 @@ impl Runtime {
     ) -> Response {
         // Cycle 31: creating a provider needs an external provider object; a POST to
         // either listing is a 400.
-        if request.method == "POST" && (segments.len() == 3 || (segments.len() == 4 && segments[3] == "group")) {
+        // Cycle 40: the GROUP listing's query-only POST is Add Agent's create.
+        if request.method == "POST" && segments.len() == 3 {
             return Response::error(400, "plexsim: bad request");
         }
         if segments.len() == 3 {
@@ -2467,21 +2472,19 @@ impl Runtime {
         }
         if segments.len() == 4 && segments[3] == "group" {
             if request.method == "GET" || request.method == "HEAD" {
+                let rows = self.metadata_provider_groups();
                 return Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProviderGroup".to_string(),
-                            Value::Array(self.metadata_provider_groups()),
-                        )]),
-                        false,
-                    ),
+                    json!({"MediaContainer": {"size": rows.len(), "MetadataAgentProviderGroup": rows}}),
                 );
             }
             if request.method == "POST" {
                 let Some(primary) = query.get("primaryIdentifier") else {
                     return Response::error(400, "plexsim: bad request");
                 };
+                if query.get("title").is_none() {
+                    return Response::error(400, "plexsim: bad request");
+                }
                 let provider = self
                     .metadata_provider_rows()
                     .into_iter()
@@ -2500,8 +2503,8 @@ impl Runtime {
                         .unwrap_or_else(|| "Provider Group".to_string()),
                     primary_identifier: primary.clone(),
                     items: vec![json!({
-                        "id": id,
-                        "metadataAgentProviderGroupId": id,
+                        "id": id.parse::<i64>().unwrap_or(0),
+                        "metadataAgentProviderGroupId": id.parse::<i64>().unwrap_or(0),
                         "metadataAgentProviderId": provider_id,
                         "order": 1000.0
                     })],
@@ -2511,13 +2514,7 @@ impl Runtime {
                     .insert(group.id.clone(), group);
                 return Response::json(
                     200,
-                    self.container(
-                        Map::from_iter([(
-                            "MetadataAgentProviderGroup".to_string(),
-                            Value::Array(vec![row]),
-                        )]),
-                        false,
-                    ),
+                    json!({"MediaContainer": {"size": 1, "MetadataAgentProviderGroup": [row]}}),
                 );
             }
             return Response::error(404, "plexsim: not found");
@@ -2525,23 +2522,25 @@ impl Runtime {
         let Some(group_id) = segments.get(4).copied() else {
             return Response::error(404, "plexsim: not found");
         };
+        // Only groups the client created have a lifecycle; any other id is a 404.
+        if !(segments.len() == 5 && matches!(request.method.as_str(), "GET" | "HEAD"))
+            && !self.metadata_provider_groups.contains_key(group_id)
+        {
+            return Response::error(404, "plexsim: not found");
+        }
         if segments.len() == 5 && request.method == "PUT" {
+            let Some(title) = query.get("title").cloned() else {
+                return Response::error(400, "plexsim: bad request");
+            };
             let Some(group) = self.metadata_provider_groups.get_mut(group_id) else {
                 return Response::error(404, "plexsim: not found");
             };
-            if let Some(title) = query.get("title") {
-                group.title = title.clone();
-            }
+            group.title = title;
             let row = group.clone();
             return Response::json(
                 200,
-                self.container(
-                    Map::from_iter([(
-                        "MetadataAgentProviderGroup".to_string(),
-                        Value::Array(vec![self.metadata_provider_group_row(&row)]),
-                    )]),
-                    false,
-                ),
+                json!({"MediaContainer": {"size": 1,
+                    "MetadataAgentProviderGroup": [self.metadata_provider_group_row(&row)]}}),
             );
         }
         if segments.len() == 5 && request.method == "DELETE" {
@@ -7485,6 +7484,16 @@ impl Runtime {
         Ok(found)
     }
 
+    /// Where a LIST row's per-user state lives: a collection keeps it on its own
+    /// stored row (`extra`, which its projection splices back in), a playlist in
+    /// `list_state`.
+    fn list_state_mut(&mut self, key: &str) -> &mut Map<String, Value> {
+        if self.collections.contains_key(key) {
+            return &mut self.collections.get_mut(key).expect("checked").extra;
+        }
+        self.list_state.entry(key.to_string()).or_default()
+    }
+
     /// Cycle 54: `viewUpdatedAt`, the time a row's per-user view state was
     /// written -- a rating, a scrobble, an unscrobble, a stored progress.
     fn stamp_view(&mut self, keys: &[String]) {
@@ -7656,7 +7665,7 @@ impl Runtime {
     /// at exactly the stored position writes nothing (cycle 58).
     fn store_progress(&mut self, key: &str, position: i64) {
         if self.catalog.get(key).is_none() {
-            let state = self.list_state.entry(key.to_string()).or_default();
+            let state = self.list_state_mut(key);
             if state.get("viewOffset").and_then(Value::as_i64) == Some(position) {
                 return;
             }
@@ -7687,7 +7696,7 @@ impl Runtime {
             if watched && is_collection {
                 return Response::empty(200);
             }
-            let state = self.list_state.entry(key.clone()).or_default();
+            let state = self.list_state_mut(&key);
             if watched {
                 let count = state.get("viewCount").and_then(Value::as_i64).unwrap_or(1);
                 state.insert("viewCount".to_string(), json!(count + 1));
@@ -7788,7 +7797,7 @@ impl Runtime {
         };
         let rating = rating.unwrap_or(-1.0);
         if self.catalog.get(&key).is_none() {
-            let state = self.list_state.entry(key.clone()).or_default();
+            let state = self.list_state_mut(&key);
             if rating == -1.0 {
                 state.remove("userRating");
                 state.remove("lastRatedAt");
@@ -8449,17 +8458,50 @@ impl Runtime {
                 query,
                 decided,
             );
+            let session_key = session
+                .get("sessionKey")
+                .map(string_value)
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| client.clone());
+            let player = session
+                .get("Player")
+                .and_then(|player| player.get("machineIdentifier"))
+                .map(string_value)
+                .or_else(|| query.get("X-Plex-Client-Identifier").cloned())
+                .or_else(|| headers.get("x-plex-client-identifier").cloned())
+                .unwrap_or_default();
             self.sessions.insert(client.clone(), session);
+            let mut frame = Map::new();
+            frame.insert("sessionKey".to_string(), json!(session_key));
+            frame.insert("clientIdentifier".to_string(), json!(player));
+            frame.insert("guid".to_string(), json!(""));
+            frame.insert("ratingKey".to_string(), json!(key));
+            frame.insert("url".to_string(), json!(""));
+            frame.insert("key".to_string(), json!(format!("/library/metadata/{key}")));
+            frame.insert("viewOffset".to_string(), json!(time));
+            frame.insert("state".to_string(), json!(state));
+            // Measured on a writable copy of the reference: every frame of a session
+            // driven from a play queue carries `playQueueItemID` and `playQueueID`, and a
+            // session with no queue carries neither.
+            if let Some(item_id) = query
+                .get("playQueueItemID")
+                .and_then(|value| value.parse::<i64>().ok())
+            {
+                if let Some(queue) = self
+                    .queues
+                    .values()
+                    .find(|queue| queue.items.iter().any(|item| item.id == item_id))
+                {
+                    frame.insert("playQueueItemID".to_string(), json!(item_id));
+                    frame.insert(
+                        "playQueueID".to_string(),
+                        json!(queue.id.parse::<i64>().unwrap_or(0)),
+                    );
+                }
+            }
             self.push_event(
                 "playing",
-                json!({"PlaySessionStateNotification": {
-                    "sessionKey": client,
-                    "clientIdentifier": headers.get("x-plex-client-identifier").cloned().unwrap_or_default(),
-                    "ratingKey": key,
-                    "key": format!("/library/metadata/{key}"),
-                    "viewOffset": time,
-                    "state": state,
-                }}),
+                json!({"PlaySessionStateNotification": Value::Object(frame)}),
             );
         }
         self.save_if_dirty();
@@ -11562,6 +11604,22 @@ impl Runtime {
                 ),
             );
         }
+        if segments.len() == 4
+            && segments[..2] == ["hubs", "sections"]
+            && segments[3] == "extras"
+        {
+            // Measured on both servers: an empty hub list -- `size 0`, `allowSync` and
+            // the identifier, nothing else -- for a movie library, a show library and a
+            // section id the server does not have alike.
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return Response::error(404, "plexsim: not found");
+            }
+            return Response::json(
+                200,
+                json!({"MediaContainer": {"size": 0, "allowSync": true,
+                                          "identifier": "com.plexapp.plugins.library"}}),
+            );
+        }
         if path.starts_with("/hubs/sections/") {
             let section_key = path
                 .trim_start_matches("/hubs/sections/")
@@ -11942,6 +12000,14 @@ impl Runtime {
                                 Err(status) => {
                                     return Response::error(status, "plexsim: bad request")
                                 }
+                            };
+                        }
+                        if let Some(group) = query.get("group") {
+                            // Cycle 14: the section `allLeaves` takes `group=` too --
+                            // the same as the grid's `type=4&group=index`.
+                            rows = match self.grouped(rows, group) {
+                                Ok(rows) => rows,
+                                Err(status) => return Response::error(status, "plexsim: bad request"),
                             };
                         }
                         let shown = rows
@@ -13495,10 +13561,30 @@ impl Runtime {
                     if field == "decade" {
                         return Response::error(500, "plexsim: bad request");
                     }
+                    // Cycle 54: the suggestions come from the rows the listing's filters
+                    // leave -- `year=1` suggests nothing, `year=abc` is a 500.
+                    let filter_pairs = pairs
+                        .iter()
+                        .filter(|(name, _)| {
+                            !name.starts_with("X-Plex-")
+                                && !name.ends_with(".query")
+                                && name != "limit"
+                        })
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    let source_type = section.get("type").and_then(Value::as_str).unwrap_or("movie").to_string();
+                    let source_rows = match self.filter_rows(
+                        self.choose_rows(Some(section_key), Some(type_number)),
+                        &filter_pairs,
+                        &source_type,
+                    ) {
+                        Ok(rows) => rows,
+                        Err(status) => return Response::error(status, "plexsim: bad request"),
+                    };
                     let mut fields = Map::new();
                     if field == "title" {
                         let mut rows = Vec::new();
-                        for row in self.choose_rows(Some(section_key), Some(type_number)) {
+                        for row in source_rows.iter().cloned() {
                             let title =
                                 row.get("title").and_then(Value::as_str).unwrap_or_default();
                             let lower_title = title.to_lowercase();
@@ -13548,9 +13634,9 @@ impl Runtime {
                         };
                         let needle = wanted.to_lowercase();
                         let mut seen = HashSet::new();
-                        let rows = self
-                            .choose_rows(Some(section_key), Some(type_number))
-                            .into_iter()
+                        let rows = source_rows
+                            .iter()
+                            .cloned()
                             .flat_map(|row| {
                                 row.get(tag_name)
                                     .and_then(Value::as_array)
@@ -13568,7 +13654,8 @@ impl Runtime {
                             .collect::<Vec<_>>();
                         fields.insert("Directory".to_string(), Value::Array(rows));
                     }
-                    return Response::json(200, self.container(fields, true));
+                    let body = self.secondary_body(section, None, fields);
+                    return Response::json(200, json!({"MediaContainer": body}));
                 }
                 if segments[3] == "all" {
                     return self.route_section_all(
@@ -13959,6 +14046,13 @@ impl Runtime {
         pairs: &[(String, String)],
         request: &Request,
     ) -> Response {
+        // Cycle 20: `sourceType` must parse as a whole number on a listing -- `abc`,
+        // `1.5` and an empty value are 500s -- and otherwise filters nothing.
+        if matches!(request.method.as_str(), "GET" | "HEAD")
+            && query.get("sourceType").is_some_and(|raw| !int_param(raw, Some(32)))
+        {
+            return Response::error(500, "plexsim: bad sourceType");
+        }
         if pairs.iter().filter(|(name, _)| name == "type").count() > 1 {
             return Response::json(
                 200,
@@ -14195,21 +14289,19 @@ impl Runtime {
             .ok()
             .flatten()
             .is_some();
+        // The default order is titleSort -- except a SHOW library's `type=3` and
+        // `type=4` grids, which keep the show's order (the rows arrive in it).
+        let show_order = section_type == "show"
+            && matches!(query.get("type").map(String::as_str), Some("3" | "4"));
         let sort = query
             .get("sort")
             .filter(|sort| !sort.is_empty())
             .map(String::as_str)
             .or(if by_id {
                 Some("id")
-            } else if section_type == "show"
-                && matches!(query.get("type").map(String::as_str), Some("3" | "4"))
-            {
-                // Cycle 16: a show library's season and episode grids keep the SHOW's
-                // order, which the typed rows already come in.
+            } else if show_order {
                 None
             } else {
-                // Measured on both servers: the DEFAULT order of a listing is
-                // `titleSort` ascending.
                 Some("titleSort")
             });
         let rows = match self.sort_rows(rows, sort) {
