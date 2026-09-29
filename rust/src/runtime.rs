@@ -13300,6 +13300,18 @@ impl Runtime {
                 return Response::error(500, "plexsim: bad request");
             }
         }
+        if matches!(request.method.as_str(), "GET" | "HEAD") && tail.is_empty() {
+            // Cycle 45: `file=` is refused by the QUERY's type -- on a section listing
+            // `type=2`, and a SHOW library's bare listing is that type.
+            let default_type = self
+                .section(section_key)
+                .and_then(|section| section.get("type"))
+                .and_then(Value::as_str)
+                .map(|kind| if kind == "show" { "2" } else { "1" });
+            if let Some(status) = listing::file_filter_refusal(query, false, default_type) {
+                return Response::error(status, "plexsim: cannot filter on file");
+            }
+        }
         if tail.first() == Some(&"refresh") {
             return Response::empty(200);
         }
