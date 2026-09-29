@@ -9446,6 +9446,15 @@ impl Runtime {
         Response::json(200, self.container(fields, true))
     }
 
+    /// Whether a `server://` uri names a machine that is not this one.
+    fn foreign_uri(&self, uri: &str) -> bool {
+        let decoded = percent_decode(uri);
+        decoded
+            .strip_prefix("server://")
+            .map(|rest| rest.split('/').next().unwrap_or(""))
+            .is_some_and(|machine| !machine.is_empty() && machine != self.machine)
+    }
+
     fn queue_rows_for_query(&self, query: &HashMap<String, String>) -> Vec<Value> {
         if let Some(playlist_id) = query.get("playlistID") {
             return self
@@ -9670,6 +9679,10 @@ impl Runtime {
                 items,
                 source: if playlist_id.is_some() {
                     String::new()
+                } else if self.foreign_uri(query.get("uri").map(String::as_str).unwrap_or("")) {
+                    // Measured on a writable copy of the reference: a uri naming
+                    // ANOTHER server builds an EMPTY queue that echoes the uri verbatim.
+                    query.get("uri").cloned().unwrap_or_default()
                 } else {
                     source_uri_for(query.get("uri").map(String::as_str).unwrap_or(""))
                 },
@@ -9724,11 +9737,30 @@ impl Runtime {
             match request.method.as_str() {
                 "GET" | "HEAD" => self.queue_container(&queue, query),
                 "PUT" => {
-                    let Some(uri) = query.get("uri") else {
+                    let uri = query.get("uri").cloned().unwrap_or_default();
+                    let playlist_id = query.get("playlistID").cloned().unwrap_or_default();
+                    if uri.is_empty() && playlist_id.is_empty() {
+                        // Measured: a bare refresh PUT with no uri is a 400.
                         self.queues.insert(id.to_string(), queue);
                         return Response::error(400, "plexsim: bad request");
+                    }
+                    let rows = if uri.is_empty() {
+                        // Measured on a writable copy of the reference: `playlistID=`
+                        // adds that playlist's items as a plain add.
+                        self.playlists
+                            .get(&playlist_id)
+                            .map(|playlist| {
+                                self.playlist_keys(playlist)
+                                    .iter()
+                                    .filter_map(|key| self.catalog.get(key).cloned())
+                                    .collect::<Vec<_>>()
+                            })
+                            .unwrap_or_default()
+                    } else if self.foreign_uri(&uri) {
+                        Vec::new()
+                    } else {
+                        self.rows_for_uri(&uri)
                     };
-                    let rows = self.rows_for_uri(uri);
                     if rows.is_empty() {
                         // Measured on the copy: an add that adds nothing answers the
                         // queue as it stands, `playQueueVersion` unmoved -- the client
@@ -9767,13 +9799,10 @@ impl Runtime {
                         let insert_at = (at + added_ids.len() - 1).min(queue.items.len());
                         queue.items.insert(insert_at, item);
                     }
-                    if let Some(last) = added_ids.last() {
-                        // Play Next leaves the previous plain-add marker in
-                        // place.  A plain add starts (or extends) the marker.
-                        if query.get("next") != Some(&"1".to_string()) || queue.last_added.is_none()
-                        {
-                            queue.last_added = Some(*last);
-                        }
+                    if !added_ids.is_empty() {
+                        // Cycle 57: the marker is the tail of the Up Next BLOCK, and
+                        // ANY add opens it.
+                        queue.last_added = queue_block_tail(&queue);
                         queue.version += 1;
                     }
                     self.queue_container(&queue, query)
@@ -9845,44 +9874,62 @@ impl Runtime {
                 queue.version += 1;
                 self.queue_container(&queue, query)
             }
+        } else if segments.len() == 2 && segments[1] == "items" && request.method == "DELETE" {
+            // Measured on a writable copy of the reference: DELETE on the items clears
+            // the queue down to its SELECTED item and steps the version.
+            let selected = queue.selected;
+            queue.items.retain(|item| Some(item.id) == selected);
+            queue.version += 1;
+            self.queue_container(&queue, query)
         } else if segments.len() == 3 && segments[1] == "items" && request.method == "DELETE" {
-            if let Some(item_id) = segments[2].parse::<i64>().ok() {
-                if let Some(index) = queue.items.iter().position(|item| item.id == item_id) {
-                    let old_version = queue.version;
-                    let old_total = queue.items.len();
-                    let selected = queue.selected == Some(item_id);
-                    queue.items.remove(index);
-                    if selected {
-                        queue.selected = queue
-                            .items
-                            .get(index)
-                            .or_else(|| queue.items.last())
-                            .map(|item| item.id);
-                    }
-                    queue.version += 1;
-                    let mut response = self.queue_container(&queue, query);
-                    if !selected {
-                        if let Ok(document) = serde_json::from_slice::<Value>(&response.body) {
-                            if let Some(container) = document.get("MediaContainer") {
-                                let mut container = container.clone();
-                                if let Some(object) = container.as_object_mut() {
-                                    object
-                                        .insert("playQueueVersion".to_string(), json!(old_version));
-                                    object.insert(
-                                        "playQueueTotalCount".to_string(),
-                                        json!(old_total),
-                                    );
-                                }
-                                response.body =
-                                    serde_json::to_vec(&json!({"MediaContainer": container}))
-                                        .unwrap_or_default();
+            // Cycle 16: EVERY item delete answers the queue as it stood BEFORE it -- the
+            // old version and total -- with the rows that REMAIN; the SELECTED one also
+            // drops the rows entirely and keeps the old selection.  The next read has
+            // the stepped version and the selection on the item that followed.
+            let index = segments[2]
+                .parse::<i64>()
+                .ok()
+                .and_then(|item_id| queue.items.iter().position(|item| item.id == item_id));
+            if let Some(index) = index {
+                let item_id = queue.items[index].id;
+                let was_selected = queue.selected == Some(item_id);
+                let was_id = queue.selected;
+                queue.items.remove(index);
+                queue.version += 1;
+                if was_selected {
+                    queue.selected = queue
+                        .items
+                        .get(index)
+                        .or_else(|| queue.items.last())
+                        .map(|item| item.id);
+                }
+                let was_marker = queue.last_added;
+                if was_marker.is_some() {
+                    queue.last_added = queue_block_tail(&queue);
+                }
+                let remaining = queue.items.len();
+                let mut response = self.queue_container(&queue, query);
+                if let Ok(mut document) = serde_json::from_slice::<Value>(&response.body) {
+                    if let Some(object) = document
+                        .get_mut("MediaContainer")
+                        .and_then(Value::as_object_mut)
+                    {
+                        object.insert("playQueueVersion".to_string(), json!(queue.version - 1));
+                        object.insert("playQueueTotalCount".to_string(), json!(remaining + 1));
+                        if let Some(marker) = was_marker {
+                            object.insert("playQueueLastAddedItemID".to_string(), json!(marker));
+                        }
+                        if was_selected {
+                            object.remove("Metadata");
+                            object.insert("size".to_string(), json!(0));
+                            if let Some(was_id) = was_id {
+                                object.insert("playQueueSelectedItemID".to_string(), json!(was_id));
                             }
                         }
                     }
-                    response
-                } else {
-                    Response::error(404, "plexsim: no such play queue item")
+                    response.body = serde_json::to_vec(&document).unwrap_or_default();
                 }
+                response
             } else {
                 Response::error(404, "plexsim: no such play queue item")
             }
@@ -9925,10 +9972,9 @@ impl Runtime {
                 })
                 .unwrap_or(0);
             queue.items.insert(position, item);
-            // The marker identifies the tail of the contiguous add block.  A
-            // move changes that tail, so re-anchor it to the new queue tail.
+            // Cycle 57: the marker is the tail of the Up Next block.
             if queue.last_added.is_some() {
-                queue.last_added = queue.items.last().map(|entry| entry.id);
+                queue.last_added = queue_block_tail(&queue);
             }
             queue.version += 1;
             self.queue_container(&queue, query)
@@ -19617,4 +19663,20 @@ fn restamp_borrowed(row: &mut Value) {
             }
         }
     }
+}
+
+/// `playQueueLastAddedItemID`: the last item of the Up Next block -- the selected item
+/// followed by the contiguous run of ADDED items (cycle 57, both writable copies).
+fn queue_block_tail(queue: &Queue) -> Option<i64> {
+    if queue.items.is_empty() {
+        return None;
+    }
+    let mut at = queue
+        .selected
+        .and_then(|selected| queue.items.iter().position(|item| item.id == selected))
+        .unwrap_or(0);
+    while at + 1 < queue.items.len() && queue.items[at + 1].added {
+        at += 1;
+    }
+    Some(queue.items[at].id)
 }
